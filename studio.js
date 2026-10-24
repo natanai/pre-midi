@@ -13,7 +13,7 @@ let selectedInstrumentId = score.instruments[0].id;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
 let history = [], future = [], playback = null, pendingPlay = false;
-let playBar = -1, playStep = -1, picker = null, pickerTrigger = null;
+let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
 
 const instrument = () => score.instruments.find(entry => entry.id === selectedInstrumentId) || score.instruments[0];
@@ -55,6 +55,7 @@ function stop() {
  playback = null;
  pendingPlay = false;
  playBar = playStep = -1;
+ pianoProgress = null;
  $("play").textContent = "▶ Play";
  $("position").textContent = "1.1";
  paintPlayhead();
@@ -148,6 +149,22 @@ function paintPlayhead() {
  for (const clip of $("arrangement").querySelectorAll(".clip")) {
   clip.classList.toggle("playing", playBar >= 0 && Number(clip.dataset.bar) === playBar);
  }
+ paintPianoPlayhead();
+}
+function paintPianoPlayhead() {
+ const grid = $("piano");
+ const marker = grid.querySelector(".piano-playhead");
+ if (!marker) return;
+ const currentInstrument = instrument();
+ const activeChunk = chunkFor(currentInstrument);
+ const isAudibleChunk = pianoProgress !== null &&
+  (playback !== null || pendingPlay) &&
+  currentInstrument.timeline[pianoProgress.bar] === activeChunk.id;
+ marker.hidden = !isAudibleChunk;
+ if (!isAudibleChunk) return;
+ // The note-label gutter is 63px; the remaining width represents 16 steps.
+ const x = 63 + (grid.clientWidth - 63) * pianoProgress.step / 16;
+ marker.style.transform = `translateX(${x}px)`;
 }
 function renderTimeline() {
  const root = $("arrangement");
@@ -306,7 +323,7 @@ function renderNotes() {
       id:id(), pitch, start:step,
       duration:Math.min(Number($("length").value),16-step), velocity:0.8
      });
-    }) && !existing) void audition(targetInst,pitch).catch(() => {});
+    }) && !existing && !playback && !pendingPlay) void audition(targetInst,pitch).catch(() => {});
    }, "note" + (step % 4 === 0 ? " beat" : ""));
    cells.push(cell);
 
@@ -371,6 +388,11 @@ function renderNotes() {
   root.append(row);
   previewRow();
  }
+ const playhead = element("div", undefined, "piano-playhead");
+ playhead.setAttribute("aria-hidden", "true");
+ playhead.hidden = true;
+ root.append(playhead);
+ paintPianoPlayhead();
  scroll.scrollTop = top;
  scroll.scrollLeft = left;
 }
@@ -461,9 +483,14 @@ $("play").addEventListener("click", async () => {
     if (playBar !== bar) { playBar = bar; paintPlayhead(); }
     playStep = step;
    },
+   onProgress: (bar, step) => {
+    pianoProgress = {bar, step};
+    paintPianoPlayhead();
+   },
    onStop: () => {
     playback = null;
     playBar = playStep = -1;
+    pianoProgress = null;
     $("play").textContent = "▶ Play";
     paintPlayhead();
    }
