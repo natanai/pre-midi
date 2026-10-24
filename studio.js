@@ -549,14 +549,26 @@ $("bars").addEventListener("change", event => modify(() => {
  }
  selectedSlot.bar = Math.min(selectedSlot.bar, count - 1);
 }));
-$("add-instrument").addEventListener("click", () => {
- closePicker();
- modify(() => {
-  const inst = makeInstrument(score.instruments.length + 1, score.bars);
-  score.instruments.push(inst);
-  selectedInstrumentId = inst.id;
-  selectedSlot = {instrumentId:inst.id,bar:0};
- });
+$("add-instrument").addEventListener("click",()=>openLibrary("add"));
+$("change-sound").addEventListener("click",()=>openLibrary("replace"));
+$("close-library").addEventListener("click",()=>$("instrument-dialog").close());
+$("save-sound").addEventListener("click",()=>{
+ const inst=instrument();
+ const suggested=(getPreset(inst.patch.presetId)?.name||inst.name)+" variation";
+ const name=prompt("Name your sound preset:",suggested)?.trim();
+ if(!name)return;
+ if(name.length>60)return message("Preset name must be 60 characters or less.",true);
+ if(savedSounds.length>=100)return message("Your sound library contains 100 presets.",true);
+ const item={id:"user-"+id(),name,category:"Mine",description:"Your saved sound",patch:patchCopy(inst.patch)};
+ item.patch.presetId=item.id;
+ try {
+  localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));
+  savedSounds.push(item);
+  modify(()=>{instrument().patch.presetId=item.id;});
+  message("Saved "+name+" in your browser's sound library.");
+ } catch {
+  message("Browser storage is unavailable. Your composition still contains this sound.",true);
+ }
 });
 $("remove-instrument").addEventListener("click", () => {
  const inst = instrument();
