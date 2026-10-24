@@ -2,7 +2,9 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve, extname } from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+const execFileAsync = promisify(execFile);
 import { strict as assert } from "node:assert";
 
 const root=resolve(new URL("..",import.meta.url).pathname);
@@ -27,7 +29,7 @@ try {
    "--hide-scrollbars","--window-size="+width+","+height,"--virtual-time-budget=3000",
    "--dump-dom",url
   ];
-  const dom=execFileSync(chrome,args,{encoding:"utf8",timeout:30000,stdio:["ignore","pipe","pipe"]});
+  const {stdout:dom}=await execFileAsync(chrome,args,{encoding:"utf8",timeout:30000,maxBuffer:10_000_000});
   const result=dom.match(/<html[^>]+data-layout="([^"]+)"/);
   const details=dom.match(/<pre id="result" hidden="">([^<]+)<\/pre>/);
   assert.equal(result?.[1],"PASS","Responsive layout failed at "+width+"x"+height+": "+(details?.[1]||dom.slice(-600)));
