@@ -14,8 +14,8 @@ function note(ctx,out,t,n,start,duration) {
 export function stepEvents(doc, absoluteStep) {
  const cycle=Math.max(1,doc.bars*16),stepInSong=absoluteStep%cycle;
  const barIndex=Math.floor(stepInSong/16),step=stepInSong%16,events=[];
- for(const instrument of doc.tracks) {
-  const chunk=instrument.patterns.find(p=>p.id===instrument.arrangement[barIndex]);
+ for(const instrument of doc.instruments) {
+  const chunk=instrument.chunks.find(p=>p.id===instrument.timeline[barIndex]);
   if(!chunk)continue;
   for(const n of chunk.notes)if(n.start===step)events.push({instrument,note:n,barIndex,step});
  }
@@ -23,7 +23,7 @@ export function stepEvents(doc, absoluteStep) {
 }
 function bar(ctx,out,doc,index,start) {
  const unit=secondsPerStep(doc);
- for(const t of doc.tracks){const p=t.patterns.find(p=>p.id===t.arrangement[index]);if(p)for(const n of p.notes)note(ctx,out,t,n,start+n.start*unit,n.duration*unit);}
+ for(const instrument of doc.instruments){const chunk=instrument.chunks.find(c=>c.id===instrument.timeline[index]);if(chunk)for(const n of chunk.notes)note(ctx,out,instrument,n,start+n.start*unit,n.duration*unit); }
 }
 let context;
 export async function audition(t,pitch) {

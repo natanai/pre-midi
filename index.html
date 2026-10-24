@@ -1,14 +1,81 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#000000"><title>pre-midi — Studio</title><link rel="stylesheet" href="./style.css"></head>
-<body><div class="app">
-<header><div class="brand"><b>pre-midi</b><small>PRE-PROGRAMMED / MUSIC STUDIO</small></div><nav aria-label="Files"><button id="new">New</button><button id="import">Import .premidi</button><button id="export" class="primary">Save .premidi</button><button id="wav">Export WAV</button><input id="file" type="file" accept=".premidi,application/json" hidden></nav></header>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>pre-midi — Studio</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="app">
+<header>
+ <div class="brand"><b>pre-midi</b><small>PRE-PROGRAMMED / MUSIC STUDIO</small></div>
+ <nav aria-label="Files">
+  <button id="new" type="button">New</button>
+  <button id="import" type="button">Open .premidi</button>
+  <button id="export" type="button" class="primary">Save .premidi</button>
+  <button id="wav" type="button">Export WAV</button>
+  <input id="file" type="file" accept=".premidi,application/json" hidden>
+ </nav>
+</header>
 <main>
-<section class="song"><label>COMPOSITION<input id="title" maxlength="100" aria-label="Composition title"></label><div class="transport"><button id="stop" aria-label="Stop">■</button><button id="play" class="primary">▶ Play</button><label>BPM <input id="bpm" type="number" min="40" max="240"></label><label>BARS <select id="bars"><option>2</option><option>4</option><option>8</option><option>16</option></select></label><label><input id="loop" type="checkbox" checked> Loop</label><output id="position">1.1</output></div></section>
-<div class="work">
-<aside><div class="heading"><h2>Tracks</h2><button id="add-track">+ Track</button></div><div id="track-list"></div></aside>
-<div class="mainwork">
-<section><div class="heading"><h2>Arrangement</h2><small>Click bars to place the selected pattern · right-click to clear</small></div><div class="scroll"><div id="arrangement"></div></div></section>
-<section><div class="heading wrap"><h2>Piano roll</h2><div class="tools"><label>Pattern <select id="pattern"></select></label><button id="add-pattern">+ Pattern</button><button id="copy-pattern">Duplicate</button><button id="delete-pattern">Delete</button><label>Note <select id="length"><option value="1">1/16</option><option value="2">1/8</option><option value="4">1/4</option><option value="8">1/2</option><option value="16">1 bar</option></select></label></div></div><p class="hint">Click to add or remove notes. Selected note length applies to new notes. Scroll to see higher and lower pitches.</p><div class="piano-scroll"><div id="piano"></div></div></section>
-<section><div class="heading"><h2>Selected instrument</h2><div><button id="undo">Undo</button> <button id="redo">Redo</button></div></div><div class="controls"><label>Track name <input id="track-name" maxlength="60"></label><label>Waveform <select id="waveform"><option value="triangle">Triangle</option><option value="sine">Sine</option><option value="square">Square</option><option value="sawtooth">Sawtooth</option></select></label><label>Volume <input id="volume" type="range" min="0" max="100"><output id="volume-value"></output></label><label>Attack <input id="attack" type="range" min="0" max="100"><output id="attack-value"></output></label><label>Release <input id="release" type="range" min="10" max="700"><output id="release-value"></output></label><button id="remove-track" class="danger">Remove track</button></div></section>
-</div></div></main><footer><span id="status" role="status">Local composition · portable files · no account.</span><span>.premidi v1 · NATIVE SCORE / SYNTH · <a href="https://github.com/natanai/pre-midi">GitHub</a></span></footer>
-</div><script type="module" src="./studio.js"></script></body></html>
+ <section class="song">
+  <label>COMPOSITION <input id="title" maxlength="100" aria-label="Composition title"></label>
+  <div class="transport">
+   <button id="stop" type="button" aria-label="Stop playback">■</button>
+   <button id="play" type="button" class="primary">▶ Play</button>
+   <label>BPM <input id="bpm" type="number" min="40" max="240"></label>
+   <label>BARS <select id="bars"><option>2</option><option>4</option><option>8</option><option>16</option></select></label>
+   <label><input id="loop" type="checkbox" checked> Loop</label>
+   <output id="position" aria-label="Playback position">1.1</output>
+  </div>
+ </section>
+ <div class="work">
+  <aside>
+   <div class="heading"><h2>Instruments</h2><button id="add-instrument" type="button">+ Instrument</button></div>
+   <div id="instrument-list" aria-label="Instruments"></div>
+  </aside>
+  <div class="mainwork">
+   <section class="timeline-section" aria-label="Composition timeline">
+    <div class="heading"><h2>Timeline</h2><span class="timeline-tick-label">BARS</span></div>
+    <div class="scroll"><div id="arrangement"></div></div>
+   </section>
+   <section aria-label="Chunk note editor">
+    <div class="heading wrap">
+     <div class="chunk-heading"><h2>Notes</h2><span id="editing-identity" class="editing-identity"></span></div>
+     <div class="tools">
+      <label>CHUNK <select id="chunk" aria-label="Choose chunk to edit"></select></label><label>NAME <input id="chunk-name" aria-label="Chunk name" maxlength="60"></label>
+      <button id="add-chunk" type="button">+ New</button>
+      <button id="duplicate-chunk" type="button">Duplicate</button>
+      <button id="delete-chunk" type="button">Delete</button>
+      <label>NEW NOTE LENGTH <select id="length" aria-label="Note length"><option value="1">1/16</option><option value="2">1/8</option><option value="4">1/4</option><option value="8">1/2</option><option value="16">1 bar</option></select></label>
+     </div>
+    </div>
+    <div class="piano-scroll"><div id="piano"></div></div>
+   </section>
+   <section aria-label="Instrument sound">
+    <div class="heading">
+     <div class="sound-heading"><h2>Instrument sound</h2><span id="edit-instrument-note" class="editing-identity"></span><span class="scope-tag">ALL CHUNKS</span></div>
+     <div><button id="undo" type="button">Undo</button> <button id="redo" type="button">Redo</button></div>
+    </div>
+    <div class="controls">
+     <label>Name <input id="instrument-name" maxlength="60"></label>
+     <label>Waveform <select id="waveform">
+      <option value="triangle">Triangle</option><option value="sine">Sine</option>
+      <option value="square">Square</option><option value="sawtooth">Sawtooth</option>
+     </select></label>
+     <label>Volume <input id="volume" type="range" min="0" max="100"><output id="volume-value"></output></label>
+     <label>Attack <input id="attack" type="range" min="0" max="100"><output id="attack-value"></output></label>
+     <label>Release <input id="release" type="range" min="10" max="700"><output id="release-value"></output></label>
+     <button id="remove-instrument" type="button" class="danger">Remove instrument</button>
+    </div>
+   </section>
+  </div>
+ </div>
+</main>
+<footer><span id="status" role="status">Saved locally</span><span>.premidi v2 · <a href="https://github.com/natanai/pre-midi">SOURCE</a></span></footer>
+</div>
+<script type="module" src="./studio.js"></script>
+</body>
+</html>

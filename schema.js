@@ -1,51 +1,86 @@
+// pre-midi native score. This is the only file-format definition.
+// The v2 format intentionally replaces unused v1; no compatibility reader.
 export const FORMAT = "pre-midi";
-export const VERSION = 1;
-export const WAVES = ["sine","triangle","square","sawtooth"];
+export const VERSION = 2;
+export const WAVES = ["sine", "triangle", "square", "sawtooth"];
 export const id = () => globalThis.crypto?.randomUUID?.() || ("id-" + Date.now() + "-" + Math.random().toString(36).slice(2));
-export const clone = (value) => JSON.parse(JSON.stringify(value));
-export const pattern = (name = "Pattern 1") => ({id:id(),name,notes:[]});
-export function track(n=1,bars=8) {
- const p=pattern();
- return {id:id(),name:"Track "+n,waveform:WAVES[(n-1)%4],volume:0.7,attack:0.01,release:0.15,patterns:[p],arrangement:Array(bars).fill(p.id)};
+export const clone = x => JSON.parse(JSON.stringify(x));
+
+export const makeChunk = (name = "Chunk 1") => ({id:id(),name,notes:[]});
+export function makeInstrument(n = 1, bars = 8) {
+ const chunk = makeChunk();
+ return {
+  id:id(), name:"Instrument "+n, waveform:WAVES[(n-1)%4],
+  volume:0.7, attack:0.01, release:0.15,
+  chunks:[chunk], timeline:Array.from({length:bars},(_,bar)=>bar<4?chunk.id:null)
+ };
 }
 export function create() {
- const t=track();t.name="Lead";t.patterns[0].notes=[60,64,67,72].map((pitch,i)=>({id:id(),pitch,start:i*4,duration:3,velocity:0.8}));
- return {format:FORMAT,version:VERSION,id:id(),title:"Untitled composition",bpm:120,beatsPerBar:4,stepsPerBeat:4,bars:8,tracks:[t]};
+ const instrument=makeInstrument();
+ instrument.name="Lead";
+ instrument.chunks[0].name="Opening";
+ instrument.chunks[0].notes=[60,64,67,72].map((pitch,i)=>({
+  id:id(),pitch,start:i*4,duration:3,velocity:0.8
+ }));
+ return {format:FORMAT,version:VERSION,id:id(),title:"Untitled composition",
+  bpm:120,beatsPerBar:4,stepsPerBeat:4,bars:8,instruments:[instrument]};
 }
-const obj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
-const str=(x,n)=>typeof x==="string"&&!!x.trim()&&x.length<=n;
-const range=(x,a,b)=>typeof x==="number"&&Number.isFinite(x)&&x>=a&&x<=b;
-export function validate(x) {
+const object=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
+const text=(x,max)=>typeof x==="string"&&!!x.trim()&&x.length<=max;
+const within=(x,low,high)=>typeof x==="number"&&Number.isFinite(x)&&x>=low&&x<=high;
+export function validate(doc) {
  const errors=[];
- if (!obj(x)||x.format!==FORMAT||x.version!==VERSION) return ["Unsupported .premidi version (expected pre-midi v1)."];
- if (!str(x.id,128)||!str(x.title,100)) errors.push("Invalid composition name or identity.");
- if (!Number.isInteger(x.bpm)||!range(x.bpm,40,240)) errors.push("Tempo must be 40–240 BPM.");
- if (x.beatsPerBar!==4||x.stepsPerBeat!==4) errors.push("Version 1 requires 4/4 and 16 steps per bar.");
- if (!Number.isInteger(x.bars)||!range(x.bars,1,16)) errors.push("Bars must be 1–16.");
- if (!Array.isArray(x.tracks)||x.tracks.length<1||x.tracks.length>12) return [...errors,"Expected 1–12 tracks."];
- const trackIds=new Set();
- for(const t of x.tracks) {
-  if(!obj(t)||!str(t.id,128)||!str(t.name,60)){errors.push("Invalid track identity.");continue;}
-  if(trackIds.has(t.id)) errors.push("Duplicate track ID.");trackIds.add(t.id);
-  if(!WAVES.includes(t.waveform)) errors.push("Unsupported waveform.");
-  if(!range(t.volume,0,1)||!range(t.attack,0,1)||!range(t.release,0,1)) errors.push("Invalid instrument parameter.");
-  if(!Array.isArray(t.patterns)||!t.patterns.length||t.patterns.length>32){errors.push("Expected 1–32 patterns.");continue;}
-  const patternIds=new Set();
-  for(const p of t.patterns) {
-   if(!obj(p)||!str(p.id,128)||!str(p.name,60)||!Array.isArray(p.notes)||p.notes.length>256){errors.push("Invalid pattern.");continue;}
-   if(patternIds.has(p.id))errors.push("Duplicate pattern ID.");patternIds.add(p.id);
-   const noteIds=new Set();
-   for(const n of p.notes) {
-    if(!obj(n)||!str(n.id,128)||noteIds.has(n.id)||!Number.isInteger(n.pitch)||!range(n.pitch,36,96)||!Number.isInteger(n.start)||!range(n.start,0,15)||!Number.isInteger(n.duration)||!range(n.duration,1,16-n.start)||!range(n.velocity,0,1))errors.push("Invalid note.");
-    else noteIds.add(n.id);
+ if(!object(doc)||doc.format!==FORMAT||doc.version!==VERSION)
+  return ["Unsupported .premidi file. The current format is pre-midi v2."];
+ if(!text(doc.id,128)||!text(doc.title,100))errors.push("Composition needs an ID and title.");
+ if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
+ if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
+ if(!Number.isInteger(doc.bars)||!within(doc.bars,1,16))errors.push("Timeline must have 1–16 bars.");
+ if(!Array.isArray(doc.instruments)||doc.instruments.length<1||doc.instruments.length>12)
+  return [...errors,"The composition needs 1–12 instruments."];
+ const ids=new Set();
+ for(const instrument of doc.instruments) {
+  if(!object(instrument)||!text(instrument.id,128)||!text(instrument.name,60)){
+   errors.push("Invalid instrument identity.");continue;
+  }
+  if(ids.has(instrument.id))errors.push("Instrument IDs must be distinct.");
+  ids.add(instrument.id);
+  if(!WAVES.includes(instrument.waveform))errors.push("Invalid instrument waveform.");
+  if(!within(instrument.volume,0,1)||!within(instrument.attack,0,1)||!within(instrument.release,0,1))
+   errors.push("Invalid instrument sound settings.");
+  if(!Array.isArray(instrument.chunks)||!instrument.chunks.length||instrument.chunks.length>32){
+   errors.push("Each instrument must have 1–32 chunks.");continue;
+  }
+  const chunks=new Set();
+  for(const chunk of instrument.chunks) {
+   if(!object(chunk)||!text(chunk.id,128)||!text(chunk.name,60)||
+      !Array.isArray(chunk.notes)||chunk.notes.length>256){
+    errors.push("Invalid chunk.");continue;
+   }
+   if(chunks.has(chunk.id))errors.push("Chunk IDs must be distinct.");
+   chunks.add(chunk.id);
+   const notes=new Set();
+   for(const note of chunk.notes){
+    if(!object(note)||!text(note.id,128)||notes.has(note.id)||
+       !Number.isInteger(note.pitch)||!within(note.pitch,36,96)||
+       !Number.isInteger(note.start)||!within(note.start,0,15)||
+       !Number.isInteger(note.duration)||!within(note.duration,1,16-note.start)||
+       !within(note.velocity,0,1)) errors.push("Invalid chunk note.");
+    else notes.add(note.id);
    }
   }
-  if(!Array.isArray(t.arrangement)||t.arrangement.length!==x.bars||t.arrangement.some(p=>p!==null&&!patternIds.has(p)))errors.push("Invalid pattern arrangement.");
+  if(!Array.isArray(instrument.timeline)||instrument.timeline.length!==doc.bars||
+     instrument.timeline.some(value=>value!==null&&!chunks.has(value)))
+   errors.push("Instrument timeline contains a missing chunk.");
  }
  return errors.slice(0,20);
 }
 export function parse(raw) {
- if(typeof raw!=="string"||raw.length>1000000)throw Error("Composition exceeds the 1 MB limit.");
- const doc=JSON.parse(raw),errors=validate(doc);if(errors.length)throw Error(errors.join("\n"));return doc;
+ if(typeof raw!=="string"||new TextEncoder().encode(raw).byteLength>1_000_000)
+  throw Error("Composition exceeds the 1 MB limit.");
+ const doc=JSON.parse(raw),issues=validate(doc);
+ if(issues.length)throw Error(issues.join("\n"));
+ return doc;
 }
-export const filename=(x,ext)=>(x.title.trim().replace(/[^a-z0-9 _-]/gi,"").replace(/\s+/g,"-").slice(0,64)||"composition")+ext;
+export const filename=(doc,extension)=>(doc.title.trim().replace(/[^a-z0-9 _-]/gi,"")
+ .replace(/\s+/g,"-").slice(0,64)||"composition")+extension;
