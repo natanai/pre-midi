@@ -1,0 +1,1 @@
+This initial version uses standard browser Web Audio APIs and no third-party runtime packages, soundbanks, samples, or copyrighted images. Evaluate attribution and licenses individually before incorporating code, media, SoundFonts or samples from other projects.
