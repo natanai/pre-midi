@@ -111,22 +111,22 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .tools {display:flex;align-items:center;flex-wrap:wrap;gap:5px 11px}
 .tools label {display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
 .tools select {max-width:145px}
-.track {
+.instrument-card {
   --track-accent:var(--signal-cyan);
   display:grid;gap:4px;width:100%;min-height:68px;
   padding:13px 12px 12px 15px;border:0;border-bottom:1px dotted var(--line);
   background:var(--void);color:var(--text);text-align:left;white-space:normal;
   box-shadow:inset 3px 0 0 var(--track-accent);
 }
-.track:hover:not(:disabled) {background:var(--stripe);text-decoration:none}
-.track.active {
+.instrument-card:hover:not(:disabled) {background:var(--stripe);text-decoration:none}
+.instrument-card.active {
   background:#111;
   outline:1px solid var(--bright);outline-offset:-1px;
   box-shadow:inset 4px 0 0 var(--track-accent);
 }
-.track strong {font-size:13px;font-weight:normal;color:var(--track-accent);overflow-wrap:anywhere}
-.track small {font-size:11px;color:var(--muted)}
-.track.active small {color:var(--text)}
+.instrument-card strong {font-size:13px;font-weight:normal;color:var(--track-accent);overflow-wrap:anywhere}
+.instrument-card small {font-size:11px;color:var(--muted)}
+.instrument-card.active small {color:var(--text)}
 .scroll {padding:12px 14px 15px;overflow:auto;overscroll-behavior-x:contain}
 .arrangement-head,.arrangement-row {
   display:grid;grid-template-columns:105px repeat(var(--bars),minmax(67px,1fr));
@@ -197,8 +197,8 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 @media (max-width:860px) {
   .work {grid-template-columns:1fr}
   aside {border-right:0;border-bottom:1px solid var(--line)}
-  #track-list {display:flex;overflow-x:auto;scroll-snap-type:x proximity}
-  .track {flex:0 0 150px;min-height:75px;border-right:1px dotted var(--line);scroll-snap-align:start}
+  #instrument-list {display:flex;overflow-x:auto;scroll-snap-type:x proximity}
+  .instrument-card {flex:0 0 150px;min-height:75px;border-right:1px dotted var(--line);scroll-snap-align:start}
   .heading small {max-width:55ch}
 }
 @media (max-width:570px) {
@@ -213,4 +213,59 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   .controls {padding:12px}
   input:not([type="range"]), select {font-size:16px}
   footer {padding:12px}
+}
+
+
+/* A timeline position owns one direct chunk picker, not a two-step assignment mode. */
+.timeline-tick-label,.editing-identity {font-size:11px;color:var(--muted)}
+.chunk-heading,.sound-heading {display:flex;flex-wrap:wrap;align-items:baseline;gap:.35em .8em}
+.scope-tag {font-size:10px;color:var(--signal-mauve);border:1px solid var(--signal-mauve);padding:2px 5px}
+.instrument-lane-label {text-align:left;overflow:hidden;text-overflow:ellipsis}
+.instrument-lane-label::before {content:"■ ";color:var(--track-accent)}
+.arrangement-row .label::before {content:""!important}
+.arrangement-row .clip.selected {
+  outline:1px solid var(--bright);
+  outline-offset:-3px;
+}
+.chunk-picker {
+  position:fixed;z-index:1000;display:grid;
+  max-height:calc(100dvh - 16px);
+  overflow-y:auto;
+  background:#030303;color:var(--bright);
+  border:1px solid var(--bright);
+  box-shadow:0 5px 0 #000;
+}
+.picker-heading {
+  display:flex;justify-content:space-between;align-items:center;
+  gap:1em;padding:8px 10px;border-bottom:1px solid var(--line);
+  color:var(--text);font-size:12px;
+}
+.picker-close {min-width:30px;min-height:30px;font-size:19px;color:var(--bright)}
+.picker-choices {display:grid;max-height:50dvh;overflow-y:auto}
+.picker-choices button {
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  width:100%;min-height:39px;padding:8px 11px;
+  border-bottom:1px dotted var(--line);text-align:left;
+  color:var(--text);
+}
+.picker-choices button:hover {background:#181818;text-decoration:none}
+.picker-choices button.chosen {
+  color:var(--track-accent);
+  background:color-mix(in srgb,var(--track-accent) 10%,#000);
+  box-shadow:inset 3px 0 var(--track-accent);
+}
+.picker-choices button.chosen::before {content:"✓";color:var(--track-accent);flex:none}
+.picker-choices button small {color:var(--muted);margin-left:auto;font-size:11px}
+.picker-create {
+  justify-self:stretch;
+  padding:12px;
+  text-align:left;
+  border-top:1px solid var(--line);
+  color:var(--track-accent);
+}
+.picker-create:hover {color:var(--bright)}
+@media(max-width:570px) {
+  .scope-tag {font-size:9px}
+  .editing-identity {max-width:100%;overflow-wrap:anywhere}
+  .chunk-picker {max-width:calc(100vw - 16px)}
 }
