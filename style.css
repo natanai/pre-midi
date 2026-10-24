@@ -156,7 +156,29 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
   border:1px solid var(--line);background:var(--void);
   overscroll-behavior:contain;
 }
-#piano {min-width:735px;--track-accent:var(--signal-cyan)}
+#piano {min-width:735px;--track-accent:var(--signal-cyan);position:relative}
+.piano-playhead {
+  position:absolute;
+  z-index:5;
+  top:0;
+  bottom:0;
+  left:0;
+  width:2px;
+  background:#f0f0f0;
+  box-shadow:1px 0 0 #000;
+  opacity:.88;
+  pointer-events:none;
+}
+.piano-playhead[hidden] {display:none}
+.piano-playhead::before {
+  content:"";
+  position:absolute;
+  top:0;
+  left:-3px;
+  width:8px;
+  height:4px;
+  background:#fff;
+}
 .piano-row {display:grid;grid-template-columns:63px repeat(16,minmax(40px,1fr));height:23px}
 .note-name {
   padding:4px 6px;border-right:1px solid var(--line);border-bottom:1px solid #222;
