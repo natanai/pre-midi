@@ -269,3 +269,28 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   .editing-identity {max-width:100%;overflow-wrap:anywhere}
   .chunk-picker {max-width:calc(100vw - 16px)}
 }
+
+/* Grab the bright terminal-style end cap to resize a note in place. */
+.note.end {
+  position:relative;
+  cursor:ew-resize;
+  touch-action:none;
+}
+.note.end::after {
+  content:"";
+  position:absolute;
+  top:2px;
+  bottom:2px;
+  right:2px;
+  width:5px;
+  border-left:1px solid #000;
+  border-right:1px solid #000;
+  background:rgb(255 255 255 / .75);
+  pointer-events:none;
+}
+.note.end:hover::after,
+.note.end.resizing::after {
+  background:#fff;
+  width:7px;
+}
+.note.resizing {outline:1px solid var(--bright);outline-offset:-1px}
