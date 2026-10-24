@@ -34,12 +34,12 @@ export async function audition(t,pitch) {
  * document rather than a snapshot. Only the near-future sixteenth-note steps
  * are scheduled, so edits and undo/redo take effect while playback continues.
  */
-export async function play(score,{loop=false,onPosition=()=>{},onStop=()=>{}}={}) {
+export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{}}={}) {
  context||=new AudioContext();await context.resume();
  const ctx=context,out=ctx.createGain(),read=typeof score==="function"?score:()=>score;
  const loops=()=>typeof loop==="function"?loop():loop;
  out.gain.value=.85;out.connect(ctx.destination);
- let scheduled=0,nextTime=ctx.currentTime+.07,shown=-1,stopped=false,timer;
+ let scheduled=0,nextTime=ctx.currentTime+.07,shown=-1,stopped=false,timer,activeStep=null;
  const positionQueue=[];
  function stop(){
   if(stopped)return;stopped=true;clearInterval(timer);
@@ -59,12 +59,17 @@ export async function play(score,{loop=false,onPosition=()=>{},onStop=()=>{}}={}
    for(const event of stepEvents(doc,scheduled)){
     note(ctx,out,event.instrument,event.note,nextTime,event.note.duration*unit);
    }
-   positionQueue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled});
+   positionQueue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
   }
   while(positionQueue.length&&positionQueue[0].time<=ctx.currentTime){
    const now=positionQueue.shift();
+   activeStep=now;
    if(now.absolute!==shown){shown=now.absolute;onPosition(now.barIndex,now.step);}
+  }
+  if(activeStep) {
+   const elapsed=Math.max(0,ctx.currentTime-activeStep.time);
+   onProgress(activeStep.barIndex,Math.min(16,activeStep.step+Math.min(1,elapsed/activeStep.unit)));
   }
   const current=read();
   if(!loops()&&scheduled>=current.bars*16&&ctx.currentTime>nextTime+.75)stop();
