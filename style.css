@@ -90,7 +90,11 @@ main {flex:1;min-width:0}
   font-variant-numeric:tabular-nums;min-width:3.5em;
   color:var(--bright);font-size:14px;
 }
-.work {display:grid;grid-template-columns:210px minmax(0,1fr);min-height:570px}
+.work {
+  display:grid;
+  grid-template-columns:clamp(248px,20vw,280px) minmax(0,1fr);
+  min-height:570px;
+}
 aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .mainwork {min-width:0;background:var(--void)}
 .mainwork section {border-bottom:1px solid var(--line)}
@@ -108,9 +112,69 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .heading button::before {content:"[";color:var(--muted)}
 .heading button::after {content:"]";color:var(--muted)}
 .wrap {flex-wrap:wrap}
-.tools {display:flex;align-items:center;flex-wrap:wrap;gap:5px 11px}
-.tools label {display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
-.tools select {max-width:145px}
+.instrument-pane .heading {min-height:49px}
+.add-instrument-action {
+  display:block;
+  width:calc(100% - 28px);
+  min-width:0;
+  margin:12px 14px;
+  padding:10px 12px;
+  min-height:38px;
+  border:1px solid var(--line);
+  text-align:left;
+  white-space:normal;
+  color:var(--bright);
+}
+.add-instrument-action:hover:not(:disabled) {
+  border-color:var(--bright);
+  background:var(--stripe);
+  text-decoration:none;
+}
+/* Chunk controls sit below the notes heading instead of competing with it. */
+.notes-heading {min-height:45px}
+.notes-heading .chunk-heading {min-width:0}
+.history-actions {display:flex;align-items:center;gap:10px;flex:none}
+.history-actions button {min-height:30px;padding:5px 0}
+.history-actions button::before,.history-actions button::after {color:var(--muted)}
+.history-actions button::before {content:"["}
+.history-actions button::after {content:"]"}
+.notes-toolbar {
+  display:flex;
+  align-items:end;
+  flex-wrap:wrap;
+  gap:12px 24px;
+  padding:13px 14px;
+  border-bottom:1px solid var(--faint);
+  background:var(--panel);
+}
+.chunk-fields,.chunk-actions {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:end;
+  gap:9px 13px;
+  min-width:0;
+}
+.notes-toolbar label {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  color:var(--muted);
+  font-size:11px;
+}
+.chunk-fields #chunk {min-width:110px;max-width:190px}
+.chunk-fields #chunk-name {width:clamp(140px,14vw,215px);max-width:100%}
+.chunk-actions {
+  align-items:center;
+  gap:4px 13px;
+  padding-bottom:3px;
+}
+.chunk-actions button {min-height:34px}
+.chunk-actions button::before,.chunk-actions button::after {color:var(--muted)}
+.chunk-actions button::before {content:"["}
+.chunk-actions button::after {content:"]"}
+.note-length-control {margin-left:auto}
+.note-length-control select {min-width:76px}
+
 .instrument-card {
   --track-accent:var(--signal-cyan);
   display:grid;gap:4px;width:100%;min-height:68px;
@@ -202,12 +266,27 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .note.filled:hover:not(:disabled),.note.tail:hover:not(:disabled) {
   filter:brightness(1.18);
 }
-.controls {display:flex;align-items:end;flex-wrap:wrap;gap:15px 22px;padding:17px 14px 22px}
-.controls label {display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--muted)}
+.sound-section-heading {gap:8px 18px;flex-wrap:wrap}
+.scope-description {font-size:11px;color:var(--muted)}
+.controls {
+  display:flex;
+  align-items:end;
+  flex-wrap:wrap;
+  gap:14px 26px;
+  padding:18px 14px 22px;
+}
+.sound-control-group {
+  display:flex;
+  align-items:end;
+  flex-wrap:wrap;
+  gap:12px 18px;
+}
+.sound-identity-controls {padding-right:22px;border-right:1px solid var(--faint)}
+.controls label {display:flex;flex-direction:column;gap:7px;font-size:11px;color:var(--muted)}
 .controls input:not([type="range"]),.controls select {max-width:190px}
 .controls input[type="range"] {width:135px}
 .controls output {font-size:11px;color:var(--bright);font-variant-numeric:tabular-nums}
-.controls .danger {margin-left:auto}
+.controls .danger {margin-left:auto;min-height:36px}
 footer {
   display:flex;justify-content:space-between;flex-wrap:wrap;gap:9px 20px;
   padding:12px 20px;border-top:1px solid var(--line);
@@ -220,7 +299,11 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   .work {grid-template-columns:1fr}
   aside {border-right:0;border-bottom:1px solid var(--line)}
   #instrument-list {display:flex;overflow-x:auto;scroll-snap-type:x proximity}
-  .instrument-card {flex:0 0 150px;min-height:75px;border-right:1px dotted var(--line);scroll-snap-align:start}
+  .instrument-card {flex:0 0 165px;min-height:75px;border-right:1px dotted var(--line);scroll-snap-align:start}
+  .add-instrument-action {width:auto;margin:10px 12px}
+  .instrument-pane {display:grid;grid-template-columns:auto minmax(0,1fr)}
+  .instrument-pane .heading {grid-column:1 / -1}
+  .instrument-pane #instrument-list {min-width:0}
   .heading small {max-width:55ch}
 }
 @media (max-width:570px) {
@@ -233,6 +316,15 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   .scroll {padding:10px 8px}
   .piano-scroll {margin:0 8px 13px}
   .controls {padding:12px}
+  .notes-toolbar {padding:12px;gap:12px 20px}
+  .note-length-control {margin-left:0}
+  .chunk-fields {width:100%}
+  .chunk-fields label:nth-child(2) {flex:1}
+  .chunk-fields #chunk-name {width:100%}
+  .sound-identity-controls {border-right:0;padding-right:0}
+  .sound-control-group {gap:10px 14px}
+  .instrument-pane {display:block}
+  .add-instrument-action {width:calc(100% - 24px)}
   input:not([type="range"]), select {font-size:16px}
   footer {padding:12px}
 }
@@ -241,7 +333,6 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 /* A timeline position owns one direct chunk picker, not a two-step assignment mode. */
 .timeline-tick-label,.editing-identity {font-size:11px;color:var(--muted)}
 .chunk-heading,.sound-heading {display:flex;flex-wrap:wrap;align-items:baseline;gap:.35em .8em}
-.scope-tag {font-size:10px;color:var(--signal-mauve);border:1px solid var(--signal-mauve);padding:2px 5px}
 .instrument-lane-label {text-align:left;overflow:hidden;text-overflow:ellipsis}
 .instrument-lane-label::before {content:"■ ";color:var(--track-accent)}
 .arrangement-row .label::before {content:""!important}
@@ -287,7 +378,6 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 }
 .picker-create:hover {color:var(--bright)}
 @media(max-width:570px) {
-  .scope-tag {font-size:9px}
   .editing-identity {max-width:100%;overflow-wrap:anywhere}
   .chunk-picker {max-width:calc(100vw - 16px)}
 }
