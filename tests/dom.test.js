@@ -12,8 +12,8 @@ test("the UI uses instruments, timeline and chunks without deprecated wording", 
  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
  assert.match(html, /<h2>Instruments<\/h2>/);
  assert.match(html, /<h2>Timeline<\/h2>/);
- assert.match(html, /CHUNK <select/);
- assert.match(html, /NEW NOTE LENGTH/);
+ assert.match(html, /Chunk <select/);
+ assert.match(html, /New notes <select/);
  assert.doesNotMatch(html, /<h2>Tracks<\/h2>|Pattern|Arrangement/);
 });
 test("note end grip, pointer resizing, and live scheduler are connected", () => {
@@ -25,4 +25,30 @@ test("note end grip, pointer resizing, and live scheduler are connected", () => 
  assert.match(studio,/play\(\(\) => score/);
  const editRoutine = studio.slice(studio.indexOf("function modify("),studio.indexOf("function resetTo("));
  assert.doesNotMatch(editRoutine,/stop\(\)/);
+});
+
+test("instrument creation is a full-width action, not a cramped header control", () => {
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
+ const sidebar=html.slice(html.indexOf('<aside class="instrument-pane"'),html.indexOf("</aside>"));
+ assert.match(sidebar,/class="heading"><h2>Instruments<\/h2><\/div>/);
+ assert.match(sidebar,/<button id="add-instrument" class="add-instrument-action"/);
+ assert.ok(sidebar.indexOf('id="add-instrument"')>sidebar.indexOf('</div>'),"The Add Instrument action must follow the heading");
+ assert.match(css,/\.work\s*\{[^}]*grid-template-columns:clamp\(248px,20vw,280px\)/);
+ assert.match(css,/\.add-instrument-action\s*\{[^}]*width:calc\(100% - 28px\)/);
+ assert.match(css,/\.add-instrument-action\s*\{[^}]*white-space:normal/);
+});
+test("note and sound controls have distinct, wrapping groups", () => {
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
+ const notes=html.slice(html.indexOf('<section class="notes-section"'),html.indexOf('</section>',html.indexOf('<section class="notes-section"')));
+ assert.ok(notes.indexOf('class="notes-toolbar"')>notes.indexOf('class="notes-heading"'));
+ for(const id of ["chunk","chunk-name","add-chunk","duplicate-chunk","delete-chunk","length"]) {
+  assert.ok(notes.includes('id="'+id+'"'),"Missing note control "+id);
+ }
+ assert.match(css,/\.notes-toolbar\s*\{[^}]*flex-wrap:wrap/);
+ assert.match(html,/class="sound-control-group sound-identity-controls"/);
+ assert.match(html,/class="sound-control-group sound-shaping-controls"/);
+ assert.match(css,/@media \(max-width:860px\)/);
+ assert.match(css,/@media \(max-width:570px\)/);
 });
