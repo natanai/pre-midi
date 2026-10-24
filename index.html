@@ -32,8 +32,9 @@
   </div>
  </section>
  <div class="work">
-  <aside>
-   <div class="heading"><h2>Instruments</h2><button id="add-instrument" type="button">+ Instrument</button></div>
+  <aside class="instrument-pane" aria-label="Instruments">
+   <div class="heading"><h2>Instruments</h2></div>
+   <button id="add-instrument" class="add-instrument-action" type="button">+ Add instrument</button>
    <div id="instrument-list" aria-label="Instruments"></div>
   </aside>
   <div class="mainwork">
@@ -41,33 +42,43 @@
     <div class="heading"><h2>Timeline</h2><span class="timeline-tick-label">BARS</span></div>
     <div class="scroll"><div id="arrangement"></div></div>
    </section>
-   <section aria-label="Chunk note editor">
-    <div class="heading wrap">
+   <section class="notes-section" aria-label="Chunk note editor">
+    <div class="heading notes-heading">
      <div class="chunk-heading"><h2>Notes</h2><span id="editing-identity" class="editing-identity"></span></div>
-     <div class="tools">
-      <label>CHUNK <select id="chunk" aria-label="Choose chunk to edit"></select></label><label>NAME <input id="chunk-name" aria-label="Chunk name" maxlength="60"></label>
+     <div class="history-actions"><button id="undo" type="button">Undo</button><button id="redo" type="button">Redo</button></div>
+    </div>
+    <div class="notes-toolbar">
+     <div class="chunk-fields">
+      <label>Chunk <select id="chunk" aria-label="Choose chunk to edit"></select></label>
+      <label>Name <input id="chunk-name" aria-label="Chunk name" maxlength="60"></label>
+     </div>
+     <div class="chunk-actions" aria-label="Chunk actions">
       <button id="add-chunk" type="button">+ New</button>
       <button id="duplicate-chunk" type="button">Duplicate</button>
       <button id="delete-chunk" type="button">Delete</button>
-      <label>NEW NOTE LENGTH <select id="length" aria-label="Note length"><option value="1">1/16</option><option value="2">1/8</option><option value="4">1/4</option><option value="8">1/2</option><option value="16">1 bar</option></select></label>
      </div>
+     <label class="note-length-control">New notes <select id="length" aria-label="Initial note length"><option value="1">1/16</option><option value="2">1/8</option><option value="4">1/4</option><option value="8">1/2</option><option value="16">1 bar</option></select></label>
     </div>
     <div class="piano-scroll"><div id="piano"></div></div>
    </section>
-   <section aria-label="Instrument sound">
-    <div class="heading">
-     <div class="sound-heading"><h2>Instrument sound</h2><span id="edit-instrument-note" class="editing-identity"></span><span class="scope-tag">ALL CHUNKS</span></div>
-     <div><button id="undo" type="button">Undo</button> <button id="redo" type="button">Redo</button></div>
+   <section class="sound-section" aria-label="Instrument sound">
+    <div class="heading sound-section-heading">
+     <div class="sound-heading"><h2>Sound</h2><span id="edit-instrument-note" class="editing-identity"></span></div>
+     <span class="scope-description">Instrument-wide · all chunks</span>
     </div>
     <div class="controls">
-     <label>Name <input id="instrument-name" maxlength="60"></label>
-     <label>Waveform <select id="waveform">
-      <option value="triangle">Triangle</option><option value="sine">Sine</option>
-      <option value="square">Square</option><option value="sawtooth">Sawtooth</option>
-     </select></label>
-     <label>Volume <input id="volume" type="range" min="0" max="100"><output id="volume-value"></output></label>
-     <label>Attack <input id="attack" type="range" min="0" max="100"><output id="attack-value"></output></label>
-     <label>Release <input id="release" type="range" min="10" max="700"><output id="release-value"></output></label>
+     <div class="sound-control-group sound-identity-controls">
+      <label>Name <input id="instrument-name" maxlength="60"></label>
+      <label>Waveform <select id="waveform">
+       <option value="triangle">Triangle</option><option value="sine">Sine</option>
+       <option value="square">Square</option><option value="sawtooth">Sawtooth</option>
+      </select></label>
+     </div>
+     <div class="sound-control-group sound-shaping-controls">
+      <label>Volume <input id="volume" type="range" min="0" max="100"><output id="volume-value"></output></label>
+      <label>Attack <input id="attack" type="range" min="0" max="100"><output id="attack-value"></output></label>
+      <label>Release <input id="release" type="range" min="10" max="700"><output id="release-value"></output></label>
+     </div>
      <button id="remove-instrument" type="button" class="danger">Remove instrument</button>
     </div>
    </section>

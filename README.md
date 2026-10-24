@@ -14,6 +14,12 @@ A local-first, standalone music studio for [pre-programmed](https://github.com/n
 - **Piano-roll playhead:** a thin marker moves across the selected chunk's notes in sync with the audio clock, and appears only when that chunk is actually scheduled on its instrument lane.
 - **Undo/redo**, browser autosave, native .premidi import/export, and offline WAV export are included.
 
+## Development approach
+
+Pre-midi is now the primary development surface for the music studio. We are refining its user experience, native synthesizer and composition model **without updating pre-programmed after every studio iteration**. The current native v2 schema still matches the game's existing Media integration, but future experimental score changes may temporarily go beyond what the game can import until a planned parity release.
+
+The [development direction](docs/development-direction.md) records that boundary, the modular instrument/synthesizer architecture, and how we will bring pre-programmed back into full parity when the studio is mature.
+
 ## File contract
 The current unreleased native file schema is **v2**, defined exclusively in `schema.js`. It encodes `instruments`, each instrument's reusable `chunks`, and its `timeline` assignments, plus canonical note identities and synthesis controls. Pre-programmed's Media playback and D1 import/export use the same format. v1 was unused and intentionally discarded: there is no dual schema or conversion path.
 
