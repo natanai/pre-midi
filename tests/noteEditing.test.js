@@ -7,9 +7,11 @@ import { stepEvents } from "../audio.js";
 test("the right edge grows and shrinks an existing canonical note", () => {
  const score=create(),inst=score.instruments[0],chunk=inst.chunks[0],first=chunk.notes[0];
  const original=first.duration;
- assert.equal(resizeNote(chunk, first.id,8),4);
- // Note 2 begins at step 4, so resizing may not overwrite it.
- assert.equal(first.duration,4);
+ assert.equal(resizeNote(chunk, first.id,8),8);
+ // Different pitches can overlap. Only the next note on this same pitch bounds the length.
+ chunk.notes.push({id:id(),pitch:first.pitch,start:10,duration:2,velocity:0.7});
+ assert.equal(resizeNote(chunk, first.id,16),10);
+ assert.equal(first.duration,10);
  assert.equal(resizeNote(chunk, first.id,1),1);
  assert.equal(resizeNote(chunk, first.id,original),original);
  assert.deepEqual(validate(score),[]);
