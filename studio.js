@@ -1,93 +1,481 @@
-import {create,track,pattern,id,clone,parse,validate,filename} from "./schema.js";
-import {play,audition,wav} from "./audio.js";
-const $=s=>document.getElementById(s),cache="premidi-v1-draft";
-const cached=(()=>{try{return parse(localStorage.getItem(cache)||"");}catch{return null;}})();
-let doc=cached||create(),selected=doc.tracks[0].id,chosen=new Map(),undoStack=[],redoStack=[],player=null,playbar=-1;
-const SIGNAL_COLORS=["#08e4ec","#ff416d","#ba82eb","#ffc266"];
-const accentFor=t=>SIGNAL_COLORS[Math.max(0,doc.tracks.findIndex(x=>x.id===t.id))%SIGNAL_COLORS.length];
-const current=()=>doc.tracks.find(t=>t.id===selected)||doc.tracks[0];
-const currentPattern=t=>t.patterns.find(p=>p.id===chosen.get(t.id))||t.patterns[0];
-function status(message,bad=false){$("status").textContent=message;$("status").className=bad?"error":"ok";}
-function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
-function button(text,click,cls){const b=node("button",text,cls);b.type="button";b.addEventListener("click",click);return b;}
-function stop(){if(player){player.stop();player=null;}playbar=-1;$("play").textContent="▶ Play";$("position").textContent="1.1";}
-function store(){try{localStorage.setItem(cache,JSON.stringify(doc));status("Draft saved in this browser. Export .premidi to keep a portable copy.");}catch{status("Browser storage unavailable. Export .premidi to save.",true);}}
-function mutate(fn){const previous=clone(doc);fn();const errors=validate(doc);if(errors.length){doc=previous;status(errors[0],true);return;}undoStack.push(previous);if(undoStack.length>100)undoStack.shift();redoStack=[];stop();store();render();}
-function swap(next){stop();doc=next;selected=doc.tracks[0].id;chosen=new Map();undoStack=[];redoStack=[];store();render();}
-function undo(){if(!undoStack.length)return;redoStack.push(clone(doc));doc=undoStack.pop();stop();store();render();}
-function redo(){if(!redoStack.length)return;undoStack.push(clone(doc));doc=redoStack.pop();stop();store();render();}
-function download(data,name){const url=URL.createObjectURL(data),a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}
-function tracks(){
- const root=$("track-list");root.replaceChildren();
- for(const t of doc.tracks){const b=button("",()=>{selected=t.id;render();},"track"+(selected===t.id?" active":""));b.style.setProperty("--track-accent",accentFor(t));b.setAttribute("aria-pressed",String(selected===t.id));b.append(node("strong",t.name),node("small",t.waveform+" · "+t.patterns.length+" patterns"));root.append(b);}
- $("add-track").disabled=doc.tracks.length>=12;
+import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
+import { play, audition, wav } from "./audio.js";
+
+const $ = key => document.getElementById(key);
+const CACHE = "premidi-v2-draft";
+const cached = (() => {
+ try { return parse(localStorage.getItem(CACHE) || ""); }
+ catch { return null; }
+})();
+let score = cached || create();
+let selectedInstrumentId = score.instruments[0].id;
+let selectedChunks = new Map();
+let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
+let history = [], future = [], playback = null, pendingPlay = false;
+let playBar = -1, playStep = -1, picker = null, pickerTrigger = null;
+const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
+
+const instrument = () => score.instruments.find(entry => entry.id === selectedInstrumentId) || score.instruments[0];
+const chunkFor = (inst) => inst.chunks.find(entry => entry.id === selectedChunks.get(inst.id)) || inst.chunks[0];
+const signal = inst => SIGNALS[Math.max(0, score.instruments.findIndex(entry => entry.id === inst.id)) % SIGNALS.length];
+
+function element(tag, label, cls) {
+ const el = document.createElement(tag);
+ if (label !== undefined) el.textContent = label;
+ if (cls) el.className = cls;
+ return el;
 }
-function arrangement(){
- const root=$("arrangement");root.replaceChildren();root.style.setProperty("--bars",doc.bars);
- const h=node("div",undefined,"arrangement-head");h.append(node("span","TRACK"));for(let bar=0;bar<doc.bars;bar++)h.append(node("span",String(bar+1)));root.append(h);
- for(const t of doc.tracks){const r=node("div",undefined,"arrangement-row"+(t.id===selected?" active":""));r.style.setProperty("--track-accent",accentFor(t));r.append(node("span",t.name,"label"));
-  for(let index=0;index<doc.bars;index++){const p=t.patterns.find(p=>p.id===t.arrangement[index]);
-   const b=button(p?p.name:"+",()=>mutate(()=>{const next=currentPattern(t).id;t.arrangement[index]=t.arrangement[index]===next?null:next;}),"clip"+(p?"":" empty")+(playbar===index?" playing":""));
-   b.title="Bar "+(index+1)+" · click to assign selected pattern or clear";
-   b.addEventListener("contextmenu",e=>{e.preventDefault();mutate(()=>t.arrangement[index]=null);});r.append(b);
-  }root.append(r);
+function button(label, action, cls) {
+ const el = element("button", label, cls);
+ el.type = "button";
+ el.addEventListener("click", action);
+ return el;
+}
+function message(text, error = false) {
+ $("status").textContent = text;
+ $("status").className = error ? "error" : "ok";
+}
+function store() {
+ try {
+  localStorage.setItem(CACHE, JSON.stringify(score));
+  message("Saved locally");
+ } catch {
+  message("Browser storage unavailable. Use Save .premidi.", true);
  }
 }
-const names=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
-const pitchName=p=>names[p%12]+(Math.floor(p/12)-1);
-function piano(){
- const root=$("piano"),t=current(),p=currentPattern(t);root.replaceChildren();root.style.setProperty("--track-accent",accentFor(t));
- for(let pitch=83;pitch>=48;pitch--){const row=node("div",undefined,"piano-row"+([1,3,6,8,10].includes(pitch%12)?" sharp":""));row.append(node("span",pitchName(pitch),"note-name"));
-  for(let step=0;step<16;step++){const n=p.notes.find(n=>n.pitch===pitch&&step>=n.start&&step<n.start+n.duration);
-   const b=button("",()=>{
-    mutate(()=>{const old=p.notes.find(n=>n.pitch===pitch&&step>=n.start&&step<n.start+n.duration);if(old)p.notes=p.notes.filter(x=>x.id!==old.id);else p.notes.push({id:id(),pitch,start:step,duration:Math.min(Number($("length").value),16-step),velocity:.8});});
-    if(!n)void audition(t,pitch).catch(()=>{});
-   },"note"+(step%4===0?" beat":"")+(n?(n.start===step?" filled":" tail"):""));
-   b.title=pitchName(pitch)+" step "+(step+1)+(n?" remove":" add");b.setAttribute("aria-label",b.title);row.append(b);
-  }root.append(row);
+function closePicker() {
+ if (picker) picker.remove();
+ if (pickerTrigger?.isConnected) pickerTrigger.setAttribute("aria-expanded", "false");
+ picker = null;
+ pickerTrigger = null;
+}
+function stop() {
+ if (playback) playback.stop();
+ playback = null;
+ pendingPlay = false;
+ playBar = playStep = -1;
+ $("play").textContent = "▶ Play";
+ $("position").textContent = "1.1";
+ paintPlayhead();
+}
+function modify(change) {
+ const before = clone(score);
+ change();
+ const errors = validate(score);
+ if (errors.length) {
+  score = before;
+  message(errors[0], true);
+  return false;
+ }
+ history.push(before);
+ if (history.length > 100) history.shift();
+ future = [];
+ store();
+ render();
+ return true;
+}
+function resetTo(next) {
+ closePicker();
+ stop();
+ score = next;
+ selectedInstrumentId = score.instruments[0].id;
+ selectedChunks = new Map();
+ selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
+ history = [];
+ future = [];
+ store();
+ render();
+}
+function undo() {
+ if (!history.length) return;
+ closePicker();
+ future.push(clone(score));
+ score = history.pop();
+ repairSelection();
+ store();
+ render();
+}
+function redo() {
+ if (!future.length) return;
+ closePicker();
+ history.push(clone(score));
+ score = future.pop();
+ repairSelection();
+ store();
+ render();
+}
+function repairSelection() {
+ if (!score.instruments.some(entry => entry.id === selectedInstrumentId)) selectedInstrumentId = score.instruments[0].id;
+ selectedSlot.instrumentId = selectedInstrumentId;
+ selectedSlot.bar = Math.min(selectedSlot.bar, score.bars - 1);
+ for (const entry of score.instruments) {
+  if (!entry.chunks.some(chunk => chunk.id === selectedChunks.get(entry.id))) {
+   selectedChunks.set(entry.id, entry.chunks[0].id);
+  }
  }
 }
-function inspector(){
- const t=current();document.querySelector(".controls")?.style.setProperty("--track-accent",accentFor(t));$("track-name").value=t.name;$("waveform").value=t.waveform;
- for(const [name,factor,suffix] of [["volume",100,"%"],["attack",1000," ms"],["release",1000," ms"]]){$(name).value=String(Math.round(t[name]*factor));$(name+"-value").textContent=Math.round(t[name]*factor)+suffix;}
- $("remove-track").disabled=doc.tracks.length<=1;
+function download(blob, name) {
+ const url = URL.createObjectURL(blob);
+ const a = element("a");
+ a.href = url;
+ a.download = name;
+ document.body.append(a);
+ a.click();
+ a.remove();
+ setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
-function render(){
- $("title").value=doc.title;$("bpm").value=String(doc.bpm);$("bars").value=String(doc.bars);
- tracks();const t=current(),select=$("pattern");select.replaceChildren();
- for(const p of t.patterns){const option=node("option",p.name);option.value=p.id;select.append(option);}
- select.value=currentPattern(t).id;chosen.set(t.id,select.value);
- $("add-pattern").disabled=t.patterns.length>=32;$("delete-pattern").disabled=t.patterns.length<=1;
- arrangement();piano();inspector();$("undo").disabled=undoStack.length===0;$("redo").disabled=redoStack.length===0;
+function focus(inst, chunkId = null, bar = null) {
+ selectedInstrumentId = inst.id;
+ if (chunkId && inst.chunks.some(chunk => chunk.id === chunkId)) selectedChunks.set(inst.id, chunkId);
+ if (bar !== null) selectedSlot = { instrumentId: inst.id, bar };
+ render();
 }
-$("new").addEventListener("click",()=>{if(confirm("Create a new composition? Export your .premidi first to keep your existing work."))swap(create());});
-$("import").addEventListener("click",()=>$("file").click());
-$("file").addEventListener("change",async e=>{
- const f=e.target.files?.[0];if(!f)return;
- try{if(f.size>1000000)throw Error("File exceeds 1 MB.");const next=parse(await f.text());if(confirm("Open "+next.title+" and replace the current browser draft?")){swap(next);status("Imported "+f.name+".");}}catch(error){status("Import failed: "+error.message,true);}finally{$("file").value="";}
+function renderInstruments() {
+ const list = $("track-list");
+ list.replaceChildren();
+ for (const inst of score.instruments) {
+  const selected = inst.id === selectedInstrumentId;
+  const el = button("", () => { closePicker(); focus(inst); }, "track" + (selected ? " active" : ""));
+  el.style.setProperty("--track-accent", signal(inst));
+  el.setAttribute("aria-pressed", String(selected));
+  el.append(element("strong", inst.name), element("small", inst.waveform + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
+  list.append(el);
+ }
+ $("add-track").disabled = score.instruments.length >= 12;
+}
+function paintPlayhead() {
+ for (const clip of $("arrangement").querySelectorAll(".clip")) {
+  clip.classList.toggle("playing", playBar >= 0 && Number(clip.dataset.bar) === playBar);
+ }
+}
+function renderTimeline() {
+ const root = $("arrangement");
+ root.replaceChildren();
+ root.style.setProperty("--bars", score.bars);
+ const heading = element("div", undefined, "arrangement-head");
+ heading.append(element("span", "INSTRUMENT"));
+ for (let bar = 0; bar < score.bars; bar++) heading.append(element("span", String(bar + 1).padStart(2, "0")));
+ root.append(heading);
+ for (const inst of score.instruments) {
+  const lane = element("div", undefined, "arrangement-row" + (selectedInstrumentId === inst.id ? " active" : ""));
+  lane.style.setProperty("--track-accent", signal(inst));
+  const name = button(inst.name, () => { closePicker(); focus(inst); }, "label instrument-lane-label");
+  lane.append(name);
+  inst.timeline.forEach((chunkId, bar) => {
+   const chunk = inst.chunks.find(candidate => candidate.id === chunkId);
+   const active = selectedSlot.instrumentId === inst.id && selectedSlot.bar === bar;
+   const clip = button(chunk?.name ?? "+", () => openPicker(inst.id, bar, clip),
+    "clip" + (chunk ? "" : " empty") + (active ? " selected" : ""));
+   clip.dataset.bar = String(bar);
+   clip.setAttribute("aria-label", inst.name + ", bar " + (bar + 1) + ": " + (chunk?.name ?? "Empty") + ". Choose chunk");
+   clip.setAttribute("aria-haspopup", "dialog");
+   clip.setAttribute("aria-expanded", "false");
+   clip.title = inst.name + " / bar " + (bar + 1);
+   lane.append(clip);
+  });
+  root.append(lane);
+ }
+ paintPlayhead();
+}
+function place(instId, bar, chunkId) {
+ closePicker();
+ const inst = score.instruments.find(x => x.id === instId);
+ if (!inst) return;
+ if (chunkId === inst.timeline[bar]) {
+  selectedInstrumentId = instId;
+  selectedSlot = { instrumentId: instId, bar };
+  if (chunkId !== null) selectedChunks.set(instId, chunkId);
+  render();
+  return;
+ }
+ modify(() => {
+  inst.timeline[bar] = chunkId;
+  selectedInstrumentId = instId;
+  selectedSlot = { instrumentId: instId, bar };
+  if (chunkId !== null) selectedChunks.set(instId, chunkId);
+ });
+}
+function openPicker(instId, bar, trigger) {
+ closePicker();
+ const inst = score.instruments.find(candidate => candidate.id === instId);
+ if (!inst) return;
+ selectedInstrumentId = inst.id;
+ selectedSlot = { instrumentId: inst.id, bar };
+ const assigned = inst.timeline[bar];
+ if (assigned) selectedChunks.set(inst.id, assigned);
+ // A direct timeline selection also opens that chunk in the notes editor.
+ renderInstruments();
+ renderChunkEditor();
+ renderSound();
+ for (const clip of $("arrangement").querySelectorAll(".clip")) {
+  clip.classList.toggle("selected", clip.dataset.bar === String(bar) && clip.closest(".arrangement-row")?.style.getPropertyValue("--track-accent") === signal(inst));
+ }
+ const panel = element("div", undefined, "chunk-picker");
+ panel.setAttribute("role", "dialog");
+ panel.setAttribute("aria-label", "Choose chunk for " + inst.name + ", bar " + (bar + 1));
+ panel.style.setProperty("--track-accent", signal(inst));
+ const head = element("div", undefined, "picker-heading");
+ head.append(element("span", inst.name + " / " + String(bar + 1).padStart(2, "0")),
+  button("×", () => closePicker(), "picker-close"));
+ panel.append(head);
+ const choices = element("div", undefined, "picker-choices");
+ const empty = button("– Empty", () => place(inst.id, bar, null), assigned === null ? "chosen" : "");
+ empty.setAttribute("aria-pressed", String(assigned === null));
+ choices.append(empty);
+ for (const chunk of inst.chunks) {
+  const option = button("", () => place(inst.id, bar, chunk.id), assigned === chunk.id ? "chosen" : "");
+  option.setAttribute("aria-pressed", String(assigned === chunk.id));
+  option.append(element("span", chunk.name), element("small", chunk.notes.length + (chunk.notes.length === 1 ? " note" : " notes")));
+  choices.append(option);
+ }
+ panel.append(choices);
+ const add = button("+ New chunk", () => {
+  closePicker();
+  modify(() => {
+   const next = makeChunk("Chunk " + (inst.chunks.length + 1));
+   inst.chunks.push(next);
+   inst.timeline[bar] = next.id;
+   selectedInstrumentId = inst.id;
+   selectedChunks.set(inst.id, next.id);
+   selectedSlot = { instrumentId: inst.id, bar };
+  });
+ }, "picker-create");
+ add.disabled = inst.chunks.length >= 32;
+ panel.append(add);
+ document.body.append(panel);
+ const rect = trigger.getBoundingClientRect();
+ const width = Math.min(310, window.innerWidth - 16);
+ panel.style.width = width + "px";
+ const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+ const panelHeight = panel.getBoundingClientRect().height;
+ const below = window.innerHeight - rect.bottom - 8;
+ const top = below >= panelHeight ? rect.bottom + 4
+  : Math.max(8, rect.top - panelHeight - 4);
+ panel.style.left = left + "px";
+ panel.style.top = top + "px";
+ picker = panel;
+ pickerTrigger = trigger;
+ trigger.setAttribute("aria-expanded", "true");
+ (choices.querySelector(".chosen") || choices.querySelector("button"))?.focus();
+}
+document.addEventListener("pointerdown", event => {
+ if (picker && !picker.contains(event.target) && !event.target.closest?.(".clip")) closePicker();
+}, true);
+document.addEventListener("keydown", event => {
+ if (event.key === "Escape" && picker) { event.preventDefault(); closePicker(); pickerTrigger?.focus(); }
 });
-$("export").addEventListener("click",()=>{const errors=validate(doc);if(errors.length)return status(errors[0],true);download(new Blob([JSON.stringify(doc,null,2)],{type:"application/json"}),filename(doc,".premidi"));status("Downloaded editable .premidi composition.");});
-$("wav").addEventListener("click",async()=>{const btn=$("wav");btn.disabled=true;status("Rendering audio offline...");try{download(await wav(doc),filename(doc,".wav"));status("Downloaded stereo WAV audio.");}catch(e){status("Audio export failed: "+e.message,true);}finally{btn.disabled=false;}});
-$("play").addEventListener("click",async()=>{
- if(player){stop();return;}
- try{player=await play(clone(doc),{loop:$("loop").checked,onPosition:(bar,step)=>{$("position").textContent=(bar+1)+"."+(Math.floor(step/4)+1);if(playbar!==bar){playbar=bar;arrangement();}},onStop:()=>{player=null;playbar=-1;$("play").textContent="▶ Play";arrangement();}});$("play").textContent="Ⅱ Pause";}catch(error){status("Playback unavailable: "+error.message,true);}
-});
-$("stop").addEventListener("click",stop);
-$("title").addEventListener("change",e=>mutate(()=>doc.title=e.target.value.trim()||"Untitled composition"));
-$("bpm").addEventListener("change",e=>mutate(()=>doc.bpm=Math.round(Number(e.target.value))));
-$("bars").addEventListener("change",e=>mutate(()=>{const n=Number(e.target.value);doc.bars=n;for(const t of doc.tracks){while(t.arrangement.length<n)t.arrangement.push(t.patterns[0].id);t.arrangement.length=n;}}));
-$("add-track").addEventListener("click",()=>mutate(()=>{const t=track(doc.tracks.length+1,doc.bars);doc.tracks.push(t);selected=t.id;}));
-$("remove-track").addEventListener("click",()=>{const t=current();if(confirm("Remove "+t.name+" and its patterns?"))mutate(()=>{doc.tracks=doc.tracks.filter(x=>x.id!==t.id);selected=doc.tracks[0].id;});});
-$("pattern").addEventListener("change",e=>{chosen.set(current().id,e.target.value);piano();});
-$("add-pattern").addEventListener("click",()=>mutate(()=>{const t=current(),p=pattern("Pattern "+(t.patterns.length+1));t.patterns.push(p);chosen.set(t.id,p.id);}));
-$("copy-pattern").addEventListener("click",()=>mutate(()=>{const t=current(),p=clone(currentPattern(t));p.id=id();p.name=(p.name+" copy").slice(0,60);p.notes.forEach(n=>n.id=id());t.patterns.push(p);chosen.set(t.id,p.id);}));
-$("delete-pattern").addEventListener("click",()=>{const t=current(),p=currentPattern(t);if(t.patterns.length>1&&confirm("Delete "+p.name+"?"))mutate(()=>{t.patterns=t.patterns.filter(x=>x.id!==p.id);t.arrangement=t.arrangement.map(x=>x===p.id?null:x);chosen.set(t.id,t.patterns[0].id);});});
-$("track-name").addEventListener("change",e=>mutate(()=>current().name=e.target.value.trim()||"Track"));
-$("waveform").addEventListener("change",e=>mutate(()=>current().waveform=e.target.value));
-for(const [name,factor] of [["volume",100],["attack",1000],["release",1000]]){
- $(name).addEventListener("change",e=>mutate(()=>current()[name]=Number(e.target.value)/factor));
- $(name).addEventListener("input",e=>$(name+"-value").textContent=e.target.value+(name==="volume"?"%":" ms"));
+
+const pitchNames = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+const noteLabel = pitch => pitchNames[pitch % 12] + (Math.floor(pitch / 12) - 1);
+function renderNotes() {
+ const root = $("piano"), inst = instrument(), chunk = chunkFor(inst);
+ const scroll = root.parentElement, top = scroll.scrollTop, left = scroll.scrollLeft;
+ root.replaceChildren();
+ root.style.setProperty("--track-accent", signal(inst));
+ for (let pitch = 83; pitch >= 48; pitch--) {
+  const sharp = [1,3,6,8,10].includes(pitch % 12);
+  const row = element("div", undefined, "piano-row" + (sharp ? " sharp" : ""));
+  row.append(element("span", noteLabel(pitch), "note-name"));
+  for (let step = 0; step < 16; step++) {
+   const existing = chunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
+   const cell = button("", () => {
+    const targetInst = instrument();
+    const editedChunk = chunkFor(targetInst);
+    const prior = editedChunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
+    if (modify(() => {
+     if (prior) editedChunk.notes = editedChunk.notes.filter(n => n.id !== prior.id);
+     else editedChunk.notes.push({
+      id: id(), pitch, start: step,
+      duration: Math.min(Number($("length").value), 16 - step), velocity: 0.8
+     });
+    }) && !prior) {
+     void audition(targetInst, pitch).catch(() => {});
+    }
+   }, "note" + (step % 4 === 0 ? " beat" : "") +
+    (existing ? (existing.start === step ? " filled" : " tail") : ""));
+   cell.setAttribute("aria-label", noteLabel(pitch) + ", beat step " + (step + 1) + (existing ? ". Remove note" : ". Add note"));
+   row.append(cell);
+  }
+  root.append(row);
+ }
+ scroll.scrollTop = top;
+ scroll.scrollLeft = left;
 }
-$("undo").addEventListener("click",undo);$("redo").addEventListener("click",redo);
-document.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?redo():undo();}else if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="y"){e.preventDefault();redo();}else if(e.code==="Space"&&!e.repeat&&!["INPUT","BUTTON","SELECT","TEXTAREA"].includes(document.activeElement?.tagName)){e.preventDefault();$("play").click();}});
-render();if(cached)status("Restored local browser draft. Export a .premidi file for portability.");
+function renderChunkEditor() {
+ const inst = instrument(), select = $("pattern");
+ const oldValue = selectedChunks.get(inst.id);
+ select.replaceChildren();
+ for (const chunk of inst.chunks) {
+  const option = element("option", chunk.name);
+  option.value = chunk.id;
+  select.append(option);
+ }
+ const active = inst.chunks.find(c => c.id === oldValue) || inst.chunks[0];
+ selectedChunks.set(inst.id, active.id);
+ select.value = active.id;
+ $("add-pattern").disabled = inst.chunks.length >= 32;
+ $("copy-pattern").disabled = inst.chunks.length >= 32;
+ $("delete-pattern").disabled = inst.chunks.length <= 1;
+ $("editing-identity").textContent = inst.name + " / " + active.name;
+ $("edit-instrument-note").textContent = inst.name;
+ renderNotes();
+}
+function renderSound() {
+ const inst = instrument();
+ $("track-name").value = inst.name;
+ $("waveform").value = inst.waveform;
+ document.querySelector(".controls")?.style.setProperty("--track-accent", signal(inst));
+ for (const [name, scale, suffix] of [["volume",100,"%"],["attack",1000," ms"],["release",1000," ms"]]) {
+  $(name).value = String(Math.round(inst[name] * scale));
+  $(name + "-value").textContent = Math.round(inst[name] * scale) + suffix;
+ }
+ $("remove-track").disabled = score.instruments.length === 1;
+}
+function render() {
+ repairSelection();
+ $("title").value = score.title;
+ $("bpm").value = String(score.bpm);
+ $("bars").value = String(score.bars);
+ renderInstruments();
+ renderTimeline();
+ renderChunkEditor();
+ renderSound();
+ $("undo").disabled = history.length === 0;
+ $("redo").disabled = future.length === 0;
+}
+
+$("new").addEventListener("click", () => {
+ if (confirm("Start a new composition? Save the current .premidi if you want a copy.")) resetTo(create());
+});
+$("import").addEventListener("click", () => $("file").click());
+$("file").addEventListener("change", async event => {
+ const file = event.currentTarget.files?.[0];
+ if (!file) return;
+ try {
+  if (file.size > 1_000_000) throw Error("File exceeds 1 MB.");
+  const next = parse(await file.text());
+  if (confirm("Open " + next.title + "? This replaces the browser draft.")) {
+   resetTo(next);
+   message("Opened " + file.name);
+  }
+ } catch (error) { message("Could not open file: " + error.message, true); }
+ finally { $("file").value = ""; }
+});
+$("export").addEventListener("click", () => {
+ const errors = validate(score);
+ if (errors.length) return message(errors[0], true);
+ download(new Blob([JSON.stringify(score,null,2)], {type:"application/json"}), filename(score,".premidi"));
+ message("Saved .premidi");
+});
+$("wav").addEventListener("click", async () => {
+ const el = $("wav");
+ el.disabled = true;
+ message("Rendering WAV...");
+ try { download(await wav(score), filename(score,".wav")); message("Saved WAV"); }
+ catch (error) { message("WAV error: " + error.message, true); }
+ finally { el.disabled = false; }
+});
+$("play").addEventListener("click", async () => {
+ if (playback) { stop(); return; }
+ if (pendingPlay) return;
+ pendingPlay = true;
+ try {
+  playback = await play(() => score, {
+   loop: () => $("loop").checked,
+   onPosition: (bar, step) => {
+    $("position").textContent = (bar + 1) + "." + (Math.floor(step / 4) + 1);
+    if (playBar !== bar) { playBar = bar; paintPlayhead(); }
+    playStep = step;
+   },
+   onStop: () => {
+    playback = null;
+    playBar = playStep = -1;
+    $("play").textContent = "▶ Play";
+    paintPlayhead();
+   }
+  });
+  $("play").textContent = "Ⅱ Stop";
+ } catch (error) { message("Playback error: " + error.message, true); }
+ finally { pendingPlay = false; }
+});
+$("stop").addEventListener("click", stop);
+$("title").addEventListener("change", event => modify(() => score.title = event.target.value.trim() || "Untitled composition"));
+$("bpm").addEventListener("change", event => modify(() => score.bpm = Math.round(Number(event.target.value))));
+$("bars").addEventListener("change", event => modify(() => {
+ const count = Number(event.target.value);
+ score.bars = count;
+ for (const inst of score.instruments) {
+  while (inst.timeline.length < count) inst.timeline.push(null);
+  inst.timeline.length = count;
+ }
+ selectedSlot.bar = Math.min(selectedSlot.bar, count - 1);
+}));
+$("add-track").addEventListener("click", () => {
+ closePicker();
+ modify(() => {
+  const inst = makeInstrument(score.instruments.length + 1, score.bars);
+  score.instruments.push(inst);
+  selectedInstrumentId = inst.id;
+  selectedSlot = {instrumentId:inst.id,bar:0};
+ });
+});
+$("remove-track").addEventListener("click", () => {
+ const inst = instrument();
+ if (!confirm("Remove " + inst.name + " and all its chunks?")) return;
+ closePicker();
+ modify(() => {
+  score.instruments = score.instruments.filter(entry => entry.id !== inst.id);
+  selectedInstrumentId = score.instruments[0].id;
+  selectedSlot = {instrumentId:selectedInstrumentId,bar:0};
+ });
+});
+$("pattern").addEventListener("change", event => {
+ selectedChunks.set(instrument().id, event.target.value);
+ renderChunkEditor();
+});
+$("add-pattern").addEventListener("click", () => {
+ modify(() => {
+  const inst = instrument(), chunk = makeChunk("Chunk " + (inst.chunks.length + 1));
+  inst.chunks.push(chunk);
+  selectedChunks.set(inst.id, chunk.id);
+ });
+});
+$("copy-pattern").addEventListener("click", () => {
+ modify(() => {
+  const inst = instrument(), source = chunkFor(inst), chunk = clone(source);
+  chunk.id = id();
+  chunk.name = (source.name + " copy").slice(0,60);
+  for (const note of chunk.notes) note.id = id();
+  inst.chunks.push(chunk);
+  selectedChunks.set(inst.id, chunk.id);
+ });
+});
+$("delete-pattern").addEventListener("click", () => {
+ const inst = instrument(), chunk = chunkFor(inst);
+ if (inst.chunks.length < 2 || !confirm("Delete " + chunk.name + "?")) return;
+ modify(() => {
+  inst.chunks = inst.chunks.filter(candidate => candidate.id !== chunk.id);
+  inst.timeline = inst.timeline.map(value => value === chunk.id ? null : value);
+  selectedChunks.set(inst.id, inst.chunks[0].id);
+ });
+});
+$("track-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
+$("waveform").addEventListener("change", event => modify(() => instrument().waveform = event.target.value));
+for (const [name, scale] of [["volume",100],["attack",1000],["release",1000]]) {
+ $(name).addEventListener("change", event => modify(() => instrument()[name] = Number(event.target.value) / scale));
+ $(name).addEventListener("input", event => $(name + "-value").textContent = event.target.value + (name === "volume" ? "%" : " ms"));
+}
+$("undo").addEventListener("click", undo);
+$("redo").addEventListener("click", redo);
+document.addEventListener("keydown", event => {
+ const target = document.activeElement?.tagName;
+ if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+  event.preventDefault(); event.shiftKey ? redo() : undo();
+ } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+  event.preventDefault(); redo();
+ } else if (event.code === "Space" && !event.repeat && !["INPUT","SELECT","TEXTAREA","BUTTON"].includes(target)) {
+  event.preventDefault(); $("play").click();
+ }
+});
+render();
+if (cached) message("Local draft restored");
