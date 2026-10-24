@@ -48,7 +48,26 @@ test("note and sound controls have distinct, wrapping groups", () => {
  }
  assert.match(css,/\.notes-toolbar\s*\{[^}]*flex-wrap:wrap/);
  assert.match(html,/class="sound-control-group sound-identity-controls"/);
- assert.match(html,/class="sound-control-group sound-shaping-controls"/);
+ assert.match(html,/id="synth-editor"/);
+ assert.match(html,/id="instrument-dialog"/);
+ assert.match(html,/id="change-sound"/);
+ assert.match(html,/id="save-sound"/);
  assert.match(css,/@media \(max-width:860px\)/);
  assert.match(css,/@media \(max-width:570px\)/);
+});
+
+test("instrument presets have one owner and the full synth editor is reachable",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ const editor=readFileSync(new URL("../instrumentUI.js",import.meta.url),"utf8");
+ assert.match(html,/id="add-instrument"/);
+ assert.match(studio,/openLibrary\("add"\)/);
+ assert.match(studio,/openLibrary\("replace"\)/);
+ assert.match(studio,/renderPatchEditor\(/);
+ assert.match(editor,/Oscillator 1/);
+ assert.match(editor,/Envelope/);
+ assert.match(editor,/Filter & noise/);
+ assert.match(editor,/Movement/);
+ assert.match(editor,/Effects/);
+ assert.doesNotMatch(html,/id="waveform"/);
 });
