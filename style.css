@@ -211,5 +211,6 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   .scroll {padding:10px 8px}
   .piano-scroll {margin:0 8px 13px}
   .controls {padding:12px}
+  input:not([type="range"]), select {font-size:16px}
   footer {padding:12px}
 }
