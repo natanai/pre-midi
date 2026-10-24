@@ -3,6 +3,8 @@ import {play,audition,wav} from "./audio.js";
 const $=s=>document.getElementById(s),cache="premidi-v1-draft";
 const cached=(()=>{try{return parse(localStorage.getItem(cache)||"");}catch{return null;}})();
 let doc=cached||create(),selected=doc.tracks[0].id,chosen=new Map(),undoStack=[],redoStack=[],player=null,playbar=-1;
+const SIGNAL_COLORS=["#08e4ec","#ff416d","#ba82eb","#ffc266"];
+const accentFor=t=>SIGNAL_COLORS[Math.max(0,doc.tracks.findIndex(x=>x.id===t.id))%SIGNAL_COLORS.length];
 const current=()=>doc.tracks.find(t=>t.id===selected)||doc.tracks[0];
 const currentPattern=t=>t.patterns.find(p=>p.id===chosen.get(t.id))||t.patterns[0];
 function status(message,bad=false){$("status").textContent=message;$("status").className=bad?"error":"ok";}
@@ -17,13 +19,13 @@ function redo(){if(!redoStack.length)return;undoStack.push(clone(doc));doc=redoS
 function download(data,name){const url=URL.createObjectURL(data),a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}
 function tracks(){
  const root=$("track-list");root.replaceChildren();
- for(const t of doc.tracks){const b=button(t.name,()=>{selected=t.id;render();},"track"+(selected===t.id?" active":""));b.append(node("small",t.waveform+" · "+t.patterns.length+" patterns"));root.append(b);}
+ for(const t of doc.tracks){const b=button("",()=>{selected=t.id;render();},"track"+(selected===t.id?" active":""));b.style.setProperty("--track-accent",accentFor(t));b.setAttribute("aria-pressed",String(selected===t.id));b.append(node("strong",t.name),node("small",t.waveform+" · "+t.patterns.length+" patterns"));root.append(b);}
  $("add-track").disabled=doc.tracks.length>=12;
 }
 function arrangement(){
  const root=$("arrangement");root.replaceChildren();root.style.setProperty("--bars",doc.bars);
  const h=node("div",undefined,"arrangement-head");h.append(node("span","TRACK"));for(let bar=0;bar<doc.bars;bar++)h.append(node("span",String(bar+1)));root.append(h);
- for(const t of doc.tracks){const r=node("div",undefined,"arrangement-row");r.append(node("span",t.name,"label"));
+ for(const t of doc.tracks){const r=node("div",undefined,"arrangement-row"+(t.id===selected?" active":""));r.style.setProperty("--track-accent",accentFor(t));r.append(node("span",t.name,"label"));
   for(let index=0;index<doc.bars;index++){const p=t.patterns.find(p=>p.id===t.arrangement[index]);
    const b=button(p?p.name:"+",()=>mutate(()=>{const next=currentPattern(t).id;t.arrangement[index]=t.arrangement[index]===next?null:next;}),"clip"+(p?"":" empty")+(playbar===index?" playing":""));
    b.title="Bar "+(index+1)+" · click to assign selected pattern or clear";
@@ -34,7 +36,7 @@ function arrangement(){
 const names=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
 const pitchName=p=>names[p%12]+(Math.floor(p/12)-1);
 function piano(){
- const root=$("piano"),t=current(),p=currentPattern(t);root.replaceChildren();
+ const root=$("piano"),t=current(),p=currentPattern(t);root.replaceChildren();root.style.setProperty("--track-accent",accentFor(t));
  for(let pitch=83;pitch>=48;pitch--){const row=node("div",undefined,"piano-row"+([1,3,6,8,10].includes(pitch%12)?" sharp":""));row.append(node("span",pitchName(pitch),"note-name"));
   for(let step=0;step<16;step++){const n=p.notes.find(n=>n.pitch===pitch&&step>=n.start&&step<n.start+n.duration);
    const b=button("",()=>{
@@ -46,7 +48,7 @@ function piano(){
  }
 }
 function inspector(){
- const t=current();$("track-name").value=t.name;$("waveform").value=t.waveform;
+ const t=current();document.querySelector(".controls")?.style.setProperty("--track-accent",accentFor(t));$("track-name").value=t.name;$("waveform").value=t.waveform;
  for(const [name,factor,suffix] of [["volume",100,"%"],["attack",1000," ms"],["release",1000," ms"]]){$(name).value=String(Math.round(t[name]*factor));$(name+"-value").textContent=Math.round(t[name]*factor)+suffix;}
  $("remove-track").disabled=doc.tracks.length<=1;
 }
