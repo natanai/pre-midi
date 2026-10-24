@@ -35,4 +35,13 @@ try {
   assert.equal(result?.[1],"PASS","Responsive layout failed at "+width+"x"+height+": "+(details?.[1]||dom.slice(-600)));
   console.log("PASS browser layout",width+"x"+height,details?.[1]||"");
  }
+ const audioUrl="http://127.0.0.1:"+port+"/tests/audio-check.html";
+ const {stdout:audioDom}=await execFileAsync(chrome,[
+  "--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
+  "--window-size=1200,800","--virtual-time-budget=16000","--dump-dom",audioUrl
+ ],{encoding:"utf8",timeout:90000,maxBuffer:10_000_000});
+ const audioResult=audioDom.match(/<html[^>]+data-audio="([^"]+)"/);
+ const audioDetails=audioDom.match(/<pre id="results">([^<]+)<\/pre>/);
+ assert.equal(audioResult?.[1],"PASS","Original instrument WAV rendering failed: "+(audioDetails?.[1]||audioDom.slice(-800)));
+ console.log("PASS original instrument WAV render",audioDetails?.[1]||"");
 }finally{server.close();}
