@@ -9,6 +9,18 @@ function note(ctx,out,t,n,start,duration) {
  osc.connect(env);env.connect(out);osc.start(start);osc.stop(start+duration+release+.01);
  osc.onended=()=>{osc.disconnect();env.disconnect();};
 }
+// A musical event is a note in a reusable chunk at an absolute timeline step.
+// Read from the latest score at scheduling time so edits can be heard without stopping.
+export function stepEvents(doc, absoluteStep) {
+ const cycle=Math.max(1,doc.bars*16),stepInSong=absoluteStep%cycle;
+ const barIndex=Math.floor(stepInSong/16),step=stepInSong%16,events=[];
+ for(const instrument of doc.tracks) {
+  const chunk=instrument.patterns.find(p=>p.id===instrument.arrangement[barIndex]);
+  if(!chunk)continue;
+  for(const n of chunk.notes)if(n.start===step)events.push({instrument,note:n,barIndex,step});
+ }
+ return events;
+}
 function bar(ctx,out,doc,index,start) {
  const unit=secondsPerStep(doc);
  for(const t of doc.tracks){const p=t.patterns.find(p=>p.id===t.arrangement[index]);if(p)for(const n of p.notes)note(ctx,out,t,n,start+n.start*unit,n.duration*unit);}
@@ -17,19 +29,47 @@ let context;
 export async function audition(t,pitch) {
  context||=new AudioContext();await context.resume();note(context,context.destination,t,{pitch,velocity:.8},context.currentTime+.01,.13);
 }
-export async function play(doc,{loop=false,onPosition=()=>{},onStop=()=>{}}={}) {
- context||=new AudioContext();await context.resume();const ctx=context,out=ctx.createGain();
- out.gain.value=.85;out.connect(ctx.destination);const unit=secondsPerStep(doc),barDuration=16*unit,origin=ctx.currentTime+.08;
- let scheduled=0,stopped=false,timer;
- function stop() {if(stopped)return;stopped=true;clearInterval(timer);const now=ctx.currentTime;out.gain.cancelScheduledValues(now);out.gain.setValueAtTime(out.gain.value,now);out.gain.linearRampToValueAtTime(0,now+.025);setTimeout(()=>out.disconnect(),100);onStop();}
- function tick() {
-  if(stopped)return;
-  while(origin+scheduled*barDuration<ctx.currentTime+.2&&(loop||scheduled<doc.bars)){bar(ctx,out,doc,scheduled%doc.bars,origin+scheduled*barDuration);scheduled++;}
-  const elapsed=Math.max(0,ctx.currentTime-origin),step=Math.floor(elapsed/unit);
-  onPosition(Math.floor(step/16)%doc.bars,step%16);
-  if(!loop&&elapsed>doc.bars*barDuration+.1)stop();
+/**
+ * Score is optionally a callback: the studio provides its currently edited
+ * document rather than a snapshot. Only the near-future sixteenth-note steps
+ * are scheduled, so edits and undo/redo take effect while playback continues.
+ */
+export async function play(score,{loop=false,onPosition=()=>{},onStop=()=>{}}={}) {
+ context||=new AudioContext();await context.resume();
+ const ctx=context,out=ctx.createGain(),read=typeof score==="function"?score:()=>score;
+ const loops=()=>typeof loop==="function"?loop():loop;
+ out.gain.value=.85;out.connect(ctx.destination);
+ let scheduled=0,nextTime=ctx.currentTime+.07,shown=-1,stopped=false,timer;
+ const positionQueue=[];
+ function stop(){
+  if(stopped)return;stopped=true;clearInterval(timer);
+  const now=ctx.currentTime;
+  out.gain.cancelScheduledValues(now);out.gain.setValueAtTime(Math.max(0,out.gain.value),now);
+  out.gain.linearRampToValueAtTime(0,now+.025);
+  setTimeout(()=>{try{out.disconnect();}catch{}},100);onStop();
  }
- timer=setInterval(tick,40);tick();return {stop};
+ function tick(){
+  if(stopped)return;
+  const ahead=ctx.currentTime+.095;
+  let guarded=0;
+  while(nextTime<ahead && guarded++<24){
+   const doc=read(),cycle=doc.bars*16;
+   if(!loops() && scheduled>=cycle)break;
+   const step=scheduled%cycle,barIndex=Math.floor(step/16),unit=secondsPerStep(doc);
+   for(const event of stepEvents(doc,scheduled)){
+    note(ctx,out,event.instrument,event.note,nextTime,event.note.duration*unit);
+   }
+   positionQueue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled});
+   nextTime+=unit;scheduled++;
+  }
+  while(positionQueue.length&&positionQueue[0].time<=ctx.currentTime){
+   const now=positionQueue.shift();
+   if(now.absolute!==shown){shown=now.absolute;onPosition(now.barIndex,now.step);}
+  }
+  const current=read();
+  if(!loops()&&scheduled>=current.bars*16&&ctx.currentTime>nextTime+.75)stop();
+ }
+ timer=setInterval(tick,25);tick();return {stop};
 }
 function pcmWav(buffer) {
  const ch=Math.min(2,buffer.numberOfChannels),size=buffer.length*ch*2,result=new ArrayBuffer(44+size),v=new DataView(result),data=Array.from({length:ch},(_,c)=>buffer.getChannelData(c));
