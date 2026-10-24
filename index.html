@@ -64,29 +64,29 @@
    <section class="sound-section" aria-label="Instrument sound">
     <div class="heading sound-section-heading">
      <div class="sound-heading"><h2>Sound</h2><span id="edit-instrument-note" class="editing-identity"></span></div>
-     <span class="scope-description">Instrument-wide · all chunks</span>
+     <div class="sound-actions"><button id="change-sound" type="button">Browse sounds</button><button id="save-sound" type="button">Save preset</button></div>
     </div>
+    <div class="patch-info"><span id="patch-label"></span><span class="scope-description">Applies to all this instrument's chunks</span></div>
     <div class="controls">
      <div class="sound-control-group sound-identity-controls">
       <label>Name <input id="instrument-name" maxlength="60"></label>
-      <label>Waveform <select id="waveform">
-       <option value="triangle">Triangle</option><option value="sine">Sine</option>
-       <option value="square">Square</option><option value="sawtooth">Sawtooth</option>
-      </select></label>
-     </div>
-     <div class="sound-control-group sound-shaping-controls">
       <label>Volume <input id="volume" type="range" min="0" max="100"><output id="volume-value"></output></label>
-      <label>Attack <input id="attack" type="range" min="0" max="100"><output id="attack-value"></output></label>
-      <label>Release <input id="release" type="range" min="10" max="700"><output id="release-value"></output></label>
      </div>
      <button id="remove-instrument" type="button" class="danger">Remove instrument</button>
     </div>
+    <div id="synth-editor" class="synth-editor" aria-label="Synthesizer controls"></div>
    </section>
   </div>
  </div>
 </main>
 <footer><span id="status" role="status">Saved locally</span><span>.premidi v2 · <a href="https://github.com/natanai/pre-midi">SOURCE</a></span></footer>
 </div>
+<dialog id="instrument-dialog" class="instrument-dialog" aria-labelledby="instrument-dialog-title">
+ <div class="library-top"><div><h2 id="instrument-dialog-title">Instrument library</h2><p id="library-description">Original synthesizer sounds. Every parameter can be changed.</p></div>
+  <button id="close-library" type="button" aria-label="Close instrument library">×</button></div>
+ <div class="library-filters" id="library-filters" aria-label="Sound categories"></div>
+ <div id="library-sounds" class="library-sounds" aria-label="Available sounds"></div>
+</dialog>
 <script type="module" src="./studio.js"></script>
 </body>
 </html>
