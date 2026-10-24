@@ -2,13 +2,41 @@ import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename
 import { play, audition, wav } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
+import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
+import { renderPatchEditor } from "./instrumentUI.js";
 
 const $ = key => document.getElementById(key);
-const CACHE = "premidi-v2-draft";
+const CACHE = "premidi-v3-draft";
+const SAVED_SOUNDS = "premidi-user-sounds-v1";
 const cached = (() => {
- try { return parse(localStorage.getItem(CACHE) || ""); }
- catch { return null; }
+ try { return parse(localStorage.getItem(CACHE) || ""); } catch {}
+ // Recover music written only in this browser before patches existed.
+ // This is not a legacy .premidi file importer.
+ try {
+  const previous=JSON.parse(localStorage.getItem("premidi-v2-draft") || "null");
+  if(previous?.version!==2 || !Array.isArray(previous.instruments))return null;
+  for(const inst of previous.instruments) {
+   const patch=makePatch();
+   if(["sine","triangle","square","sawtooth"].includes(inst.waveform))patch.oscillators[0].wave=inst.waveform;
+   if(Number.isFinite(inst.attack))patch.envelope.attack=Math.min(3,Math.max(0,inst.attack));
+   if(Number.isFinite(inst.release))patch.envelope.release=Math.min(4,Math.max(.01,inst.release));
+   inst.patch=patch;
+   delete inst.waveform;delete inst.attack;delete inst.release;
+  }
+  previous.version=3;
+  return validate(previous).length?null:previous;
+ }catch{return null;}
 })();
+const savedSounds=(()=>{
+ try {
+  const entries=JSON.parse(localStorage.getItem(SAVED_SOUNDS)||"[]");
+  return Array.isArray(entries)?entries.filter(item=>
+   item && typeof item.id==="string" && item.id.length<80 &&
+   typeof item.name==="string" && item.name.length<=60 && item.name.trim() &&
+   validatePatch(item.patch).length===0).slice(0,100):[];
+ }catch{return [];}
+})();
+let libraryMode="add",libraryCategory="All";
 let score = cached || create();
 let selectedInstrumentId = score.instruments[0].id;
 let selectedChunks = new Map();
@@ -141,7 +169,7 @@ function renderInstruments() {
   const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
   el.style.setProperty("--track-accent", signal(inst));
   el.setAttribute("aria-pressed", String(selected));
-  el.append(element("strong", inst.name), element("small", inst.waveform + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
+  el.append(element("strong", inst.name), element("small", (getPreset(inst.patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.patch.presetId)?.name ?? "Custom sound") + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
   list.append(el);
  }
  $("add-instrument").disabled = score.instruments.length >= 12;
@@ -418,15 +446,24 @@ function renderChunkEditor() {
  renderNotes();
 }
 function renderSound() {
- const inst = instrument();
- $("instrument-name").value = inst.name;
- $("waveform").value = inst.waveform;
- document.querySelector(".controls")?.style.setProperty("--track-accent", signal(inst));
- for (const [name, scale, suffix] of [["volume",100,"%"],["attack",1000," ms"],["release",1000," ms"]]) {
-  $(name).value = String(Math.round(inst[name] * scale));
-  $(name + "-value").textContent = Math.round(inst[name] * scale) + suffix;
- }
- $("remove-instrument").disabled = score.instruments.length === 1;
+ const inst=instrument();
+ $("instrument-name").value=inst.name;
+ $("volume").value=String(Math.round(inst.volume*100));
+ $("volume-value").textContent=Math.round(inst.volume*100)+"%";
+ document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
+ $("synth-editor").style.setProperty("--track-accent",signal(inst));
+ const preset=getPreset(inst.patch.presetId)||savedSounds.find(entry=>entry.id===inst.patch.presetId);
+ $("patch-label").textContent=preset?"Sound · "+preset.name:"Sound · Custom";
+ renderPatchEditor($("synth-editor"),inst.patch,(path,value)=>{
+  modify(()=>{
+   const target=instrument().patch;
+   let owner=target;
+   for(let i=0;i<path.length-1;i++)owner=owner[path[i]];
+   owner[path[path.length-1]]=value;
+   target.presetId="custom";
+  });
+ });
+ $("remove-instrument").disabled=score.instruments.length===1;
 }
 function render() {
  repairSelection();
