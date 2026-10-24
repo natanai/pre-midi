@@ -314,6 +314,7 @@ function renderChunkEditor() {
  const active = inst.chunks.find(c => c.id === oldValue) || inst.chunks[0];
  selectedChunks.set(inst.id, active.id);
  select.value = active.id;
+ $("chunk-name").value = active.name;
  $("add-chunk").disabled = inst.chunks.length >= 32;
  $("duplicate-chunk").disabled = inst.chunks.length >= 32;
  $("delete-chunk").disabled = inst.chunks.length <= 1;
@@ -460,6 +461,7 @@ $("delete-chunk").addEventListener("click", () => {
   selectedChunks.set(inst.id, inst.chunks[0].id);
  });
 });
+$("chunk-name").addEventListener("change", event => modify(() => chunkFor(instrument()).name = event.target.value.trim() || "Chunk"));
 $("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
 $("waveform").addEventListener("change", event => modify(() => instrument().waveform = event.target.value));
 for (const [name, scale] of [["volume",100],["attack",1000],["release",1000]]) {
