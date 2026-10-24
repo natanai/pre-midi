@@ -570,6 +570,61 @@ $("save-sound").addEventListener("click",()=>{
   message("Browser storage is unavailable. Your composition still contains this sound.",true);
  }
 });
+function allSounds(){return [...PRESETS,...savedSounds];}
+function openLibrary(mode) {
+ closePicker();
+ if(mode==="add"&&score.instruments.length>=12)return;
+ libraryMode=mode;
+ libraryCategory="All";
+ renderLibrary();
+ const dialog=$("instrument-dialog");
+ if(!dialog.open)dialog.showModal();
+}
+function chooseSound(preset) {
+ $("instrument-dialog").close();
+ const patch=patchCopy(preset.patch);
+ patch.presetId=preset.id;
+ if(libraryMode==="add") {
+  modify(()=>{
+   const inst=makeInstrument(score.instruments.length+1,score.bars);
+   inst.name=preset.name;
+   inst.patch=patch;
+   score.instruments.push(inst);
+   selectedInstrumentId=inst.id;
+   selectedSlot={instrumentId:inst.id,bar:0};
+   selectedChunks.set(inst.id,inst.chunks[0].id);
+  });
+ } else modify(()=>{instrument().patch=patch;});
+}
+function renderLibrary() {
+ const filters=$("library-filters"),list=$("library-sounds");
+ filters.replaceChildren();list.replaceChildren();
+ const categories=["All","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
+ for(const category of categories) {
+  const control=button(category,()=>{libraryCategory=category;renderLibrary();},
+   "library-filter"+(libraryCategory===category?" selected":""));
+  control.setAttribute("aria-pressed",String(libraryCategory===category));
+  filters.append(control);
+ }
+ for(const preset of allSounds().filter(p=>libraryCategory==="All"||p.category===libraryCategory)) {
+  const card=element("div",undefined,"preset-card");
+  const info=element("div",undefined,"preset-information");
+  info.append(element("strong",preset.name),element("span",preset.description));
+  const actions=element("div",undefined,"preset-actions");
+  const preview=button("▶",()=>{
+   const sample={...instrument(),patch:patchCopy(preset.patch),volume:.8};
+   void audition(sample,preset.category==="Bass"?48:preset.category==="Percussion"?60:69)
+    .catch(error=>message("Sound preview failed: "+error.message,true));
+  },"preset-preview");
+  preview.title="Preview "+preset.name;
+  preview.setAttribute("aria-label","Preview "+preset.name);
+  const use=button(libraryMode==="add"?"Add":"Use",()=>chooseSound(preset),"preset-choose");
+  use.setAttribute("aria-label",(libraryMode==="add"?"Add ":"Use ")+preset.name);
+  actions.append(preview,use);
+  card.append(info,actions);
+  list.append(card);
+ }
+}
 $("remove-instrument").addEventListener("click", () => {
  const inst = instrument();
  if (!confirm("Remove " + inst.name + " and all its chunks?")) return;
@@ -612,11 +667,9 @@ $("delete-chunk").addEventListener("click", () => {
 });
 $("chunk-name").addEventListener("change", event => modify(() => chunkFor(instrument()).name = event.target.value.trim() || "Chunk"));
 $("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
-$("waveform").addEventListener("change", event => modify(() => instrument().waveform = event.target.value));
-for (const [name, scale] of [["volume",100],["attack",1000],["release",1000]]) {
- $(name).addEventListener("change", event => modify(() => instrument()[name] = Number(event.target.value) / scale));
- $(name).addEventListener("input", event => $(name + "-value").textContent = event.target.value + (name === "volume" ? "%" : " ms"));
-}
+
+$("volume").addEventListener("change",event=>modify(()=>instrument().volume=Number(event.target.value)/100));
+$("volume").addEventListener("input",event=>$("volume-value").textContent=event.target.value+"%");
 $("undo").addEventListener("click", undo);
 $("redo").addEventListener("click", redo);
 document.addEventListener("keydown", event => {
