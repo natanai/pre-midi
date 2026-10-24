@@ -1,6 +1,7 @@
 import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, wav } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
+import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v2-draft";
@@ -159,11 +160,11 @@ function paintPianoPlayhead() {
  const activeChunk = chunkFor(currentInstrument);
  const isAudibleChunk = pianoProgress !== null &&
   (playback !== null || pendingPlay) &&
-  currentInstrument.timeline[pianoProgress.bar] === activeChunk.id;
+  chunkIsPlaying(score, currentInstrument.id, activeChunk.id, pianoProgress);
  marker.hidden = !isAudibleChunk;
  if (!isAudibleChunk) return;
  // The note-label gutter is 63px; the remaining width represents 16 steps.
- const x = 63 + (grid.clientWidth - 63) * pianoProgress.step / 16;
+ const x = pianoScrubberX(pianoProgress.step, grid.clientWidth);
  marker.style.transform = `translateX(${x}px)`;
 }
 function renderTimeline() {
