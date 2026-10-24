@@ -1,5 +1,6 @@
 import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, wav } from "./audio.js";
+import { resizeNote } from "./noteEditing.js";
 
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v2-draft";
@@ -273,31 +274,102 @@ function renderNotes() {
  const scroll = root.parentElement, top = scroll.scrollTop, left = scroll.scrollLeft;
  root.replaceChildren();
  root.style.setProperty("--track-accent", signal(inst));
+
  for (let pitch = 83; pitch >= 48; pitch--) {
   const sharp = [1,3,6,8,10].includes(pitch % 12);
   const row = element("div", undefined, "piano-row" + (sharp ? " sharp" : ""));
   row.append(element("span", noteLabel(pitch), "note-name"));
+  const cells = [];
+  function previewRow() {
+   for (let pos = 0; pos < 16; pos++) {
+    const present = chunk.notes.find(n => n.pitch === pitch && pos >= n.start && pos < n.start + n.duration);
+    const cell = cells[pos];
+    cell.classList.toggle("filled", !!present && present.start === pos);
+    cell.classList.toggle("tail", !!present && present.start !== pos);
+    cell.classList.toggle("end", !!present && present.start + present.duration - 1 === pos);
+    cell.setAttribute("aria-label", noteLabel(pitch) + ", step " + (pos + 1)
+     + (present ? ", note length " + present.duration + " steps; click to remove, drag right edge to resize" : ", click to add note"));
+    cell.title = present ? "Note: " + present.duration + "/16 · drag end to resize · Alt+←/→ to adjust" : "Add " + noteLabel(pitch);
+   }
+  }
+
   for (let step = 0; step < 16; step++) {
-   const existing = chunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
+   let ignoreClick = false;
    const cell = button("", () => {
+    if (ignoreClick) return;
     const targetInst = instrument();
     const editedChunk = chunkFor(targetInst);
-    const prior = editedChunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
+    const existing = editedChunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
     if (modify(() => {
-     if (prior) editedChunk.notes = editedChunk.notes.filter(n => n.id !== prior.id);
+     if (existing) editedChunk.notes = editedChunk.notes.filter(n => n.id !== existing.id);
      else editedChunk.notes.push({
-      id: id(), pitch, start: step,
-      duration: Math.min(Number($("length").value), 16 - step), velocity: 0.8
+      id:id(), pitch, start:step,
+      duration:Math.min(Number($("length").value),16-step), velocity:0.8
      });
-    }) && !prior) {
-     void audition(targetInst, pitch).catch(() => {});
+    }) && !existing) void audition(targetInst,pitch).catch(() => {});
+   }, "note" + (step % 4 === 0 ? " beat" : ""));
+   cells.push(cell);
+
+   // Resize is an edge gesture, never a separate editor or a save pathway.
+   cell.addEventListener("pointerdown", event => {
+    if (event.button !== 0) return;
+    const note = chunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
+    if (!note || step !== note.start + note.duration - 1) return;
+    const bounds = cell.getBoundingClientRect();
+    const edge = event.pointerType === "touch" ? 18 : 13;
+    if (event.clientX < bounds.right - edge) return;
+    event.preventDefault();
+    ignoreClick = true;
+    const initialX = event.clientX, originalDuration = note.duration;
+    const width = bounds.width;
+    const before = clone(score);
+    let finished = false;
+    cell.setPointerCapture(event.pointerId);
+    cell.classList.add("resizing");
+
+    function move(moveEvent) {
+     if (finished) return;
+     const offset = Math.round((moveEvent.clientX - initialX) / width);
+     resizeNote(chunk, note.id, originalDuration + offset);
+     previewRow();
     }
-   }, "note" + (step % 4 === 0 ? " beat" : "") +
-    (existing ? (existing.start === step ? " filled" : " tail") : ""));
-   cell.setAttribute("aria-label", noteLabel(pitch) + ", beat step " + (step + 1) + (existing ? ". Remove note" : ". Add note"));
+    function end(endEvent) {
+     if (finished) return;
+     finished = true;
+     cell.removeEventListener("pointermove", move);
+     cell.removeEventListener("pointerup", finish);
+     cell.removeEventListener("pointercancel", cancel);
+     if (cell.hasPointerCapture(endEvent.pointerId)) cell.releasePointerCapture(endEvent.pointerId);
+     cell.classList.remove("resizing");
+     if (endEvent.type === "pointercancel") note.duration = originalDuration;
+     if (note.duration !== originalDuration) {
+      history.push(before);
+      if (history.length > 100) history.shift();
+      future = [];
+      store();
+      render();
+     } else previewRow();
+     setTimeout(() => { ignoreClick = false; }, 0);
+    }
+    function finish(endEvent) { move(endEvent); end(endEvent); }
+    function cancel(endEvent) { end(endEvent); }
+    cell.addEventListener("pointermove", move);
+    cell.addEventListener("pointerup", finish);
+    cell.addEventListener("pointercancel", cancel);
+   });
+   // Keyboard support is also immediate and uses the canonical undo pathway.
+   cell.addEventListener("keydown", event => {
+    if (!event.altKey || !["ArrowLeft","ArrowRight"].includes(event.key)) return;
+    const target = chunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start+n.duration);
+    if (!target) return;
+    event.preventDefault();
+    const delta = event.key === "ArrowRight" ? 1 : -1;
+    modify(() => resizeNote(chunk, target.id, target.duration + delta));
+   });
    row.append(cell);
   }
   root.append(row);
+  previewRow();
  }
  scroll.scrollTop = top;
  scroll.scrollLeft = left;
