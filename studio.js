@@ -131,17 +131,17 @@ function focus(inst, chunkId = null, bar = null) {
  render();
 }
 function renderInstruments() {
- const list = $("track-list");
+ const list = $("instrument-list");
  list.replaceChildren();
  for (const inst of score.instruments) {
   const selected = inst.id === selectedInstrumentId;
-  const el = button("", () => { closePicker(); focus(inst); }, "track" + (selected ? " active" : ""));
+  const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
   el.style.setProperty("--track-accent", signal(inst));
   el.setAttribute("aria-pressed", String(selected));
   el.append(element("strong", inst.name), element("small", inst.waveform + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
   list.append(el);
  }
- $("add-track").disabled = score.instruments.length >= 12;
+ $("add-instrument").disabled = score.instruments.length >= 12;
 }
 function paintPlayhead() {
  for (const clip of $("arrangement").querySelectorAll(".clip")) {
@@ -159,6 +159,7 @@ function renderTimeline() {
  for (const inst of score.instruments) {
   const lane = element("div", undefined, "arrangement-row" + (selectedInstrumentId === inst.id ? " active" : ""));
   lane.style.setProperty("--track-accent", signal(inst));
+  lane.dataset.instrumentId = inst.id;
   const name = button(inst.name, () => { closePicker(); focus(inst); }, "label instrument-lane-label");
   lane.append(name);
   inst.timeline.forEach((chunkId, bar) => {
@@ -208,7 +209,7 @@ function openPicker(instId, bar, trigger) {
  renderChunkEditor();
  renderSound();
  for (const clip of $("arrangement").querySelectorAll(".clip")) {
-  clip.classList.toggle("selected", clip.dataset.bar === String(bar) && clip.closest(".arrangement-row")?.style.getPropertyValue("--track-accent") === signal(inst));
+  clip.classList.toggle("selected", clip.dataset.bar === String(bar) && clip.closest(".arrangement-row")?.dataset.instrumentId === inst.id);
  }
  const panel = element("div", undefined, "chunk-picker");
  panel.setAttribute("role", "dialog");
@@ -262,7 +263,7 @@ document.addEventListener("pointerdown", event => {
  if (picker && !picker.contains(event.target) && !event.target.closest?.(".clip")) closePicker();
 }, true);
 document.addEventListener("keydown", event => {
- if (event.key === "Escape" && picker) { event.preventDefault(); closePicker(); pickerTrigger?.focus(); }
+ if (event.key === "Escape" && picker) { event.preventDefault(); const trigger = pickerTrigger; closePicker(); trigger?.focus(); }
 });
 
 const pitchNames = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
@@ -302,7 +303,7 @@ function renderNotes() {
  scroll.scrollLeft = left;
 }
 function renderChunkEditor() {
- const inst = instrument(), select = $("pattern");
+ const inst = instrument(), select = $("chunk");
  const oldValue = selectedChunks.get(inst.id);
  select.replaceChildren();
  for (const chunk of inst.chunks) {
@@ -313,23 +314,23 @@ function renderChunkEditor() {
  const active = inst.chunks.find(c => c.id === oldValue) || inst.chunks[0];
  selectedChunks.set(inst.id, active.id);
  select.value = active.id;
- $("add-pattern").disabled = inst.chunks.length >= 32;
- $("copy-pattern").disabled = inst.chunks.length >= 32;
- $("delete-pattern").disabled = inst.chunks.length <= 1;
+ $("add-chunk").disabled = inst.chunks.length >= 32;
+ $("duplicate-chunk").disabled = inst.chunks.length >= 32;
+ $("delete-chunk").disabled = inst.chunks.length <= 1;
  $("editing-identity").textContent = inst.name + " / " + active.name;
  $("edit-instrument-note").textContent = inst.name;
  renderNotes();
 }
 function renderSound() {
  const inst = instrument();
- $("track-name").value = inst.name;
+ $("instrument-name").value = inst.name;
  $("waveform").value = inst.waveform;
  document.querySelector(".controls")?.style.setProperty("--track-accent", signal(inst));
  for (const [name, scale, suffix] of [["volume",100,"%"],["attack",1000," ms"],["release",1000," ms"]]) {
   $(name).value = String(Math.round(inst[name] * scale));
   $(name + "-value").textContent = Math.round(inst[name] * scale) + suffix;
  }
- $("remove-track").disabled = score.instruments.length === 1;
+ $("remove-instrument").disabled = score.instruments.length === 1;
 }
 function render() {
  repairSelection();
@@ -410,7 +411,7 @@ $("bars").addEventListener("change", event => modify(() => {
  }
  selectedSlot.bar = Math.min(selectedSlot.bar, count - 1);
 }));
-$("add-track").addEventListener("click", () => {
+$("add-instrument").addEventListener("click", () => {
  closePicker();
  modify(() => {
   const inst = makeInstrument(score.instruments.length + 1, score.bars);
@@ -419,7 +420,7 @@ $("add-track").addEventListener("click", () => {
   selectedSlot = {instrumentId:inst.id,bar:0};
  });
 });
-$("remove-track").addEventListener("click", () => {
+$("remove-instrument").addEventListener("click", () => {
  const inst = instrument();
  if (!confirm("Remove " + inst.name + " and all its chunks?")) return;
  closePicker();
@@ -429,18 +430,18 @@ $("remove-track").addEventListener("click", () => {
   selectedSlot = {instrumentId:selectedInstrumentId,bar:0};
  });
 });
-$("pattern").addEventListener("change", event => {
+$("chunk").addEventListener("change", event => {
  selectedChunks.set(instrument().id, event.target.value);
  renderChunkEditor();
 });
-$("add-pattern").addEventListener("click", () => {
+$("add-chunk").addEventListener("click", () => {
  modify(() => {
   const inst = instrument(), chunk = makeChunk("Chunk " + (inst.chunks.length + 1));
   inst.chunks.push(chunk);
   selectedChunks.set(inst.id, chunk.id);
  });
 });
-$("copy-pattern").addEventListener("click", () => {
+$("duplicate-chunk").addEventListener("click", () => {
  modify(() => {
   const inst = instrument(), source = chunkFor(inst), chunk = clone(source);
   chunk.id = id();
@@ -450,7 +451,7 @@ $("copy-pattern").addEventListener("click", () => {
   selectedChunks.set(inst.id, chunk.id);
  });
 });
-$("delete-pattern").addEventListener("click", () => {
+$("delete-chunk").addEventListener("click", () => {
  const inst = instrument(), chunk = chunkFor(inst);
  if (inst.chunks.length < 2 || !confirm("Delete " + chunk.name + "?")) return;
  modify(() => {
@@ -459,7 +460,7 @@ $("delete-pattern").addEventListener("click", () => {
   selectedChunks.set(inst.id, inst.chunks[0].id);
  });
 });
-$("track-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
+$("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
 $("waveform").addEventListener("change", event => modify(() => instrument().waveform = event.target.value));
 for (const [name, scale] of [["volume",100],["attack",1000],["release",1000]]) {
  $(name).addEventListener("change", event => modify(() => instrument()[name] = Number(event.target.value) / scale));
