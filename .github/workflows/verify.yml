@@ -14,3 +14,5 @@ jobs:
         with:
           node-version: '22'
       - run: npm run check
+      - name: Check actual desktop and mobile layout in Chrome
+        run: node tests/layout.browser.mjs
