@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-layout="PENDING">
+<head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0}</style>
+<script>
+function checkLayout(frame){
+ const doc=frame.contentDocument;
+ const get=id=>doc.getElementById(id);
+ const rect=el=>el.getBoundingClientRect();
+ const pane=doc.querySelector(".instrument-pane");
+ const heading=pane.querySelector(".heading");
+ const button=get("add-instrument");
+ const toolbar=doc.querySelector(".notes-toolbar");
+ const notesHead=doc.querySelector(".notes-heading");
+ const controls=[...toolbar.querySelectorAll("button, select, input")];
+ const sidebar=rect(pane), add=rect(button), title=rect(heading);
+ const tools=rect(toolbar), noteHead=rect(notesHead);
+ const checks={
+  instrumentButtonInPane:add.left>=sidebar.left && add.right<=sidebar.right-7,
+  instrumentButtonBelowTitle:add.top>=title.bottom-1,
+  instrumentButtonNotTruncated:button.scrollWidth<=button.clientWidth+2,
+  notesToolbarBelowHeading:tools.top>=noteHead.bottom-1,
+  notesControlsFit:controls.every(el=>{const b=rect(el);return b.left>=tools.left-2&&b.right<=tools.right+2;}),
+  noPageHorizontalClipping:doc.documentElement.scrollWidth<=frame.clientWidth+3
+ };
+ document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
+ document.getElementById("result").textContent=JSON.stringify({
+  viewport:frame.clientWidth,
+  sidebar:Math.round(sidebar.width),
+  addButton:Math.round(add.width),
+  checks
+ });
+}
+</script>
+</head>
+<body><iframe src="../index.html" title="Studio under test" onload="checkLayout(this)"></iframe><pre id="result" hidden></pre></body>
+</html>
