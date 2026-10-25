@@ -11,13 +11,16 @@ function svg(tag,attrs={}){
  for(const [key,value] of Object.entries(attrs))el.setAttribute(key,String(value));
  return el;
 }
-export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChange,onDelete){
+export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChange,onDelete,onHear){
  root.replaceChildren();
  root.hidden=!note;
  if(!note)return;
  const bend=note.bend||{shape:"straight",amount:2,rate:4};
  const caption=make("div",undefined,"expression-title");
  caption.append(make("strong","Bend · "+pitchLabel,"expression-note"));
+ const play=make("button","▶ Hear bend","expression-hear");
+ play.type="button";play.addEventListener("click",onHear);
+ caption.append(play);
  const clear=make("button","Delete note","expression-delete");
  clear.type="button";clear.addEventListener("click",onDelete);
  caption.append(clear);
