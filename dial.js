@@ -3,6 +3,7 @@
 
 const labelHelp=Object.freeze({
  "bend shape":"scoop into the note, fall off it, or wobble around",
+ "shape":"choose how the pitch gets there",
  "bend amount":"a tiny pitch dip or a full octave yowl",
  "amount":"a tiny pitch dip or a full octave yowl",
  "wave speed":"how fast the pitch goes wee-woo-wee-woo",
@@ -61,21 +62,43 @@ export function helpForLabel(label){
   : "");
 }
 // Help belongs to the text alone; not the interactive knob or select.
+const helpDocuments=new WeakSet();
+function installHelpDismissal(){
+ if(typeof document==="undefined"||helpDocuments.has(document))return;
+ helpDocuments.add(document);
+ document.addEventListener("pointerdown",event=>{
+  if(event.target.closest?.(".control-help,.unit-help"))return;
+  document.querySelectorAll(".control-help.help-open,.unit-help.help-open")
+   .forEach(item=>item.classList.remove("help-open"));
+ });
+}
 export function explainLabel(node,label,override){
+ installHelpDismissal();
  const help=override??helpForLabel(label);
  if(!help)return;
  node.classList.add("control-help");
  node.dataset.help=help;
- node.addEventListener("click",()=>{
+ node.addEventListener("click",event=>{
+  if(node.closest("label"))event.preventDefault();
   const expanded=node.classList.contains("help-open");
   document.querySelectorAll(".control-help.help-open").forEach(item=>item.classList.remove("help-open"));
   if(!expanded)node.classList.add("help-open");
  });
 }
 export function explainUnit(output,rendered){
+ installHelpDismissal();
  const text=String(rendered).toLowerCase();
  const match=/^(.*?)(\s*)(khz|hz|ms|ct|st|%|l|r|c)$/.exec(text);
- if(!match){output.textContent=text;return;}
+ if(!match){
+  const pan=/^(l|r) (\d+)$/.exec(text);
+  if(pan){
+   const unit=document.createElement("span");unit.className="unit-help";
+   unit.textContent=pan[1];unit.dataset.help=unitHelp[pan[1]];
+   unit.addEventListener("click",()=>unit.classList.toggle("help-open"));
+   output.replaceChildren(unit,document.createTextNode(" "+pan[2]));
+  }else output.textContent=text;
+  return;
+ }
  const [,prefix,space,abbreviation]=match;
  const unit=document.createElement("span");
  unit.className="unit-help";
@@ -114,12 +137,13 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
  const control=document.createElement("div");control.className="dial-field";
  const title=document.createElement("span");title.className="dial-label";
  const name=document.createElement("span");name.textContent=field.label.toLowerCase();title.append(name);
- explainLabel(name,field.label,field.help);
+ const explanation=field.disabled&&field.disabledReason?
+  field.disabledReason.toLowerCase().replace(/[.!]+$/,""):(field.help??helpForLabel(field.label));
+ explainLabel(name,field.label,explanation);
  const knob=document.createElement("div");knob.className="dial-knob";
  knob.tabIndex=field.disabled?-1:0;knob.setAttribute("role","slider");
  if(field.disabled){control.classList.add("dial-disabled");knob.setAttribute("aria-disabled","true");}
  knob.setAttribute("aria-label",field.label);
- const explanation=field.help??helpForLabel(field.label);
  if(explanation)knob.setAttribute("aria-description",explanation);
  knob.setAttribute("aria-valuemin",String(field.min));
  knob.setAttribute("aria-valuemax",String(field.max));
