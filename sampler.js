@@ -86,9 +86,28 @@ export function validateSamplerPatch(patch){
  }
  return errors;
 }
-export async function decodeSamples(context,score,cache){
+// Decode only samples that the current composition can actually trigger.
+// Multi-layer instruments can carry dozens of recordings in the portable file
+// without decoding all of their long natural tails into RAM on every Play.
+export function usedSampleIds(score){
+ const used=new Set();
+ for(const inst of score.instruments||[]){
+  if(inst.patch?.type!=="sample")continue;
+  const placed=new Set(inst.timeline.filter(Boolean));
+  for(const chunk of inst.chunks||[]){
+   if(!placed.has(chunk.id))continue;
+   for(const note of chunk.notes){
+    const zone=sampleForNote(inst.patch,note.pitch,note.velocity);
+    if(zone)used.add(zone.assetId);
+   }
+  }
+ }
+ return used;
+}
+export async function decodeSamples(context,score,cache,only=usedSampleIds(score)){
  const waiting=[];
  for(const asset of score.samples||[]) {
+  if(only && !only.has(asset.id))continue;
   if(cache.has(asset.id)){
    const prior=cache.get(asset.id);
    if(prior instanceof Promise)waiting.push(prior);
