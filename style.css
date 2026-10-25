@@ -626,7 +626,6 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .synth-fields:has(.dial-field){align-content:start}
 .sound-window-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
 .sound-window-actions button{min-width:32px}
-#sound-expand{display:none}
 #sound-toggle {border:1px solid var(--line);padding:5px 10px;min-width:55px}
 #sound-toggle[aria-expanded="true"]{color:var(--signal-cyan);border-color:var(--signal-cyan)}
 #sound-close{font-size:17px}
@@ -677,11 +676,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   overflow-y:auto;overscroll-behavior:contain;
  }
  .work.inspector-closed .sound-section {display:none}
- .work.inspector-compact .sound-section {max-height:min(260px,42dvh)}
- .work.inspector-compact .sound-section .controls,
- .work.inspector-compact .sound-section #synth-editor {display:none}
  .work.inspector-expanded .sound-section{height:min(84dvh,850px);max-height:calc(100dvh - 30px)}
- #sound-expand{display:inline-block}
  .sound-section .heading{position:sticky;top:0;z-index:2}
  .sound-section .sound-visualizer{padding:8px 12px}
  .sound-section .signal-scope-graph{height:100px}
@@ -699,7 +694,6 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .instrument-pane .heading{min-height:34px}
  .sound-section .sound-actions{gap:6px}
  .sound-window-actions{gap:4px}
- .work.inspector-compact .sound-section{max-height:min(260px,50dvh)}
  .example-list{grid-template-columns:1fr;max-height:68dvh}
  .example-card{min-height:105px;padding:12px}
 }
@@ -814,3 +808,8 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .rack-actions{position:relative;flex:none;align-self:center}
 .rack-actions summary{min-width:34px;min-height:40px;border:0}
 .rack-actions .entity-action-list{left:0;right:auto;min-width:176px}
+
+/* Inactive conditional modulation controls have explicit visual and input states. */
+.dial-disabled{opacity:.42}
+.dial-disabled .dial-knob{cursor:not-allowed}
+.sample-tone .synth-fields{padding-bottom:12px}

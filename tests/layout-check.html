@@ -38,12 +38,9 @@ async function checkLayout(frame){
  }else{
   checks.mobileInitiallyClosed=toggle.getAttribute("aria-expanded")==="false";
   toggle.click();
-  checks.mobileCompactOpens=getComputedStyle(sound).position==="fixed" &&
-   doc.querySelector(".work").classList.contains("inspector-compact");
-  get("sound-expand").click();
-  checks.mobileExpands=doc.querySelector(".work").classList.contains("inspector-expanded");
-  get("sound-expand").click();
-  checks.mobileCompacts=doc.querySelector(".work").classList.contains("inspector-compact");
+  checks.mobileExpandedOpens=getComputedStyle(sound).position==="fixed" &&
+   doc.querySelector(".work").classList.contains("inspector-expanded");
+  checks.mobileDialsVisible=getComputedStyle(get("synth-editor")).display!=="none";
   get("sound-close").click();
   checks.mobileCloses=doc.querySelector(".work").classList.contains("inspector-closed");
  }
