@@ -1,29 +1,26 @@
 import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, wav } from "./audio.js";
+import { play, audition, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
 import { renderPatchEditor } from "./instrumentUI.js";
+import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
+import { loadLibrarySample, makeSampleAsset, MAX_SCORE_BYTES } from "./sampler.js";
+import { renderSamplerEditor } from "./samplerUI.js";
+import { loadDraft, saveDraft } from "./storage.js";
 
 const $ = key => document.getElementById(key);
-const CACHE = "premidi-v3-draft";
+const CACHE = "premidi-v4-draft";
 const SAVED_SOUNDS = "premidi-user-sounds-v1";
-const cached = (() => {
- try { return parse(localStorage.getItem(CACHE) || ""); } catch {}
- // Recover music written only in this browser before patches existed.
- // This is not a legacy .premidi file importer.
+// Recover the browser's own previous synth-only draft in place. Old exported
+// formats deliberately aren't supported; this does not change file parsing.
+const cached=(()=>{
+ try {return parse(localStorage.getItem(CACHE)||"");}catch{}
  try {
-  const previous=JSON.parse(localStorage.getItem("premidi-v2-draft") || "null");
-  if(previous?.version!==2 || !Array.isArray(previous.instruments))return null;
-  for(const inst of previous.instruments) {
-   const patch=makePatch();
-   if(["sine","triangle","square","sawtooth"].includes(inst.waveform))patch.oscillators[0].wave=inst.waveform;
-   if(Number.isFinite(inst.attack))patch.envelope.attack=Math.min(3,Math.max(0,inst.attack));
-   if(Number.isFinite(inst.release))patch.envelope.release=Math.min(4,Math.max(.01,inst.release));
-   inst.patch=patch;
-   delete inst.waveform;delete inst.attack;delete inst.release;
-  }
-  previous.version=3;
+  const previous=JSON.parse(localStorage.getItem("premidi-v3-draft")||"null");
+  if(previous?.version!==3||!Array.isArray(previous.instruments))return null;
+  previous.version=4;previous.samples=[];
+  for(const inst of previous.instruments)inst.patch.type="synth";
   return validate(previous).length?null:previous;
  }catch{return null;}
 })();
@@ -66,12 +63,16 @@ function message(text, error = false) {
  $("status").className = error ? "error" : "ok";
 }
 function store() {
- try {
-  localStorage.setItem(CACHE, JSON.stringify(score));
-  message("Saved locally");
- } catch {
-  message("Browser storage unavailable. Use Save .premidi.", true);
- }
+ const current=score;
+ void saveDraft(current).then(()=>message("Saved locally")).catch(()=>{
+  // For constrained private-browser modes, small synth-only scores still fit.
+  try {
+   const json=JSON.stringify(current);
+   if(json.length>800000)throw Error("large draft");
+   localStorage.setItem(CACHE,json);
+   message("Saved locally (limited browser storage)");
+  }catch{message("Browser storage unavailable. Export .premidi to save your work.",true);}
+ });
 }
 function closePicker() {
  if (picker) picker.remove();
@@ -352,7 +353,7 @@ function renderNotes() {
       id:id(), pitch, start:step,
       duration:Math.min(Number($("length").value),16-step), velocity:0.8
      });
-    }) && !existing && !playback && !pendingPlay) void audition(targetInst,pitch).catch(() => {});
+    }) && !existing && !playback && !pendingPlay) void audition(targetInst,pitch,score).catch(() => {});
    }, "note" + (step % 4 === 0 ? " beat" : ""));
    cells.push(cell);
 
@@ -487,7 +488,7 @@ $("file").addEventListener("change", async event => {
  const file = event.currentTarget.files?.[0];
  if (!file) return;
  try {
-  if (file.size > 1_000_000) throw Error("File exceeds 1 MB.");
+  if (file.size > MAX_SCORE_BYTES) throw Error("File exceeds 15 MB.");
   const next = parse(await file.text());
   if (confirm("Open " + next.title + "? This replaces the browser draft.")) {
    resetTo(next);
@@ -684,4 +685,9 @@ document.addEventListener("keydown", event => {
  }
 });
 render();
-if (cached) message("Local draft restored");
+if (cached) message("Local synth draft restored");
+void loadDraft().then(raw=>{
+ if(!raw || history.length || future.length)return;
+ try {const restored=parse(raw);resetTo(restored);message("Browser draft restored");}
+ catch(error){console.warn("Draft could not be restored",error);}
+}).catch(()=>{});
