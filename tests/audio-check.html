@@ -11,14 +11,15 @@ const result=document.getElementById("results");
 document.documentElement.dataset.audio="RUNNING";
 result.textContent="Audio module initialized";
 try {
- const names=["glass-keys","sub-current","static-snare","violet-pad","real-piano","nylon-finger","nylon-guitar","steel-guitar","acoustic-kick","wood-recorder"];
+ const names=["glass-keys","sub-current","static-snare","violet-pad","glass-portamento","midnight-theremin","feedback-cry","real-piano","nylon-finger","nylon-guitar","steel-guitar","acoustic-kick","wood-recorder"];
  const fingerprints=[];
  for(const name of names) {
   const score=create();
   score.bars=2;
   const inst=score.instruments[0];
   const chunk=inst.chunks[0];
-  chunk.notes=[{id:"test-note",pitch:name==="sub-current"?48:60,start:0,duration:6,velocity:1}];
+  chunk.notes=[{id:"test-note",pitch:name==="sub-current"?48:60,start:0,duration:12,velocity:1,
+   bend:name==="feedback-cry"?{shape:"wail",amount:4,rate:4}:undefined}];
   const sampled=SAMPLE_LIBRARY.find(x=>x.id===name);
   if(sampled){
    score.samples=await Promise.all(sampled.assets.map(loadLibrarySample));
