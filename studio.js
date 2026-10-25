@@ -712,33 +712,69 @@ $("bars").addEventListener("change", event => modify(() => {
 $("add-instrument").addEventListener("click",()=>openLibrary("add"));
 $("change-sound").addEventListener("click",()=>openLibrary("replace"));
 $("close-library").addEventListener("click",()=>$("instrument-dialog").close());
+function addAuthoredSample(asset,options={},mode="add"){
+ const {name=asset.name,root=60,followPitch=true}=options;
+ if(mode==="add"&&score.instruments.length>=12){
+  message("The composition supports up to 12 instruments.",true);return false;
+ }
+ const patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root}],
+  followPitch,transpose:0,gain:.9,attack:.005,release:.17,pan:0,
+  movement:{rate:5,depth:0,delay:0,glide:0,glideTime:.18,tremolo:0,tremoloRate:5,tone:0,toneRate:2},
+  bend:{shape:"straight",amount:2,rate:4}};
+ const ok=modify(()=>{
+  score.samples.push(asset);
+  if(mode==="add"){
+   const inst=makeInstrument(score.instruments.length+1,score.bars);
+   inst.name=name.slice(0,60);inst.patch=patch;
+   score.instruments.push(inst);
+   selectedInstrumentId=inst.id;
+   selectedSlot={instrumentId:inst.id,bar:0};
+   selectedChunks.set(inst.id,inst.chunks[0].id);
+  }else{
+   instrument().patch=patch;
+   instrument().name=name.slice(0,60);
+  }
+ });
+ if(ok){
+  if($("instrument-dialog").open)$("instrument-dialog").close();
+  if(playback)void primeSamples(score).catch(error=>message(error.message,true));
+ }
+ return ok;
+}
+let recordingMode="add";
+const recorder=installMicrophoneRecorder({
+ get:$,
+ onUse:({wav,name,root,followPitch})=>{
+  try{
+   const asset=makeSampleAsset("recorded-"+id(),name,"audio/wav",wav,
+    "Recorded by author in pre-midi");
+   const ok=addAuthoredSample(asset,{name,root,followPitch},recordingMode);
+   if(ok)message("Recorded "+name+". Export to get its separate WAV asset.");
+   return ok;
+  }catch(error){message("Could not use recording: "+error.message,true);return false;}
+ }
+});
+function openRecorder(mode="add"){
+ if(mode==="add"&&score.instruments.length>=12)
+  return message("The composition supports up to 12 instruments.",true);
+ recordingMode=mode;
+ if($("instrument-dialog").open)$("instrument-dialog").close();
+ recorder.open();
+}
+$("record-sound").addEventListener("click",()=>openRecorder("add"));
 $("sample-file").addEventListener("change",async event=>{
  const file=event.currentTarget.files?.[0];
  if(!file)return;
- try {
+ try{
   if(file.size>1_000_000)throw Error("Sample must be smaller than 1 MB.");
   const ext=file.name.split(".").pop()?.toLowerCase();
   const mime=ext==="wav"?"audio/wav":ext==="ogg"?"audio/ogg":ext==="mp3"?"audio/mpeg":"";
   const asset=makeSampleAsset("custom-"+id(),file.name,mime,
    new Uint8Array(await file.arrayBuffer()),"Imported by author: "+file.name);
-  const patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:60}],
-   followPitch:true,transpose:0,gain:.9,attack:.005,release:.17,pan:0};
   const mode=$("instrument-dialog").open?libraryMode:"replace";
-  const ok=modify(()=>{
-   score.samples.push(asset);
-   if(mode==="add"){
-    const inst=makeInstrument(score.instruments.length+1,score.bars);
-    inst.name=file.name.replace(/\.[^.]+$/,"").slice(0,60);
-    inst.patch=patch;score.instruments.push(inst);
-    selectedInstrumentId=inst.id;selectedSlot={instrumentId:inst.id,bar:0};
-   }else instrument().patch=patch;
-  });
-  if(ok){
-   if($("instrument-dialog").open)$("instrument-dialog").close();
-   if(playback)void primeSamples(score).catch(console.warn);
-   message("Imported "+file.name+" · included in your .premidi file.");
-  }
- }catch(error){message("Couldn't import audio: "+error.message,true);}
+  if(addAuthoredSample(asset,{name:file.name.replace(/\.[^.]+$/,""),followPitch:true},mode))
+   message("Imported "+file.name+". Export includes its separate audio file.");
+ }catch(error){message("Could not import audio: "+error.message,true);}
  finally{event.currentTarget.value="";}
 });
 $("save-sound").addEventListener("click",()=>{
