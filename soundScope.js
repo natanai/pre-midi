@@ -39,7 +39,10 @@ function synthWave(patch,progress){
  result/=a;
  // A simple preview of spectral smoothing, NOT a claim of sample-accurate
  // biquad output. Cutoff/drive/filter and motion all visibly affect the trace.
- const cutoff=clamp(Math.log((patch.filter.cutoff||2000)/50)/Math.log(280),0,1);
+ const sweep=patch.filter.sweep??0;
+ const cutoffHz=Math.min(14000,Math.max(50,patch.filter.cutoff*2**
+  (sweep*(1-clamp(t/(patch.filter.sweepTime??.2))))));
+ const cutoff=clamp(Math.log(cutoffHz/50)/Math.log(280),0,1);
  const harmonics=patch.filter.type==="lowpass"?.2+.8*cutoff:.5+.5*(1-cutoff);
  result=result*harmonics+(1-harmonics)*Math.sin(fundamental);
  const drive=patch.effects.drive||0;
