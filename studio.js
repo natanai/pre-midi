@@ -5,6 +5,7 @@ import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
+import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
 import { renderPatchEditor } from "./instrumentUI.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
@@ -240,8 +241,12 @@ function renderInstruments() {
  $("add-instrument").disabled = score.instruments.length >= 12;
 }
 function paintPlayhead() {
- for (const clip of $("arrangement").querySelectorAll(".clip")) {
-  clip.classList.toggle("playing", playBar >= 0 && Number(clip.dataset.bar) === playBar);
+ for(const clip of $("arrangement").querySelectorAll(".clip")){
+  const start=Number(clip.dataset.start),end=start+Number(clip.dataset.length);
+  const current=playBar*16;
+  clip.classList.toggle("playing",playBar>=0&&
+   (clip.classList.contains("phrase-clip")?
+    start<current+16&&end>current:Number(clip.dataset.bar)===playBar));
  }
  paintPianoPlayhead();
 }
@@ -259,47 +264,64 @@ function paintPianoPlayhead() {
  const x=pianoScrubberX(relative,grid.clientWidth,instrument().layout==="rack"?128:63);
  marker.style.transform = `translateX(${x}px)`;
 }
-function renderTimeline() {
+function renderTimeline(){
  const root=$("arrangement");
  root.replaceChildren();
  root.style.setProperty("--bars",score.bars);
  const heading=element("div",undefined,"arrangement-head");
  heading.append(element("span","INSTRUMENT"));
- for(let bar=0;bar<score.bars;bar++)heading.append(element("span",String(bar+1).padStart(2,"0")));
+ for(let bar=0;bar<score.bars;bar++)
+  heading.append(element("span",String(bar+1).padStart(2,"0")));
  root.append(heading);
  for(const inst of score.instruments){
-  const lane=element("div",undefined,"arrangement-row"+(selectedInstrumentId===inst.id?" active":""));
+  const lane=element("div",undefined,"arrangement-row"+
+   (selectedInstrumentId===inst.id?" active":""));
   lane.style.setProperty("--track-accent",signal(inst));
   lane.dataset.instrumentId=inst.id;
   lane.append(button(inst.name,()=>{closePicker();focus(inst);},"label instrument-lane-label"));
+  // Empty bar positions are insertion targets. Occupied positions leave a
+  // transparent grid cell; their ONE visible, clickable chunk is placed
+  // at its actual musical start instead of in a second visualization row.
   inst.timeline.forEach((chunkId,bar)=>{
-   const chunk=inst.chunks.find(candidate=>candidate.id===chunkId);
-   const timing=placementFor(inst,bar);
-   const active=selectedSlot.instrumentId===inst.id&&selectedSlot.bar===bar;
-   const label=chunk?.name??"+";
-   const suffix=chunk&&(timing.offset||timing.repeats>1)?
-    " · "+(timing.offset?"+"+timing.offset+"s ":"")+(timing.repeats>1?"×"+timing.repeats:""):"";
-   const clip=button(label+suffix,()=>openPicker(inst.id,bar,clip),
-    "clip"+(chunk?"":" empty")+(active?" selected":""));
-   clip.dataset.bar=String(bar);
-   clip.setAttribute("aria-label",inst.name+", bar "+(bar+1)+": "+(chunk?.name??"Empty")+
-    (chunk?", starts "+timing.offset+" steps into bar, plays "+timing.repeats+
-     " time(s), every "+timing.every+" steps":"")+". Choose chunk and timing");
+   if(chunkId){
+    const cell=element("span",undefined,"timeline-slot assigned");
+    cell.setAttribute("aria-hidden","true");
+    lane.append(cell);
+    return;
+   }
+   const empty=button("+",()=>openPicker(inst.id,bar,empty),"clip empty timeline-slot");
+   empty.dataset.bar=String(bar);
+   empty.setAttribute("aria-label",inst.name+", bar "+(bar+1)+": Empty. Choose chunk");
+   empty.setAttribute("aria-haspopup","dialog");
+   empty.setAttribute("aria-expanded","false");
+   lane.append(empty);
+  });
+  // The phrase itself is the editable surface. Each repeated instance opens
+  // the same placement controls; no decorative duplicate below the bar.
+  for(const phrase of phraseInstances(score,inst)){
+   const length=Math.min(phrase.length,score.bars*16-phrase.start);
+   const timing=placementFor(inst,phrase.bar);
+   const selected=selectedSlot.instrumentId===inst.id&&selectedSlot.bar===phrase.bar;
+   const repeat=phrase.index>0;
+   const label=phrase.chunk.name+(repeat?" ↻":"");
+   const clip=button(label,()=>openPicker(inst.id,phrase.bar,clip),
+    "clip phrase-clip"+(repeat?" repeated":"")+(selected?" selected":""));
+   clip.dataset.bar=String(phrase.bar);
+   clip.dataset.sourceBar=String(phrase.bar);
+   clip.dataset.repeat=String(phrase.index);
+   clip.dataset.start=String(phrase.start);
+   clip.dataset.length=String(length);
+   clip.style.setProperty("--phrase-start",String(phrase.start/(score.bars*16)));
+   clip.style.setProperty("--phrase-width",String(length/(score.bars*16)));
+   clip.setAttribute("aria-label",inst.name+": "+phrase.chunk.name+
+    (repeat?", repetition "+(phrase.index+1):"")+
+    ", starts at step "+(phrase.start+1)+" of the composition"+
+    ", source bar "+(phrase.bar+1)+", offset "+timing.offset+
+    ", phrase length "+timing.length+". Edit placement");
    clip.setAttribute("aria-haspopup","dialog");
    clip.setAttribute("aria-expanded","false");
    clip.title=clip.getAttribute("aria-label");
    lane.append(clip);
-  });
-  // The strips show real onsets below the directly editable bar slots.
-  for(const phrase of phraseInstances(score,inst)){
-   const length=Math.min(phrase.length,score.bars*16-phrase.start);
-   const segment=element("div",undefined,"phrase-segment"+(phrase.index?" repeated":""));
-   segment.dataset.sourceBar=String(phrase.bar);
-   segment.dataset.repeat=String(phrase.index);
-   segment.style.setProperty("--phrase-start",String(phrase.start/(score.bars*16)));
-   segment.style.setProperty("--phrase-width",String(length/(score.bars*16)));
-   segment.setAttribute("aria-hidden","true");
-   lane.append(segment);
   }
   root.append(lane);
  }
@@ -382,10 +404,11 @@ function openPicker(instId, bar, trigger) {
     });
     if(changed){
      const trigger=$("arrangement").querySelector(
-      '.arrangement-row[data-instrument-id="'+inst.id+'"] .clip[data-bar="'+bar+'"]');
+      '.arrangement-row[data-instrument-id="'+inst.id+'"] .phrase-clip[data-source-bar="'+bar+'"][data-repeat="0"]');
      if(trigger)openPicker(inst.id,bar,trigger);
     }
    });
+   attachNumberScrub(value);
    label.append(value);settings.append(label);
   }
   settings.append(element("p","Beat 3 = offset 8. A three-beat phrase has length 12 and repeats every 12 steps.","placement-tip"));
