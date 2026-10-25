@@ -637,7 +637,7 @@ $("file").addEventListener("change", async event => {
  const file = event.currentTarget.files?.[0];
  if (!file) return;
  try {
-  if (file.size > MAX_SCORE_BYTES) throw Error("File exceeds 15 MB.");
+  if (file.size > MAX_SCORE_BYTES) throw Error("File exceeds 1 MB.");
   const next = parse(await file.text());
   if (confirm("Open " + next.title + "? This replaces the browser draft.")) {
    resetTo(next);

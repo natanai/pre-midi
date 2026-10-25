@@ -1,29 +1,18 @@
 import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
+import {putAsset,getAsset,MAX_ASSET_BYTES} from "./assetRegistry.js";
 import { validateMovement, validateBend, movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
 // The only durable sample asset representation is the score's samples array.
 // Browser library URLs are staging inputs; .premidi files contain the audio bytes.
-export const MAX_SAMPLE_BYTES=1_000_000;
-export const MAX_SCORE_BYTES=15_000_000;
+export const MAX_SAMPLE_BYTES=MAX_ASSET_BYTES;
+export const MAX_SCORE_BYTES=1_000_000;
 const audioTypes={"audio/wav":"wav","audio/ogg":"ogg","audio/mpeg":"mp3"};
-export function bytesToBase64(bytes){
- let result="";
- for(let i=0;i<bytes.length;i+=8192)
-  result+=String.fromCharCode(...bytes.subarray(i,i+8192));
- return btoa(result);
-}
-export function base64ToBytes(base64){
- const binary=atob(base64),bytes=new Uint8Array(binary.length);
- for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
- return bytes;
-}
 export function validateSampleAsset(asset){
- if(!asset||typeof asset!=="object"||typeof asset.id!=="string"||!asset.id.trim()||asset.id.length>128)return "Sample needs an ID.";
+ if(!asset||typeof asset!=="object"||!/^[A-Za-z0-9_-]{1,128}$/.test(asset.id||""))return "Sample needs a safe ID.";
  if(typeof asset.name!=="string"||!asset.name.trim()||asset.name.length>100)return "Sample needs a name.";
  if(!(asset.mime in audioTypes))return "Unsupported audio format.";
- if(asset.data!==undefined && (typeof asset.data!=="string"||asset.data.length>Math.ceil(MAX_SAMPLE_BYTES*4/3)+8||
-  asset.data.length%4!==0||!/^[A-Za-z0-9+/]*={0,2}$/.test(asset.data)))return "Invalid sample bytes.";
- if(asset.path!==undefined && (typeof asset.path!=="string"||!/^assets\/[A-Za-z0-9_-]{1,128}\.(wav|ogg|mp3)$/.test(asset.path)))return "Invalid sample asset path.";
- if(asset.data===undefined && !asset.path)return "Sample needs its audio bytes or a portable asset reference.";
+ if(typeof asset.path!=="string"||asset.path!=="assets/"+asset.id+"."+audioTypes[asset.mime])
+  return "Sample must reference its canonical relative audio path.";
+ if(asset.data!==undefined)return "Audio bytes must be separate from .premidi.";
  if(typeof asset.source!=="string"||asset.source.length>500)return "Invalid sample provenance.";
  return null;
 }
@@ -40,9 +29,10 @@ export function makeSampleAsset(id,name,mime,bytes,source){
  if(!(normalized in audioTypes))throw Error("Supported sample formats: WAV, OGG, MP3.");
  if(bytes.byteLength>MAX_SAMPLE_BYTES)throw Error("Sample exceeds the 1 MB per-file limit.");
  detectAudio(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),normalized);
- const asset={id,name,mime:normalized,data:bytesToBase64(bytes),source};
+ const asset={id,name,mime:normalized,path:"assets/"+id+"."+audioTypes[normalized],source};
  const error=validateSampleAsset(asset);
  if(error)throw Error(error);
+ putAsset(id,bytes);
  return asset;
 }
 export async function loadLibrarySample(id) {
@@ -120,8 +110,8 @@ export async function decodeSamples(context,score,cache,only=usedSampleIds(score
    continue;
   }
   const task=(async()=>{
-   if(typeof asset.data!=="string")throw Error("Missing audio data for "+asset.name+". Import the complete .zip package.");
-   const bytes=base64ToBytes(asset.data);
+   const bytes=getAsset(asset.id);
+   if(!bytes)throw Error("Missing "+asset.path+". Open the .zip package containing the audio.");
    const buffer=await context.decodeAudioData(bytes.buffer.slice(0));
    cache.set(asset.id,buffer);
    return buffer;

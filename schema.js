@@ -1,7 +1,7 @@
 // pre-midi native score. This is the only file-format definition.
 // Pre-midi remains the source of truth; game compatibility is frozen separately.
 export const FORMAT = "pre-midi";
-export const VERSION = 4;
+export const VERSION = 5;
 import { makePatch, validatePatch } from "./synth.js";
 import {validateBend} from "./expression.js";
 import { validateSampleAsset, MAX_SCORE_BYTES } from "./sampler.js";
@@ -32,7 +32,7 @@ const within=(x,low,high)=>typeof x==="number"&&Number.isFinite(x)&&x>=low&&x<=h
 export function validate(doc) {
  const errors=[];
  if(!object(doc)||doc.format!==FORMAT||doc.version!==VERSION)
-  return ["Unsupported .premidi file. The current format is pre-midi v4."];
+  return ["Unsupported .premidi file. The current format is pre-midi v5."];
  if(!text(doc.id,128)||!text(doc.title,100))errors.push("Composition needs an ID and title.");
  if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
  if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
@@ -88,7 +88,7 @@ export function validate(doc) {
 }
 export function parse(raw) {
  if(typeof raw!=="string"||new TextEncoder().encode(raw).byteLength>MAX_SCORE_BYTES)
-  throw Error("Composition exceeds the 15 MB limit.");
+  throw Error("Composition exceeds the 1 MB limit.");
  const doc=JSON.parse(raw),issues=validate(doc);
  if(issues.length)throw Error(issues.join("\n"));
  return doc;
