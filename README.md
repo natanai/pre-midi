@@ -15,6 +15,31 @@ A local-first, standalone music studio for [pre-programmed](https://github.com/n
 - **Piano-roll playhead:** a thin marker moves across the selected chunk's notes in sync with the audio clock, and appears only when that chunk is actually scheduled on its instrument lane.
 - **Undo/redo**, browser autosave, native .premidi import/export, and offline WAV export are included.
 
+## Offsets, overlapping phrases and polymeter
+
+Every timeline bar still has a direct, reusable **chunk** assignment. Clicking a
+filled bar also opens three timing settings for **that placement only**:
+
+- **Offset in bar (steps)**: from 0–15 sixteenth-note steps. Choose 8 to begin
+  on beat three while other instruments continue from the bar's first beat.
+- **Repetitions**: how many times this chunk starts playing (1–16).
+- **Repeat every (steps)**: the distance between starts (1–64). Choose 12 for
+  a three-beat phrase against the shared four-beat bar grid, or 20 for five
+  beats. Each repetition uses the same editable chunk and sound.
+
+The slim colored strips **under** the bar slots show actual phrase starts
+and their repetitions, including the portion that extends into the next bar.
+Bar slots remain the accessible click targets. Another chunk can be assigned
+on a later bar while a previously offset/repeating phrase is still playing;
+both play, even on one instrument. Long notes can ring over a repeat.
+
+The studio's single event resolver drives live transport, the piano playhead,
+and offline WAV rendering. The saved score format is **v7**: older v5/v6
+compositions automatically migrate, preserving their original bar-aligned
+timing. v7 files with offset/repetition instructions require a v7-capable
+reader; compatibility with older pre-programmed engine exports remains
+marked *game parity pending*. No audio bytes are stored inside .premidi.
+
 ## Adaptive sequencer and sound racks
 
 | Current editor | Select a note sound | Select a hit sound |
@@ -111,7 +136,7 @@ playable demonstration. Five compositions use the normal editor, instruments,
 chunks, rack rows, movement and audio effects: Neon After Hours (dark cinematic
 electronics), Porchlight (acoustic folk), Floating Signals (slow ambient,
 16 bars), Broken Circuit (industrial synth), and Swaying Wire (expressive
-recorded guitar). These are real editable native v6 scores, not preview audio.
+recorded guitar). These are real editable native v7 scores, not preview audio.
 Loading a composition asks before replacing the browser draft; save any
 existing draft first if you wish to preserve it.
 
