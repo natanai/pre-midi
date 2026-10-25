@@ -26,6 +26,7 @@ test("library holds diverse original sample-free recipes with no shared editable
 test("shared instrument patch affects all of its chunk uses",()=>{
  const score=create(),inst=score.instruments[0],chunk=inst.chunks[0];
  inst.timeline=Array(score.bars).fill(chunk.id);
+ chunk.notes.push({id:id(),pitch:60,start:0,duration:4,velocity:.8});
  inst.patch=makePatch("acid-line");
  assert.equal(stepEvents(score,0)[0].instrument,inst);
  assert.equal(stepEvents(score,16)[0].instrument,inst);
@@ -43,6 +44,7 @@ test("reusable chunks and note editing still work independently of sound patches
  const chunk=makeChunk("Verse");
  chunk.notes.push({id:id(),pitch:71,start:0,duration:4,velocity:.8});
  inst.chunks.push(chunk);inst.timeline[1]=chunk.id;
+ inst.chunks[0].notes.push({id:id(),pitch:60,start:0,duration:3,velocity:.8});
  assert.equal(stepEvents(score,16)[0].note.pitch,71);
  assert.equal(stepEvents(score,0)[0].note.pitch,60);
  const other=makeInstrument(2,score.bars);other.patch=makePatch("pulse-kick");
@@ -52,4 +54,12 @@ test("reusable chunks and note editing still work independently of sound patches
 test("older exported schemas aren't silently interpreted as new synth definitions",()=>{
  const previous=clone(create());previous.version=3;
  assert.throws(()=>parse(JSON.stringify(previous)),/v4/);
+});
+
+test("fresh compositions have no arranged demo notes or looping opening",()=>{
+ const score=create();
+ assert.equal(score.instruments[0].chunks[0].notes.length,0);
+ assert.equal(score.instruments[0].timeline.filter(Boolean).length,1);
+ assert.equal(stepEvents(score,0).length,0);
+ assert.deepEqual(validate(score),[]);
 });
