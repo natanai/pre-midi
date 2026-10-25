@@ -149,8 +149,12 @@ uses three genuine sampled velocity layers; its patterns change across sections.
 Several 12-step phrases repeat against 16-step bars with offset entrances.
 A four-chord synth-pad progression, syncopated bass, two counter-melodies and
 an eight-sound percussion rack provide harmonic and rhythmic contrast.
-The example opens with fewer sounds, adds a full drum arrangement, reduces
-percussion before the final section, then ends with a different cadence.
+The opening is anchored by a two-bar triangle-key motif over E minor,
+with kick and a restrained hi-hat. The guitar answers in bars 3–4 using
+C-major-seventh and D-major chord tones; the brighter synth lead waits until
+the main rhythm section is established. The 12-step sampled guitar repeats
+begin in bar 5. Later sections add the full drum arrangement, reduce
+percussion before the ending, and close with a different cadence.
 All of this uses ordinary v7 `placements`, reusable chunks, sample zones and
 synth patches. The score contains references to separately packaged CC0 audio;
 there are no new schema fields. Native playback in pre-programmed still requires

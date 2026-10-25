@@ -63,18 +63,25 @@ test("guitar example develops four sections and retains native sample layering a
  assert.ok(guitar&&guitar.layout==="pitched");
  assert.equal(guitar.sounds[0].patch.preserveDynamics,true);
  assert.deepEqual(guitar.timeline.map(Boolean),[
-  true,false,false,false,true,false,false,false,
+  false,false,true,true,true,false,false,false,
   true,false,false,false,true,false,true,true
  ]);
- for(const bar of [0,4,8])assert.deepEqual(guitar.placements[bar],{
-  offset:bar===0?4:0,length:12,every:12,repeats:5
+ for(const bar of [4,8])assert.deepEqual(guitar.placements[bar],{
+  offset:0,length:12,every:12,repeats:5
  });
+ for(const bar of [0,1,2,3])assert.equal(guitar.placements[bar],null);
+ const barNotes=bar=>Array.from({length:16},(_,step)=>stepEvents(doc,bar*16+step))
+  .flat().filter(e=>e.instrument.id===guitar.id).map(e=>e.note.pitch);
+ assert.deepEqual(barNotes(0),[],"The opening motif belongs to the keys");
+ assert.deepEqual(barNotes(1),[],"Repeat the motif before introducing guitar");
+ assert.deepEqual(barNotes(2),[64,67,71],"C-major-seventh guitar answer");
+ assert.deepEqual(barNotes(3),[66,69,74],"D-major guitar answer");
  assert.deepEqual(guitar.placements[12],{offset:0,length:12,every:12,repeats:3});
  const noteEvents=Array.from({length:256},(_,step)=>stepEvents(doc,step)
   .filter(e=>e.instrument.id===guitar.id));
  assert.ok(noteEvents.every(events=>events.length<=1),"No artificial six-string chord stacks");
- for(const onset of [4,16,28,40,52,64,76,88,100,112,128,140,152,164,176,192,204,216,224,240])
-  assert.ok(noteEvents[onset].length,"Offbeat/repeated phrase or ending missing at "+onset);
+ for(const onset of [32,48,64,76,88,100,112,128,140,152,164,176,192,204,216,224,240])
+  assert.ok(noteEvents[onset].length,"Intro, phrase or ending missing at "+onset);
  assert.equal(noteEvents[0].length,0,"Initial guitar entry is delayed");
  assert.ok(new Set(guitar.chunks.flatMap(c=>c.notes.map(n=>n.pitch))).size>=6,
   "Lead should have recognizable melodic variation rather than one four-note loop");
@@ -91,8 +98,22 @@ test("guitar example develops four sections and retains native sample layering a
  assert.ok(hitsAt(14)>hitsAt(12)*4,"Final return must restore percussion");
  const pad=doc.instruments.find(i=>i.sounds[0].patch.presetId==="tape-strings");
  assert.equal(new Set(pad.timeline).size,5,"Use a real changing chord progression");
- const melodic=doc.instruments.find(i=>i.sounds[0].patch.presetId==="harmonic-keys");
+ const melodic=doc.instruments.find(i=>i.sounds[0].patch.presetId==="felt-electric");
  assert.ok(melodic.timeline.some(x=>x===null)&&melodic.timeline.some(Boolean));
+ const keysAt=bar=>Array.from({length:16},(_,step)=>stepEvents(doc,bar*16+step))
+  .flat().filter(e=>e.instrument.id===melodic.id).map(e=>e.note.pitch);
+ assert.deepEqual(keysAt(0),[76,71,67,71]);
+ assert.deepEqual(keysAt(1),[67,71,76,74]);
+ assert.deepEqual(keysAt(2),[],"Guitar replies without key overlap");
+ assert.deepEqual(keysAt(3),[],"Second guitar reply has room");
+ assert.equal(pad.timeline[0],null,"Do not layer a saw pad underneath the initial motif");
+ const atBar=bar=>Array.from({length:16},(_,step)=>stepEvents(doc,bar*16+step)).flat();
+ const rack=doc.instruments.find(i=>i.layout==="rack");
+ assert.equal(atBar(0).filter(e=>e.instrument.id===rack.id).length,2,
+  "Opening uses only kick and one low-level closed hat");
+ assert.equal(atBar(1).filter(e=>e.instrument.id===rack.id).length,4);
+ assert.equal(atBar(2).filter(e=>e.instrument.id===rack.id).length,8);
+ assert.ok(atBar(4).filter(e=>e.instrument.id===rack.id).length>=14);
  assert.ok(doc.instruments.some(i=>i.chunks.some(c=>c.notes.some(n=>n.bend))));
  assert.deepEqual(new Set(doc.samples.map(a=>a.id)),usedSampleIds(doc));
  assert.deepEqual(validate(doc),[]);
