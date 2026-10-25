@@ -31,6 +31,24 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
  follow.append(box,document.createTextNode("Follow note pitch"));
  fields.append(follow);
  root.append(fields);
+ const mapping=document.createElement("div");mapping.className="sample-zones";
+ const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+ patch.zones.forEach((zone,index)=>{
+  const label=document.createElement("label");label.className="synth-field";
+  const name=document.createElement("span");name.textContent="Sample "+(index+1)+" · recorded pitch";
+  const select=document.createElement("select");
+  select.setAttribute("aria-label","Sample "+(index+1)+" recorded note");
+  for(let midi=36;midi<=96;midi++){
+   const option=document.createElement("option");
+   option.value=String(midi);
+   option.textContent=notes[midi%12]+(Math.floor(midi/12)-1);
+   select.append(option);
+  }
+  select.value=String(zone.root);
+  select.addEventListener("change",()=>onChange(["zones",index,"root"],Number(select.value)));
+  label.append(name,select);mapping.append(label);
+ });
+ root.append(mapping);
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
  root.append(action);
