@@ -46,7 +46,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
  root.append(fields);
  const mapping=document.createElement("div");mapping.className="sample-zones";
  const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
- patch.zones.forEach((zone,index)=>{
+ const populateMapping=()=>patch.zones.forEach((zone,index)=>{
   const label=document.createElement("label");label.className="synth-field";
   const name=document.createElement("span");name.textContent="Sample "+(index+1)+" · recorded pitch";
   const select=document.createElement("select");
@@ -69,8 +69,14 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
   summary.textContent="Recorded notes · "+uniquePitches.size+" pitches"+(
    dynamicLayers.size>1?" · "+dynamicLayers.size+" dynamics":"")+" · Edit mapping";
   details.append(summary,mapping);
+  details.addEventListener("toggle",()=>{
+   if(details.open && !mapping.childElementCount)populateMapping();
+  });
   root.append(details);
- } else root.append(mapping);
+ } else {
+  populateMapping();
+  root.append(mapping);
+ }
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
  root.append(action);
