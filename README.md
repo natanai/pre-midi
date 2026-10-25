@@ -8,6 +8,7 @@ A local-first, standalone music studio for [pre-programmed](https://github.com/n
 - **Instruments** own complete, editable sound patches. Their settings affect every chunk belonging to that instrument.
 - **Timeline** shows the complete composition, one lane per instrument. Click any bar to choose that instrument's chunk, leave it empty, or create and assign a new chunk immediately.
 - **Chunks** are reusable one-bar groups of notes. Selecting one opens its notes; reuse the same chunk in multiple bars without making copies.
+- **Note strength** can be Soft, Medium or Firm when placing notes; Shift-click an existing note to cycle its strength. On guitars, this chooses an actual recorded playing style, rather than only changing loudness.
 - **Notes** are placed in the piano roll. Drag the visible right-edge handle to lengthen or shorten a note in sixteenth-note steps. Alt+Left/Right on a note also changes its length. The “New note length” control only determines the default for notes you place next.
 - **Play** stays active when you edit notes, choose chunks, change instrument settings, or undo/redo. The audio scheduler reads the live score.
 - **Live editing is silent:** while the loop plays, clicking to add a note does not audition it separately. When stopped, note placement previews the pitch.
@@ -16,15 +17,15 @@ A local-first, standalone music studio for [pre-programmed](https://github.com/n
 
 ## Development approach
 
-Pre-midi is now the primary development surface for the music studio. We are refining its user experience, native synthesizer and composition model **without updating pre-programmed after every studio iteration**. The current v3 synthesizer format **is not yet compatible with pre-programmed's v2 Media importer**. We are intentionally developing the studio first and will synchronize the engine at a planned parity milestone.
+Pre-midi is now the primary development surface for the music studio. We are refining its user experience, native synthesizer and composition model **without updating pre-programmed after every studio iteration**. The experimental v4 instrument format **is not yet compatible with pre-programmed's v2 Media importer**. We are intentionally developing the studio first and will synchronize the engine at a planned parity milestone.
 
 The [development direction](docs/development-direction.md) records that boundary, the modular instrument/synthesizer architecture, and how we will bring pre-programmed back into full parity when the studio is mature.
 
 ## Instruments, recordings and samples
 
 **Add instrument** opens one combined library. It includes the 17 original
-procedural synthesizer recipes *and* 11 sampled instrument choices using 14
-verified CC0 recordings: piano, nylon guitar, steel guitar, recorder, whistle,
+procedural synthesizer recipes *and* 13 sampled instrument choices using 122
+verified CC0 recordings: piano, several acoustic guitars, recorder, whistle,
 kick, snare, clap, closed/open hi-hat and bongo. Preview one, then Add; use
 **Browse sounds** to replace an existing instrument's sound without changing
 its notes or timeline chunks.
@@ -36,10 +37,17 @@ volume, envelope, transpose, stereo pan, pitch-follow mode, and audio source.
 Import your own WAV, OGG or MP3 (up to 1 MB per sample), or replace a sample
 directly through the Sound panel.
 
-Piano and guitars have two sampled root-note zones, with nearby pitches played
-at adjusted rates. Other recordings currently use one key zone. This is a
-starter recorded library, not a full multisampled orchestra or a SoundFont
-player.
+**Acoustic guitar** now uses 18 strategically recorded pitches across all six strings,
+from E2 to B5, with up to three *distinct recorded dynamic takes* per pitch. Choose
+Nylon Fingerstyle, Nylon Picked, Steel Acoustic or Steel Strum. Picked and steel
+recordings switch actual soft/firm attacks based on each note's Strength.
+The Strum control brushes chord notes from bass to treble or in reverse, and
+recorded notes naturally ring out instead of stopping abruptly. More extensive
+sample mapping is available under a collapsible editor.
+
+Piano still uses two sampled root-note zones; other recordings generally use
+one. The acoustic guitars are now multisampled, though they are not a full
+sample-by-sample 375-take instrument or SFZ/SoundFont player.
 
 All recordings in the supplied library are CC0 1.0 and reproducibly fetched
 into the GitHub Pages artifact with pinned Git checksums. Their specific
@@ -64,7 +72,7 @@ when pre-midi's instrument and score formats settle. No v2 or v3 file import
 conversion layer is added; existing browser-local v3 synth drafts can recover
 into the new draft format.
 
-Still to come: SoundFont/SFZ import, richer multisampling and velocity layers,
+Still to come: SoundFont/SFZ import, additional acoustic articulations,
 deeper modulation/effect routing, automation, FLAC, General MIDI, variable
 timeline lengths and advanced mixing. Current timeline limits are 4/4, 16 bars,
 12 instruments and up to 32 one-bar chunks per instrument.

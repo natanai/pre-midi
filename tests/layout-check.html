@@ -49,6 +49,18 @@ async function checkLayout(frame){
   get("patch-label").textContent.includes("Recorded Piano") && !library.open;
  checks.sampleControlsReachable=!!doc.querySelector("#synth-editor .sample-zones") &&
   !!doc.querySelector("#synth-editor .sample-replace-action");
+ if(frame.clientWidth>=1400) {
+  get("add-instrument").click();
+  const steel=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Steel Acoustic"));
+  steel?.querySelector(".preset-choose")?.click();
+  for(let attempt=0;attempt<160&&doc.querySelectorAll(".instrument-card").length!==4;attempt++)
+   await new Promise(resolve=>setTimeout(resolve,25));
+  checks.guitarPresetAccessible=doc.querySelectorAll(".instrument-card").length===4 &&
+   get("patch-label").textContent.includes("Steel Acoustic");
+  checks.guitarMappingCollapsible=!!doc.querySelector("#synth-editor .sample-map-details") &&
+   !!doc.querySelector("#synth-editor input[aria-label='Chord strum milliseconds per note']");
+ }
+
  
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({
