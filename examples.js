@@ -9,6 +9,7 @@ const N=(pitch,start,duration=2,velocity=.8,bend)=>[pitch,start,duration,velocit
 const line=(pitches,steps=4,duration=3,velocity=.8)=>
  pitches.map((pitch,index)=>N(pitch,index*steps,duration,velocity));
 const hits=(steps,pitch=60,velocity=.85)=>steps.map(start=>N(pitch,start,1,velocity));
+const H=(row,start,velocity=.8)=>[row,start,velocity];
 const chord=(pitches,start,length=8,velocity=.7)=>pitches.map(pitch=>N(pitch,start,length,velocity));
 const piece=(preset,pattern,timeline,volume=.68,options={})=>({
  preset,pattern,timeline,volume,...options
