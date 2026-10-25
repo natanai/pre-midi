@@ -22,6 +22,19 @@ async function checkLayout(frame){
   notesControlsFit:controls.every(el=>{const b=rect(el);return b.left>=tools.left-2&&b.right<=tools.right+2;}),
   noPageHorizontalClipping:doc.documentElement.scrollWidth<=frame.clientWidth+3
  };
+ // Shape a real authored note, without introducing an alternate editor.
+ const first=[...doc.querySelectorAll("#piano .note")].find(el=>
+  el.getAttribute("aria-label")?.includes("C4, step 1"));
+ checks.existingNoteReachable=!!first;
+ first?.click();
+ checks.noteExpressionOpens=!!doc.querySelector("#note-expression:not([hidden]) select[aria-label='Held note bend shape']");
+ const shape=doc.querySelector("#note-expression select[aria-label='Held note bend shape']");
+ if(shape){
+  shape.value="wail";
+  shape.dispatchEvent(new Event("change",{bubbles:true}));
+ }
+ checks.noteBendApplied=!!doc.querySelector("#piano .note.bent.selected");
+ checks.noteShapePreview=!!doc.querySelector("#note-expression svg polyline[points]");
  // Exercise the real preset browser and editor, not a mock copy.
  button.click();
  const library=get("instrument-dialog");

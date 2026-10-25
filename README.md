@@ -15,6 +15,40 @@ A local-first, standalone music studio for [pre-programmed](https://github.com/n
 - **Piano-roll playhead:** a thin marker moves across the selected chunk's notes in sync with the audio clock, and appears only when that chunk is actually scheduled on its instrument lane.
 - **Undo/redo**, browser autosave, native .premidi import/export, and offline WAV export are included.
 
+## Singing notes, bends and wave modulation
+
+The **Expressive** sound category adds six original sustained synthesizers
+and three recorded guitar interpretations, including **Lap Steel Cry**,
+**Steel Guitar Haunt**, **Nylon String Sigh**, **Midnight Theremin**,
+**Feedback Cry**, **Glass Portamento**, **Broken Siren**, **Pulse Vowel**
+and **Orbiting Wire**. These are editable, real instrument patches, not audio
+demonstrations or additional runtime systems.
+
+In the piano roll, **click a held note to select it**. A small inline
+**Bend** editor appears directly below the note grid. Choose Straight,
+Scoop up, Bend up, Fall away, Dip and return, Cry/Wail or Wave/Wobble.
+Set the bend amount (in semitones); Wave also offers speed. The preview
+curve shows the resulting movement. **Hear bend** plays the complete
+selected note. Clicking an occupied note now selects it rather than deleting;
+use **Delete note**, Delete/Backspace while a selected note has focus, or
+Ctrl/Command-click a note to remove it. Shift-click still cycles strength.
+Dragging the note's right edge still resizes it.
+
+The instrument itself also has movement controls. Synthesizers can have
+glide-in, delayed vibrato, volume pulse (tremolo), and tone/filter waves;
+sampled instruments have glide-in, delayed vibrato and volume pulse. An
+instrument's movement applies to all notes. A note's bend belongs to that
+particular authored note. The two add together, so notes in one instrument
+can have individually different expression without duplicate instruments.
+
+The existing **.premidi v4** schema carries optional note bend data and
+optional extra instrument movement parameters. Both live playback and offline
+WAV rendering use the same audio scheduling implementation, retaining
+portable first-class control over the music. This release does not require
+another file conversion format or pre-programmed changes.
+
+
+
 ## Development approach
 
 Pre-midi is now the primary development surface for the music studio. We are refining its user experience, native synthesizer and composition model **without updating pre-programmed after every studio iteration**. The experimental v4 instrument format **is not yet compatible with pre-programmed's v2 Media importer**. We are intentionally developing the studio first and will synchronize the engine at a planned parity milestone.
@@ -72,7 +106,7 @@ when pre-midi's instrument and score formats settle. No v2 or v3 file import
 conversion layer is added; existing browser-local v3 synth drafts can recover
 into the new draft format.
 
-Still to come: SoundFont/SFZ import, additional acoustic articulations,
+Still to come: freehand bend-curve drawing, multi-bar held notes, SoundFont/SFZ import, additional acoustic articulations,
 deeper modulation/effect routing, automation, FLAC, General MIDI, variable
 timeline lengths and advanced mixing. Current timeline limits are 4/4, 16 bars,
 12 instruments and up to 32 one-bar chunks per instrument.

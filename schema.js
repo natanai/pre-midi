@@ -3,6 +3,7 @@
 export const FORMAT = "pre-midi";
 export const VERSION = 4;
 import { makePatch, validatePatch } from "./synth.js";
+import {validateBend} from "./expression.js";
 import { validateSampleAsset, MAX_SCORE_BYTES } from "./sampler.js";
 export const id = () => globalThis.crypto?.randomUUID?.() || ("id-" + Date.now() + "-" + Math.random().toString(36).slice(2));
 export const clone = x => JSON.parse(JSON.stringify(x));
@@ -78,6 +79,7 @@ export function validate(doc) {
        !Number.isInteger(note.duration)||!within(note.duration,1,16-note.start)||
        !within(note.velocity,0,1)) errors.push("Invalid chunk note.");
     else notes.add(note.id);
+    errors.push(...validateBend(note?.bend));
    }
   }
   if(!Array.isArray(instrument.timeline)||instrument.timeline.length!==doc.bars||
