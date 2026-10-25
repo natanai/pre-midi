@@ -113,7 +113,7 @@ export function createSignalDisplay(root,patch,score,accent){
   upper.setAttribute("d",pathFrom(waves,720,80,48,34/max));
   const pitch=Array.from({length:n},(_,i)=>{
    const sec=i/(n-1)*2.2;
-   return pitchCents(null,m,sec,2.2)/100+
+   return pitchCents({bend:nextPatch.bend},m,sec,2.2)/100+
     (m.depth||0)/100*Math.sin(2*Math.PI*m.rate*sec)*clamp((sec-m.delay)/.15);
   });
   lower.setAttribute("d",pathFrom(pitch,720,80,123,Math.min(12,20/Math.max(1,...pitch.map(Math.abs)))));
