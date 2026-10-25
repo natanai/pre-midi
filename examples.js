@@ -21,7 +21,7 @@ export const EXAMPLES=[
   // third phrase, then a breakdown and cadence. One sampled steel-guitar note
   // at a time; sound and time data use the public v7 score unchanged.
   id:"porchlight",name:"Guitar Velocity and Polymeter",tag:"SAMPLES / PHRASE REPETITION",
-  description:"Guitar velocity layers, three-beat phrases against 4/4 drums, melodic variations, and section changes.",
+  description:"Recorded guitar velocity layers, three-beat phrases against 4/4 drums, melodic variations, and section changes.",
   bpm:112,bars:16,accent:"#ffc266",
   voices:[
    piece("steel-guitar",{
