@@ -151,14 +151,16 @@ function renderBar(ctx,out,score,bar,start) {
  }
 }
 let context;
-export async function audition(instrument,pitch,score=null) {
+export async function audition(instrument,pitch,score=null,expression=null) {
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  if(score){
-  const zone=instrument.patch?.type==="sample"?sampleForNote(instrument.patch,pitch,.8):null;
+  const zone=instrument.patch?.type==="sample"?sampleForNote(instrument.patch,pitch,expression?.velocity??.8):null;
   await decodeSamples(context,score,bufferCache(context),new Set(zone?[zone.assetId]:[]));
  }
- soundNote(context,context.destination,instrument,{pitch,velocity:.8},context.currentTime+.01,.24,score);
+ soundNote(context,context.destination,instrument,
+  {pitch,velocity:expression?.velocity??.8,bend:expression?.bend},
+  context.currentTime+.01,expression?.duration??.24,score);
 }
 export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{}}={}) {
  context||=new AudioContext();
