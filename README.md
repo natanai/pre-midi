@@ -30,11 +30,13 @@ filled bar also opens three timing settings for **that placement only**:
   a three-beat phrase against the shared four-beat bar grid, or 20 for five
   beats. Each repetition uses the same editable chunk and sound.
 
-The slim colored strips **under** the bar slots show actual phrase starts
-and their repetitions, including the portion that extends into the next bar.
-Bar slots remain the accessible click targets. Another chunk can be assigned
-on a later bar while a previously offset/repeating phrase is still playing;
-both play, even on one instrument. Long notes can ring over a repeat.
+There is one timeline row per instrument. The **colored chunks themselves**
+are clickable and positioned at their actual starts, including repetitions
+and extensions into the next bar. The empty `+` positions still let you add
+chunks. Clicking any visible occurrence edits its original placement.
+The four timing numbers support vertical pointer dragging, as well as normal
+click-to-type and arrow-key adjustment. A later chunk can overlap an earlier
+phrase, including on the same instrument; long notes can ring over a repeat.
 
 The studio's single event resolver drives live transport, the piano playhead,
 and offline WAV rendering. The saved score format is **v7**: older v5/v6
