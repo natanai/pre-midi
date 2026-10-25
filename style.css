@@ -899,3 +899,9 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .layout-actions button::after {content:"]";color:var(--muted)}
 /* these controls are already available in the per-row action menu */
 .rack-sound-actions :is(#move-sound-up,#move-sound-down,#duplicate-sound,#remove-sound) {display:none}
+
+/* Typography is lowercase throughout the chrome. Musical note names and authored text retain their literal case. */
+.app, dialog {text-transform:lowercase}
+:is(#piano, #note-expression, #sound-reference, #mic-root, #import-root) {text-transform:none}
+.app :is(input:not([type]),input[type="text"]) {text-transform:none}
+.synth-field > .control-help {justify-self:start;width:max-content;max-width:100%}
