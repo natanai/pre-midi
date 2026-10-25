@@ -164,7 +164,7 @@ export async function buildExample(exampleId,loadAsset){
   const instrument=makeInstrument(score.instruments.length+1,example.bars);
   instrument.name=sample?.name||def.preset.replaceAll("-"," ");
   instrument.volume=def.volume;
-  instrument.patch=sample?makeSamplerPatch(sample):makePatch(def.preset);
+  instrument.sounds[0].patch=sample?makeSamplerPatch(sample):makePatch(def.preset);
   instrument.chunks=Object.entries(def.pattern).map(([name,notes])=>({
    ...makeChunk(name),notes:notes.map(asNote)
   }));
@@ -178,11 +178,11 @@ export async function buildExample(exampleId,loadAsset){
    for(const chunk of instrument.chunks){
     if(!assigned.has(chunk.id))continue;
     for(const note of chunk.notes){
-     const zone=sampleForNote(instrument.patch,note.pitch,note.velocity);
+     const zone=sampleForNote(instrument.sounds[0].patch,note.pitch,note.velocity);
      if(zone)ids.add(zone.assetId);
     }
    }
-   instrument.patch.zones=instrument.patch.zones.filter(zone=>ids.has(zone.assetId));
+   instrument.sounds[0].patch.zones=instrument.sounds[0].patch.zones.filter(zone=>ids.has(zone.assetId));
    for(const assetId of ids)sounds.add(assetId);
   }
   score.instruments.push(instrument);

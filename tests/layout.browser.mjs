@@ -1,87 +1,49 @@
-// Runs without npm dependencies using the Chrome preinstalled on GitHub Actions runners.
-import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { resolve, extname } from "node:path";
-import { execFile, spawn } from "node:child_process";
-import { promisify } from "node:util";
-const execFileAsync = promisify(execFile);
-import { strict as assert } from "node:assert";
-
-const root=resolve(new URL("..",import.meta.url).pathname);
-let resolveAudio;
-const audioResult=new Promise(resolve=>{resolveAudio=resolve;});
-let resolveRecorder;
-const recorderResult=new Promise(resolve=>{resolveRecorder=resolve;});
-const server=createServer(async (req,res)=>{
- try {
-  const pathname=decodeURIComponent(new URL(req.url,"http://localhost").pathname);
-  if(pathname==="/__recorder_result") {
-   const url=new URL(req.url,"http://localhost");
-   resolveRecorder({status:url.searchParams.get("status"),details:url.searchParams.get("details")});
-   res.writeHead(200,{"Content-Type":"text/plain"});res.end("OK");return;
-  }
-  if(pathname==="/__audio_result") {
-   const url=new URL(req.url,"http://localhost");
-   resolveAudio({status:url.searchParams.get("status"),details:url.searchParams.get("details")});
-   res.writeHead(200,{"Content-Type":"text/plain"});res.end("OK");return;
+// Browser interaction and real Web Audio checks, with no npm dependencies.
+// CHROME_BIN may point at a local Chromium executable.
+import {createServer} from "node:http";
+import {readFile} from "node:fs/promises";
+import {resolve,extname} from "node:path";
+import {spawn} from "node:child_process";
+import {strict as assert} from "node:assert";
+const root=resolve(new URL("..",import.meta.url).pathname),pending=new Map();
+const server=createServer(async(req,res)=>{
+ try{
+  const url=new URL(req.url,"http://localhost"),pathname=decodeURIComponent(url.pathname);
+  if(pending.has(pathname)){
+   pending.get(pathname)({status:url.searchParams.get("status"),details:url.searchParams.get("details")});
+   res.end("OK");return;
   }
   const file=resolve(root,"."+pathname);
-  if(!file.startsWith(root+"/"))throw new Error("Invalid path");
+  if(!file.startsWith(root+"/"))throw Error("Invalid path");
   const content=await readFile(file);
-  res.writeHead(200,{"Content-Type":({".js":"text/javascript",".css":"text/css",".html":"text/html"})[extname(file)]||"application/octet-stream"});
+  res.writeHead(200,{"Content-Type":({".js":"text/javascript",".css":"text/css",".html":"text/html",".ogg":"audio/ogg",".wav":"audio/wav"})[extname(file)]||"application/octet-stream"});
   res.end(content);
- } catch {res.writeHead(404);res.end("Not found");}
+ }catch{res.writeHead(404);res.end("Not found");}
 });
 await new Promise(done=>server.listen(0,"127.0.0.1",done));
-try {
- const port=server.address().port;
- const chrome=process.env.CHROME_BIN||"google-chrome";
+const port=server.address().port,chrome=process.env.CHROME_BIN||"google-chrome";
+async function reportedTest(file,endpoint,width=1440,height=900,microphone=false){
+ let report,timer;
+ const result=new Promise(resolve=>{report=resolve;});pending.set(endpoint,report);
+ const child=spawn(chrome,["--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
+  "--autoplay-policy=no-user-gesture-required","--disable-background-timer-throttling","--disable-renderer-backgrounding",
+  ...(microphone?["--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream"]:[]),
+  "--window-size="+width+","+height,"--no-first-run","--user-data-dir=/tmp/premidi-"+file+"-"+width+"-"+process.pid,
+  "http://127.0.0.1:"+port+"/tests/"+file+".html"],{stdio:"ignore"});
+ try{
+  const finished=await Promise.race([result,
+   new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(file+" timed out")),45000);}),
+   new Promise((_,reject)=>{child.on("error",reject);child.on("exit",code=>reject(Error(file+" browser exited: "+code)));})]);
+  assert.equal(finished?.status,"PASS",file+" at "+width+": "+finished?.details);
+  console.log("PASS",file,width+"x"+height,finished.details);
+ }finally{clearTimeout(timer);pending.delete(endpoint);child.kill("SIGKILL");}
+}
+try{
  for(const [width,height] of [[1440,900],[1024,800],[780,900],[390,844]]){
-  const url="http://127.0.0.1:"+port+"/tests/layout-check.html";
-  const args=[
-   "--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
-   "--hide-scrollbars","--window-size="+width+","+height,"--virtual-time-budget=3000",
-   "--dump-dom",url
-  ];
-  const {stdout:dom}=await execFileAsync(chrome,args,{encoding:"utf8",timeout:30000,maxBuffer:10_000_000});
-  const result=dom.match(/<html[^>]+data-layout="([^"]+)"/);
-  const details=dom.match(/<pre id="result" hidden="">([^<]+)<\/pre>/);
-  assert.equal(result?.[1],"PASS","Responsive layout failed at "+width+"x"+height+": "+(details?.[1]||dom.slice(-600)));
-  console.log("PASS browser layout",width+"x"+height,details?.[1]||"");
+  await reportedTest("layout-check","/__layout_result",width,height);
+  await reportedTest("rack-check","/__rack_result",width,height);
  }
- const audioUrl="http://127.0.0.1:"+port+"/tests/audio-check.html";
- const child=spawn(chrome,[
-  "--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
-  "--disable-background-timer-throttling","--disable-renderer-backgrounding",
-  "--no-first-run","--user-data-dir=/tmp/premidi-audio-"+process.pid,
-  audioUrl
- ],{stdio:"ignore"});
- try {
-  const finished=await Promise.race([
-   audioResult,
-   new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser audio rendering timed out")),60000)),
-   new Promise((_,reject)=>child.on("error",reject))
-  ]);
-  assert.equal(finished?.status,"PASS","Synthesizer browser render failed: "+finished?.details);
-  console.log("PASS original instrument WAV render",finished.details);
- } finally {child.kill("SIGKILL");}
- // Real-time microphone integration: Chrome's synthetic input is captured
- // through the actual MediaRecorder and converted to an exportable WAV.
- const recordingUrl="http://127.0.0.1:"+port+"/tests/recording.browser.html";
- const mic=spawn(chrome,[
-  "--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
-  "--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream",
-  "--autoplay-policy=no-user-gesture-required","--disable-background-timer-throttling",
-  "--disable-renderer-backgrounding","--no-first-run",
-  "--user-data-dir=/tmp/premidi-mic-"+process.pid,recordingUrl
- ],{stdio:"ignore"});
- try {
-  const finished=await Promise.race([
-   recorderResult,
-   new Promise((_,reject)=>setTimeout(()=>reject(Error("Microphone integration timed out")),45000)),
-   new Promise((_,reject)=>mic.on("error",reject))
-  ]);
-  assert.equal(finished?.status,"PASS","Guided recorder failed: "+finished?.details);
-  console.log("PASS guided microphone recorder",finished.details);
- }finally{mic.kill("SIGKILL");}
+ await reportedTest("rack-audio-check","/__rack_audio_result");
+ await reportedTest("audio-check","/__audio_result");
+ await reportedTest("recording.browser","/__recorder_result",1440,900,true);
 }finally{server.close();}

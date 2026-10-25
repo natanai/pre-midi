@@ -4,12 +4,12 @@ import { create, makeInstrument, makeChunk, id, validate, parse, clone } from ".
 import { stepEvents } from "../audio.js";
 import { PRESETS, getPreset, makePatch, validatePatch } from "../synth.js";
 
-test("v5 scores contain fully editable native instrument patches", () => {
+test("v6 scores contain fully editable native instrument patches", () => {
  const score=create();
- assert.equal(score.version,5);
+ assert.equal(score.version,6);
  assert.deepEqual(validate(score),[]);
  assert.deepEqual(parse(JSON.stringify(score)),score);
- const patch=score.instruments[0].patch;
+ const patch=score.instruments[0].sounds[0].patch;
  assert.ok(patch.oscillators.length===2);
  assert.ok(patch.filter.cutoff>0);
  assert.ok(patch.envelope.release>0);
@@ -27,14 +27,14 @@ test("shared instrument patch affects all of its chunk uses",()=>{
  const score=create(),inst=score.instruments[0],chunk=inst.chunks[0];
  inst.timeline=Array(score.bars).fill(chunk.id);
  chunk.notes.push({id:id(),pitch:60,start:0,duration:4,velocity:.8});
- inst.patch=makePatch("acid-line");
+ inst.sounds[0].patch=makePatch("acid-line");
  assert.equal(stepEvents(score,0)[0].instrument,inst);
  assert.equal(stepEvents(score,16)[0].instrument,inst);
- assert.equal(stepEvents(score,16)[0].instrument.patch.filter.cutoff,1450);
+ assert.equal(stepEvents(score,16)[0].instrument.sounds[0].patch.filter.cutoff,1450);
  assert.deepEqual(validate(score),[]);
 });
 test("invalid synthesis parameters and unknown timeline chunks are rejected",()=>{
- const score=create();score.instruments[0].patch.filter.cutoff=-100;
+ const score=create();score.instruments[0].sounds[0].patch.filter.cutoff=-100;
  assert.ok(validate(score).some(e=>e.includes("filter")));
  const another=create();another.instruments[0].timeline[0]="deleted";
  assert.ok(validate(another).some(e=>e.includes("timeline")));
@@ -47,13 +47,13 @@ test("reusable chunks and note editing still work independently of sound patches
  inst.chunks[0].notes.push({id:id(),pitch:60,start:0,duration:3,velocity:.8});
  assert.equal(stepEvents(score,16)[0].note.pitch,71);
  assert.equal(stepEvents(score,0)[0].note.pitch,60);
- const other=makeInstrument(2,score.bars);other.patch=makePatch("pulse-kick");
+ const other=makeInstrument(2,score.bars);other.sounds[0].patch=makePatch("pulse-kick");
  score.instruments.push(other);
  assert.deepEqual(validate(score),[]);
 });
 test("older exported schemas aren't silently interpreted as new synth definitions",()=>{
  const previous=clone(create());previous.version=3;
- assert.throws(()=>parse(JSON.stringify(previous)),/v5/);
+ assert.throws(()=>parse(JSON.stringify(previous)),/v6/);
 });
 
 test("fresh compositions have no arranged demo notes or looping opening",()=>{

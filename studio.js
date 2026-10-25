@@ -1,4 +1,5 @@
-import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
+import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
+import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
@@ -8,7 +9,7 @@ import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
 import { loadLibrarySample, makeSampleAsset, MAX_SCORE_BYTES, sampleForNote } from "./sampler.js";
 import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
-import { loadDraft, saveDraft } from "./storage.js";
+import { loadDraft, saveDraft, savePresetAssets } from "./storage.js";
 import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
 import {createSignalDisplay} from "./soundScope.js";
@@ -19,8 +20,8 @@ import {installMicrophoneRecorder} from "./microphoneUI.js";
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v5-draft";
 const SAVED_SOUNDS = "premidi-user-sounds-v1";
-// Recover the browser's own previous synth-only draft in place. Old exported
-// formats deliberately aren't supported; this does not change file parsing.
+// Retain the previous fallback key. Native v5 drafts and files migrate through
+// the same parser, including safe hit conversion and preserved musical events.
 const cached=(()=>{try{return parse(localStorage.getItem(CACHE)||"");}catch{return null;}})();
 const savedSounds=(()=>{
  try {
@@ -28,16 +29,22 @@ const savedSounds=(()=>{
   return Array.isArray(entries)?entries.filter(item=>
    item && typeof item.id==="string" && item.id.length<80 &&
    typeof item.name==="string" && item.name.length<=60 && item.name.trim() &&
-   validatePatch(item.patch).length===0).slice(0,100):[];
+   (item.sounds ? validRackPreset(item) : validatePatch(item.patch).length===0)).slice(0,100):[];
  }catch{return [];}
 })();
-let libraryMode="add",libraryCategory="All";
+function validRackPreset(item){
+ const trial=create(),inst=trial.instruments[0];
+ inst.layout="rack";inst.sounds=item.sounds;trial.samples=item.samples||[];
+ return validate(trial).length===0;
+}
+let libraryMode="add",libraryCategory="All",libraryContext=null;
 const inspectorViewport=window.matchMedia("(min-width:1100px)");
 let inspectorState=inspectorViewport.matches?"expanded":"closed";
 let loadingExample=false;
 let score = cached || create();
 let selectedInstrumentId = score.instruments[0].id;
 let selectedNoteId = null;
+let selectedSounds=new Map();
 let editingNoteEffects = false;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
@@ -52,6 +59,7 @@ const snapshot = document => {
  return {...clone(mutable),samples:[...samples]};
 };
 const instrument = () => score.instruments.find(entry => entry.id === selectedInstrumentId) || score.instruments[0];
+const sound = (inst=instrument()) => inst.sounds.find(entry=>entry.id===selectedSounds.get(inst.id))||inst.sounds[0];
 const chunkFor = (inst) => inst.chunks.find(entry => entry.id === selectedChunks.get(inst.id)) || inst.chunks[0];
 const signal = inst => SIGNALS[Math.max(0, score.instruments.findIndex(entry => entry.id === inst.id)) % SIGNALS.length];
 
@@ -71,13 +79,16 @@ function message(text, error = false) {
  $("status").textContent = text;
  $("status").className = error ? "error" : "ok";
 }
+let saveGeneration=0;
 function store() {
- const current=score;
- void saveDraft(current).then(()=>message("Saved locally")).catch(()=>{
+ const current=score,generation=++saveGeneration;
+ message("Saving locally…");
+ void saveDraft(current).then(()=>{if(generation===saveGeneration)message("Saved locally");}).catch(()=>{
+  if(generation!==saveGeneration)return;
   // For constrained private-browser modes, small synth-only scores still fit.
   try {
    const json=JSON.stringify(current);
-   if(json.length>800000)throw Error("large draft");
+   if(current.samples.length||json.length>800000)throw Error("large or sampled draft");
    localStorage.setItem(CACHE,json);
    message("Saved locally (limited browser storage)");
   }catch{message("Browser storage unavailable. Export .premidi to save your work.",true);}
@@ -102,9 +113,12 @@ function stop() {
 function modify(change) {
  const before = snapshot(score);
  change();
+ const referenced=referencedSampleIds(score.instruments);
+ score.samples=score.samples.filter(asset=>referenced.has(asset.id));
  const errors = validate(score);
  if (errors.length) {
   score = before;
+  repairSelection();render();
   message(errors[0], true);
   return false;
  }
@@ -152,6 +166,7 @@ function repairSelection() {
  selectedSlot.instrumentId = selectedInstrumentId;
  selectedSlot.bar = Math.min(selectedSlot.bar, score.bars - 1);
  for (const entry of score.instruments) {
+  if(!entry.sounds.some(sound=>sound.id===selectedSounds.get(entry.id)))selectedSounds.set(entry.id,entry.sounds[0].id);
   if (!entry.chunks.some(chunk => chunk.id === selectedChunks.get(entry.id))) {
    selectedChunks.set(entry.id, entry.chunks[0].id);
   }
@@ -182,7 +197,7 @@ function renderInstruments() {
   const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
   el.style.setProperty("--track-accent", signal(inst));
   el.setAttribute("aria-pressed", String(selected));
-  el.append(element("strong", inst.name), element("small", (getPreset(inst.patch.presetId)?.name ?? SAMPLE_LIBRARY.find(item=>item.id===inst.patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.patch.presetId)?.name ?? (inst.patch.type==="sample"?"Custom sample":"Custom synth")) + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
+  el.append(element("strong", inst.name), element("small", (inst.layout==="rack" ? inst.sounds.length+" sounds" : (getPreset(inst.sounds[0].patch.presetId)?.name ?? SAMPLE_LIBRARY.find(item=>item.id===inst.sounds[0].patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.sounds[0].patch.presetId)?.name ?? (inst.sounds[0].patch.type==="sample"?"Custom sample":"Custom synth"))) + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
   list.append(el);
  }
  $("add-instrument").disabled = score.instruments.length >= 12;
@@ -205,7 +220,7 @@ function paintPianoPlayhead() {
  marker.hidden = !isAudibleChunk;
  if (!isAudibleChunk) return;
  // The note-label gutter is 63px; the remaining width represents 16 steps.
- const x = pianoScrubberX(pianoProgress.step, grid.clientWidth);
+ const x = pianoScrubberX(pianoProgress.step, grid.clientWidth, instrument().layout==="rack"?128:63);
  marker.style.transform = `translateX(${x}px)`;
 }
 function renderTimeline() {
@@ -328,8 +343,81 @@ document.addEventListener("keydown", event => {
 
 const pitchNames = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
 const noteLabel = pitch => pitchNames[pitch % 12] + (Math.floor(pitch / 12) - 1);
+for(const control of [$("sound-reference"),$("import-root")]){
+ for(let pitch=0;pitch<=127;pitch++){
+  const option=element("option",noteLabel(pitch));option.value=String(pitch);control.append(option);
+ }
+ control.value="60";
+}
+function selectSound(entry){
+ selectedSounds.set(instrument().id,entry.id);selectedNoteId=null;
+ if(inspectorState==="closed")setInspector(inspectorViewport.matches?"expanded":"compact");
+ renderNotes();renderSound();
+}
+function renderRack(root,inst,chunk){
+ const scroll=root.parentElement,top=scroll.scrollTop,left=scroll.scrollLeft;
+ root.replaceChildren();root.style.setProperty("--track-accent",signal(inst));
+ root.setAttribute("aria-label","Sound rack · "+inst.name);
+ for(const entry of inst.sounds){
+  const row=element("div",undefined,"rack-row"+(sound(inst).id===entry.id?" selected-sound":""));
+  row.dataset.soundId=entry.id;
+  const name=button((sound(inst).id===entry.id?"✓ ":"")+entry.name,()=>selectSound(entry),"rack-name");
+  name.setAttribute("aria-pressed",String(sound(inst).id===entry.id));
+  name.setAttribute("aria-label","Edit sound "+entry.name);name.title=entry.name;
+  row.append(name);
+  for(let step=0;step<16;step++){
+   const existing=chunk.notes.find(note=>note.soundId===entry.id&&note.start===step);
+   const cell=button(existing?"●":"",event=>{
+    selectedSounds.set(inst.id,entry.id);
+    if(existing&&event.shiftKey){
+     const next=[.25,.55,.9].find(value=>value>existing.velocity+.01)??.25;
+     modify(()=>{existing.velocity=next;});return;
+    }
+    if(existing&&editingNoteEffects){selectedNoteId=existing.id;renderNotes();renderSound();return;}
+    if(existing){selectedNoteId=null;modify(()=>{chunk.notes=chunk.notes.filter(note=>note.id!==existing.id);});return;}
+    const note={id:id(),soundId:entry.id,start:step,duration:1,velocity:Number($("velocity").value)};
+    selectedNoteId=editingNoteEffects?note.id:null;
+    if(modify(()=>chunk.notes.push(note))&&!playback&&!pendingPlay)
+     void audition(inst,entry.referencePitch,score,{soundId:entry.id}).catch(()=>{});
+   },"note rack-step"+(step%4===0?" beat":"")+(existing?" filled":"")+
+    (editingNoteEffects&&existing?.id===selectedNoteId?" selected":"")+
+    (existing?.bend?.shape&&existing.bend.shape!=="straight"?" bent":""));
+   cell.setAttribute("aria-label",entry.name+", step "+(step+1)+(existing?", hit; "+Math.round(existing.velocity*100)+"% strength":"; add hit"));
+   cell.setAttribute("aria-pressed",String(!!existing));
+   cell.title=existing?(editingNoteEffects?"Edit hit effects":"Remove hit")+" · Shift-click strength":"Add hit";
+   cell.addEventListener("keydown",event=>{
+    if(existing&&["Delete","Backspace"].includes(event.key)){
+     event.preventDefault();modify(()=>{chunk.notes=chunk.notes.filter(note=>note.id!==existing.id);});
+    }
+   });
+   row.append(cell);
+  }
+  root.append(row);
+ }
+ const add=button("+ Sound",()=>openLibrary("replace"),"rack-add-sound");
+ add.setAttribute("aria-label","Add sound to rack");root.append(add);
+ const marker=element("div",undefined,"piano-playhead");marker.hidden=true;marker.setAttribute("aria-hidden","true");
+ root.append(marker);paintPianoPlayhead();scroll.scrollTop=top;scroll.scrollLeft=left;
+ const note=editingNoteEffects?chunk.notes.find(note=>note.id===selectedNoteId):null;
+ const entry=note?inst.sounds.find(sound=>sound.id===note.soundId):sound(inst);
+ renderNoteExpression($("note-expression"),note,entry.name,note?note.duration*60/score.bpm/4:0,
+  bend=>modify(()=>{note.bend=bend;}),
+  ()=>modify(()=>{chunk.notes=chunk.notes.filter(item=>item.id!==note.id);selectedNoteId=null;}),
+  ()=>{void audition(inst,entry.referencePitch,score,{soundId:entry.id,velocity:note.velocity,bend:note.bend}).catch(error=>message(error.message,true));},entry.patch.bend);
+ if(note){
+  const label=element("label","Hit strength ","rack-strength");
+  const input=element("input");input.type="range";input.min="0";input.max="1";input.step=".01";input.value=String(note.velocity);
+  input.setAttribute("aria-label","Selected hit strength");
+  input.addEventListener("change",()=>modify(()=>{note.velocity=Number(input.value);}));
+  label.append(input,element("output",Math.round(note.velocity*100)+"%"));$("note-expression").prepend(label);
+ }
+}
 function renderNotes() {
  const root = $("piano"), inst = instrument(), chunk = chunkFor(inst);
+ root.classList.toggle("sound-rack",inst.layout==="rack");
+ root.setAttribute("aria-label",inst.layout==="rack"?"Sound rack":"Piano roll");
+ document.querySelector(".note-length-control").hidden=inst.layout==="rack";
+ if(inst.layout==="rack"){renderRack(root,inst,chunk);return;}
  const scroll = root.parentElement, top = scroll.scrollTop, left = scroll.scrollLeft;
  root.replaceChildren();
  root.style.setProperty("--track-accent", signal(inst));
@@ -477,7 +565,7 @@ function renderNotes() {
    velocity:current.velocity,bend:current.bend,
    duration:current.duration*60/score.bpm/4
   }).catch(error=>message("Couldn't preview note: "+error.message,true));
- },instrument().patch.bend);
+ },sound().patch.bend);
 }
 function renderChunkEditor() {
  const inst = instrument(), select = $("chunk");
@@ -500,7 +588,7 @@ function renderChunkEditor() {
  renderNotes();
 }
 function renderSound() {
- const inst=instrument(),patch=inst.patch;
+ const inst=instrument(),entry=sound(inst),patch=entry.patch;
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
@@ -511,14 +599,14 @@ function renderSound() {
  const scope=createSignalDisplay($("sound-visualizer"),patch,score,signal(inst));
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
-  const next=patchCopy(instrument().patch);
+  const next=patchCopy(sound().patch);
   let parent=next;
   for(let i=0;i<path.length-1;i++)parent=parent[path[i]]??={};
   parent[path[path.length-1]]=value;
   scope(next);
  };
  const onChange=(path,value)=>modify(()=>{
-  const target=instrument().patch;
+  const target=sound().patch;
   let owner=target;
   for(let i=0;i<path.length-1;i++)owner=owner[path[i]]??={};
   owner[path[path.length-1]]=value;
@@ -526,12 +614,30 @@ function renderSound() {
  });
  const volume=$("instrument-volume-dial");
  volume.replaceChildren();
- volume.append(createDial({label:"Volume",min:0,max:1,step:.01,display:"percent"},
+ volume.append(createDial({label:inst.layout==="rack"?"Rack volume":"Volume",min:0,max:1,step:.01,display:"percent"},
   inst.volume,value=>modify(()=>{instrument().volume=value;})));
+ $("sound-name").value=entry.name;
+ $("move-sound-up").disabled=inst.sounds.indexOf(entry)===0;
+ $("move-sound-down").disabled=inst.sounds.indexOf(entry)===inst.sounds.length-1;
+ $("duplicate-sound").disabled=inst.sounds.length>=MAX_SOUNDS;
+ $("remove-sound").disabled=inst.sounds.length===1;
+ $("sound-controls").hidden=inst.layout!=="rack";
+ $("save-row-sound").hidden=inst.layout!=="rack";
+ $("save-sound").textContent=inst.layout==="rack"?"Save rack preset":"Save preset";
+ const level=$("sound-volume-dial");level.replaceChildren();
+ level.append(createDial({label:"Sound level",min:0,max:1,step:.01,display:"percent"},entry.gain,
+  value=>modify(()=>{sound().gain=value;})));
+ $("sound-reference").value=String(entry.referencePitch);
+ $("convert-rack").hidden=inst.layout==="rack";
+ $("convert-rack").disabled=!canConvertToRack(inst);
+ $("convert-rack").title=canConvertToRack(inst)?"Use one named sound row":"Keep the piano roll: conversion would change pitches, zones, or simultaneous events";
+ $("convert-pitched").hidden=inst.layout!=="rack";
+ $("convert-pitched").disabled=inst.sounds.length!==1||entry.referencePitch<36||entry.referencePitch>96;
+ $("edit-instrument-note").textContent=inst.layout==="rack"?inst.name+" / "+entry.name:inst.name;
  if(patch.type==="sample"){
   renderSamplerEditor($("synth-editor"),patch,onChange,
    patch.zones.map(zone=>score.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
-   ()=>$("sample-file").click(),preview);
+   ()=>openAudioReplace(),preview);
  }else renderPatchEditor($("synth-editor"),patch,onChange,preview);
  $("remove-instrument").disabled=score.instruments.length===1;
 }
@@ -695,36 +801,65 @@ $("bars").addEventListener("change", event => modify(() => {
 $("add-instrument").addEventListener("click",()=>openLibrary("add"));
 $("change-sound").addEventListener("click",()=>openLibrary("replace"));
 $("close-library").addEventListener("click",()=>$("instrument-dialog").close());
-function addAuthoredSample(asset,options={},mode="add"){
+function currentContext(mode="replace"){
+ return {mode,instrumentId:instrument().id,soundId:sound().id};
+}
+function applySoundSelection(patch,name,trigger,assets,context,rackSounds=null,settings=null){
+ const target=score.instruments.find(inst=>inst.id===context.instrumentId);
+ if(!target){message("The original instrument was removed. Open the sound library again.",true);return false;}
+ const row=target.sounds.find(sound=>sound.id===context.soundId);
+ if(context.mode==="replace-row"&&!row)return false;
+ const operation=context.mode==="replace-row"?"replace-row":rackSounds?"create-rack":
+  selectionOperation(target.layout,trigger,context.mode==="add");
+ return modify(()=>{
+  for(const asset of assets)if(!score.samples.some(existing=>existing.id===asset.id))score.samples.push(asset);
+  if(operation.startsWith("create-")){
+   const entry=makeSound(name.slice(0,60),patch,trigger);
+   if(settings){entry.referencePitch=settings.referencePitch??entry.referencePitch;entry.gain=settings.gain??entry.gain;}
+   const inst=makeInstrument(score.instruments.length+1,score.bars,entry);
+   if(rackSounds){
+    inst.layout="rack";inst.sounds=clone(rackSounds).map(sound=>({...sound,id:id()}));
+   }
+   if(rackSounds)inst.volume=settings?.volume??.7;
+   inst.name=name.slice(0,60);score.instruments.push(inst);
+   selectedInstrumentId=inst.id;selectedSounds.set(inst.id,inst.sounds[0].id);
+   selectedSlot={instrumentId:inst.id,bar:0};selectedChunks.set(inst.id,inst.chunks[0].id);
+  }else if(operation==="append-rack"){
+   const entry=makeSound(name.slice(0,60),patch,"hit");
+   if(settings){entry.referencePitch=settings.referencePitch??entry.referencePitch;entry.gain=settings.gain??entry.gain;}
+   target.sounds.push(entry);selectedSounds.set(target.id,entry.id);
+   selectedInstrumentId=target.id;
+  }else{
+   const entry=operation==="replace-row"?row:target.sounds[0];
+   entry.patch=patch;entry.name=name.slice(0,60);
+   if(settings){entry.referencePitch=settings.referencePitch??entry.referencePitch;entry.gain=settings.gain??entry.gain;}
+   if(operation==="replace-pitched")target.name=name.slice(0,60);
+   selectedSounds.set(target.id,entry.id);selectedInstrumentId=target.id;
+  }
+  selectedNoteId=null;
+ });
+}
+function addAuthoredSample(asset,options={},context=currentContext("add")){
  const {name=asset.name,root=60,followPitch=true}=options;
- if(mode==="add"&&score.instruments.length>=12){
-  message("The composition supports up to 12 instruments.",true);return false;
- }
  const patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root}],
-  followPitch,transpose:0,gain:.9,attack:.005,release:.17,pan:0,
+  followPitch,oneShot:!followPitch,transpose:0,gain:.9,attack:.005,release:.17,pan:0,
   movement:{rate:5,depth:0,delay:0,glide:0,glideTime:.18,tremolo:0,tremoloRate:5,tone:0,toneRate:2},
   bend:{shape:"straight",amount:2,rate:4}};
- const ok=modify(()=>{
-  score.samples.push(asset);
-  if(mode==="add"){
-   const inst=makeInstrument(score.instruments.length+1,score.bars);
-   inst.name=name.slice(0,60);inst.patch=patch;
-   score.instruments.push(inst);
-   selectedInstrumentId=inst.id;
-   selectedSlot={instrumentId:inst.id,bar:0};
-   selectedChunks.set(inst.id,inst.chunks[0].id);
-  }else{
-   instrument().patch=patch;
-   instrument().name=name.slice(0,60);
-  }
- });
+ const target=score.instruments.find(inst=>inst.id===context.instrumentId);
+ const row=target?.sounds.find(sound=>sound.id===context.soundId);
+ if(context.mode==="replace-row"&&row){
+  // Replacing audio preserves this sound's note/hit intent and recorded pitch.
+  patch.followPitch=row.patch.type==="sample"?row.patch.followPitch:row.trigger==="pitched";
+  patch.oneShot=row.trigger==="hit";patch.zones[0].root=root;
+ }
+ const ok=applySoundSelection(patch,name,followPitch?"pitched":"hit",[asset],context);
  if(ok){
   if($("instrument-dialog").open)$("instrument-dialog").close();
   if(playback)void primeSamples(score).catch(error=>message(error.message,true));
  }
  return ok;
 }
-let recordingMode="add";
+let recordingMode=null;
 const recorder=installMicrophoneRecorder({
  get:$,
  onUse:({wav,name,root,followPitch})=>{
@@ -740,103 +875,107 @@ const recorder=installMicrophoneRecorder({
 function openRecorder(mode="add"){
  if(mode==="add"&&score.instruments.length>=12)
   return message("The composition supports up to 12 instruments.",true);
- recordingMode=mode;
+ recordingMode=libraryContext&&$("instrument-dialog").open?{...libraryContext}:currentContext(mode);
  if($("instrument-dialog").open)$("instrument-dialog").close();
  recorder.open();
 }
-$("record-sound").addEventListener("click",()=>openRecorder("add"));
+$("record-sound").addEventListener("click",()=>openRecorder("replace"));
+let audioReplaceContext=null,pendingImport=null;
+function openAudioReplace(){audioReplaceContext=currentContext("replace-row");$("sample-file").click();}
+$("sample-file").addEventListener("cancel",()=>{audioReplaceContext=null;});
 $("sample-file").addEventListener("change",async event=>{
- const file=event.currentTarget.files?.[0];
+ const input=event.currentTarget,file=input.files?.[0];
  if(!file)return;
+ const context=audioReplaceContext||{...libraryContext};audioReplaceContext=null;
  try{
   if(file.size>1_000_000)throw Error("Sample must be smaller than 1 MB.");
   const ext=file.name.split(".").pop()?.toLowerCase();
   const mime=ext==="wav"?"audio/wav":ext==="ogg"?"audio/ogg":ext==="mp3"?"audio/mpeg":"";
   const asset=makeSampleAsset("custom-"+id(),file.name,mime,
    new Uint8Array(await file.arrayBuffer()),"Imported by author: "+file.name);
-  const mode=$("instrument-dialog").open?libraryMode:"replace";
-  if(addAuthoredSample(asset,{name:file.name.replace(/\.[^.]+$/,""),followPitch:true},mode))
-   message("Imported "+file.name+". Export includes its separate audio file.");
+  const name=file.name.replace(/\.[^.]+$/,"").slice(0,60);
+  if(context.mode==="replace-row"){
+   const target=score.instruments.find(inst=>inst.id===context.instrumentId);
+   const row=target?.sounds.find(sound=>sound.id===context.soundId);
+   if(!row)throw Error("The original sound was removed.");
+   addAuthoredSample(asset,{name,root:row.patch.zones?.[0]?.root??row.referencePitch,followPitch:row.trigger==="pitched"},context);
+  }else{
+   pendingImport={asset,name,context};$("import-root").value="60";$("audio-kind-dialog").showModal();
+  }
  }catch(error){message("Could not import audio: "+error.message,true);}
- finally{event.currentTarget.value="";}
+ finally{input.value="";}
 });
-$("save-sound").addEventListener("click",()=>{
- const inst=instrument();
- const suggested=(getPreset(inst.patch.presetId)?.name||inst.name)+" variation";
- const name=prompt("Name your sound preset:",suggested)?.trim();
+function useImportedAudio(followPitch){
+ if(!pendingImport)return;
+ const {asset,name,context}=pendingImport;
+ if(addAuthoredSample(asset,{name,followPitch,root:Number($("import-root").value)},context)){
+  pendingImport=null;$("audio-kind-dialog").close();
+  message("Imported "+name+". Export includes its separate audio file.");
+ }
+}
+$("import-as-note").addEventListener("click",()=>useImportedAudio(true));
+$("import-as-hit").addEventListener("click",()=>useImportedAudio(false));
+$("cancel-audio-kind").addEventListener("click",()=>{$("audio-kind-dialog").close();pendingImport=null;});
+async function savePreset(wholeRack=false){
+ const inst=instrument(),entry=sound();
+ const name=prompt(wholeRack?"Name your complete rack preset:":"Name your sound preset:",
+  (wholeRack?inst.name:entry.name)+" variation")?.trim();
  if(!name)return;
  if(name.length>60)return message("Preset name must be 60 characters or less.",true);
  if(savedSounds.length>=100)return message("Your sound library contains 100 presets.",true);
- const item={id:"user-"+id(),name,category:"Mine",description:"Your saved sound",patch:patchCopy(inst.patch)};
- if(inst.patch.type==="sample") {
-  item.samples=inst.patch.zones.filter(zone=>!sampleAsset(zone.assetId))
-   .map(zone=>score.samples.find(asset=>asset.id===zone.assetId));
-  if(item.samples.some(value=>!value))return message("The sample is missing audio data.",true);
- }
- item.patch.presetId=item.id;
- try {
-  localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));
-  savedSounds.push(item);
-  modify(()=>{instrument().patch.presetId=item.id;});
+ const sounds=wholeRack?clone(inst.sounds):[clone(entry)];
+ const needs=new Set(sounds.flatMap(sound=>sound.patch.type==="sample"?sound.patch.zones.map(zone=>zone.assetId):[]));
+ const samples=score.samples.filter(asset=>needs.has(asset.id));
+ const item={id:"user-"+id(),name,category:"Mine",description:wholeRack?"Complete rack · "+sounds.length+" sounds":"Your saved sound",samples};
+ if(wholeRack){item.sounds=sounds;item.layout="rack";item.volume=inst.volume;}
+ else {item.patch=entry.patch?patchCopy(entry.patch):null;item.trigger=entry.trigger;item.referencePitch=entry.referencePitch;item.gain=entry.gain;}
+ try{
+  await savePresetAssets(samples);
+  localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));savedSounds.push(item);
   message("Saved "+name+" in your browser's sound library.");
- } catch {
-  message("Browser storage is unavailable. Your composition still contains this sound.",true);
- }
-});
+ }catch(error){message("Could not save preset: "+error.message+". Export your composition to keep it.",true);}
+}
+$("save-sound").addEventListener("click",()=>{void savePreset(instrument().layout==="rack");});
+$("save-row-sound").addEventListener("click",()=>{void savePreset(false);});
 function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...savedSounds];}
 function openLibrary(mode) {
  closePicker();
  if(mode==="add"&&score.instruments.length>=12)return;
- libraryMode=mode;
+ libraryMode=mode;libraryContext=currentContext(mode);
  libraryCategory="All";
+ $("library-description").textContent=mode==="add"?"Choose a sound for a separate instrument.":mode==="replace-row"?
+  "Replace only the selected sound. Its row, events, and hit behavior stay in place.":
+  "Notes use a piano roll. Hits join your current rack, or start a new rack.";
  renderLibrary();
  const dialog=$("instrument-dialog");
  if(!dialog.open)dialog.showModal();
 }
 const builtinCache=new Map();
 async function resolveSamples(preset) {
- if(preset.patch?.type==="sample") {
-  return Promise.all(preset.patch.zones.map(async zone=>{
-   const existing=(preset.samples||[]).find(item=>item.id===zone.assetId)
-    ||score.samples.find(item=>item.id===zone.assetId);
-   if(existing)return existing;
-   if(sampleAsset(zone.assetId))return loadLibrarySample(zone.assetId);
-   throw Error("Saved sample is missing its audio: "+zone.assetId);
-  }));
- }
- if(!preset.assets)return [];
- return Promise.all(preset.assets.map(async assetId=>{
-  const existing=score.samples.find(asset=>asset.id===assetId);
+ const ids=new Set(preset.sounds?preset.sounds.flatMap(sound=>sound.patch.type==="sample"?sound.patch.zones.map(zone=>zone.assetId):[]):
+  preset.patch?.type==="sample"?preset.patch.zones.map(zone=>zone.assetId):preset.assets||[]);
+ return Promise.all([...ids].map(async assetId=>{
+  const existing=(preset.samples||[]).find(asset=>asset.id===assetId)||score.samples.find(asset=>asset.id===assetId);
   if(existing)return existing;
-  if(!builtinCache.has(assetId))builtinCache.set(assetId,loadLibrarySample(assetId).catch(error=>{
-   builtinCache.delete(assetId);throw error;
-  }));
+  if(!sampleAsset(assetId))throw Error("Saved sample is missing its audio: "+assetId);
+  if(!builtinCache.has(assetId))builtinCache.set(assetId,loadLibrarySample(assetId).catch(error=>{builtinCache.delete(assetId);throw error;}));
   return builtinCache.get(assetId);
  }));
 }
+const presetTrigger = preset => preset.trigger||
+ (SAMPLE_LIBRARY.find(item=>item.id===preset.patch?.presetId)?.trigger) ||
+ (getPreset(preset.patch?.presetId)?.trigger) || "pitched";
 async function chooseSound(preset) {
- const useMode=libraryMode;
+ const context={...libraryContext};
  const dialog=$("instrument-dialog");
  message("Loading "+preset.name+"...");
  try {
   const assets=await resolveSamples(preset);
-  const patch=preset.category==="Mine"?patchCopy(preset.patch):
+  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):preset.category==="Mine"?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   patch.presetId=preset.id;
-  const ok=modify(()=>{
-   for(const asset of assets)if(!score.samples.some(existing=>existing.id===asset.id))
-    score.samples.push(asset);
-   if(useMode==="add") {
-    const inst=makeInstrument(score.instruments.length+1,score.bars);
-    inst.name=preset.name;inst.patch=patch;
-    score.instruments.push(inst);selectedInstrumentId=inst.id;
-    selectedSlot={instrumentId:inst.id,bar:0};
-    selectedChunks.set(inst.id,inst.chunks[0].id);
-   } else {
-    instrument().patch=patch;
-    instrument().name=preset.name;
-   }
-  });
+  const trigger=presetTrigger(preset);
+  const ok=applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,preset.category==="Mine"?preset:null);
   if(ok) {
    dialog.close();
    // A new sample can be introduced while the transport is running.
@@ -847,10 +986,16 @@ async function chooseSound(preset) {
 }
 async function auditionPreset(preset) {
  try {
-  const patch=preset.category==="Mine"?patchCopy(preset.patch):
+  if(preset.sounds){
+   const samples=await resolveSamples(preset);
+   await Promise.all(preset.sounds.map(entry=>audition({...makeInstrument(1,1,entry),volume:preset.volume??.7},
+    entry.referencePitch,{samples})));return;
+  }
+  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):preset.category==="Mine"?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
-  const pitch=preset.category==="Bass"?48:preset.category==="Guitars"?57:69;
-  const inst={...instrument(),patch,volume:.8};
+  const pitch=preset.referencePitch??(presetTrigger(preset)==="hit"?patch.zones?.[0]?.root??60:preset.category==="Bass"?48:preset.category==="Guitars"?57:69);
+  const inst=makeInstrument(1,1,makeSound(preset.name,patch,presetTrigger(preset)));inst.volume=.8;
+  inst.sounds[0].referencePitch=pitch;inst.sounds[0].gain=preset.category==="Mine"?preset.gain??1:1;
   // Preview strumming as an actual chord, otherwise the Steel Strum and
   // Steel Acoustic presets can sound like the same single plucked note.
   const chord=preset.id==="steel-strum"?[52,57,60,64,69]:null;
@@ -876,12 +1021,12 @@ function renderLibrary() {
   control.setAttribute("aria-pressed",String(libraryCategory===category));
   filters.append(control);
  }
- if(libraryMode==="add"||libraryMode==="replace") {
+ if(["add","replace","replace-row"].includes(libraryMode)) {
   const record=button("● Record a sound",()=>openRecorder(libraryMode),"library-import library-record");
   const personal=button("＋ Import audio file",()=>$("sample-file").click(),"library-import");
   list.append(record,personal);
  }
- for(const preset of allSounds().filter(p=>libraryCategory==="All"||p.category===libraryCategory)) {
+ for(const preset of allSounds().filter(p=>(libraryMode!=="replace-row"||!p.sounds)&&(libraryCategory==="All"||p.category===libraryCategory))) {
   const card=element("div",undefined,"preset-card");
   const info=element("div",undefined,"preset-information");
   info.append(element("strong",preset.name),element("span",preset.description));
@@ -937,6 +1082,46 @@ $("delete-chunk").addEventListener("click", () => {
  });
 });
 $("chunk-name").addEventListener("change", event => modify(() => chunkFor(instrument()).name = event.target.value.trim() || "Chunk"));
+$("sound-name").addEventListener("change",event=>modify(()=>{sound().name=event.target.value.trim()||"Sound";}));
+$("sound-reference").addEventListener("change",event=>modify(()=>{sound().referencePitch=Number(event.target.value);}));
+$("replace-row-sound").addEventListener("click",()=>openLibrary("replace-row"));
+$("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,score,{soundId:sound().id}).catch(error=>message(error.message,true));});
+function moveSound(offset){
+ modify(()=>{
+  const inst=instrument(),index=inst.sounds.indexOf(sound());
+  if(index+offset<0||index+offset>=inst.sounds.length)return;
+  [inst.sounds[index],inst.sounds[index+offset]]=[inst.sounds[index+offset],inst.sounds[index]];
+ });
+}
+$("move-sound-up").addEventListener("click",()=>moveSound(-1));
+$("move-sound-down").addEventListener("click",()=>moveSound(1));
+$("duplicate-sound").addEventListener("click",()=>modify(()=>{
+ const entry=clone(sound());entry.id=id();entry.name=(entry.name+" copy").slice(0,60);
+ instrument().sounds.splice(instrument().sounds.indexOf(sound())+1,0,entry);selectedSounds.set(instrument().id,entry.id);
+}));
+$("remove-sound").addEventListener("click",()=>{
+ const inst=instrument(),entry=sound();
+ if(inst.sounds.length===1)return;
+ const count=inst.chunks.reduce((sum,chunk)=>sum+chunk.notes.filter(note=>note.soundId===entry.id).length,0);
+ if(count&&!confirm("Remove "+entry.name+" and its "+count+" hits across all chunks?"))return;
+ modify(()=>{
+  inst.sounds=inst.sounds.filter(sound=>sound.id!==entry.id);
+  for(const chunk of inst.chunks)chunk.notes=chunk.notes.filter(note=>note.soundId!==entry.id);
+  selectedNoteId=null;
+ });
+});
+$("convert-rack").addEventListener("click",()=>{
+ if(!canConvertToRack(instrument()))return;
+ modify(()=>convertToRack(instrument()));
+});
+$("convert-pitched").addEventListener("click",()=>{
+ const inst=instrument();if(inst.sounds.length!==1)return;
+ modify(()=>{
+  const entry=inst.sounds[0];inst.layout="pitched";entry.trigger="pitched";
+  // The piano roll covers C2–C7; refuse references outside that range.
+  for(const chunk of inst.chunks)chunk.notes=chunk.notes.map(({soundId,...note})=>({...note,pitch:entry.referencePitch}));
+ });
+});
 $("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
 
 

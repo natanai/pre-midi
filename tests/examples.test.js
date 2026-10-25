@@ -36,7 +36,7 @@ test("examples are diverse, opt-in and generate real valid portable scores",asyn
   assert.ok(active,example.name);
   const noteCount=doc.instruments.reduce((sum,inst)=>sum+inst.chunks.reduce((n,c)=>n+c.notes.length,0),0);
   assert.ok(noteCount>=20,example.name);
-  for(const inst of doc.instruments)observed.add(inst.patch.presetId);
+  for(const inst of doc.instruments)observed.add(inst.sounds[0].patch.presetId);
   assert.ok(JSON.stringify(doc).length<15_000_000);
  }
  assert.ok(observed.size>=16,"Example library should showcase substantial instrument breadth");
@@ -48,7 +48,7 @@ test("sampled examples reference only used recordings using portable relative as
   const sampleIds=new Set(doc.samples.map(asset=>asset.id));
   const used=usedSampleIds(doc);
   assert.deepEqual(sampleIds,used,"Every embedded recording should be used in the score");
-  assert.ok(doc.instruments.some(inst=>inst.patch.type==="sample"));
+  assert.ok(doc.instruments.some(inst=>inst.sounds[0].patch.type==="sample"));
   assert.ok(doc.samples.every(asset=>asset.path.startsWith("assets/")&&!Object.hasOwn(asset,"data")&&asset.source.startsWith("https://")));
   assert.deepEqual(validate(doc),[]);
  }

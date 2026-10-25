@@ -31,7 +31,7 @@ test("WAV is raw mono PCM and separate from the .premidi file in the ZIP",async(
  const score=create(),inst=score.instruments[0];
  const asset=makeSampleAsset("recorded-a4","Guitar A4","audio/wav",wav,"Recorded by author");
  score.samples=[asset];
- inst.patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:69}],
+ inst.sounds[0].patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:69}],
   followPitch:true,transpose:0,gain:1,attack:.005,release:.3,pan:0};
  assert.deepEqual(validate(score),[]);
  const result=exportProject(score);
@@ -56,7 +56,7 @@ test("invalid or corrupted packages cannot silently substitute recordings",async
  const wav=encodeMonoWav(wave(330,.75));
  const score=create(),asset=makeSampleAsset("note-test","Tone","audio/wav",wav,"author");
  score.samples=[asset];
- score.instruments[0].patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:64}],
+ score.instruments[0].sounds[0].patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:64}],
   followPitch:true,transpose:0,gain:1,attack:.01,release:.1,pan:0};
  const packed=exportProject(score);
  const bytes=new Uint8Array(await packed.blob.arrayBuffer());

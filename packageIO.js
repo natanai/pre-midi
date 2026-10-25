@@ -1,3 +1,4 @@
+import {referencedSampleIds} from "./soundModel.js";
 // Compact, plain .premidi score with separate audio files in one portable ZIP.
 import {parse,filename,validate} from "./schema.js";
 import {createZip,readZip} from "./zip.js";
@@ -10,8 +11,7 @@ export function exportProject(score){
  // Unused recordings must not bloat either the music instructions or ZIP.
  // Preserve every zone on every sampled instrument, including zones an author
  // might use later, but exclude sources orphaned by removed instruments.
- const referenced=new Set(score.instruments.filter(inst=>inst.patch.type==="sample")
-  .flatMap(inst=>inst.patch.zones.map(zone=>zone.assetId)));
+ const referenced=referencedSampleIds(score.instruments);
  const manifest={...score,samples:score.samples.filter(asset=>referenced.has(asset.id))};
  const raw=text.encode(JSON.stringify(manifest));
  if(raw.length>MAX_SCORE_BYTES)throw Error("Composition instructions exceed 1 MB.");

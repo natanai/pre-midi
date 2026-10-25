@@ -1,0 +1,127 @@
+<!doctype html><html lang="en" data-rack="RUNNING"><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0}pre{display:none}</style>
+<iframe src="about:blank"  title="Adaptive sequencer under test"></iframe><pre id="result"></pre>
+<script type="module">
+import {parse,clone} from "../schema.js";
+import {readZip} from "../zip.js";
+import {encodeMonoWav} from "../recording.js";
+const frame=document.querySelector("iframe"),result=document.getElementById("result"),checks={};
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function waitFor(test,label){for(let i=0;i<200;i++){if(test())return;await delay(25);}throw Error("Timed out: "+label);}
+const check=(name,ok)=>{checks[name]=!!ok;if(!ok)throw Error(name);};
+frame.addEventListener("load",async()=>{
+ let d=frame.contentDocument;const w=frame.contentWindow,$=id=>d.getElementById(id);
+ let exported=null;
+ try{
+  await delay(100);w.confirm=()=>true;w.prompt=()=>"My complete rack";
+  $("new").click();
+  function captureExports(){
+   w.HTMLAnchorElement.prototype.click=function(){};
+   const createURL=w.URL.createObjectURL.bind(w.URL);
+   w.URL.createObjectURL=blob=>{if(["application/json","application/zip"].includes(blob.type))exported=blob;return createURL(blob);};
+  }
+  captureExports();
+  async function score(){
+   exported=null;$("export").click();if(!exported)throw Error("Export failed: "+$("status").textContent);
+   if(exported.type==="application/json")return parse(await exported.text());
+   const entries=await readZip(exported);const entry=[...entries].find(([path])=>path.endsWith(".premidi"));
+   return parse(new TextDecoder().decode(entry[1]));
+  }
+  const count=()=>d.querySelectorAll(".instrument-card").length;
+  const rows=()=>d.querySelectorAll(".rack-row");
+  async function choose(entry,name){
+   entry.click();
+   const card=[...d.querySelectorAll(".preset-card")].find(card=>card.querySelector("strong")?.textContent===name);
+   if(!card)throw Error("Missing library preset "+name);
+   card.querySelector(".preset-choose").click();await waitFor(()=>!$("instrument-dialog").open,"choose "+name);
+  }
+  function focus(index){d.querySelectorAll(".instrument-card")[index].click();}
+  function change(id,value){$(id).value=value;$(id).dispatchEvent(new Event("change",{bubbles:true}));}
+  const note=d.querySelector('#piano .note[aria-label^="C4, step 1,"]');note.click();
+  const original=(await score()).instruments[0].chunks;
+  await choose($("change-sound"),"Neon Lead");
+  check("pitched replaces pitched and preserves music",count()===1&&JSON.stringify((await score()).instruments[0].chunks)===JSON.stringify(original));
+  await choose($("change-sound"),"Pulse Kick");
+  check("hit from piano creates one-row rack",count()===2&&rows().length===1&&!d.querySelector(".note-name"));
+  check("one-row rack exposes + Sound",!!d.querySelector(".rack-add-sound"));
+  await choose($("change-sound"),"Static Snare");
+  check("Browse appends to rack",count()===2&&rows().length===2);
+  await choose(d.querySelector(".rack-add-sound"),"Dust Hat");
+  check("+ Sound appends hit",count()===2&&rows().length===3);
+  await choose(d.querySelector(".rack-add-sound"),"Steel Acoustic");
+  check("+ Sound pitched creates piano",count()===3&&!rows().length&&!!d.querySelector(".note-name"));
+  focus(1);await choose($("change-sound"),"Glass Keys");
+  check("Browse pitched from rack creates piano",count()===4&&!rows().length);
+  focus(1);await choose($("add-instrument"),"Pulse Kick");
+  check("Add Instrument makes separate rack",count()===5&&rows().length===1);
+  await choose($("add-instrument"),"Neon Lead");
+  check("Add Instrument makes separate piano",count()===6&&!rows().length);
+  focus(1);rows()[0].querySelectorAll(".rack-step")[0].click();rows()[1].querySelectorAll(".rack-step")[0].click();
+  const before=await score(),instId=before.instruments[1].id,events=clone(before.instruments[1].chunks);
+  const roll=d.querySelector(".piano-scroll");roll.scrollLeft=80;const left=roll.scrollLeft;
+  rows()[0].querySelector(".rack-name").click();
+  check("row selection preserves lane and scroll",d.querySelector(".arrangement-row.active").dataset.instrumentId===instId&&roll.scrollLeft===left);
+  check("row selects existing sound inspector",$("sound-name").value==="Pulse Kick"&&$("sound-toggle").getAttribute("aria-expanded")==="true");
+  change("sound-name","My kick");
+  const attack=d.querySelector('#synth-editor .dial-knob[aria-label="Attack"]');
+  attack.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+  const altered=await score();
+  check("sound controls are independent",altered.instruments[1].sounds[0].patch.envelope.attack!==before.instruments[1].sounds[0].patch.envelope.attack&&
+   altered.instruments[1].sounds[1].patch.envelope.attack===before.instruments[1].sounds[1].patch.envelope.attack);
+  $("move-sound-down").click();
+  check("rename and reorder retain exact event mappings",JSON.stringify((await score()).instruments[1].chunks)===JSON.stringify(events)&&rows()[1].querySelector(".rack-name").textContent.includes("My kick"));
+  $("duplicate-sound").click();check("duplicate retains full patch and distinct identity",rows().length===4);
+  $("undo").click();check("undo removes duplicated row",rows().length===3);
+  $("redo").click();check("redo restores duplicated row",rows().length===4);
+  [...rows()].find(row=>row.querySelector(".rack-name").textContent.includes("copy")).querySelector(".rack-name").click();
+  $("remove-sound").click();check("unused row removal",rows().length===3);
+  rows()[1].querySelector(".rack-name").click();let confirmText="";w.confirm=text=>{confirmText=text;return true;};
+  $("remove-sound").click();
+  check("removal confirms effects on sequenced hits",confirmText.includes("1 hits")&&(await score()).instruments[1].chunks[0].notes.length===1);
+  $("undo").click();check("undo restores row and hits",rows().length===3&&(await score()).instruments[1].chunks[0].notes.length===2);
+  rows()[0].querySelector(".rack-name").click();await choose($("replace-row-sound"),"Dust Hat");
+  check("explicit replacement preserves row events and track",count()===6&&rows().length===3&&JSON.stringify((await score()).instruments[1].chunks)===JSON.stringify(events));
+  // New audio follows the same context rules, with an explicit note/hit choice.
+  const bytes=encodeMonoWav(Float32Array.from({length:22050},(_,i)=>Math.sin(i*2*Math.PI*220/44100)*.3));
+  async function importAudio(asNote,name){
+   d.querySelector(".rack-add-sound").click();
+   const data=new w.DataTransfer();data.items.add(new w.File([bytes],name+".wav",{type:"audio/wav"}));
+   $("sample-file").files=data.files;$("sample-file").dispatchEvent(new Event("change",{bubbles:true}));
+   await waitFor(()=>$("audio-kind-dialog").open,"import classification");
+   $(asNote?"import-as-note":"import-as-hit").click();await waitFor(()=>!$("audio-kind-dialog").open,"use audio");
+  }
+  await importAudio(false,"Recorded tap");check("imported hit appends row",rows().length===4&&count()===6);
+  const importedRack=(await score()).instruments[1];
+  $("save-sound").click();await waitFor(()=>w.localStorage.getItem("premidi-user-sounds-v1")?.includes("My complete rack"),"rack preset save");
+  await choose($("add-instrument"),"My complete rack");
+  const restored=(await score()).instruments[6];
+  check("complete rack preset restores all settings and independent IDs",count()===7&&rows().length===4&&
+   JSON.stringify(restored.sounds.map(({id,...sound})=>sound))===JSON.stringify(importedRack.sounds.map(({id,...sound})=>sound))&&restored.sounds[0].id!==importedRack.sounds[0].id);
+  await importAudio(true,"Recorded note");check("imported note creates piano",count()===8&&!rows().length);
+  // A long rack remains one instrument; scroll its own viewport to reach + Sound.
+  focus(1);rows()[0].querySelector(".rack-name").click();
+  for(let i=0;i<22;i++)$("duplicate-sound").click();
+  check("rack rows are not limited to 12 instruments",rows().length===26&&count()===8);
+  roll.scrollTop=roll.scrollHeight;roll.scrollLeft=200;
+  const add=d.querySelector(".rack-add-sound"),a=add.getBoundingClientRect(),r=roll.getBoundingClientRect();
+  check("+ Sound reachable in long scrolled rack",a.top>=r.top&&a.bottom<=r.bottom+1&&a.left>=r.left&&a.right<=r.right);
+  check("no page horizontal clipping",d.documentElement.scrollWidth<=frame.clientWidth+3);
+  const pageWidth=frame.clientWidth;
+  if(pageWidth<1100){$("sound-expand").click();check("mobile expanded full editor reachable",d.querySelector(".work").classList.contains("inspector-expanded")&&!!d.querySelector("#synth-editor .synth-group"));$("sound-close").click();}
+  // Keep a durable preset even after its source project and audio are replaced.
+  $("new").click();await delay(100);
+  await choose($("add-instrument"),"My complete rack");
+  const afterNew=await score();
+  check("rack preset keeps authored audio outside source draft",afterNew.samples.length===1&&afterNew.instruments[1].sounds.length===4);
+  check("saved rack has reachable recorded sample controls",!!d.querySelector(".rack-name"));
+  $("new").click();await waitFor(()=>$("status").textContent==="Saved locally","latest draft save before reload");
+  const reloaded=new Promise(resolve=>frame.addEventListener("load",resolve,{once:true}));w.location.reload();await reloaded;
+  d=frame.contentDocument;await delay(150);captureExports();w.confirm=()=>true;
+  await choose($("add-instrument"),"My complete rack");
+  const afterReload=await score();
+  check("rack preset survives reload with companion WAV available",afterReload.samples.length===1&&afterReload.instruments[1].sounds.length===4);
+  document.documentElement.dataset.rack="PASS";result.textContent=JSON.stringify({viewport:pageWidth,checks});
+ }catch(error){document.documentElement.dataset.rack="FAIL";result.textContent=String(error.stack||error)+"\n"+JSON.stringify(checks);}
+ void fetch("/__rack_result?status="+document.documentElement.dataset.rack+"&details="+encodeURIComponent(result.textContent)).catch(()=>{});
+},{once:true});
+frame.src="../index.html";
+</script></html>

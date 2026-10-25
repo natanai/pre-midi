@@ -27,7 +27,7 @@ test("sample imports keep readable score references separate from native audio b
  raw.set(new TextEncoder().encode("WAVE"),8);
  const sample=makeSampleAsset("custom1","My sound","audio/wav",raw,"user");
  score.samples.push(sample);
- score.instruments[0].patch={
+ score.instruments[0].sounds[0].patch={
   type:"sample",presetId:"custom",zones:[{assetId:"custom1",root:60}],
   followPitch:true,transpose:0,gain:1,attack:.01,release:.1,pan:0
  };

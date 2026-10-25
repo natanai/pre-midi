@@ -1,0 +1,71 @@
+<!doctype html><html lang="en" data-audio="RUNNING"><meta charset="utf-8"><pre id="result"></pre>
+<script type="module">
+import {create,makeInstrument,makeSound,clone,validate} from "../schema.js";
+import {makePatch} from "../synth.js";
+import {makeSamplerPatch,SAMPLE_LIBRARY} from "../samples.js";
+import {makeSampleAsset} from "../sampler.js";
+import {encodeMonoWav} from "../recording.js";
+import {wav,play} from "../audio.js";
+const checks={},check=(name,value)=>{checks[name]=!!value;if(!value)throw Error(name);};
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const nativeContext=window.AudioContext;let liveContext,transport;
+try{
+ const score=create();score.bars=1;
+ const kick=makeSound("Kick",makePatch("pulse-kick"),"hit");kick.patch.pan=-1;
+ const snare=makeSound("Snare",makePatch("static-snare"),"hit");snare.patch.pan=1;
+ const rack=makeInstrument(1,1,kick);rack.sounds.push(snare);score.instruments=[rack];
+ rack.chunks[0].notes=rack.sounds.map((sound,i)=>({id:"hit-"+i,soundId:sound.id,start:0,duration:1,velocity:.7}));
+ check("rack validates",!validate(score).length);
+ async function render(doc){const bytes=await (await wav(doc)).arrayBuffer();return new Int16Array(bytes.slice(44));}
+ const together=await render(score),a=clone(score),b=clone(score);
+ a.instruments[0].chunks[0].notes.pop();b.instruments[0].chunks[0].notes.shift();
+ const left=await render(a),right=await render(b);let error=0,energy=0,le=0,re=0;
+ for(let i=0;i<together.length;i++){
+  error=Math.max(error,Math.abs(together[i]-left[i]-right[i]));energy+=together[i]**2;
+  if(i%2)re+=together[i]**2;else le+=together[i]**2;
+ }
+ check("simultaneous sound rows sum correctly with independent pan",error<=2&&energy>1000&&le>100&&re>100);
+ const half=clone(score);half.instruments[0].volume*=.5;const quieter=await render(half);
+ check("rack master volume scales all rows",quieter.every((value,i)=>Math.abs(value-together[i]*.5)<=2));
+ const reordered=clone(score);reordered.instruments[0].sounds.reverse();
+ const reorderedAudio=await render(reordered);
+ check("reordering sounds leaves WAV audio identical",reorderedAudio.every((value,i)=>value===together[i]));
+ // Full recorded tails are controlled by the sample patch, independently of pitch-following.
+ const asset=makeSampleAsset("rack-audio-test","Author hit","audio/wav",encodeMonoWav(
+  Float32Array.from({length:44100},(_,i)=>Math.sin(i*2*Math.PI*330/44100)*.3)),"Test recording");
+ const sampled=clone(a);sampled.samples=[asset];
+ sampled.instruments[0].sounds[0].patch={...makeSamplerPatch(SAMPLE_LIBRARY[0]),
+  zones:[{assetId:asset.id,root:60}],followPitch:false,oneShot:true};
+ const full=await render(sampled);
+ const gated=clone(sampled);gated.instruments[0].sounds[0].patch.oneShot=false;
+ const cut=await render(gated);let fullTail=0,cutTail=0;
+ for(let i=44100;i<70000;i++){fullTail+=full[i]**2;cutTail+=cut[i]**2;}
+ check("one hit preserves full recorded tail",fullTail>1000&&cutTail===0);
+ const faded=clone(sampled);faded.instruments[0].sounds[0].patch.release=.5;
+ const fadedAudio=await render(faded);
+ check("one-shot release remains independently editable",fadedAudio.slice(55000,70000).some((value,index)=>Math.abs(value-full[index+55000])>50));
+ const longAsset=makeSampleAsset("long-rack-tail","Long author hit","audio/wav",encodeMonoWav(
+  Float32Array.from({length:44100*4},(_,i)=>Math.sin(i*2*Math.PI*220/44100)*.25)),"Test recording");
+ const long=clone(sampled);long.bpm=240;long.samples=[longAsset];
+ long.instruments[0].sounds[0].patch.transpose=-12;
+ long.instruments[0].sounds[0].patch.zones=[{assetId:longAsset.id,root:60}];
+ long.instruments[0].chunks[0].notes[0].start=15;
+ const longAudio=await render(long);
+ check("WAV includes full one-shot tails past the final bar",longAudio.length>6.94*44100*2&&longAudio.slice(6.5*44100*2,6.7*44100*2).some(value=>Math.abs(value)>10));
+ // Probe the real running audio graph through the same canonical live scheduler.
+ window.AudioContext=class extends nativeContext{
+  constructor(){super();liveContext=this;this.probe=super.createAnalyser();this.probe.connect(super.destination);}
+  get destination(){return this.probe||super.destination;}
+ };
+ transport=await play(score,{loop:true});await delay(160);
+ const probe=new Float32Array(liveContext.probe.fftSize);liveContext.probe.getFloatTimeDomainData(probe);
+ check("real live scheduler produces audible multi-row output",probe.some(value=>Math.abs(value)>.0001));
+ transport.stop();await delay(120);
+ const muted=clone(score);muted.instruments[0].volume=0;
+ transport=await play(muted,{loop:true});await delay(160);liveContext.probe.getFloatTimeDomainData(probe);
+ check("live rack master mute silences every sound",probe.every(value=>Math.abs(value)<.0001));
+ document.documentElement.dataset.audio="PASS";document.getElementById("result").textContent=JSON.stringify(checks);
+}catch(error){document.documentElement.dataset.audio="FAIL";document.getElementById("result").textContent=String(error.stack||error)+"\n"+JSON.stringify(checks);}
+finally{transport?.stop();window.AudioContext=nativeContext;if(liveContext)await liveContext.close();}
+void fetch("/__rack_audio_result?status="+document.documentElement.dataset.audio+"&details="+encodeURIComponent(document.getElementById("result").textContent)).catch(()=>{});
+</script></html>

@@ -1,7 +1,7 @@
 // Licensed recordings. The manifest, not a second instrument editor, owns sources.
 // All entries are CC0 1.0; SHA-1 is each upstream git *blob* checksum.
 // Copies are downloaded at GitHub Pages build time to static /samples.
-// When selected, the bytes are embedded in a .premidi, never a remote reference.
+// Selected sources use companion audio assets, never embedded .premidi bytes.
 import { GUITAR_RECORDINGS, GUITAR_PRESETS } from "./acousticGuitars.js";
 import { movementDefaults } from "./expression.js";
 const META="facebookincubator/Meta-open-sound";
@@ -36,7 +36,7 @@ export const SAMPLE_ASSETS=[
  ...GUITAR_RECORDINGS.map(item=>m(item.id,META,item.path,item.sha,item.root,"audio/ogg",
   {velocity:item.velocity,string:item.string}))
 ];
-export const SAMPLE_LIBRARY=[
+const sampleLibrary=[
  {id:"real-piano",name:"Recorded Piano",category:"Recorded",description:"Layered piano recordings, two key zones.",assets:["piano-c3","piano-c4"],followPitch:true},
  ...GUITAR_PRESETS,
  { ...GUITAR_PRESETS.find(p=>p.id==="steel-guitar"),
@@ -63,9 +63,11 @@ export const SAMPLE_LIBRARY=[
  {id:"open-hat",name:"Open Hat",category:"Drums",description:"Brighter open hi-hat wash.",assets:["hat-open"],followPitch:false},
  {id:"hand-bongo",name:"Bongo",category:"Drums",description:"Acoustic hand percussion.",assets:["bongo"],followPitch:false}
 ];
+const hitPresets=new Set(["ball-whistle","acoustic-kick","tape-snare","hiphop-clap","tight-hat","open-hat","hand-bongo"]);
+export const SAMPLE_LIBRARY=sampleLibrary.map(preset=>({...preset,trigger:hitPresets.has(preset.id)?"hit":"pitched"}));
 export const sampleAsset=id=>SAMPLE_ASSETS.find(x=>x.id===id);
 export const samplePreset=id=>SAMPLE_LIBRARY.find(x=>x.id===id);
-export const sampleFile=asset=>"./samples/"+asset.id+"."+(asset.mime==="audio/ogg"?"ogg":"wav");
+export const sampleFile=asset=>new URL("./samples/"+asset.id+"."+(asset.mime==="audio/ogg"?"ogg":"wav"),import.meta.url).href;
 export const rawUrl=asset=>"https://raw.githubusercontent.com/"+asset.repo+"/"+SAMPLE_REPOS[asset.repo]+"/"+asset.path.split("/").map(encodeURIComponent).join("/");
 export function makeSamplerPatch(preset){
  return {
@@ -76,7 +78,7 @@ export function makeSamplerPatch(preset){
     ...(asset.velocity===undefined?{}:{velocity:asset.velocity}),
     ...(asset.string===undefined?{}:{string:asset.string})};
   }),
-  followPitch:preset.followPitch,transpose:0,
+  followPitch:preset.followPitch,oneShot:preset.trigger==="hit",transpose:0,
   gain:preset.gain??.9,attack:preset.attack??.005,release:preset.release??.17,
   pan:0,strumMs:preset.strumMs??0,preserveDynamics:preset.preserveDynamics??false,
   movement:{...movementDefaults,...(preset.movement||{})},
