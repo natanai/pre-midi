@@ -461,7 +461,8 @@ function renderNotes() {
  scroll.scrollTop = top;
  scroll.scrollLeft = left;
  const note=chunk.notes.find(entry=>entry.id===selectedNoteId);
- renderNoteExpression($("note-expression"),note,note?noteLabel(note.pitch):"",bend=>{
+ renderNoteExpression($("note-expression"),note,note?noteLabel(note.pitch):"",
+  note?note.duration*60/score.bpm/4:0,bend=>{
   modify(()=>{const target=chunkFor(instrument()).notes.find(entry=>entry.id===selectedNoteId);if(target)target.bend=bend;});
  },()=>{
   const id=selectedNoteId;
