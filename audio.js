@@ -1,5 +1,6 @@
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
+import { movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the instrument.patch stored in the score.
 export const secondsPerStep = doc => 60/doc.bpm/4;
@@ -50,6 +51,7 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
   return;
  }
  const patch=instrument.patch,off=start+Math.max(.015,duration),env=patch.envelope;
+ const motion=movement(patch);
  const end=off+env.release+.012,cleanupAt=end+(patch.effects.delayMix>0?2.4:.15);
  const sources=[],nodes=[];
  const add=node=>{nodes.push(node);return node;};
@@ -63,17 +65,9 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
   const gain=add(ctx.createGain());
   oscillator.type=slot.wave;
   oscillator.frequency.setValueAtTime(Math.min(18000,frequency(event.pitch)*2**slot.octave),start);
-  oscillator.detune.setValueAtTime(slot.detune,start);
+  schedulePitch(ctx,oscillator.detune,event,motion,start,duration,slot.detune);
   gain.gain.value=slot.level;
   oscillator.connect(gain);gain.connect(mix);
-  if(patch.movement.depth>0){
-   const lfo=ctx.createOscillator(),depth=add(ctx.createGain());
-   lfo.type="sine";lfo.frequency.value=patch.movement.rate;
-   depth.gain.value=patch.movement.depth;
-   lfo.connect(depth);depth.connect(oscillator.detune);
-   lfo.start(start);lfo.stop(end);
-   sources.push(lfo);
-  }
   oscillator.start(start);oscillator.stop(end);
   sources.push(oscillator);
  }
@@ -90,6 +84,8 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
  filter.frequency.setValueAtTime(patch.filter.cutoff,start);
  filter.Q.setValueAtTime(patch.filter.resonance,start);
  mix.connect(filter);
+ if(motion.tone>0)scheduleMovementLfo(ctx,filter.frequency,start,duration,
+  motion.toneRate,patch.filter.cutoff*motion.tone*.8);
  let signal=filter;
  if(patch.effects.drive>0){
   const shaper=add(ctx.createWaveShaper());
@@ -114,7 +110,11 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
  signal.connect(amp);
  const pan=add(ctx.createStereoPanner());
  pan.pan.value=patch.pan;
- amp.connect(pan);
+const pulse=add(ctx.createGain());
+ pulse.gain.setValueAtTime(1,start);
+ if(motion.tremolo>0)scheduleMovementLfo(ctx,pulse.gain,start,duration,
+  motion.tremoloRate,motion.tremolo*.45);
+ amp.connect(pulse);pulse.connect(pan);
  const fx=patch.effects,mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
  dry.gain.value=1-mixAmount*.4;
