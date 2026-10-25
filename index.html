@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#000000">
-<title>pre-midi — Studio</title>
+<title>pre-midi — studio</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <div class="app">
 <header>
- <div class="brand"><b>pre-midi</b><small>PRE-PROGRAMMED / MUSIC STUDIO</small></div>
+ <div class="brand"><b>pre-midi</b></div>
  <nav aria-label="Files">
   <button id="new" type="button">New</button>
   <button id="examples" type="button">Examples</button>
@@ -72,7 +72,7 @@
      <div class="sound-window-actions"><button id="sound-close" type="button" aria-label="Close sound editor">×</button></div>
      <div class="sound-actions"><button id="change-sound" type="button">Browse sounds</button><button id="save-sound" type="button">Save preset</button></div>
     </div>
-    <div class="patch-info"><span id="patch-label"></span><span class="scope-description">Sound parameters</span></div>
+    <div class="patch-info"><span id="patch-label"></span></div>
     <div class="controls">
      <div class="sound-control-group sound-identity-controls">
       <label>Name <input id="instrument-name" maxlength="60"></label>
@@ -85,9 +85,9 @@
      <div id="sound-volume-dial"></div>
      <label>Reference note <select id="sound-reference" aria-label="Sound reference note"></select></label>
      <div class="rack-sound-actions">
-      <button id="hear-sound" type="button">Hear sound</button>
-      <button id="replace-row-sound" type="button">Replace this sound</button>
-      <button id="save-row-sound" type="button">Save this sound preset</button>
+      <button id="hear-sound" type="button">hear</button>
+      <button id="replace-row-sound" type="button">replace sound</button>
+      <button id="save-row-sound" type="button">save sound preset</button>
       <button id="move-sound-up" type="button">Move up</button>
       <button id="move-sound-down" type="button">Move down</button>
       <button id="duplicate-sound" type="button">Duplicate sound</button>
@@ -95,8 +95,8 @@
      </div>
     </div>
     <div class="layout-actions">
-     <button id="convert-rack" type="button">Use a sound row</button>
-     <button id="convert-pitched" type="button" hidden>Move to piano roll</button>
+     <button id="convert-rack" type="button">convert to rack</button>
+     <button id="convert-pitched" type="button" hidden>convert to piano roll</button>
     </div>
     <div id="sound-visualizer" class="sound-visualizer" aria-label="Instrument sound visualization"></div>
     <div id="synth-editor" class="synth-editor" aria-label="Instrument sound controls"></div>
@@ -104,24 +104,24 @@
   </div>
  </div>
 </main>
-<footer><span id="status" role="status">Saved locally</span><span>.premidi v7 · GAME PARITY PENDING · <a href="https://github.com/natanai/pre-midi">SOURCE</a></span></footer>
+<footer><span id="status" role="status">Saved locally</span><span><a href="https://github.com/natanai/pre-midi">source</a></span></footer>
 </div>
 <dialog id="instrument-dialog" class="instrument-dialog" aria-labelledby="instrument-dialog-title">
- <div class="library-top"><div><h2 id="instrument-dialog-title">Instrument library</h2><p id="library-description">Synth presets and CC0 recordings. Select a sound to add or replace it.</p></div>
+ <div class="library-top"><div><h2 id="instrument-dialog-title">sounds</h2><p id="library-description"></p></div>
   <button id="close-library" type="button" aria-label="Close instrument library">×</button></div>
  <div class="library-filters" id="library-filters" aria-label="Sound categories"></div>
  <div id="library-sounds" class="library-sounds" aria-label="Available sounds"></div>
 </dialog>
 <dialog id="example-dialog" class="instrument-dialog example-dialog" aria-labelledby="example-dialog-title">
  <div class="library-top">
-  <div><h2 id="example-dialog-title">Example compositions</h2><p>Load a composition into the editor. Replaces the current draft.</p></div>
+  <div><h2 id="example-dialog-title">examples</h2><p>replaces the current draft</p></div>
   <button id="close-examples" type="button" aria-label="Close example library">×</button>
  </div>
  <div id="example-list" class="example-list" aria-label="Example compositions"></div>
 </dialog>
 <dialog id="microphone-dialog" class="instrument-dialog microphone-dialog" aria-labelledby="microphone-dialog-title">
  <div class="library-top">
-  <div><h2 id="microphone-dialog-title">Record or upload a sound</h2><p>Record or upload WAV audio. Synth conversion is optional.</p></div>
+  <div><h2 id="microphone-dialog-title">record or upload</h2></div>
   <button id="mic-close" type="button" aria-label="Close recording">×</button>
  </div>
  <div class="mic-flow">
@@ -159,7 +159,7 @@
    <div id="mic-synth-result" class="mic-synth-result" hidden>
     <label>Synth name <input id="mic-synth-name" maxlength="60"></label>
     <audio id="mic-synth-playback" aria-label="Converted synth preview" controls preload="none"></audio>
-    <p class="mic-guidance">Generated synth approximation. Compare recordings and adjust parameters.</p>
+    
     <button id="mic-use-synth" type="button" class="primary">Use synth instrument</button>
    </div>
   </div>
@@ -174,7 +174,7 @@
 </dialog>
 <dialog id="audio-kind-dialog" class="instrument-dialog" aria-labelledby="audio-kind-title">
  <div class="library-top"><h2 id="audio-kind-title">How should this audio play?</h2><button id="cancel-audio-kind" type="button">Cancel</button></div>
- <p>A note uses musical pitches. A hit is triggered from a named sound row.</p>
+ <p>notes use pitches · hits use racks</p>
  <label>Recorded note <select id="import-root"></select></label>
  <div class="mic-actions"><button id="import-as-note" type="button">Play as a note</button><button id="import-as-hit" type="button">Trigger as a hit</button><button id="import-as-synth" type="button">Convert to synth</button></div>
 </dialog>
