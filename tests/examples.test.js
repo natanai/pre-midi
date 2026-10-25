@@ -41,7 +41,7 @@ test("examples are diverse, opt-in and generate real valid portable scores",asyn
  }
  assert.ok(observed.size>=16,"Example library should showcase substantial instrument breadth");
 });
-test("sampled examples embed only the used recordings with no external playback dependency",async()=>{
+test("sampled examples reference only used recordings using portable relative asset paths",async()=>{
  for(const name of ["porchlight","swaying-wire"]){
   const doc=await buildExample(name,async id=>stubSample(id));
   assert.ok(doc.samples.length>=3,name);
@@ -49,7 +49,7 @@ test("sampled examples embed only the used recordings with no external playback 
   const used=usedSampleIds(doc);
   assert.deepEqual(sampleIds,used,"Every embedded recording should be used in the score");
   assert.ok(doc.instruments.some(inst=>inst.patch.type==="sample"));
-  assert.ok(doc.samples.every(asset=>asset.data.length>0&&asset.source.startsWith("https://")));
+  assert.ok(doc.samples.every(asset=>asset.path.startsWith("assets/")&&!Object.hasOwn(asset,"data")&&asset.source.startsWith("https://")));
   assert.deepEqual(validate(doc),[]);
  }
 });
