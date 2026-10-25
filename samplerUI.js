@@ -1,84 +1,61 @@
 import {movement,movementDefaults} from "./expression.js";
-// Sampler controls use the same canonical patch mutation route as the synth.
-// The instrument owns its notes and sound independently of sample library UI.
-export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
+import {createDial} from "./dial.js";
+// Sample controls and synth controls share the same dial and visualization
+// owner. All durable edits still flow through studio.js modify().
+export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{}){
  root.replaceChildren();
  const header=document.createElement("div");header.className="sampler-description";
- header.textContent=(metadata||"Embedded audio")+" · "+patch.zones.length+" sample zone"+(patch.zones.length===1?"":"s");
+ const count=new Set(patch.zones.map(zone=>zone.root)).size;
+ header.textContent=(metadata&&patch.zones.length<=8?metadata+" · ":"")+
+  count+" recorded pitch"+(count===1?"":"es");
  root.append(header);
- const fields=document.createElement("div");fields.className="sampler-controls";
- const config=[
-  ["gain","Level",0,2,.01,v=>Math.round(v*100)+"%"],
-  ["attack","Attack",0,2,.005,v=>Math.round(v*1000)+" ms"],
-  ["release","Release",.01,3,.01,v=>Math.round(v*1000)+" ms"],
-  ["transpose","Transpose",-24,24,1,v=>(v>0?"+":"")+v+" st"],
-  ["pan","Pan",-1,1,.01,v=>v===0?"C":v<0?"L "+Math.round(-v*100):"R "+Math.round(v*100)]
+ const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=true;
+ const movementTitle=document.createElement("summary");movementTitle.textContent="Movement";
+ const movementFields=document.createElement("div");movementFields.className="synth-fields dial-grid";
+ const m=movement(patch);
+ const movements=[
+  ["glide","Glide from",-12,12,.1,"semitones"],
+  ["glideTime","Glide time",.01,3,.01,"seconds"],
+  ["depth","Vibrato",0,100,1,"cents"],
+  ["rate","Vibrato speed",.1,20,.1,"hz"],
+  ["delay","Vibrato waits",0,3,.05,"seconds"],
+  ["tremolo","Pulse",0,1,.01,"percent"],
+  ["tremoloRate","Pulse speed",.1,20,.1,"hz"]
  ];
- for(const [key,title,min,max,step,format] of config){
-  const label=document.createElement("label");label.className="synth-field";
-  const heading=document.createElement("span");heading.textContent=title;
-  const line=document.createElement("div");line.className="synth-range";
-  const input=document.createElement("input");
-  input.type="range";input.min=min;input.max=max;input.step=step;input.value=patch[key];
-  input.setAttribute("aria-label",title+" sample");
-  const output=document.createElement("output");output.textContent=format(patch[key]);
-  input.addEventListener("input",()=>output.textContent=format(Number(input.value)));
-  input.addEventListener("change",()=>onChange([key],Number(input.value)));
-  line.append(input,output);label.append(heading,line);fields.append(label);
+ for(const [key,label,min,max,step,display] of movements){
+  movementFields.append(createDial({label,min,max,step,display},m[key],
+   value=>onChange(["movement"],{...movement(patch),[key]:value}),
+   value=>onPreview(["movement",key],value)));
  }
- const strum=document.createElement("label");strum.className="synth-field";
- const strumName=document.createElement("span");strumName.textContent="Strum";
- const strumRow=document.createElement("div");strumRow.className="synth-range";
- const strumInput=document.createElement("input");strumInput.type="range";
- strumInput.min="-25";strumInput.max="25";strumInput.step="1";
- strumInput.value=String(patch.strumMs??0);
- strumInput.setAttribute("aria-label","Chord strum milliseconds per note");
- const strumValue=document.createElement("output");
- const strumText=amount=>amount===0?"Off":(amount>0?"Down ":"Up ")+Math.abs(amount)+" ms";
- strumValue.textContent=strumText(Number(strumInput.value));
- strumInput.addEventListener("input",()=>strumValue.textContent=strumText(Number(strumInput.value)));
- strumInput.addEventListener("change",()=>onChange(["strumMs"],Number(strumInput.value)));
- strumRow.append(strumInput,strumValue);strum.append(strumName,strumRow);fields.append(strum);
- const follow=document.createElement("label");follow.className="sample-pitch-setting";
- const box=document.createElement("input");box.type="checkbox";box.checked=patch.followPitch;
- box.addEventListener("change",()=>onChange(["followPitch"],box.checked));
- follow.append(box,document.createTextNode("Follow note pitch"));
- fields.append(follow);
- const natural=document.createElement("label");natural.className="sample-pitch-setting";
- const check=document.createElement("input");check.type="checkbox";check.checked=!!patch.preserveDynamics;
- check.addEventListener("change",()=>onChange(["preserveDynamics"],check.checked));
- natural.append(check,document.createTextNode("Keep recorded dynamics"));
- fields.append(natural);
- root.append(fields);
- const motion=movement(patch);
- const details=document.createElement("details");details.className="sample-map-details";
- const summary=document.createElement("summary");summary.textContent="Movement · glide, vibrato and pulse";
- const motionFields=document.createElement("div");motionFields.className="sampler-controls";
- const controls=[
-  ["glide","Glide from",-12,12,.1," st"],
-  ["glideTime","Glide time",.01,3,.01," s"],
-  ["depth","Vibrato",0,100,1," ct"],
-  ["rate","Vibrato speed",.1,20,.1," Hz"],
-  ["delay","Vibrato waits",0,3,.05," s"],
-  ["tremolo","Pulse",0,1,.01,""],
-  ["tremoloRate","Pulse speed",.1,20,.1," Hz"]
+ movementGroup.append(movementTitle,movementFields);root.append(movementGroup);
+ const details=document.createElement("details");details.className="synth-group sample-shaping";
+ const summary=document.createElement("summary");summary.textContent="Sample & articulation";
+ const fields=document.createElement("div");fields.className="synth-fields dial-grid";
+ const configs=[
+  ["gain","Level",0,2,.01,"percent"],
+  ["attack","Attack",0,2,.005,"seconds"],
+  ["release","Release",.01,3,.01,"seconds"],
+  ["transpose","Transpose",-24,24,1,"semitones"],
+  ["pan","Pan",-1,1,.01,"pan"],
+  ["strumMs","Strum",-25,25,1,"number"]
  ];
- for(const [key,labelText,min,max,step,unit] of controls) {
-  const label=document.createElement("label");label.className="synth-field";
-  label.append(document.createElement("span"));label.firstChild.textContent=labelText;
-  const row=document.createElement("div");row.className="synth-range";
-  const input=document.createElement("input");input.type="range";
-  input.min=min;input.max=max;input.step=step;input.value=motion[key];
-  input.setAttribute("aria-label",labelText+" sample movement");
-  const out=document.createElement("output");out.textContent=String(motion[key])+unit;
-  input.addEventListener("input",()=>out.textContent=input.value+unit);
-  input.addEventListener("change",()=>{
-   const next={...movementDefaults,...movement(patch),[key]:Number(input.value)};
-   onChange(["movement"],next);
-  });
-  row.append(input,out);label.append(row);motionFields.append(label);
+ for(const [key,label,min,max,step,display] of configs) {
+  fields.append(createDial({label,min,max,step,display,
+   format:key==="strumMs"?(value=>value===0?"Off":(value>0?"Down ":"Up ")+Math.abs(value)+" ms"):undefined
+  },patch[key]??0,
+   value=>onChange([key],value),
+   value=>onPreview([key],value)));
  }
- details.append(summary,motionFields);root.append(details);
+ const toggles=document.createElement("div");toggles.className="sample-toggles";
+ const addToggle=(label,path,checked)=>{
+  const control=document.createElement("label");control.className="sample-pitch-setting";
+  const box=document.createElement("input");box.type="checkbox";box.checked=checked;
+  box.addEventListener("change",()=>onChange([path],box.checked));
+  control.append(box,document.createTextNode(label));toggles.append(control);
+ };
+ addToggle("Follow note pitch","followPitch",patch.followPitch);
+ addToggle("Keep recorded dynamics","preserveDynamics",!!patch.preserveDynamics);
+ details.append(summary,fields,toggles);root.append(details);
  const mapping=document.createElement("div");mapping.className="sample-zones";
  const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
  const populateMapping=()=>patch.zones.forEach((zone,index)=>{
