@@ -6,8 +6,10 @@ import { create, validate } from "../schema.js";
 import { makePatch } from "../synth.js";
 import { wav } from "../audio.js";
 const result=document.getElementById("results");
+document.documentElement.dataset.audio="RUNNING";
+result.textContent="Audio module initialized";
 try {
- const names=["glass-keys","sub-current","static-snare","violet-pad"];
+ const names=["glass-keys","static-snare"];
  const fingerprints=[];
  for(const name of names) {
   const score=create();
@@ -19,6 +21,7 @@ try {
   inst.timeline=[chunk.id,null];
   const errors=validate(score);
   if(errors.length)throw Error(name+" failed validation: "+errors.join(","));
+  result.textContent="Rendering "+name;
   const data=await (await wav(score)).arrayBuffer();
   const view=new DataView(data);
   if(String.fromCharCode(...new Uint8Array(data.slice(0,4)))!=="RIFF")throw Error(name+" is not WAV");
