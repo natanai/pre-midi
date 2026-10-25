@@ -1,7 +1,8 @@
 // pre-midi native score. This is the only file-format definition.
 // Pre-midi remains the source of truth; game compatibility is frozen separately.
 export const FORMAT = "pre-midi";
-export const VERSION = 6;
+export const VERSION = 7;
+import {placementFor,STEPS_PER_BAR} from "./arrangement.js";
 import {MAX_SOUNDS,MAX_EVENTS,canConvertToRack,convertToRack} from "./soundModel.js";
 import { makePatch, validatePatch } from "./synth.js";
 import {validateBend} from "./expression.js";
@@ -18,7 +19,8 @@ export function makeInstrument(n = 1, bars = 8, sound=makeSound()) {
  return {
   id:id(), name:"Instrument "+n, volume:0.7,
   layout:sound.trigger==="hit"?"rack":"pitched", sounds:[sound],
-  chunks:[chunk], timeline:Array.from({length:bars},(_,bar)=>bar===0?chunk.id:null)
+  chunks:[chunk], timeline:Array.from({length:bars},(_,bar)=>bar===0?chunk.id:null),
+  placements:Array.from({length:bars},()=>null)
  };
 }
 export function create() {
@@ -36,7 +38,7 @@ const within=(x,low,high)=>typeof x==="number"&&Number.isFinite(x)&&x>=low&&x<=h
 export function validate(doc) {
  const errors=[];
  if(!object(doc)||doc.format!==FORMAT||doc.version!==VERSION)
-  return ["Unsupported .premidi file. The current format is pre-midi v6."];
+  return ["Unsupported .premidi file. The current format is pre-midi v7."];
  if(!text(doc.id,128)||!text(doc.title,100))errors.push("Composition needs an ID and title.");
  if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
  if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
@@ -108,25 +110,46 @@ export function validate(doc) {
   if(!Array.isArray(instrument.timeline)||instrument.timeline.length!==doc.bars||
      instrument.timeline.some(value=>value!==null&&!chunks.has(value)))
    errors.push("Instrument timeline contains a missing chunk.");
+  if(instrument.placements!==undefined){
+   if(!Array.isArray(instrument.placements)||instrument.placements.length!==doc.bars)
+    errors.push("Phrase placement list must match song bars.");
+   else for(let bar=0;bar<doc.bars;bar++){
+    const item=instrument.placements[bar];
+    if(item===null)continue;
+    if(!object(item)||instrument.timeline[bar]===null||
+      !Number.isInteger(item.offset)||!within(item.offset,0,15)||
+      (item.length!==undefined&&(!Number.isInteger(item.length)||!within(item.length,1,16)))||
+      !Number.isInteger(item.every)||!within(item.every,1,64)||
+      !Number.isInteger(item.repeats)||!within(item.repeats,1,32))
+     errors.push("Invalid offset or polymeter repeat at bar "+(bar+1)+".");
+   }
+  }
  }
  return errors.slice(0,20);
 }
-// Only v5 is migrated. Validate its original shape before changing any events.
+// New timing fields require a version bump: a v6 player must never silently
+// reinterpret a v7 offset as a regular bar-aligned chunk.
 export function migrate(input){
- if(input?.format!==FORMAT||input.version!==5)return input;
- if(!Array.isArray(input.instruments))throw Error("Invalid v5 instrument list.");
- const doc=clone(input);doc.version=VERSION;
- for(const inst of doc.instruments||[]){
-  if(!object(inst))continue;
-  const patch=inst.patch;
-  const sound={id:"sound-1",name:inst.name,trigger:"pitched",referencePitch:patch?.zones?.[0]?.root??60,gain:1,patch};
-  inst.layout="pitched";inst.sounds=[sound];delete inst.patch;
+ if(input?.format!==FORMAT||![5,6,7].includes(input.version))return input;
+ if(input.version===7)return input;
+ if(!Array.isArray(input.instruments))throw Error("Invalid older instrument list.");
+ const doc=clone(input),wasV5=doc.version===5;
+ if(wasV5){
+  for(const inst of doc.instruments||[]){
+   if(!object(inst))continue;
+   const patch=inst.patch;
+   const sound={id:"sound-1",name:inst.name,trigger:"pitched",referencePitch:patch?.zones?.[0]?.root??60,gain:1,patch};
+   inst.layout="pitched";inst.sounds=[sound];delete inst.patch;
+  }
+ }
+ doc.version=VERSION;
+ for(const inst of doc.instruments){
+  inst.placements=Array.from({length:doc.bars},()=>null);
  }
  const issues=validate(doc);
  if(issues.length)throw Error(issues.join("\n"));
- for(const inst of doc.instruments){
+ if(wasV5)for(const inst of doc.instruments){
   const patch=inst.sounds[0].patch;
-  // Preserve old timed releases. Factory/new hits explicitly opt into natural tails.
   if(patch.type==="sample"&&!patch.followPitch&&canConvertToRack(inst))convertToRack(inst);
  }
  return doc;

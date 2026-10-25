@@ -4,6 +4,7 @@ import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validat
 import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
+import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
 import { renderPatchEditor } from "./instrumentUI.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
@@ -250,41 +251,56 @@ function paintPianoPlayhead() {
  if (!marker) return;
  const currentInstrument = instrument();
  const activeChunk = chunkFor(currentInstrument);
- const isAudibleChunk = pianoProgress !== null &&
-  (playback !== null || pendingPlay) &&
-  chunkIsPlaying(score, currentInstrument.id, activeChunk.id, pianoProgress);
- marker.hidden = !isAudibleChunk;
- if (!isAudibleChunk) return;
- // The note-label gutter is 63px; the remaining width represents 16 steps.
- const x = pianoScrubberX(pianoProgress.step, grid.clientWidth, instrument().layout==="rack"?128:63);
+ const relative = pianoProgress!==null &&
+  (playback!==null || pendingPlay) ?
+  chunkProgress(score,currentInstrument.id,activeChunk.id,pianoProgress) : null;
+ marker.hidden = relative===null;
+ if(relative===null)return;
+ const x=pianoScrubberX(relative,grid.clientWidth,instrument().layout==="rack"?128:63);
  marker.style.transform = `translateX(${x}px)`;
 }
 function renderTimeline() {
- const root = $("arrangement");
+ const root=$("arrangement");
  root.replaceChildren();
- root.style.setProperty("--bars", score.bars);
- const heading = element("div", undefined, "arrangement-head");
- heading.append(element("span", "INSTRUMENT"));
- for (let bar = 0; bar < score.bars; bar++) heading.append(element("span", String(bar + 1).padStart(2, "0")));
+ root.style.setProperty("--bars",score.bars);
+ const heading=element("div",undefined,"arrangement-head");
+ heading.append(element("span","INSTRUMENT"));
+ for(let bar=0;bar<score.bars;bar++)heading.append(element("span",String(bar+1).padStart(2,"0")));
  root.append(heading);
- for (const inst of score.instruments) {
-  const lane = element("div", undefined, "arrangement-row" + (selectedInstrumentId === inst.id ? " active" : ""));
-  lane.style.setProperty("--track-accent", signal(inst));
-  lane.dataset.instrumentId = inst.id;
-  const name = button(inst.name, () => { closePicker(); focus(inst); }, "label instrument-lane-label");
-  lane.append(name);
-  inst.timeline.forEach((chunkId, bar) => {
-   const chunk = inst.chunks.find(candidate => candidate.id === chunkId);
-   const active = selectedSlot.instrumentId === inst.id && selectedSlot.bar === bar;
-   const clip = button(chunk?.name ?? "+", () => openPicker(inst.id, bar, clip),
-    "clip" + (chunk ? "" : " empty") + (active ? " selected" : ""));
-   clip.dataset.bar = String(bar);
-   clip.setAttribute("aria-label", inst.name + ", bar " + (bar + 1) + ": " + (chunk?.name ?? "Empty") + ". Choose chunk");
-   clip.setAttribute("aria-haspopup", "dialog");
-   clip.setAttribute("aria-expanded", "false");
-   clip.title = inst.name + " / bar " + (bar + 1);
+ for(const inst of score.instruments){
+  const lane=element("div",undefined,"arrangement-row"+(selectedInstrumentId===inst.id?" active":""));
+  lane.style.setProperty("--track-accent",signal(inst));
+  lane.dataset.instrumentId=inst.id;
+  lane.append(button(inst.name,()=>{closePicker();focus(inst);},"label instrument-lane-label"));
+  inst.timeline.forEach((chunkId,bar)=>{
+   const chunk=inst.chunks.find(candidate=>candidate.id===chunkId);
+   const timing=placementFor(inst,bar);
+   const active=selectedSlot.instrumentId===inst.id&&selectedSlot.bar===bar;
+   const label=chunk?.name??"+";
+   const suffix=chunk&&(timing.offset||timing.repeats>1)?
+    " · "+(timing.offset?"+"+timing.offset+"s ":"")+(timing.repeats>1?"×"+timing.repeats:""):"";
+   const clip=button(label+suffix,()=>openPicker(inst.id,bar,clip),
+    "clip"+(chunk?"":" empty")+(active?" selected":""));
+   clip.dataset.bar=String(bar);
+   clip.setAttribute("aria-label",inst.name+", bar "+(bar+1)+": "+(chunk?.name??"Empty")+
+    (chunk?", starts "+timing.offset+" steps into bar, plays "+timing.repeats+
+     " time(s), every "+timing.every+" steps":"")+". Choose chunk and timing");
+   clip.setAttribute("aria-haspopup","dialog");
+   clip.setAttribute("aria-expanded","false");
+   clip.title=clip.getAttribute("aria-label");
    lane.append(clip);
   });
+  // The strips show real onsets below the directly editable bar slots.
+  for(const phrase of phraseInstances(score,inst)){
+   const length=Math.min(phrase.length,score.bars*16-phrase.start);
+   const segment=element("div",undefined,"phrase-segment"+(phrase.index?" repeated":""));
+   segment.dataset.sourceBar=String(phrase.bar);
+   segment.dataset.repeat=String(phrase.index);
+   segment.style.setProperty("--phrase-start",String(phrase.start/(score.bars*16)));
+   segment.style.setProperty("--phrase-width",String(length/(score.bars*16)));
+   segment.setAttribute("aria-hidden","true");
+   lane.append(segment);
+  }
   root.append(lane);
  }
  paintPlayhead();
@@ -302,6 +318,7 @@ function place(instId, bar, chunkId) {
  }
  modify(() => {
   inst.timeline[bar] = chunkId;
+  if(chunkId===null)inst.placements[bar]=null;
   selectedInstrumentId = instId;
   selectedSlot = { instrumentId: instId, bar };
   if (chunkId !== null) selectedChunks.set(instId, chunkId);
@@ -341,12 +358,46 @@ function openPicker(instId, bar, trigger) {
   choices.append(option);
  }
  panel.append(choices);
+ // Timing belongs to this use of a reusable chunk, not the chunk definition.
+ if(assigned){
+  const settings=element("div",undefined,"placement-settings");
+  const timing=placementFor(inst,bar);
+  for(const [labelText,key,min,max] of [
+   ["Offset in bar (steps)","offset",0,15],
+   ["Phrase length (steps)","length",1,16],
+   ["Repetitions","repeats",1,32],
+   ["Repeat every (steps)","every",1,64]
+  ]){
+   const label=element("label",labelText);
+   const value=element("input");
+   value.type="number";value.min=String(min);value.max=String(max);
+   value.step="1";value.value=String(timing[key]);
+   value.setAttribute("aria-label",labelText+" for "+inst.name+" bar "+(bar+1));
+   value.addEventListener("change",()=>{
+    const next=Number(value.value);
+    closePicker();
+    const changed=modify(()=>{
+     const old=placementFor(inst,bar),setting={...old,[key]:next};
+     inst.placements[bar]=setting.offset===0&&setting.length===16&&setting.repeats===1&&setting.every===16?null:setting;
+    });
+    if(changed){
+     const trigger=$("arrangement").querySelector(
+      '.arrangement-row[data-instrument-id="'+inst.id+'"] .clip[data-bar="'+bar+'"]');
+     if(trigger)openPicker(inst.id,bar,trigger);
+    }
+   });
+   label.append(value);settings.append(label);
+  }
+  settings.append(element("p","Beat 3 = offset 8. A three-beat phrase has length 12 and repeats every 12 steps.","placement-tip"));
+  panel.append(settings);
+ }
  const add = button("+ New chunk", () => {
   closePicker();
   modify(() => {
    const next = makeChunk("Chunk " + (inst.chunks.length + 1));
    inst.chunks.push(next);
    inst.timeline[bar] = next.id;
+   inst.placements[bar]=null;
    selectedInstrumentId = inst.id;
    selectedChunks.set(inst.id, next.id);
    selectedSlot = { instrumentId: inst.id, bar };
@@ -858,6 +909,8 @@ $("bars").addEventListener("change", event => modify(() => {
  for (const inst of score.instruments) {
   while (inst.timeline.length < count) inst.timeline.push(null);
   inst.timeline.length = count;
+  while(inst.placements.length<count)inst.placements.push(null);
+  inst.placements.length=count;
  }
  selectedSlot.bar = Math.min(selectedSlot.bar, count - 1);
 }));
@@ -1165,6 +1218,7 @@ $("delete-chunk").addEventListener("click", () => {
  if (inst.chunks.length < 2 || !confirm("Delete " + chunk.name + "?")) return;
  modify(() => {
   inst.chunks = inst.chunks.filter(candidate => candidate.id !== chunk.id);
+  inst.placements=inst.placements.map((setting,bar)=>inst.timeline[bar]===chunk.id?null:setting);
   inst.timeline = inst.timeline.map(value => value === chunk.id ? null : value);
   selectedChunks.set(inst.id, inst.chunks[0].id);
  });

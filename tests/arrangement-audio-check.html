@@ -1,0 +1,45 @@
+<!doctype html><html lang="en" data-audio="PENDING">
+<head><meta charset="utf-8"><title>Offset and polymeter WAV verification</title></head>
+<body><pre id="results"></pre>
+<script type="module">
+import {create,validate} from "../schema.js";
+import {wav} from "../audio.js";
+const result=document.getElementById("results");
+document.documentElement.dataset.audio="RUNNING";
+try {
+ const score=create();score.bars=2;
+ const inst=score.instruments[0];
+ inst.timeline=[inst.chunks[0].id,null];
+ inst.placements=[{offset:8,every:12,repeats:2},null];
+ inst.chunks[0].notes=[{id:"single",pitch:60,start:0,duration:3,velocity:1}];
+ const errors=validate(score);
+ if(errors.length)throw Error(errors.join("\n"));
+ const bytes=await (await wav(score)).arrayBuffer();
+ const view=new DataView(bytes),rate=view.getUint32(24,true);
+ if(rate!==44100)throw Error("Expected 44.1kHz offline WAV");
+ function rms(from,to){
+  let sum=0,count=0;
+  for(let pos=Math.floor(from*rate);pos<Math.floor(to*rate);pos++){
+   const byte=44+pos*4;if(byte+2>bytes.byteLength)break;
+   const sample=view.getInt16(byte,true)/32768;
+   sum+=sample*sample;count++;
+  }
+  return Math.sqrt(sum/Math.max(1,count));
+ }
+ const samples={
+  before:rms(.18,.65),offbeat:rms(1.04,1.23),
+  gap:rms(2.05,2.26),polymeter:rms(2.54,2.73)
+ };
+ if(samples.before>.00001)throw Error("Audio began before clip offset: "+JSON.stringify(samples));
+ if(samples.offbeat<.003)throw Error("Beat-three clip did not render: "+JSON.stringify(samples));
+ if(samples.gap>samples.offbeat/10)throw Error("Pause insufficiently quieter than the note: "+JSON.stringify(samples));
+ if(samples.polymeter<.003)throw Error("12-step repetition did not render: "+JSON.stringify(samples));
+ result.textContent=JSON.stringify(samples);
+ document.documentElement.dataset.audio="PASS";
+}catch(error){
+ result.textContent=String(error?.stack||error);
+ document.documentElement.dataset.audio="FAIL";
+}
+void fetch("/__arrangement_audio_result?status="+document.documentElement.dataset.audio+
+ "&details="+encodeURIComponent(result.textContent)).catch(()=>{});
+</script></body></html>

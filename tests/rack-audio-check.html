@@ -10,7 +10,7 @@ const checks={},check=(name,value)=>{checks[name]=!!value;if(!value)throw Error(
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const nativeContext=window.AudioContext;let liveContext,transport;
 try{
- const score=create();score.bars=1;
+ const score=create();score.bars=1;score.instruments[0].timeline.length=1;score.instruments[0].placements.length=1;
  const kick=makeSound("Kick",makePatch("pulse-kick"),"hit");kick.patch.pan=-1;
  const snare=makeSound("Snare",makePatch("static-snare"),"hit");snare.patch.pan=1;
  const rack=makeInstrument(1,1,kick);rack.sounds.push(snare);score.instruments=[rack];

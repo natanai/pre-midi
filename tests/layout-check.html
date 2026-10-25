@@ -188,6 +188,50 @@ async function checkLayout(frame){
  }
  checks.floatingSignalsSharedBarGeometry=get("title").value==="Floating Signals" &&
   lanes.length===4&&headingBars.length===16&&maxBoundaryError<.8;
+  // Prove the *editable controls* move an actual clip strip to an offbeat,
+  // and that a 12-step polymeter makes three correctly spaced strip copies.
+  const seventh=doc.querySelector('.arrangement-row .clip[data-bar="6"]');
+  seventh?.click();
+  const getPlacementInput=prefix=>[...doc.querySelectorAll(".placement-settings input")]
+   .find(input=>input.getAttribute("aria-label")?.startsWith(prefix));
+  const offsetInput=getPlacementInput("Offset in bar");
+  checks.placementControlsReachable=!!offsetInput&&!!getPlacementInput("Phrase length")&&!!getPlacementInput("Repetitions")&&
+   !!getPlacementInput("Repeat every");
+  if(offsetInput){
+   offsetInput.value="8";
+   offsetInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
+  }
+  const source=doc.querySelector('.arrangement-row .clip[data-bar="6"]');
+  const strip=doc.querySelector('.arrangement-row .phrase-segment[data-source-bar="6"][data-repeat="0"]');
+  const offsetDifference=source&&strip?
+   Math.abs(rect(strip).left-(rect(source).left+rect(source).width/2)):Infinity;
+  checks.offsetStripMatchesBeatThree=offsetDifference<3;
+  const repetitionsInput=getPlacementInput("Repetitions");
+  if(repetitionsInput){
+   repetitionsInput.value="3";
+   repetitionsInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
+  }
+  const intervalInput=getPlacementInput("Repeat every");
+  if(intervalInput){
+   intervalInput.value="12";
+   intervalInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
+  }
+  const phraseLengthInput=getPlacementInput("Phrase length");
+  if(phraseLengthInput){
+   phraseLengthInput.value="12";
+   phraseLengthInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
+  }
+  const segments=[0,1,2].map(index=>doc.querySelector(
+   '.arrangement-row .phrase-segment[data-source-bar="6"][data-repeat="'+index+'"]'));
+  // Editing a placement re-renders the timeline; never measure the detached
+  // element from the previous render.
+  const updatedSource=doc.querySelector('.arrangement-row .clip[data-bar="6"]');
+  const spacing=updatedSource?rect(updatedSource).width*.75:0;
+  checks.threeBeatPolymeterStrip=segments.every(Boolean)&&
+   Math.abs(rect(segments[0]).width-spacing)<3&&
+   Math.abs((rect(segments[1]).left-rect(segments[0]).left)-spacing)<3&&
+   Math.abs((rect(segments[2]).left-rect(segments[1]).left)-spacing)<3;
+
  frame.contentWindow.confirm=proceed;
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({

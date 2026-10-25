@@ -1,4 +1,5 @@
 import {resolveEvent} from "./soundModel.js";
+import {eventsAtStep,phraseInstances} from "./arrangement.js";
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
 import { movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
@@ -26,16 +27,7 @@ function noiseBuffer(ctx) {
  noiseBuffers.set(ctx,buffer);
  return buffer;
 }
-export function stepEvents(doc,absoluteStep) {
- const cycle=Math.max(1,doc.bars*16),songStep=absoluteStep%cycle;
- const barIndex=Math.floor(songStep/16),step=songStep%16,events=[];
- for(const instrument of doc.instruments) {
-  const chunk=instrument.chunks.find(c=>c.id===instrument.timeline[barIndex]);
-  if(!chunk)continue;
-  for(const n of chunk.notes)if(n.start===step)events.push({instrument,note:n,barIndex,step});
- }
- return events;
-}
+export const stepEvents = eventsAtStep;
 function soundNote(ctx,destination,instrument,event,start,duration,score) {
  if(instrument.sounds){
   const resolved=resolveEvent(instrument,event);
@@ -152,12 +144,12 @@ function eventOffset(instrument,note,notes){
 }
 function renderBar(ctx,out,score,bar,start) {
  const unit=secondsPerStep(score);
- for(const instrument of score.instruments) {
-  const chunk=instrument.chunks.find(c=>c.id===instrument.timeline[bar]);
-  if(chunk)for(const event of chunk.notes)
-   soundNote(ctx,out,instrument,event,
-    start+event.start*unit+eventOffset(instrument,event,chunk.notes),
-    event.duration*unit,score);
+ for(let step=0;step<16;step++){
+  for(const event of stepEvents(score,bar*16+step)){
+   soundNote(ctx,out,event.instrument,event.note,
+    start+step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
+    event.note.duration*unit,score);
+  }
  }
 }
 let context;
@@ -226,8 +218,7 @@ export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{}
    void decodeSamples(ctx,current,bufferCache(ctx)).catch(console.warn);
    for(const event of stepEvents(current,scheduled))
     soundNote(ctx,out,event.instrument,event.note,
-     nextTime+eventOffset(event.instrument,event.note,
-      event.instrument.chunks.find(c=>c.id===event.instrument.timeline[event.barIndex])?.notes||[]),
+     nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),
      event.note.duration*unit,current);
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
@@ -281,9 +272,12 @@ export async function wav(score) {
  await decodeSamples(decoder,score,decoded);
  let seconds=score.bars*16*secondsPerStep(score)+4.5;
  const unit=secondsPerStep(score);
- for(let bar=0;bar<score.bars;bar++)for(const instrument of score.instruments){
-  const chunk=instrument.chunks.find(chunk=>chunk.id===instrument.timeline[bar]);
-  for(const event of chunk?.notes||[]){
+ for(const instrument of score.instruments)for(const phrase of phraseInstances(score,instrument)){
+  for(const event of phrase.chunk.notes){
+   if(event.start>=phrase.length)continue;
+   // A placement may begin partway into its source bar, or repeat past it.
+   const onset=phrase.start+event.start;
+   if(onset>=score.bars*16)continue;
    const resolved=resolveEvent(instrument,event);if(!resolved)continue;
    const patch=resolved.voice.patch;
    let tail;
@@ -296,7 +290,7 @@ export async function wav(score) {
     const gate=instrument.layout==="rack"?Math.max(.015,patch.envelope.attack+patch.envelope.decay):event.duration*unit;
     tail=gate+patch.envelope.release+(patch.effects.delayMix>0?2.4:.15)+.012;
    }
-   seconds=Math.max(seconds,(bar*16+event.start)*unit+eventOffset(instrument,event,chunk.notes)+tail+.02);
+   seconds=Math.max(seconds,onset*unit+eventOffset(instrument,event,phrase.chunk.notes)+tail+.02);
   }
  }
  const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);
