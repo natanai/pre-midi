@@ -4,6 +4,9 @@
 <script>
 async function checkLayout(frame){
  const doc=frame.contentDocument;
+ const browserErrors=[];
+ frame.contentWindow.addEventListener("error",event=>browserErrors.push(String(event.message||event.error)));
+ frame.contentWindow.addEventListener("unhandledrejection",event=>browserErrors.push(String(event.reason)));
  const get=id=>doc.getElementById(id);
  const rect=el=>el.getBoundingClientRect();
  const pane=doc.querySelector(".instrument-pane");
@@ -250,7 +253,7 @@ async function checkLayout(frame){
   viewport:frame.clientWidth,
   sidebar:Math.round(sidebar.width),
   addButton:Math.round(add.width),
-  checks
+  checks,browserErrors
  });
  void fetch("/__layout_result?status="+document.documentElement.dataset.layout+"&details="+encodeURIComponent(document.getElementById("result").textContent)).catch(()=>{});
 }
