@@ -45,6 +45,7 @@ try{
  }
  await reportedTest("rack-audio-check","/__rack_audio_result");
  await reportedTest("audio-check","/__audio_result");
+ await reportedTest("arrangement-audio-check","/__arrangement_audio_result");
  await reportedTest("synth-check","/__synth_result",1440,900);
  await reportedTest("synth-check","/__synth_result",390,844);
  await reportedTest("recording.browser","/__recorder_result",1440,900,true);
