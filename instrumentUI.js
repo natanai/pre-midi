@@ -2,7 +2,7 @@
 // All edits go through the caller's one canonical composition mutation pathway.
 import { WAVES, FILTERS } from "./synth.js";
 import { BEND_SHAPES } from "./expression.js";
-import { createDial } from "./dial.js";
+import { createDial,explainLabel,helpForLabel } from "./dial.js";
 import {HARMONIC_COUNT,harmonicRecipe} from "./harmonics.js";
 const groups=[
  {name:"Oscillator 1",open:true,fields:[
@@ -87,15 +87,21 @@ function renderField(field,patch,onChange,onPreview){
   field.path[0]==="noiseDecay"?"Noise":null;
  const disabled=parent==="Filter sweep"&&!(patch.filter?.sweep)||
   parent==="Noise"&&!patch.noise;
- if(!field.options)return createDial({...field,disabled,
+ const cutoffHint=field.path[0]==="filter"&&field.path[1]==="cutoff"?
+  patch.filter.type==="lowpass"?"turn it down to muffle the high stuff":
+  patch.filter.type==="highpass"?"turn it up to shave off the bass":
+  patch.filter.type==="bandpass"?"move the little window of sound up or down":null:null;
+ if(!field.options)return createDial({...field,disabled,help:cutoffHint??field.help,
   disabledReason:disabled?"Adjust "+parent+" first.":undefined},value,
   next=>onChange(field.path,next),
   next=>onPreview(field.path,next));
  const label=document.createElement("label");
  label.className="synth-field";
- const title=document.createElement("span");title.textContent=field.label;label.append(title);
+ const title=document.createElement("span");title.textContent=field.label.toLowerCase();
+ explainLabel(title,field.label);label.append(title);
  const input=document.createElement("select");
  input.setAttribute("aria-label",fieldTitle(field));
+ if(helpForLabel(field.label))input.setAttribute("aria-description",helpForLabel(field.label));
  for(const optionValue of field.options) {
   const option=document.createElement("option");
   option.value=String(optionValue);
