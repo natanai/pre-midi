@@ -1,5 +1,5 @@
 import {movement,movementDefaults,BEND_SHAPES} from "./expression.js";
-import {createDial} from "./dial.js";
+import {createDial,explainLabel,helpForLabel} from "./dial.js";
 import {sampleTone,SAMPLE_FILTERS} from "./audioEffects.js";
 // Sample controls and synth controls share the same dial and visualization
 // owner. All durable edits still flow through studio.js modify().
@@ -16,8 +16,10 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  const toneTitle=document.createElement("summary");toneTitle.textContent="Tone · filter & distortion";
  const toneFields=document.createElement("div");toneFields.className="synth-fields dial-grid";
  const filterLabel=document.createElement("label");filterLabel.className="synth-field";
- const filterTitle=document.createElement("span");filterTitle.textContent="Filter type";
+ const filterTitle=document.createElement("span");filterTitle.textContent="filter type";
+ explainLabel(filterTitle,"filter type");
  const filterSelect=document.createElement("select");filterSelect.setAttribute("aria-label","Recorded sound filter type");
+ filterSelect.setAttribute("aria-description",helpForLabel("filter type"));
  for(const type of SAMPLE_FILTERS){
   const option=document.createElement("option");option.value=type;option.textContent=type;filterSelect.append(option);
  }
@@ -26,7 +28,10 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  filterLabel.append(filterTitle,filterSelect);toneFields.append(filterLabel);
  for(const [key,label,min,max,step,display,log] of [
   ["cutoff","Cutoff",50,14000,1,"hz",true],["resonance","Resonance",.1,16,.1,"number",false]
- ])toneFields.append(createDial({label,min,max,step,display,log},tone.filter[key],
+ ])toneFields.append(createDial({label,min,max,step,display,log,
+  help:key==="cutoff"?(tone.filter.type==="lowpass"?"turn it down to muffle the high stuff":
+   tone.filter.type==="highpass"?"turn it up to shave off the bass":
+   "move the little window of sound up or down"):undefined},tone.filter[key],
   value=>onChange(["filter"],{...tone.filter,[key]:value}),
   value=>onPreview(["filter"],{...tone.filter,[key]:value})));
  toneFields.append(createDial({label:"Distortion",min:0,max:1,step:.01,display:"percent"},tone.drive,
@@ -57,8 +62,10 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  }
  const bend=patch.bend||{shape:"straight",amount:2,rate:4};
  const shapeLabel=document.createElement("label");shapeLabel.className="synth-field";
- const title=document.createElement("span");title.textContent="Bend shape";shapeLabel.append(title);
+ const title=document.createElement("span");title.textContent="bend shape";
+ explainLabel(title,"bend shape");shapeLabel.append(title);
  const select=document.createElement("select");select.setAttribute("aria-label","Instrument bend shape");
+ select.setAttribute("aria-description",helpForLabel("bend shape"));
  for(const [id,name] of BEND_SHAPES){const option=document.createElement("option");option.value=id;option.textContent=name;select.append(option);}
  select.value=bend.shape;
  select.addEventListener("change",()=>onChange(["bend"],{...bend,shape:select.value}));
