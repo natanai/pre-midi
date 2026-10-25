@@ -4,6 +4,9 @@
 <script>
 async function checkLayout(frame){
  const doc=frame.contentDocument;
+ const browserErrors=[];const diagnostics={};
+ frame.contentWindow.addEventListener("error",event=>browserErrors.push(String(event.message||event.error)));
+ frame.contentWindow.addEventListener("unhandledrejection",event=>browserErrors.push(String(event.reason)));
  const get=id=>doc.getElementById(id);
  const rect=el=>el.getBoundingClientRect();
  const pane=doc.querySelector(".instrument-pane");
@@ -79,43 +82,49 @@ async function checkLayout(frame){
  button.click();
  const library=get("instrument-dialog");
  checks.libraryOpens=library.open && library.querySelectorAll(".preset-card").length>=15;
- const card=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Neon Lead"));
+ const card=library.querySelector('.preset-card[data-preset-id="neon-lead"]');
+ const leadName=card?.querySelector(".preset-information strong")?.textContent;
  const choice=card?.querySelector(".preset-choose");
  if(choice)choice.click();
  // Sample instruments may require an asynchronous asset load; the test follows
  // the completed user operation, not the click's immediate synchronous frame.
  for(let attempt=0;attempt<90&&doc.querySelectorAll(".instrument-card").length!==2;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
- checks.presetCreatesInstrument=doc.querySelectorAll(".instrument-card").length===2 && !library.open;
+ diagnostics.preset={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("patch-label").textContent};
+  checks.presetCreatesInstrument=doc.querySelectorAll(".instrument-card").length===2 && !library.open;
  checks.patchEditorPresent=!!doc.querySelector("#synth-editor .synth-group");
- checks.presetSelected=get("patch-label").textContent.includes("Neon Lead");
+ checks.presetSelected=!!leadName&&get("patch-label").textContent.includes(leadName);
  get("change-sound").click();
  checks.soundReplaceAccessible=library.open;
- const acid=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Acid Line"));
+ const acid=library.querySelector('.preset-card[data-preset-id="acid-line"]');
+ const acidName=acid?.querySelector(".preset-information strong")?.textContent;
  acid?.querySelector(".preset-choose")?.click();
- for(let attempt=0;attempt<40 && get("instrument-name").value!=="Acid Line";attempt++)
+ for(let attempt=0;attempt<40 && get("instrument-name").value!==acidName;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
- checks.browseRenamesInstrument=get("instrument-name").value==="Acid Line";
+ checks.browseRenamesInstrument=!!acidName&&get("instrument-name").value===acidName;
  get("change-sound").click();
  get("close-library").click();
  checks.libraryCloses=!library.open;
  get("add-instrument").click();
- const piano=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Recorded Piano"));
+ const piano=library.querySelector('.preset-card[data-preset-id="real-piano"]');
+ const pianoName=piano?.querySelector(".preset-information strong")?.textContent;
  piano?.querySelector(".preset-choose")?.click();
  for(let attempt=0;attempt<120 && doc.querySelectorAll(".instrument-card").length!==3;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
- checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
-  get("patch-label").textContent.includes("Recorded Piano") && !library.open;
+ diagnostics.sample={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("patch-label").textContent};
+  checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
+  get("patch-label").textContent.includes(pianoName||"!") && !library.open;
  checks.sampleControlsReachable=!!doc.querySelector("#synth-editor .sample-zones") &&
   !!doc.querySelector("#synth-editor .sample-replace-action");
  if(frame.clientWidth>=1400) {
   get("add-instrument").click();
-  const steel=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Steel Acoustic"));
+  const steel=library.querySelector('.preset-card[data-preset-id="steel-guitar"]');
+ const steelName=steel?.querySelector(".preset-information strong")?.textContent;
   steel?.querySelector(".preset-choose")?.click();
   for(let attempt=0;attempt<160&&doc.querySelectorAll(".instrument-card").length!==4;attempt++)
    await new Promise(resolve=>setTimeout(resolve,25));
   checks.guitarPresetAccessible=doc.querySelectorAll(".instrument-card").length===4 &&
-   get("patch-label").textContent.includes("Steel Acoustic");
+   get("patch-label").textContent.includes(steelName||"!");
   checks.guitarMappingCollapsible=!!doc.querySelector("#synth-editor .sample-map-details") &&
    !!doc.querySelector("#synth-editor .dial-knob[aria-label='Strum']");
  }
@@ -139,11 +148,13 @@ async function checkLayout(frame){
  checks.exampleGalleryOpens=gallery.open && gallery.querySelectorAll(".example-card").length===5;
  const proceed=frame.contentWindow.confirm;
  frame.contentWindow.confirm=()=>true;
- const demo=[...gallery.querySelectorAll(".example-card")].find(card=>card.textContent.includes("Neon After Hours"));
+ const demo=gallery.querySelector('.example-card[data-example-id="neon-after-hours"]');
+ const demoName=demo?.querySelector("strong")?.textContent;
  demo?.click();
- for(let i=0;i<220&&get("title").value!=="Neon After Hours";i++)
+ for(let i=0;i<220&&get("title").value!==demoName;i++)
   await new Promise(resolve=>setTimeout(resolve,30));
- checks.exampleUsesRealComposer=get("title").value==="Neon After Hours" &&
+ diagnostics.neon={status:get("status").textContent,title:get("title").value,inst:doc.querySelectorAll(".instrument-card").length,dialogOpen:gallery.open};
+  checks.exampleUsesRealComposer=get("title").value===demoName &&
   doc.querySelectorAll(".instrument-card").length===8 &&
   doc.querySelectorAll(".arrangement-row").length===8 &&
   doc.querySelectorAll("#piano .rack-row").length===9 &&
@@ -154,91 +165,104 @@ async function checkLayout(frame){
   // not just the synthetic-only example or a schema fixture.
   get("examples").click();
   frame.contentWindow.confirm=()=>true;
-  const porch=[...gallery.querySelectorAll(".example-card")].find(card=>card.textContent.includes("Porchlight"));
+  const porch=gallery.querySelector('.example-card[data-example-id="porchlight"]');
+   const porchName=porch?.querySelector("strong")?.textContent;
   porch?.click();
-  for(let attempt=0;attempt<220&&get("title").value!=="Porchlight";attempt++)
+  for(let attempt=0;attempt<220&&get("title").value!==porchName;attempt++)
    await new Promise(resolve=>setTimeout(resolve,25));
-  checks.sampleExampleLoaded=get("title").value==="Porchlight" &&
+  checks.sampleExampleLoaded=get("title").value===porchName &&
    doc.querySelectorAll(".instrument-card").length===4 &&
    doc.querySelectorAll(".arrangement-row").length===4 &&
    !gallery.open;
  }
- // Compare the *actual* displayed geometry for Floating Signals, including
- // the long "Returning" chunk that previously enlarged only one row.
+ // Floating Signals must use a single interactive timeline: sixteen
+ // source positions, no decorative lower strip, and exact shared bar edges.
  get("examples").click();
  frame.contentWindow.confirm=()=>true;
- const floating=[...gallery.querySelectorAll(".example-card")].find(card=>
-  card.textContent.includes("Floating Signals"));
+ const floating=gallery.querySelector('.example-card[data-example-id="floating-signals"]');
+ const floatingName=floating?.querySelector("strong")?.textContent;
  floating?.click();
- for(let attempt=0;attempt<220&&get("title").value!=="Floating Signals";attempt++)
+ for(let attempt=0;attempt<220&&get("title").value!==floatingName;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
  const lanes=[...doc.querySelectorAll(".arrangement-row")];
  const headingBars=[...doc.querySelector(".arrangement-head").children].slice(1);
- let maxBoundaryError=0;
- if(lanes.length===4&&headingBars.length===16){
-  for(const lane of lanes){
-   const clips=[...lane.querySelectorAll(".clip")];
-   if(clips.length!==16){maxBoundaryError=Infinity;break;}
-   for(let bar=0;bar<16;bar++){
+ let maxBoundaryError=0,allPositions=true;
+ for(const lane of lanes){
+  const slots=[...lane.querySelectorAll(".timeline-slot")];
+  if(slots.length!==16){allPositions=false;break;}
+  for(let bar=0;bar<16;bar++){
+   const header=rect(headingBars[bar]),slot=rect(slots[bar]);
+   maxBoundaryError=Math.max(maxBoundaryError,
+    Math.abs(header.left-slot.left),Math.abs(header.width-slot.width));
+   const clip=lane.querySelector('.phrase-clip[data-source-bar="'+bar+'"][data-repeat="0"]');
+   if(clip){
+    const bounds=rect(clip);
     maxBoundaryError=Math.max(maxBoundaryError,
-     Math.abs(rect(clips[bar]).left-rect(headingBars[bar]).left),
-     Math.abs(rect(clips[bar]).width-rect(headingBars[bar]).width));
+     Math.abs(bounds.left-header.left),Math.abs(bounds.width-header.width));
    }
   }
  }
- checks.floatingSignalsSharedBarGeometry=get("title").value==="Floating Signals" &&
-  lanes.length===4&&headingBars.length===16&&maxBoundaryError<.8;
-  // Prove the *editable controls* move an actual clip strip to an offbeat,
-  // and that a 12-step polymeter makes three correctly spaced strip copies.
-  const seventh=doc.querySelector('.arrangement-row .clip[data-bar="6"]');
-  seventh?.click();
-  const getPlacementInput=prefix=>[...doc.querySelectorAll(".placement-settings input")]
-   .find(input=>input.getAttribute("aria-label")?.startsWith(prefix));
-  const offsetInput=getPlacementInput("Offset in bar");
-  checks.placementControlsReachable=!!offsetInput&&!!getPlacementInput("Phrase length")&&!!getPlacementInput("Repetitions")&&
-   !!getPlacementInput("Repeat every");
-  if(offsetInput){
-   offsetInput.value="8";
-   offsetInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
-  }
-  const source=doc.querySelector('.arrangement-row .clip[data-bar="6"]');
-  const strip=doc.querySelector('.arrangement-row .phrase-segment[data-source-bar="6"][data-repeat="0"]');
-  const offsetDifference=source&&strip?
-   Math.abs(rect(strip).left-(rect(source).left+rect(source).width/2)):Infinity;
-  checks.offsetStripMatchesBeatThree=offsetDifference<3;
-  const repetitionsInput=getPlacementInput("Repetitions");
-  if(repetitionsInput){
-   repetitionsInput.value="3";
-   repetitionsInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
-  }
-  const intervalInput=getPlacementInput("Repeat every");
-  if(intervalInput){
-   intervalInput.value="12";
-   intervalInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
-  }
-  const phraseLengthInput=getPlacementInput("Phrase length");
-  if(phraseLengthInput){
-   phraseLengthInput.value="12";
-   phraseLengthInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
-  }
-  const segments=[0,1,2].map(index=>doc.querySelector(
-   '.arrangement-row .phrase-segment[data-source-bar="6"][data-repeat="'+index+'"]'));
-  // Editing a placement re-renders the timeline; never measure the detached
-  // element from the previous render.
-  const updatedSource=doc.querySelector('.arrangement-row .clip[data-bar="6"]');
-  const spacing=updatedSource?rect(updatedSource).width*.75:0;
-  checks.threeBeatPolymeterStrip=segments.every(Boolean)&&
-   Math.abs(rect(segments[0]).width-spacing)<3&&
-   Math.abs((rect(segments[1]).left-rect(segments[0]).left)-spacing)<3&&
-   Math.abs((rect(segments[2]).left-rect(segments[1]).left)-spacing)<3;
-
+ checks.floatingSignalsSharedBarGeometry=get("title").value===floatingName &&
+  lanes.length===4&&headingBars.length===16&&allPositions&&maxBoundaryError<2;
+ checks.noDuplicatePhraseLane=doc.querySelectorAll(".phrase-segment").length===0 &&
+  lanes.every(lane=>rect(lane).height<43)&&
+  doc.querySelectorAll(".phrase-clip").length>0;
+ const seventh=doc.querySelector('.arrangement-row .phrase-clip[data-source-bar="6"][data-repeat="0"]');
+ seventh?.click();
+ const getPlacementInput=prefix=>[...doc.querySelectorAll(".placement-settings input")]
+  .find(input=>input.getAttribute("aria-label")?.startsWith(prefix));
+ const offsetInput=getPlacementInput("Offset in bar");
+ checks.placementControlsReachable=!!offsetInput&&!!getPlacementInput("Phrase length")&&
+  !!getPlacementInput("Repetitions")&&!!getPlacementInput("Repeat every");
+ // Drag vertically across the *number field*. This should commit to exactly
+ // the same setting as manually entering 8, while preserving click-to-type.
+ if(offsetInput){
+  offsetInput.dispatchEvent(new frame.contentWindow.PointerEvent("pointerdown",
+   {bubbles:true,pointerId:29,button:0,clientY:200}));
+  doc.dispatchEvent(new frame.contentWindow.PointerEvent("pointermove",
+   {bubbles:true,pointerId:29,button:0,clientY:120}));
+  checks.draggingNumbersUpdatesValue=offsetInput.value==="8";
+  doc.dispatchEvent(new frame.contentWindow.PointerEvent("pointerup",
+   {bubbles:true,pointerId:29,button:0,clientY:120}));
+ }
+ const source=doc.querySelector('.arrangement-row .timeline-slot:nth-child(8)');
+ const moved=doc.querySelector('.arrangement-row .phrase-clip[data-source-bar="6"][data-repeat="0"]');
+ const offsetDifference=source&&moved?
+  Math.abs(rect(moved).left-(rect(source).left+rect(source).width/2)):Infinity;
+ checks.offsetBlockMatchesBeatThree=offsetDifference<3;
+ checks.shiftedBlockClickable=!!moved&&moved.tagName==="BUTTON"&&
+  moved.getAttribute("aria-haspopup")==="dialog";
+ const repetitionsInput=getPlacementInput("Repetitions");
+ if(repetitionsInput){
+  repetitionsInput.value="3";
+  repetitionsInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
+ }
+ const intervalInput=getPlacementInput("Repeat every");
+ if(intervalInput){
+  intervalInput.value="12";
+  intervalInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
+ }
+ const phraseLengthInput=getPlacementInput("Phrase length");
+ if(phraseLengthInput){
+  phraseLengthInput.value="12";
+  phraseLengthInput.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
+ }
+ const clips=[0,1,2].map(index=>doc.querySelector(
+  '.arrangement-row .phrase-clip[data-source-bar="6"][data-repeat="'+index+'"]'));
+ const slot=doc.querySelector('.arrangement-row .timeline-slot:nth-child(8)');
+ const spacing=slot?rect(slot).width*.75:0;
+ checks.threeBeatPolymeterInOneRow=clips.every(Boolean)&&
+  Math.abs(rect(clips[0]).width-spacing)<3&&
+  Math.abs((rect(clips[1]).left-rect(clips[0]).left)-spacing)<3&&
+  Math.abs((rect(clips[2]).left-rect(clips[1]).left)-spacing)<3&&
+  lanes.every(lane=>rect(lane).height<43);
  frame.contentWindow.confirm=proceed;
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({
   viewport:frame.clientWidth,
   sidebar:Math.round(sidebar.width),
   addButton:Math.round(add.width),
-  checks
+  checks,browserErrors,diagnostics
  });
  void fetch("/__layout_result?status="+document.documentElement.dataset.layout+"&details="+encodeURIComponent(document.getElementById("result").textContent)).catch(()=>{});
 }

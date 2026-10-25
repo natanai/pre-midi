@@ -202,21 +202,43 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .arrangement-head span {font-size:11px;text-align:center;color:var(--muted)}
 .arrangement-head span:first-child {text-align:left}
 .label {overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px;color:var(--text);padding-right:7px}
-.arrangement-row {--track-accent:var(--signal-cyan);position:relative;min-height:72px;align-items:start}
-.phrase-segment {
- position:absolute;top:46px;height:19px;pointer-events:none;
- left:calc(105px + (100% - 105px) * var(--phrase-start));
- width:calc((100% - 105px) * var(--phrase-width));
- border:1px solid var(--track-accent);
- background:color-mix(in srgb,var(--track-accent) 30%,#000);
- box-shadow:inset 0 0 0 1px #000;
+/* One row per instrument. The actual chunk rectangles are the clickable
+   objects, including offset starts and repeats; no lower visual lane. */
+.arrangement-row {
+ --track-accent:var(--signal-cyan);
+ position:relative;
+ min-height:39px;
 }
-.phrase-segment.repeated {
- opacity:.52;border-style:dashed;
+.timeline-slot.assigned {
+ display:block;
+ height:39px;
+ border:1px dotted #292929;
+ background:var(--void);
 }
+.phrase-clip {
+ position:absolute;
+ top:0;
+ left:calc(106px + (100% - 106px) * var(--phrase-start));
+ width:calc((100% - 106px) * var(--phrase-width) - 1px);
+ height:39px;
+ z-index:2;
+ cursor:pointer;
+}
+.phrase-clip.repeated {
+ border-style:dashed;
+ background:color-mix(in srgb,var(--track-accent) 19%,#000);
+}
+.phrase-clip:hover,.phrase-clip:focus-visible {z-index:4}
 .placement-settings{display:grid;gap:9px;padding:12px 11px;border-top:1px solid var(--faint)}
 .placement-settings label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--text)}
-.placement-settings input{width:75px;min-width:75px}
+.placement-settings input {
+ width:75px;min-width:75px;
+ cursor:ns-resize;touch-action:none;
+ appearance:textfield;
+}
+.placement-settings input::-webkit-inner-spin-button,
+.placement-settings input::-webkit-outer-spin-button {appearance:none;margin:0}
+.placement-settings input.scrubbing {background:var(--stripe);border-color:var(--bright)}
 .placement-tip{font-size:10px;color:var(--muted);line-height:1.4;margin:3px 0 0}
 .arrangement-row .label::before {content:"■ ";color:var(--track-accent)}
 .clip {
