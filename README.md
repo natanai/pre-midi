@@ -135,11 +135,24 @@ contents, avoiding the formerly large blank grid cells that pushed Notes
 away from composing.
 
 **New always starts blank.** **Examples** loads one of five editable compositions:
-Drum Rack and Bass; Sampled Guitar and Percussion; Sustained Notes and Offsets;
+Drum Rack and Bass; Guitar Velocity and Polymeter; Sustained Notes and Offsets;
 Synth Step Patterns; Sampled Guitar Pitch Movement. These compositions use
 the same instruments, chunks, rack rows, timeline and audio controls as a new composition.
 Loading a composition asks before replacing the browser draft; save any
 existing draft first if you wish to preserve it.
+
+**Guitar Velocity and Polymeter — example:** The previous arrangement
+layered simultaneous steel-string chords, nylon guitar picking, bongo, and keys.
+The replacement plays one steel-guitar note at a time, using distinct recorded
+velocity layers from the pinned CC0 guitar samples. Two 12-step phrases repeat
+at 12-step intervals against a 16-step-per-bar drum rack and bass line.
+The guitar enters four steps after the start; the second phrase starts at bar
+five. Bass and pad use an A-minor / F-major-seventh progression. All timing is
+stored as ordinary v7 `instrument.placements` data; no playback-only effects
+or new schema features are used. The current sampler does not physically model
+guitar strings, fretting, or resonance; keeping the guitar monophonic avoids
+claiming those capabilities. **Pre-programmed remains on the older v2 parser
+and does not yet play these v7 scores.**
 
 **Drum Rack and Bass — example:** The exported author revision from
 2026-10-25 has 16 bars, nine independently editable drum-rack sounds, sustained

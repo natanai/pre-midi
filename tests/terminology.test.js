@@ -6,7 +6,7 @@ import {makeSampleAsset} from "../sampler.js";
 test("examples present technical labels without genre narratives",async()=>{
  const expected=[
   ["neon-after-hours","Drum Rack and Bass"],
-  ["porchlight","Sampled Guitar and Percussion"],
+  ["porchlight","Guitar Velocity and Polymeter"],
   ["floating-signals","Sustained Notes and Offsets"],
   ["broken-circuit","Synth Step Patterns"],
   ["swaying-wire","Sampled Guitar Pitch Movement"]
