@@ -119,3 +119,32 @@ test("Neon After Hours demonstrates an actual drum stack and sustained cinematic
  }
  assert.ok(stepEvents(doc,16*5).some(e=>e.instrument.id===drums.id));
 });
+
+test("Floating Signals distinguishes shared bar boundaries from actual within-bar note offsets",async()=>{
+ const doc=await buildExample("floating-signals",async id=>stubSample(id));
+ assert.equal(doc.bars,16);
+ const bar=6,base=bar*16; // Bar 7 in the studio
+ const expected=[
+  ["violet-pad","Wide",[0,0,0,0]],
+  ["tape-strings","Bloom",[0,0]],
+  ["midnight-theremin","Hover",[1]],
+  ["glass-keys","Mirror",[0,8,13]]
+ ];
+ for(const [preset,name,starts] of expected){
+  const inst=doc.instruments.find(x=>x.sounds[0].patch.presetId===preset);
+  assert.ok(inst,"Instrument missing: "+preset);
+  const active=inst.chunks.find(chunk=>chunk.id===inst.timeline[bar]);
+  assert.equal(active?.name,name,"Bar 7 chunk must use the shared bar slot");
+  assert.deepEqual(active.notes.map(note=>note.start),starts,
+   "Inside that bar, musical notes may have distinct step offsets");
+ }
+ const atBar=stepEvents(doc,base);
+ assert.equal(atBar.length,7,"All notes at step zero share the same transport beat");
+ assert.ok(atBar.every(x=>x.barIndex===bar&&x.step===0));
+ assert.equal(atBar.some(x=>x.instrument.sounds[0].patch.presetId==="midnight-theremin"),false,
+  "Theremin Hover doesn't begin at the displayed chunk edge");
+ const atStepOne=stepEvents(doc,base+1);
+ assert.equal(atStepOne.length,1);
+ assert.equal(atStepOne[0].instrument.sounds[0].patch.presetId,"midnight-theremin");
+ assert.equal(atStepOne[0].note.start,1);
+});

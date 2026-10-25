@@ -163,6 +163,31 @@ async function checkLayout(frame){
    doc.querySelectorAll(".arrangement-row").length===4 &&
    !gallery.open;
  }
+ // Compare the *actual* displayed geometry for Floating Signals, including
+ // the long "Returning" chunk that previously enlarged only one row.
+ get("examples").click();
+ frame.contentWindow.confirm=()=>true;
+ const floating=[...gallery.querySelectorAll(".example-card")].find(card=>
+  card.textContent.includes("Floating Signals"));
+ floating?.click();
+ for(let attempt=0;attempt<220&&get("title").value!=="Floating Signals";attempt++)
+  await new Promise(resolve=>setTimeout(resolve,25));
+ const lanes=[...doc.querySelectorAll(".arrangement-row")];
+ const headingBars=[...doc.querySelector(".arrangement-head").children].slice(1);
+ let maxBoundaryError=0;
+ if(lanes.length===4&&headingBars.length===16){
+  for(const lane of lanes){
+   const clips=[...lane.querySelectorAll(".clip")];
+   if(clips.length!==16){maxBoundaryError=Infinity;break;}
+   for(let bar=0;bar<16;bar++){
+    maxBoundaryError=Math.max(maxBoundaryError,
+     Math.abs(rect(clips[bar]).left-rect(headingBars[bar]).left),
+     Math.abs(rect(clips[bar]).width-rect(headingBars[bar]).width));
+   }
+  }
+ }
+ checks.floatingSignalsSharedBarGeometry=get("title").value==="Floating Signals" &&
+  lanes.length===4&&headingBars.length===16&&maxBoundaryError<.8;
  frame.contentWindow.confirm=proceed;
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({

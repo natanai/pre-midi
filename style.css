@@ -194,7 +194,10 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .scroll {padding:12px 14px 15px;overflow:auto;overscroll-behavior-x:contain}
 .arrangement-head,.arrangement-row {
   display:grid;grid-template-columns:105px repeat(var(--bars),minmax(67px,1fr));
-  align-items:center;gap:1px;min-width:max-content;margin-bottom:4px;
+  align-items:center;gap:1px;margin-bottom:4px;
+  /* All lanes must share one bar scale. max-content lets longer chunk labels
+     independently widen a lane and falsely suggest nonaligned musical time. */
+  width:100%;min-width:calc(105px + var(--bars) * 68px);
 }
 .arrangement-head span {font-size:11px;text-align:center;color:var(--muted)}
 .arrangement-head span:first-child {text-align:left}
