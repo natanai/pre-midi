@@ -1,5 +1,94 @@
 // One reusable instrument dial. Native patch validation and the caller's
 // modify() remain the ONLY mutation path. Drag previews are transient.
+
+const labelHelp=Object.freeze({
+ "bend shape":"scoop into the note, fall off it, or wobble around",
+ "bend amount":"a tiny pitch dip or a full octave yowl",
+ "amount":"a tiny pitch dip or a full octave yowl",
+ "wave speed":"how fast the pitch goes wee-woo-wee-woo",
+ "vibrato rate":"how fast the note shakes",
+ "vibrato speed":"how fast the note shakes",
+ "vibrato depth":"how far the note shakes",
+ "vibrato":"how far the note shakes",
+ "vibrato waits":"starts steady, gets nervous later",
+ "glide from":"arrive from the wrong note on purpose",
+ "glide time":"snap into tune or take the scenic route",
+ "pulse amount":"make the volume throb harder",
+ "pulse":"make the volume throb harder",
+ "pulse speed":"how fast the volume goes loud-quiet-loud",
+ "tone wave":"more waaaah per note",
+ "tone speed":"lazy wah or a very busy wah",
+ "pan":"left ear, right ear, your call",
+ "wave":"sine goes ooo, saw goes bzzz, square goes beep",
+ "level":"how loud this sound is in the mix",
+ "sound level":"just this sound, not the whole rack",
+ "rack volume":"every sound in the rack together",
+ "volume":"how loud this instrument is in the mix",
+ "octave":"same note, twelve keys higher or lower",
+ "detune":"make two pitches disagree just a little",
+ "attack":"an instant smack or a slow fade-in",
+ "decay":"how quickly the initial smack calms down",
+ "sustain":"how loud the note stays while you hold it",
+ "release":"how long it fades after you let go",
+ "filter":"choose which parts of the sound get through",
+ "filter type":"choose which parts of the sound get through",
+ "cutoff":"move where the filtering happens",
+ "resonance":"make the filter's edge whistle",
+ "filter sweep":"make the filter slide into place with each note",
+ "sweep time":"how long that slide takes",
+ "noise":"mix some shhhhh into the sound",
+ "noise decay":"how quickly the shhhhh dies",
+ "distortion":"turn smooth sound into crunchy sound",
+ "delay":"hear the sound answer itself",
+ "delay time":"how late the answer comes",
+ "feedback":"make the echo echo its own echo",
+ "transpose":"move the entire recording up or down in pitch",
+ "strum":"one string after another instead of all at once",
+ "h1 · root":"the actual note",
+ "h2":"bring its octave along",
+ "h3":"getting a bit brassy",
+ "h4":"another octave upstairs",
+ "h5":"a little major-third sparkle",
+ "h6":"more of that brassy stuff",
+ "h7":"things are getting weird",
+ "h8":"way up there"
+});
+const unitHelp=Object.freeze({st:"semitones",ct:"cents",hz:"hertz",khz:"kilohertz",ms:"milliseconds","%":"percent",l:"left",r:"right",c:"center"});
+export function helpForLabel(label){
+ const key=String(label).toLowerCase();
+ return labelHelp[key] || (/^h(?:[9]|[12][0-9]|3[0-2])$/.test(key)
+  ? Number(key.slice(1))<=16?"for the finer edges":Number(key.slice(1))<=24?"the skinny stuff above the buzz":"tiny splinters way up top"
+  : "");
+}
+// Help belongs to the text alone; not the interactive knob or select.
+export function explainLabel(node,label,override){
+ const help=override??helpForLabel(label);
+ if(!help)return;
+ node.classList.add("control-help");
+ node.dataset.help=help;
+ node.addEventListener("click",()=>{
+  const expanded=node.classList.contains("help-open");
+  document.querySelectorAll(".control-help.help-open").forEach(item=>item.classList.remove("help-open"));
+  if(!expanded)node.classList.add("help-open");
+ });
+}
+export function explainUnit(output,rendered){
+ const text=String(rendered).toLowerCase();
+ const match=/^(.*?)(\s*)(khz|hz|ms|ct|st|%|l|r|c)$/.exec(text);
+ if(!match){output.textContent=text;return;}
+ const [,prefix,space,abbreviation]=match;
+ const unit=document.createElement("span");
+ unit.className="unit-help";
+ unit.textContent=abbreviation;
+ unit.dataset.help=unitHelp[abbreviation];
+ unit.addEventListener("click",()=>{
+  const expanded=unit.classList.contains("help-open");
+  document.querySelectorAll(".unit-help.help-open").forEach(item=>item.classList.remove("help-open"));
+  if(!expanded)unit.classList.add("help-open");
+ });
+ output.replaceChildren(document.createTextNode(prefix+space),unit);
+}
+
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 const pretty=(n,p)=>Number(n.toFixed(p));
 export const asUnit=(value,display="number")=>{
@@ -23,11 +112,15 @@ const fromFraction=(t,field)=>{
 };
 export function createDial(field,value,onCommit,onPreview=()=>{}){
  const control=document.createElement("div");control.className="dial-field";
- const title=document.createElement("span");title.className="dial-label";title.textContent=field.label;
+ const title=document.createElement("span");title.className="dial-label";
+ const name=document.createElement("span");name.textContent=field.label.toLowerCase();title.append(name);
+ explainLabel(name,field.label,field.help);
  const knob=document.createElement("div");knob.className="dial-knob";
  knob.tabIndex=field.disabled?-1:0;knob.setAttribute("role","slider");
  if(field.disabled){control.classList.add("dial-disabled");knob.setAttribute("aria-disabled","true");}
  knob.setAttribute("aria-label",field.label);
+ const explanation=field.help??helpForLabel(field.label);
+ if(explanation)knob.setAttribute("aria-description",explanation);
  knob.setAttribute("aria-valuemin",String(field.min));
  knob.setAttribute("aria-valuemax",String(field.max));
  knob.setAttribute("aria-orientation","vertical");
@@ -55,7 +148,7 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
   pointer.style.transform="rotate("+angle+"deg)";
   track.style.strokeDasharray=(pct*75).toFixed(2)+" 100";
   track.style.transform="rotate(135deg)";
-  output.textContent=format(current);
+  explainUnit(output,format(current));
   knob.setAttribute("aria-valuenow",String(current));
   knob.setAttribute("aria-valuetext",format(current));
   if(preview)onPreview(current);
@@ -110,7 +203,7 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
   const next=fromFraction(fraction(reset,field),field);
   if(current!==next){update(next,true);onCommit(next);}
  });
- knob.title=field.disabled?(field.disabledReason||"This control is currently inactive."):"Drag up/down, use arrows, or double-click to reset";
+ if(field.disabled&&field.disabledReason)knob.setAttribute("aria-description",field.disabledReason);
  control.append(title,knob,output);
  return control;
 }
