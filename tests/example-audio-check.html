@@ -1,0 +1,42 @@
+<!doctype html><html lang="en" data-audio="RUNNING">
+<meta charset="utf-8"><pre id="result"></pre>
+<script type="module">
+import {buildExample} from "../examples.js";
+import {loadLibrarySample} from "../sampler.js";
+import {wav} from "../audio.js";
+import {validate} from "../schema.js";
+const root=document.documentElement,result=document.getElementById("result");
+try{
+ const score=await buildExample("porchlight",loadLibrarySample);
+ const errors=validate(score);
+ if(errors.length)throw Error(errors.join("; "));
+ const raw=await (await wav(score)).arrayBuffer();
+ const view=new DataView(raw);
+ if(String.fromCharCode(...new Uint8Array(raw.slice(0,4)))!=="RIFF")throw Error("Not a WAV");
+ const rate=view.getUint32(24,true),channels=view.getUint16(22,true);
+ const steps=60/score.bpm/4;
+ function stats(bar){
+  const begin=Math.floor(bar*16*steps*rate),end=Math.floor((bar+1)*16*steps*rate);
+  let power=0,peak=0,n=0;
+  for(let i=begin;i<end;i+=2){
+   const at=44+i*channels*2;
+   if(at+2>raw.byteLength)break;
+   const a=view.getInt16(at,true)/32768;
+   power+=a*a;peak=Math.max(peak,Math.abs(a));n++;
+  }
+  return {rms:Math.sqrt(power/Math.max(1,n)),peak};
+ }
+ const measured=Array.from({length:score.bars},(_,bar)=>stats(bar));
+ if(!measured.every(row=>Number.isFinite(row.rms)&&row.peak<1.001))
+  throw Error("Invalid or clipped audio stats: "+JSON.stringify(measured));
+ if(measured[0].rms<.002||measured[4].rms<.004||measured[15].rms<.002)
+  throw Error("An arranged section is silent: "+JSON.stringify(measured));
+ const low=[0,1,2].reduce((s,b)=>s+measured[b].rms,0)/3;
+ const peak=[4,5,6,7,8,9,10,11].reduce((s,b)=>s+measured[b].rms,0)/8;
+ if(peak<low*1.1)throw Error("Sections lack a significant energy increase: "+JSON.stringify({low,peak}));
+ result.textContent=JSON.stringify({rms:measured.map(x=>+x.rms.toFixed(4)),peak:measured.map(x=>+x.peak.toFixed(3))});
+ root.dataset.audio="PASS";
+}catch(error){result.textContent=String(error.stack||error);root.dataset.audio="FAIL";}
+void fetch("/__example_audio_result?status="+root.dataset.audio+
+ "&details="+encodeURIComponent(result.textContent)).catch(()=>{});
+</script></html>
