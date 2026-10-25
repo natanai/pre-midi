@@ -1,5 +1,5 @@
 import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, wav, primeSamples } from "./audio.js";
+import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
@@ -757,13 +757,19 @@ async function auditionPreset(preset) {
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   const pitch=preset.category==="Bass"?48:preset.category==="Guitars"?57:69;
   const inst={...instrument(),patch,volume:.8};
-  const zone=patch.type==="sample"?sampleForNote(patch,pitch,.8):null;
-  // A guitar preview should play immediately, not download 48 audio takes
-  // just to hear the single note selected in the library.
-  const asset=zone?(preset.samples||[]).find(item=>item.id===zone.assetId)
-   ||score.samples.find(item=>item.id===zone.assetId)
-   ||await loadLibrarySample(zone.assetId):null;
-  await audition(inst,pitch,{samples:asset?[asset]:[]});
+  // Preview strumming as an actual chord, otherwise the Steel Strum and
+  // Steel Acoustic presets can sound like the same single plucked note.
+  const chord=preset.id==="steel-strum"?[52,57,60,64,69]:null;
+  const pitches=chord||[pitch];
+  const ids=[...new Set(pitches.map(key=>patch.type==="sample"?
+   sampleForNote(patch,key,.8)?.assetId:null).filter(Boolean))];
+  const assets=await Promise.all(ids.map(async id=>{
+   return (preset.samples||[]).find(item=>item.id===id)
+    ||score.samples.find(item=>item.id===id)
+    ||await loadLibrarySample(id);
+  }));
+  if(chord)await auditionChord(inst,pitches,{samples:assets});
+  else await audition(inst,pitch,{samples:assets});
  }catch(error){message("Preview failed: "+error.message,true);}
 }
 function renderLibrary() {
