@@ -134,7 +134,7 @@ export function installMicrophoneRecorder({get,onUse}){
  });
  $("mic-close").addEventListener("click",()=>{dialog.close();dispose();});
  dialog.addEventListener("cancel",()=>dispose());
- dialog.addEventListener("close",()=>dispose());
+ dialog.addEventListener("close",()=>{if(!dialog.open)dispose();});
  return {
   open(){
    reset();updateKind();

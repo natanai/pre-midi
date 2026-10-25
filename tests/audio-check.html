@@ -23,8 +23,8 @@ try {
   const sampled=SAMPLE_LIBRARY.find(x=>x.id===name);
   if(sampled){
    score.samples=await Promise.all(sampled.assets.map(loadLibrarySample));
-   inst.patch=makeSamplerPatch(sampled);
-  } else inst.patch=makePatch(name);
+   inst.sounds[0].patch=makeSamplerPatch(sampled);
+  } else inst.sounds[0].patch=makePatch(name);
   inst.timeline=[chunk.id,null];
   const errors=validate(score);
   if(errors.length)throw Error(name+" failed validation: "+errors.join(","));

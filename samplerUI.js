@@ -68,6 +68,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   control.append(box,document.createTextNode(label));toggles.append(control);
  };
  addToggle("Follow note pitch","followPitch",patch.followPitch);
+ addToggle("Play full recording","oneShot",!!patch.oneShot);
  addToggle("Keep recorded dynamics","preserveDynamics",!!patch.preserveDynamics);
  details.append(summary,fields,toggles);root.append(details);
  const mapping=document.createElement("div");mapping.className="sample-zones";

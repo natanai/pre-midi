@@ -1,8 +1,9 @@
+import {resolveEvent} from "./soundModel.js";
 import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
 import {putAsset,getAsset,MAX_ASSET_BYTES} from "./assetRegistry.js";
 import { validateMovement, validateBend, movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
 // The only durable sample asset representation is the score's samples array.
-// Browser library URLs are staging inputs; .premidi files contain the audio bytes.
+// Browser library URLs are staging inputs; .premidi files hold relative audio paths.
 export const MAX_SAMPLE_BYTES=MAX_ASSET_BYTES;
 export const MAX_SCORE_BYTES=1_000_000;
 const audioTypes={"audio/wav":"wav","audio/ogg":"ogg","audio/mpeg":"mp3"};
@@ -75,6 +76,7 @@ export function validateSamplerPatch(patch){
     !Number.isInteger(zone.root)||zone.root<0||zone.root>127||
     (zone.velocity!==undefined && (!Number.isFinite(zone.velocity)||zone.velocity<0||zone.velocity>1))||
     (zone.string!==undefined && (typeof zone.string!=="string"||zone.string.length>20))))errors.push("Invalid sample key mapping.");
+ if(patch.oneShot!==undefined&&typeof patch.oneShot!=="boolean")errors.push("Invalid one-shot playback mode.");
  if(typeof patch.followPitch!=="boolean")errors.push("Invalid pitch-follow mode.");
  errors.push(...validateMovement(patch.movement));
  errors.push(...validateBend(patch.bend));
@@ -92,12 +94,13 @@ export function validateSamplerPatch(patch){
 export function usedSampleIds(score){
  const used=new Set();
  for(const inst of score.instruments||[]){
-  if(inst.patch?.type!=="sample")continue;
   const placed=new Set(inst.timeline.filter(Boolean));
   for(const chunk of inst.chunks||[]){
    if(!placed.has(chunk.id))continue;
    for(const note of chunk.notes){
-    const zone=sampleForNote(inst.patch,note.pitch,note.velocity);
+    const resolved=resolveEvent(inst,note);
+    if(resolved?.voice.patch.type!=="sample")continue;
+    const zone=sampleForNote(resolved.voice.patch,resolved.note.pitch,note.velocity);
     if(zone)used.add(zone.assetId);
    }
   }
@@ -152,12 +155,13 @@ export function scheduleSample(context,out,inst,event,start,duration,score,cache
  schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,duration));
  pan.pan.value=patch.pan;
  const length=buffer.duration/playbackRate;
- const life=Math.min(length,Math.max(.015,duration+patch.release));
+ const life=patch.oneShot?length:Math.min(length,Math.max(.015,duration+patch.release));
  const at=start+Math.min(patch.attack,life*.5);
  amp.gain.setValueAtTime(0,start);
  amp.gain.linearRampToValueAtTime(gain,at+0.001);
  // One-shot percussion sounds naturally tail off; keyed samples can be released early.
- const releaseStart=patch.followPitch?Math.min(start+duration,start+life-.01):start+life-.01;
+ const releaseStart=patch.oneShot?start+Math.max(0,life-patch.release):
+  patch.followPitch?Math.min(start+duration,start+life-.01):start+life-.01;
  amp.gain.setValueAtTime(gain,Math.max(at+.001,releaseStart));
  amp.gain.linearRampToValueAtTime(0,start+life);
  const pulse=context.createGain();

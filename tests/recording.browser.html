@@ -1,5 +1,5 @@
 <!doctype html><html lang="en" data-recorder="RUNNING"><meta charset="utf-8">
-<iframe src="../index.html" title="Pre-midi microphone recording test"></iframe>
+<iframe src="about:blank" title="Pre-midi microphone recording test"></iframe>
 <pre id="result"></pre>
 <script type="module">
 import {readZip} from "../zip.js";
@@ -49,7 +49,7 @@ const result=async()=>{
   if(!name||!wav)throw Error("Export lacks the .premidi and companion WAV: "+paths.join(", "));
   const score=parse(new TextDecoder().decode(entries.get(name)));
   if(score.samples.length!==1||score.samples[0].path!==wav||
-   score.instruments[1].patch.followPitch!==false)
+   score.instruments[1].sounds[0].patch.followPitch!==false)
    throw Error("Audio link or hit mode lost from music metadata.");
   if(JSON.stringify(score).includes("data:")||JSON.stringify(score).includes("base64"))
    throw Error("Manifest contains embedded sound data.");
@@ -57,13 +57,30 @@ const result=async()=>{
   if(new TextDecoder().decode(bytes.slice(0,4))!=="RIFF")throw Error("Exported recording isn't raw WAV.");
   const restored=await importProject({name:"music.zip",size:zipped.size,arrayBuffer:()=>zipped.arrayBuffer()});
   if(restored.samples[0].path!==wav)throw Error("ZIP importer lost the audio reference.");
+  async function captureAgain(kind,name){
+   get("record-sound").click();get("mic-length").value="0.75";
+   const choice=doc.querySelector('input[name="mic-kind"][value="'+kind+'"]');
+   choice.checked=true;choice.dispatchEvent(new Event("change",{bubbles:true}));
+   get("mic-capture").click();
+   for(let i=0;i<300&&get("mic-use").hidden;i++)await new Promise(resolve=>setTimeout(resolve,50));
+   if(get("mic-use").hidden)throw Error("No follow-up recording: "+get("mic-status").textContent);
+   get("mic-name").value=name;get("mic-use").click();
+   if(get("microphone-dialog").open)throw Error("Follow-up recording failed.");
+  }
+  await captureAgain("hit","Second hit");
+  if(doc.querySelectorAll(".instrument-card").length!==2||doc.querySelectorAll(".rack-row").length!==2)
+   throw Error("Recording a hit on a rack must append a row.");
+  await captureAgain("note","Recorded note");
+  if(doc.querySelectorAll(".instrument-card").length!==3||!doc.querySelector(".note-name"))
+   throw Error("Recording a note on a rack must create a piano roll.");
   document.documentElement.dataset.recorder="PASS";
-  pre.textContent="PASS: timed mic capture, audition, drum mode, native instrument, raw WAV ZIP and import";
+  pre.textContent="PASS: timed mic capture, audition, drum mode, native instrument, raw WAV ZIP/import, recorded hit appends to rack, recorded note opens piano";
  }catch(error){fail(error);}
  const url="/__recorder_result?status="+encodeURIComponent(document.documentElement.dataset.recorder)+
   "&details="+encodeURIComponent(pre.textContent);
  void fetch(url).catch(()=>{});
 };
-iframe.addEventListener("load",()=>void result());
+iframe.addEventListener("load",()=>void result(),{once:true});
+iframe.src="../index.html";
 </script>
 </html>

@@ -173,6 +173,7 @@ async function checkLayout(frame){
   addButton:Math.round(add.width),
   checks
  });
+ void fetch("/__layout_result?status="+document.documentElement.dataset.layout+"&details="+encodeURIComponent(document.getElementById("result").textContent)).catch(()=>{});
 }
 </script>
 </head>

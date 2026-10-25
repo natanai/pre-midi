@@ -80,13 +80,31 @@
      </div>
      <button id="remove-instrument" type="button" class="danger">Remove instrument</button>
     </div>
+    <div id="sound-controls" class="rack-sound-controls" hidden>
+     <label>Sound name <input id="sound-name" maxlength="60" aria-label="Selected sound name"></label>
+     <div id="sound-volume-dial"></div>
+     <label>Reference note <select id="sound-reference" aria-label="Sound reference note"></select></label>
+     <div class="rack-sound-actions">
+      <button id="hear-sound" type="button">Hear sound</button>
+      <button id="replace-row-sound" type="button">Replace this sound</button>
+      <button id="save-row-sound" type="button">Save this sound preset</button>
+      <button id="move-sound-up" type="button">Move up</button>
+      <button id="move-sound-down" type="button">Move down</button>
+      <button id="duplicate-sound" type="button">Duplicate sound</button>
+      <button id="remove-sound" type="button">Remove sound</button>
+     </div>
+    </div>
+    <div class="layout-actions">
+     <button id="convert-rack" type="button">Use a sound row</button>
+     <button id="convert-pitched" type="button" hidden>Use piano roll</button>
+    </div>
     <div id="sound-visualizer" class="sound-visualizer" aria-label="Instrument sound visualization"></div>
     <div id="synth-editor" class="synth-editor" aria-label="Instrument sound controls"></div>
    </section>
   </div>
  </div>
 </main>
-<footer><span id="status" role="status">Saved locally</span><span>.premidi v5 · GAME PARITY PENDING · <a href="https://github.com/natanai/pre-midi">SOURCE</a></span></footer>
+<footer><span id="status" role="status">Saved locally</span><span>.premidi v6 · GAME PARITY PENDING · <a href="https://github.com/natanai/pre-midi">SOURCE</a></span></footer>
 </div>
 <dialog id="instrument-dialog" class="instrument-dialog" aria-labelledby="instrument-dialog-title">
  <div class="library-top"><div><h2 id="instrument-dialog-title">Instrument library</h2><p id="library-description">Procedural synths and CC0 recordings. Preview, then add or replace a sound.</p></div>
@@ -138,6 +156,12 @@
    <button id="mic-retry" type="button" hidden>Record again</button>
   </div>
  </div>
+</dialog>
+<dialog id="audio-kind-dialog" class="instrument-dialog" aria-labelledby="audio-kind-title">
+ <div class="library-top"><h2 id="audio-kind-title">How should this audio play?</h2><button id="cancel-audio-kind" type="button">Cancel</button></div>
+ <p>A note uses musical pitches. A hit is triggered from a named sound row.</p>
+ <label>Recorded note <select id="import-root"></select></label>
+ <div class="mic-actions"><button id="import-as-note" type="button">Play as a note</button><button id="import-as-hit" type="button">Trigger as a hit</button></div>
 </dialog>
 <script type="module" src="./studio.js"></script>
 </body>

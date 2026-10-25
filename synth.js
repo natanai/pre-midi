@@ -55,7 +55,7 @@ function deepMerge(baseValue, patch) {
  return result;
 }
 export const PRESETS=presets.map(([id,name,category,description,overrides])=>({
- id,name,category,description,patch:deepMerge(base,overrides)
+ id,name,category,description,trigger:["pulse-kick","static-snare","dust-hat"].includes(id)?"hit":"pitched",patch:deepMerge(base,overrides)
 }));
 export const getPreset=id=>PRESETS.find(entry=>entry.id===id);
 export function makePatch(presetId="init") {

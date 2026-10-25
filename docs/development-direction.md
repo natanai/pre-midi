@@ -4,7 +4,7 @@
 
 Build the standalone music studio in pre-midi before repeatedly mirroring changes into pre-programmed. The music schema, authoring interface, instrument definitions and audio engine should be designed together in pre-midi. Pre-programmed's Media feature keeps its existing imported composition support while the studio evolves.
 
-The v3 patch-based scores do not yet import into pre-programmed's existing v2 Media integration. That is an expected temporary limitation, **not** a reason to maintain unused conversion layers, duplicate editing logic, or update both repositories after every experiment.
+The v6 sound-based scores do not yet import into pre-programmed's existing v2 Media integration. That is an expected temporary limitation, **not** a reason to maintain unused conversion layers, duplicate editing logic, or update both repositories after every experiment.
 
 ## Ownership and eventual parity
 
@@ -51,3 +51,26 @@ When the music studio and portable score format are ready for a freeze:
 5. Verify round-trip and audible equivalence before declaring interoperability complete.
 
 Until then, **pre-midi should be allowed to mature independently**. No compatibility conversions for hypothetical users of never-used provisional formats.
+
+## Adaptive sequencer / v6
+
+Instruments now contain stable sound definitions and either a pitched or rack
+layout. Rack events reference sound IDs; full patches and named rows share the
+existing audio engine, chunks, timeline, undo and persistence. Never infer trigger
+intent from sample `followPitch` alone. Every factory preset declares that intent.
+
+Keep all contextual selection in `soundModel.js` and apply it through validated
+undoable edits. New audio uses the same path; explicit row source replacement
+stays separate. Whole-rack presets persist every sound and companion audio.
+
+The [adaptive sequencer contract](adaptive-sequencer-plan.md) preserves the
+approved interaction table and records regression coverage. Only native v5
+receives migration; unsafe hit conversions retain the original musical behavior.
+
+## Publishing workflow
+
+Nat's default for this project is to publish completed, verified changes to main
+and the live GitHub Pages site so they can test them. Finish appropriate checks,
+preserve unrelated work, push/merge the change, and verify the Pages deployment
+without asking for publishing permission again. Report the live URL and the
+specific behavior to test. Pause only for a new blocker outside that authorization.

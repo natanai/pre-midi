@@ -79,12 +79,12 @@ test("audio scheduler writes a real per-note pitch curve and delayed vibrato",()
 
 test("instrument bends are canonical defaults, while an individual note can override",()=>{
  const score=create(),inst=score.instruments[0],chunk=inst.chunks[0];
- inst.patch.bend={shape:"rise",amount:3,rate:4};
+ inst.sounds[0].patch.bend={shape:"rise",amount:3,rate:4};
  chunk.notes.push({id:id(),pitch:60,start:0,duration:12,velocity:.8});
  assert.deepEqual(validate(score),[]);
  const note=chunk.notes[0];
  assert.equal(note.bend,undefined);
- assert.deepEqual(parse(JSON.stringify(score)).instruments[0].patch.bend,inst.patch.bend);
+ assert.deepEqual(parse(JSON.stringify(score)).instruments[0].sounds[0].patch.bend,inst.sounds[0].patch.bend);
  note.bend={shape:"fall",amount:2,rate:4};
  assert.deepEqual(validate(score),[]);
 });

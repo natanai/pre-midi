@@ -733,3 +733,25 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .mic-actions .primary{border:1px solid var(--signal-pink);color:var(--bright);background:rgba(255,65,109,.12)}
 .microphone-dialog button:focus-visible{outline:2px solid var(--signal-cyan);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.mic-recording .mic-count{animation:none}}
+
+/* Rack rows share the sequencer's clock, chunks, and playhead. */
+#piano.sound-rack {min-width:640px}
+.rack-row {display:grid;grid-template-columns:128px repeat(16,minmax(32px,1fr));min-height:42px}
+.rack-name {position:sticky;left:0;z-index:6;min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere;font-size:11px;background:#111;border:1px solid #333;padding:6px 8px}
+.selected-sound .rack-name {border:2px solid #eee;padding:5px 7px;font-weight:bold;background:#242424}
+.rack-step {font-size:13px;min-height:42px;position:relative}
+.rack-step.filled {color:#000}
+.rack-step.selected {outline:2px solid #fff;outline-offset:-4px}
+.rack-add-sound {position:sticky;left:0;margin:8px;width:112px;min-height:38px;z-index:6}
+.rack-sound-controls {padding:0 14px 14px;display:flex;gap:12px;flex-wrap:wrap;align-items:end;border-bottom:1px solid var(--line)}
+.rack-sound-controls label {display:flex;flex-direction:column;gap:5px;font-size:11px;min-width:0}
+.rack-sound-controls input {max-width:100%}
+.rack-sound-controls input[type=number] {width:85px}
+.rack-sound-actions {display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.rack-sound-actions button {white-space:normal;min-height:36px}
+.layout-actions {padding:0 14px 12px}
+.rack-strength {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.rack-strength input {min-width:80px;flex:1}
+[hidden] {display:none!important}
+/* The selected Sound label can widen on mobile; history stays within the heading. */
+.history-actions {max-width:100%;min-width:0;flex-wrap:wrap}

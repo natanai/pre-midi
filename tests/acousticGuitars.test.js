@@ -58,11 +58,11 @@ test("strum brushes chord from low to high or reverse without modifying note eve
 });
 test("unused velocity takes remain portable but are not decoded into RAM",()=>{
  const doc=create(),inst=doc.instruments[0],chunk=inst.chunks[0];
- inst.patch=makeSamplerPatch(preset("steel-guitar"));
+ inst.sounds[0].patch=makeSamplerPatch(preset("steel-guitar"));
  chunk.notes=[{id:"note",pitch:60,start:0,duration:4,velocity:.9}];
- const played=sampleForNote(inst.patch,60,.9);
+ const played=sampleForNote(inst.sounds[0].patch,60,.9);
  assert.deepEqual([...usedSampleIds(doc)],[played.assetId]);
- assert.equal(inst.patch.zones.length,54);
+ assert.equal(inst.sounds[0].patch.zones.length,54);
  assert.deepEqual(validate(doc).filter(error=>!error.includes("missing audio")).length,0);
 });
 
