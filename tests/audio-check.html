@@ -26,6 +26,7 @@ try {
    inst.sounds[0].patch=makeSamplerPatch(sampled);
   } else inst.sounds[0].patch=makePatch(name);
   inst.timeline=[chunk.id,null];
+  inst.placements=[null,null];
   const errors=validate(score);
   if(errors.length)throw Error(name+" failed validation: "+errors.join(","));
   result.textContent="Rendering "+name;
