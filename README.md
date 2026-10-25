@@ -37,10 +37,14 @@ chunk and scroll position.
 The instrument list and individual rack rows have adjacent **⋯** action menus.
 Instrument actions offer Rename and a contextual **Delete instrument** or
 **Delete rack**. Each sound row offers Rename, Replace, Duplicate, Move up/down,
-and **Remove sound**; if it is the rack's last sound, that action becomes
-**Delete rack**. Deleting the final instrument or rack leaves a fresh empty
-piano-roll instrument rather than disabling deletion. Removing a sound with
-hits asks before deleting those events from all chunks.
+**Move to piano roll**, and **Remove sound**; if it is the rack's last sound,
+that action becomes **Delete rack**. Moving a sound to piano roll extracts it
+as a separate instrument, preserving its hit pattern and chunk/timeline
+assignments while keeping other rack sounds. A one-sound rack is replaced by
+the new pitched instrument. The current piano roll supports reference notes
+C2–C7. Deleting the final instrument or rack leaves a fresh empty piano-roll
+instrument rather than disabling deletion. Removing a sound with hits asks
+before deleting those events from all chunks.
 **Replace this sound** changes only that row's source. **Save rack preset** saves
 the complete ordered rack; **Save this sound preset** saves only the selected
 row. Both retain companion recordings across reloads. Rack volume controls
