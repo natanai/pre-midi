@@ -76,7 +76,9 @@ function fromSlider(field,value) {
  ))));
 }
 function renderField(field,patch,onChange,onPreview){
- const value=pathValue(patch,field.path) ?? (field.options?field.options[0]:0);
+ const value=pathValue(patch,field.path) ?? (field.path[0]==="bend"?
+  (field.path[1]==="shape"?"straight":field.path[1]==="amount"?2:4):
+  (field.options?field.options[0]:0));
  if(!field.options)return createDial(field,value,
   next=>onChange(field.path,next),
   next=>onPreview(field.path,next));
