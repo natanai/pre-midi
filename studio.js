@@ -452,6 +452,7 @@ function renderSound() {
  $("volume-value").textContent=Math.round(inst.volume*100)+"%";
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
+ document.querySelector(".patch-info")?.style.setProperty("--track-accent",signal(inst));
  const preset=getPreset(inst.patch.presetId)||savedSounds.find(entry=>entry.id===inst.patch.presetId);
  $("patch-label").textContent=preset?"Sound · "+preset.name:"Sound · Custom";
  renderPatchEditor($("synth-editor"),inst.patch,(path,value)=>{
