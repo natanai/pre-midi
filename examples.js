@@ -1,6 +1,7 @@
 // Optional arrangements demonstrate the *real* instrument, chunk, timeline and
 // note systems. No parallel playback engine, example-only patch or save path.
-import {create,makeInstrument,makeChunk,id,validate,clone} from "./schema.js";
+import {create,makeInstrument,makeChunk,makeSound,id,validate,clone} from "./schema.js";
+import {NEON_AFTER_HOURS} from "./exampleNeon.js";
 import {makePatch} from "./synth.js";
 import {samplePreset,makeSamplerPatch} from "./samples.js";
 import {sampleForNote} from "./sampler.js";
@@ -9,40 +10,11 @@ const line=(pitches,steps=4,duration=3,velocity=.8)=>
  pitches.map((pitch,index)=>N(pitch,index*steps,duration,velocity));
 const hits=(steps,pitch=60,velocity=.85)=>steps.map(start=>N(pitch,start,1,velocity));
 const chord=(pitches,start,length=8,velocity=.7)=>pitches.map(pitch=>N(pitch,start,length,velocity));
-const copyNotes=patterns=>patterns;
 const piece=(preset,pattern,timeline,volume=.68,options={})=>({
  preset,pattern,timeline,volume,...options
 });
 export const EXAMPLES=[
- {
-  id:"neon-after-hours",name:"Neon After Hours",tag:"ELECTRONIC / DANCE",
-  description:"A four-on-the-floor beat, syncopated bass, moving lead and glassy hooks.",
-  bpm:126,bars:8,accent:"#08e4ec",
-  voices:[
-   piece("pulse-kick",{
-    Beat:hits([0,4,8,12]),Fill:hits([0,4,8,11,12,14])
-   },["Beat","Beat","Beat","Fill","Beat","Beat","Beat","Fill"],.8),
-   piece("static-snare",{
-    Backbeat:hits([4,12]),Roll:hits([4,11,12,14,15])
-   },["Backbeat","Backbeat","Backbeat","Roll","Backbeat","Backbeat","Backbeat","Roll"],.42),
-   piece("dust-hat",{
-    Eighths:hits([0,2,4,6,8,10,12,14],72,.43),
-    Spark:hits([0,2,4,6,8,10,11,12,14,15],72,.38)
-   },["Eighths","Eighths","Eighths","Spark","Eighths","Eighths","Eighths","Spark"],.28),
-   piece("sub-current",{
-    Root:[N(36,0,3),N(36,6,2),N(43,8,3),N(39,12,3)],
-    Rise:[N(41,0,3),N(41,6,2),N(48,8,2),N(43,11,2),N(46,14,2)]
-   },["Root","Root","Root","Rise","Root","Root","Rise","Rise"],.8),
-   piece("neon-lead",{
-    Hook:[N(72,0,2),N(75,3,2),N(79,6,4),N(75,11,2),N(72,14,2)],
-    Reply:[N(79,0,4),N(82,5,2),N(84,8,4),N(79,13,3)]
-   },["-","Hook","Hook","Reply","-","Hook","Reply","Reply"],.47),
-   piece("glass-keys",{
-    Light:[...chord([60,63,67],0,6,.6),...chord([63,67,72],8,6,.63)],
-    Shine:[...chord([65,68,72],0,8,.7),N(84,12,3,.67)]
-   },["Light","-","Light","Shine","Light","-","Shine","Shine"],.43)
-  ]
- },
+ NEON_AFTER_HOURS,
  {
   id:"porchlight",name:"Porchlight",tag:"ACOUSTIC / FOLK",
   description:"Picked nylon melody, acoustic strummed harmony and organic hand percussion.",
@@ -149,46 +121,82 @@ export const EXAMPLES=[
   ]
  }
 ];
+// Modifications are ordinary native patch values, not a second audio engine.
+function withTone(patch,tone={}){
+ for(const [key,value] of Object.entries(tone)){
+  if(value&&typeof value==="object"&&!Array.isArray(value)&&
+     patch[key]&&typeof patch[key]==="object"&&!Array.isArray(patch[key]))
+   Object.assign(patch[key],clone(value));
+  else patch[key]=clone(value);
+ }
+ return patch;
+}
+function exampleSound(def,trigger="pitched"){
+ const sample=samplePreset(def.preset);
+ const patch=withTone(sample?makeSamplerPatch(sample):makePatch(def.preset),def.tone);
+ const name=def.name||sample?.name||def.preset.replaceAll("-"," ");
+ const sound=makeSound(name,patch,trigger);
+ sound.gain=def.gain??1;
+ if(def.referencePitch!==undefined)sound.referencePitch=def.referencePitch;
+ return sound;
+}
 const asNote = ([pitch,start,duration,velocity,bend])=>({
  id:id(),pitch,start,duration,velocity,...(bend?{bend:clone(bend)}:{})
 });
+function asRackHit([key,start,velocity],byKey){
+ const soundId=byKey.get(key);
+ if(!soundId)throw Error("Example rack references missing sound: "+key);
+ return {id:id(),soundId,start,duration:1,velocity};
+}
 export async function buildExample(exampleId,loadAsset){
  const example=EXAMPLES.find(entry=>entry.id===exampleId);
  if(!example)throw Error("Unknown example composition.");
  const score=create();
  score.id=id();score.title=example.name;score.bpm=example.bpm;score.bars=example.bars;
  score.instruments=[];
- const sounds=new Set();
  for(const def of example.voices){
-  const sample=samplePreset(def.preset);
-  const instrument=makeInstrument(score.instruments.length+1,example.bars);
-  instrument.name=sample?.name||def.preset.replaceAll("-"," ");
+  const isRack=Array.isArray(def.rack);
+  const sound=isRack?exampleSound(def.rack[0],"hit"):exampleSound(def);
+  const instrument=makeInstrument(score.instruments.length+1,example.bars,sound);
+  instrument.name=def.name||sound.name;
   instrument.volume=def.volume;
-  instrument.sounds[0].patch=sample?makeSamplerPatch(sample):makePatch(def.preset);
-  instrument.chunks=Object.entries(def.pattern).map(([name,notes])=>({
+  if(isRack){
+   instrument.sounds=def.rack.map(row=>exampleSound(row,"hit"));
+   const byKey=new Map(def.rack.map((row,index)=>[row.key,instrument.sounds[index].id]));
+   if(byKey.size!==def.rack.length)throw Error("Duplicate example rack sound key.");
+   instrument.chunks=Object.entries(def.pattern).map(([name,notes])=>({
+    ...makeChunk(name),notes:notes.map(note=>asRackHit(note,byKey))
+   }));
+  }else instrument.chunks=Object.entries(def.pattern).map(([name,notes])=>({
    ...makeChunk(name),notes:notes.map(asNote)
   }));
   const lookup=new Map(instrument.chunks.map(chunk=>[chunk.name,chunk.id]));
   instrument.timeline=def.timeline.map(name=>name==="-"?null:lookup.get(name)??null);
-  if(sample){
-   // Record just the native sample voices this arrangement actually plays.
-   // Each example remains editable, portable and well under the .premidi cap.
+  score.instruments.push(instrument);
+ }
+ // Sample selection is based on the sounds *actually played*, including
+ // independent rack rows. Keep .premidi metadata free from audio bytes.
+ const assetIds=new Set();
+ for(const instrument of score.instruments){
+  const assigned=new Set(instrument.timeline.filter(Boolean));
+  for(const sound of instrument.sounds){
+   if(sound.patch.type!=="sample")continue;
    const ids=new Set();
-   const assigned=new Set(instrument.timeline.filter(Boolean));
    for(const chunk of instrument.chunks){
     if(!assigned.has(chunk.id))continue;
     for(const note of chunk.notes){
-     const zone=sampleForNote(instrument.sounds[0].patch,note.pitch,note.velocity);
+     if(instrument.layout==="rack"&&note.soundId!==sound.id)continue;
+     const zone=sampleForNote(sound.patch,
+      instrument.layout==="rack"?sound.referencePitch:note.pitch,note.velocity);
      if(zone)ids.add(zone.assetId);
     }
    }
-   instrument.sounds[0].patch.zones=instrument.sounds[0].patch.zones.filter(zone=>ids.has(zone.assetId));
-   for(const assetId of ids)sounds.add(assetId);
+   if(!ids.size)throw Error("Unplayed sample sound in example: "+sound.name);
+   sound.patch.zones=sound.patch.zones.filter(zone=>ids.has(zone.assetId));
+   for(const assetId of ids)assetIds.add(assetId);
   }
-  score.instruments.push(instrument);
  }
- const assets=await Promise.all([...sounds].map(loadAsset));
- score.samples=assets;
+ score.samples=await Promise.all([...assetIds].map(loadAsset));
  const errors=validate(score);
  if(errors.length)throw Error("Example cannot be loaded: "+errors.join(", "));
  return score;
