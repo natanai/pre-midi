@@ -1,4 +1,4 @@
-import {movement,movementDefaults} from "./expression.js";
+import {movement,movementDefaults,BEND_SHAPES} from "./expression.js";
 import {createDial} from "./dial.js";
 // Sample controls and synth controls share the same dial and visualization
 // owner. All durable edits still flow through studio.js modify().
@@ -27,6 +27,20 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
    value=>onChange(["movement"],{...movement(patch),[key]:value}),
    value=>onPreview(["movement",key],value)));
  }
+ const bend=patch.bend||{shape:"straight",amount:2,rate:4};
+ const shapeLabel=document.createElement("label");shapeLabel.className="synth-field";
+ const title=document.createElement("span");title.textContent="Bend shape";shapeLabel.append(title);
+ const select=document.createElement("select");select.setAttribute("aria-label","Instrument bend shape");
+ for(const [id,name] of BEND_SHAPES){const option=document.createElement("option");option.value=id;option.textContent=name;select.append(option);}
+ select.value=bend.shape;
+ select.addEventListener("change",()=>onChange(["bend"],{...bend,shape:select.value}));
+ shapeLabel.append(select);movementFields.prepend(shapeLabel);
+ for(const [key,label,min,max,step,display] of [
+  ["amount","Bend amount",0,12,.25,"semitones"],
+  ["rate","Wave speed",.1,12,.1,"hz"]
+ ])movementFields.append(createDial({label,min,max,step,display},bend[key],
+  value=>onChange(["bend"],{...bend,[key]:value}),
+  value=>onPreview(["bend",key],value)));
  movementGroup.append(movementTitle,movementFields);root.append(movementGroup);
  const details=document.createElement("details");details.className="synth-group sample-shaping";
  const summary=document.createElement("summary");summary.textContent="Sample & articulation";
