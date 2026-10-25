@@ -1,3 +1,4 @@
+import { validateSamplerPatch } from "./sampler.js";
 // Original parameter-only instrument library. No samples, soundfonts, external DSP or runtime packages.
 // A patch is the single canonical definition used by the editor, live synth and WAV export.
 export const WAVES = ["sine", "triangle", "square", "sawtooth"];
@@ -51,13 +52,15 @@ export const PRESETS=presets.map(([id,name,category,description,overrides])=>({
 export const getPreset=id=>PRESETS.find(entry=>entry.id===id);
 export function makePatch(presetId="init") {
  const preset=getPreset(presetId)||getPreset("init");
- return {presetId:preset.id,...copy(preset.patch)};
+ return {type:"synth",presetId:preset.id,...copy(preset.patch)};
 }
 export const patchCopy=copy;
 const object=x=>x!==null && typeof x==="object" && !Array.isArray(x);
 const num=(x,min,max)=>typeof x==="number"&&Number.isFinite(x)&&x>=min&&x<=max;
 export function validatePatch(patch) {
+ if(patch?.type==="sample")return validateSamplerPatch(patch);
  const errors=[];
+ if(patch?.type!=="synth")errors.push("Unknown instrument source.");
  if(!object(patch))return ["Missing instrument sound definition."];
  if(typeof patch.presetId!=="string"||patch.presetId.length>80)errors.push("Invalid sound preset reference.");
  if(!Array.isArray(patch.oscillators)||patch.oscillators.length!==2)errors.push("Sound must have two oscillator slots.");
