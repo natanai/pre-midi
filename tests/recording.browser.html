@@ -19,7 +19,7 @@ const result=async()=>{
   get("record-sound").click();
   if(!get("microphone-dialog").open)throw Error("Recorder dialog did not open.");
   if(get("mic-length").value!=="1.5")throw Error("Short recording default should be 1.5 seconds.");
-  get("mic-length").value=".75";
+  get("mic-length").value="0.75";
   const hit=doc.querySelector('input[name="mic-kind"][value="hit"]');
   hit.checked=true;hit.dispatchEvent(new Event("change",{bubbles:true}));
   if(!get("mic-root-field").hidden)throw Error("Drum mode should not require note pitch.");
