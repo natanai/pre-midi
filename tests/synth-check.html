@@ -11,6 +11,7 @@ import {create,parse} from "../schema.js";
 import {exportProject} from "../packageIO.js";
 import {encodeMonoWav} from "../recording.js";
 const output=document.getElementById("result"),frame=document.querySelector("iframe");
+frame.style.width=(Number(new URL(location.href).searchParams.get("width"))||innerWidth)+"px";
 const assert=(condition,reason)=>{if(!condition)throw Error(reason);};
 const wait=async check=>{for(let i=0;i<500;i++){if(check())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error("Timed out waiting for converter UI: "+frame.contentDocument?.getElementById("mic-status")?.textContent);};
 async function run(){
@@ -64,7 +65,16 @@ async function run(){
   second.value="harmonic";second.dispatchEvent(new w.Event("change",{bubbles:true}));
   get("export").click();assert(parse(await saved.text()).instruments[1].sounds[0].patch.oscillators[1].harmonics.length===32,"Second oscillator cannot use harmonics");
   w.prompt=()=>"Saved converted sound";get("save-sound").click();
-  assert(w.localStorage.getItem("premidi-user-sounds-v1").includes("Saved converted sound"),"Converted synth cannot save as a preset");
+  await wait(()=>(w.localStorage.getItem("premidi-user-sounds-v1")||"").includes("Saved converted sound"));
+  get("record-sound").click();
+  get("mic-file").files=upload.files;get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
+  await wait(()=>!get("mic-preview").hidden&&!get("mic-convert").disabled);
+  const hit=doc.querySelector('input[name="mic-kind"][value="hit"]');hit.checked=true;hit.dispatchEvent(new w.Event("change",{bubbles:true}));
+  get("mic-convert").click();
+  await wait(()=>!get("mic-synth-result").hidden&&!get("mic-use-synth").disabled);
+  get("mic-use-synth").click();get("export").click();
+  const withHit=parse(await saved.text());
+  assert(withHit.instruments.length===3&&withHit.instruments[2].layout==="rack"&&withHit.samples.length===0,"Converted hit did not create a native synth rack");
   get("record-sound").click();
   const bad=new w.DataTransfer();bad.items.add(new w.File(["not WAV"],"invalid.wav"));get("mic-file").files=bad.files;
   get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
@@ -75,7 +85,7 @@ async function run(){
   get("mic-convert").click();get("mic-close").click();get("record-sound").click();
   await new Promise(resolve=>setTimeout(resolve,150));
   assert(get("mic-preview").hidden&&get("mic-synth-result").hidden,"Cancelled conversion updated a new recording session");
-  assert(doc.querySelectorAll(".instrument-card").length===2,"Cancelled conversion created an instrument");
+  assert(doc.querySelectorAll(".instrument-card").length===3,"Cancelled conversion created an instrument");
   const rect=get("microphone-dialog").getBoundingClientRect();
   assert(rect.left>=0&&rect.right<=w.innerWidth+1,"Recorder is clipped at mobile width");
   status="PASS";output.textContent=JSON.stringify({baselineError,matchError:converted.error,evaluations:converted.evaluations,name:generatedName,

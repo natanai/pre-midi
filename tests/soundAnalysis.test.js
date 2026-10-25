@@ -29,6 +29,11 @@ test("manual root selection is honored without retaining the source in the patch
  assert.ok(JSON.stringify(patch).length<3000);
  assert.doesNotMatch(JSON.stringify(patch),/base64|assetId|data:|\.wav/);
 });
+test("ringing hits use the rack voice's attack-plus-decay gate",()=>{
+ const analysis=analyzeSound(note(),44100,{kind:"hit"});
+ assert.ok(Math.abs(analysis.envelope.attack+analysis.envelope.decay-analysis.hold)<.02);
+ assert.deepEqual(validatePatch(patchFromAnalysis(analysis)),[]);
+});
 test("silent, nonfinite, overlong audio and invalid excerpts fail before conversion",()=>{
  assert.throws(()=>analyzeSound(new Float32Array(44100),44100),/silent/);
  assert.throws(()=>analyzeSound(Float32Array.of(NaN,1),44100),/invalid/);

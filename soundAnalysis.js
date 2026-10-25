@@ -154,6 +154,9 @@ export function analyzeSound(input,rate,{kind="note",root}={}){
  const sustainIndex=loudness.findIndex((value,i)=>i>attackIndex&&value<=maximum*Math.max(.1,sustain));
  const decay=clamp((sustainIndex<0?hold:Math.min(hold,sustainIndex*step))-attack,.01,3);
  const envelope={attack,decay,sustain,release:clamp(seconds-hold-.012,.01,4)};
+ // Rack voices derive their gate from attack + decay. Fit that same gate,
+ // including sustained ringing hits, rather than cutting them off immediately.
+ if(kind==="hit")envelope.decay=clamp(hold-attack,.01,3);
  const noise=clamp(Math.sqrt(Math.max(0,1-tonal))*.55,0,1);
  const pureNoise=kind==="hit"&&!detected&&tonal<.35;
  const brightness=centroid>2200?"Bright":centroid<850?"Warm":"Clear";
