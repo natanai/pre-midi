@@ -1,8 +1,9 @@
 // pre-midi native score. This is the only file-format definition.
 // Pre-midi remains the source of truth; game compatibility is frozen separately.
 export const FORMAT = "pre-midi";
-export const VERSION = 3;
+export const VERSION = 4;
 import { makePatch, validatePatch } from "./synth.js";
+import { validateSampleAsset, MAX_SCORE_BYTES } from "./sampler.js";
 export const id = () => globalThis.crypto?.randomUUID?.() || ("id-" + Date.now() + "-" + Math.random().toString(36).slice(2));
 export const clone = x => JSON.parse(JSON.stringify(x));
 
@@ -24,7 +25,7 @@ export function create() {
   id:id(),pitch,start:i*4,duration:3,velocity:0.8
  }));
  return {format:FORMAT,version:VERSION,id:id(),title:"Untitled composition",
-  bpm:120,beatsPerBar:4,stepsPerBeat:4,bars:8,instruments:[instrument]};
+  bpm:120,beatsPerBar:4,stepsPerBeat:4,bars:8,samples:[],instruments:[instrument]};
 }
 const object=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
 const text=(x,max)=>typeof x==="string"&&!!x.trim()&&x.length<=max;
@@ -32,11 +33,19 @@ const within=(x,low,high)=>typeof x==="number"&&Number.isFinite(x)&&x>=low&&x<=h
 export function validate(doc) {
  const errors=[];
  if(!object(doc)||doc.format!==FORMAT||doc.version!==VERSION)
-  return ["Unsupported .premidi file. The current format is pre-midi v3."];
+  return ["Unsupported .premidi file. The current format is pre-midi v4."];
  if(!text(doc.id,128)||!text(doc.title,100))errors.push("Composition needs an ID and title.");
  if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
  if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
  if(!Number.isInteger(doc.bars)||!within(doc.bars,1,16))errors.push("Timeline must have 1–16 bars.");
+ if(!Array.isArray(doc.samples)||doc.samples.length>60)return [...errors,"Invalid sample asset list."];
+ const sampleIds=new Set();
+ for(const asset of doc.samples){
+  const error=validateSampleAsset(asset);
+  if(error)errors.push(error);
+  if(sampleIds.has(asset?.id))errors.push("Duplicate sample ID.");
+  sampleIds.add(asset?.id);
+ }
  if(!Array.isArray(doc.instruments)||doc.instruments.length<1||doc.instruments.length>12)
   return [...errors,"The composition needs 1–12 instruments."];
  const ids=new Set();
@@ -48,6 +57,8 @@ export function validate(doc) {
   ids.add(instrument.id);
   if(!within(instrument.volume,0,1)) errors.push("Invalid instrument volume.");
   errors.push(...validatePatch(instrument.patch).map(error => instrument.name + ": " + error));
+  if(instrument.patch?.type==="sample" && Array.isArray(instrument.patch.zones))
+   for(const zone of instrument.patch.zones)if(!sampleIds.has(zone.assetId))errors.push("Sample instrument references missing audio.");
   if(!Array.isArray(instrument.chunks)||!instrument.chunks.length||instrument.chunks.length>32){
    errors.push("Each instrument must have 1–32 chunks.");continue;
   }
@@ -76,8 +87,8 @@ export function validate(doc) {
  return errors.slice(0,20);
 }
 export function parse(raw) {
- if(typeof raw!=="string"||new TextEncoder().encode(raw).byteLength>1_000_000)
-  throw Error("Composition exceeds the 1 MB limit.");
+ if(typeof raw!=="string"||new TextEncoder().encode(raw).byteLength>MAX_SCORE_BYTES)
+  throw Error("Composition exceeds the 15 MB limit.");
  const doc=JSON.parse(raw),issues=validate(doc);
  if(issues.length)throw Error(issues.join("\n"));
  return doc;
