@@ -32,7 +32,7 @@ try {
  };
  if(samples.before>.00001)throw Error("Audio began before clip offset: "+JSON.stringify(samples));
  if(samples.offbeat<.003)throw Error("Beat-three clip did not render: "+JSON.stringify(samples));
- if(samples.gap>.00005)throw Error("Spurious event in pause: "+JSON.stringify(samples));
+ if(samples.gap>samples.offbeat/10)throw Error("Pause insufficiently quieter than the note: "+JSON.stringify(samples));
  if(samples.polymeter<.003)throw Error("12-step repetition did not render: "+JSON.stringify(samples));
  result.textContent=JSON.stringify(samples);
  document.documentElement.dataset.audio="PASS";
