@@ -104,7 +104,7 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
   border-bottom:1px solid var(--line);background:var(--void);
 }
 .heading h2 {
-  margin:0;font-size:13px;font-weight:normal;text-transform:uppercase;
+  margin:0;font-size:13px;font-weight:normal;text-transform:lowercase;
   letter-spacing:0;color:var(--bright);
 }
 .heading small {color:var(--muted);font-size:11px}
@@ -853,3 +853,49 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .dial-disabled{opacity:.42}
 .dial-disabled .dial-knob{cursor:not-allowed}
 .sample-tone .synth-fields{padding-bottom:12px}
+
+/* quiet studio typography: interface chrome is lowercase, authored names and note pitches remain data */
+.app :is(button, summary, .brand small, .timeline-tick-label, .editing-identity,
+ .synth-field, .dial-label, .patch-info, .rack-sound-controls, .song > label,
+ .notes-toolbar label, .transport label, .sample-toggles, .mic-guidance,
+ .mic-kind, .mic-settings, #status, footer) {text-transform:lowercase}
+.app select {text-transform:lowercase}
+
+/* The label alone reveals a short sound description; values and knobs are separate targets */
+.control-help, .unit-help {position:relative;cursor:help}
+.control-help::after, .unit-help::after {
+ content:attr(data-help);
+ display:none;
+ position:absolute;
+ left:50%;
+ bottom:calc(100% + 7px);
+ transform:translateX(-50%);
+ width:max-content;
+ max-width:min(255px, calc(100vw - 28px));
+ white-space:normal;
+ text-align:left;
+ font-size:11px;
+ line-height:1.35;
+ font-weight:normal;
+ text-transform:none;
+ color:var(--bright);
+ padding:6px 8px;
+ background:#000;
+ border:1px solid var(--line);
+ box-shadow:0 2px 10px #000;
+ pointer-events:none;
+ z-index:90;
+}
+.control-help:hover::after, .control-help.help-open::after,
+.unit-help:hover::after, .unit-help.help-open::after {display:block}
+.dial-field:has(.control-help:hover), .dial-field:has(.unit-help:hover),
+.dial-field:has(.help-open) {z-index:4}
+.dial-field {position:relative}
+.unit-help {font-size:inherit}
+.layout-actions {border-top:1px solid var(--faint);padding-top:6px}
+.layout-actions button {color:var(--muted);text-transform:lowercase}
+.layout-actions button:not(:disabled):hover {color:var(--bright)}
+.layout-actions button::before {content:"[";color:var(--muted)}
+.layout-actions button::after {content:"]";color:var(--muted)}
+/* these controls are already available in the per-row action menu */
+.rack-sound-actions :is(#move-sound-up,#move-sound-down,#duplicate-sound,#remove-sound) {display:none}
