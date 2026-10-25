@@ -542,3 +542,67 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .expression-controls {flex-basis:100%}
  .expression-visual {max-width:none;flex-basis:100%}
 }
+
+
+/* Studio instrument signal monitor: illustrative, responsive to the live
+   editable sound parameters; never a second audio engine. */
+.sound-visualizer {padding:11px 14px;border-top:1px solid var(--faint)}
+.signal-scope {border:1px solid var(--faint);background:#020304}
+.signal-scope-header {display:flex;justify-content:space-between;gap:10px;
+  border-bottom:1px solid var(--faint);padding:8px 10px}
+.signal-scope-title,.signal-scope-legend {font-size:10px;letter-spacing:.08em;color:var(--muted)}
+.signal-scope-title {color:var(--scope-accent)}
+.signal-scope-graph {width:100%;height:148px;display:block;color:var(--scope-accent)}
+.signal-scope-guides {stroke:#272727;stroke-width:1;stroke-dasharray:2 4}
+.signal-wave {stroke:var(--scope-accent);opacity:.9}
+.signal-pitch {stroke:var(--signal-mauve)}
+.signal-axis {font-size:9px;fill:#777}
+/* One accessible dial primitive across both sampled and synthesized sources. */
+.dial-grid,.synth-fields.dial-grid {display:flex;flex-wrap:wrap;gap:14px 9px;align-items:flex-start}
+.synth-fields:has(.dial-field) {display:flex;flex-wrap:wrap;align-items:start;gap:12px 8px}
+.dial-field {width:100px;min-width:88px;flex:1 1 88px;max-width:126px;
+ display:grid;justify-items:center;align-content:start;gap:5px;
+ color:var(--muted);font-size:11px;text-align:center}
+.dial-label {min-height:27px;display:flex;align-items:end;justify-content:center;text-align:center}
+.dial-knob {width:64px;height:64px;display:block;position:relative;cursor:ns-resize;
+ touch-action:none;user-select:none;outline-offset:3px}
+.dial-knob:focus-visible {outline:1px dotted var(--bright)}
+.dial-knob svg {display:block;width:64px;height:64px;overflow:visible}
+.dial-ring {fill:#111;stroke:#343434;stroke-width:3}
+.dial-amount {fill:none;stroke:var(--track-accent);stroke-width:3;
+ stroke-dasharray:0 100;transform-origin:32px 32px}
+.dial-pointer {stroke:#f0f0f0;stroke-width:2.5;stroke-linecap:round;
+ transform-origin:32px 32px}
+.dial-field.adjusting .dial-ring {stroke:var(--bright)}
+.dial-value {font-size:11px;min-height:18px;color:var(--bright);font-variant-numeric:tabular-nums}
+.instrument-volume-dial {--track-accent:var(--signal-cyan)}
+.instrument-volume-dial .dial-field {width:100px}
+.sample-toggles {display:flex;gap:8px 20px;flex-wrap:wrap;padding:0 14px 14px}
+.sample-shaping {margin-top:9px}
+.sample-shaping .synth-fields {padding-bottom:11px}
+.sample-shaping>.synth-fields {display:flex}
+.sound-section .controls {align-items:center}
+#note-mode {border:1px solid var(--line);padding:6px 9px;color:var(--text);
+ white-space:normal;max-width:190px;text-align:center}
+#note-mode[aria-pressed="true"] {color:var(--bright);border-color:var(--signal-mauve);
+ background:color-mix(in srgb,var(--signal-mauve) 17%,#000)}
+.notes-section.editing-note-effects {box-shadow:inset 3px 0 0 var(--signal-mauve)}
+.notes-section.editing-note-effects .notes-heading {background:#151018}
+.work.editing-note-effects .instrument-pane,
+.work.editing-note-effects .mainwork>section:not(.notes-section),
+.work.editing-note-effects .notes-toolbar {
+ opacity:.35;filter:grayscale(.8);pointer-events:none;
+}
+.work.editing-note-effects .notes-toolbar :is(input,select,button) {pointer-events:none}
+.notes-section .note-expression {background:#110c16}
+.note-expression .expression-title {flex-wrap:wrap}
+.note-expression .expression-hear {color:var(--signal-mauve);border:1px solid var(--line);padding:7px 9px}
+@media(max-width:570px) {
+ .notes-heading {flex-wrap:wrap}
+ .history-actions {flex-wrap:wrap}
+ .sound-visualizer {padding:9px 12px}
+ .signal-scope-graph {height:120px}
+ .dial-field {flex-basis:90px;min-width:81px}
+ .synth-fields:has(.dial-field) {gap:10px 5px}
+ .sound-identity-controls {align-items:center}
+}
