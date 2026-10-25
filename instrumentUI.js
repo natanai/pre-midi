@@ -29,6 +29,13 @@ const groups=[
  {name:"Movement",open:false,fields:[
   {path:["movement","rate"],label:"Vibrato rate",min:.1,max:20,step:.1,display:"hz"},
   {path:["movement","depth"],label:"Vibrato depth",min:0,max:100,step:1,display:"cents"},
+  {path:["movement","delay"],label:"Vibrato waits",min:0,max:3,step:.05,display:"seconds"},
+  {path:["movement","glide"],label:"Glide from",min:-12,max:12,step:.1,display:"semitones"},
+  {path:["movement","glideTime"],label:"Glide time",min:.01,max:3,step:.01,display:"seconds"},
+  {path:["movement","tremolo"],label:"Pulse amount",min:0,max:1,step:.01,display:"percent"},
+  {path:["movement","tremoloRate"],label:"Pulse speed",min:.1,max:20,step:.1,display:"hz"},
+  {path:["movement","tone"],label:"Tone wave",min:0,max:1,step:.01,display:"percent"},
+  {path:["movement","toneRate"],label:"Tone speed",min:.1,max:20,step:.1,display:"hz"},
   {path:["pan"],label:"Pan",min:-1,max:1,step:.01,display:"pan"}
  ]},
  {name:"Effects",open:false,fields:[
@@ -46,6 +53,7 @@ function format(value,display) {
  if(display==="seconds")return Math.round(value*1000)+" ms";
  if(display==="hz")return value>=1000?(value/1000).toFixed(1)+" kHz":Math.round(value)+" Hz";
  if(display==="cents")return Math.round(value)+" ct";
+ if(display==="semitones")return (value>0?"+":"")+Number(value.toFixed(1))+" st";
  if(display==="pan")return value===0?"C":value<0?"L "+Math.round(-value*100):"R "+Math.round(value*100);
  return Number(value).toFixed(1);
 }
@@ -66,7 +74,7 @@ function renderField(field,patch,onChange) {
  const title=document.createElement("span");
  title.textContent=field.label;
  label.append(title);
- const value=pathValue(patch,field.path);
+ const value=pathValue(patch,field.path) ?? 0;
  if(field.options) {
   const input=document.createElement("select");
   input.setAttribute("aria-label",fieldTitle(field));
