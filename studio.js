@@ -1,4 +1,5 @@
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
+import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromScore,deleteSoundFromScore} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
@@ -76,6 +77,34 @@ function button(label, action, cls) {
  el.addEventListener("click", action);
  return el;
 }
+function actionMenu(label,actions,kind=""){
+ const menu=element("details",undefined,"entity-actions "+kind);
+ const toggle=element("summary","⋯");
+ toggle.setAttribute("aria-label",label);
+ toggle.title=label;
+ const options=element("div",undefined,"entity-action-list");
+ for(const action of actions){
+  const control=button(action.label,()=>{menu.open=false;action.run();},
+   action.danger?"danger":"");
+  control.disabled=!!action.disabled;
+  options.append(control);
+ }
+ menu.append(toggle,options);
+ return menu;
+}
+function renameInstrument(inst){
+ closePicker();focus(inst);setInspector("expanded");
+ $("instrument-name").focus();$("instrument-name").select();
+}
+function renameRackSound(inst,entry){
+ closePicker();focus(inst);selectSound(entry);setInspector("expanded");
+ $("sound-name").focus();$("sound-name").select();
+}
+document.addEventListener("pointerdown",event=>{
+ const current=event.target.closest?.(".entity-actions");
+ for(const menu of document.querySelectorAll(".entity-actions[open]"))
+  if(menu!==current)menu.open=false;
+},true);
 function message(text, error = false) {
  $("status").textContent = text;
  $("status").className = error ? "error" : "ok";
@@ -195,11 +224,16 @@ function renderInstruments() {
  list.replaceChildren();
  for (const inst of score.instruments) {
   const selected = inst.id === selectedInstrumentId;
+  const item=element("div",undefined,"instrument-entry");
   const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
   el.style.setProperty("--track-accent", signal(inst));
   el.setAttribute("aria-pressed", String(selected));
   el.append(element("strong", inst.name), element("small", (inst.layout==="rack" ? inst.sounds.length+" sounds" : (getPreset(inst.sounds[0].patch.presetId)?.name ?? SAMPLE_LIBRARY.find(item=>item.id===inst.sounds[0].patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.sounds[0].patch.presetId)?.name ?? (inst.sounds[0].patch.type==="sample"?"Custom sample":"Custom synth"))) + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
-  list.append(el);
+  item.append(el,actionMenu("Actions for "+inst.name,[
+   {label:"Rename",run:()=>renameInstrument(inst)},
+   {label:instrumentDeleteLabel(inst),danger:true,run:()=>removeInstrument(inst.id)}
+  ],"instrument-actions"));
+  list.append(item);
  }
  $("add-instrument").disabled = score.instruments.length >= 12;
 }
@@ -365,7 +399,17 @@ function renderRack(root,inst,chunk){
   const name=button((sound(inst).id===entry.id?"✓ ":"")+entry.name,()=>selectSound(entry),"rack-name");
   name.setAttribute("aria-pressed",String(sound(inst).id===entry.id));
   name.setAttribute("aria-label","Edit sound "+entry.name);name.title=entry.name;
-  row.append(name);
+  const head=element("div",undefined,"rack-row-head");
+  const position=inst.sounds.indexOf(entry);
+  head.append(name,actionMenu("Actions for "+entry.name,[
+   {label:"Rename",run:()=>renameRackSound(inst,entry)},
+   {label:"Replace sound",run:()=>{focus(inst);selectSound(entry);openLibrary("replace-row");}},
+   {label:"Duplicate sound",disabled:inst.sounds.length>=MAX_SOUNDS,run:()=>duplicateRackSound(inst.id,entry.id)},
+   {label:"Move up",disabled:position===0,run:()=>moveRackSound(inst.id,entry.id,-1)},
+   {label:"Move down",disabled:position===inst.sounds.length-1,run:()=>moveRackSound(inst.id,entry.id,1)},
+   {label:soundDeleteLabel(inst),danger:true,run:()=>removeRackSound(inst.id,entry.id)}
+  ],"rack-actions"));
+  row.append(head);
   for(let step=0;step<16;step++){
    const existing=chunk.notes.find(note=>note.soundId===entry.id&&note.start===step);
    const cell=button(existing?"●":"",event=>{
@@ -621,7 +665,8 @@ function renderSound() {
  $("move-sound-up").disabled=inst.sounds.indexOf(entry)===0;
  $("move-sound-down").disabled=inst.sounds.indexOf(entry)===inst.sounds.length-1;
  $("duplicate-sound").disabled=inst.sounds.length>=MAX_SOUNDS;
- $("remove-sound").disabled=inst.sounds.length===1;
+ $("remove-sound").disabled=false;
+  $("remove-sound").textContent=soundDeleteLabel(inst);
  $("sound-controls").hidden=inst.layout!=="rack";
  $("save-row-sound").hidden=inst.layout!=="rack";
  $("save-sound").textContent=inst.layout==="rack"?"Save rack preset":"Save preset";
@@ -640,7 +685,8 @@ function renderSound() {
    patch.zones.map(zone=>score.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
    ()=>openAudioReplace(),preview);
  }else renderPatchEditor($("synth-editor"),patch,onChange,preview);
- $("remove-instrument").disabled=score.instruments.length===1;
+ $("remove-instrument").disabled=false;
+  $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }
 function render() {
  repairSelection();
