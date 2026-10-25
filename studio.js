@@ -13,6 +13,8 @@ import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
 import {createSignalDisplay} from "./soundScope.js";
 import {EXAMPLES,buildExample} from "./examples.js";
+import {exportPackage,importPackage} from "./packageIO.js";
+import {installMicrophoneRecorder} from "./microphoneUI.js";
 
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v4-draft";
@@ -633,24 +635,31 @@ $("new").addEventListener("click", () => {
  if (confirm("Start a new composition? Save the current .premidi if you want a copy.")) resetTo(create());
 });
 $("import").addEventListener("click", () => $("file").click());
-$("file").addEventListener("change", async event => {
- const file = event.currentTarget.files?.[0];
- if (!file) return;
- try {
-  if (file.size > MAX_SCORE_BYTES) throw Error("File exceeds 1 MB.");
-  const next = parse(await file.text());
-  if (confirm("Open " + next.title + "? This replaces the browser draft.")) {
-   resetTo(next);
-   message("Opened " + file.name);
+$("file").addEventListener("change",async event=>{
+ const file=event.currentTarget.files?.[0];
+ if(!file)return;
+ try{
+  let next;
+  if(file.name.toLowerCase().endsWith(".zip"))
+   next=importPackage(new Uint8Array(await file.arrayBuffer()));
+  else{
+   if(file.size>MAX_SCORE_BYTES)throw Error("Composition exceeds 15 MB.");
+   next=parse(await file.text());
+   if(next.samples.some(asset=>!asset.data))
+    throw Error("This composition has external audio. Import its complete ZIP package.");
   }
- } catch (error) { message("Could not open file: " + error.message, true); }
- finally { $("file").value = ""; }
+  if(confirm("Open "+next.title+"? This replaces the browser draft.")){
+   resetTo(next);message("Opened "+file.name);
+  }
+ }catch(error){message("Could not open file: "+error.message,true);}
+ finally{$("file").value="";}
 });
-$("export").addEventListener("click", () => {
- const errors = validate(score);
- if (errors.length) return message(errors[0], true);
- download(new Blob([JSON.stringify(score,null,2)], {type:"application/json"}), filename(score,".premidi"));
- message("Saved .premidi");
+$("export").addEventListener("click",()=>{
+ try {
+  const result=exportPackage(score);
+  download(result.blob,result.name);
+  message(result.name.endsWith(".zip")?"Saved composition and separate audio assets":"Saved .premidi");
+ }catch(error){message("Export failed: "+error.message,true);}
 });
 $("wav").addEventListener("click", async () => {
  const el = $("wav");
