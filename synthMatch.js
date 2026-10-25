@@ -18,7 +18,7 @@ export async function convertToSynth(values,sampleRate,{kind="note",root,signal,
   const error=signatureDistance(analysis.signature,audioSignature(buffer.getChannelData(0),analysis.rate));
   evaluations++;
   if(error<bestError){best=patch;bestError=error;}
-  onProgress("Matching synth controls",Math.min(.94,evaluations/33));
+  onProgress("Matching synth controls",Math.min(.94,evaluations/48));
   await new Promise(resolve=>setTimeout(resolve,0));
   return error;
  }
@@ -34,6 +34,14 @@ export async function convertToSynth(values,sampleRate,{kind="note",root,signal,
  // A bounded, deterministic search needs neither a server nor a trained model.
  await tryValues(["filter","cutoff"],[1200,3000,6500,10000,14000]);
  await tryValues(["noise"],[0,clamp(analysis.noise*.6,0,1),clamp(analysis.noise*1.5,0,1)]);
+ // Explicitly fit tone changes and noisy attacks, rather than only one timbre.
+ if(!analysis.pureNoise){
+  await tryValues(["filter","sweep"],[0,-2,2,analysis.filterSweep,
+   clamp(analysis.filterSweep*1.6,-5,5)]);
+  if(Math.abs(best.filter.sweep??0)>.01)
+   await tryValues(["filter","sweepTime"],[.08,.26,.65]);
+ }
+ if(analysis.noise>.1)await tryValues(["noiseDecay"],[0,.07,.22,.7]);
  for(const tilt of [-.45,-.2,.2,.45]){
   const patch=patchCopy(best),partials=analysis.partials.map((value,i)=>value*(i+1)**tilt),maximum=Math.max(...partials,1e-9);
   patch.oscillators[0].harmonics=partials.map(value=>value/maximum);

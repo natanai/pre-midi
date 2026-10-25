@@ -83,6 +83,20 @@ function averageSpectrum(values,rate){
  }
  return {power:result,binHz:rate/size};
 }
+// Compare early and late spectral color. A fixed harmonic vector cannot
+// represent a bright attack becoming dark (or the reverse).
+function centroidFrame(values,position){
+ const size=values.length<4096?512:2048;
+ const power=powerSpectrum(values,Math.round(position*Math.max(0,values.length-size)),size);
+ let total=0,weighted=0;
+ for(let bin=4;bin<power.length;bin++){
+  const hz=bin*ANALYSIS_RATE/size;
+  if(hz>8500)break;
+  const strength=Math.sqrt(power[bin]);
+  weighted+=strength*hz;total+=strength;
+ }
+ return total>1e-8?weighted/total:0;
+}
 function pitchMotion(values,rate,hz,seconds){
  const cents=[],times=[],lag=rate/hz,window=Math.min(2048,Math.floor(rate*.06));
  for(let offset=0;offset+window+lag*1.1<values.length;offset+=Math.round(rate*.02)){
@@ -159,19 +173,27 @@ export function analyzeSound(input,rate,{kind="note",root}={}){
  if(kind==="hit")envelope.decay=clamp(hold-attack,.01,3);
  const noise=clamp(Math.sqrt(Math.max(0,1-tonal))*.55,0,1);
  const pureNoise=kind==="hit"&&!detected&&tonal<.35;
+ const earlyColor=centroidFrame(values,.03),lateColor=centroidFrame(values,.62);
+ const relative=earlyColor>0&&lateColor>0?clamp(Math.log2(earlyColor/lateColor)*1.5,-5,5):0;
+ const filterSweep=Math.abs(relative)<.6?0:Number(relative.toFixed(2));
+ const sweepTime=clamp(seconds*.3,.04,1);
  const brightness=centroid>2200?"Bright":centroid<850?"Warm":"Clear";
  const character=pureNoise?"Noise Hit":kind==="hit"?"Harmonic Hit":sustain<.4?"Pluck":attack>.15?"Swell":"Tone";
  return {values,rate:ANALYSIS_RATE,seconds,hold,referencePitch:kind==="hit"?(detected?.midi??reference):reference,
   detune:clamp(1200*Math.log2(hz/hzFromPitch(reference)),-100,100),partials,noise:pureNoise?1:noise<.045?0:noise,
-  pureNoise,centroid,envelope,movement:detected?pitchMotion(values,ANALYSIS_RATE,hz,seconds):undefined,
+  pureNoise,centroid,lateColor,filterSweep,sweepTime,envelope,movement:detected?pitchMotion(values,ANALYSIS_RATE,hz,seconds):undefined,
   name:brightness+" "+character,kind,detected:Boolean(detected),signature:audioSignature(values)};
 }
 export function patchFromAnalysis(analysis){
  const patch=makePatch("init");patch.presetId="custom";
  patch.oscillators=[{wave:"harmonic",harmonics:analysis.partials,level:analysis.pureNoise?0:1,octave:0,detune:analysis.detune},
   {wave:"sine",level:0,octave:0,detune:0}];
- patch.noise=analysis.noise;patch.filter={type:analysis.pureNoise&&analysis.centroid>3000?"highpass":"lowpass",
-  cutoff:analysis.pureNoise?clamp(analysis.centroid*.55,100,7000):14000,resonance:.7};
+ patch.noise=analysis.noise;
+ patch.noiseDecay=0;
+ patch.filter={type:analysis.pureNoise&&analysis.centroid>3000?"highpass":"lowpass",
+  cutoff:analysis.pureNoise?clamp(analysis.centroid*.55,100,7000):
+   analysis.filterSweep?clamp(analysis.lateColor*2.3,750,14000):14000,
+  resonance:.7,sweep:analysis.pureNoise?0:analysis.filterSweep,sweepTime:analysis.sweepTime};
  patch.envelope={...analysis.envelope};
  if(analysis.movement)patch.movement={...analysis.movement};
  patch.effects={drive:0,delayMix:0,delayTime:.24,delayFeedback:.26};
