@@ -1,4 +1,5 @@
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
+import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromScore,deleteSoundFromScore,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
@@ -76,6 +77,34 @@ function button(label, action, cls) {
  el.addEventListener("click", action);
  return el;
 }
+function actionMenu(label,actions,kind=""){
+ const menu=element("details",undefined,"entity-actions "+kind);
+ const toggle=element("summary","⋯");
+ toggle.setAttribute("aria-label",label);
+ toggle.title=label;
+ const options=element("div",undefined,"entity-action-list");
+ for(const action of actions){
+  const control=button(action.label,()=>{menu.open=false;action.run();},
+   action.danger?"danger":"");
+  control.disabled=!!action.disabled;
+  options.append(control);
+ }
+ menu.append(toggle,options);
+ return menu;
+}
+function renameInstrument(inst){
+ closePicker();focus(inst);setInspector("expanded");
+ $("instrument-name").focus();$("instrument-name").select();
+}
+function renameRackSound(inst,entry){
+ closePicker();focus(inst);selectSound(entry);setInspector("expanded");
+ $("sound-name").focus();$("sound-name").select();
+}
+document.addEventListener("pointerdown",event=>{
+ const current=event.target.closest?.(".entity-actions");
+ for(const menu of document.querySelectorAll(".entity-actions[open]"))
+  if(menu!==current)menu.open=false;
+},true);
 function message(text, error = false) {
  $("status").textContent = text;
  $("status").className = error ? "error" : "ok";
@@ -195,11 +224,16 @@ function renderInstruments() {
  list.replaceChildren();
  for (const inst of score.instruments) {
   const selected = inst.id === selectedInstrumentId;
+  const item=element("div",undefined,"instrument-entry");
   const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
   el.style.setProperty("--track-accent", signal(inst));
   el.setAttribute("aria-pressed", String(selected));
   el.append(element("strong", inst.name), element("small", (inst.layout==="rack" ? inst.sounds.length+" sounds" : (getPreset(inst.sounds[0].patch.presetId)?.name ?? SAMPLE_LIBRARY.find(item=>item.id===inst.sounds[0].patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.sounds[0].patch.presetId)?.name ?? (inst.sounds[0].patch.type==="sample"?"Custom sample":"Custom synth"))) + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
-  list.append(el);
+  item.append(el,actionMenu("Actions for "+inst.name,[
+   {label:"Rename",run:()=>renameInstrument(inst)},
+   {label:instrumentDeleteLabel(inst),danger:true,run:()=>removeInstrument(inst.id)}
+  ],"instrument-actions"));
+  list.append(item);
  }
  $("add-instrument").disabled = score.instruments.length >= 12;
 }
@@ -365,7 +399,19 @@ function renderRack(root,inst,chunk){
   const name=button((sound(inst).id===entry.id?"✓ ":"")+entry.name,()=>selectSound(entry),"rack-name");
   name.setAttribute("aria-pressed",String(sound(inst).id===entry.id));
   name.setAttribute("aria-label","Edit sound "+entry.name);name.title=entry.name;
-  row.append(name);
+  const head=element("div",undefined,"rack-row-head");
+  const position=inst.sounds.indexOf(entry);
+  head.append(name,actionMenu("Actions for "+entry.name,[
+   {label:"Rename",run:()=>renameRackSound(inst,entry)},
+   {label:"Replace sound",run:()=>{focus(inst);selectSound(entry);openLibrary("replace-row");}},
+   {label:"Move to piano roll",disabled:!canMoveRackSoundToPianoRoll(score,inst.id,entry.id),
+    run:()=>extractSoundToPianoRoll(inst.id,entry.id)},
+   {label:"Duplicate sound",disabled:inst.sounds.length>=MAX_SOUNDS,run:()=>duplicateRackSound(inst.id,entry.id)},
+   {label:"Move up",disabled:position===0,run:()=>moveRackSound(inst.id,entry.id,-1)},
+   {label:"Move down",disabled:position===inst.sounds.length-1,run:()=>moveRackSound(inst.id,entry.id,1)},
+   {label:soundDeleteLabel(inst),danger:true,run:()=>removeRackSound(inst.id,entry.id)}
+  ],"rack-actions"));
+  row.append(head);
   for(let step=0;step<16;step++){
    const existing=chunk.notes.find(note=>note.soundId===entry.id&&note.start===step);
    const cell=button(existing?"●":"",event=>{
@@ -621,7 +667,8 @@ function renderSound() {
  $("move-sound-up").disabled=inst.sounds.indexOf(entry)===0;
  $("move-sound-down").disabled=inst.sounds.indexOf(entry)===inst.sounds.length-1;
  $("duplicate-sound").disabled=inst.sounds.length>=MAX_SOUNDS;
- $("remove-sound").disabled=inst.sounds.length===1;
+ $("remove-sound").disabled=false;
+  $("remove-sound").textContent=soundDeleteLabel(inst);
  $("sound-controls").hidden=inst.layout!=="rack";
  $("save-row-sound").hidden=inst.layout!=="rack";
  $("save-sound").textContent=inst.layout==="rack"?"Save rack preset":"Save preset";
@@ -633,14 +680,19 @@ function renderSound() {
  $("convert-rack").disabled=!canConvertToRack(inst);
  $("convert-rack").title=canConvertToRack(inst)?"Use one named sound row":"Keep the piano roll: conversion would change pitches, zones, or simultaneous events";
  $("convert-pitched").hidden=inst.layout!=="rack";
- $("convert-pitched").disabled=inst.sounds.length!==1||entry.referencePitch<36||entry.referencePitch>96;
+ $("convert-pitched").disabled=!canMoveRackSoundToPianoRoll(score,inst.id,entry.id);
+ $("convert-pitched").title=entry.referencePitch<36||entry.referencePitch>96?
+  "Reference note must be within C2–C7 to use the piano roll":
+  score.instruments.length>=12&&inst.sounds.length>1?
+  "The composition already has 12 instruments": "Move this sound to its own piano-roll instrument";
  $("edit-instrument-note").textContent=inst.layout==="rack"?inst.name+" / "+entry.name:inst.name;
  if(patch.type==="sample"){
   renderSamplerEditor($("synth-editor"),patch,onChange,
    patch.zones.map(zone=>score.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
    ()=>openAudioReplace(),preview);
  }else renderPatchEditor($("synth-editor"),patch,onChange,preview);
- $("remove-instrument").disabled=score.instruments.length===1;
+ $("remove-instrument").disabled=false;
+  $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }
 function render() {
  repairSelection();
@@ -1058,16 +1110,25 @@ function renderLibrary() {
   list.append(card);
  }
 }
-$("remove-instrument").addEventListener("click", () => {
- const inst = instrument();
- if (!confirm("Remove " + inst.name + " and all its chunks?")) return;
+function removeInstrument(instrumentId){
+ const target=score.instruments.find(entry=>entry.id===instrumentId);
+ if(!target)return;
+ const last=score.instruments.length===1;
+ if(!confirm(instrumentDeleteLabel(target)+" “"+target.name+"” and all its chunks?"+
+  (last?" A fresh, empty instrument will take its place.":"")))return;
  closePicker();
- modify(() => {
-  score.instruments = score.instruments.filter(entry => entry.id !== inst.id);
-  selectedInstrumentId = score.instruments[0].id;
-  selectedSlot = {instrumentId:selectedInstrumentId,bar:0};
+ modify(()=>{
+  const replacementId=deleteInstrumentFromScore(score,instrumentId);
+  selectedSounds.delete(instrumentId);
+  selectedChunks.delete(instrumentId);
+  selectedNoteId=null;
+  if(selectedInstrumentId===instrumentId){
+   selectedInstrumentId=replacementId;
+   selectedSlot={instrumentId:selectedInstrumentId,bar:0};
+  }
  });
-});
+}
+$("remove-instrument").addEventListener("click",()=>removeInstrument(instrument().id));
 $("chunk").addEventListener("change", event => {
  selectedChunks.set(instrument().id, event.target.value);
  renderChunkEditor();
@@ -1103,42 +1164,74 @@ $("sound-name").addEventListener("change",event=>modify(()=>{sound().name=event.
 $("sound-reference").addEventListener("change",event=>modify(()=>{sound().referencePitch=Number(event.target.value);}));
 $("replace-row-sound").addEventListener("click",()=>openLibrary("replace-row"));
 $("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,score,{soundId:sound().id}).catch(error=>message(error.message,true));});
-function moveSound(offset){
+function moveRackSound(instrumentId,soundId,offset){
+ const inst=score.instruments.find(item=>item.id===instrumentId);
+ if(!inst)return;
+ const index=inst.sounds.findIndex(item=>item.id===soundId);
+ if(index<0||index+offset<0||index+offset>=inst.sounds.length)return;
  modify(()=>{
-  const inst=instrument(),index=inst.sounds.indexOf(sound());
-  if(index+offset<0||index+offset>=inst.sounds.length)return;
   [inst.sounds[index],inst.sounds[index+offset]]=[inst.sounds[index+offset],inst.sounds[index]];
+  selectedInstrumentId=inst.id;
+  selectedSounds.set(inst.id,soundId);
  });
 }
-$("move-sound-up").addEventListener("click",()=>moveSound(-1));
-$("move-sound-down").addEventListener("click",()=>moveSound(1));
-$("duplicate-sound").addEventListener("click",()=>modify(()=>{
- const entry=clone(sound());entry.id=id();entry.name=(entry.name+" copy").slice(0,60);
- instrument().sounds.splice(instrument().sounds.indexOf(sound())+1,0,entry);selectedSounds.set(instrument().id,entry.id);
-}));
-$("remove-sound").addEventListener("click",()=>{
- const inst=instrument(),entry=sound();
- if(inst.sounds.length===1)return;
+function duplicateRackSound(instrumentId,soundId){
+ const inst=score.instruments.find(item=>item.id===instrumentId);
+ const index=inst?.sounds.findIndex(item=>item.id===soundId)??-1;
+ if(index<0||inst.sounds.length>=MAX_SOUNDS)return;
+ modify(()=>{
+  const entry=clone(inst.sounds[index]);
+  entry.id=id();
+  entry.name=(entry.name+" copy").slice(0,60);
+  inst.sounds.splice(index+1,0,entry);
+  selectedInstrumentId=inst.id;
+  selectedSounds.set(inst.id,entry.id);
+ });
+}
+function removeRackSound(instrumentId,soundId){
+ const inst=score.instruments.find(item=>item.id===instrumentId);
+ const entry=inst?.sounds.find(item=>item.id===soundId);
+ if(!entry||inst.layout!=="rack")return;
+ if(inst.sounds.length===1){removeInstrument(instrumentId);return;}
  const count=inst.chunks.reduce((sum,chunk)=>sum+chunk.notes.filter(note=>note.soundId===entry.id).length,0);
  if(count&&!confirm("Remove "+entry.name+" and its "+count+" hits across all chunks?"))return;
+ closePicker();
  modify(()=>{
-  inst.sounds=inst.sounds.filter(sound=>sound.id!==entry.id);
-  for(const chunk of inst.chunks)chunk.notes=chunk.notes.filter(note=>note.soundId!==entry.id);
+  deleteSoundFromScore(score,instrumentId,soundId);
   selectedNoteId=null;
+  selectedInstrumentId=instrumentId;
+  selectedSounds.delete(instrumentId);
  });
-});
+}
+$("move-sound-up").addEventListener("click",()=>moveRackSound(instrument().id,sound().id,-1));
+$("move-sound-down").addEventListener("click",()=>moveRackSound(instrument().id,sound().id,1));
+$("duplicate-sound").addEventListener("click",()=>duplicateRackSound(instrument().id,sound().id));
+$("remove-sound").addEventListener("click",()=>removeRackSound(instrument().id,sound().id));
 $("convert-rack").addEventListener("click",()=>{
  if(!canConvertToRack(instrument()))return;
  modify(()=>convertToRack(instrument()));
 });
-$("convert-pitched").addEventListener("click",()=>{
- const inst=instrument();if(inst.sounds.length!==1)return;
+function extractSoundToPianoRoll(instrumentId,soundId){
+ if(!canMoveRackSoundToPianoRoll(score,instrumentId,soundId))return;
+ closePicker();
+ const source=score.instruments.find(item=>item.id===instrumentId);
+ const sourceChunkIndex=source.chunks.findIndex(chunk=>chunk.id===selectedChunks.get(instrumentId));
+ const sourceBar=selectedSlot.instrumentId===instrumentId?selectedSlot.bar:0;
  modify(()=>{
-  const entry=inst.sounds[0];inst.layout="pitched";entry.trigger="pitched";
-  // The piano roll covers C2–C7; refuse references outside that range.
-  for(const chunk of inst.chunks)chunk.notes=chunk.notes.map(({soundId,...note})=>({...note,pitch:entry.referencePitch}));
+  const newId=moveRackSoundToPianoRoll(score,instrumentId,soundId);
+  if(!newId)return;
+  const pitched=score.instruments.find(item=>item.id===newId);
+  selectedInstrumentId=newId;
+  selectedSounds.delete(instrumentId);
+  selectedSounds.set(newId,soundId);
+  selectedNoteId=null;
+  selectedSlot={instrumentId:newId,bar:sourceBar};
+  selectedChunks.set(newId,pitched.chunks[Math.max(0,sourceChunkIndex)].id);
+  if(!score.instruments.some(item=>item.id===instrumentId))
+   selectedChunks.delete(instrumentId);
  });
-});
+}
+$("convert-pitched").addEventListener("click",()=>extractSoundToPianoRoll(instrument().id,sound().id));
 $("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
 
 

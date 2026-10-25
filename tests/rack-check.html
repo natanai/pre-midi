@@ -119,6 +119,40 @@ frame.addEventListener("load",async()=>{
   await choose($("add-instrument"),"My complete rack");
   const afterReload=await score();
   check("rack preset survives reload with companion WAV available",afterReload.samples.length===1&&afterReload.instruments[1].sounds.length===4);
+  // Contextual actions must remain discoverable on desktop and narrow screens.
+  focus(1);
+  check("each instrument has a contextual menu",d.querySelectorAll(".instrument-entry .instrument-actions").length===count());
+  const sourceRack=(await score()).instruments[1];
+  rows()[0].querySelector(".rack-step").click();
+  const movingId=sourceRack.sounds[0].id;
+  const rowMenu=rows()[0].querySelector(".rack-actions");
+  check("rack rows expose their own menu",!!rowMenu);
+  rowMenu.querySelector("summary").click();
+  const extract=[...rowMenu.querySelectorAll("button")].find(b=>b.textContent==="Move to piano roll");
+  check("sound can move to piano roll even from a multi-row rack",!!extract&&!extract.disabled);
+  extract.click();
+  const movedScore=await score();
+  const movedInst=movedScore.instruments.find(inst=>inst.sounds[0].id===movingId);
+  check("rack sound moved to a new instrument, not switched in place",
+   movedScore.instruments.length===3&&movedScore.instruments[1].id===sourceRack.id&&
+   movedScore.instruments[1].layout==="rack"&&movedScore.instruments[1].sounds.length===3&&
+   movedInst?.layout==="pitched"&&movedInst.id!==sourceRack.id);
+  check("extracted piano roll retains hit timing",movedInst.chunks[0].notes.some(note=>note.start===0&&note.pitch===sourceRack.sounds[0].referencePitch));
+  check("selected editor now uses a piano roll",!!d.querySelector(".note-name")&&!rows().length);
+  focus(1);
+  const removeFirst=()=>{
+   const menu=rows()[0].querySelector(".rack-actions");menu.querySelector("summary").click();
+   const deleteControl=[...menu.querySelectorAll("button")].find(b=>b.textContent==="Remove sound");
+   if(!deleteControl)throw Error("Missing contextual Remove sound");
+   deleteControl.click();
+  };
+  removeFirst();removeFirst();
+  check("last sound action becomes Delete rack",rows().length===1&&
+   [...rows()[0].querySelectorAll(".rack-actions button")].some(b=>b.textContent==="Delete rack"));
+  rows()[0].querySelector(".rack-actions summary").click();
+  [...rows()[0].querySelectorAll(".rack-actions button")].find(b=>b.textContent==="Delete rack").click();
+  check("deleting last row removes rack without damaging sibling instruments",count()===2&&
+   (await score()).instruments.every(inst=>inst.layout==="pitched"));
   document.documentElement.dataset.rack="PASS";result.textContent=JSON.stringify({viewport:pageWidth,checks});
  }catch(error){document.documentElement.dataset.rack="FAIL";result.textContent=String(error.stack||error)+"\n"+JSON.stringify(checks);}
  void fetch("/__rack_result?status="+document.documentElement.dataset.rack+"&details="+encodeURIComponent(result.textContent)).catch(()=>{});
