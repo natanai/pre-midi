@@ -231,7 +231,8 @@ function renderInstruments() {
   const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
   el.style.setProperty("--track-accent", signal(inst));
   el.setAttribute("aria-pressed", String(selected));
-  el.append(element("strong", inst.name), element("small", (inst.layout==="rack" ? inst.sounds.length+" sounds" : (getPreset(inst.sounds[0].patch.presetId)?.name ?? SAMPLE_LIBRARY.find(item=>item.id===inst.sounds[0].patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.sounds[0].patch.presetId)?.name ?? (inst.sounds[0].patch.type==="sample"?"Custom sample":"Custom synth"))) + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
+  el.append(element("strong",inst.name));
+  if(inst.layout==="rack")el.append(element("small",inst.sounds.length+" sounds"));
   item.append(el,actionMenu("Actions for "+inst.name,[
    {label:"Rename",run:()=>renameInstrument(inst)},
    {label:instrumentDeleteLabel(inst),danger:true,run:()=>removeInstrument(inst.id)}
@@ -715,9 +716,7 @@ function renderSound() {
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
  document.querySelector(".patch-info")?.style.setProperty("--track-accent",signal(inst));
- const preset=getPreset(patch.presetId)||SAMPLE_LIBRARY.find(x=>x.id===patch.presetId)
-  ||savedSounds.find(entry=>entry.id===patch.presetId);
- $("patch-label").textContent=(patch.type==="sample"?"Sample · ":"Synth · ")+(preset?.name||"Custom");
+ $("patch-label").textContent=patch.type==="sample"?"sample":"synth";
  const scope=createSignalDisplay($("sound-visualizer"),patch,score,signal(inst));
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
@@ -765,8 +764,9 @@ function renderSound() {
  $("sound-reference").value=String(entry.referencePitch);
  $("convert-rack").hidden=inst.layout==="rack";
  $("convert-rack").disabled=!canConvertToRack(inst);
- $("convert-rack").title=canConvertToRack(inst)?"Use one named sound row":"Keep the piano roll: conversion would change pitches, zones, or simultaneous events";
+ $("convert-rack").title=canConvertToRack(inst)?"convert this instrument into a one-sound rack":"requires a single pitch without overlapping hits";
  $("convert-pitched").hidden=inst.layout!=="rack";
+ $("convert-pitched").textContent=inst.sounds.length===1?"convert to piano roll":"extract sound to piano roll";
  $("convert-pitched").disabled=!canMoveRackSoundToPianoRoll(score,inst.id,entry.id);
  $("convert-pitched").title=entry.referencePitch<36||entry.referencePitch>96?
   "Reference note must be within C2–C7 to use the piano roll":
@@ -828,7 +828,7 @@ function showExamples(){
   card.style.setProperty("--example-accent",example.accent);
   const title=element("strong",example.name);
   const tagline=element("span",example.tag+" · "+example.bpm+" BPM · "+example.bars+" bars · "+example.voices.length+" instruments","example-tag");
-  card.append(title,tagline,element("span",example.description));
+  card.append(title,tagline);
   root.append(card);
  }
  $("example-dialog").showModal();
@@ -1099,9 +1099,7 @@ function openLibrary(mode) {
  if(mode==="add"&&score.instruments.length>=12)return;
  libraryMode=mode;libraryContext=currentContext(mode);
  libraryCategory="All";
- $("library-description").textContent=mode==="add"?"Choose a sound for a separate instrument.":mode==="replace-row"?
-  "Replace only the selected sound. Its row, events, and hit behavior stay in place.":
-  "Notes use a piano roll. Hits join your current rack, or start a new rack.";
+ $("library-description").textContent=mode==="add"?"new instrument":mode==="replace-row"?"replaces selected sound":"notes use keys · hits use racks";
  renderLibrary();
  const dialog=$("instrument-dialog");
  if(!dialog.open)dialog.showModal();
