@@ -894,8 +894,9 @@ function renderLibrary() {
   filters.append(control);
  }
  if(libraryMode==="add"||libraryMode==="replace") {
-  const personal=button("＋ Import my sample",()=>$("sample-file").click(),"library-import");
-  list.append(personal);
+  const record=button("● Record a sound",()=>openRecorder(libraryMode),"library-import library-record");
+  const personal=button("＋ Import audio file",()=>$("sample-file").click(),"library-import");
+  list.append(record,personal);
  }
  for(const preset of allSounds().filter(p=>libraryCategory==="All"||p.category===libraryCategory)) {
   const card=element("div",undefined,"preset-card");
