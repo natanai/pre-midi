@@ -14,17 +14,15 @@ export function makeInstrument(n = 1, bars = 8) {
  return {
   id:id(), name:"Instrument "+n, volume:0.7,
   patch:makePatch(),
-  chunks:[chunk], timeline:Array.from({length:bars},(_,bar)=>bar<4?chunk.id:null)
+  chunks:[chunk], timeline:Array.from({length:bars},(_,bar)=>bar===0?chunk.id:null)
  };
 }
 export function create() {
  const instrument=makeInstrument();
  instrument.name="Glass Keys";
  instrument.patch=makePatch("glass-keys");
- instrument.chunks[0].name="Opening";
- instrument.chunks[0].notes=[60,64,67,72].map((pitch,i)=>({
-  id:id(),pitch,start:i*4,duration:3,velocity:0.8
- }));
+ instrument.chunks[0].name="Chunk 1";
+ // A single empty editable slot is assigned so first notes play immediately.
  return {format:FORMAT,version:VERSION,id:id(),title:"Untitled composition",
   bpm:120,beatsPerBar:4,stepsPerBeat:4,bars:8,samples:[],instruments:[instrument]};
 }
