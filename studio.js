@@ -642,8 +642,8 @@ async function chooseSound(preset) {
  message("Loading "+preset.name+"...");
  try {
   const assets=await resolveSamples(preset);
-  const patch=preset.patch?patchCopy(preset.patch):
-   makeSamplerPatch(preset);
+  const patch=preset.category==="Mine"?patchCopy(preset.patch):
+   preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   patch.presetId=preset.id;
   const ok=modify(()=>{
    for(const asset of assets)if(!score.samples.some(existing=>existing.id===asset.id))
@@ -667,7 +667,8 @@ async function chooseSound(preset) {
 async function auditionPreset(preset) {
  try {
   const assets=await resolveSamples(preset);
-  const patch=preset.patch?patchCopy(preset.patch):makeSamplerPatch(preset);
+  const patch=preset.category==="Mine"?patchCopy(preset.patch):
+   preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   const inst={...instrument(),patch,volume:.8};
   const temp={samples:assets};
   await audition(inst,preset.category==="Bass"?48:69,temp);
