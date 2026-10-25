@@ -24,28 +24,43 @@ and three recorded guitar interpretations, including **Lap Steel Cry**,
 and **Orbiting Wire**. These are editable, real instrument patches, not audio
 demonstrations or additional runtime systems.
 
-In the piano roll, **click a held note to select it**. A small inline
-**Bend** editor appears directly below the note grid. Choose Straight,
-Scoop up, Bend up, Fall away, Dip and return, Cry/Wail or Wave/Wobble.
-Set the bend amount (in semitones); Wave also offers speed. The preview
-curve shows the resulting movement. **Hear bend** plays the complete
-selected note. Clicking an occupied note now selects it rather than deleting;
-use **Delete note**, Delete/Backspace while a selected note has focus, or
-Ctrl/Command-click a note to remove it. Shift-click still cycles strength.
-Dragging the note's right edge still resizes it.
+In the piano roll, **normal clicks add or remove notes**. Shift-click an
+existing note to change its strength, and drag its bright right edge to resize
+it. Editing a note's sound is a deliberate *mode*, not the usual way to
+compose: choose **Edit note effects** to focus on individual notes. The
+instrument and timeline controls visibly recede while that mode is active;
+click a note to reveal its pitch contour, then choose **Done** to return to
+normal note entry.
 
-The instrument itself also has movement controls. Synthesizers can have
-glide-in, delayed vibrato, volume pulse (tremolo), and tone/filter waves;
-sampled instruments have glide-in, delayed vibrato and volume pulse. An
-instrument's movement applies to all notes. A note's bend belongs to that
-particular authored note. The two add together, so notes in one instrument
-can have individually different expression without duplicate instruments.
+Instrument-wide **Movement** is now the default. Every instrument has editable
+glide, vibrato, pulse, and an optional default bend (Straight, Scoop, Rise,
+Fall, Dip, Wail or Wave). The synth also supports a moving tone filter.
+Per-note mode can override the instrument's bend for any specific held note.
+The rest of that instrument's notes continue to inherit its default. Bend
+and movement remain first-class composition data, rendered by the same live
+and WAV engine.
 
-The existing **.premidi v4** schema carries optional note bend data and
-optional extra instrument movement parameters. Both live playback and offline
-WAV rendering use the same audio scheduling implementation, retaining
-portable first-class control over the music. This release does not require
-another file conversion format or pre-programmed changes.
+Instrument controls use compact keyboard/touch-accessible **dials**, with the
+most important Movement controls open by default; deeper oscillator,
+envelope, effect, and sample-map settings remain progressively disclosed.
+A dual **Sound Shape / Pitch Movement** visualization changes as the dials
+are moved, before a parameter is committed. For synthesizers its sound trace
+is illustrative rather than a full oscilloscope, while sampled sounds use a
+decoded recorded waveform when available. The purple pitch trace shows the
+instrument-wide expressive motion.
+
+**New compositions start without any notes**, and without a repeated
+four-bar demo arrangement. The first empty editable chunk is ready for
+notes immediately. **Browse sounds** now renames the active instrument to the
+sound selected, rather than leaving its previous name. Steel Strum uses a
+wider chord brush and shorter, brighter articulation; its preview now plays
+a real chord, rather than an indistinguishable single pluck.
+
+**Arrangement preloads are intentionally deferred.** Later, once the
+instrument/effects feature set is fuller, we can curate a few genuinely
+different playable examples without inserting demo notes into every new
+project. The native .premidi v4 contract remains intact; instrument bends
+are additive fields, and old compositions remain valid.
 
 
 
