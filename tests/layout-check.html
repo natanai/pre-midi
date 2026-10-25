@@ -79,7 +79,7 @@ async function checkLayout(frame){
  button.click();
  const library=get("instrument-dialog");
  checks.libraryOpens=library.open && library.querySelectorAll(".preset-card").length>=15;
- const card=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Neon Lead"));
+ const card=library.querySelector('[data-preset-id="neon-lead"]');
  const choice=card?.querySelector(".preset-choose");
  if(choice)choice.click();
  // Sample instruments may require an asynchronous asset load; the test follows
@@ -88,19 +88,19 @@ async function checkLayout(frame){
   await new Promise(resolve=>setTimeout(resolve,25));
  checks.presetCreatesInstrument=doc.querySelectorAll(".instrument-card").length===2 && !library.open;
  checks.patchEditorPresent=!!doc.querySelector("#synth-editor .synth-group");
- checks.presetSelected=get("patch-label").textContent.includes("Neon Lead");
+ checks.presetSelected=get("patch-label").textContent.includes("Detuned Saw Lead");
  get("change-sound").click();
  checks.soundReplaceAccessible=library.open;
- const acid=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Acid Line"));
+ const acid=library.querySelector('[data-preset-id="acid-line"]');
  acid?.querySelector(".preset-choose")?.click();
- for(let attempt=0;attempt<40 && get("instrument-name").value!=="Acid Line";attempt++)
+ for(let attempt=0;attempt<40 && get("instrument-name").value!=="Resonant Saw Bass";attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
- checks.browseRenamesInstrument=get("instrument-name").value==="Acid Line";
+ checks.browseRenamesInstrument=get("instrument-name").value==="Resonant Saw Bass";
  get("change-sound").click();
  get("close-library").click();
  checks.libraryCloses=!library.open;
  get("add-instrument").click();
- const piano=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Recorded Piano"));
+ const piano=library.querySelector('[data-preset-id="real-piano"]');
  piano?.querySelector(".preset-choose")?.click();
  for(let attempt=0;attempt<120 && doc.querySelectorAll(".instrument-card").length!==3;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
@@ -110,7 +110,7 @@ async function checkLayout(frame){
   !!doc.querySelector("#synth-editor .sample-replace-action");
  if(frame.clientWidth>=1400) {
   get("add-instrument").click();
-  const steel=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Steel Acoustic"));
+  const steel=library.querySelector('[data-preset-id="steel-guitar"]');
   steel?.querySelector(".preset-choose")?.click();
   for(let attempt=0;attempt<160&&doc.querySelectorAll(".instrument-card").length!==4;attempt++)
    await new Promise(resolve=>setTimeout(resolve,25));
@@ -139,11 +139,11 @@ async function checkLayout(frame){
  checks.exampleGalleryOpens=gallery.open && gallery.querySelectorAll(".example-card").length===5;
  const proceed=frame.contentWindow.confirm;
  frame.contentWindow.confirm=()=>true;
- const demo=[...gallery.querySelectorAll(".example-card")].find(card=>card.textContent.includes("Neon After Hours"));
+ const demo=gallery.querySelector('[data-example-id="neon-after-hours"]');
  demo?.click();
- for(let i=0;i<220&&get("title").value!=="Neon After Hours";i++)
+ for(let i=0;i<220&&get("title").value!=="Drum Rack and Bass";i++)
   await new Promise(resolve=>setTimeout(resolve,30));
- checks.exampleUsesRealComposer=get("title").value==="Neon After Hours" &&
+ checks.exampleUsesRealComposer=get("title").value==="Drum Rack and Bass" &&
   doc.querySelectorAll(".instrument-card").length===8 &&
   doc.querySelectorAll(".arrangement-row").length===8 &&
   doc.querySelectorAll("#piano .rack-row").length===9 &&
@@ -154,23 +154,22 @@ async function checkLayout(frame){
   // not just the synthetic-only example or a schema fixture.
   get("examples").click();
   frame.contentWindow.confirm=()=>true;
-  const porch=[...gallery.querySelectorAll(".example-card")].find(card=>card.textContent.includes("Porchlight"));
+  const porch=gallery.querySelector('[data-example-id="porchlight"]');
   porch?.click();
-  for(let attempt=0;attempt<220&&get("title").value!=="Porchlight";attempt++)
+  for(let attempt=0;attempt<220&&get("title").value!=="Guitar Velocity and Polymeter";attempt++)
    await new Promise(resolve=>setTimeout(resolve,25));
-  checks.sampleExampleLoaded=get("title").value==="Porchlight" &&
-   doc.querySelectorAll(".instrument-card").length===4 &&
-   doc.querySelectorAll(".arrangement-row").length===4 &&
+  checks.sampleExampleLoaded=get("title").value==="Guitar Velocity and Polymeter" &&
+   doc.querySelectorAll(".instrument-card").length===5 &&
+   doc.querySelectorAll(".arrangement-row").length===5 &&
    !gallery.open;
  }
  // Compare the *actual* displayed geometry for Floating Signals, including
  // the long "Returning" chunk that previously enlarged only one row.
  get("examples").click();
  frame.contentWindow.confirm=()=>true;
- const floating=[...gallery.querySelectorAll(".example-card")].find(card=>
-  card.textContent.includes("Floating Signals"));
+ const floating=gallery.querySelector('[data-example-id="floating-signals"]');
  floating?.click();
- for(let attempt=0;attempt<220&&get("title").value!=="Floating Signals";attempt++)
+ for(let attempt=0;attempt<220&&get("title").value!=="Sustained Notes and Offsets";attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
  const lanes=[...doc.querySelectorAll(".arrangement-row")];
  const headingBars=[...doc.querySelector(".arrangement-head").children].slice(1);
@@ -186,7 +185,7 @@ async function checkLayout(frame){
    }
   }
  }
- checks.floatingSignalsSharedBarGeometry=get("title").value==="Floating Signals" &&
+ checks.floatingSignalsSharedBarGeometry=get("title").value==="Sustained Notes and Offsets" &&
   lanes.length===4&&headingBars.length===16&&maxBoundaryError<.8;
   // Prove the *editable controls* move an actual clip strip to an offbeat,
   // and that a 12-step polymeter makes three correctly spaced strip copies.

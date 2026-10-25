@@ -801,6 +801,7 @@ function showExamples(){
  const root=$("example-list");root.replaceChildren();
  for(const example of EXAMPLES){
   const card=button("",()=>{void chooseExample(example);},"example-card");
+  card.dataset.exampleId=example.id;
   card.style.setProperty("--example-accent",example.accent);
   const title=element("strong",example.name);
   const tagline=element("span",example.tag+" · "+example.bpm+" BPM · "+example.bars+" bars · "+example.voices.length+" instruments","example-tag");
@@ -1160,6 +1161,7 @@ function renderLibrary() {
  }
  for(const preset of allSounds().filter(p=>(libraryMode!=="replace-row"||!p.sounds)&&(libraryCategory==="All"||p.category===libraryCategory))) {
   const card=element("div",undefined,"preset-card");
+   card.dataset.presetId=preset.id;
   const info=element("div",undefined,"preset-information");
   info.append(element("strong",preset.name),element("span",preset.description));
   const actions=element("div",undefined,"preset-actions");
