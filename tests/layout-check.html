@@ -171,8 +171,8 @@ async function checkLayout(frame){
   for(let attempt=0;attempt<220&&get("title").value!==porchName;attempt++)
    await new Promise(resolve=>setTimeout(resolve,25));
   checks.sampleExampleLoaded=get("title").value===porchName &&
-   doc.querySelectorAll(".instrument-card").length===4 &&
-   doc.querySelectorAll(".arrangement-row").length===4 &&
+   doc.querySelectorAll(".instrument-card").length===5 &&
+   doc.querySelectorAll(".arrangement-row").length===5 &&
    !gallery.open;
  }
  // Floating Signals must use a single interactive timeline: sixteen

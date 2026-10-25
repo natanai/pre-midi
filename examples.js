@@ -9,6 +9,7 @@ const N=(pitch,start,duration=2,velocity=.8,bend)=>[pitch,start,duration,velocit
 const line=(pitches,steps=4,duration=3,velocity=.8)=>
  pitches.map((pitch,index)=>N(pitch,index*steps,duration,velocity));
 const hits=(steps,pitch=60,velocity=.85)=>steps.map(start=>N(pitch,start,1,velocity));
+const H=(row,start,velocity=.8)=>[row,start,velocity];
 const chord=(pitches,start,length=8,velocity=.7)=>pitches.map(pitch=>N(pitch,start,length,velocity));
 const piece=(preset,pattern,timeline,volume=.68,options={})=>({
  preset,pattern,timeline,volume,...options
@@ -16,28 +17,81 @@ const piece=(preset,pattern,timeline,volume=.68,options={})=>({
 export const EXAMPLES=[
  NEON_AFTER_HOURS,
  {
-  id:"porchlight",name:"Sampled Guitar and Percussion",tag:"SAMPLES / GUITAR",
-  description:"Sampled steel and nylon guitars, bongo hits, and synthesized keyboard chords.",
+  // Three recorded steel-guitar velocity takes are used as actual audio layers.
+  // A 12-step arpeggio repeats over 16-step drums without adding any new
+  // instrument behavior or audio format data.
+  id:"porchlight",name:"Guitar Velocity and Polymeter",tag:"SAMPLES / PHRASE REPETITION",
+  description:"Recorded guitar velocity layers and a repeating three-beat phrase over four-beat bass and drums.",
   bpm:94,bars:8,accent:"#ffc266",
   voices:[
-   piece("steel-strum",{
-    Warm:[...chord([52,59,64,67],0,7,.58),...chord([50,57,62,66],8,8,.55)],
-    Turn:[...chord([48,55,60,64],0,8,.63),...chord([50,57,62,65],8,8,.6)],
-    Lift:[...chord([53,60,65,69],0,8,.75),...chord([55,62,67,71],8,8,.78)]
-   },["Warm","Warm","Turn","Lift","Warm","Turn","Lift","Warm"],.73),
-   piece("nylon-finger",{
-    Picking:[N(52,0,3,.53),N(64,3,2,.53),N(67,6,2,.67),N(71,9,2,.68),N(67,12,3,.57)],
-    Answer:[N(55,0,3,.55),N(62,3,2,.58),N(66,6,3,.63),N(64,10,2,.62),N(62,13,3,.5)],
-    High:[N(69,0,3,.67),N(72,4,4,.72),N(74,9,3,.64),N(71,13,3,.53)]
-   },["Picking","Answer","Picking","High","Picking","Answer","High","Picking"],.71),
-   piece("hand-bongo",{
-    Hands:[N(60,0,1,.47),N(60,4,1,.34),N(60,8,1,.57),N(60,12,1,.39)],
-    Shuffle:[N(60,0,1,.43),N(60,3,1,.26),N(60,6,1,.4),N(60,8,1,.6),N(60,12,1,.4),N(60,14,1,.28)]
-   },["Hands","Hands","Shuffle","Shuffle","Hands","Hands","Shuffle","Hands"],.32),
-   piece("felt-electric",{
-    Evening:[...chord([60,64,67],0,8,.35),...chord([59,62,67],8,8,.37)],
-    Breath:[...chord([60,65,69],0,8,.43),...chord([62,67,71],8,8,.42)]
-   },["Evening","Evening","-","Breath","Evening","-","Breath","Evening"],.33)
+   piece("steel-guitar",{
+    Light:[
+     N(57,0,2,.25),N(60,3,2,.55),N(64,6,2,.9),N(67,9,2,.55)
+    ],
+    Accent:[
+     N(57,0,2,.9),N(60,3,2,.25),N(64,6,2,.55),N(67,9,2,.9)
+    ]
+   },["Light","-","-","-","Accent","-","-","-"],.38,{
+    name:"Steel guitar · velocity layers",
+    tone:{gain:.7,attack:.003,release:.17,pan:-.12},
+    placements:[
+     {offset:4,length:12,every:12,repeats:5},
+     null,null,null,
+     {offset:0,length:12,every:12,repeats:5},
+     null,null,null
+    ]
+   }),
+   piece("sub-current",{
+    A:[N(45,0,12,.75),N(52,12,4,.44)],
+    F:[N(41,0,12,.75),N(48,12,4,.44)]
+   },["A","A","F","F","A","A","F","F"],.42,{
+    name:"Synth bass",tone:{filter:{cutoff:430},envelope:{release:.18}}
+   }),
+   piece("tape-strings",{
+    A:chord([57,60,64,67],0,16,.44),
+    F:chord([53,57,60,64],0,16,.44)
+   },["A","A","F","F","A","A","F","F"],.22,{
+    name:"Chord pad",
+    tone:{filter:{cutoff:1300},envelope:{attack:.28,release:.7},effects:{delayMix:.09}}
+   }),
+   piece("glass-keys",{
+    High:[N(76,7,2,.58),N(79,13,2,.43)],
+    Low:[N(72,8,3,.52),N(76,13,2,.36)],
+    Turn:[N(79,3,2,.59),N(81,10,3,.49)]
+   },["-","-","High","-","Low","High","Turn","High"],.23,{
+    name:"Synth keys",tone:{effects:{delayMix:.19,delayTime:.26}}
+   }),
+   {
+    name:"Percussion rack",volume:.43,
+    rack:[
+     {key:"kick",preset:"pulse-kick",name:"Synth kick",gain:.72},
+     {key:"snare",preset:"static-snare",name:"Noise snare",gain:.46},
+     {key:"hat",preset:"dust-hat",name:"Noise hi-hat",gain:.29},
+     {key:"bongo",preset:"hand-bongo",name:"Recorded bongo",gain:.46,
+      tone:{gain:.75,pan:.16}}
+    ],
+    pattern:{
+     Light:[
+      H("kick",0,.57),H("kick",8,.43),H("hat",6,.28),H("bongo",11,.32)
+     ],
+     Full:[
+      H("kick",0,.79),H("kick",8,.67),
+      H("snare",4,.43),H("snare",12,.46),
+      H("hat",2,.30),H("hat",6,.34),H("hat",10,.30),H("hat",14,.35),
+      H("bongo",3,.33),H("bongo",11,.42)
+     ],
+     Fill:[
+      H("kick",0,.79),H("kick",8,.71),
+      H("snare",4,.43),H("snare",12,.53),
+      H("hat",2,.31),H("hat",6,.32),H("hat",10,.30),H("hat",14,.37),
+      H("bongo",3,.35),H("bongo",10,.40),H("bongo",14,.43)
+     ],
+     End:[
+      H("kick",0,.77),H("hat",6,.26),H("bongo",10,.35),H("snare",12,.32)
+     ]
+    },
+    timeline:["-","Light","Light","Full","Full","Full","Fill","End"]
+   }
   ]
  },
  {
@@ -172,6 +226,11 @@ export async function buildExample(exampleId,loadAsset){
   }));
   const lookup=new Map(Object.keys(def.pattern).map((name,index)=>[name,instrument.chunks[index].id]));
   instrument.timeline=def.timeline.map(name=>name==="-"?null:lookup.get(name)??null);
+  // Example phrases use the same native v7 placement contract as author-made scores.
+  if(def.placements){
+   if(def.placements.length!==example.bars)throw Error("Example placement count must match bars.");
+   instrument.placements=clone(def.placements);
+  }
   score.instruments.push(instrument);
  }
  // Sample selection is based on the sounds *actually played*, including
