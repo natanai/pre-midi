@@ -5,7 +5,7 @@ A local-first, standalone music studio for [pre-programmed](https://github.com/n
 **Open the studio:** https://natanai.github.io/pre-midi/ — served by GitHub Pages, no account or backend.
 
 ## Editing
-- **Instruments** own their complete, editable sound patches. Sound settings Those settings affect every chunk belonging to that instrument.
+- **Instruments** own complete, editable sound patches. Their settings affect every chunk belonging to that instrument.
 - **Timeline** shows the complete composition, one lane per instrument. Click any bar to choose that instrument's chunk, leave it empty, or create and assign a new chunk immediately.
 - **Chunks** are reusable one-bar groups of notes. Selecting one opens its notes; reuse the same chunk in multiple bars without making copies.
 - **Notes** are placed in the piano roll. Drag the visible right-edge handle to lengthen or shorten a note in sixteenth-note steps. Alt+Left/Right on a note also changes its length. The “New note length” control only determines the default for notes you place next.
