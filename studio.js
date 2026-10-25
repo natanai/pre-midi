@@ -336,22 +336,28 @@ function renderNotes() {
     cell.classList.toggle("end", !!present && present.start + present.duration - 1 === pos);
     cell.setAttribute("aria-label", noteLabel(pitch) + ", step " + (pos + 1)
      + (present ? ", note length " + present.duration + " steps; click to remove, drag right edge to resize" : ", click to add note"));
-    cell.title = present ? "Note: " + present.duration + "/16 · drag end to resize · Alt+←/→ to adjust" : "Add " + noteLabel(pitch);
+    cell.title = present ? "Note: " + present.duration + "/16 · " + Math.round(present.velocity*100) + "% strength · drag end to resize · Shift-click to change strength" : "Add " + noteLabel(pitch);
    }
   }
 
   for (let step = 0; step < 16; step++) {
    let ignoreClick = false;
-   const cell = button("", () => {
+   const cell = button("", event => {
     if (ignoreClick) return;
     const targetInst = instrument();
     const editedChunk = chunkFor(targetInst);
     const existing = editedChunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
+    if(existing && event.shiftKey){
+     const options=[.25,.55,.9];
+     const next=options.find(value=>value>existing.velocity+.01)??options[0];
+     if(modify(()=>{existing.velocity=next;}))message("Note strength: "+Math.round(next*100)+"%");
+     return;
+    }
     if (modify(() => {
      if (existing) editedChunk.notes = editedChunk.notes.filter(n => n.id !== existing.id);
      else editedChunk.notes.push({
       id:id(), pitch, start:step,
-      duration:Math.min(Number($("length").value),16-step), velocity:0.8
+      duration:Math.min(Number($("length").value),16-step), velocity:Number($("velocity").value)
      });
     }) && !existing && !playback && !pendingPlay) void audition(targetInst,pitch,score).catch(() => {});
    }, "note" + (step % 4 === 0 ? " beat" : ""));
@@ -677,7 +683,7 @@ async function auditionPreset(preset) {
 function renderLibrary() {
  const filters=$("library-filters"),list=$("library-sounds");
  filters.replaceChildren();list.replaceChildren();
- const categories=["All","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
+ const categories=["All","Guitars","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
  for(const category of categories) {
   const control=button(category,()=>{libraryCategory=category;renderLibrary();},
    "library-filter"+(libraryCategory===category?" selected":""));

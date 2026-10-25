@@ -1,4 +1,5 @@
 import { decodeSamples, scheduleSample } from "./sampler.js";
+import { strumOffset } from "./guitarTiming.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the instrument.patch stored in the score.
 export const secondsPerStep = doc => 60/doc.bpm/4;
@@ -144,7 +145,9 @@ function renderBar(ctx,out,score,bar,start) {
  for(const instrument of score.instruments) {
   const chunk=instrument.chunks.find(c=>c.id===instrument.timeline[bar]);
   if(chunk)for(const event of chunk.notes)
-   soundNote(ctx,out,instrument,event,start+event.start*unit,event.duration*unit,score);
+   soundNote(ctx,out,instrument,event,
+    start+event.start*unit+strumOffset(instrument,event,chunk.notes),
+    event.duration*unit,score);
  }
 }
 let context;
@@ -182,7 +185,10 @@ export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{}
    const step=scheduled%cycle,barIndex=Math.floor(step/16),unit=secondsPerStep(current);
    void decodeSamples(ctx,current,bufferCache(ctx)).catch(console.warn);
    for(const event of stepEvents(current,scheduled))
-    soundNote(ctx,out,event.instrument,event.note,nextTime,event.note.duration*unit,current);
+    soundNote(ctx,out,event.instrument,event.note,
+     nextTime+strumOffset(event.instrument,event.note,
+      event.instrument.chunks.find(c=>c.id===event.instrument.timeline[event.barIndex])?.notes||[]),
+     event.note.duration*unit,current);
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
   }

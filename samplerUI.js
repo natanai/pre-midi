@@ -25,6 +25,19 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
   input.addEventListener("change",()=>onChange([key],Number(input.value)));
   line.append(input,output);label.append(heading,line);fields.append(label);
  }
+ const strum=document.createElement("label");strum.className="synth-field";
+ const strumName=document.createElement("span");strumName.textContent="Strum";
+ const strumRow=document.createElement("div");strumRow.className="synth-range";
+ const strumInput=document.createElement("input");strumInput.type="range";
+ strumInput.min="-25";strumInput.max="25";strumInput.step="1";
+ strumInput.value=String(patch.strumMs??0);
+ strumInput.setAttribute("aria-label","Chord strum milliseconds per note");
+ const strumValue=document.createElement("output");
+ const strumText=amount=>amount===0?"Off":(amount>0?"Down ":"Up ")+Math.abs(amount)+" ms";
+ strumValue.textContent=strumText(Number(strumInput.value));
+ strumInput.addEventListener("input",()=>strumValue.textContent=strumText(Number(strumInput.value)));
+ strumInput.addEventListener("change",()=>onChange(["strumMs"],Number(strumInput.value)));
+ strumRow.append(strumInput,strumValue);strum.append(strumName,strumRow);fields.append(strum);
  const follow=document.createElement("label");follow.className="sample-pitch-setting";
  const box=document.createElement("input");box.type="checkbox";box.checked=patch.followPitch;
  box.addEventListener("change",()=>onChange(["followPitch"],box.checked));

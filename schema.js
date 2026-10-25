@@ -38,7 +38,7 @@ export function validate(doc) {
  if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
  if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
  if(!Number.isInteger(doc.bars)||!within(doc.bars,1,16))errors.push("Timeline must have 1–16 bars.");
- if(!Array.isArray(doc.samples)||doc.samples.length>60)return [...errors,"Invalid sample asset list."];
+ if(!Array.isArray(doc.samples)||doc.samples.length>160)return [...errors,"Invalid sample asset list."];
  const sampleIds=new Set();
  for(const asset of doc.samples){
   const error=validateSampleAsset(asset);
