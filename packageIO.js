@@ -7,14 +7,20 @@ const text=new TextEncoder();
 export function exportProject(score){
  const issues=validate(score);
  if(issues.length)throw Error(issues.join("\n"));
- const raw=text.encode(JSON.stringify(score));
+ // Unused recordings must not bloat either the music instructions or ZIP.
+ // Preserve every zone on every sampled instrument, including zones an author
+ // might use later, but exclude sources orphaned by removed instruments.
+ const referenced=new Set(score.instruments.filter(inst=>inst.patch.type==="sample")
+  .flatMap(inst=>inst.patch.zones.map(zone=>zone.assetId)));
+ const manifest={...score,samples:score.samples.filter(asset=>referenced.has(asset.id))};
+ const raw=text.encode(JSON.stringify(manifest));
  if(raw.length>MAX_SCORE_BYTES)throw Error("Composition instructions exceed 1 MB.");
- if(!score.samples.length)return {
+ if(!manifest.samples.length)return {
   name:filename(score,".premidi"),blob:new Blob([raw],{type:"application/json"})
  };
  const entries=[{path:filename(score,".premidi"),data:raw}];
  let total=raw.length;
- for(const asset of score.samples){
+ for(const asset of manifest.samples){
   const bytes=getAsset(asset.id);
   if(!bytes)throw Error("Missing "+asset.path+". Export needs its companion WAV/OGG recording.");
   inspectAudioBytes(bytes,asset.mime);
