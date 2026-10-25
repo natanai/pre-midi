@@ -16,6 +16,10 @@ export function validateSampleAsset(asset){
  if(typeof asset.source!=="string"||asset.source.length>500)return "Invalid sample provenance.";
  return null;
 }
+export function inspectAudioBytes(bytes,mime){
+ if(!(bytes instanceof Uint8Array)||bytes.length>MAX_SAMPLE_BYTES)throw Error("Audio asset exceeds 1 MB.");
+ detectAudio(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),mime);
+}
 function detectAudio(buffer,mime){
  const data=new Uint8Array(buffer),view=String.fromCharCode(...data.slice(0,12));
  if(data.length<16)throw Error("Audio sample is empty.");
