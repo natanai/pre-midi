@@ -186,7 +186,10 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
  for(const [id,other] of [["mic-playback","mic-synth-playback"],["mic-synth-playback","mic-playback"]])
   $(id).addEventListener("play",()=>$(other).pause());
  $("mic-close").addEventListener("click",()=>dialog.close());
- dialog.addEventListener("cancel",dispose);dialog.addEventListener("close",dispose);
+ dialog.addEventListener("cancel",dispose);
+ // A queued close event from a previous take can arrive after a rapid reopen.
+ // It must not dispose the new session or cancel its microphone request.
+ dialog.addEventListener("close",()=>{if(!dialog.open)dispose();});
  return {open(){reset(true);updateKind();if(!dialog.open)dialog.showModal();},
   async openFile(blob,name){reset(true);updateKind();if(!dialog.open)dialog.showModal();await loadFile(blob,name);},
   close(){dialog.close();dispose();}};

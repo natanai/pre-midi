@@ -153,7 +153,7 @@
    <label>Name <input id="mic-name" maxlength="60" placeholder="My recorded sound"></label>
    <label id="mic-root-field">Recorded note <select id="mic-root" aria-label="Pitch of the recorded note"></select></label>
    <p id="mic-pitch-message" class="mic-guidance"></p>
-   <audio id="mic-playback" controls preload="none"></audio>
+   <audio id="mic-playback" aria-label="Original recording preview" controls preload="none"></audio>
    <p id="mic-quality" class="mic-guidance"></p>
    <button id="mic-convert" type="button">Convert to synth</button>
    <div id="mic-synth-result" class="mic-synth-result" hidden>
