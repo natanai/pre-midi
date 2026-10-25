@@ -61,7 +61,16 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
   select.addEventListener("change",()=>onChange(["zones",index,"root"],Number(select.value)));
   label.append(name,select);mapping.append(label);
  });
- root.append(mapping);
+ if(patch.zones.length>8) {
+  const details=document.createElement("details");details.className="sample-map-details";
+  const summary=document.createElement("summary");
+  const uniquePitches=new Set(patch.zones.map(zone=>zone.root));
+  const dynamicLayers=new Set(patch.zones.map(zone=>zone.velocity).filter(x=>x!==undefined));
+  summary.textContent="Recorded notes · "+uniquePitches.size+" pitches"+(
+   dynamicLayers.size>1?" · "+dynamicLayers.size+" dynamics":"")+" · Edit mapping";
+  details.append(summary,mapping);
+  root.append(details);
+ } else root.append(mapping);
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
  root.append(action);
