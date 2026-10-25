@@ -95,13 +95,27 @@ export async function decodeSamples(context,score,cache){
  }
  await Promise.all(waiting);
 }
+const peakLevels=new WeakMap();
+function sampleNormalization(buffer){
+ if(peakLevels.has(buffer))return peakLevels.get(buffer);
+ let peak=0;
+ for(let channel=0;channel<buffer.numberOfChannels;channel++){
+  const values=buffer.getChannelData(channel);
+  for(let i=0;i<values.length;i+=4)peak=Math.max(peak,Math.abs(values[i]));
+ }
+ // Balance quieter organic recordings with percussive transients without
+ // flattening each sound or changing the portable original recording.
+ const scale=Math.min(5,Math.max(.5,.65/Math.max(.08,peak)));
+ peakLevels.set(buffer,scale);
+ return scale;
+}
 export function scheduleSample(context,out,inst,event,start,duration,score,cache) {
  const patch=inst.patch,zone=sampleForNote(patch,event.pitch);
  const buffer=zone&&cache.get(zone.assetId);
  if(!buffer)return; // Can only happen while freshly imported samples decode during playback.
  const playbackRate=patch.followPitch?2**((event.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12);
  const src=context.createBufferSource(),amp=context.createGain(),pan=context.createStereoPanner();
- const gain=Math.min(1,inst.volume*patch.gain*event.velocity*.7);
+ const gain=Math.min(2,inst.volume*patch.gain*event.velocity*.7*sampleNormalization(buffer));
  src.buffer=buffer;src.playbackRate.value=playbackRate;
  pan.pan.value=patch.pan;
  const length=buffer.duration/playbackRate;
