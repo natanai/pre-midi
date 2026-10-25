@@ -468,6 +468,13 @@ function renderNotes() {
   const id=selectedNoteId;
   selectedNoteId=null;
   modify(()=>{const current=chunkFor(instrument());current.notes=current.notes.filter(entry=>entry.id!==id);});
+ },()=>{
+  const current=chunkFor(instrument()).notes.find(entry=>entry.id===selectedNoteId);
+  if(!current)return;
+  void audition(instrument(),current.pitch,score,{
+   velocity:current.velocity,bend:current.bend,
+   duration:current.duration*60/score.bpm/4
+  }).catch(error=>message("Couldn't preview note: "+error.message,true));
  });
 }
 function renderChunkEditor() {
