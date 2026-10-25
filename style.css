@@ -703,3 +703,33 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .example-list{grid-template-columns:1fr;max-height:68dvh}
  .example-card{min-height:105px;padding:12px}
 }
+
+/* Guided capture: a short intentional action, not a sound-design control bank. */
+.record-sound-action,.library-record{color:var(--signal-pink);border-color:var(--signal-pink)}
+.record-sound-action:hover,.library-record:hover{background:rgba(255,65,109,.12)}
+.microphone-dialog{width:min(540px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+.mic-flow{padding:16px;display:grid;gap:16px}
+.mic-settings{display:grid;gap:12px}
+.mic-settings>label{display:grid;gap:6px;font-size:12px;color:var(--muted)}
+.mic-settings select{width:100%;color:var(--bright)}
+.mic-kind{border:1px solid var(--faint);display:grid;gap:8px;padding:10px}
+.mic-kind legend{font-size:11px;color:var(--muted);padding:0 5px}
+.mic-kind label{font-size:12px;display:flex;gap:10px;align-items:center;cursor:pointer}
+.mic-kind input{accent-color:var(--signal-cyan)}
+.mic-guidance{font-size:12px;line-height:1.45;color:var(--muted);margin:0}
+.mic-status{padding:18px 12px;min-height:135px;border:1px solid var(--line);display:grid;justify-items:center;gap:6px;text-align:center;background:#070707}
+.mic-status strong{font-size:14px;font-weight:normal;color:var(--bright)}
+.mic-status small{font-size:11px;color:var(--muted)}
+.mic-count{font-size:38px;line-height:1;color:var(--signal-pink);font-variant-numeric:tabular-nums}
+.mic-recording .mic-count{animation:mic-pulse .8s ease-in-out infinite}
+@keyframes mic-pulse{50%{opacity:.2;transform:scale(.85)}}
+.mic-preview{display:grid;gap:12px}
+.mic-preview[hidden],.mic-actions [hidden]{display:none}
+.mic-preview>label{font-size:12px;color:var(--muted);display:grid;gap:5px}
+.mic-preview :is(input,select){width:100%;color:var(--bright)}
+.mic-preview audio{width:100%;min-height:42px;accent-color:var(--signal-cyan)}
+.mic-actions{display:flex;flex-wrap:wrap;gap:10px}
+.mic-actions button{flex:1 1 145px;white-space:normal;min-height:42px}
+.mic-actions .primary{border:1px solid var(--signal-pink);color:var(--bright);background:rgba(255,65,109,.12)}
+.microphone-dialog button:focus-visible{outline:2px solid var(--signal-cyan);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.mic-recording .mic-count{animation:none}}

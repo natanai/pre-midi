@@ -13,22 +13,15 @@ import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
 import {createSignalDisplay} from "./soundScope.js";
 import {EXAMPLES,buildExample} from "./examples.js";
+import {exportProject,importProject} from "./packageIO.js";
+import {installMicrophoneRecorder} from "./microphoneUI.js";
 
 const $ = key => document.getElementById(key);
-const CACHE = "premidi-v4-draft";
+const CACHE = "premidi-v5-draft";
 const SAVED_SOUNDS = "premidi-user-sounds-v1";
 // Recover the browser's own previous synth-only draft in place. Old exported
 // formats deliberately aren't supported; this does not change file parsing.
-const cached=(()=>{
- try {return parse(localStorage.getItem(CACHE)||"");}catch{}
- try {
-  const previous=JSON.parse(localStorage.getItem("premidi-v3-draft")||"null");
-  if(previous?.version!==3||!Array.isArray(previous.instruments))return null;
-  previous.version=4;previous.samples=[];
-  for(const inst of previous.instruments)inst.patch.type="synth";
-  return validate(previous).length?null:previous;
- }catch{return null;}
-})();
+const cached=(()=>{try{return parse(localStorage.getItem(CACHE)||"");}catch{return null;}})();
 const savedSounds=(()=>{
  try {
   const entries=JSON.parse(localStorage.getItem(SAVED_SOUNDS)||"[]");
@@ -633,24 +626,23 @@ $("new").addEventListener("click", () => {
  if (confirm("Start a new composition? Save the current .premidi if you want a copy.")) resetTo(create());
 });
 $("import").addEventListener("click", () => $("file").click());
-$("file").addEventListener("change", async event => {
- const file = event.currentTarget.files?.[0];
- if (!file) return;
+$("file").addEventListener("change",async event=>{
+ const file=event.currentTarget.files?.[0];
+ if(!file)return;
  try {
-  if (file.size > MAX_SCORE_BYTES) throw Error("File exceeds 15 MB.");
-  const next = parse(await file.text());
-  if (confirm("Open " + next.title + "? This replaces the browser draft.")) {
-   resetTo(next);
-   message("Opened " + file.name);
-  }
- } catch (error) { message("Could not open file: " + error.message, true); }
- finally { $("file").value = ""; }
+  if(!confirm("Open "+file.name+"? This replaces the browser draft. Export it first if you want a copy."))return;
+  const next=await importProject(file);
+  resetTo(next);
+  message("Opened "+file.name);
+ }catch(error){message("Could not open file: "+error.message,true);}
+ finally{$("file").value="";}
 });
-$("export").addEventListener("click", () => {
- const errors = validate(score);
- if (errors.length) return message(errors[0], true);
- download(new Blob([JSON.stringify(score,null,2)], {type:"application/json"}), filename(score,".premidi"));
- message("Saved .premidi");
+$("export").addEventListener("click",()=>{
+ try{
+  const result=exportProject(score);
+  download(result.blob,result.name);
+  message(result.name.endsWith(".zip")?"Saved music ZIP with separate audio assets":"Saved .premidi");
+ }catch(error){message("Export failed: "+error.message,true);}
 });
 $("wav").addEventListener("click", async () => {
  const el = $("wav");
@@ -703,33 +695,69 @@ $("bars").addEventListener("change", event => modify(() => {
 $("add-instrument").addEventListener("click",()=>openLibrary("add"));
 $("change-sound").addEventListener("click",()=>openLibrary("replace"));
 $("close-library").addEventListener("click",()=>$("instrument-dialog").close());
+function addAuthoredSample(asset,options={},mode="add"){
+ const {name=asset.name,root=60,followPitch=true}=options;
+ if(mode==="add"&&score.instruments.length>=12){
+  message("The composition supports up to 12 instruments.",true);return false;
+ }
+ const patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root}],
+  followPitch,transpose:0,gain:.9,attack:.005,release:.17,pan:0,
+  movement:{rate:5,depth:0,delay:0,glide:0,glideTime:.18,tremolo:0,tremoloRate:5,tone:0,toneRate:2},
+  bend:{shape:"straight",amount:2,rate:4}};
+ const ok=modify(()=>{
+  score.samples.push(asset);
+  if(mode==="add"){
+   const inst=makeInstrument(score.instruments.length+1,score.bars);
+   inst.name=name.slice(0,60);inst.patch=patch;
+   score.instruments.push(inst);
+   selectedInstrumentId=inst.id;
+   selectedSlot={instrumentId:inst.id,bar:0};
+   selectedChunks.set(inst.id,inst.chunks[0].id);
+  }else{
+   instrument().patch=patch;
+   instrument().name=name.slice(0,60);
+  }
+ });
+ if(ok){
+  if($("instrument-dialog").open)$("instrument-dialog").close();
+  if(playback)void primeSamples(score).catch(error=>message(error.message,true));
+ }
+ return ok;
+}
+let recordingMode="add";
+const recorder=installMicrophoneRecorder({
+ get:$,
+ onUse:({wav,name,root,followPitch})=>{
+  try{
+   const asset=makeSampleAsset("recorded-"+id(),name,"audio/wav",wav,
+    "Recorded by author in pre-midi");
+   const ok=addAuthoredSample(asset,{name,root,followPitch},recordingMode);
+   if(ok)message("Recorded "+name+". Export to get its separate WAV asset.");
+   return ok;
+  }catch(error){message("Could not use recording: "+error.message,true);return false;}
+ }
+});
+function openRecorder(mode="add"){
+ if(mode==="add"&&score.instruments.length>=12)
+  return message("The composition supports up to 12 instruments.",true);
+ recordingMode=mode;
+ if($("instrument-dialog").open)$("instrument-dialog").close();
+ recorder.open();
+}
+$("record-sound").addEventListener("click",()=>openRecorder("add"));
 $("sample-file").addEventListener("change",async event=>{
  const file=event.currentTarget.files?.[0];
  if(!file)return;
- try {
+ try{
   if(file.size>1_000_000)throw Error("Sample must be smaller than 1 MB.");
   const ext=file.name.split(".").pop()?.toLowerCase();
   const mime=ext==="wav"?"audio/wav":ext==="ogg"?"audio/ogg":ext==="mp3"?"audio/mpeg":"";
   const asset=makeSampleAsset("custom-"+id(),file.name,mime,
    new Uint8Array(await file.arrayBuffer()),"Imported by author: "+file.name);
-  const patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:60}],
-   followPitch:true,transpose:0,gain:.9,attack:.005,release:.17,pan:0};
   const mode=$("instrument-dialog").open?libraryMode:"replace";
-  const ok=modify(()=>{
-   score.samples.push(asset);
-   if(mode==="add"){
-    const inst=makeInstrument(score.instruments.length+1,score.bars);
-    inst.name=file.name.replace(/\.[^.]+$/,"").slice(0,60);
-    inst.patch=patch;score.instruments.push(inst);
-    selectedInstrumentId=inst.id;selectedSlot={instrumentId:inst.id,bar:0};
-   }else instrument().patch=patch;
-  });
-  if(ok){
-   if($("instrument-dialog").open)$("instrument-dialog").close();
-   if(playback)void primeSamples(score).catch(console.warn);
-   message("Imported "+file.name+" · included in your .premidi file.");
-  }
- }catch(error){message("Couldn't import audio: "+error.message,true);}
+  if(addAuthoredSample(asset,{name:file.name.replace(/\.[^.]+$/,""),followPitch:true},mode))
+   message("Imported "+file.name+". Export includes its separate audio file.");
+ }catch(error){message("Could not import audio: "+error.message,true);}
  finally{event.currentTarget.value="";}
 });
 $("save-sound").addEventListener("click",()=>{
@@ -849,8 +877,9 @@ function renderLibrary() {
   filters.append(control);
  }
  if(libraryMode==="add"||libraryMode==="replace") {
-  const personal=button("＋ Import my sample",()=>$("sample-file").click(),"library-import");
-  list.append(personal);
+  const record=button("● Record a sound",()=>openRecorder(libraryMode),"library-import library-record");
+  const personal=button("＋ Import audio file",()=>$("sample-file").click(),"library-import");
+  list.append(record,personal);
  }
  for(const preset of allSounds().filter(p=>libraryCategory==="All"||p.category===libraryCategory)) {
   const card=element("div",undefined,"preset-card");

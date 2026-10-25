@@ -125,6 +125,17 @@ async function checkLayout(frame){
 
 
  // Examples are optional complete scores, not copy/pasted authoring surfaces.
+ // A microphone is only requested when Start is pressed, never when opening.
+ checks.recordingActionProminent=!!get("record-sound");
+ get("record-sound").click();
+ const microphone=get("microphone-dialog");
+ checks.recorderOpensWithoutPermission=microphone.open &&
+  get("mic-length").value==="1.5" &&
+  get("mic-preview").hidden &&
+  get("mic-capture").textContent.includes("countdown");
+ checks.pitchConfirmationReachable=get("mic-root").options.length>=49;
+ get("mic-close").click();
+ checks.recorderCanClose=!microphone.open;
  checks.exampleButtonVisible=!!get("examples");
  get("examples").click();
  const gallery=get("example-dialog");

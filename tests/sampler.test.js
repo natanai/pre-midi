@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {create,validate,parse,clone} from "../schema.js";
 import {validatePatch} from "../synth.js";
 import {SAMPLE_LIBRARY,SAMPLE_ASSETS,makeSamplerPatch} from "../samples.js";
-import {validateSampleAsset,makeSampleAsset,base64ToBytes,sampleForNote,MAX_SCORE_BYTES} from "../sampler.js";
+import {validateSampleAsset,makeSampleAsset,sampleForNote,MAX_SCORE_BYTES} from "../sampler.js";
+import {getAsset} from "../assetRegistry.js";
 test("CC0 sample presets span recorded instruments and multiple percussion voices",()=>{
  assert.ok(SAMPLE_LIBRARY.length>=10);
  assert.ok(new Set(SAMPLE_LIBRARY.map(s=>s.category)).has("Recorded"));
@@ -19,7 +20,7 @@ test("different piano pitches select nearest recorded key zone",()=>{
  assert.equal(sampleForNote(patch,49).assetId,"piano-c3");
  assert.equal(sampleForNote(patch,63).assetId,"piano-c4");
 });
-test("sample imports survive self-contained file export without remote references",()=>{
+test("sample imports keep readable score references separate from native audio bytes",()=>{
  const score=create();
  const raw=new Uint8Array(44);
  raw.set(new TextEncoder().encode("RIFF"),0);
@@ -32,12 +33,14 @@ test("sample imports survive self-contained file export without remote reference
  };
  assert.deepEqual(validate(score),[]);
  assert.deepEqual(parse(JSON.stringify(score)),score);
- assert.deepEqual(base64ToBytes(sample.data),raw);
+ assert.equal(sample.path,"assets/custom1.wav");
+ assert.equal(sample.data,undefined);
+ assert.deepEqual(getAsset(sample.id),raw);
  const broken=clone(score);broken.samples=[];
  assert.ok(validate(broken).some(error=>error.includes("missing audio")));
 });
 test("invalid untrusted sample data and external-link-only assets cannot become playable",()=>{
  assert.ok(validateSampleAsset({id:"x",name:"X",mime:"audio/wav",data:"https://evil.invalid",source:"user"}));
  assert.ok(validateSampleAsset({id:"x",name:"X",mime:"text/html",data:"AAAA",source:"user"}));
- assert.equal(MAX_SCORE_BYTES,15_000_000);
+ assert.equal(MAX_SCORE_BYTES,1_000_000);
 });

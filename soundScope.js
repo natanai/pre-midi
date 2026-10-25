@@ -2,7 +2,7 @@
 // parameters used by the audio runtime. Pitch trace uses expression.js math.
 // For sampled instruments the upper trace uses the actual decoded recording.
 import {movement,pitchCents} from "./expression.js";
-import {base64ToBytes} from "./sampler.js";
+import {getAsset} from "./assetRegistry.js";
 const NS="http://www.w3.org/2000/svg";
 const node=(tag,attributes={})=>{
  const el=document.createElementNS(NS,tag);
@@ -81,11 +81,11 @@ export function createSignalDisplay(root,patch,score,accent){
  let selectedId=patch.type==="sample"?patch.zones[Math.floor(patch.zones.length/2)]?.assetId:null;
  if(selectedId){
   const asset=score?.samples?.find(sample=>sample.id===selectedId);
-  if(asset && typeof OfflineAudioContext!=="undefined"){
+  if(asset && getAsset(asset.id) && typeof OfflineAudioContext!=="undefined"){
    // One audio file only. Multiple recordings remain untouched and unmapped.
    try {
     const context=new OfflineAudioContext(1,1,44100);
-    const bytes=base64ToBytes(asset.data);
+    const bytes=getAsset(asset.id);
     void context.decodeAudioData(bytes.buffer.slice(0)).then(buffer=>{
      const samples=buffer.getChannelData(0),count=250;
      decoded=Array.from({length:count},(_,i)=>{
