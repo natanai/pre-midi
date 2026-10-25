@@ -107,19 +107,44 @@ contents, avoiding the formerly large blank grid cells that pushed Notes
 away from composing.
 
 **New always starts blank.** Choose **Examples** only when you want a
-playable demonstration. Five carefully assembled compositions use the normal
-instruments, native chunks and effects: Neon After Hours (electronic dance),
-Porchlight (acoustic folk), Floating Signals (slow ambient, 16 bars),
-Broken Circuit (industrial synth), and Swaying Wire (expressive recorded
-guitar). Every example is a real editable score, with reusable sections,
-several instruments, and both synth and recorded CC0 samples where relevant.
-Opening an example explicitly replaces the current browser draft after a
-confirmation; export your current .premidi first to keep a separate copy.
+playable demonstration. Five compositions use the normal editor, instruments,
+chunks, rack rows, movement and audio effects: Neon After Hours (dark cinematic
+electronics), Porchlight (acoustic folk), Floating Signals (slow ambient,
+16 bars), Broken Circuit (industrial synth), and Swaying Wire (expressive
+recorded guitar). These are real editable native v6 scores, not preview audio.
+Loading a composition asks before replacing the browser draft; save any
+existing draft first if you wish to preserve it.
 
-Example audio files are included with that composition when loaded, so
-exporting its music bundle remains portable. Examples are *not* additional
-playback systems or an alternative persistence path. They demonstrate the
-existing native v6 music structures.
+**Neon After Hours — composition revision (2026-10-25):** This is an original,
+retro-futurist nocturnal cue, not a recreation of an existing soundtrack.
+Its quiet approach establishes low bass and a warning signal, expands into a
+layered driving beat, cuts down to an exposed breakdown and returns for a final
+chase. The nine independently editable rack rows combine analog kick, recorded
+kick, synth noise snare, tape snare, recorded clap, closed hat, noise ticks,
+open hat and a tuned metallic ping. The continuously sustained deep-bass
+instrument is accompanied by a gated, harmonically richer upper-bass line
+that is more audible on small speakers; pads, echoes and expressive sirens
+provide the contrasting atmosphere.
+
+The measurable compositional changes from the previous demo are:
+
+| Structural measure | Previous | Revised |
+| --- | --- | --- |
+| Arranged bars | 8 | 16 |
+| Percussion editing | Three separate piano-roll instruments | One true nine-sound rack |
+| Deep-bass longest note | 3 sixteenth steps | 16 sixteenth steps |
+| Per-bar drum patterns | Separate repetitive beat/fill lanes | Ten rack patterns spanning intro, drop, breakdown and chase |
+| Sampled drum layers | None | Recorded kick, tape snare, clap and two hats |
+| Arrangement contrast | Mostly repeated groove | Deliberate drop, near-empty break and return |
+
+Tests verify these structures, native event identities, dynamics differences,
+sample references, v6 validity and export-friendly size. They cannot
+substitute for **listening**: perceived impact, bass audibility and the musical
+feel still require ear testing across headphones and mobile speakers.
+
+Example recordings travel as companion audio assets with the composition when
+exported; the .premidi score stays small and machine-readable. No example
+gets a special playback or persistence engine.
 
 ## Record your own instruments
 
