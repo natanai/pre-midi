@@ -516,14 +516,14 @@ function renderSound() {
   // Construct a temporary sound-definition view, not an alternate mutable draft.
   const next=patchCopy(instrument().patch);
   let parent=next;
-  for(let i=0;i<path.length-1;i++)parent=parent[path[i]];
+  for(let i=0;i<path.length-1;i++)parent=parent[path[i]]??={};
   parent[path[path.length-1]]=value;
   scope(next);
  };
  const onChange=(path,value)=>modify(()=>{
   const target=instrument().patch;
   let owner=target;
-  for(let i=0;i<path.length-1;i++)owner=owner[path[i]];
+  for(let i=0;i<path.length-1;i++)owner=owner[path[i]]??={};
   owner[path[path.length-1]]=value;
   target.presetId="custom";
  });
