@@ -5,7 +5,7 @@ Pre-midi's first recorded instruments contain selected recordings from three lib
 | Collection | License | Source | Included |
 |---|---|---|---|
 | Meta Piano | CC0 | https://github.com/facebookincubator/Meta-open-sound | C3 and C4 piano samples |
-| Meta Nylon Guitar | CC0 | https://github.com/facebookincubator/Meta-open-sound | 54 finger-plucked notes and 36 picked light/firm takes; source spans all six strings |
+| Meta Nylon Guitar | CC0 | https://github.com/facebookincubator/Meta-open-sound | 18 fingerstyle and 36 light/firm picked takes, covering six guitar strings |
 | Meta Steel Guitar | CC0 | https://github.com/facebookincubator/Meta-open-sound | 54 soft, medium and firm string takes, across 18 pitches |
 | Stargate Sample Pack | CC0 | https://github.com/stargatedaw/stargate-sample-pack | Kick, snare, clap, closed/open hi-hat, bongo |
 | Versilian Community Sample Library (VCSL) | CC0 | https://github.com/sgossner/VCSL | Alto recorder and ball whistle |
