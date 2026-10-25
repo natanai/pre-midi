@@ -77,12 +77,23 @@ export function validateSamplerPatch(patch){
  return errors;
 }
 export async function decodeSamples(context,score,cache){
- const missing=(score.samples||[]).filter(asset=>!cache.has(asset.id));
- await Promise.all(missing.map(async asset=>{
-  const bytes=base64ToBytes(asset.data);
-  const buffer=await context.decodeAudioData(bytes.buffer.slice(0));
-  cache.set(asset.id,buffer);
- }));
+ const waiting=[];
+ for(const asset of score.samples||[]) {
+  if(cache.has(asset.id)){
+   const prior=cache.get(asset.id);
+   if(prior instanceof Promise)waiting.push(prior);
+   continue;
+  }
+  const task=(async()=>{
+   const bytes=base64ToBytes(asset.data);
+   const buffer=await context.decodeAudioData(bytes.buffer.slice(0));
+   cache.set(asset.id,buffer);
+   return buffer;
+  })();
+  cache.set(asset.id,task);
+  waiting.push(task);
+ }
+ await Promise.all(waiting);
 }
 export function scheduleSample(context,out,inst,event,start,duration,score,cache) {
  const patch=inst.patch,zone=sampleForNote(patch,event.pitch);
