@@ -94,7 +94,7 @@ async function checkLayout(frame){
   checks.guitarPresetAccessible=doc.querySelectorAll(".instrument-card").length===4 &&
    get("patch-label").textContent.includes("Steel Acoustic");
   checks.guitarMappingCollapsible=!!doc.querySelector("#synth-editor .sample-map-details") &&
-   !!doc.querySelector("#synth-editor input[aria-label='Chord strum milliseconds per note']");
+   !!doc.querySelector("#synth-editor .dial-knob[aria-label='Strum']");
  }
 
  
