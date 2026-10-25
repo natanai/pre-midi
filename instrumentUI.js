@@ -1,6 +1,7 @@
 // Controls are generated from the same patch keys validated by synth.js.
 // All edits go through the caller's one canonical composition mutation pathway.
 import { WAVES, FILTERS } from "./synth.js";
+import { BEND_SHAPES } from "./expression.js";
 import { createDial } from "./dial.js";
 const groups=[
  {name:"Oscillator 1",open:true,fields:[
@@ -28,6 +29,9 @@ const groups=[
   {path:["noise"],label:"Noise",min:0,max:1,step:.01,display:"percent"}
  ]},
  {name:"Movement",open:true,fields:[
+  {path:["bend","shape"],label:"Bend shape",options:BEND_SHAPES.map(([id])=>id)},
+  {path:["bend","amount"],label:"Bend amount",min:0,max:12,step:.25,display:"semitones"},
+  {path:["bend","rate"],label:"Wave speed",min:.1,max:12,step:.1,display:"hz"},
   {path:["movement","rate"],label:"Vibrato rate",min:.1,max:20,step:.1,display:"hz"},
   {path:["movement","depth"],label:"Vibrato depth",min:0,max:100,step:1,display:"cents"},
   {path:["movement","delay"],label:"Vibrato waits",min:0,max:3,step:.05,display:"seconds"},
@@ -49,7 +53,7 @@ const groups=[
 const expanded=new Set(groups.filter(g=>g.open).map(g=>g.name));
 // Movement is a primary creative surface; advanced shaping stays available on demand.
 groups.sort((a,b)=>a.name==="Movement"?-1:b.name==="Movement"?1:0);
-const pathValue=(obj,path)=>path.reduce((target,key)=>target[key],obj);
+const pathValue=(obj,path)=>path.reduce((target,key)=>target?.[key],obj);
 const fieldTitle=field=>field.label+" ("+field.path.join(".")+")";
 function format(value,display) {
  if(display==="percent")return Math.round(value*100)+"%";
@@ -72,7 +76,7 @@ function fromSlider(field,value) {
  ))));
 }
 function renderField(field,patch,onChange,onPreview){
- const value=pathValue(patch,field.path) ?? 0;
+ const value=pathValue(patch,field.path) ?? (field.options?field.options[0]:0);
  if(!field.options)return createDial(field,value,
   next=>onChange(field.path,next),
   next=>onPreview(field.path,next));
