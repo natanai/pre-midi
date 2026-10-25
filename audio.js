@@ -65,7 +65,7 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
   const gain=add(ctx.createGain());
   oscillator.type=slot.wave;
   oscillator.frequency.setValueAtTime(Math.min(18000,frequency(event.pitch)*2**slot.octave),start);
-  schedulePitch(ctx,oscillator.detune,event,motion,start,duration,slot.detune);
+  schedulePitch(ctx,oscillator.detune,{...event,bend:event.bend??patch.bend},motion,start,duration,slot.detune);
   gain.gain.value=slot.level;
   oscillator.connect(gain);gain.connect(mix);
   oscillator.start(start);oscillator.stop(end);
