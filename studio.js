@@ -170,7 +170,7 @@ function renderInstruments() {
   const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
   el.style.setProperty("--track-accent", signal(inst));
   el.setAttribute("aria-pressed", String(selected));
-  el.append(element("strong", inst.name), element("small", (getPreset(inst.patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.patch.presetId)?.name ?? "Custom sound") + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
+  el.append(element("strong", inst.name), element("small", (getPreset(inst.patch.presetId)?.name ?? SAMPLE_LIBRARY.find(item=>item.id===inst.patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.patch.presetId)?.name ?? (inst.patch.type==="sample"?"Custom sample":"Custom synth")) + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
   list.append(el);
  }
  $("add-instrument").disabled = score.instruments.length >= 12;
@@ -447,24 +447,28 @@ function renderChunkEditor() {
  renderNotes();
 }
 function renderSound() {
- const inst=instrument();
+ const inst=instrument(),patch=inst.patch;
  $("instrument-name").value=inst.name;
  $("volume").value=String(Math.round(inst.volume*100));
  $("volume-value").textContent=Math.round(inst.volume*100)+"%";
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
  document.querySelector(".patch-info")?.style.setProperty("--track-accent",signal(inst));
- const preset=getPreset(inst.patch.presetId)||savedSounds.find(entry=>entry.id===inst.patch.presetId);
- $("patch-label").textContent=preset?"Sound · "+preset.name:"Sound · Custom";
- renderPatchEditor($("synth-editor"),inst.patch,(path,value)=>{
-  modify(()=>{
-   const target=instrument().patch;
-   let owner=target;
-   for(let i=0;i<path.length-1;i++)owner=owner[path[i]];
-   owner[path[path.length-1]]=value;
-   target.presetId="custom";
-  });
+ const preset=getPreset(patch.presetId)||SAMPLE_LIBRARY.find(x=>x.id===patch.presetId)
+  ||savedSounds.find(entry=>entry.id===patch.presetId);
+ $("patch-label").textContent=(patch.type==="sample"?"Sample · ":"Synth · ")+(preset?.name||"Custom");
+ const onChange=(path,value)=>modify(()=>{
+  const target=instrument().patch;
+  let owner=target;
+  for(let i=0;i<path.length-1;i++)owner=owner[path[i]];
+  owner[path[path.length-1]]=value;
+  target.presetId="custom";
  });
+ if(patch.type==="sample"){
+  renderSamplerEditor($("synth-editor"),patch,onChange,
+   patch.zones.map(zone=>score.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
+   ()=>$("sample-file").click());
+ }else renderPatchEditor($("synth-editor"),patch,onChange);
  $("remove-instrument").disabled=score.instruments.length===1;
 }
 function render() {
