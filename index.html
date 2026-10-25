@@ -14,10 +14,11 @@
  <nav aria-label="Files">
   <button id="new" type="button">New</button>
   <button id="examples" type="button">Examples</button>
+  <button id="record-sound" type="button" class="record-sound-action">● Record sound</button>
   <button id="import" type="button">Open .premidi</button>
   <button id="export" type="button" class="primary">Save .premidi</button>
   <button id="wav" type="button">Export WAV</button>
-  <input id="file" type="file" accept=".premidi,application/json" hidden>
+  <input id="file" type="file" accept=".premidi,.zip,application/zip,application/json" hidden>
   <input id="sample-file" type="file" accept=".wav,.ogg,.mp3,audio/wav,audio/ogg,audio/mpeg" hidden>
  </nav>
 </header>
@@ -99,6 +100,44 @@
   <button id="close-examples" type="button" aria-label="Close example library">×</button>
  </div>
  <div id="example-list" class="example-list" aria-label="Example compositions"></div>
+</dialog>
+<dialog id="microphone-dialog" class="instrument-dialog microphone-dialog" aria-labelledby="microphone-dialog-title">
+ <div class="library-top">
+  <div><h2 id="microphone-dialog-title">Record a sound</h2><p>Capture one short sound, listen, then make it an instrument.</p></div>
+  <button id="mic-close" type="button" aria-label="Close recording">×</button>
+ </div>
+ <div class="mic-flow">
+  <div class="mic-settings">
+   <label>Recording time <select id="mic-length">
+    <option value="0.75">0.75 seconds · hit</option>
+    <option value="1.5" selected>1.5 seconds · note</option>
+    <option value="3">3 seconds · ringing</option>
+    <option value="4">4 seconds · long</option>
+   </select></label>
+   <fieldset class="mic-kind"><legend>What are you recording?</legend>
+    <label><input type="radio" name="mic-kind" value="note" checked> A note · guitar, voice, whistle</label>
+    <label><input type="radio" name="mic-kind" value="hit"> A hit · clap, tap, drum, noise</label>
+   </fieldset>
+   <p class="mic-guidance" id="mic-hint">For a note, play one string or sing one steady pitch. The studio will suggest the note you played.</p>
+  </div>
+  <div class="mic-status" aria-live="polite">
+   <span id="mic-count" class="mic-count" aria-hidden="true">●</span>
+   <strong id="mic-status">Ready when you are</strong>
+   <small id="mic-subtitle">Mic access is requested only when you start.</small>
+  </div>
+  <div class="mic-preview" id="mic-preview" hidden>
+   <label>Name <input id="mic-name" maxlength="60" placeholder="My recorded sound"></label>
+   <label id="mic-root-field">Recorded note <select id="mic-root" aria-label="Pitch of the recorded note"></select></label>
+   <p id="mic-pitch-message" class="mic-guidance"></p>
+   <audio id="mic-playback" controls preload="none"></audio>
+   <p id="mic-quality" class="mic-guidance"></p>
+  </div>
+  <div class="mic-actions">
+   <button id="mic-capture" type="button" class="primary">● Start countdown</button>
+   <button id="mic-use" type="button" class="primary" hidden>Use this recording</button>
+   <button id="mic-retry" type="button" hidden>Record again</button>
+  </div>
+ </div>
 </dialog>
 <script type="module" src="./studio.js"></script>
 </body>
