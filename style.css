@@ -500,3 +500,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   border:0;border-bottom:1px solid var(--line);
 }
 .sample-replace-action:hover,.library-import:hover {border-color:var(--bright);background:#191919;text-decoration:none}
+
+.sample-zones {display:flex;flex-wrap:wrap;gap:12px 20px;padding-top:16px}
+.sample-zones label {min-width:145px}
+.sample-zones select {width:100%}
