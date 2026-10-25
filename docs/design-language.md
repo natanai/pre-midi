@@ -30,3 +30,11 @@ Desktop and mobile share one score, sequencer, inputs, interactions, and saves. 
 
 ## Ownership
 The pre-midi repo owns the standalone composing interface. Pre-programmed owns canonical Media import/export, D1 persistence, and the game engine's operations/conditions. Both consume the same versioned native composition contract and player synthesis code, rather than forking music data or building a duplicate piano roll inside Author mode.
+
+## Text and terminology
+- Use a plain, technical vocabulary throughout the interface. Text names a control, state, sound source, parameter, action or measured behavior.
+- Example titles identify what their compositions demonstrate; descriptions list audible or editable properties supported by the score. Do not invent scenes, moods, stories, intentions or judgments about how the music feels.
+- Instrument and preset names identify the source or processing: e.g. `Sine Keys`, `Recorded Snare`, `Detuned Pad`. Keep existing machine identifiers stable when changing visible labels.
+- Use short, direct prompts and status messages: `Ready`, `Recording`, `Loaded example`. Avoid first-person copy, congratulation, advertising, poetic descriptions or decorative qualifiers.
+- Keep factual guidance that prevents errors, explains limitations or communicates consequences. Plain language is not a reason to hide relevant information.
+- Prefer testable claims. Where a sonic property is interpretive rather than measurable, omit it.
