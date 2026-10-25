@@ -1,4 +1,5 @@
 import { validateSamplerPatch } from "./sampler.js";
+import { validateMovement, movementDefaults } from "./expression.js";
 // Original parameter-only instrument library. No samples, soundfonts, external DSP or runtime packages.
 // A patch is the single canonical definition used by the editor, live synth and WAV export.
 export const WAVES = ["sine", "triangle", "square", "sawtooth"];
@@ -14,7 +15,7 @@ const base = {
   noise:0,
   filter:{type:"lowpass",cutoff:8000,resonance:.7},
   envelope:{attack:.01,decay:.16,sustain:.65,release:.2},
-  movement:{rate:5,depth:0},
+  movement:{...movementDefaults},
   effects:{drive:0,delayMix:0,delayTime:.24,delayFeedback:.26},
   pan:0
 };
@@ -36,6 +37,12 @@ const presets = [
  ["pulse-kick","Pulse Kick","Percussion","Low impact with a rapid drop.",{oscillators:[{wave:"sine",level:1,octave:-2,detune:0},{wave:"triangle",level:.17,octave:-1,detune:0}],filter:{cutoff:550},envelope:{attack:.002,decay:.1,sustain:.015,release:.12},effects:{drive:.34}}],
  ["static-snare","Static Snare","Percussion","Dry crack of shaped noise.",{oscillators:[{wave:"triangle",level:.19,octave:-1,detune:0},{wave:"sine",level:0,octave:0,detune:0}],noise:.9,filter:{type:"highpass",cutoff:750,resonance:.8},envelope:{attack:.001,decay:.095,sustain:.02,release:.11},effects:{drive:.17}}],
  ["dust-hat","Dust Hat","Percussion","Tight, high-passed noise.",{oscillators:[{wave:"sine",level:0,octave:0,detune:0},{wave:"sine",level:0,octave:0,detune:0}],noise:1,filter:{type:"highpass",cutoff:6200,resonance:.6},envelope:{attack:.001,decay:.035,sustain:0,release:.055}}]
+ ["glass-portamento","Glass Portamento","Expressive","A singing glass-tone with a slow upward glide.",{oscillators:[{wave:"sine",level:.95,octave:0,detune:0},{wave:"triangle",level:.46,octave:1,detune:5}],filter:{cutoff:3800,resonance:1.2},envelope:{attack:.04,decay:.3,sustain:.85,release:.7},movement:{glide:-3.5,glideTime:.35,rate:5,depth:22,delay:.32,tone:.12,toneRate:1.3},effects:{delayMix:.23,delayTime:.36,delayFeedback:.37}}],
+ ["midnight-theremin","Midnight Theremin","Expressive","Pure continuous whistle with sliding, tremulous vibrato.",{oscillators:[{wave:"sine",level:1,octave:0,detune:0},{wave:"sine",level:.12,octave:1,detune:7}],filter:{cutoff:4300},envelope:{attack:.08,decay:.05,sustain:.96,release:.8},movement:{glide:-6,glideTime:.45,rate:6.2,depth:43,delay:.25,tremolo:.13,tremoloRate:3.3}}],
+ ["broken-siren","Broken Siren","Expressive","Nasal oscillators fluttering through a narrow moving filter.",{oscillators:[{wave:"sawtooth",level:.8,octave:0,detune:0},{wave:"square",level:.48,octave:-1,detune:3}],filter:{type:"bandpass",cutoff:1400,resonance:3},envelope:{attack:.025,decay:.07,sustain:.92,release:.42},movement:{glide:3.5,glideTime:.23,rate:4.2,depth:30,delay:.09,tremolo:.38,tremoloRate:5,tone:.53,toneRate:2.4},effects:{drive:.25,delayMix:.16}}],
+ ["feedback-cry","Feedback Cry","Expressive","Distorted sustained guitar-like cry with rising pitch.",{oscillators:[{wave:"sawtooth",level:.74,octave:0,detune:-5},{wave:"triangle",level:.65,octave:0,detune:5}],filter:{cutoff:2400,resonance:2.6},envelope:{attack:.17,decay:.15,sustain:.9,release:1.4},movement:{glide:-2.4,glideTime:.36,rate:5.8,depth:46,delay:.35,tone:.18,toneRate:1.4},effects:{drive:.45,delayMix:.23,delayTime:.32}}],
+ ["pulse-vowel","Pulse Vowel","Expressive","Hollow formant-like wavering with rhythmic volume pulses.",{oscillators:[{wave:"square",level:.57,octave:0,detune:0},{wave:"sawtooth",level:.68,octave:0,detune:7}],filter:{type:"bandpass",cutoff:720,resonance:5},envelope:{attack:.09,decay:.23,sustain:.8,release:.9},movement:{rate:4.5,depth:17,delay:.2,tone:.65,toneRate:1.7,tremolo:.43,tremoloRate:3.8},effects:{delayMix:.16}}],
+ ["orbiting-wire","Orbiting Wire","Expressive","Tense dual oscillators with restless, wavering pitch.",{oscillators:[{wave:"triangle",level:.75,octave:0,detune:-8},{wave:"sawtooth",level:.43,octave:1,detune:12}],filter:{cutoff:4800},envelope:{attack:.07,decay:.32,sustain:.82,release:1.2},movement:{glide:1.3,glideTime:.6,rate:7.1,depth:63,delay:.45,tremolo:.2,tremoloRate:6.7},effects:{delayMix:.36,delayFeedback:.5}}]
 ];
 function deepMerge(baseValue, patch) {
  const result=copy(baseValue);
@@ -77,6 +84,7 @@ export function validatePatch(patch) {
   errors.push("Invalid envelope.");
  if(!object(patch.movement)||!num(patch.movement.rate,.1,20)||!num(patch.movement.depth,0,100))
   errors.push("Invalid vibrato.");
+ errors.push(...validateMovement(patch.movement));
  const fx=patch.effects;
  if(!object(fx)||!num(fx.drive,0,1)||!num(fx.delayMix,0,1)||
    !num(fx.delayTime,.05,1)||!num(fx.delayFeedback,0,.8))errors.push("Invalid effects.");
