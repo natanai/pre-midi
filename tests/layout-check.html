@@ -4,7 +4,7 @@
 <script>
 async function checkLayout(frame){
  const doc=frame.contentDocument;
- const browserErrors=[];
+ const browserErrors=[];const diagnostics={};
  frame.contentWindow.addEventListener("error",event=>browserErrors.push(String(event.message||event.error)));
  frame.contentWindow.addEventListener("unhandledrejection",event=>browserErrors.push(String(event.reason)));
  const get=id=>doc.getElementById(id);
@@ -89,7 +89,8 @@ async function checkLayout(frame){
  // the completed user operation, not the click's immediate synchronous frame.
  for(let attempt=0;attempt<90&&doc.querySelectorAll(".instrument-card").length!==2;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
- checks.presetCreatesInstrument=doc.querySelectorAll(".instrument-card").length===2 && !library.open;
+ diagnostics.preset={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("patch-label").textContent};
+  checks.presetCreatesInstrument=doc.querySelectorAll(".instrument-card").length===2 && !library.open;
  checks.patchEditorPresent=!!doc.querySelector("#synth-editor .synth-group");
  checks.presetSelected=get("patch-label").textContent.includes("Neon Lead");
  get("change-sound").click();
@@ -107,7 +108,8 @@ async function checkLayout(frame){
  piano?.querySelector(".preset-choose")?.click();
  for(let attempt=0;attempt<120 && doc.querySelectorAll(".instrument-card").length!==3;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
- checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
+ diagnostics.sample={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("patch-label").textContent};
+  checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
   get("patch-label").textContent.includes("Recorded Piano") && !library.open;
  checks.sampleControlsReachable=!!doc.querySelector("#synth-editor .sample-zones") &&
   !!doc.querySelector("#synth-editor .sample-replace-action");
@@ -146,7 +148,8 @@ async function checkLayout(frame){
  demo?.click();
  for(let i=0;i<220&&get("title").value!=="Neon After Hours";i++)
   await new Promise(resolve=>setTimeout(resolve,30));
- checks.exampleUsesRealComposer=get("title").value==="Neon After Hours" &&
+ diagnostics.neon={status:get("status").textContent,title:get("title").value,inst:doc.querySelectorAll(".instrument-card").length,dialogOpen:gallery.open};
+  checks.exampleUsesRealComposer=get("title").value==="Neon After Hours" &&
   doc.querySelectorAll(".instrument-card").length===8 &&
   doc.querySelectorAll(".arrangement-row").length===8 &&
   doc.querySelectorAll("#piano .rack-row").length===9 &&
@@ -253,7 +256,7 @@ async function checkLayout(frame){
   viewport:frame.clientWidth,
   sidebar:Math.round(sidebar.width),
   addButton:Math.round(add.width),
-  checks,browserErrors
+  checks,browserErrors,diagnostics
  });
  void fetch("/__layout_result?status="+document.documentElement.dataset.layout+"&details="+encodeURIComponent(document.getElementById("result").textContent)).catch(()=>{});
 }
