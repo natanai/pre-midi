@@ -4,12 +4,14 @@
 <script type="module">
 import { create, validate } from "../schema.js";
 import { makePatch } from "../synth.js";
+import { SAMPLE_LIBRARY,makeSamplerPatch } from "../samples.js";
+import { loadLibrarySample } from "../sampler.js";
 import { wav } from "../audio.js";
 const result=document.getElementById("results");
 document.documentElement.dataset.audio="RUNNING";
 result.textContent="Audio module initialized";
 try {
- const names=["glass-keys","sub-current","static-snare","violet-pad"];
+ const names=["glass-keys","sub-current","static-snare","violet-pad","real-piano","nylon-guitar","acoustic-kick","wood-recorder"];
  const fingerprints=[];
  for(const name of names) {
   const score=create();
@@ -17,7 +19,11 @@ try {
   const inst=score.instruments[0];
   const chunk=inst.chunks[0];
   chunk.notes=[{id:"test-note",pitch:name==="sub-current"?48:60,start:0,duration:6,velocity:1}];
-  inst.patch=makePatch(name);
+  const sampled=SAMPLE_LIBRARY.find(x=>x.id===name);
+  if(sampled){
+   score.samples=await Promise.all(sampled.assets.map(loadLibrarySample));
+   inst.patch=makeSamplerPatch(sampled);
+  } else inst.patch=makePatch(name);
   inst.timeline=[chunk.id,null];
   const errors=validate(score);
   if(errors.length)throw Error(name+" failed validation: "+errors.join(","));
