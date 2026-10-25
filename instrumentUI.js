@@ -1,6 +1,7 @@
 // Controls are generated from the same patch keys validated by synth.js.
 // All edits go through the caller's one canonical composition mutation pathway.
 import { WAVES, FILTERS } from "./synth.js";
+import { createDial } from "./dial.js";
 const groups=[
  {name:"Oscillator 1",open:true,fields:[
   {path:["oscillators",0,"wave"],label:"Wave",options:WAVES},
@@ -26,7 +27,7 @@ const groups=[
   {path:["filter","resonance"],label:"Resonance",min:.1,max:16,step:.1,display:"number"},
   {path:["noise"],label:"Noise",min:0,max:1,step:.01,display:"percent"}
  ]},
- {name:"Movement",open:false,fields:[
+ {name:"Movement",open:true,fields:[
   {path:["movement","rate"],label:"Vibrato rate",min:.1,max:20,step:.1,display:"hz"},
   {path:["movement","depth"],label:"Vibrato depth",min:0,max:100,step:1,display:"cents"},
   {path:["movement","delay"],label:"Vibrato waits",min:0,max:3,step:.05,display:"seconds"},
@@ -46,6 +47,8 @@ const groups=[
  ]}
 ];
 const expanded=new Set(groups.filter(g=>g.open).map(g=>g.name));
+// Movement is a primary creative surface; advanced shaping stays available on demand.
+groups.sort((a,b)=>a.name==="Movement"?-1:b.name==="Movement"?1:0);
 const pathValue=(obj,path)=>path.reduce((target,key)=>target[key],obj);
 const fieldTitle=field=>field.label+" ("+field.path.join(".")+")";
 function format(value,display) {
@@ -68,45 +71,28 @@ function fromSlider(field,value) {
   Math.log(field.min)+(Math.log(field.max)-Math.log(field.min))*Number(value)/1000
  ))));
 }
-function renderField(field,patch,onChange) {
+function renderField(field,patch,onChange,onPreview){
+ const value=pathValue(patch,field.path) ?? 0;
+ if(!field.options)return createDial(field,value,
+  next=>onChange(field.path,next),
+  next=>onPreview(field.path,next));
  const label=document.createElement("label");
  label.className="synth-field";
- const title=document.createElement("span");
- title.textContent=field.label;
- label.append(title);
- const value=pathValue(patch,field.path) ?? 0;
- if(field.options) {
-  const input=document.createElement("select");
-  input.setAttribute("aria-label",fieldTitle(field));
-  for(const optionValue of field.options){
-   const option=document.createElement("option");
-   option.value=String(optionValue);
-   option.textContent=String(optionValue).replace(/^./,s=>s.toUpperCase());
-   input.append(option);
-  }
-  input.value=String(value);
-  input.addEventListener("change",()=>onChange(field.path,typeof value==="number"?Number(input.value):input.value));
-  label.append(input);
- } else {
-  const meter=document.createElement("div");
-  meter.className="synth-range";
-  const input=document.createElement("input");
-  input.type="range";
-  input.min=field.log?"0":String(field.min);
-  input.max=field.log?"1000":String(field.max);
-  input.step=field.log?"1":String(field.step);
-  input.value=String(sliderValue(field,value));
-  input.setAttribute("aria-label",fieldTitle(field));
-  const output=document.createElement("output");
-  output.textContent=format(value,field.display);
-  input.addEventListener("input",()=>output.textContent=format(fromSlider(field,input.value),field.display));
-  input.addEventListener("change",()=>onChange(field.path,fromSlider(field,input.value)));
-  meter.append(input,output);
-  label.append(meter);
+ const title=document.createElement("span");title.textContent=field.label;label.append(title);
+ const input=document.createElement("select");
+ input.setAttribute("aria-label",fieldTitle(field));
+ for(const optionValue of field.options) {
+  const option=document.createElement("option");
+  option.value=String(optionValue);
+  option.textContent=String(optionValue).replace(/^./,s=>s.toUpperCase());
+  input.append(option);
  }
+ input.value=String(value);
+ input.addEventListener("change",()=>onChange(field.path,typeof value==="number"?Number(input.value):input.value));
+ label.append(input);
  return label;
 }
-export function renderPatchEditor(root,patch,onChange) {
+export function renderPatchEditor(root,patch,onChange,onPreview=()=>{}) {
  root.replaceChildren();
  const grid=document.createElement("div");
  grid.className="synth-grid";
@@ -119,7 +105,7 @@ export function renderPatchEditor(root,patch,onChange) {
   summary.textContent=group.name;
   const fields=document.createElement("div");
   fields.className="synth-fields";
-  for(const field of group.fields)fields.append(renderField(field,patch,onChange));
+  for(const field of group.fields)fields.append(renderField(field,patch,onChange,onPreview));
   details.append(summary,fields);
   grid.append(details);
  }
