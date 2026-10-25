@@ -1,10 +1,9 @@
 // A piano-roll scrubber follows only the selected chunk when it is actually
 // playing on its instrument lane. The music data and playback timing own this
 // state; this module never edits the composition.
+import {chunkProgress} from "./arrangement.js";
 export function chunkIsPlaying(score, instrumentId, chunkId, position) {
- if (!position || !Number.isInteger(position.bar) || position.bar < 0 || position.bar >= score.bars) return false;
- const instrument = score.instruments.find(candidate => candidate.id === instrumentId);
- return !!instrument && instrument.timeline[position.bar] === chunkId;
+ return chunkProgress(score,instrumentId,chunkId,position)!==null;
 }
 export function pianoScrubberX(step, gridWidth, gutterWidth = 63) {
  const progress = Math.min(16, Math.max(0, step));
