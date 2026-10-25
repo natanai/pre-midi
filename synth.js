@@ -1,5 +1,5 @@
 import { validateSamplerPatch } from "./sampler.js";
-import { validateMovement, movementDefaults } from "./expression.js";
+import { validateMovement, validateBend, movementDefaults } from "./expression.js";
 // Original parameter-only instrument library. No samples, soundfonts, external DSP or runtime packages.
 // A patch is the single canonical definition used by the editor, live synth and WAV export.
 export const WAVES = ["sine", "triangle", "square", "sawtooth"];
@@ -17,7 +17,8 @@ const base = {
   envelope:{attack:.01,decay:.16,sustain:.65,release:.2},
   movement:{...movementDefaults},
   effects:{drive:0,delayMix:0,delayTime:.24,delayFeedback:.26},
-  pan:0
+  pan:0,
+  bend:{shape:"straight",amount:2,rate:4}
 };
 const presets = [
  ["init","Init","Basic","A clean starting sound.",{}],
@@ -85,6 +86,7 @@ export function validatePatch(patch) {
  if(!object(patch.movement)||!num(patch.movement.rate,.1,20)||!num(patch.movement.depth,0,100))
   errors.push("Invalid vibrato.");
  errors.push(...validateMovement(patch.movement));
+ errors.push(...validateBend(patch.bend));
  const fx=patch.effects;
  if(!object(fx)||!num(fx.drive,0,1)||!num(fx.delayMix,0,1)||
    !num(fx.delayTime,.05,1)||!num(fx.delayFeedback,0,.8))errors.push("Invalid effects.");
