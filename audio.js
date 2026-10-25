@@ -1,4 +1,4 @@
-import { decodeSamples, scheduleSample } from "./sampler.js";
+import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the instrument.patch stored in the score.
@@ -154,7 +154,10 @@ let context;
 export async function audition(instrument,pitch,score=null) {
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
- if(score)await decodeSamples(context,score,bufferCache(context));
+ if(score){
+  const zone=instrument.patch?.type==="sample"?sampleForNote(instrument.patch,pitch,.8):null;
+  await decodeSamples(context,score,bufferCache(context),new Set(zone?[zone.assetId]:[]));
+ }
  soundNote(context,context.destination,instrument,{pitch,velocity:.8},context.currentTime+.01,.24,score);
 }
 export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{}}={}) {
