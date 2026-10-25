@@ -65,7 +65,9 @@ test("audio-clock progress is continuous between sixteenth-note boundaries", asy
 test("note editing auditions only when transport is not playing",() => {
  const source=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  assert.match(source,/if\(modify\(\(\)=>\{editedChunk\.notes\.push\(created\);\}\)&&!playback&&!pendingPlay\)/);
- assert.match(source,/selectedNoteId=existing\.id/);
+ assert.match(source,/editingNoteEffects/);
+ assert.match(source,/selectedNoteId=existing\\.id/);
+ assert.match(source,/editedChunk\\.notes=editedChunk\\.notes\\.filter/);
  assert.match(source,/renderNoteExpression\(/);
  assert.match(source,/onProgress: \(bar, step\) =>/);
  assert.match(source,/pianoProgress = null;/);
