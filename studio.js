@@ -329,7 +329,7 @@ function renderNotes() {
  root.replaceChildren();
  root.style.setProperty("--track-accent", signal(inst));
 
- for (let pitch = 83; pitch >= 48; pitch--) {
+ for (let pitch = 83; pitch >= 36; pitch--) {
   const sharp = [1,3,6,8,10].includes(pitch % 12);
   const row = element("div", undefined, "piano-row" + (sharp ? " sharp" : ""));
   row.append(element("span", noteLabel(pitch), "note-name"));
