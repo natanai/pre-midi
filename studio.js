@@ -42,6 +42,12 @@ let history = [], future = [], playback = null, pendingPlay = false;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
 
+// Audio assets are immutable blobs. Undo stores only mutable score structure
+// plus a shallow list of shared samples, not 100 copies of multi-MB recordings.
+const snapshot = document => {
+ const {samples,...mutable}=document;
+ return {...clone(mutable),samples:[...samples]};
+};
 const instrument = () => score.instruments.find(entry => entry.id === selectedInstrumentId) || score.instruments[0];
 const chunkFor = (inst) => inst.chunks.find(entry => entry.id === selectedChunks.get(inst.id)) || inst.chunks[0];
 const signal = inst => SIGNALS[Math.max(0, score.instruments.findIndex(entry => entry.id === inst.id)) % SIGNALS.length];
@@ -91,7 +97,7 @@ function stop() {
  paintPlayhead();
 }
 function modify(change) {
- const before = clone(score);
+ const before = snapshot(score);
  change();
  const errors = validate(score);
  if (errors.length) {
@@ -121,7 +127,7 @@ function resetTo(next) {
 function undo() {
  if (!history.length) return;
  closePicker();
- future.push(clone(score));
+ future.push(snapshot(score));
  score = history.pop();
  repairSelection();
  store();
@@ -130,7 +136,7 @@ function undo() {
 function redo() {
  if (!future.length) return;
  closePicker();
- history.push(clone(score));
+ history.push(snapshot(score));
  score = future.pop();
  repairSelection();
  store();
@@ -375,7 +381,7 @@ function renderNotes() {
     ignoreClick = true;
     const initialX = event.clientX, originalDuration = note.duration;
     const width = bounds.width;
-    const before = clone(score);
+    const before = snapshot(score);
     let finished = false;
     cell.setPointerCapture(event.pointerId);
     cell.classList.add("resizing");
