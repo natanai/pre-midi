@@ -13,8 +13,8 @@ const base = {
     {wave:"triangle",level:.8,octave:0,detune:0},
     {wave:"sine",level:.2,octave:0,detune:0}
   ],
-  noise:0,
-  filter:{type:"lowpass",cutoff:8000,resonance:.7},
+  noise:0,noiseDecay:0,
+  filter:{type:"lowpass",cutoff:8000,resonance:.7,sweep:0,sweepTime:.2},
   envelope:{attack:.01,decay:.16,sustain:.65,release:.2},
   movement:{...movementDefaults},
   effects:{drive:0,delayMix:0,delayTime:.24,delayFeedback:.26},
@@ -83,8 +83,12 @@ export function validatePatch(patch) {
    errors.push("A harmonic oscillator needs 32 strengths between 0 and 1.");
  }
  if(!num(patch.noise,0,1)||!num(patch.pan,-1,1))errors.push("Invalid noise level or panning.");
+ if(patch.noiseDecay!==undefined&&!num(patch.noiseDecay,0,4))errors.push("Invalid noise decay.");
  if(!object(patch.filter)||!FILTERS.includes(patch.filter.type)||!num(patch.filter.cutoff,50,14000)||!num(patch.filter.resonance,.1,16))
   errors.push("Invalid filter settings.");
+ if(object(patch.filter)&&((patch.filter.sweep!==undefined&&!num(patch.filter.sweep,-5,5))||
+  (patch.filter.sweepTime!==undefined&&!num(patch.filter.sweepTime,.01,3))))
+  errors.push("Invalid filter sweep.");
  if(!object(patch.envelope)||!num(patch.envelope.attack,0,3)||!num(patch.envelope.decay,0,3)||
    !num(patch.envelope.sustain,0,1)||!num(patch.envelope.release,.01,4))
   errors.push("Invalid envelope.");

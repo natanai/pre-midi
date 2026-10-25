@@ -72,14 +72,21 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
  if(patch.noise>0) {
   const source=ctx.createBufferSource(),gain=add(ctx.createGain());
   source.buffer=noiseBuffer(ctx);source.loop=true;
-  gain.gain.value=patch.noise;
+  gain.gain.setValueAtTime(patch.noise,start);
+   if((patch.noiseDecay??0)>0)gain.gain.setTargetAtTime(0,start,Math.max(.002,patch.noiseDecay/5));
   source.connect(gain);gain.connect(mix);
   source.start(start);source.stop(end);
   sources.push(source);
  }
  const filter=add(ctx.createBiquadFilter());
  filter.type=patch.filter.type;
- filter.frequency.setValueAtTime(patch.filter.cutoff,start);
+ const sweep=patch.filter.sweep??0;
+  if(sweep!==0){
+   const first=Math.max(50,Math.min(14000,patch.filter.cutoff*2**sweep));
+   filter.frequency.setValueAtTime(first,start);
+   filter.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,
+    start+Math.min(duration,patch.filter.sweepTime??.2));
+  }else filter.frequency.setValueAtTime(patch.filter.cutoff,start);
  filter.Q.setValueAtTime(patch.filter.resonance,start);
  mix.connect(filter);
  if(motion.tone>0)scheduleMovementLfo(ctx,filter.frequency,start,duration,
