@@ -479,3 +479,24 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .preset-card {padding:13px}
  .sound-actions {gap:8px}
 }
+
+/* Sampled instruments use the same restrained native Sound owner as synths. */
+.sampler-description {font-size:12px;color:var(--muted);margin-bottom:14px}
+.sampler-controls {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:18px 25px;
+}
+.sample-pitch-setting {display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text)}
+.sample-pitch-setting input {accent-color:var(--track-accent)}
+.sample-replace-action,.library-import {
+  padding:10px 12px;border:1px solid var(--line);
+  text-align:left;white-space:normal;color:var(--bright);
+}
+.sample-replace-action {margin-top:20px}
+.library-import {
+  grid-column:1/-1;display:block;width:100%;
+  background:#101010;
+  border:0;border-bottom:1px solid var(--line);
+}
+.sample-replace-action:hover,.library-import:hover {border-color:var(--bright);background:#191919;text-decoration:none}
