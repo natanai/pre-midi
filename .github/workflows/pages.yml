@@ -23,6 +23,8 @@ jobs:
           node --check audio.js
           node --check schema.js
           npm test
+      - name: Fetch pinned CC0 recordings
+        run: node scripts/fetch-samples.mjs
       - uses: actions/configure-pages@v5
         with:
           enablement: true

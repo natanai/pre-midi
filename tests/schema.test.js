@@ -4,9 +4,9 @@ import { create, makeInstrument, makeChunk, id, validate, parse, clone } from ".
 import { stepEvents } from "../audio.js";
 import { PRESETS, getPreset, makePatch, validatePatch } from "../synth.js";
 
-test("v3 scores contain fully editable native instrument patches", () => {
+test("v4 scores contain fully editable native instrument patches", () => {
  const score=create();
- assert.equal(score.version,3);
+ assert.equal(score.version,4);
  assert.deepEqual(validate(score),[]);
  assert.deepEqual(parse(JSON.stringify(score)),score);
  const patch=score.instruments[0].patch;
@@ -50,6 +50,6 @@ test("reusable chunks and note editing still work independently of sound patches
  assert.deepEqual(validate(score),[]);
 });
 test("older exported schemas aren't silently interpreted as new synth definitions",()=>{
- const previous=clone(create());previous.version=2;
- assert.throws(()=>parse(JSON.stringify(previous)),/v3/);
+ const previous=clone(create());previous.version=3;
+ assert.throws(()=>parse(JSON.stringify(previous)),/v4/);
 });
