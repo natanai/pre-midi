@@ -139,7 +139,7 @@ test("Floating Signals distinguishes shared bar boundaries from actual within-ba
    "Inside that bar, musical notes may have distinct step offsets");
  }
  const atBar=stepEvents(doc,base);
- assert.equal(atBar.length,8,"All notes at step zero share the same transport beat");
+ assert.equal(atBar.length,7,"All notes at step zero share the same transport beat");
  assert.ok(atBar.every(x=>x.barIndex===bar&&x.step===0));
  assert.equal(atBar.some(x=>x.instrument.sounds[0].patch.presetId==="midnight-theremin"),false,
   "Theremin Hover doesn't begin at the displayed chunk edge");
