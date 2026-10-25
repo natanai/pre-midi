@@ -56,13 +56,35 @@ sound selected, rather than leaving its previous name. Steel Strum uses a
 wider chord brush and shorter, brighter articulation; its preview now plays
 a real chord, rather than an indistinguishable single pluck.
 
-**Arrangement preloads are intentionally deferred.** Later, once the
-instrument/effects feature set is fuller, we can curate a few genuinely
-different playable examples without inserting demo notes into every new
-project. The native .premidi v4 contract remains intact; instrument bends
-are additive fields, and old compositions remain valid.
+## Composer-first workspace and optional examples
 
+The **timeline and piano roll are the principal workspace**. On wide screens,
+Sound sits beside them as a separately scrollable, sticky inspector. Use
+**Sound** in the Notes heading to hide or reopen it for more piano-roll space.
+On tablets and phones, the same Sound panel opens as a compact bottom sheet.
+Choose **Expand** to reveal all dials and sample controls, **Compact** to
+return to its smaller form, or **×** to close. Playback, selected chunk,
+timeline and piano-roll scroll position remain intact through these layout
+changes. No second copy of the sound editor is introduced.
 
+The inspector's oscillator/envelope/movement panels now size to their own
+contents, avoiding the formerly large blank grid cells that pushed Notes
+away from composing.
+
+**New always starts blank.** Choose **Examples** only when you want a
+playable demonstration. Five carefully assembled compositions use the normal
+instruments, native chunks and effects: Neon After Hours (electronic dance),
+Porchlight (acoustic folk), Floating Signals (slow ambient, 16 bars),
+Broken Circuit (industrial synth), and Swaying Wire (expressive recorded
+guitar). Every example is a real editable score, with reusable sections,
+several instruments, and both synth and embedded CC0 samples where relevant.
+Opening an example explicitly replaces the current browser draft after a
+confirmation; export your current .premidi first to keep a separate copy.
+
+Example audio files are included with that composition when loaded, so
+saving its .premidi file remains portable. Examples are *not* additional
+playback systems or an alternative persistence path. They demonstrate the
+existing native v4 music structures.
 
 ## Development approach
 

@@ -13,6 +13,7 @@
  <div class="brand"><b>pre-midi</b><small>PRE-PROGRAMMED / MUSIC STUDIO</small></div>
  <nav aria-label="Files">
   <button id="new" type="button">New</button>
+  <button id="examples" type="button">Examples</button>
   <button id="import" type="button">Open .premidi</button>
   <button id="export" type="button" class="primary">Save .premidi</button>
   <button id="wav" type="button">Export WAV</button>
@@ -46,7 +47,7 @@
    <section class="notes-section" aria-label="Chunk note editor">
     <div class="heading notes-heading">
      <div class="chunk-heading"><h2>Notes</h2><span id="editing-identity" class="editing-identity"></span></div>
-     <div class="history-actions"><button id="note-mode" type="button" aria-pressed="false">Edit note effects</button><button id="undo" type="button">Undo</button><button id="redo" type="button">Redo</button></div>
+     <div class="history-actions"><button id="sound-toggle" type="button" aria-expanded="true" aria-controls="sound-section">Sound</button><button id="note-mode" type="button" aria-pressed="false">Edit note effects</button><button id="undo" type="button">Undo</button><button id="redo" type="button">Redo</button></div>
     </div>
     <div class="notes-toolbar">
      <div class="chunk-fields">
@@ -64,9 +65,10 @@
     <div class="piano-scroll"><div id="piano"></div></div>
     <div id="note-expression" class="note-expression" aria-label="Selected note pitch expression" hidden></div>
    </section>
-   <section class="sound-section" aria-label="Instrument sound">
+   <section id="sound-section" class="sound-section" aria-label="Instrument sound">
     <div class="heading sound-section-heading">
      <div class="sound-heading"><h2>Sound</h2><span id="edit-instrument-note" class="editing-identity"></span></div>
+     <div class="sound-window-actions"><button id="sound-expand" type="button" aria-label="Expand sound editor">Expand</button><button id="sound-close" type="button" aria-label="Close sound editor">×</button></div>
      <div class="sound-actions"><button id="change-sound" type="button">Browse sounds</button><button id="save-sound" type="button">Save preset</button></div>
     </div>
     <div class="patch-info"><span id="patch-label"></span><span class="scope-description">Applies to all this instrument's chunks</span></div>
@@ -90,6 +92,13 @@
   <button id="close-library" type="button" aria-label="Close instrument library">×</button></div>
  <div class="library-filters" id="library-filters" aria-label="Sound categories"></div>
  <div id="library-sounds" class="library-sounds" aria-label="Available sounds"></div>
+</dialog>
+<dialog id="example-dialog" class="instrument-dialog example-dialog" aria-labelledby="example-dialog-title">
+ <div class="library-top">
+  <div><h2 id="example-dialog-title">Example compositions</h2><p>Different arrangements using the studio's existing instruments. New songs still start empty.</p></div>
+  <button id="close-examples" type="button" aria-label="Close example library">×</button>
+ </div>
+ <div id="example-list" class="example-list" aria-label="Example compositions"></div>
 </dialog>
 <script type="module" src="./studio.js"></script>
 </body>

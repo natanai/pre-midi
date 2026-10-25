@@ -609,3 +609,97 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 
 .dial-field[hidden] {display:none}
 .editing-note-effects .notes-heading #note-mode:focus-visible {outline-color:var(--signal-mauve)}
+
+
+/* COMPOSER-FIRST WORKSPACE
+ * All breakpoints show the same real timeline, notes, instruments and Sound
+ * owner. Only their placement changes. No duplicate UI, draft or mutation.
+ */
+.song {position:sticky;top:0;z-index:30;background:#030303;
+ box-shadow:0 1px 0 var(--line)}
+.work {align-items:start}
+.instrument-pane {position:sticky;top:90px;align-self:start;max-height:calc(100dvh - 105px);
+ overflow-y:auto;overscroll-behavior:contain}
+.mainwork {min-width:0}
+.synth-grid {grid-auto-rows:max-content;align-items:start}
+.synth-group {align-self:start}
+.synth-fields:has(.dial-field){align-content:start}
+.sound-window-actions{display:flex;align-items:center;gap:12px;margin-left:auto}
+.sound-window-actions button{min-width:32px}
+#sound-expand{display:none}
+#sound-toggle {border:1px solid var(--line);padding:5px 10px;min-width:55px}
+#sound-toggle[aria-expanded="true"]{color:var(--signal-cyan);border-color:var(--signal-cyan)}
+#sound-close{font-size:17px}
+.example-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;
+ background:var(--faint);max-height:65dvh;overflow-y:auto}
+.example-card{display:flex;flex-direction:column;align-items:start;gap:9px;
+ text-align:left;min-width:0;min-height:134px;padding:16px;background:#030303;
+ white-space:normal;border:0;border-left:3px solid var(--example-accent,var(--signal-cyan))}
+.example-card:hover:not(:disabled){background:#131313;text-decoration:none}
+.example-card strong{font-size:14px;font-weight:normal;color:var(--bright)}
+.example-card .example-tag{font-size:11px;color:var(--example-accent,var(--signal-cyan))}
+.example-card span:last-child{font-size:11px;line-height:1.4;color:var(--muted)}
+#example-list button:focus-visible{outline-offset:-3px}
+@media(min-width:1100px){
+ .mainwork{
+  display:grid;grid-template-areas:"timeline sound" "notes sound";
+  grid-template-columns:minmax(0,1fr) clamp(340px,27vw,510px);
+  grid-template-rows:max-content max-content;
+  column-gap:0;align-items:start;
+ }
+ .timeline-section{grid-area:timeline;min-width:0}
+ .notes-section{grid-area:notes;min-width:0}
+ .sound-section{
+  grid-area:sound;position:sticky;top:90px;align-self:start;
+  max-height:calc(100dvh - 102px);overflow-y:auto;
+  border-left:1px solid var(--line);overscroll-behavior:contain;
+ }
+ .work.inspector-closed .mainwork {grid-template-areas:"timeline" "notes";grid-template-columns:minmax(0,1fr)}
+ .work.inspector-closed .sound-section {display:none}
+ .sound-section .synth-grid {grid-template-columns:1fr}
+ .notes-section .piano-scroll {max-height:clamp(440px,calc(100dvh - 335px),800px)}
+ .sound-section .heading{position:sticky;top:0;z-index:2}
+ .notes-section .notes-toolbar {gap:10px 14px}
+ .chunk-fields #chunk-name {width:155px}
+}
+@media(min-width:1100px) and (max-width:1370px){
+ .work{grid-template-columns:220px minmax(0,1fr)}
+ .sound-section .synth-fields:has(.dial-field){gap:10px 4px}
+ .sound-section .dial-field{min-width:79px}
+}
+@media(max-width:1099px){
+ .instrument-pane {position:static;max-height:none;overflow:visible}
+ .work{display:block}
+ .sound-section{
+  position:fixed;z-index:100;left:10px;right:10px;bottom:10px;
+  background:#050505;border:1px solid var(--bright);
+  box-shadow:0 -12px 45px rgba(0,0,0,.85);
+  overflow-y:auto;overscroll-behavior:contain;
+ }
+ .work.inspector-closed .sound-section {display:none}
+ .work.inspector-compact .sound-section {max-height:min(260px,42dvh)}
+ .work.inspector-compact .sound-section .controls,
+ .work.inspector-compact .sound-section #synth-editor {display:none}
+ .work.inspector-expanded .sound-section{height:min(84dvh,850px);max-height:calc(100dvh - 30px)}
+ #sound-expand{display:inline-block}
+ .sound-section .heading{position:sticky;top:0;z-index:2}
+ .sound-section .sound-visualizer{padding:8px 12px}
+ .sound-section .signal-scope-graph{height:100px}
+ .notes-section .piano-scroll{max-height:clamp(350px,57dvh,720px)}
+ .mainwork .timeline-section{position:relative}
+ .notes-section .notes-toolbar{position:sticky;top:0;z-index:4}
+}
+@media(max-width:570px){
+ .song{padding:8px 12px;gap:8px}
+ .song>label {min-width:125px;flex-basis:100%}
+ .song>label input{font-size:15px;min-height:25px}
+ .transport{gap:4px 10px}
+ .transport #play{min-width:75px}
+ .notes-section .notes-toolbar{position:static}
+ .instrument-pane .heading{min-height:34px}
+ .sound-section .sound-actions{gap:6px}
+ .sound-window-actions{gap:4px}
+ .work.inspector-compact .sound-section{max-height:min(260px,50dvh)}
+ .example-list{grid-template-columns:1fr;max-height:68dvh}
+ .example-card{min-height:105px;padding:12px}
+}

@@ -12,6 +12,7 @@ import { loadDraft, saveDraft } from "./storage.js";
 import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
 import {createSignalDisplay} from "./soundScope.js";
+import {EXAMPLES,buildExample} from "./examples.js";
 
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v4-draft";
@@ -38,6 +39,9 @@ const savedSounds=(()=>{
  }catch{return [];}
 })();
 let libraryMode="add",libraryCategory="All";
+const inspectorViewport=window.matchMedia("(min-width:1100px)");
+let inspectorState=inspectorViewport.matches?"expanded":"closed";
+let loadingExample=false;
 let score = cached || create();
 let selectedInstrumentId = score.instruments[0].id;
 let selectedNoteId = null;
@@ -540,6 +544,7 @@ function renderSound() {
 }
 function render() {
  repairSelection();
+ syncInspector();
  $("note-mode").setAttribute("aria-pressed",String(editingNoteEffects));
  $("note-mode").textContent=editingNoteEffects?"✓ Note effects · Done":"Edit note effects";
  document.querySelector(".work")?.classList.toggle("editing-note-effects",editingNoteEffects);
@@ -554,6 +559,67 @@ function render() {
  $("undo").disabled = history.length === 0;
  $("redo").disabled = future.length === 0;
 }
+
+
+function syncInspector(){
+ const work=document.querySelector(".work");
+ for(const name of ["closed","compact","expanded"])work.classList.toggle("inspector-"+name,inspectorState===name);
+ const opened=inspectorState!=="closed";
+ $("sound-section").setAttribute("aria-hidden",String(!opened));
+ $("sound-toggle").setAttribute("aria-expanded",String(opened));
+ $("sound-toggle").textContent=opened?"✓ Sound":"Sound";
+ $("sound-expand").textContent=inspectorState==="expanded"?"Compact":"Expand";
+ $("sound-expand").setAttribute("aria-label",inspectorState==="expanded"?"Show compact sound controls":"Expand sound editor");
+}
+function setInspector(state){
+ inspectorState=state;
+ syncInspector();
+}
+inspectorViewport.addEventListener("change",event=>{
+ // Both layouts use precisely the same existing Sound element and editor.
+ setInspector(event.matches?"expanded":"closed");
+});
+$("sound-toggle").addEventListener("click",()=>{
+ setInspector(inspectorState==="closed"?(inspectorViewport.matches?"expanded":"compact"):"closed");
+});
+$("sound-expand").addEventListener("click",()=>setInspector(inspectorState==="expanded"?"compact":"expanded"));
+$("sound-close").addEventListener("click",()=>setInspector("closed"));
+function showExamples(){
+ const root=$("example-list");root.replaceChildren();
+ for(const example of EXAMPLES){
+  const card=button("",()=>{void chooseExample(example);},"example-card");
+  card.style.setProperty("--example-accent",example.accent);
+  const title=element("strong",example.name);
+  const tagline=element("span",example.tag+" · "+example.bpm+" BPM · "+example.bars+" bars · "+example.voices.length+" instruments","example-tag");
+  card.append(title,tagline,element("span",example.description));
+  root.append(card);
+ }
+ $("example-dialog").showModal();
+}
+async function chooseExample(example){
+ if(loadingExample)return;
+ if(!confirm("Load "+example.name+"? This replaces your current browser draft. Save .premidi first if you want to keep it."))return;
+ loadingExample=true;
+ for(const card of $("example-list").querySelectorAll("button"))card.disabled=true;
+ message("Loading "+example.name+" and its sounds...");
+ try {
+  const document=await buildExample(example.id,async assetId=>{
+   if(!builtinCache.has(assetId))builtinCache.set(assetId,loadLibrarySample(assetId).catch(error=>{
+    builtinCache.delete(assetId);throw error;
+   }));
+   return builtinCache.get(assetId);
+  });
+  $("example-dialog").close();
+  resetTo(document);
+  message("Example loaded: "+example.name+" · Edit freely or export it");
+ }catch(error){message("Could not load "+example.name+": "+error.message,true);}
+ finally{
+  loadingExample=false;
+  for(const card of $("example-list").querySelectorAll("button"))card.disabled=false;
+ }
+}
+$("examples").addEventListener("click",showExamples);
+$("close-examples").addEventListener("click",()=>$("example-dialog").close());
 
 $("note-mode").addEventListener("click",()=>{
  editingNoteEffects=!editingNoteEffects;
