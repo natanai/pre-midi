@@ -17,80 +17,170 @@ const piece=(preset,pattern,timeline,volume=.68,options={})=>({
 export const EXAMPLES=[
  NEON_AFTER_HOURS,
  {
-  // Three recorded steel-guitar velocity takes are used as actual audio layers.
-  // A 12-step arpeggio repeats over 16-step drums without adding any new
-  // instrument behavior or audio format data.
+  // Form: four-bar cycles with an opening riff, a second phrase, a developed
+  // third phrase, then a breakdown and cadence. One sampled steel-guitar note
+  // at a time; sound and time data use the public v7 score unchanged.
   id:"porchlight",name:"Guitar Velocity and Polymeter",tag:"SAMPLES / PHRASE REPETITION",
-  description:"Recorded guitar velocity layers and a repeating three-beat phrase over four-beat bass and drums.",
-  bpm:94,bars:8,accent:"#ffc266",
+  description:"Recorded guitar velocity layers, three-beat phrases against 4/4 drums, melodic variations, and section changes.",
+  bpm:112,bars:16,accent:"#ffc266",
   voices:[
    piece("steel-guitar",{
-    Light:[
-     N(57,0,2,.25),N(60,3,2,.55),N(64,6,2,.9),N(67,9,2,.55)
+    Opening:[
+     N(64,0,2,.55),N(67,3,2,.25),N(59,6,2,.9),N(62,10,2,.55)
     ],
-    Accent:[
-     N(57,0,2,.9),N(60,3,2,.25),N(64,6,2,.55),N(67,9,2,.9)
+    Second:[
+     N(67,0,2,.9),N(69,2,2,.55),N(64,5,2,.25),N(62,9,3,.9)
+    ],
+    Third:[
+     N(69,0,2,.9),N(67,3,2,.55),N(64,6,2,.9),N(59,10,2,.25)
+    ],
+    Break:[
+     N(64,0,3,.25),N(62,6,2,.55),N(67,10,2,.55)
+    ],
+    Turn:[
+     N(59,0,3,.9),N(63,4,2,.55),N(66,7,2,.9),N(69,11,2,.55)
+    ],
+    Resolve:[
+     N(64,0,4,.9),N(67,7,2,.55),N(64,12,4,.25)
     ]
-   },["Light","-","-","-","Accent","-","-","-"],.38,{
-    name:"Steel guitar · velocity layers",
-    tone:{gain:.7,attack:.003,release:.17,pan:-.12},
+   },["Opening","-","-","-","Second","-","-","-",
+      "Third","-","-","-","Break","-","Turn","Resolve"],.55,{
+    name:"Recorded guitar · three velocity layers",
+    tone:{gain:.72,attack:.003,release:.085,pan:-.23,
+     filter:{type:"lowpass",cutoff:4800,resonance:.7}},
     placements:[
-     {offset:4,length:12,every:12,repeats:5},
-     null,null,null,
-     {offset:0,length:12,every:12,repeats:5},
-     null,null,null
+     {offset:4,length:12,every:12,repeats:5},null,null,null,
+     {offset:0,length:12,every:12,repeats:5},null,null,null,
+     {offset:0,length:12,every:12,repeats:5},null,null,null,
+     {offset:0,length:12,every:12,repeats:3},null,
+     null,null
     ]
    }),
-   piece("sub-current",{
-    A:[N(45,0,12,.75),N(52,12,4,.44)],
-    F:[N(41,0,12,.75),N(48,12,4,.44)]
-   },["A","A","F","F","A","A","F","F"],.42,{
-    name:"Synth bass",tone:{filter:{cutoff:430},envelope:{release:.18}}
+   piece("rubber-bass",{
+    E:[N(40,0,4,.9),N(47,7,2,.62),N(52,10,2,.79),N(47,14,2,.54)],
+    C:[N(36,0,4,.88),N(43,7,2,.62),N(48,10,2,.79),N(43,14,2,.54)],
+    G:[N(43,0,4,.9),N(50,7,2,.62),N(43,10,2,.76),N(42,14,2,.6)],
+    D:[N(38,0,4,.9),N(45,7,2,.62),N(50,10,2,.78),N(42,14,2,.6)],
+    B:[N(47,0,4,.92),N(42,7,3,.7),N(47,12,3,.82)],
+    ThinE:[N(40,0,8,.75),N(47,12,3,.5)],
+    ThinC:[N(36,0,8,.72),N(43,12,3,.49)],
+    End:[N(40,0,16,.9)]
+   },["ThinE","C","G","D","E","C","G","B",
+      "E","C","G","D","ThinC","D","B","End"],.64,{
+    name:"Syncopated synth bass",
+    tone:{filter:{cutoff:930,resonance:3.1},
+     envelope:{attack:.004,decay:.13,sustain:.52,release:.14},
+     effects:{drive:.25}}
    }),
    piece("tape-strings",{
-    A:chord([57,60,64,67],0,16,.44),
-    F:chord([53,57,60,64],0,16,.44)
-   },["A","A","F","F","A","A","F","F"],.22,{
+    Em:[...chord([52,55,59,62],0,16,.5)],
+    C:[...chord([48,55,59,64],0,16,.49)],
+    G:[...chord([43,50,54,57],0,16,.46)],
+    D:[...chord([50,57,62,64],0,16,.5)],
+    B:[...chord([47,54,57,63],0,16,.53)]
+   },["Em","C","G","D","Em","C","G","B",
+      "Em","C","G","D","C","D","B","Em"],.23,{
     name:"Chord pad",
-    tone:{filter:{cutoff:1300},envelope:{attack:.28,release:.7},effects:{delayMix:.09}}
+    tone:{filter:{cutoff:1800},envelope:{attack:.19,decay:.35,sustain:.78,release:.7},
+     effects:{delayMix:.12,delayTime:.37}}
    }),
-   piece("glass-keys",{
-    High:[N(76,7,2,.58),N(79,13,2,.43)],
-    Low:[N(72,8,3,.52),N(76,13,2,.36)],
-    Turn:[N(79,3,2,.59),N(81,10,3,.49)]
-   },["-","-","High","-","Low","High","Turn","High"],.23,{
-    name:"Synth keys",tone:{effects:{delayMix:.19,delayTime:.26}}
+   piece("harmonic-keys",{
+    E:[N(76,0,2,.75),N(79,5,2,.56),N(74,11,3,.71)],
+    C:[N(72,1,3,.73),N(76,6,2,.62),N(79,13,2,.68)],
+    G:[N(74,2,2,.7),N(78,8,2,.59),N(81,13,2,.76)],
+    D:[N(76,0,2,.68),N(74,6,2,.74),N(78,12,3,.72)],
+    B:[N(75,3,2,.7),N(78,9,3,.77)],
+    UpE:[N(76,0,2,.8),N(79,3,2,.65),N(83,7,3,.86),N(86,12,3,.79)],
+    UpC:[N(76,0,2,.7),N(79,4,2,.78),N(84,8,3,.88),N(83,13,2,.6)],
+    UpG:[N(74,0,2,.72),N(78,3,2,.77),N(81,7,2,.82),N(86,12,3,.9)],
+    UpD:[N(76,0,2,.75),N(81,4,2,.79),N(86,9,2,.9),N(78,13,3,.85)],
+    End:[N(76,0,4,.85),N(79,7,3,.6),N(88,12,4,.82)]
+   },["-","-","E","-","E","C","G","B",
+      "UpE","UpC","UpG","UpD","-","D","B","End"],.33,{
+    name:"Harmonic synth counter-melody",
+    tone:{filter:{cutoff:7900},envelope:{decay:.36,release:.34},
+     effects:{delayMix:.16,delayTime:.3,delayFeedback:.22},pan:.17}
+   }),
+   piece("neon-lead",{
+    Pickup:[N(71,11,3,.62)],
+    Call:[N(71,2,3,.69),N(74,8,2,.83),N(76,12,3,.82)],
+    Response:[N(79,0,4,.76),N(76,7,3,.75),N(74,13,3,.68)],
+    Peak:[N(83,0,3,.85),N(81,4,2,.72),N(79,7,2,.78),N(76,12,4,.88)],
+    Fall:[N(78,1,4,.72,{shape:"fall",amount:1.5,rate:3.4})],
+    Close:[N(76,0,8,.78),N(71,12,4,.5)]
+   },["-","-","-","Pickup","-","Call","Response","Call",
+      "Response","Peak","Response","Peak","-","Fall","Call","Close"],.24,{
+    name:"Detuned synth lead",
+    tone:{filter:{cutoff:2800},envelope:{release:.27},
+     effects:{delayMix:.26,delayTime:.27,delayFeedback:.28},pan:.2}
    }),
    {
-    name:"Percussion rack",volume:.43,
+    name:"Drum rack · synth and recorded hits",volume:.78,
     rack:[
-     {key:"kick",preset:"pulse-kick",name:"Synth kick",gain:.72},
-     {key:"snare",preset:"static-snare",name:"Noise snare",gain:.46},
-     {key:"hat",preset:"dust-hat",name:"Noise hi-hat",gain:.29},
-     {key:"bongo",preset:"hand-bongo",name:"Recorded bongo",gain:.46,
-      tone:{gain:.75,pan:.16}}
+     {key:"kick",preset:"pulse-kick",name:"Synth kick",gain:.93,
+      tone:{effects:{drive:.4}}},
+     {key:"low",preset:"acoustic-kick",name:"Recorded kick",gain:.68,
+      tone:{gain:.84}},
+     {key:"snare",preset:"static-snare",name:"Synth noise snare",gain:.65},
+     {key:"clap",preset:"hiphop-clap",name:"Recorded clap",gain:.6},
+     {key:"hat",preset:"dust-hat",name:"Synth hi-hat",gain:.33,
+      tone:{filter:{cutoff:7200}}},
+     {key:"closed",preset:"tight-hat",name:"Recorded closed hi-hat",gain:.44},
+     {key:"open",preset:"open-hat",name:"Recorded open hi-hat",gain:.36},
+     {key:"bongo",preset:"hand-bongo",name:"Recorded bongo",gain:.4}
     ],
     pattern:{
-     Light:[
-      H("kick",0,.57),H("kick",8,.43),H("hat",6,.28),H("bongo",11,.32)
+     Open:[
+      H("kick",0,.67),H("low",0,.37),H("hat",6,.29),H("bongo",11,.45)
+     ],
+     Approach:[
+      H("kick",0,.77),H("kick",10,.52),H("low",0,.53),
+      H("snare",12,.54),H("hat",2,.25),H("hat",6,.37),
+      H("hat",14,.36),H("bongo",7,.45),H("bongo",15,.42)
      ],
      Full:[
-      H("kick",0,.79),H("kick",8,.67),
-      H("snare",4,.43),H("snare",12,.46),
-      H("hat",2,.30),H("hat",6,.34),H("hat",10,.30),H("hat",14,.35),
-      H("bongo",3,.33),H("bongo",11,.42)
+      H("kick",0,.92),H("kick",8,.77),H("low",0,.65),
+      H("snare",4,.81),H("snare",12,.87),H("clap",12,.7),
+      H("hat",0,.43),H("hat",4,.45),H("hat",8,.44),H("hat",12,.46),
+      H("closed",2,.37),H("closed",6,.42),H("closed",10,.36),H("closed",14,.43),
+      H("bongo",3,.42),H("bongo",11,.5)
+     ],
+     Shift:[
+      H("kick",0,.92),H("kick",7,.76),H("kick",11,.71),H("low",0,.67),
+      H("snare",4,.8),H("snare",12,.88),H("clap",12,.75),
+      H("hat",2,.38),H("hat",6,.43),H("hat",10,.42),H("hat",14,.43),
+      H("closed",0,.36),H("closed",8,.43),
+      H("bongo",3,.41),H("bongo",15,.53),H("open",14,.42)
      ],
      Fill:[
-      H("kick",0,.79),H("kick",8,.71),
-      H("snare",4,.43),H("snare",12,.53),
-      H("hat",2,.31),H("hat",6,.32),H("hat",10,.30),H("hat",14,.37),
-      H("bongo",3,.35),H("bongo",10,.40),H("bongo",14,.43)
+      H("kick",0,.9),H("kick",7,.75),H("kick",11,.79),H("low",0,.65),
+      H("snare",4,.88),H("snare",10,.68),H("snare",12,.86),
+      H("snare",15,.87),H("clap",12,.76),
+      H("closed",2,.44),H("closed",6,.45),H("closed",10,.44),
+      H("closed",14,.47),H("hat",1,.38),H("hat",5,.38),
+      H("hat",9,.4),H("open",15,.57),H("bongo",13,.64)
+     ],
+     Half:[
+      H("kick",0,.97),H("low",0,.72),H("snare",8,.83),H("clap",8,.66),
+      H("closed",3,.36),H("closed",7,.32),H("closed",11,.35),
+      H("closed",15,.42),H("open",14,.43)
+     ],
+     Break:[
+      H("bongo",3,.35),H("bongo",11,.46),H("hat",15,.25)
+     ],
+     Restart:[
+      H("kick",0,.8),H("low",0,.52),H("snare",12,.59),
+      H("hat",6,.26),H("open",14,.4)
      ],
      End:[
-      H("kick",0,.77),H("hat",6,.26),H("bongo",10,.35),H("snare",12,.32)
+      H("kick",0,.98),H("low",0,.77),H("snare",4,.61),
+      H("clap",4,.45),H("closed",6,.38),H("bongo",11,.43)
      ]
     },
-    timeline:["-","Light","Light","Full","Full","Full","Fill","End"]
+    timeline:["Open","Approach","Approach","Fill",
+      "Full","Full","Shift","Fill",
+      "Half","Shift","Full","Fill",
+      "Break","Restart","Fill","End"]
    }
   ]
  },

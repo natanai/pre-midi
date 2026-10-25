@@ -53,31 +53,48 @@ test("sampled examples reference only used recordings using portable relative as
   assert.deepEqual(validate(doc),[]);
  }
 });
-test("sampled guitar example is sparse and uses recorded dynamic layers with three-beat repeats",async()=>{
+test("guitar example develops four sections and retains native sample layering and phrase shifts",async()=>{
  const doc=await buildExample("porchlight",async id=>stubSample(id));
  assert.equal(doc.version,7);
- assert.equal(doc.bars,8);
+ assert.equal(doc.bpm,112);
+ assert.equal(doc.bars,16);
+ assert.equal(doc.instruments.length,6);
  const guitar=doc.instruments.find(i=>i.sounds[0].patch.presetId==="steel-guitar");
  assert.ok(guitar&&guitar.layout==="pitched");
- assert.ok(guitar.sounds[0].patch.preserveDynamics,"Keep the actual recorded velocity dynamics");
- assert.deepEqual(guitar.placements[0],{offset:4,length:12,every:12,repeats:5});
- assert.deepEqual(guitar.placements[4],{offset:0,length:12,every:12,repeats:5});
- assert.deepEqual(guitar.timeline.map(Boolean),[true,false,false,false,true,false,false,false]);
- const noteEvents=Array.from({length:128},(_,step)=>stepEvents(doc,step)
+ assert.equal(guitar.sounds[0].patch.preserveDynamics,true);
+ assert.deepEqual(guitar.timeline.map(Boolean),[
+  true,false,false,false,true,false,false,false,
+  true,false,false,false,true,false,true,true
+ ]);
+ for(const bar of [0,4,8])assert.deepEqual(guitar.placements[bar],{
+  offset:bar===0?4:0,length:12,every:12,repeats:5
+ });
+ assert.deepEqual(guitar.placements[12],{offset:0,length:12,every:12,repeats:3});
+ const noteEvents=Array.from({length:256},(_,step)=>stepEvents(doc,step)
   .filter(e=>e.instrument.id===guitar.id));
- assert.equal(noteEvents.flat().length,40,"Ten repetitions of four notes");
- assert.ok(noteEvents.every(events=>events.length<=1),"No stacked guitar chords");
- for(const onset of [4,16,28,40,52,64,76,88,100,112])
-  assert.equal(noteEvents[onset].length,1,"Three-beat pattern starts at "+onset);
- assert.equal(noteEvents[0].length,0,"The guitar starts later than the bass");
- assert.equal(noteEvents[63].length,0,"No phantom retrigger at a bar boundary");
- const patch=guitar.sounds[0].patch;
- const rootZones=patch.zones.filter(zone=>zone.root===57);
- assert.ok(rootZones.some(zone=>zone.velocity===.25));
- assert.ok(rootZones.some(zone=>zone.velocity===.9));
- assert.notEqual(sampleForNote(patch,57,.25).assetId,sampleForNote(patch,57,.9).assetId);
- assert.ok(doc.samples.length<=12,"Sparse part avoids excessive separate audio assets");
- assert.ok(doc.instruments.some(i=>i.layout==="rack"&&i.sounds.some(s=>s.patch.type==="sample")));
+ assert.ok(noteEvents.every(events=>events.length<=1),"No artificial six-string chord stacks");
+ for(const onset of [4,16,28,40,52,64,76,88,100,112,128,140,152,164,176,192,204,216,224,240])
+  assert.ok(noteEvents[onset].length,"Offbeat/repeated phrase or ending missing at "+onset);
+ assert.equal(noteEvents[0].length,0,"Initial guitar entry is delayed");
+ assert.ok(new Set(guitar.chunks.flatMap(c=>c.notes.map(n=>n.pitch))).size>=6,
+  "Lead should have recognizable melodic variation rather than one four-note loop");
+ assert.ok(new Set(guitar.chunks.map(c=>JSON.stringify(c.notes.map(n=>[n.pitch,n.start])))).size>=5);
+ const zoneLow=sampleForNote(guitar.sounds[0].patch,64,.25);
+ const zoneHigh=sampleForNote(guitar.sounds[0].patch,64,.9);
+ assert.ok(zoneLow&&zoneHigh&&zoneLow.assetId!==zoneHigh.assetId);
+ assert.ok(doc.samples.length<32);
+ const drums=doc.instruments.find(i=>i.layout==="rack");
+ assert.ok(drums&&drums.sounds.length===8);
+ const hitsAt=bar=>drums.chunks.find(c=>c.id===drums.timeline[bar])?.notes.length??0;
+ assert.ok(hitsAt(4)>hitsAt(0)*3,"Full groove should add independent drum layers");
+ assert.ok(hitsAt(12)<hitsAt(11)/5,"Break must remove most percussion");
+ assert.ok(hitsAt(14)>hitsAt(12)*4,"Final return must restore percussion");
+ const pad=doc.instruments.find(i=>i.sounds[0].patch.presetId==="tape-strings");
+ assert.equal(new Set(pad.timeline).size,5,"Use a real changing chord progression");
+ const melodic=doc.instruments.find(i=>i.sounds[0].patch.presetId==="harmonic-keys");
+ assert.ok(melodic.timeline.some(x=>x===null)&&melodic.timeline.some(Boolean));
+ assert.ok(doc.instruments.some(i=>i.chunks.some(c=>c.notes.some(n=>n.bend))));
+ assert.deepEqual(new Set(doc.samples.map(a=>a.id)),usedSampleIds(doc));
  assert.deepEqual(validate(doc),[]);
  assert.deepEqual(parse(JSON.stringify(doc)),doc);
 });

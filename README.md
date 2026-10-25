@@ -143,18 +143,18 @@ the same instruments, chunks, rack rows, timeline and audio controls as a new co
 Loading a composition asks before replacing the browser draft; save any
 existing draft first if you wish to preserve it.
 
-**Guitar Velocity and Polymeter — example:** The previous arrangement
-layered simultaneous steel-string chords, nylon guitar picking, bongo, and keys.
-The replacement plays one steel-guitar note at a time, using distinct recorded
-velocity layers from the pinned CC0 guitar samples. Two 12-step phrases repeat
-at 12-step intervals against a 16-step-per-bar drum rack and bass line.
-The guitar enters four steps after the start; the second phrase starts at bar
-five. Bass and pad use an A-minor / F-major-seventh progression. All timing is
-stored as ordinary v7 `instrument.placements` data; no playback-only effects
-or new schema features are used. The current sampler does not physically model
-guitar strings, fretting, or resonance; keeping the guitar monophonic avoids
-claiming those capabilities. **Pre-programmed remains on the older v2 parser
-and does not yet play these v7 scores.**
+**Guitar Velocity and Polymeter — example:** Six independently editable
+instruments over 16 bars at 112 BPM. A monophonic recorded steel-guitar melody
+uses three genuine sampled velocity layers; its patterns change across sections.
+Several 12-step phrases repeat against 16-step bars with offset entrances.
+A four-chord synth-pad progression, syncopated bass, two counter-melodies and
+an eight-sound percussion rack provide harmonic and rhythmic contrast.
+The example opens with fewer sounds, adds a full drum arrangement, reduces
+percussion before the final section, then ends with a different cadence.
+All of this uses ordinary v7 `placements`, reusable chunks, sample zones and
+synth patches. The score contains references to separately packaged CC0 audio;
+there are no new schema fields. Native playback in pre-programmed still requires
+a v7-capable reader instead of its existing v2 implementation.
 
 **Drum Rack and Bass — example:** The exported author revision from
 2026-10-25 has 16 bars, nine independently editable drum-rack sounds, sustained
