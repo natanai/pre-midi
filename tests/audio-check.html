@@ -44,4 +44,7 @@ try {
  document.documentElement.dataset.audio="FAIL";
  result.textContent=String(error?.stack||error);
 }
+// Report to the local test runner after the real offline audio promise settles.
+void fetch("/__audio_result?status="+encodeURIComponent(document.documentElement.dataset.audio)
+ +"&details="+encodeURIComponent(result.textContent)).catch(()=>{});
 </script></body></html>
