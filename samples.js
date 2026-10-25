@@ -77,7 +77,7 @@ export function makeSamplerPatch(preset){
     ...(asset.string===undefined?{}:{string:asset.string})};
   }),
   followPitch:preset.followPitch,transpose:0,
-  gain:preset.gain??.9,attack:.005,release:preset.release??.17,
+  gain:preset.gain??.9,attack:preset.attack??.005,release:preset.release??.17,
   pan:0,strumMs:preset.strumMs??0,preserveDynamics:preset.preserveDynamics??false,
   movement:{...movementDefaults,...(preset.movement||{})}
  };
