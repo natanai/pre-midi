@@ -218,7 +218,10 @@ async function checkLayout(frame){
   }
   const segments=[0,1,2].map(index=>doc.querySelector(
    '.arrangement-row .phrase-segment[data-source-bar="6"][data-repeat="'+index+'"]'));
-  const spacing=source?rect(source).width*.75:0;
+  // Editing a placement re-renders the timeline; never measure the detached
+  // element from the previous render.
+  const updatedSource=doc.querySelector('.arrangement-row .clip[data-bar="6"]');
+  const spacing=updatedSource?rect(updatedSource).width*.75:0;
   checks.threeBeatPolymeterStrip=segments.every(Boolean)&&
    Math.abs((rect(segments[1]).left-rect(segments[0]).left)-spacing)<3&&
    Math.abs((rect(segments[2]).left-rect(segments[1]).left)-spacing)<3;
