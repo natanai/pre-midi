@@ -100,12 +100,13 @@ export function describeRecording(samples){
  const rms=Math.sqrt(total/samples.length);
  return {rms,peak,quiet:rms<.008,clipped:clips>samples.length*.004};
 }
-export async function pcmFromRecordedBlob(blob,AudioContextType=globalThis.AudioContext){
+export async function monoFromAudioBlob(blob,AudioContextType=globalThis.AudioContext){
  if(!blob?.size)throw Error("The microphone did not capture any audio.");
  const context=new AudioContextType();
  try{
   const audio=await context.decodeAudioData(await blob.arrayBuffer());
-  const length=Math.min(Math.round(audio.duration*RECORDING_RATE),4*RECORDING_RATE);
+  if(audio.duration>30.05)throw Error("Choose a WAV up to 30 seconds long, then select a short excerpt.");
+  const length=Math.round(audio.duration*RECORDING_RATE);
   if(length<=0)throw Error("No playable sound was captured.");
   // Interpolate to one portable sample rate; reduce multichannel input to mono.
   const channels=Array.from({length:audio.numberOfChannels},(_,i)=>audio.getChannelData(i));
@@ -119,4 +120,13 @@ export async function pcmFromRecordedBlob(blob,AudioContextType=globalThis.Audio
   }
   return values;
  }finally{await context.close();}
+}
+export async function pcmFromRecordedBlob(blob,AudioContextType=globalThis.AudioContext){
+ return (await monoFromAudioBlob(blob,AudioContextType)).slice(0,4*RECORDING_RATE);
+}
+export function recordingExcerpt(values,start,seconds){
+ if(!Number.isFinite(start)||!Number.isFinite(seconds)||start<0||seconds<.06||seconds>4||
+  start*RECORDING_RATE>=values.length||Math.round((start+seconds)*RECORDING_RATE)>values.length+1)
+  throw Error("Choose an excerpt between 0.06 and 4 seconds within this recording.");
+ return values.slice(Math.round(start*RECORDING_RATE),Math.min(values.length,Math.round((start+seconds)*RECORDING_RATE)));
 }

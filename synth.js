@@ -1,8 +1,9 @@
 import { validateSamplerPatch } from "./sampler.js";
 import { validateMovement, validateBend, movementDefaults } from "./expression.js";
+import {harmonicRecipe,validHarmonics} from "./harmonics.js";
 // Original parameter-only instrument library. No samples, soundfonts, external DSP or runtime packages.
 // A patch is the single canonical definition used by the editor, live synth and WAV export.
-export const WAVES = ["sine", "triangle", "square", "sawtooth"];
+export const WAVES = ["sine", "triangle", "square", "sawtooth", "harmonic"];
 export const FILTERS = ["lowpass", "highpass", "bandpass", "notch"];
 export const PATCH_FORMAT = "pre-midi-patch";
 export const PATCH_VERSION = 1;
@@ -21,6 +22,8 @@ const base = {
   bend:{shape:"straight",amount:2,rate:4}
 };
 const presets = [
+ ["harmonic-keys","Harmonic Keys","Keys","A plucked spectrum with 32 individually editable harmonics.",{oscillators:[{wave:"harmonic",harmonics:harmonicRecipe().map((_,i)=>[1,.38,.22,.08,.14,.04,.06][i]||0),level:1,octave:0,detune:0},{wave:"sine",level:0,octave:0,detune:0}],envelope:{attack:.006,decay:.65,sustain:.12,release:.4},filter:{cutoff:10000}}],
+ ["harmonic-reed","Harmonic Reed","Winds","An airy sustained tone shaped from editable odd harmonics.",{oscillators:[{wave:"harmonic",harmonics:harmonicRecipe("odd"),level:1,octave:0,detune:0},{wave:"sine",level:.08,octave:1,detune:4}],noise:.025,envelope:{attack:.08,decay:.18,sustain:.8,release:.32},filter:{cutoff:6200},movement:{rate:5.2,depth:8}}],
  ["init","Init","Basic","A clean starting sound.",{}],
  ["sub-current","Sub Current","Bass","Round low-frequency sine body.",{oscillators:[{wave:"sine",level:1,octave:-1,detune:0},{wave:"triangle",level:.23,octave:0,detune:0}],filter:{cutoff:520},envelope:{attack:.012,decay:.2,sustain:.83,release:.13}}],
  ["acid-line","Acid Line","Bass","Sharp saw with a biting filter.",{oscillators:[{wave:"sawtooth",level:.9,octave:0,detune:0},{wave:"square",level:.22,octave:-1,detune:5}],filter:{cutoff:1450,resonance:9},envelope:{attack:.004,decay:.2,sustain:.39,release:.1},effects:{drive:.29}}],
@@ -76,6 +79,8 @@ export function validatePatch(patch) {
   if(!object(osc)||!WAVES.includes(osc.wave)||!num(osc.level,0,1)||
      !Number.isInteger(osc.octave)||!num(osc.octave,-2,2)||!num(osc.detune,-100,100))
    errors.push("Invalid oscillator parameters.");
+  if(object(osc)&&(osc.wave==="harmonic"||osc.harmonics!==undefined)&&!validHarmonics(osc.harmonics))
+   errors.push("A harmonic oscillator needs 32 strengths between 0 and 1.");
  }
  if(!num(patch.noise,0,1)||!num(patch.pan,-1,1))errors.push("Invalid noise level or panning.");
  if(!object(patch.filter)||!FILTERS.includes(patch.filter.type)||!num(patch.filter.cutoff,50,14000)||!num(patch.filter.resonance,.1,16))

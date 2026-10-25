@@ -3,6 +3,7 @@
 // For sampled instruments the upper trace uses the actual decoded recording.
 import {movement,pitchCents} from "./expression.js";
 import {getAsset} from "./assetRegistry.js";
+import {harmonicWave} from "./harmonics.js";
 const NS="http://www.w3.org/2000/svg";
 const node=(tag,attributes={})=>{
  const el=document.createElementNS(NS,tag);
@@ -33,7 +34,7 @@ function synthWave(patch,progress){
  for(const osc of patch.oscillators){
   const detune=2**((osc.detune||0)/1200);
   const phase=fundamental*2**osc.octave*detune;
-  result+=osc.level*wave(osc.wave,phase);
+  result+=osc.level*(osc.wave==="harmonic"?harmonicWave(osc.harmonics,phase):wave(osc.wave,phase));
  }
  result/=a;
  // A simple preview of spectral smoothing, NOT a claim of sample-accurate

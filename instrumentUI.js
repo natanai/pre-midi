@@ -3,6 +3,7 @@
 import { WAVES, FILTERS } from "./synth.js";
 import { BEND_SHAPES } from "./expression.js";
 import { createDial } from "./dial.js";
+import {HARMONIC_COUNT,harmonicRecipe} from "./harmonics.js";
 const groups=[
  {name:"Oscillator 1",open:true,fields:[
   {path:["oscillators",0,"wave"],label:"Wave",options:WAVES},
@@ -94,7 +95,12 @@ function renderField(field,patch,onChange,onPreview){
   input.append(option);
  }
  input.value=String(value);
- input.addEventListener("change",()=>onChange(field.path,typeof value==="number"?Number(input.value):input.value));
+ input.addEventListener("change",()=>{
+  if(field.path[0]==="oscillators"&&field.path[2]==="wave"&&input.value==="harmonic"){
+   const index=field.path[1],slot=patch.oscillators[index];
+   onChange(["oscillators",index],{...slot,wave:"harmonic",harmonics:slot.harmonics||harmonicRecipe()});
+  }else onChange(field.path,typeof value==="number"?Number(input.value):input.value);
+ });
  label.append(input);
  return label;
 }
@@ -113,6 +119,34 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{}) {
   fields.className="synth-fields";
   for(const field of group.fields)fields.append(renderField(field,patch,onChange,onPreview));
   details.append(summary,fields);
+  const index=group.fields[0].path[0]==="oscillators"?group.fields[0].path[1]:null;
+  if(index!==null&&patch.oscillators[index].wave==="harmonic"){
+   const panel=document.createElement("div");panel.className="harmonic-editor";
+   panel.setAttribute("aria-label","Oscillator "+(index+1)+" harmonics");
+   const recipes=document.createElement("div");recipes.className="harmonic-recipes";
+   for(const shape of ["sine","saw","odd"]){
+    const control=document.createElement("button");control.type="button";
+    control.textContent=shape==="odd"?"Odd harmonics":shape==="saw"?"All harmonics":"Fundamental";
+    control.addEventListener("click",()=>onChange(["oscillators",index,"harmonics"],harmonicRecipe(shape)));
+    recipes.append(control);
+   }
+   panel.append(recipes);
+   const first=document.createElement("div");first.className="synth-fields harmonic-fields";
+   const more=document.createElement("details");more.className="harmonic-more";
+   const key="Harmonics "+index;more.open=expanded.has(key);
+   more.addEventListener("toggle",()=>more.open?expanded.add(key):expanded.delete(key));
+   const heading=document.createElement("summary");heading.textContent="Harmonics 9–32";
+   const rest=document.createElement("div");rest.className="synth-fields harmonic-fields";
+   for(let n=0;n<HARMONIC_COUNT;n++){
+    const field={label:n===0?"H1 · Root":"H"+(n+1),min:0,max:1,step:.01,display:"percent",defaultValue:n===0?1:0};
+    const dial=createDial(field,patch.oscillators[index].harmonics[n],
+     value=>onChange(["oscillators",index,"harmonics",n],value),
+     value=>onPreview(["oscillators",index,"harmonics",n],value));
+    dial.querySelector('[role="slider"]').setAttribute("aria-label","Oscillator "+(index+1)+" harmonic "+(n+1));
+    (n<8?first:rest).append(dial);
+   }
+   more.append(heading,rest);panel.append(first,more);details.append(panel);
+  }
   grid.append(details);
  }
  root.append(grid);

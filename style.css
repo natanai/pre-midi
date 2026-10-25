@@ -755,3 +755,21 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 [hidden] {display:none!important}
 /* The selected Sound label can widen on mobile; history stays within the heading. */
 .history-actions {max-width:100%;min-width:0;flex-wrap:wrap}
+/* Harmonics stay with their oscillator; deeper partials are progressively shown. */
+.harmonic-editor { min-width:0; padding:0 12px 12px; }
+.harmonic-recipes { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 12px; }
+.harmonic-recipes button { font-size:11px; padding:6px 8px; }
+.harmonic-fields { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.harmonic-more { margin-top:10px; }
+.harmonic-more summary { cursor:pointer; padding:10px 0; font-size:12px; }
+.harmonic-more>summary::after { content:"+"; }
+.harmonic-more[open]>summary::after { content:"−"; }
+.mic-excerpt { display:flex; flex-wrap:wrap; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
+.mic-excerpt .mic-guidance { flex-basis:100%; margin:0; overflow-wrap:anywhere; }
+.mic-excerpt label { flex:1 1 130px; min-width:0; }
+.mic-excerpt input { width:100%; min-width:0; }
+.mic-synth-result { display:grid; gap:12px; border:1px solid var(--signal-cyan); padding:14px; margin-top:14px; }
+.mic-synth-result audio { width:100%; min-width:0; }
+.mic-synth-result label { display:grid; gap:6px; min-width:0; }
+.mic-synth-result input { width:100%; min-width:0; }
+.mic-synth-result .mic-guidance { margin:0; }

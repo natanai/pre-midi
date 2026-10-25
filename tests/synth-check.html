@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Harmonic synthesis and sound matching checks</title>
+<style>body{margin:0}iframe{border:0;width:100%;height:100vh}pre{white-space:pre-wrap}</style>
+<iframe src="about:blank" title="Synth converter studio"></iframe><pre id="result"></pre>
+<script type="module">
+import {convertToSynth} from "../synthMatch.js";
+import {analyzeSound,audioSignature,signatureDistance} from "../soundAnalysis.js";
+import {renderSynthBuffer,wav} from "../audio.js";
+import {makePatch,validatePatch} from "../synth.js";
+import {create,parse} from "../schema.js";
+import {exportProject} from "../packageIO.js";
+import {encodeMonoWav} from "../recording.js";
+const output=document.getElementById("result"),frame=document.querySelector("iframe");
+const assert=(condition,reason)=>{if(!condition)throw Error(reason);};
+const wait=async check=>{for(let i=0;i<500;i++){if(check())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error("Timed out waiting for converter UI: "+frame.contentDocument?.getElementById("mic-status")?.textContent);};
+async function run(){
+ let status="FAIL";
+ try{
+  const samples=Float32Array.from({length:44100},(_,i)=>{
+   const t=i/44100,level=Math.min(1,t/.02)*Math.min(1,(1-t)/.1);
+   return .4*level*(Math.sin(2*Math.PI*220*t)+.5*Math.sin(4*Math.PI*220*t)+.2*Math.sin(6*Math.PI*220*t));
+  });
+  const converted=await convertToSynth(samples,44100),analysis=analyzeSound(samples,44100);
+  assert(!validatePatch(converted.patch).length,"Converter produced invalid native parameters");
+  const baseline=await renderSynthBuffer(makePatch("init"),converted.referencePitch,converted.hold,{sampleRate:analysis.rate,seconds:converted.seconds});
+  const baselineError=signatureDistance(analysis.signature,audioSignature(baseline.getChannelData(0)));
+  assert(converted.error<baselineError*.75,"Matching did not improve on a default synth: "+converted.error+" / "+baselineError);
+  assert(converted.error<=converted.initialError+1e-8,"Refinement made the match worse");
+  const score=create();score.instruments[0].sounds[0].patch=converted.patch;
+  score.instruments[0].chunks[0].notes=[{id:"held",pitch:57,start:0,duration:8,velocity:1}];
+  const exported=exportProject(score),restored=parse(await exported.blob.text());
+  assert(exported.name.endsWith(".premidi")&&restored.samples.length===0,"Converted patch still depends on WAV assets");
+  const rendered=new DataView(await (await wav(restored)).arrayBuffer());
+  let energy=0;for(let i=44;i<Math.min(rendered.byteLength,44100*4);i+=4)energy+=Math.abs(rendered.getInt16(i,true));
+  assert(energy>10000,"Native harmonic score rendered silently");
+  const doc=frame.contentDocument,w=frame.contentWindow,get=id=>doc.getElementById(id);
+  get("record-sound").click();
+  assert(get("mic-upload")&&!get("mic-upload").hidden,"WAV upload action missing");
+  const upload=new w.DataTransfer();upload.items.add(new w.File([encodeMonoWav(samples)],"reference-a3.wav",{type:"audio/wav"}));
+  get("mic-file").files=upload.files;get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
+  await wait(()=>!get("mic-preview").hidden&&!get("mic-convert").disabled);
+  assert(!get("mic-excerpt").hidden,"Uploaded WAV cannot select an excerpt");
+  get("mic-convert").click();
+  await wait(()=>!get("mic-synth-result").hidden&&!get("mic-use-synth").disabled);
+  assert(get("mic-synth-playback").src.startsWith("blob:"),"Converted synth cannot be auditioned");
+  const generatedName=get("mic-synth-name").value;assert(generatedName.length>3,"No generated instrument name");
+  get("mic-use-synth").click();
+  assert(!get("microphone-dialog").open,"Use synth failed");
+  assert(doc.querySelectorAll(".instrument-card").length===2,"Conversion did not create a new instrument");
+  assert(doc.querySelector(".instrument-card.active").textContent.includes(generatedName),"Generated name was lost");
+  assert(doc.querySelectorAll('.harmonic-editor [role="slider"]').length===32,"Native harmonic dials missing");
+  let saved;
+  const url=w.URL.createObjectURL.bind(w.URL);w.URL.createObjectURL=blob=>{if(blob.type==="application/json")saved=blob;return url(blob);};
+  w.HTMLAnchorElement.prototype.click=function(){};
+  get("export").click();assert(saved,"Synth-only export did not produce a .premidi");
+  const before=parse(await saved.text());assert(before.samples.length===0,"Source WAV leaked into score");
+  const dial=doc.querySelector('[aria-label="Oscillator 1 harmonic 2"]');
+  const value=Number(dial.getAttribute("aria-valuenow"));
+  dial.dispatchEvent(new w.KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+  get("export").click();
+  const after=parse(await saved.text());
+  assert(after.instruments[1].sounds[0].patch.oscillators[0].harmonics[1]>value,"Generated harmonic dials are not editable");
+  const second=doc.querySelector('[aria-label="Wave (oscillators.1.wave)"]');
+  second.value="harmonic";second.dispatchEvent(new w.Event("change",{bubbles:true}));
+  get("export").click();assert(parse(await saved.text()).instruments[1].sounds[0].patch.oscillators[1].harmonics.length===32,"Second oscillator cannot use harmonics");
+  w.prompt=()=>"Saved converted sound";get("save-sound").click();
+  assert(w.localStorage.getItem("premidi-user-sounds-v1").includes("Saved converted sound"),"Converted synth cannot save as a preset");
+  get("record-sound").click();
+  const bad=new w.DataTransfer();bad.items.add(new w.File(["not WAV"],"invalid.wav"));get("mic-file").files=bad.files;
+  get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
+  await wait(()=>get("mic-status").textContent==="Couldn't read this sound");
+  assert(get("mic-preview").hidden,"Invalid upload left a usable take");
+  get("mic-file").files=upload.files;get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
+  await wait(()=>!get("mic-preview").hidden&&!get("mic-convert").disabled);
+  get("mic-convert").click();get("mic-close").click();get("record-sound").click();
+  await new Promise(resolve=>setTimeout(resolve,150));
+  assert(get("mic-preview").hidden&&get("mic-synth-result").hidden,"Cancelled conversion updated a new recording session");
+  assert(doc.querySelectorAll(".instrument-card").length===2,"Cancelled conversion created an instrument");
+  const rect=get("microphone-dialog").getBoundingClientRect();
+  assert(rect.left>=0&&rect.right<=w.innerWidth+1,"Recorder is clipped at mobile width");
+  status="PASS";output.textContent=JSON.stringify({baselineError,matchError:converted.error,evaluations:converted.evaluations,name:generatedName,
+   checks:"actual harmonic WAV rendering, improved sound match, uploaded WAV conversion, generated name, native dials, small export, preset, cancellation, invalid file, mobile geometry"});
+ }catch(error){output.textContent=String(error.stack||error);}
+ document.documentElement.dataset.synth=status;
+ void fetch("/__synth_result?status="+status+"&details="+encodeURIComponent(output.textContent)).catch(()=>{});
+}
+localStorage.removeItem("premidi-v5-draft");localStorage.removeItem("premidi-user-sounds-v1");
+frame.addEventListener("load",()=>void run(),{once:true});frame.src="../index.html";
+</script></html>

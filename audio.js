@@ -2,6 +2,8 @@ import {resolveEvent} from "./soundModel.js";
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
 import { movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
+import {setOscillatorWave} from "./harmonics.js";
+import {validatePatch} from "./synth.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the resolved sound patch stored in the score.
 export const secondsPerStep = doc => 60/doc.bpm/4;
@@ -71,7 +73,7 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
   if(!slot.level)continue;
   const oscillator=ctx.createOscillator();
   const gain=add(ctx.createGain());
-  oscillator.type=slot.wave;
+  setOscillatorWave(ctx,oscillator,slot);
   oscillator.frequency.setValueAtTime(Math.min(18000,frequency(event.pitch)*2**slot.octave),start);
   schedulePitch(ctx,oscillator.detune,{...event,bend:event.bend??patch.bend},motion,start,duration,slot.detune);
   gain.gain.value=slot.level;
@@ -265,6 +267,17 @@ function pcmWav(buffer) {
   v.setInt16(pos,n<0?n*32768:n*32767,true);pos+=2;
  }
  return new Blob([result],{type:"audio/wav"});
+}
+// The converter renders the same voice as transport, audition, and WAV export.
+// No approximate JavaScript synthesizer is used to judge a candidate patch.
+export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,seconds=duration+patch.envelope.release+.012}={}){
+ const issues=validatePatch(patch);
+ if(patch.type!=="synth"||issues.length)throw Error(issues.join("\n")||"Choose a synth patch.");
+ if(!Number.isFinite(pitch)||pitch<0||pitch>127||!Number.isFinite(duration)||duration<=0||duration>4||
+  !Number.isFinite(seconds)||seconds<=0||seconds>8)throw Error("Invalid synth preview duration or pitch.");
+ const ctx=new OfflineAudioContext(1,Math.ceil(seconds*sampleRate),sampleRate);
+ soundNote(ctx,ctx.destination,{patch,volume:1},{pitch,velocity:1},0,duration,null);
+ return ctx.startRendering();
 }
 export async function wav(score) {
  // Decode once, before choosing the render length: full one-shot tails can
