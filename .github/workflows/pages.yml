@@ -25,6 +25,8 @@ jobs:
           npm test
       - name: Fetch pinned CC0 recordings
         run: node scripts/fetch-samples.mjs
+      - name: Prepare versioned browser assets
+        run: node scripts/prepare-pages.mjs
       - uses: actions/configure-pages@v5
         with:
           enablement: true

@@ -14,6 +14,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm run check
+      - name: Prepare versioned browser assets
+        run: node scripts/prepare-pages.mjs
       - name: Fetch pinned CC0 recordings
         run: node scripts/fetch-samples.mjs
       - name: Check actual desktop and mobile layout in Chrome
