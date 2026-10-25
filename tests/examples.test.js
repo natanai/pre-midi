@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {EXAMPLES,buildExample} from "../examples.js";
 import {sampleAsset} from "../samples.js";
-import {makeSampleAsset,usedSampleIds} from "../sampler.js";
+import {makeSampleAsset,usedSampleIds,sampleForNote} from "../sampler.js";
 import {validate,parse} from "../schema.js";
 import {stepEvents} from "../audio.js";
 function stubSample(assetId){
@@ -53,6 +53,35 @@ test("sampled examples reference only used recordings using portable relative as
   assert.deepEqual(validate(doc),[]);
  }
 });
+test("sampled guitar example is sparse and uses recorded dynamic layers with three-beat repeats",async()=>{
+ const doc=await buildExample("porchlight",async id=>stubSample(id));
+ assert.equal(doc.version,7);
+ assert.equal(doc.bars,8);
+ const guitar=doc.instruments.find(i=>i.sounds[0].patch.presetId==="steel-guitar");
+ assert.ok(guitar&&guitar.layout==="pitched");
+ assert.ok(guitar.sounds[0].patch.preserveDynamics,"Keep the actual recorded velocity dynamics");
+ assert.deepEqual(guitar.placements[0],{offset:4,length:12,every:12,repeats:5});
+ assert.deepEqual(guitar.placements[4],{offset:0,length:12,every:12,repeats:5});
+ assert.deepEqual(guitar.timeline.map(Boolean),[true,false,false,false,true,false,false,false]);
+ const noteEvents=Array.from({length:128},(_,step)=>stepEvents(doc,step)
+  .filter(e=>e.instrument.id===guitar.id));
+ assert.equal(noteEvents.flat().length,40,"Ten repetitions of four notes");
+ assert.ok(noteEvents.every(events=>events.length<=1),"No stacked guitar chords");
+ for(const onset of [4,16,28,40,52,64,76,88,100,112])
+  assert.equal(noteEvents[onset].length,1,"Three-beat pattern starts at "+onset);
+ assert.equal(noteEvents[0].length,0,"The guitar starts later than the bass");
+ assert.equal(noteEvents[63].length,0,"No phantom retrigger at a bar boundary");
+ const patch=guitar.sounds[0].patch;
+ const rootZones=patch.zones.filter(zone=>zone.root===57);
+ assert.ok(rootZones.some(zone=>zone.velocity===.25));
+ assert.ok(rootZones.some(zone=>zone.velocity===.9));
+ assert.notEqual(sampleForNote(patch,57,.25).assetId,sampleForNote(patch,57,.9).assetId);
+ assert.ok(doc.samples.length<=12,"Sparse part avoids excessive separate audio assets");
+ assert.ok(doc.instruments.some(i=>i.layout==="rack"&&i.sounds.some(s=>s.patch.type==="sample")));
+ assert.deepEqual(validate(doc),[]);
+ assert.deepEqual(parse(JSON.stringify(doc)),doc);
+});
+
 test("long ambient example uses real arrangement lanes and multiple distinct sections",async()=>{
  const doc=await buildExample("floating-signals",async id=>stubSample(id));
  assert.equal(doc.bars,16);
