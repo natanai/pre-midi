@@ -82,7 +82,8 @@ async function checkLayout(frame){
  button.click();
  const library=get("instrument-dialog");
  checks.libraryOpens=library.open && library.querySelectorAll(".preset-card").length>=15;
- const card=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Neon Lead"));
+ const card=library.querySelector('.preset-card[data-preset-id="neon-lead"]');
+ const leadName=card?.querySelector(".preset-information strong")?.textContent;
  const choice=card?.querySelector(".preset-choose");
  if(choice)choice.click();
  // Sample instruments may require an asynchronous asset load; the test follows
@@ -92,35 +93,38 @@ async function checkLayout(frame){
  diagnostics.preset={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("patch-label").textContent};
   checks.presetCreatesInstrument=doc.querySelectorAll(".instrument-card").length===2 && !library.open;
  checks.patchEditorPresent=!!doc.querySelector("#synth-editor .synth-group");
- checks.presetSelected=get("patch-label").textContent.includes("Neon Lead");
+ checks.presetSelected=!!leadName&&get("patch-label").textContent.includes(leadName);
  get("change-sound").click();
  checks.soundReplaceAccessible=library.open;
- const acid=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Acid Line"));
+ const acid=library.querySelector('.preset-card[data-preset-id="acid-line"]');
+ const acidName=acid?.querySelector(".preset-information strong")?.textContent;
  acid?.querySelector(".preset-choose")?.click();
- for(let attempt=0;attempt<40 && get("instrument-name").value!=="Acid Line";attempt++)
+ for(let attempt=0;attempt<40 && get("instrument-name").value!==acidName;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
- checks.browseRenamesInstrument=get("instrument-name").value==="Acid Line";
+ checks.browseRenamesInstrument=!!acidName&&get("instrument-name").value===acidName;
  get("change-sound").click();
  get("close-library").click();
  checks.libraryCloses=!library.open;
  get("add-instrument").click();
- const piano=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Recorded Piano"));
+ const piano=library.querySelector('.preset-card[data-preset-id="real-piano"]');
+ const pianoName=piano?.querySelector(".preset-information strong")?.textContent;
  piano?.querySelector(".preset-choose")?.click();
  for(let attempt=0;attempt<120 && doc.querySelectorAll(".instrument-card").length!==3;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
  diagnostics.sample={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("patch-label").textContent};
   checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
-  get("patch-label").textContent.includes("Recorded Piano") && !library.open;
+  get("patch-label").textContent.includes(pianoName||"!") && !library.open;
  checks.sampleControlsReachable=!!doc.querySelector("#synth-editor .sample-zones") &&
   !!doc.querySelector("#synth-editor .sample-replace-action");
  if(frame.clientWidth>=1400) {
   get("add-instrument").click();
-  const steel=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Steel Acoustic"));
+  const steel=library.querySelector('.preset-card[data-preset-id="steel-guitar"]');
+ const steelName=steel?.querySelector(".preset-information strong")?.textContent;
   steel?.querySelector(".preset-choose")?.click();
   for(let attempt=0;attempt<160&&doc.querySelectorAll(".instrument-card").length!==4;attempt++)
    await new Promise(resolve=>setTimeout(resolve,25));
   checks.guitarPresetAccessible=doc.querySelectorAll(".instrument-card").length===4 &&
-   get("patch-label").textContent.includes("Steel Acoustic");
+   get("patch-label").textContent.includes(steelName||"!");
   checks.guitarMappingCollapsible=!!doc.querySelector("#synth-editor .sample-map-details") &&
    !!doc.querySelector("#synth-editor .dial-knob[aria-label='Strum']");
  }
@@ -144,12 +148,13 @@ async function checkLayout(frame){
  checks.exampleGalleryOpens=gallery.open && gallery.querySelectorAll(".example-card").length===5;
  const proceed=frame.contentWindow.confirm;
  frame.contentWindow.confirm=()=>true;
- const demo=[...gallery.querySelectorAll(".example-card")].find(card=>card.textContent.includes("Neon After Hours"));
+ const demo=gallery.querySelector('.example-card[data-example-id="neon-after-hours"]');
+ const demoName=demo?.querySelector("strong")?.textContent;
  demo?.click();
- for(let i=0;i<220&&get("title").value!=="Neon After Hours";i++)
+ for(let i=0;i<220&&get("title").value!==demoName;i++)
   await new Promise(resolve=>setTimeout(resolve,30));
  diagnostics.neon={status:get("status").textContent,title:get("title").value,inst:doc.querySelectorAll(".instrument-card").length,dialogOpen:gallery.open};
-  checks.exampleUsesRealComposer=get("title").value==="Neon After Hours" &&
+  checks.exampleUsesRealComposer=get("title").value===demoName &&
   doc.querySelectorAll(".instrument-card").length===8 &&
   doc.querySelectorAll(".arrangement-row").length===8 &&
   doc.querySelectorAll("#piano .rack-row").length===9 &&
@@ -160,11 +165,12 @@ async function checkLayout(frame){
   // not just the synthetic-only example or a schema fixture.
   get("examples").click();
   frame.contentWindow.confirm=()=>true;
-  const porch=[...gallery.querySelectorAll(".example-card")].find(card=>card.textContent.includes("Porchlight"));
+  const porch=gallery.querySelector('.example-card[data-example-id="porchlight"]');
+   const porchName=porch?.querySelector("strong")?.textContent;
   porch?.click();
-  for(let attempt=0;attempt<220&&get("title").value!=="Porchlight";attempt++)
+  for(let attempt=0;attempt<220&&get("title").value!==porchName;attempt++)
    await new Promise(resolve=>setTimeout(resolve,25));
-  checks.sampleExampleLoaded=get("title").value==="Porchlight" &&
+  checks.sampleExampleLoaded=get("title").value===porchName &&
    doc.querySelectorAll(".instrument-card").length===4 &&
    doc.querySelectorAll(".arrangement-row").length===4 &&
    !gallery.open;
@@ -173,10 +179,10 @@ async function checkLayout(frame){
  // source positions, no decorative lower strip, and exact shared bar edges.
  get("examples").click();
  frame.contentWindow.confirm=()=>true;
- const floating=[...gallery.querySelectorAll(".example-card")].find(card=>
-  card.textContent.includes("Floating Signals"));
+ const floating=gallery.querySelector('.example-card[data-example-id="floating-signals"]');
+ const floatingName=floating?.querySelector("strong")?.textContent;
  floating?.click();
- for(let attempt=0;attempt<220&&get("title").value!=="Floating Signals";attempt++)
+ for(let attempt=0;attempt<220&&get("title").value!==floatingName;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
  const lanes=[...doc.querySelectorAll(".arrangement-row")];
  const headingBars=[...doc.querySelector(".arrangement-head").children].slice(1);
@@ -196,7 +202,7 @@ async function checkLayout(frame){
    }
   }
  }
- checks.floatingSignalsSharedBarGeometry=get("title").value==="Floating Signals" &&
+ checks.floatingSignalsSharedBarGeometry=get("title").value===floatingName &&
   lanes.length===4&&headingBars.length===16&&allPositions&&maxBoundaryError<2;
  checks.noDuplicatePhraseLane=doc.querySelectorAll(".phrase-segment").length===0 &&
   lanes.every(lane=>rect(lane).height<43)&&
