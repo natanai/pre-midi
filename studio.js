@@ -292,7 +292,7 @@ function renderTimeline() {
   });
   // The strips show real onsets below the directly editable bar slots.
   for(const phrase of phraseInstances(score,inst)){
-   const length=Math.min(16,score.bars*16-phrase.start);
+   const length=Math.min(phrase.length,score.bars*16-phrase.start);
    const segment=element("div",undefined,"phrase-segment"+(phrase.index?" repeated":""));
    segment.dataset.sourceBar=String(phrase.bar);
    segment.dataset.repeat=String(phrase.index);
@@ -364,6 +364,7 @@ function openPicker(instId, bar, trigger) {
   const timing=placementFor(inst,bar);
   for(const [labelText,key,min,max] of [
    ["Offset in bar (steps)","offset",0,15],
+   ["Phrase length (steps)","length",1,16],
    ["Repetitions","repeats",1,32],
    ["Repeat every (steps)","every",1,64]
   ]){
@@ -377,7 +378,7 @@ function openPicker(instId, bar, trigger) {
     closePicker();
     const changed=modify(()=>{
      const old=placementFor(inst,bar),setting={...old,[key]:next};
-     inst.placements[bar]=setting.offset===0&&setting.repeats===1&&setting.every===16?null:setting;
+     inst.placements[bar]=setting.offset===0&&setting.length===16&&setting.repeats===1&&setting.every===16?null:setting;
     });
     if(changed){
      const trigger=$("arrangement").querySelector(
@@ -387,7 +388,7 @@ function openPicker(instId, bar, trigger) {
    });
    label.append(value);settings.append(label);
   }
-  settings.append(element("p","Beat 3 = offset 8. For a 3-beat pattern, repeat every 12 steps.","placement-tip"));
+  settings.append(element("p","Beat 3 = offset 8. A three-beat phrase has length 12 and repeats every 12 steps.","placement-tip"));
   panel.append(settings);
  }
  const add = button("+ New chunk", () => {
