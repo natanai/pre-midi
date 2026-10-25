@@ -11,7 +11,7 @@ function svg(tag,attrs={}){
  for(const [key,value] of Object.entries(attrs))el.setAttribute(key,String(value));
  return el;
 }
-export function renderNoteExpression(root,note,pitchLabel,onChange,onDelete){
+export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChange,onDelete){
  root.replaceChildren();
  root.hidden=!note;
  if(!note)return;
@@ -58,7 +58,7 @@ export function renderNoteExpression(root,note,pitchLabel,onChange,onDelete){
  function draw(){
   const current={shape:select.value,amount:Number(slider.value),rate:Number(rateSlider.value)};
   rate.hidden=current.shape!=="wave";
-  const total=note.duration*60/120/4;
+  const total=durationSeconds;
   const points=Array.from({length:81},(_,i)=>{
    const x=i/80,value=bendSemitones(current,x,x*total);
    return Math.round(x*320)+","+Math.round(32-value*2.1);
