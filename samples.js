@@ -3,6 +3,7 @@
 // Copies are downloaded at GitHub Pages build time to static /samples.
 // When selected, the bytes are embedded in a .premidi, never a remote reference.
 import { GUITAR_RECORDINGS, GUITAR_PRESETS } from "./acousticGuitars.js";
+import { movementDefaults } from "./expression.js";
 const META="facebookincubator/Meta-open-sound";
 const STARGATE="stargatedaw/stargate-sample-pack";
 const VCSL="sgossner/VCSL";
@@ -38,6 +39,21 @@ export const SAMPLE_ASSETS=[
 export const SAMPLE_LIBRARY=[
  {id:"real-piano",name:"Recorded Piano",category:"Recorded",description:"Layered piano recordings, two key zones.",assets:["piano-c3","piano-c4"],followPitch:true},
  ...GUITAR_PRESETS,
+ { ...GUITAR_PRESETS.find(p=>p.id==="steel-guitar"),
+   id:"steel-lap-cry",name:"Lap Steel Cry",category:"Expressive",
+   description:"Real steel guitar sliding up into long, aching sustained notes.",
+   movement:{glide:-4,glideTime:.46,depth:28,rate:5.2,delay:.37,tremolo:.07,tremoloRate:3.1}
+ },
+ { ...GUITAR_PRESETS.find(p=>p.id==="steel-guitar"),
+   id:"steel-haunt",name:"Steel Guitar Haunt",category:"Expressive",
+   description:"Recorded steel strings with a wavering, otherworldly sustained tone.",
+   movement:{glide:2,glideTime:.6,depth:53,rate:6,delay:.27,tremolo:.24,tremoloRate:4.2}
+ },
+ { ...GUITAR_PRESETS.find(p=>p.id==="nylon-finger"),
+   id:"nylon-sob",name:"Nylon String Sigh",category:"Expressive",
+   description:"Warm fingerstyle guitar sliding and sighing between pitches.",
+   movement:{glide:-1.3,glideTime:.28,depth:21,rate:4.6,delay:.5}
+ },
  {id:"wood-recorder",name:"Recorder",category:"Recorded",description:"Staccato baroque recorder.",assets:["recorder"],followPitch:true},
  {id:"ball-whistle",name:"Ball Whistle",category:"Textures",description:"Airy recorded whistle with organic motion.",assets:["whistle"],followPitch:false},
  {id:"acoustic-kick",name:"Kick Drum",category:"Drums",description:"Punchy sampled bass drum.",assets:["kick"],followPitch:false},
@@ -62,6 +78,7 @@ export function makeSamplerPatch(preset){
   }),
   followPitch:preset.followPitch,transpose:0,
   gain:preset.gain??.9,attack:.005,release:preset.release??.17,
-  pan:0,strumMs:preset.strumMs??0,preserveDynamics:preset.preserveDynamics??false
+  pan:0,strumMs:preset.strumMs??0,preserveDynamics:preset.preserveDynamics??false,
+  movement:{...movementDefaults,...(preset.movement||{})}
  };
 }
