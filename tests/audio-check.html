@@ -1,0 +1,50 @@
+<!doctype html><html lang="en" data-audio="PENDING">
+<head><meta charset="utf-8"><title>Native instrument render check</title></head>
+<body><pre id="results"></pre>
+<script type="module">
+import { create, validate } from "../schema.js";
+import { makePatch } from "../synth.js";
+import { wav } from "../audio.js";
+const result=document.getElementById("results");
+document.documentElement.dataset.audio="RUNNING";
+result.textContent="Audio module initialized";
+try {
+ const names=["glass-keys","sub-current","static-snare","violet-pad"];
+ const fingerprints=[];
+ for(const name of names) {
+  const score=create();
+  score.bars=2;
+  const inst=score.instruments[0];
+  const chunk=inst.chunks[0];
+  chunk.notes=[{id:"test-note",pitch:name==="sub-current"?48:60,start:0,duration:6,velocity:1}];
+  inst.patch=makePatch(name);
+  inst.timeline=[chunk.id,null];
+  const errors=validate(score);
+  if(errors.length)throw Error(name+" failed validation: "+errors.join(","));
+  result.textContent="Rendering "+name;
+  const data=await (await wav(score)).arrayBuffer();
+  const view=new DataView(data);
+  if(String.fromCharCode(...new Uint8Array(data.slice(0,4)))!=="RIFF")throw Error(name+" is not WAV");
+  const count=Math.min(180000,(view.getUint32(40,true)/4)|0);
+  let energy=0,peak=0,signature=0;
+  for(let i=0;i<count;i++) {
+   const sample=view.getInt16(44+i*4,true)/32768;
+   energy+=sample*sample;peak=Math.max(peak,Math.abs(sample));
+   if(i%431===0)signature+=Math.round(sample*10000)*(i+1);
+  }
+  const rms=Math.sqrt(energy/count);
+  if(!(rms>.0004 && peak>.003 && peak<=1))throw Error(name+" sounds silent or invalid: rms "+rms+", peak "+peak);
+  fingerprints.push({name,rms:Number(rms.toFixed(5)),peak:Number(peak.toFixed(5)),signature});
+ }
+ if(new Set(fingerprints.map(f=>f.signature)).size!==fingerprints.length)
+  throw Error("Some presets rendered identically: "+JSON.stringify(fingerprints));
+ document.documentElement.dataset.audio="PASS";
+ result.textContent=JSON.stringify(fingerprints);
+} catch(error) {
+ document.documentElement.dataset.audio="FAIL";
+ result.textContent=String(error?.stack||error);
+}
+// Report to the local test runner after the real offline audio promise settles.
+void fetch("/__audio_result?status="+encodeURIComponent(document.documentElement.dataset.audio)
+ +"&details="+encodeURIComponent(result.textContent)).catch(()=>{});
+</script></body></html>

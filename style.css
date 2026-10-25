@@ -406,3 +406,76 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   width:7px;
 }
 .note.resizing {outline:1px solid var(--bright);outline-offset:-1px}
+
+/* Native synthesizer studio. A small set of repeatable modules, not separate editors per preset. */
+.sound-actions {display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.sound-actions button {min-height:32px}
+.sound-actions button::before {content:"[";color:var(--muted)}
+.sound-actions button::after {content:"]";color:var(--muted)}
+.patch-info {
+  padding:12px 14px 5px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px 20px;flex-wrap:wrap;color:var(--text);font-size:12px;
+}
+#patch-label {color:var(--track-accent,#08e4ec)}
+.sound-section .controls {padding-top:10px;padding-bottom:14px}
+.sound-section .sound-identity-controls {flex-wrap:wrap;gap:14px 26px;border:0}
+.synth-editor {border-top:1px solid var(--faint);padding:12px 14px 20px}
+.synth-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;align-items:start}
+.synth-group {min-width:0;border:1px solid var(--line);background:#050505}
+.synth-group summary {
+  list-style:none;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:15px;min-height:42px;
+  padding:9px 12px;
+  cursor:pointer;color:var(--bright);font-size:12px;
+}
+.synth-group summary::-webkit-details-marker {display:none}
+.synth-group summary::after {content:"+";font-size:16px;color:var(--muted)}
+.synth-group[open] summary::after {content:"−"}
+.synth-group[open] summary {border-bottom:1px solid var(--faint)}
+.synth-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;padding:14px 12px}
+.synth-field {display:grid;min-width:0;gap:8px;font-size:11px;color:var(--muted)}
+.synth-field>select {width:100%;min-width:0;max-width:100%;font-size:13px}
+.synth-range {display:flex;align-items:center;gap:8px;min-width:0}
+.synth-range input {width:100%;min-width:48px;accent-color:var(--track-accent)}
+.synth-range output {color:var(--bright);font-variant-numeric:tabular-nums;white-space:nowrap;min-width:60px;text-align:right;font-size:11px}
+.instrument-dialog {
+  color:var(--text);background:#020202;
+  border:1px solid var(--bright);border-radius:0;
+  width:min(750px,calc(100vw - 30px));max-width:750px;
+  max-height:min(85dvh,860px);padding:0;
+  font-family:inherit;
+}
+.instrument-dialog::backdrop {background:rgba(0,0,0,.83)}
+.library-top {display:flex;align-items:start;justify-content:space-between;gap:15px;padding:16px;border-bottom:1px solid var(--line)}
+.library-top h2 {font-size:15px;font-weight:normal;margin:0 0 7px;color:var(--bright)}
+.library-top p {font-size:11px;color:var(--muted);margin:0}
+#close-library {font-size:23px;min-width:36px;min-height:32px;padding:0;color:var(--bright)}
+.library-filters {display:flex;flex-wrap:wrap;gap:6px;padding:12px 15px;border-bottom:1px solid var(--line)}
+.library-filter {border:1px solid var(--line);padding:5px 10px;min-height:32px;font-size:12px}
+.library-filter.selected {border-color:var(--bright);background:#1a1a1a;color:var(--bright)}
+.library-sounds {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--faint);max-height:58dvh;overflow-y:auto}
+.preset-card {display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:15px;background:var(--void)}
+.preset-information {display:grid;gap:6px;min-width:0}
+.preset-information strong {font-size:13px;font-weight:normal;color:var(--bright);overflow-wrap:anywhere}
+.preset-information span {font-size:11px;color:var(--muted);line-height:1.3}
+.preset-actions {display:flex;align-items:center;gap:6px;flex-shrink:0}
+.preset-actions button {border:1px solid var(--line);min-height:34px;min-width:35px;padding:5px 9px}
+.preset-preview {color:var(--signal-cyan)}
+.preset-choose {color:var(--bright)}
+.preset-actions button:hover {border-color:var(--bright);text-decoration:none}
+@media(max-width:930px) {
+ .synth-grid {grid-template-columns:1fr}
+ .synth-fields {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px) {
+ .synth-grid {grid-template-columns:1fr}
+ .synth-fields {grid-template-columns:1fr}
+ .instrument-dialog {width:calc(100vw - 16px);max-height:92dvh}
+ .library-sounds {grid-template-columns:1fr;max-height:60dvh}
+ .patch-info {padding:10px 12px}
+ .synth-editor {padding:10px 12px}
+ .preset-card {padding:13px}
+ .sound-actions {gap:8px}
+}

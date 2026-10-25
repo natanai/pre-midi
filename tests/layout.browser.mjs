@@ -2,15 +2,22 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve, extname } from "node:path";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 import { strict as assert } from "node:assert";
 
 const root=resolve(new URL("..",import.meta.url).pathname);
+let resolveAudio;
+const audioResult=new Promise(resolve=>{resolveAudio=resolve;});
 const server=createServer(async (req,res)=>{
  try {
   const pathname=decodeURIComponent(new URL(req.url,"http://localhost").pathname);
+  if(pathname==="/__audio_result") {
+   const url=new URL(req.url,"http://localhost");
+   resolveAudio({status:url.searchParams.get("status"),details:url.searchParams.get("details")});
+   res.writeHead(200,{"Content-Type":"text/plain"});res.end("OK");return;
+  }
   const file=resolve(root,"."+pathname);
   if(!file.startsWith(root+"/"))throw new Error("Invalid path");
   const content=await readFile(file);
@@ -35,4 +42,20 @@ try {
   assert.equal(result?.[1],"PASS","Responsive layout failed at "+width+"x"+height+": "+(details?.[1]||dom.slice(-600)));
   console.log("PASS browser layout",width+"x"+height,details?.[1]||"");
  }
+ const audioUrl="http://127.0.0.1:"+port+"/tests/audio-check.html";
+ const child=spawn(chrome,[
+  "--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
+  "--disable-background-timer-throttling","--disable-renderer-backgrounding",
+  "--no-first-run","--user-data-dir=/tmp/premidi-audio-"+process.pid,
+  audioUrl
+ ],{stdio:"ignore"});
+ try {
+  const finished=await Promise.race([
+   audioResult,
+   new Promise((_,reject)=>setTimeout(()=>reject(Error("Browser audio rendering timed out")),60000)),
+   new Promise((_,reject)=>child.on("error",reject))
+  ]);
+  assert.equal(finished?.status,"PASS","Synthesizer browser render failed: "+finished?.details);
+  console.log("PASS original instrument WAV render",finished.details);
+ } finally {child.kill("SIGKILL");}
 }finally{server.close();}

@@ -4,7 +4,7 @@
 
 Build the standalone music studio in pre-midi before repeatedly mirroring changes into pre-programmed. The music schema, authoring interface, instrument definitions and audio engine should be designed together in pre-midi. Pre-programmed's Media feature keeps its existing imported composition support while the studio evolves.
 
-When future changes alter the current v2 score format, new compositions may not immediately import into the game. That is an expected temporary limitation, **not** a reason to maintain unused conversion layers, duplicate editing logic, or update both repositories after every experiment.
+The v3 patch-based scores do not yet import into pre-programmed's existing v2 Media integration. That is an expected temporary limitation, **not** a reason to maintain unused conversion layers, duplicate editing logic, or update both repositories after every experiment.
 
 ## Ownership and eventual parity
 

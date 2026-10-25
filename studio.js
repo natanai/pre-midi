@@ -2,13 +2,41 @@ import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename
 import { play, audition, wav } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
+import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
+import { renderPatchEditor } from "./instrumentUI.js";
 
 const $ = key => document.getElementById(key);
-const CACHE = "premidi-v2-draft";
+const CACHE = "premidi-v3-draft";
+const SAVED_SOUNDS = "premidi-user-sounds-v1";
 const cached = (() => {
- try { return parse(localStorage.getItem(CACHE) || ""); }
- catch { return null; }
+ try { return parse(localStorage.getItem(CACHE) || ""); } catch {}
+ // Recover music written only in this browser before patches existed.
+ // This is not a legacy .premidi file importer.
+ try {
+  const previous=JSON.parse(localStorage.getItem("premidi-v2-draft") || "null");
+  if(previous?.version!==2 || !Array.isArray(previous.instruments))return null;
+  for(const inst of previous.instruments) {
+   const patch=makePatch();
+   if(["sine","triangle","square","sawtooth"].includes(inst.waveform))patch.oscillators[0].wave=inst.waveform;
+   if(Number.isFinite(inst.attack))patch.envelope.attack=Math.min(3,Math.max(0,inst.attack));
+   if(Number.isFinite(inst.release))patch.envelope.release=Math.min(4,Math.max(.01,inst.release));
+   inst.patch=patch;
+   delete inst.waveform;delete inst.attack;delete inst.release;
+  }
+  previous.version=3;
+  return validate(previous).length?null:previous;
+ }catch{return null;}
 })();
+const savedSounds=(()=>{
+ try {
+  const entries=JSON.parse(localStorage.getItem(SAVED_SOUNDS)||"[]");
+  return Array.isArray(entries)?entries.filter(item=>
+   item && typeof item.id==="string" && item.id.length<80 &&
+   typeof item.name==="string" && item.name.length<=60 && item.name.trim() &&
+   validatePatch(item.patch).length===0).slice(0,100):[];
+ }catch{return [];}
+})();
+let libraryMode="add",libraryCategory="All";
 let score = cached || create();
 let selectedInstrumentId = score.instruments[0].id;
 let selectedChunks = new Map();
@@ -141,7 +169,7 @@ function renderInstruments() {
   const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
   el.style.setProperty("--track-accent", signal(inst));
   el.setAttribute("aria-pressed", String(selected));
-  el.append(element("strong", inst.name), element("small", inst.waveform + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
+  el.append(element("strong", inst.name), element("small", (getPreset(inst.patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.patch.presetId)?.name ?? "Custom sound") + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
   list.append(el);
  }
  $("add-instrument").disabled = score.instruments.length >= 12;
@@ -418,15 +446,25 @@ function renderChunkEditor() {
  renderNotes();
 }
 function renderSound() {
- const inst = instrument();
- $("instrument-name").value = inst.name;
- $("waveform").value = inst.waveform;
- document.querySelector(".controls")?.style.setProperty("--track-accent", signal(inst));
- for (const [name, scale, suffix] of [["volume",100,"%"],["attack",1000," ms"],["release",1000," ms"]]) {
-  $(name).value = String(Math.round(inst[name] * scale));
-  $(name + "-value").textContent = Math.round(inst[name] * scale) + suffix;
- }
- $("remove-instrument").disabled = score.instruments.length === 1;
+ const inst=instrument();
+ $("instrument-name").value=inst.name;
+ $("volume").value=String(Math.round(inst.volume*100));
+ $("volume-value").textContent=Math.round(inst.volume*100)+"%";
+ document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
+ $("synth-editor").style.setProperty("--track-accent",signal(inst));
+ document.querySelector(".patch-info")?.style.setProperty("--track-accent",signal(inst));
+ const preset=getPreset(inst.patch.presetId)||savedSounds.find(entry=>entry.id===inst.patch.presetId);
+ $("patch-label").textContent=preset?"Sound · "+preset.name:"Sound · Custom";
+ renderPatchEditor($("synth-editor"),inst.patch,(path,value)=>{
+  modify(()=>{
+   const target=instrument().patch;
+   let owner=target;
+   for(let i=0;i<path.length-1;i++)owner=owner[path[i]];
+   owner[path[path.length-1]]=value;
+   target.presetId="custom";
+  });
+ });
+ $("remove-instrument").disabled=score.instruments.length===1;
 }
 function render() {
  repairSelection();
@@ -512,15 +550,82 @@ $("bars").addEventListener("change", event => modify(() => {
  }
  selectedSlot.bar = Math.min(selectedSlot.bar, count - 1);
 }));
-$("add-instrument").addEventListener("click", () => {
- closePicker();
- modify(() => {
-  const inst = makeInstrument(score.instruments.length + 1, score.bars);
-  score.instruments.push(inst);
-  selectedInstrumentId = inst.id;
-  selectedSlot = {instrumentId:inst.id,bar:0};
- });
+$("add-instrument").addEventListener("click",()=>openLibrary("add"));
+$("change-sound").addEventListener("click",()=>openLibrary("replace"));
+$("close-library").addEventListener("click",()=>$("instrument-dialog").close());
+$("save-sound").addEventListener("click",()=>{
+ const inst=instrument();
+ const suggested=(getPreset(inst.patch.presetId)?.name||inst.name)+" variation";
+ const name=prompt("Name your sound preset:",suggested)?.trim();
+ if(!name)return;
+ if(name.length>60)return message("Preset name must be 60 characters or less.",true);
+ if(savedSounds.length>=100)return message("Your sound library contains 100 presets.",true);
+ const item={id:"user-"+id(),name,category:"Mine",description:"Your saved sound",patch:patchCopy(inst.patch)};
+ item.patch.presetId=item.id;
+ try {
+  localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));
+  savedSounds.push(item);
+  modify(()=>{instrument().patch.presetId=item.id;});
+  message("Saved "+name+" in your browser's sound library.");
+ } catch {
+  message("Browser storage is unavailable. Your composition still contains this sound.",true);
+ }
 });
+function allSounds(){return [...PRESETS,...savedSounds];}
+function openLibrary(mode) {
+ closePicker();
+ if(mode==="add"&&score.instruments.length>=12)return;
+ libraryMode=mode;
+ libraryCategory="All";
+ renderLibrary();
+ const dialog=$("instrument-dialog");
+ if(!dialog.open)dialog.showModal();
+}
+function chooseSound(preset) {
+ $("instrument-dialog").close();
+ const patch=patchCopy(preset.patch);
+ patch.presetId=preset.id;
+ if(libraryMode==="add") {
+  modify(()=>{
+   const inst=makeInstrument(score.instruments.length+1,score.bars);
+   inst.name=preset.name;
+   inst.patch=patch;
+   score.instruments.push(inst);
+   selectedInstrumentId=inst.id;
+   selectedSlot={instrumentId:inst.id,bar:0};
+   selectedChunks.set(inst.id,inst.chunks[0].id);
+  });
+ } else modify(()=>{instrument().patch=patch;});
+}
+function renderLibrary() {
+ const filters=$("library-filters"),list=$("library-sounds");
+ filters.replaceChildren();list.replaceChildren();
+ const categories=["All","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
+ for(const category of categories) {
+  const control=button(category,()=>{libraryCategory=category;renderLibrary();},
+   "library-filter"+(libraryCategory===category?" selected":""));
+  control.setAttribute("aria-pressed",String(libraryCategory===category));
+  filters.append(control);
+ }
+ for(const preset of allSounds().filter(p=>libraryCategory==="All"||p.category===libraryCategory)) {
+  const card=element("div",undefined,"preset-card");
+  const info=element("div",undefined,"preset-information");
+  info.append(element("strong",preset.name),element("span",preset.description));
+  const actions=element("div",undefined,"preset-actions");
+  const preview=button("▶",()=>{
+   const sample={...instrument(),patch:patchCopy(preset.patch),volume:.8};
+   void audition(sample,preset.category==="Bass"?48:preset.category==="Percussion"?60:69)
+    .catch(error=>message("Sound preview failed: "+error.message,true));
+  },"preset-preview");
+  preview.title="Preview "+preset.name;
+  preview.setAttribute("aria-label","Preview "+preset.name);
+  const use=button(libraryMode==="add"?"Add":"Use",()=>chooseSound(preset),"preset-choose");
+  use.setAttribute("aria-label",(libraryMode==="add"?"Add ":"Use ")+preset.name);
+  actions.append(preview,use);
+  card.append(info,actions);
+  list.append(card);
+ }
+}
 $("remove-instrument").addEventListener("click", () => {
  const inst = instrument();
  if (!confirm("Remove " + inst.name + " and all its chunks?")) return;
@@ -563,11 +668,9 @@ $("delete-chunk").addEventListener("click", () => {
 });
 $("chunk-name").addEventListener("change", event => modify(() => chunkFor(instrument()).name = event.target.value.trim() || "Chunk"));
 $("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
-$("waveform").addEventListener("change", event => modify(() => instrument().waveform = event.target.value));
-for (const [name, scale] of [["volume",100],["attack",1000],["release",1000]]) {
- $(name).addEventListener("change", event => modify(() => instrument()[name] = Number(event.target.value) / scale));
- $(name).addEventListener("input", event => $(name + "-value").textContent = event.target.value + (name === "volume" ? "%" : " ms"));
-}
+
+$("volume").addEventListener("change",event=>modify(()=>instrument().volume=Number(event.target.value)/100));
+$("volume").addEventListener("input",event=>$("volume-value").textContent=event.target.value+"%");
 $("undo").addEventListener("click", undo);
 $("redo").addEventListener("click", redo);
 document.addEventListener("keydown", event => {

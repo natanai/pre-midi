@@ -22,6 +22,20 @@ function checkLayout(frame){
   notesControlsFit:controls.every(el=>{const b=rect(el);return b.left>=tools.left-2&&b.right<=tools.right+2;}),
   noPageHorizontalClipping:doc.documentElement.scrollWidth<=frame.clientWidth+3
  };
+ // Exercise the real preset browser and editor, not a mock copy.
+ button.click();
+ const library=get("instrument-dialog");
+ checks.libraryOpens=library.open && library.querySelectorAll(".preset-card").length>=15;
+ const card=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Neon Lead"));
+ const choice=card?.querySelector(".preset-choose");
+ if(choice)choice.click();
+ checks.presetCreatesInstrument=doc.querySelectorAll(".instrument-card").length===2 && !library.open;
+ checks.patchEditorPresent=!!doc.querySelector("#synth-editor .synth-group");
+ checks.presetSelected=get("patch-label").textContent.includes("Neon Lead");
+ get("change-sound").click();
+ checks.soundReplaceAccessible=library.open;
+ get("close-library").click();
+ checks.libraryCloses=!library.open;
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({
   viewport:frame.clientWidth,
