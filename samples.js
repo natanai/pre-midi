@@ -2,6 +2,7 @@
 // All entries are CC0 1.0; SHA-1 is each upstream git *blob* checksum.
 // Copies are downloaded at GitHub Pages build time to static /samples.
 // When selected, the bytes are embedded in a .premidi, never a remote reference.
+import { GUITAR_RECORDINGS, GUITAR_PRESETS } from "./acousticGuitars.js";
 const META="facebookincubator/Meta-open-sound";
 const STARGATE="stargatedaw/stargate-sample-pack";
 const VCSL="sgossner/VCSL";
@@ -10,10 +11,11 @@ export const SAMPLE_REPOS={
  [STARGATE]:"dbfd6ec52d4ed53b60bdbea5fc6adf295127c027",
  [VCSL]:"c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e"
 };
-const m=(id,repo,path,sha,root,mime="audio/wav")=>({
+const m=(id,repo,path,sha,root,mime="audio/wav",metadata={})=>({
  id,repo,path,sha,root,mime,license:"CC0-1.0",
  licenseUrl:"https://creativecommons.org/publicdomain/zero/1.0/",
- sourceUrl:"https://github.com/"+repo+"/blob/"+SAMPLE_REPOS[repo]+"/"+path.split("/").map(encodeURIComponent).join("/")
+ sourceUrl:"https://github.com/"+repo+"/blob/"+SAMPLE_REPOS[repo]+"/"+path.split("/").map(encodeURIComponent).join("/"),
+ ...metadata
 });
 export const SAMPLE_ASSETS=[
  m("piano-c3",META,"systems/instruments/meta-piano/ogg/INSPiano_Vel01_C3_01.ogg","d2a176656f06c5a16a29f0b0c14fd99d8143e095",48,"audio/ogg"),
@@ -29,12 +31,13 @@ export const SAMPLE_ASSETS=[
  m("hat-open",STARGATE,"stargate-sample-pack/freesound/drums/cymbal/open/439820__twentytwentymusic__electronic-open-hat-7.wav","405e836d37030ae32f7ca1a0cdc7385c17d8861e",60),
  m("bongo",STARGATE,"stargate-sample-pack/freesound/drums/bongo/219157__jagadamba__bongo01.wav","a231d879a67d59b75a6e816ffa17b37ceefd3ffe",60),
  m("recorder",VCSL,"Aerophones/Edge-blown Aerophones/Baroque Alto Recorder/Staccato/AltRecorder_Stac_C4_rr1_Main.wav","db96e84032789b062e96c08a7e616885beacce72",60),
- m("whistle",VCSL,"Aerophones/Edge-blown Aerophones/Ball Whistle/Main_BallWhistle_Short-001.wav","5d6f10fa67189231eef2a4fb72f97e19983e056b",60)
+ m("whistle",VCSL,"Aerophones/Edge-blown Aerophones/Ball Whistle/Main_BallWhistle_Short-001.wav","5d6f10fa67189231eef2a4fb72f97e19983e056b",60),
+ ...GUITAR_RECORDINGS.map(item=>m(item.id,META,item.path,item.sha,item.root,"audio/ogg",
+  {velocity:item.velocity,string:item.string}))
 ];
 export const SAMPLE_LIBRARY=[
  {id:"real-piano",name:"Recorded Piano",category:"Recorded",description:"Layered piano recordings, two key zones.",assets:["piano-c3","piano-c4"],followPitch:true},
- {id:"nylon-guitar",name:"Nylon Guitar",category:"Recorded",description:"Finger-plucked acoustic nylon strings.",assets:["nylon-c3","nylon-c4"],followPitch:true},
- {id:"steel-guitar",name:"Steel Guitar",category:"Recorded",description:"Bright steel-string acoustic plucks.",assets:["steel-c3","steel-c4"],followPitch:true},
+ ...GUITAR_PRESETS,
  {id:"wood-recorder",name:"Recorder",category:"Recorded",description:"Staccato baroque recorder.",assets:["recorder"],followPitch:true},
  {id:"ball-whistle",name:"Ball Whistle",category:"Textures",description:"Airy recorded whistle with organic motion.",assets:["whistle"],followPitch:false},
  {id:"acoustic-kick",name:"Kick Drum",category:"Drums",description:"Punchy sampled bass drum.",assets:["kick"],followPitch:false},
@@ -51,7 +54,14 @@ export const rawUrl=asset=>"https://raw.githubusercontent.com/"+asset.repo+"/"+S
 export function makeSamplerPatch(preset){
  return {
   type:"sample",presetId:preset.id,
-  zones:preset.assets.map(id=>({assetId:id,root:sampleAsset(id).root})),
-  followPitch:preset.followPitch,transpose:0,gain:.9,attack:.005,release:.17,pan:0
+  zones:preset.assets.map(id=>{
+   const asset=sampleAsset(id);
+   return {assetId:id,root:asset.root,
+    ...(asset.velocity===undefined?{}:{velocity:asset.velocity}),
+    ...(asset.string===undefined?{}:{string:asset.string})};
+  }),
+  followPitch:preset.followPitch,transpose:0,
+  gain:preset.gain??.9,attack:.005,release:preset.release??.17,
+  pan:0,strumMs:preset.strumMs??0,preserveDynamics:preset.preserveDynamics??false
  };
 }

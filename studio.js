@@ -5,7 +5,8 @@ import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
 import { renderPatchEditor } from "./instrumentUI.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
-import { loadLibrarySample, makeSampleAsset, MAX_SCORE_BYTES } from "./sampler.js";
+import { loadLibrarySample, makeSampleAsset, MAX_SCORE_BYTES, sampleForNote } from "./sampler.js";
+import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
 import { loadDraft, saveDraft } from "./storage.js";
 
@@ -42,6 +43,12 @@ let history = [], future = [], playback = null, pendingPlay = false;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
 
+// Audio assets are immutable blobs. Undo stores only mutable score structure
+// plus a shallow list of shared samples, not 100 copies of multi-MB recordings.
+const snapshot = document => {
+ const {samples,...mutable}=document;
+ return {...clone(mutable),samples:[...samples]};
+};
 const instrument = () => score.instruments.find(entry => entry.id === selectedInstrumentId) || score.instruments[0];
 const chunkFor = (inst) => inst.chunks.find(entry => entry.id === selectedChunks.get(inst.id)) || inst.chunks[0];
 const signal = inst => SIGNALS[Math.max(0, score.instruments.findIndex(entry => entry.id === inst.id)) % SIGNALS.length];
@@ -91,7 +98,7 @@ function stop() {
  paintPlayhead();
 }
 function modify(change) {
- const before = clone(score);
+ const before = snapshot(score);
  change();
  const errors = validate(score);
  if (errors.length) {
@@ -121,7 +128,7 @@ function resetTo(next) {
 function undo() {
  if (!history.length) return;
  closePicker();
- future.push(clone(score));
+ future.push(snapshot(score));
  score = history.pop();
  repairSelection();
  store();
@@ -130,7 +137,7 @@ function undo() {
 function redo() {
  if (!future.length) return;
  closePicker();
- history.push(clone(score));
+ history.push(snapshot(score));
  score = future.pop();
  repairSelection();
  store();
@@ -322,7 +329,7 @@ function renderNotes() {
  root.replaceChildren();
  root.style.setProperty("--track-accent", signal(inst));
 
- for (let pitch = 83; pitch >= 48; pitch--) {
+ for (let pitch = 83; pitch >= 36; pitch--) {
   const sharp = [1,3,6,8,10].includes(pitch % 12);
   const row = element("div", undefined, "piano-row" + (sharp ? " sharp" : ""));
   row.append(element("span", noteLabel(pitch), "note-name"));
@@ -336,22 +343,28 @@ function renderNotes() {
     cell.classList.toggle("end", !!present && present.start + present.duration - 1 === pos);
     cell.setAttribute("aria-label", noteLabel(pitch) + ", step " + (pos + 1)
      + (present ? ", note length " + present.duration + " steps; click to remove, drag right edge to resize" : ", click to add note"));
-    cell.title = present ? "Note: " + present.duration + "/16 · drag end to resize · Alt+←/→ to adjust" : "Add " + noteLabel(pitch);
+    cell.title = present ? "Note: " + present.duration + "/16 · " + Math.round(present.velocity*100) + "% strength · drag end to resize · Shift-click to change strength" : "Add " + noteLabel(pitch);
    }
   }
 
   for (let step = 0; step < 16; step++) {
    let ignoreClick = false;
-   const cell = button("", () => {
+   const cell = button("", event => {
     if (ignoreClick) return;
     const targetInst = instrument();
     const editedChunk = chunkFor(targetInst);
     const existing = editedChunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
+    if(existing && event.shiftKey){
+     const options=[.25,.55,.9];
+     const next=options.find(value=>value>existing.velocity+.01)??options[0];
+     if(modify(()=>{existing.velocity=next;}))message("Note strength: "+Math.round(next*100)+"%");
+     return;
+    }
     if (modify(() => {
      if (existing) editedChunk.notes = editedChunk.notes.filter(n => n.id !== existing.id);
      else editedChunk.notes.push({
       id:id(), pitch, start:step,
-      duration:Math.min(Number($("length").value),16-step), velocity:0.8
+      duration:Math.min(Number($("length").value),16-step), velocity:Number($("velocity").value)
      });
     }) && !existing && !playback && !pendingPlay) void audition(targetInst,pitch,score).catch(() => {});
    }, "note" + (step % 4 === 0 ? " beat" : ""));
@@ -369,7 +382,7 @@ function renderNotes() {
     ignoreClick = true;
     const initialX = event.clientX, originalDuration = note.duration;
     const width = bounds.width;
-    const before = clone(score);
+    const before = snapshot(score);
     let finished = false;
     cell.setPointerCapture(event.pointerId);
     cell.classList.add("resizing");
@@ -596,7 +609,8 @@ $("save-sound").addEventListener("click",()=>{
  if(savedSounds.length>=100)return message("Your sound library contains 100 presets.",true);
  const item={id:"user-"+id(),name,category:"Mine",description:"Your saved sound",patch:patchCopy(inst.patch)};
  if(inst.patch.type==="sample") {
-  item.samples=inst.patch.zones.map(zone=>score.samples.find(asset=>asset.id===zone.assetId));
+  item.samples=inst.patch.zones.filter(zone=>!sampleAsset(zone.assetId))
+   .map(zone=>score.samples.find(asset=>asset.id===zone.assetId));
   if(item.samples.some(value=>!value))return message("The sample is missing audio data.",true);
  }
  item.patch.presetId=item.id;
@@ -622,9 +636,13 @@ function openLibrary(mode) {
 const builtinCache=new Map();
 async function resolveSamples(preset) {
  if(preset.patch?.type==="sample") {
-  const assets=preset.samples||[];
-  if(assets.length!==preset.patch.zones.length)throw Error("Saved sample is missing its audio.");
-  return assets;
+  return Promise.all(preset.patch.zones.map(async zone=>{
+   const existing=(preset.samples||[]).find(item=>item.id===zone.assetId)
+    ||score.samples.find(item=>item.id===zone.assetId);
+   if(existing)return existing;
+   if(sampleAsset(zone.assetId))return loadLibrarySample(zone.assetId);
+   throw Error("Saved sample is missing its audio: "+zone.assetId);
+  }));
  }
  if(!preset.assets)return [];
  return Promise.all(preset.assets.map(async assetId=>{
@@ -666,18 +684,23 @@ async function chooseSound(preset) {
 }
 async function auditionPreset(preset) {
  try {
-  const assets=await resolveSamples(preset);
   const patch=preset.category==="Mine"?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
+  const pitch=preset.category==="Bass"?48:preset.category==="Guitars"?57:69;
   const inst={...instrument(),patch,volume:.8};
-  const temp={samples:assets};
-  await audition(inst,preset.category==="Bass"?48:69,temp);
+  const zone=patch.type==="sample"?sampleForNote(patch,pitch,.8):null;
+  // A guitar preview should play immediately, not download 48 audio takes
+  // just to hear the single note selected in the library.
+  const asset=zone?(preset.samples||[]).find(item=>item.id===zone.assetId)
+   ||score.samples.find(item=>item.id===zone.assetId)
+   ||await loadLibrarySample(zone.assetId):null;
+  await audition(inst,pitch,{samples:asset?[asset]:[]});
  }catch(error){message("Preview failed: "+error.message,true);}
 }
 function renderLibrary() {
  const filters=$("library-filters"),list=$("library-sounds");
  filters.replaceChildren();list.replaceChildren();
- const categories=["All","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
+ const categories=["All","Guitars","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
  for(const category of categories) {
   const control=button(category,()=>{libraryCategory=category;renderLibrary();},
    "library-filter"+(libraryCategory===category?" selected":""));

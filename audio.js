@@ -1,4 +1,5 @@
-import { decodeSamples, scheduleSample } from "./sampler.js";
+import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
+import { strumOffset } from "./guitarTiming.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the instrument.patch stored in the score.
 export const secondsPerStep = doc => 60/doc.bpm/4;
@@ -144,14 +145,19 @@ function renderBar(ctx,out,score,bar,start) {
  for(const instrument of score.instruments) {
   const chunk=instrument.chunks.find(c=>c.id===instrument.timeline[bar]);
   if(chunk)for(const event of chunk.notes)
-   soundNote(ctx,out,instrument,event,start+event.start*unit,event.duration*unit,score);
+   soundNote(ctx,out,instrument,event,
+    start+event.start*unit+strumOffset(instrument,event,chunk.notes),
+    event.duration*unit,score);
  }
 }
 let context;
 export async function audition(instrument,pitch,score=null) {
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
- if(score)await decodeSamples(context,score,bufferCache(context));
+ if(score){
+  const zone=instrument.patch?.type==="sample"?sampleForNote(instrument.patch,pitch,.8):null;
+  await decodeSamples(context,score,bufferCache(context),new Set(zone?[zone.assetId]:[]));
+ }
  soundNote(context,context.destination,instrument,{pitch,velocity:.8},context.currentTime+.01,.24,score);
 }
 export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{}}={}) {
@@ -182,7 +188,10 @@ export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{}
    const step=scheduled%cycle,barIndex=Math.floor(step/16),unit=secondsPerStep(current);
    void decodeSamples(ctx,current,bufferCache(ctx)).catch(console.warn);
    for(const event of stepEvents(current,scheduled))
-    soundNote(ctx,out,event.instrument,event.note,nextTime,event.note.duration*unit,current);
+    soundNote(ctx,out,event.instrument,event.note,
+     nextTime+strumOffset(event.instrument,event.note,
+      event.instrument.chunks.find(c=>c.id===event.instrument.timeline[event.barIndex])?.notes||[]),
+     event.note.duration*unit,current);
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
   }

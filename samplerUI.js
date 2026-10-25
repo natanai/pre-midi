@@ -25,15 +25,33 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
   input.addEventListener("change",()=>onChange([key],Number(input.value)));
   line.append(input,output);label.append(heading,line);fields.append(label);
  }
+ const strum=document.createElement("label");strum.className="synth-field";
+ const strumName=document.createElement("span");strumName.textContent="Strum";
+ const strumRow=document.createElement("div");strumRow.className="synth-range";
+ const strumInput=document.createElement("input");strumInput.type="range";
+ strumInput.min="-25";strumInput.max="25";strumInput.step="1";
+ strumInput.value=String(patch.strumMs??0);
+ strumInput.setAttribute("aria-label","Chord strum milliseconds per note");
+ const strumValue=document.createElement("output");
+ const strumText=amount=>amount===0?"Off":(amount>0?"Down ":"Up ")+Math.abs(amount)+" ms";
+ strumValue.textContent=strumText(Number(strumInput.value));
+ strumInput.addEventListener("input",()=>strumValue.textContent=strumText(Number(strumInput.value)));
+ strumInput.addEventListener("change",()=>onChange(["strumMs"],Number(strumInput.value)));
+ strumRow.append(strumInput,strumValue);strum.append(strumName,strumRow);fields.append(strum);
  const follow=document.createElement("label");follow.className="sample-pitch-setting";
  const box=document.createElement("input");box.type="checkbox";box.checked=patch.followPitch;
  box.addEventListener("change",()=>onChange(["followPitch"],box.checked));
  follow.append(box,document.createTextNode("Follow note pitch"));
  fields.append(follow);
+ const natural=document.createElement("label");natural.className="sample-pitch-setting";
+ const check=document.createElement("input");check.type="checkbox";check.checked=!!patch.preserveDynamics;
+ check.addEventListener("change",()=>onChange(["preserveDynamics"],check.checked));
+ natural.append(check,document.createTextNode("Keep recorded dynamics"));
+ fields.append(natural);
  root.append(fields);
  const mapping=document.createElement("div");mapping.className="sample-zones";
  const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
- patch.zones.forEach((zone,index)=>{
+ const populateMapping=()=>patch.zones.forEach((zone,index)=>{
   const label=document.createElement("label");label.className="synth-field";
   const name=document.createElement("span");name.textContent="Sample "+(index+1)+" · recorded pitch";
   const select=document.createElement("select");
@@ -48,7 +66,22 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
   select.addEventListener("change",()=>onChange(["zones",index,"root"],Number(select.value)));
   label.append(name,select);mapping.append(label);
  });
- root.append(mapping);
+ if(patch.zones.length>8) {
+  const details=document.createElement("details");details.className="sample-map-details";
+  const summary=document.createElement("summary");
+  const uniquePitches=new Set(patch.zones.map(zone=>zone.root));
+  const dynamicLayers=new Set(patch.zones.map(zone=>zone.velocity).filter(x=>x!==undefined));
+  summary.textContent="Recorded notes · "+uniquePitches.size+" pitches"+(
+   dynamicLayers.size>1?" · "+dynamicLayers.size+" dynamics":"")+" · Edit mapping";
+  details.append(summary,mapping);
+  details.addEventListener("toggle",()=>{
+   if(details.open && !mapping.childElementCount)populateMapping();
+  });
+  root.append(details);
+ } else {
+  populateMapping();
+  root.append(mapping);
+ }
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
  root.append(action);

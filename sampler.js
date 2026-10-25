@@ -57,28 +57,58 @@ export async function loadLibrarySample(id) {
 export function sampleZones(patch){
  return Array.isArray(patch?.zones)?patch.zones:[];
 }
-export function sampleForNote(patch,pitch){
+export function sampleForNote(patch,pitch,velocity=.8){
  const zones=sampleZones(patch);
  const semitones=pitch+(patch.transpose||0);
- return zones.reduce((best,zone)=>!best||Math.abs(zone.root-semitones)<Math.abs(best.root-semitones)?zone:best,null);
+ const closest=zones.reduce((distance,zone)=>Math.min(distance,Math.abs(zone.root-semitones)),Infinity);
+ const layer=zones.filter(zone=>Math.abs(zone.root-semitones)===closest);
+ // Recorded velocity layers are timbrally distinct takes, never a volume filter
+ // on one recording. Select the natural take at the nearest recorded pitch.
+ return layer.reduce((best,zone)=>{
+  const error=Math.abs((zone.velocity??velocity)-velocity);
+  return !best||error<best.error?{zone,error}:best;
+ },null)?.zone??null;
 }
 export function validateSamplerPatch(patch){
  if(!patch||patch.type!=="sample")return ["Invalid sampler instrument."];
  const errors=[];
  if(typeof patch.presetId!=="string"||patch.presetId.length>100)errors.push("Invalid sample preset.");
- if(!Array.isArray(patch.zones)||patch.zones.length<1||patch.zones.length>16||
+ if(!Array.isArray(patch.zones)||patch.zones.length<1||patch.zones.length>64||
    patch.zones.some(zone=>typeof zone?.assetId!=="string"||!zone.assetId||
-    !Number.isInteger(zone.root)||zone.root<0||zone.root>127))errors.push("Invalid sample key mapping.");
+    !Number.isInteger(zone.root)||zone.root<0||zone.root>127||
+    (zone.velocity!==undefined && (!Number.isFinite(zone.velocity)||zone.velocity<0||zone.velocity>1))||
+    (zone.string!==undefined && (typeof zone.string!=="string"||zone.string.length>20))))errors.push("Invalid sample key mapping.");
  if(typeof patch.followPitch!=="boolean")errors.push("Invalid pitch-follow mode.");
+ if(patch.preserveDynamics!==undefined && typeof patch.preserveDynamics!=="boolean")errors.push("Invalid recorded dynamic preservation.");
+ if(patch.strumMs!==undefined && (!Number.isFinite(patch.strumMs)||patch.strumMs < -25||patch.strumMs > 25)) errors.push("Invalid strum timing.");
  for(const [field,lo,hi] of [["transpose",-24,24],["gain",0,2],["attack",0,2],["release",.01,3],["pan",-1,1]]){
   const value=patch[field];
   if(typeof value!=="number"||!Number.isFinite(value)||value<lo||value>hi)errors.push("Invalid sample "+field+".");
  }
  return errors;
 }
-export async function decodeSamples(context,score,cache){
+// Decode only samples that the current composition can actually trigger.
+// Multi-layer instruments can carry dozens of recordings in the portable file
+// without decoding all of their long natural tails into RAM on every Play.
+export function usedSampleIds(score){
+ const used=new Set();
+ for(const inst of score.instruments||[]){
+  if(inst.patch?.type!=="sample")continue;
+  const placed=new Set(inst.timeline.filter(Boolean));
+  for(const chunk of inst.chunks||[]){
+   if(!placed.has(chunk.id))continue;
+   for(const note of chunk.notes){
+    const zone=sampleForNote(inst.patch,note.pitch,note.velocity);
+    if(zone)used.add(zone.assetId);
+   }
+  }
+ }
+ return used;
+}
+export async function decodeSamples(context,score,cache,only=usedSampleIds(score)){
  const waiting=[];
  for(const asset of score.samples||[]) {
+  if(only && !only.has(asset.id))continue;
   if(cache.has(asset.id)){
    const prior=cache.get(asset.id);
    if(prior instanceof Promise)waiting.push(prior);
@@ -110,12 +140,13 @@ function sampleNormalization(buffer){
  return scale;
 }
 export function scheduleSample(context,out,inst,event,start,duration,score,cache) {
- const patch=inst.patch,zone=sampleForNote(patch,event.pitch);
+ const patch=inst.patch,zone=sampleForNote(patch,event.pitch,event.velocity);
  const buffer=zone&&cache.get(zone.assetId);
  if(!buffer)return; // Can only happen while freshly imported samples decode during playback.
  const playbackRate=patch.followPitch?2**((event.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12);
  const src=context.createBufferSource(),amp=context.createGain(),pan=context.createStereoPanner();
- const gain=Math.min(2,inst.volume*patch.gain*event.velocity*.7*sampleNormalization(buffer));
+ const recordedGain=patch.preserveDynamics?3.5:sampleNormalization(buffer);
+ const gain=Math.min(2,inst.volume*patch.gain*event.velocity*.7*recordedGain);
  src.buffer=buffer;src.playbackRate.value=playbackRate;
  pan.pan.value=patch.pan;
  const length=buffer.duration/playbackRate;

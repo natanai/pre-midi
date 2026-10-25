@@ -71,3 +71,11 @@ test("instrument presets have one owner and the full synth editor is reachable",
  assert.match(editor,/Effects/);
  assert.doesNotMatch(html,/id="waveform"/);
 });
+
+test("guitar dynamics and reachable low-string notes are exposed in the original editor",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ assert.match(html,/id="velocity"/);
+ assert.match(studio,/event.shiftKey/);
+ assert.match(studio,/pitch >= 36/);
+});

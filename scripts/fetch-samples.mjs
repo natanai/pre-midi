@@ -10,7 +10,11 @@ await mkdir(dest,{recursive:true});
 function shaOf(bytes){
  return createHash("sha1").update(Buffer.from("blob "+bytes.length+"\0")).update(bytes).digest("hex");
 }
-await Promise.all(SAMPLE_ASSETS.map(async asset=>{
+// Limit parallel raw.githubusercontent.com requests to avoid API/network throttling.
+const remaining=[...SAMPLE_ASSETS];
+await Promise.all(Array.from({length:8},async()=>{
+ while(remaining.length){
+ const asset=remaining.shift();
  const ext=asset.mime==="audio/ogg"?"ogg":"wav";
  const filename=resolve(dest,asset.id+"."+ext);
  let bytes;
@@ -23,4 +27,5 @@ await Promise.all(SAMPLE_ASSETS.map(async asset=>{
   await writeFile(filename,bytes);
  }
  console.log(asset.id,bytes.length,asset.license);
+ }
 }));

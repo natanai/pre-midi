@@ -504,3 +504,10 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .sample-zones {display:flex;flex-wrap:wrap;gap:12px 20px;padding-top:16px}
 .sample-zones label {min-width:145px}
 .sample-zones select {width:100%}
+
+/* Dense multi-sampled guitar key mapping stays out of the way until requested. */
+.sample-map-details {border-top:1px solid var(--faint);margin-top:15px}
+.sample-map-details summary {padding:12px 0;cursor:pointer;color:var(--text);font-size:12px}
+.sample-map-details summary:hover {color:var(--bright)}
+.sample-map-details .sample-zones {padding:12px 0 16px;max-height:290px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.note-velocity-control {flex:none}
