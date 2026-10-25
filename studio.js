@@ -558,6 +558,35 @@ $("bars").addEventListener("change", event => modify(() => {
 $("add-instrument").addEventListener("click",()=>openLibrary("add"));
 $("change-sound").addEventListener("click",()=>openLibrary("replace"));
 $("close-library").addEventListener("click",()=>$("instrument-dialog").close());
+$("sample-file").addEventListener("change",async event=>{
+ const file=event.currentTarget.files?.[0];
+ if(!file)return;
+ try {
+  if(file.size>1_000_000)throw Error("Sample must be smaller than 1 MB.");
+  const ext=file.name.split(".").pop()?.toLowerCase();
+  const mime=ext==="wav"?"audio/wav":ext==="ogg"?"audio/ogg":ext==="mp3"?"audio/mpeg":"";
+  const asset=makeSampleAsset("custom-"+id(),file.name,mime,
+   new Uint8Array(await file.arrayBuffer()),"Imported by author: "+file.name);
+  const patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:60}],
+   followPitch:true,transpose:0,gain:.9,attack:.005,release:.17,pan:0};
+  const mode=$("instrument-dialog").open?libraryMode:"replace";
+  const ok=modify(()=>{
+   score.samples.push(asset);
+   if(mode==="add"){
+    const inst=makeInstrument(score.instruments.length+1,score.bars);
+    inst.name=file.name.replace(/\.[^.]+$/,"").slice(0,60);
+    inst.patch=patch;score.instruments.push(inst);
+    selectedInstrumentId=inst.id;selectedSlot={instrumentId:inst.id,bar:0};
+   }else instrument().patch=patch;
+  });
+  if(ok){
+   if($("instrument-dialog").open)$("instrument-dialog").close();
+   if(playback)void primeSamples(score).catch(console.warn);
+   message("Imported "+file.name+" · included in your .premidi file.");
+  }
+ }catch(error){message("Couldn't import audio: "+error.message,true);}
+ finally{event.currentTarget.value="";}
+});
 $("save-sound").addEventListener("click",()=>{
  const inst=instrument();
  const suggested=(getPreset(inst.patch.presetId)?.name||inst.name)+" variation";
@@ -566,6 +595,10 @@ $("save-sound").addEventListener("click",()=>{
  if(name.length>60)return message("Preset name must be 60 characters or less.",true);
  if(savedSounds.length>=100)return message("Your sound library contains 100 presets.",true);
  const item={id:"user-"+id(),name,category:"Mine",description:"Your saved sound",patch:patchCopy(inst.patch)};
+ if(inst.patch.type==="sample") {
+  item.samples=inst.patch.zones.map(zone=>score.samples.find(asset=>asset.id===zone.assetId));
+  if(item.samples.some(value=>!value))return message("The sample is missing audio data.",true);
+ }
  item.patch.presetId=item.id;
  try {
   localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));
