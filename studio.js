@@ -576,7 +576,7 @@ $("save-sound").addEventListener("click",()=>{
   message("Browser storage is unavailable. Your composition still contains this sound.",true);
  }
 });
-function allSounds(){return [...PRESETS,...savedSounds];}
+function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...savedSounds];}
 function openLibrary(mode) {
  closePicker();
  if(mode==="add"&&score.instruments.length>=12)return;
@@ -586,45 +586,83 @@ function openLibrary(mode) {
  const dialog=$("instrument-dialog");
  if(!dialog.open)dialog.showModal();
 }
-function chooseSound(preset) {
- $("instrument-dialog").close();
- const patch=patchCopy(preset.patch);
- patch.presetId=preset.id;
- if(libraryMode==="add") {
-  modify(()=>{
-   const inst=makeInstrument(score.instruments.length+1,score.bars);
-   inst.name=preset.name;
-   inst.patch=patch;
-   score.instruments.push(inst);
-   selectedInstrumentId=inst.id;
-   selectedSlot={instrumentId:inst.id,bar:0};
-   selectedChunks.set(inst.id,inst.chunks[0].id);
+const builtinCache=new Map();
+async function resolveSamples(preset) {
+ if(preset.patch?.type==="sample") {
+  const assets=preset.samples||[];
+  if(assets.length!==preset.patch.zones.length)throw Error("Saved sample is missing its audio.");
+  return assets;
+ }
+ if(!preset.assets)return [];
+ return Promise.all(preset.assets.map(async assetId=>{
+  const existing=score.samples.find(asset=>asset.id===assetId);
+  if(existing)return existing;
+  if(!builtinCache.has(assetId))builtinCache.set(assetId,loadLibrarySample(assetId).catch(error=>{
+   builtinCache.delete(assetId);throw error;
+  }));
+  return builtinCache.get(assetId);
+ }));
+}
+async function chooseSound(preset) {
+ const useMode=libraryMode;
+ const dialog=$("instrument-dialog");
+ message("Loading "+preset.name+"...");
+ try {
+  const assets=await resolveSamples(preset);
+  const patch=preset.patch?patchCopy(preset.patch):
+   makeSamplerPatch(preset);
+  patch.presetId=preset.id;
+  const ok=modify(()=>{
+   for(const asset of assets)if(!score.samples.some(existing=>existing.id===asset.id))
+    score.samples.push(asset);
+   if(useMode==="add") {
+    const inst=makeInstrument(score.instruments.length+1,score.bars);
+    inst.name=preset.name;inst.patch=patch;
+    score.instruments.push(inst);selectedInstrumentId=inst.id;
+    selectedSlot={instrumentId:inst.id,bar:0};
+    selectedChunks.set(inst.id,inst.chunks[0].id);
+   } else instrument().patch=patch;
   });
- } else modify(()=>{instrument().patch=patch;});
+  if(ok) {
+   dialog.close();
+   // A new sample can be introduced while the transport is running.
+   if(playback)void primeSamples(score).catch(error=>message("Sample decode failed: "+error.message,true));
+   message("Loaded "+preset.name);
+  }
+ }catch(error){message("Couldn't load "+preset.name+": "+error.message,true);}
+}
+async function auditionPreset(preset) {
+ try {
+  const assets=await resolveSamples(preset);
+  const patch=preset.patch?patchCopy(preset.patch):makeSamplerPatch(preset);
+  const inst={...instrument(),patch,volume:.8};
+  const temp={samples:assets};
+  await audition(inst,preset.category==="Bass"?48:69,temp);
+ }catch(error){message("Preview failed: "+error.message,true);}
 }
 function renderLibrary() {
  const filters=$("library-filters"),list=$("library-sounds");
  filters.replaceChildren();list.replaceChildren();
- const categories=["All","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
+ const categories=["All","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
  for(const category of categories) {
   const control=button(category,()=>{libraryCategory=category;renderLibrary();},
    "library-filter"+(libraryCategory===category?" selected":""));
   control.setAttribute("aria-pressed",String(libraryCategory===category));
   filters.append(control);
  }
+ if(libraryMode==="add"||libraryMode==="replace") {
+  const personal=button("＋ Import my sample",()=>$("sample-file").click(),"library-import");
+  list.append(personal);
+ }
  for(const preset of allSounds().filter(p=>libraryCategory==="All"||p.category===libraryCategory)) {
   const card=element("div",undefined,"preset-card");
   const info=element("div",undefined,"preset-information");
   info.append(element("strong",preset.name),element("span",preset.description));
   const actions=element("div",undefined,"preset-actions");
-  const preview=button("▶",()=>{
-   const sample={...instrument(),patch:patchCopy(preset.patch),volume:.8};
-   void audition(sample,preset.category==="Bass"?48:preset.category==="Percussion"?60:69)
-    .catch(error=>message("Sound preview failed: "+error.message,true));
-  },"preset-preview");
+  const preview=button("▶",()=>{void auditionPreset(preset);},"preset-preview");
   preview.title="Preview "+preset.name;
   preview.setAttribute("aria-label","Preview "+preset.name);
-  const use=button(libraryMode==="add"?"Add":"Use",()=>chooseSound(preset),"preset-choose");
+  const use=button(libraryMode==="add"?"Add":"Use",()=>{void chooseSound(preset);},"preset-choose");
   use.setAttribute("aria-label",(libraryMode==="add"?"Add ":"Use ")+preset.name);
   actions.append(preview,use);
   card.append(info,actions);
