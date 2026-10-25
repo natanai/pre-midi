@@ -1,3 +1,4 @@
+import {movement,movementDefaults} from "./expression.js";
 // Sampler controls use the same canonical patch mutation route as the synth.
 // The instrument owns its notes and sound independently of sample library UI.
 export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
@@ -49,6 +50,35 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
  natural.append(check,document.createTextNode("Keep recorded dynamics"));
  fields.append(natural);
  root.append(fields);
+ const motion=movement(patch);
+ const details=document.createElement("details");details.className="sample-map-details";
+ const summary=document.createElement("summary");summary.textContent="Movement · glide, vibrato and pulse";
+ const motionFields=document.createElement("div");motionFields.className="sampler-controls";
+ const controls=[
+  ["glide","Glide from",-12,12,.1," st"],
+  ["glideTime","Glide time",.01,3,.01," s"],
+  ["depth","Vibrato",0,100,1," ct"],
+  ["rate","Vibrato speed",.1,20,.1," Hz"],
+  ["delay","Vibrato waits",0,3,.05," s"],
+  ["tremolo","Pulse",0,1,.01,""],
+  ["tremoloRate","Pulse speed",.1,20,.1," Hz"]
+ ];
+ for(const [key,labelText,min,max,step,unit] of controls) {
+  const label=document.createElement("label");label.className="synth-field";
+  label.append(document.createElement("span"));label.firstChild.textContent=labelText;
+  const row=document.createElement("div");row.className="synth-range";
+  const input=document.createElement("input");input.type="range";
+  input.min=min;input.max=max;input.step=step;input.value=motion[key];
+  input.setAttribute("aria-label",labelText+" sample movement");
+  const out=document.createElement("output");out.textContent=String(motion[key])+unit;
+  input.addEventListener("input",()=>out.textContent=input.value+unit);
+  input.addEventListener("change",()=>{
+   const next={...movementDefaults,...movement(patch),[key]:Number(input.value)};
+   onChange(["movement"],next);
+  });
+  row.append(input,out);label.append(row);motionFields.append(label);
+ }
+ details.append(summary,motionFields);root.append(details);
  const mapping=document.createElement("div");mapping.className="sample-zones";
  const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
  const populateMapping=()=>patch.zones.forEach((zone,index)=>{
