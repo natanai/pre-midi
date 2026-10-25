@@ -10,9 +10,16 @@ import { strict as assert } from "node:assert";
 const root=resolve(new URL("..",import.meta.url).pathname);
 let resolveAudio;
 const audioResult=new Promise(resolve=>{resolveAudio=resolve;});
+let resolveRecorder;
+const recorderResult=new Promise(resolve=>{resolveRecorder=resolve;});
 const server=createServer(async (req,res)=>{
  try {
   const pathname=decodeURIComponent(new URL(req.url,"http://localhost").pathname);
+  if(pathname==="/__recorder_result") {
+   const url=new URL(req.url,"http://localhost");
+   resolveRecorder({status:url.searchParams.get("status"),details:url.searchParams.get("details")});
+   res.writeHead(200,{"Content-Type":"text/plain"});res.end("OK");return;
+  }
   if(pathname==="/__audio_result") {
    const url=new URL(req.url,"http://localhost");
    resolveAudio({status:url.searchParams.get("status"),details:url.searchParams.get("details")});
@@ -58,4 +65,23 @@ try {
   assert.equal(finished?.status,"PASS","Synthesizer browser render failed: "+finished?.details);
   console.log("PASS original instrument WAV render",finished.details);
  } finally {child.kill("SIGKILL");}
+ // Real-time microphone integration: Chrome's synthetic input is captured
+ // through the actual MediaRecorder and converted to an exportable WAV.
+ const recordingUrl="http://127.0.0.1:"+port+"/tests/recording.browser.html";
+ const mic=spawn(chrome,[
+  "--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
+  "--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream",
+  "--autoplay-policy=no-user-gesture-required","--disable-background-timer-throttling",
+  "--disable-renderer-backgrounding","--no-first-run",
+  "--user-data-dir=/tmp/premidi-mic-"+process.pid,recordingUrl
+ ],{stdio:"ignore"});
+ try {
+  const finished=await Promise.race([
+   recorderResult,
+   new Promise((_,reject)=>setTimeout(()=>reject(Error("Microphone integration timed out")),45000)),
+   new Promise((_,reject)=>mic.on("error",reject))
+  ]);
+  assert.equal(finished?.status,"PASS","Guided recorder failed: "+finished?.details);
+  console.log("PASS guided microphone recorder",finished.details);
+ }finally{mic.kill("SIGKILL");}
 }finally{server.close();}
