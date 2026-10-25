@@ -57,19 +57,29 @@ export async function loadLibrarySample(id) {
 export function sampleZones(patch){
  return Array.isArray(patch?.zones)?patch.zones:[];
 }
-export function sampleForNote(patch,pitch){
+export function sampleForNote(patch,pitch,velocity=.8){
  const zones=sampleZones(patch);
  const semitones=pitch+(patch.transpose||0);
- return zones.reduce((best,zone)=>!best||Math.abs(zone.root-semitones)<Math.abs(best.root-semitones)?zone:best,null);
+ const closest=zones.reduce((distance,zone)=>Math.min(distance,Math.abs(zone.root-semitones)),Infinity);
+ const layer=zones.filter(zone=>Math.abs(zone.root-semitones)===closest);
+ // Recorded velocity layers are timbrally distinct takes, never a volume filter
+ // on one recording. Select the natural take at the nearest recorded pitch.
+ return layer.reduce((best,zone)=>{
+  const error=Math.abs((zone.velocity??velocity)-velocity);
+  return !best||error<best.error?{zone,error}:best;
+ },null)?.zone??null;
 }
 export function validateSamplerPatch(patch){
  if(!patch||patch.type!=="sample")return ["Invalid sampler instrument."];
  const errors=[];
  if(typeof patch.presetId!=="string"||patch.presetId.length>100)errors.push("Invalid sample preset.");
- if(!Array.isArray(patch.zones)||patch.zones.length<1||patch.zones.length>16||
+ if(!Array.isArray(patch.zones)||patch.zones.length<1||patch.zones.length>64||
    patch.zones.some(zone=>typeof zone?.assetId!=="string"||!zone.assetId||
-    !Number.isInteger(zone.root)||zone.root<0||zone.root>127))errors.push("Invalid sample key mapping.");
+    !Number.isInteger(zone.root)||zone.root<0||zone.root>127||
+    (zone.velocity!==undefined && (!Number.isFinite(zone.velocity)||zone.velocity<0||zone.velocity>1))||
+    (zone.string!==undefined && (typeof zone.string!=="string"||zone.string.length>20))))errors.push("Invalid sample key mapping.");
  if(typeof patch.followPitch!=="boolean")errors.push("Invalid pitch-follow mode.");
+ if(patch.strumMs!==undefined && (!Number.isFinite(patch.strumMs)||patch.strumMs < -25||patch.strumMs > 25)) errors.push("Invalid strum timing.");
  for(const [field,lo,hi] of [["transpose",-24,24],["gain",0,2],["attack",0,2],["release",.01,3],["pan",-1,1]]){
   const value=patch[field];
   if(typeof value!=="number"||!Number.isFinite(value)||value<lo||value>hi)errors.push("Invalid sample "+field+".");
@@ -110,7 +120,7 @@ function sampleNormalization(buffer){
  return scale;
 }
 export function scheduleSample(context,out,inst,event,start,duration,score,cache) {
- const patch=inst.patch,zone=sampleForNote(patch,event.pitch);
+ const patch=inst.patch,zone=sampleForNote(patch,event.pitch,event.velocity);
  const buffer=zone&&cache.get(zone.assetId);
  if(!buffer)return; // Can only happen while freshly imported samples decode during playback.
  const playbackRate=patch.followPitch?2**((event.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12);
