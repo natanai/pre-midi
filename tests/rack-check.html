@@ -28,9 +28,14 @@ frame.addEventListener("load",async()=>{
   }
   const count=()=>d.querySelectorAll(".instrument-card").length;
   const rows=()=>d.querySelectorAll(".rack-row");
+  const presetIds={
+   "Neon Lead":"neon-lead","Pulse Kick":"pulse-kick","Static Snare":"static-snare",
+   "Dust Hat":"dust-hat","Steel Acoustic":"steel-guitar","Glass Keys":"glass-keys"
+  };
   async function choose(entry,name){
    entry.click();
-   const card=[...d.querySelectorAll(".preset-card")].find(card=>card.querySelector("strong")?.textContent===name);
+   const card=d.querySelector('[data-preset-id="'+(presetIds[name]||"")+'"]')||
+    [...d.querySelectorAll(".preset-card")].find(card=>card.querySelector("strong")?.textContent===name);
    if(!card)throw Error("Missing library preset "+name);
    card.querySelector(".preset-choose").click();await waitFor(()=>!$("instrument-dialog").open,"choose "+name);
   }
@@ -60,7 +65,7 @@ frame.addEventListener("load",async()=>{
   const roll=d.querySelector(".piano-scroll");roll.scrollLeft=80;const left=roll.scrollLeft;
   rows()[0].querySelector(".rack-name").click();
   check("row selection preserves lane and scroll",d.querySelector(".arrangement-row.active").dataset.instrumentId===instId&&roll.scrollLeft===left);
-  check("row selects existing sound inspector",$("sound-name").value==="Pulse Kick"&&$("sound-toggle").getAttribute("aria-expanded")==="true");
+  check("row selects existing sound inspector",$("sound-name").value==="Synth Kick"&&$("sound-toggle").getAttribute("aria-expanded")==="true");
   change("sound-name","My kick");
   const attack=d.querySelector('#synth-editor .dial-knob[aria-label="Attack"]');
   attack.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
