@@ -118,6 +118,7 @@ export function validate(doc) {
     if(item===null)continue;
     if(!object(item)||instrument.timeline[bar]===null||
       !Number.isInteger(item.offset)||!within(item.offset,0,15)||
+      (item.length!==undefined&&(!Number.isInteger(item.length)||!within(item.length,1,16)))||
       !Number.isInteger(item.every)||!within(item.every,1,64)||
       !Number.isInteger(item.repeats)||!within(item.repeats,1,32))
      errors.push("Invalid offset or polymeter repeat at bar "+(bar+1)+".");
