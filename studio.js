@@ -1,29 +1,26 @@
 import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, wav } from "./audio.js";
+import { play, audition, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
 import { renderPatchEditor } from "./instrumentUI.js";
+import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
+import { loadLibrarySample, makeSampleAsset, MAX_SCORE_BYTES } from "./sampler.js";
+import { renderSamplerEditor } from "./samplerUI.js";
+import { loadDraft, saveDraft } from "./storage.js";
 
 const $ = key => document.getElementById(key);
-const CACHE = "premidi-v3-draft";
+const CACHE = "premidi-v4-draft";
 const SAVED_SOUNDS = "premidi-user-sounds-v1";
-const cached = (() => {
- try { return parse(localStorage.getItem(CACHE) || ""); } catch {}
- // Recover music written only in this browser before patches existed.
- // This is not a legacy .premidi file importer.
+// Recover the browser's own previous synth-only draft in place. Old exported
+// formats deliberately aren't supported; this does not change file parsing.
+const cached=(()=>{
+ try {return parse(localStorage.getItem(CACHE)||"");}catch{}
  try {
-  const previous=JSON.parse(localStorage.getItem("premidi-v2-draft") || "null");
-  if(previous?.version!==2 || !Array.isArray(previous.instruments))return null;
-  for(const inst of previous.instruments) {
-   const patch=makePatch();
-   if(["sine","triangle","square","sawtooth"].includes(inst.waveform))patch.oscillators[0].wave=inst.waveform;
-   if(Number.isFinite(inst.attack))patch.envelope.attack=Math.min(3,Math.max(0,inst.attack));
-   if(Number.isFinite(inst.release))patch.envelope.release=Math.min(4,Math.max(.01,inst.release));
-   inst.patch=patch;
-   delete inst.waveform;delete inst.attack;delete inst.release;
-  }
-  previous.version=3;
+  const previous=JSON.parse(localStorage.getItem("premidi-v3-draft")||"null");
+  if(previous?.version!==3||!Array.isArray(previous.instruments))return null;
+  previous.version=4;previous.samples=[];
+  for(const inst of previous.instruments)inst.patch.type="synth";
   return validate(previous).length?null:previous;
  }catch{return null;}
 })();
@@ -66,12 +63,16 @@ function message(text, error = false) {
  $("status").className = error ? "error" : "ok";
 }
 function store() {
- try {
-  localStorage.setItem(CACHE, JSON.stringify(score));
-  message("Saved locally");
- } catch {
-  message("Browser storage unavailable. Use Save .premidi.", true);
- }
+ const current=score;
+ void saveDraft(current).then(()=>message("Saved locally")).catch(()=>{
+  // For constrained private-browser modes, small synth-only scores still fit.
+  try {
+   const json=JSON.stringify(current);
+   if(json.length>800000)throw Error("large draft");
+   localStorage.setItem(CACHE,json);
+   message("Saved locally (limited browser storage)");
+  }catch{message("Browser storage unavailable. Export .premidi to save your work.",true);}
+ });
 }
 function closePicker() {
  if (picker) picker.remove();
@@ -169,7 +170,7 @@ function renderInstruments() {
   const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
   el.style.setProperty("--track-accent", signal(inst));
   el.setAttribute("aria-pressed", String(selected));
-  el.append(element("strong", inst.name), element("small", (getPreset(inst.patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.patch.presetId)?.name ?? "Custom sound") + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
+  el.append(element("strong", inst.name), element("small", (getPreset(inst.patch.presetId)?.name ?? SAMPLE_LIBRARY.find(item=>item.id===inst.patch.presetId)?.name ?? savedSounds.find(item=>item.id===inst.patch.presetId)?.name ?? (inst.patch.type==="sample"?"Custom sample":"Custom synth")) + " · " + inst.chunks.length + (inst.chunks.length === 1 ? " chunk" : " chunks")));
   list.append(el);
  }
  $("add-instrument").disabled = score.instruments.length >= 12;
@@ -352,7 +353,7 @@ function renderNotes() {
       id:id(), pitch, start:step,
       duration:Math.min(Number($("length").value),16-step), velocity:0.8
      });
-    }) && !existing && !playback && !pendingPlay) void audition(targetInst,pitch).catch(() => {});
+    }) && !existing && !playback && !pendingPlay) void audition(targetInst,pitch,score).catch(() => {});
    }, "note" + (step % 4 === 0 ? " beat" : ""));
    cells.push(cell);
 
@@ -446,24 +447,28 @@ function renderChunkEditor() {
  renderNotes();
 }
 function renderSound() {
- const inst=instrument();
+ const inst=instrument(),patch=inst.patch;
  $("instrument-name").value=inst.name;
  $("volume").value=String(Math.round(inst.volume*100));
  $("volume-value").textContent=Math.round(inst.volume*100)+"%";
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
  document.querySelector(".patch-info")?.style.setProperty("--track-accent",signal(inst));
- const preset=getPreset(inst.patch.presetId)||savedSounds.find(entry=>entry.id===inst.patch.presetId);
- $("patch-label").textContent=preset?"Sound · "+preset.name:"Sound · Custom";
- renderPatchEditor($("synth-editor"),inst.patch,(path,value)=>{
-  modify(()=>{
-   const target=instrument().patch;
-   let owner=target;
-   for(let i=0;i<path.length-1;i++)owner=owner[path[i]];
-   owner[path[path.length-1]]=value;
-   target.presetId="custom";
-  });
+ const preset=getPreset(patch.presetId)||SAMPLE_LIBRARY.find(x=>x.id===patch.presetId)
+  ||savedSounds.find(entry=>entry.id===patch.presetId);
+ $("patch-label").textContent=(patch.type==="sample"?"Sample · ":"Synth · ")+(preset?.name||"Custom");
+ const onChange=(path,value)=>modify(()=>{
+  const target=instrument().patch;
+  let owner=target;
+  for(let i=0;i<path.length-1;i++)owner=owner[path[i]];
+  owner[path[path.length-1]]=value;
+  target.presetId="custom";
  });
+ if(patch.type==="sample"){
+  renderSamplerEditor($("synth-editor"),patch,onChange,
+   patch.zones.map(zone=>score.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
+   ()=>$("sample-file").click());
+ }else renderPatchEditor($("synth-editor"),patch,onChange);
  $("remove-instrument").disabled=score.instruments.length===1;
 }
 function render() {
@@ -487,7 +492,7 @@ $("file").addEventListener("change", async event => {
  const file = event.currentTarget.files?.[0];
  if (!file) return;
  try {
-  if (file.size > 1_000_000) throw Error("File exceeds 1 MB.");
+  if (file.size > MAX_SCORE_BYTES) throw Error("File exceeds 15 MB.");
   const next = parse(await file.text());
   if (confirm("Open " + next.title + "? This replaces the browser draft.")) {
    resetTo(next);
@@ -553,6 +558,35 @@ $("bars").addEventListener("change", event => modify(() => {
 $("add-instrument").addEventListener("click",()=>openLibrary("add"));
 $("change-sound").addEventListener("click",()=>openLibrary("replace"));
 $("close-library").addEventListener("click",()=>$("instrument-dialog").close());
+$("sample-file").addEventListener("change",async event=>{
+ const file=event.currentTarget.files?.[0];
+ if(!file)return;
+ try {
+  if(file.size>1_000_000)throw Error("Sample must be smaller than 1 MB.");
+  const ext=file.name.split(".").pop()?.toLowerCase();
+  const mime=ext==="wav"?"audio/wav":ext==="ogg"?"audio/ogg":ext==="mp3"?"audio/mpeg":"";
+  const asset=makeSampleAsset("custom-"+id(),file.name,mime,
+   new Uint8Array(await file.arrayBuffer()),"Imported by author: "+file.name);
+  const patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:60}],
+   followPitch:true,transpose:0,gain:.9,attack:.005,release:.17,pan:0};
+  const mode=$("instrument-dialog").open?libraryMode:"replace";
+  const ok=modify(()=>{
+   score.samples.push(asset);
+   if(mode==="add"){
+    const inst=makeInstrument(score.instruments.length+1,score.bars);
+    inst.name=file.name.replace(/\.[^.]+$/,"").slice(0,60);
+    inst.patch=patch;score.instruments.push(inst);
+    selectedInstrumentId=inst.id;selectedSlot={instrumentId:inst.id,bar:0};
+   }else instrument().patch=patch;
+  });
+  if(ok){
+   if($("instrument-dialog").open)$("instrument-dialog").close();
+   if(playback)void primeSamples(score).catch(console.warn);
+   message("Imported "+file.name+" · included in your .premidi file.");
+  }
+ }catch(error){message("Couldn't import audio: "+error.message,true);}
+ finally{event.currentTarget.value="";}
+});
 $("save-sound").addEventListener("click",()=>{
  const inst=instrument();
  const suggested=(getPreset(inst.patch.presetId)?.name||inst.name)+" variation";
@@ -561,6 +595,10 @@ $("save-sound").addEventListener("click",()=>{
  if(name.length>60)return message("Preset name must be 60 characters or less.",true);
  if(savedSounds.length>=100)return message("Your sound library contains 100 presets.",true);
  const item={id:"user-"+id(),name,category:"Mine",description:"Your saved sound",patch:patchCopy(inst.patch)};
+ if(inst.patch.type==="sample") {
+  item.samples=inst.patch.zones.map(zone=>score.samples.find(asset=>asset.id===zone.assetId));
+  if(item.samples.some(value=>!value))return message("The sample is missing audio data.",true);
+ }
  item.patch.presetId=item.id;
  try {
   localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));
@@ -571,7 +609,7 @@ $("save-sound").addEventListener("click",()=>{
   message("Browser storage is unavailable. Your composition still contains this sound.",true);
  }
 });
-function allSounds(){return [...PRESETS,...savedSounds];}
+function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...savedSounds];}
 function openLibrary(mode) {
  closePicker();
  if(mode==="add"&&score.instruments.length>=12)return;
@@ -581,45 +619,84 @@ function openLibrary(mode) {
  const dialog=$("instrument-dialog");
  if(!dialog.open)dialog.showModal();
 }
-function chooseSound(preset) {
- $("instrument-dialog").close();
- const patch=patchCopy(preset.patch);
- patch.presetId=preset.id;
- if(libraryMode==="add") {
-  modify(()=>{
-   const inst=makeInstrument(score.instruments.length+1,score.bars);
-   inst.name=preset.name;
-   inst.patch=patch;
-   score.instruments.push(inst);
-   selectedInstrumentId=inst.id;
-   selectedSlot={instrumentId:inst.id,bar:0};
-   selectedChunks.set(inst.id,inst.chunks[0].id);
+const builtinCache=new Map();
+async function resolveSamples(preset) {
+ if(preset.patch?.type==="sample") {
+  const assets=preset.samples||[];
+  if(assets.length!==preset.patch.zones.length)throw Error("Saved sample is missing its audio.");
+  return assets;
+ }
+ if(!preset.assets)return [];
+ return Promise.all(preset.assets.map(async assetId=>{
+  const existing=score.samples.find(asset=>asset.id===assetId);
+  if(existing)return existing;
+  if(!builtinCache.has(assetId))builtinCache.set(assetId,loadLibrarySample(assetId).catch(error=>{
+   builtinCache.delete(assetId);throw error;
+  }));
+  return builtinCache.get(assetId);
+ }));
+}
+async function chooseSound(preset) {
+ const useMode=libraryMode;
+ const dialog=$("instrument-dialog");
+ message("Loading "+preset.name+"...");
+ try {
+  const assets=await resolveSamples(preset);
+  const patch=preset.category==="Mine"?patchCopy(preset.patch):
+   preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
+  patch.presetId=preset.id;
+  const ok=modify(()=>{
+   for(const asset of assets)if(!score.samples.some(existing=>existing.id===asset.id))
+    score.samples.push(asset);
+   if(useMode==="add") {
+    const inst=makeInstrument(score.instruments.length+1,score.bars);
+    inst.name=preset.name;inst.patch=patch;
+    score.instruments.push(inst);selectedInstrumentId=inst.id;
+    selectedSlot={instrumentId:inst.id,bar:0};
+    selectedChunks.set(inst.id,inst.chunks[0].id);
+   } else instrument().patch=patch;
   });
- } else modify(()=>{instrument().patch=patch;});
+  if(ok) {
+   dialog.close();
+   // A new sample can be introduced while the transport is running.
+   if(playback)void primeSamples(score).catch(error=>message("Sample decode failed: "+error.message,true));
+   message("Loaded "+preset.name);
+  }
+ }catch(error){message("Couldn't load "+preset.name+": "+error.message,true);}
+}
+async function auditionPreset(preset) {
+ try {
+  const assets=await resolveSamples(preset);
+  const patch=preset.category==="Mine"?patchCopy(preset.patch):
+   preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
+  const inst={...instrument(),patch,volume:.8};
+  const temp={samples:assets};
+  await audition(inst,preset.category==="Bass"?48:69,temp);
+ }catch(error){message("Preview failed: "+error.message,true);}
 }
 function renderLibrary() {
  const filters=$("library-filters"),list=$("library-sounds");
  filters.replaceChildren();list.replaceChildren();
- const categories=["All","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
+ const categories=["All","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
  for(const category of categories) {
   const control=button(category,()=>{libraryCategory=category;renderLibrary();},
    "library-filter"+(libraryCategory===category?" selected":""));
   control.setAttribute("aria-pressed",String(libraryCategory===category));
   filters.append(control);
  }
+ if(libraryMode==="add"||libraryMode==="replace") {
+  const personal=button("＋ Import my sample",()=>$("sample-file").click(),"library-import");
+  list.append(personal);
+ }
  for(const preset of allSounds().filter(p=>libraryCategory==="All"||p.category===libraryCategory)) {
   const card=element("div",undefined,"preset-card");
   const info=element("div",undefined,"preset-information");
   info.append(element("strong",preset.name),element("span",preset.description));
   const actions=element("div",undefined,"preset-actions");
-  const preview=button("▶",()=>{
-   const sample={...instrument(),patch:patchCopy(preset.patch),volume:.8};
-   void audition(sample,preset.category==="Bass"?48:preset.category==="Percussion"?60:69)
-    .catch(error=>message("Sound preview failed: "+error.message,true));
-  },"preset-preview");
+  const preview=button("▶",()=>{void auditionPreset(preset);},"preset-preview");
   preview.title="Preview "+preset.name;
   preview.setAttribute("aria-label","Preview "+preset.name);
-  const use=button(libraryMode==="add"?"Add":"Use",()=>chooseSound(preset),"preset-choose");
+  const use=button(libraryMode==="add"?"Add":"Use",()=>{void chooseSound(preset);},"preset-choose");
   use.setAttribute("aria-label",(libraryMode==="add"?"Add ":"Use ")+preset.name);
   actions.append(preview,use);
   card.append(info,actions);
@@ -684,4 +761,9 @@ document.addEventListener("keydown", event => {
  }
 });
 render();
-if (cached) message("Local draft restored");
+if (cached) message("Local synth draft restored");
+void loadDraft().then(raw=>{
+ if(!raw || history.length || future.length)return;
+ try {const restored=parse(raw);resetTo(restored);message("Browser draft restored");}
+ catch(error){console.warn("Draft could not be restored",error);}
+}).catch(()=>{});

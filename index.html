@@ -17,6 +17,7 @@
   <button id="export" type="button" class="primary">Save .premidi</button>
   <button id="wav" type="button">Export WAV</button>
   <input id="file" type="file" accept=".premidi,application/json" hidden>
+  <input id="sample-file" type="file" accept=".wav,.ogg,.mp3,audio/wav,audio/ogg,audio/mpeg" hidden>
  </nav>
 </header>
 <main>
@@ -79,10 +80,10 @@
   </div>
  </div>
 </main>
-<footer><span id="status" role="status">Saved locally</span><span>.premidi v3 · GAME PARITY PENDING · <a href="https://github.com/natanai/pre-midi">SOURCE</a></span></footer>
+<footer><span id="status" role="status">Saved locally</span><span>.premidi v4 · GAME PARITY PENDING · <a href="https://github.com/natanai/pre-midi">SOURCE</a></span></footer>
 </div>
 <dialog id="instrument-dialog" class="instrument-dialog" aria-labelledby="instrument-dialog-title">
- <div class="library-top"><div><h2 id="instrument-dialog-title">Instrument library</h2><p id="library-description">Original synthesizer sounds. Every parameter can be changed.</p></div>
+ <div class="library-top"><div><h2 id="instrument-dialog-title">Instrument library</h2><p id="library-description">Procedural synths and CC0 recordings. Preview, then add or replace a sound.</p></div>
   <button id="close-library" type="button" aria-label="Close instrument library">×</button></div>
  <div class="library-filters" id="library-filters" aria-label="Sound categories"></div>
  <div id="library-sounds" class="library-sounds" aria-label="Available sounds"></div>

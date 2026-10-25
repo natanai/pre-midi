@@ -2,7 +2,7 @@
 <html lang="en" data-layout="PENDING">
 <head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0}</style>
 <script>
-function checkLayout(frame){
+async function checkLayout(frame){
  const doc=frame.contentDocument;
  const get=id=>doc.getElementById(id);
  const rect=el=>el.getBoundingClientRect();
@@ -29,6 +29,10 @@ function checkLayout(frame){
  const card=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Neon Lead"));
  const choice=card?.querySelector(".preset-choose");
  if(choice)choice.click();
+ // Sample instruments may require an asynchronous asset load; the test follows
+ // the completed user operation, not the click's immediate synchronous frame.
+ for(let attempt=0;attempt<90&&doc.querySelectorAll(".instrument-card").length!==2;attempt++)
+  await new Promise(resolve=>setTimeout(resolve,25));
  checks.presetCreatesInstrument=doc.querySelectorAll(".instrument-card").length===2 && !library.open;
  checks.patchEditorPresent=!!doc.querySelector("#synth-editor .synth-group");
  checks.presetSelected=get("patch-label").textContent.includes("Neon Lead");
@@ -36,6 +40,16 @@ function checkLayout(frame){
  checks.soundReplaceAccessible=library.open;
  get("close-library").click();
  checks.libraryCloses=!library.open;
+ get("add-instrument").click();
+ const piano=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Recorded Piano"));
+ piano?.querySelector(".preset-choose")?.click();
+ for(let attempt=0;attempt<120 && doc.querySelectorAll(".instrument-card").length!==3;attempt++)
+  await new Promise(resolve=>setTimeout(resolve,25));
+ checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
+  get("patch-label").textContent.includes("Recorded Piano") && !library.open;
+ checks.sampleControlsReachable=!!doc.querySelector("#synth-editor .sample-zones") &&
+  !!doc.querySelector("#synth-editor .sample-replace-action");
+ 
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({
   viewport:frame.clientWidth,

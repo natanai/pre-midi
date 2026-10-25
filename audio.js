@@ -1,9 +1,13 @@
+import { decodeSamples, scheduleSample } from "./sampler.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the instrument.patch stored in the score.
 export const secondsPerStep = doc => 60/doc.bpm/4;
 export const frequency = pitch => 440*2**((pitch-69)/12);
 const noiseBuffers=new WeakMap();
 const curves=new Map();
+const sampleCaches=new WeakMap();
+const bufferCache=ctx=>{if(!sampleCaches.has(ctx))sampleCaches.set(ctx,new Map());return sampleCaches.get(ctx);};
+export async function primeSamples(score){if(context)await decodeSamples(context,score,bufferCache(context));}
 function noiseBuffer(ctx) {
  let data=noiseBuffers.get(ctx);
  if(data)return data;
@@ -39,7 +43,11 @@ export function stepEvents(doc,absoluteStep) {
  }
  return events;
 }
-function soundNote(ctx,destination,instrument,event,start,duration) {
+function soundNote(ctx,destination,instrument,event,start,duration,score) {
+ if(instrument.patch.type==="sample"){
+  scheduleSample(ctx,destination,instrument,event,start,duration,score,bufferCache(ctx));
+  return;
+ }
  const patch=instrument.patch,off=start+Math.max(.015,duration),env=patch.envelope;
  const end=off+env.release+.012,cleanupAt=end+(patch.effects.delayMix>0?2.4:.15);
  const sources=[],nodes=[];
@@ -136,19 +144,21 @@ function renderBar(ctx,out,score,bar,start) {
  for(const instrument of score.instruments) {
   const chunk=instrument.chunks.find(c=>c.id===instrument.timeline[bar]);
   if(chunk)for(const event of chunk.notes)
-   soundNote(ctx,out,instrument,event,start+event.start*unit,event.duration*unit);
+   soundNote(ctx,out,instrument,event,start+event.start*unit,event.duration*unit,score);
  }
 }
 let context;
-export async function audition(instrument,pitch) {
+export async function audition(instrument,pitch,score=null) {
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
- soundNote(context,context.destination,instrument,{pitch,velocity:.8},context.currentTime+.01,.24);
+ if(score)await decodeSamples(context,score,bufferCache(context));
+ soundNote(context,context.destination,instrument,{pitch,velocity:.8},context.currentTime+.01,.24,score);
 }
 export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{}}={}) {
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  const ctx=context,out=ctx.createGain(),read=typeof score==="function"?score:()=>score;
+ await decodeSamples(ctx,read(),bufferCache(ctx));
  const loops=()=>typeof loop==="function"?loop():loop;
  out.gain.value=.85;out.connect(ctx.destination);
  let scheduled=0,nextTime=ctx.currentTime+.07,shown=-1,stopped=false,timer,activeStep=null;
@@ -170,8 +180,9 @@ export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{}
    const current=read(),cycle=current.bars*16;
    if(!loops()&&scheduled>=cycle)break;
    const step=scheduled%cycle,barIndex=Math.floor(step/16),unit=secondsPerStep(current);
+   void decodeSamples(ctx,current,bufferCache(ctx)).catch(console.warn);
    for(const event of stepEvents(current,scheduled))
-    soundNote(ctx,out,event.instrument,event.note,nextTime,event.note.duration*unit);
+    soundNote(ctx,out,event.instrument,event.note,nextTime,event.note.duration*unit,current);
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
   }
@@ -210,6 +221,7 @@ export async function wav(score) {
  const seconds=score.bars*16*secondsPerStep(score)+4.5;
  const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);
  const out=ctx.createGain();out.gain.value=.85;out.connect(ctx.destination);
+ await decodeSamples(ctx,score,bufferCache(ctx));
  for(let bar=0;bar<score.bars;bar++)
   renderBar(ctx,out,score,bar,bar*16*secondsPerStep(score));
  return pcmWav(await ctx.startRendering());

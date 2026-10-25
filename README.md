@@ -20,29 +20,54 @@ Pre-midi is now the primary development surface for the music studio. We are ref
 
 The [development direction](docs/development-direction.md) records that boundary, the modular instrument/synthesizer architecture, and how we will bring pre-programmed back into full parity when the studio is mature.
 
-## Instrument library and sound design
+## Instruments, recordings and samples
 
-Choose **Add instrument** to browse 17 original, sample-free instrument recipes. Categories include Bass, Lead, Keys, Pads, Winds and Percussion. Use **Preview** to hear one before adding it. Select **Browse sounds** on an existing instrument to replace its patch without replacing its notes or timeline chunks.
+**Add instrument** opens one combined library. It includes the 17 original
+procedural synthesizer recipes *and* 11 sampled instrument choices using 14
+verified CC0 recordings: piano, nylon guitar, steel guitar, recorder, whistle,
+kick, snare, clap, closed/open hi-hat and bongo. Preview one, then Add; use
+**Browse sounds** to replace an existing instrument's sound without changing
+its notes or timeline chunks.
 
-Every recipe is fully editable using the single native sound editor. It currently includes:
-- Two independent oscillators: wave shape, mix level, octave and fine detuning.
-- Noise generation and selectable resonant filters (low/high/bandpass/notch).
-- Full amplitude ADSR (attack/decay/sustain/release).
-- Vibrato (rate and depth), stereo pan.
-- Distortion and feedback delay with wet mix and timing.
-- Instrument output volume.
+For synthesized instruments, the existing sound editor provides two
+oscillators, noise, resonant filters, full ADSR, vibrato, stereo pan, distortion
+and feedback delay. The *same instrument owner* renders sampled instruments'
+volume, envelope, transpose, stereo pan, pitch-follow mode, and audio source.
+Import your own WAV, OGG or MP3 (up to 1 MB per sample), or replace a sample
+directly through the Sound panel.
 
-**Save preset** adds your modification to a browser-local personal instrument library for reuse in new compositions. Full patch parameters are embedded in each exported .premidi file, so those compositions remain self-contained without the personal library. Browser-local saved presets are not automatically portable to another device.
+Piano and guitars have two sampled root-note zones, with nearby pitches played
+at adjusted rates. Other recordings currently use one key zone. This is a
+starter recorded library, not a full multisampled orchestra or a SoundFont
+player.
 
-The library and synthesis algorithms are original to pre-midi; no third-party soundbanks or audio samples are bundled. Live playback, audition and WAV rendering use the same Web Audio synth.
+All recordings in the supplied library are CC0 1.0 and reproducibly fetched
+into the GitHub Pages artifact with pinned Git checksums. Their specific
+sources are listed in [recording credits](docs/sample-sources.md).
+The native .premidi file embeds the recorded audio bytes, mapping and controls;
+the finished score never relies on a remote URL. An author's own imported
+samples must have suitable usage and distribution rights.
 
-## File contract and current limits
+Use **Save preset** to reuse custom sounds from this browser. Personal preset
+libraries are browser-local, but audio actually used in a composition travels
+with the .premidi file.
 
-The current experimental portable format is **.premidi v3**. Its canonical validator is in schema.js and synth.js. It preserves an instrument's entire patch, chunks, note data and timeline. No conversion adapters for old exported formats are included. A one-time recovery for locally saved browser-only v2 drafts preserves note work made before sound patches were added.
+## Native format and current limits
 
-**Pre-programmed's live Media integration still supports v2, not v3.** Do not import v3 compositions into the game yet. As agreed, parity will be updated once pre-midi's musical capabilities and native schema are more settled.
+The experimental **.premidi v4** score owns two types of instruments, synth and
+sampler, using canonical validation and the same playback engine. Embedded,
+deduplicated sample data is stored in the composition. IndexedDB supports
+larger browser-local drafts. The portable file limit is 15 MB.
 
-Still to come: recorded samples and SoundFonts, deeper modulation/routing, parameter automation, FLAC, General MIDI, richer timeline durations and more complete mixing. Current limits: 4/4, 16 bars, 12 instruments, 32 one-bar chunks per instrument.
+**Pre-programmed still understands v2, not v4**. As agreed, we'll integrate
+when pre-midi's instrument and score formats settle. No v2 or v3 file import
+conversion layer is added; existing browser-local v3 synth drafts can recover
+into the new draft format.
+
+Still to come: SoundFont/SFZ import, richer multisampling and velocity layers,
+deeper modulation/effect routing, automation, FLAC, General MIDI, variable
+timeline lengths and advanced mixing. Current timeline limits are 4/4, 16 bars,
+12 instruments and up to 32 one-bar chunks per instrument.
 
 ### Run locally and verify
-Serve the folder via a static web server and open its index page. Node.js 20+ can run `npm run check`. No npm dependencies or build step.
+Serve the folder via a static web server and open its index page. Node.js 22+ can run `npm run check`, then `node scripts/fetch-samples.mjs` to download and verify recorded library samples for local static hosting. The GitHub Pages workflow does this automatically. No npm dependencies or server backend.
