@@ -1104,16 +1104,25 @@ function renderLibrary() {
   list.append(card);
  }
 }
-$("remove-instrument").addEventListener("click", () => {
- const inst = instrument();
- if (!confirm("Remove " + inst.name + " and all its chunks?")) return;
+function removeInstrument(instrumentId){
+ const target=score.instruments.find(entry=>entry.id===instrumentId);
+ if(!target)return;
+ const last=score.instruments.length===1;
+ if(!confirm(instrumentDeleteLabel(target)+" “"+target.name+"” and all its chunks?"+
+  (last?" A fresh, empty instrument will take its place.":"")))return;
  closePicker();
- modify(() => {
-  score.instruments = score.instruments.filter(entry => entry.id !== inst.id);
-  selectedInstrumentId = score.instruments[0].id;
-  selectedSlot = {instrumentId:selectedInstrumentId,bar:0};
+ modify(()=>{
+  const replacementId=deleteInstrumentFromScore(score,instrumentId);
+  selectedSounds.delete(instrumentId);
+  selectedChunks.delete(instrumentId);
+  selectedNoteId=null;
+  if(selectedInstrumentId===instrumentId){
+   selectedInstrumentId=replacementId;
+   selectedSlot={instrumentId:selectedInstrumentId,bar:0};
+  }
  });
-});
+}
+$("remove-instrument").addEventListener("click",()=>removeInstrument(instrument().id));
 $("chunk").addEventListener("change", event => {
  selectedChunks.set(instrument().id, event.target.value);
  renderChunkEditor();
@@ -1149,30 +1158,49 @@ $("sound-name").addEventListener("change",event=>modify(()=>{sound().name=event.
 $("sound-reference").addEventListener("change",event=>modify(()=>{sound().referencePitch=Number(event.target.value);}));
 $("replace-row-sound").addEventListener("click",()=>openLibrary("replace-row"));
 $("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,score,{soundId:sound().id}).catch(error=>message(error.message,true));});
-function moveSound(offset){
+function moveRackSound(instrumentId,soundId,offset){
+ const inst=score.instruments.find(item=>item.id===instrumentId);
+ if(!inst)return;
+ const index=inst.sounds.findIndex(item=>item.id===soundId);
+ if(index<0||index+offset<0||index+offset>=inst.sounds.length)return;
  modify(()=>{
-  const inst=instrument(),index=inst.sounds.indexOf(sound());
-  if(index+offset<0||index+offset>=inst.sounds.length)return;
   [inst.sounds[index],inst.sounds[index+offset]]=[inst.sounds[index+offset],inst.sounds[index]];
+  selectedInstrumentId=inst.id;
+  selectedSounds.set(inst.id,soundId);
  });
 }
-$("move-sound-up").addEventListener("click",()=>moveSound(-1));
-$("move-sound-down").addEventListener("click",()=>moveSound(1));
-$("duplicate-sound").addEventListener("click",()=>modify(()=>{
- const entry=clone(sound());entry.id=id();entry.name=(entry.name+" copy").slice(0,60);
- instrument().sounds.splice(instrument().sounds.indexOf(sound())+1,0,entry);selectedSounds.set(instrument().id,entry.id);
-}));
-$("remove-sound").addEventListener("click",()=>{
- const inst=instrument(),entry=sound();
- if(inst.sounds.length===1)return;
+function duplicateRackSound(instrumentId,soundId){
+ const inst=score.instruments.find(item=>item.id===instrumentId);
+ const index=inst?.sounds.findIndex(item=>item.id===soundId)??-1;
+ if(index<0||inst.sounds.length>=MAX_SOUNDS)return;
+ modify(()=>{
+  const entry=clone(inst.sounds[index]);
+  entry.id=id();
+  entry.name=(entry.name+" copy").slice(0,60);
+  inst.sounds.splice(index+1,0,entry);
+  selectedInstrumentId=inst.id;
+  selectedSounds.set(inst.id,entry.id);
+ });
+}
+function removeRackSound(instrumentId,soundId){
+ const inst=score.instruments.find(item=>item.id===instrumentId);
+ const entry=inst?.sounds.find(item=>item.id===soundId);
+ if(!entry||inst.layout!=="rack")return;
+ if(inst.sounds.length===1){removeInstrument(instrumentId);return;}
  const count=inst.chunks.reduce((sum,chunk)=>sum+chunk.notes.filter(note=>note.soundId===entry.id).length,0);
  if(count&&!confirm("Remove "+entry.name+" and its "+count+" hits across all chunks?"))return;
+ closePicker();
  modify(()=>{
-  inst.sounds=inst.sounds.filter(sound=>sound.id!==entry.id);
-  for(const chunk of inst.chunks)chunk.notes=chunk.notes.filter(note=>note.soundId!==entry.id);
+  deleteSoundFromScore(score,instrumentId,soundId);
   selectedNoteId=null;
+  selectedInstrumentId=instrumentId;
+  selectedSounds.delete(instrumentId);
  });
-});
+}
+$("move-sound-up").addEventListener("click",()=>moveRackSound(instrument().id,sound().id,-1));
+$("move-sound-down").addEventListener("click",()=>moveRackSound(instrument().id,sound().id,1));
+$("duplicate-sound").addEventListener("click",()=>duplicateRackSound(instrument().id,sound().id));
+$("remove-sound").addEventListener("click",()=>removeRackSound(instrument().id,sound().id));
 $("convert-rack").addEventListener("click",()=>{
  if(!canConvertToRack(instrument()))return;
  modify(()=>convertToRack(instrument()));
