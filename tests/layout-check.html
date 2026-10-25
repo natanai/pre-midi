@@ -140,6 +140,20 @@ async function checkLayout(frame){
   doc.querySelectorAll(".arrangement-row").length===6 &&
   doc.querySelectorAll("#piano .note.filled").length>=1 &&
   !gallery.open;
+ if(frame.clientWidth>=1400 && checks.exampleUsesRealComposer){
+  // Exercise a full recorded composition with the real downloaded CC0 samples,
+  // not just the synthetic-only example or a schema fixture.
+  get("examples").click();
+  frame.contentWindow.confirm=()=>true;
+  const porch=[...gallery.querySelectorAll(".example-card")].find(card=>card.textContent.includes("Porchlight"));
+  porch?.click();
+  for(let attempt=0;attempt<220&&get("title").value!=="Porchlight";attempt++)
+   await new Promise(resolve=>setTimeout(resolve,25));
+  checks.sampleExampleLoaded=get("title").value==="Porchlight" &&
+   doc.querySelectorAll(".instrument-card").length===4 &&
+   doc.querySelectorAll(".arrangement-row").length===4 &&
+   !gallery.open;
+ }
  frame.contentWindow.confirm=proceed;
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({
