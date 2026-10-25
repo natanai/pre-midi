@@ -76,7 +76,7 @@ test("v5 pitched work migrates deterministically with notes, chunks, expression,
  inst.chunks.push(makeChunk("Second"));inst.timeline[2]=inst.chunks[1].id;
  inst.chunks[0].notes=[{id:id(),pitch:71,start:2,duration:3,velocity:.6,bend:{shape:"fall",amount:2,rate:4}}];
  const old=legacy(score),before=clone(old),next=parse(JSON.stringify(old));
- assert.equal(next.version,6);assert.deepEqual(next.instruments[0].chunks,inst.chunks);
+ assert.equal(next.version,7);assert.deepEqual(next.instruments[0].chunks,inst.chunks);
  assert.deepEqual(next.instruments[0].timeline,inst.timeline);
  assert.deepEqual(next.instruments[0].sounds[0].patch,inst.sounds[0].patch);
  assert.deepEqual(parse(JSON.stringify(old)),next);assert.deepEqual(old,before);
