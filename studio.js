@@ -480,7 +480,7 @@ function renderNotes() {
    velocity:current.velocity,bend:current.bend,
    duration:current.duration*60/score.bpm/4
   }).catch(error=>message("Couldn't preview note: "+error.message,true));
- });
+ },instrument().patch.bend);
 }
 function renderChunkEditor() {
  const inst = instrument(), select = $("chunk");
