@@ -17,16 +17,19 @@ const piece=(preset,pattern,timeline,volume=.68,options={})=>({
 export const EXAMPLES=[
  NEON_AFTER_HOURS,
  {
-  // Form: four-bar cycles with an opening riff, a second phrase, a developed
-  // third phrase, then a breakdown and cadence. One sampled steel-guitar note
-  // at a time; sound and time data use the public v7 score unchanged.
+  // Introduce the two-bar key motif over E minor before bringing in the sampled
+  // guitar. Chord-matched C and D guitar answers lead to the four-bar cycles.
+  // Later 12-step guitar phrases use native placements; no special playback path.
   id:"porchlight",name:"Guitar Velocity and Polymeter",tag:"SAMPLES / PHRASE REPETITION",
   description:"Recorded guitar velocity layers, three-beat phrases against 4/4 drums, melodic variations, and section changes.",
   bpm:112,bars:16,accent:"#ffc266",
   voices:[
    piece("steel-guitar",{
-    Opening:[
-     N(64,0,2,.55),N(67,3,2,.25),N(59,6,2,.9),N(62,10,2,.55)
+    IntroC:[
+     N(64,0,3,.55),N(67,6,2,.25),N(71,10,3,.55)
+    ],
+    IntroD:[
+     N(66,0,3,.55),N(69,6,2,.25),N(74,10,3,.55)
     ],
     Second:[
      N(67,0,2,.9),N(69,2,2,.55),N(64,5,2,.25),N(62,9,3,.9)
@@ -43,13 +46,13 @@ export const EXAMPLES=[
     Resolve:[
      N(64,0,4,.9),N(67,7,2,.55),N(64,12,4,.25)
     ]
-   },["Opening","-","-","-","Second","-","-","-",
-      "Third","-","-","-","Break","-","Turn","Resolve"],.55,{
+   },["-","-","IntroC","IntroD","Second","-","-","-",
+      "Third","-","-","-","Break","-","Turn","Resolve"],.46,{
     name:"Recorded guitar · three velocity layers",
-    tone:{gain:.72,attack:.003,release:.085,pan:-.23,
-     filter:{type:"lowpass",cutoff:4800,resonance:.7}},
+    tone:{gain:.66,attack:.006,release:.085,pan:-.17,
+     filter:{type:"lowpass",cutoff:3600,resonance:.7}},
     placements:[
-     {offset:4,length:12,every:12,repeats:5},null,null,null,
+     null,null,null,null,
      {offset:0,length:12,every:12,repeats:5},null,null,null,
      {offset:0,length:12,every:12,repeats:5},null,null,null,
      {offset:0,length:12,every:12,repeats:3},null,
@@ -65,7 +68,7 @@ export const EXAMPLES=[
     ThinE:[N(40,0,8,.75),N(47,12,3,.5)],
     ThinC:[N(36,0,8,.72),N(43,12,3,.49)],
     End:[N(40,0,16,.9)]
-   },["ThinE","C","G","D","E","C","G","B",
+   },["ThinE","ThinE","ThinC","D","E","C","G","B",
       "E","C","G","D","ThinC","D","B","End"],.64,{
     name:"Syncopated synth bass",
     tone:{filter:{cutoff:930,resonance:3.1},
@@ -77,14 +80,19 @@ export const EXAMPLES=[
     C:[...chord([48,55,59,64],0,16,.49)],
     G:[...chord([43,50,54,57],0,16,.46)],
     D:[...chord([50,57,62,64],0,16,.5)],
-    B:[...chord([47,54,57,63],0,16,.53)]
-   },["Em","C","G","D","Em","C","G","B",
+    B:[...chord([47,54,57,63],0,16,.53)],
+    IntroEm:chord([59,62,67],0,16,.38),
+    IntroC:chord([60,64,67,71],0,16,.37),
+    IntroD:chord([62,66,69],0,16,.4)
+   },["-","IntroEm","IntroC","IntroD","Em","C","G","B",
       "Em","C","G","D","C","D","B","Em"],.23,{
     name:"Chord pad",
     tone:{filter:{cutoff:1800},envelope:{attack:.19,decay:.35,sustain:.78,release:.7},
      effects:{delayMix:.12,delayTime:.37}}
    }),
-   piece("harmonic-keys",{
+   piece("felt-electric",{
+    Intro:[N(76,0,3,.72),N(71,5,2,.55),N(67,8,3,.64),N(71,13,2,.48)],
+    Variation:[N(67,0,3,.67),N(71,4,2,.55),N(76,8,3,.68),N(74,13,2,.5)],
     E:[N(76,0,2,.75),N(79,5,2,.56),N(74,11,3,.71)],
     C:[N(72,1,3,.73),N(76,6,2,.62),N(79,13,2,.68)],
     G:[N(74,2,2,.7),N(78,8,2,.59),N(81,13,2,.76)],
@@ -95,11 +103,11 @@ export const EXAMPLES=[
     UpG:[N(74,0,2,.72),N(78,3,2,.77),N(81,7,2,.82),N(86,12,3,.9)],
     UpD:[N(76,0,2,.75),N(81,4,2,.79),N(86,9,2,.9),N(78,13,3,.85)],
     End:[N(76,0,4,.85),N(79,7,3,.6),N(88,12,4,.82)]
-   },["-","-","E","-","E","C","G","B",
-      "UpE","UpC","UpG","UpD","-","D","B","End"],.33,{
-    name:"Harmonic synth counter-melody",
-    tone:{filter:{cutoff:7900},envelope:{decay:.36,release:.34},
-     effects:{delayMix:.16,delayTime:.3,delayFeedback:.22},pan:.17}
+   },["Intro","Variation","-","-","E","C","G","B",
+      "UpE","UpC","UpG","UpD","-","D","B","End"],.30,{
+    name:"Triangle-key counter-melody",
+    tone:{filter:{cutoff:2650},envelope:{decay:.35,release:.3},
+     effects:{delayMix:.09,delayTime:.3,delayFeedback:.17},pan:.13}
    }),
    piece("neon-lead",{
     Pickup:[N(71,11,3,.62)],
@@ -108,7 +116,7 @@ export const EXAMPLES=[
     Peak:[N(83,0,3,.85),N(81,4,2,.72),N(79,7,2,.78),N(76,12,4,.88)],
     Fall:[N(78,1,4,.72,{shape:"fall",amount:1.5,rate:3.4})],
     Close:[N(76,0,8,.78),N(71,12,4,.5)]
-   },["-","-","-","Pickup","-","Call","Response","Call",
+   },["-","-","-","-","-","Call","Response","Call",
       "Response","Peak","Response","Peak","-","Fall","Call","Close"],.24,{
     name:"Detuned synth lead",
     tone:{filter:{cutoff:2800},envelope:{release:.27},
@@ -131,7 +139,16 @@ export const EXAMPLES=[
     ],
     pattern:{
      Open:[
-      H("kick",0,.67),H("low",0,.37),H("hat",6,.29),H("bongo",11,.45)
+      H("kick",0,.62),H("closed",8,.22)
+     ],
+     IntroBeat:[
+      H("kick",0,.69),H("kick",8,.48),
+      H("closed",4,.25),H("closed",12,.29)
+     ],
+     Build:[
+      H("kick",0,.79),H("kick",8,.61),H("low",0,.41),
+      H("closed",2,.25),H("closed",6,.28),H("closed",10,.27),
+      H("closed",14,.3),H("snare",12,.48)
      ],
      Approach:[
       H("kick",0,.77),H("kick",10,.52),H("low",0,.53),
@@ -177,7 +194,7 @@ export const EXAMPLES=[
       H("clap",4,.45),H("closed",6,.38),H("bongo",11,.43)
      ]
     },
-    timeline:["Open","Approach","Approach","Fill",
+    timeline:["Open","IntroBeat","Build","Approach",
       "Full","Full","Shift","Fill",
       "Half","Shift","Full","Fill",
       "Break","Restart","Fill","End"]

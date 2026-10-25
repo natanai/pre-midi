@@ -34,6 +34,11 @@ try{
  const low=[0,1,2].reduce((s,b)=>s+measured[b].rms,0)/3;
  const peak=[4,5,6,7,8,9,10,11].reduce((s,b)=>s+measured[b].rms,0)/8;
  if(peak<low*1.1)throw Error("Sections lack a significant energy increase: "+JSON.stringify({low,peak}));
+ // Keep the sparse opening quieter than the main section, and make sure the
+ // opening's kick/keys yield actual sound rather than silently passing unit tests.
+ if(measured[0].rms>=measured[4].rms*.9)
+  throw Error("Opening is too dense relative to first full groove: "+
+   JSON.stringify({opening:measured[0],full:measured[4]}));
  result.textContent=JSON.stringify({rms:measured.map(x=>+x.rms.toFixed(4)),peak:measured.map(x=>+x.peak.toFixed(3))});
  root.dataset.audio="PASS";
 }catch(error){result.textContent=String(error.stack||error);root.dataset.audio="FAIL";}
