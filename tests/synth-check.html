@@ -37,8 +37,11 @@ async function run(){
   const doc=frame.contentDocument,w=frame.contentWindow,get=id=>doc.getElementById(id);
   get("record-sound").click();
   assert(get("mic-upload")&&!get("mic-upload").hidden,"WAV upload action missing");
-  const upload=new w.DataTransfer();upload.items.add(new w.File([encodeMonoWav(samples)],"reference-a3.wav",{type:"audio/wav"}));
-  get("mic-file").files=upload.files;get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
+  function uploadReference(){
+   const upload=new w.DataTransfer();upload.items.add(new w.File([encodeMonoWav(samples)],"reference-a3.wav",{type:"audio/wav"}));
+   get("mic-file").files=upload.files;get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
+  }
+  uploadReference();
   await wait(()=>!get("mic-preview").hidden&&!get("mic-convert").disabled);
   assert(!get("mic-excerpt").hidden,"Uploaded WAV cannot select an excerpt");
   get("mic-convert").click();
@@ -67,7 +70,7 @@ async function run(){
   w.prompt=()=>"Saved converted sound";get("save-sound").click();
   await wait(()=>(w.localStorage.getItem("premidi-user-sounds-v1")||"").includes("Saved converted sound"));
   get("record-sound").click();
-  get("mic-file").files=upload.files;get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
+  uploadReference();
   await wait(()=>!get("mic-preview").hidden&&!get("mic-convert").disabled);
   const hit=doc.querySelector('input[name="mic-kind"][value="hit"]');hit.checked=true;hit.dispatchEvent(new w.Event("change",{bubbles:true}));
   get("mic-convert").click();
@@ -80,7 +83,7 @@ async function run(){
   get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
   await wait(()=>get("mic-status").textContent==="Couldn't read this sound");
   assert(get("mic-preview").hidden,"Invalid upload left a usable take");
-  get("mic-file").files=upload.files;get("mic-file").dispatchEvent(new w.Event("change",{bubbles:true}));
+  uploadReference();
   await wait(()=>!get("mic-preview").hidden&&!get("mic-convert").disabled);
   get("mic-convert").click();get("mic-close").click();get("record-sound").click();
   await new Promise(resolve=>setTimeout(resolve,150));
