@@ -9,6 +9,7 @@ import { loadLibrarySample, makeSampleAsset, MAX_SCORE_BYTES, sampleForNote } fr
 import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
 import { loadDraft, saveDraft } from "./storage.js";
+import { renderNoteExpression } from "./expressionUI.js";
 
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v4-draft";
@@ -37,6 +38,7 @@ const savedSounds=(()=>{
 let libraryMode="add",libraryCategory="All";
 let score = cached || create();
 let selectedInstrumentId = score.instruments[0].id;
+let selectedNoteId = null;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
 let history = [], future = [], playback = null, pendingPlay = false;
@@ -117,6 +119,7 @@ function resetTo(next) {
  closePicker();
  stop();
  score = next;
+ selectedNoteId=null;
  selectedInstrumentId = score.instruments[0].id;
  selectedChunks = new Map();
  selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
@@ -341,9 +344,11 @@ function renderNotes() {
     cell.classList.toggle("filled", !!present && present.start === pos);
     cell.classList.toggle("tail", !!present && present.start !== pos);
     cell.classList.toggle("end", !!present && present.start + present.duration - 1 === pos);
+    cell.classList.toggle("selected", !!present && present.id===selectedNoteId);
+    cell.classList.toggle("bent", !!present && present.bend?.shape && present.bend.shape!=="straight");
     cell.setAttribute("aria-label", noteLabel(pitch) + ", step " + (pos + 1)
-     + (present ? ", note length " + present.duration + " steps; click to remove, drag right edge to resize" : ", click to add note"));
-    cell.title = present ? "Note: " + present.duration + "/16 · " + Math.round(present.velocity*100) + "% strength · drag end to resize · Shift-click to change strength" : "Add " + noteLabel(pitch);
+     + (present ? ", note length " + present.duration + " steps; click to select and shape, Ctrl-click to delete" : ", click to add note"));
+    cell.title = present ? "Click to shape pitch · Shift-click strength · Ctrl-click delete · drag end resize" : "Add " + noteLabel(pitch);
    }
   }
 
@@ -360,13 +365,21 @@ function renderNotes() {
      if(modify(()=>{existing.velocity=next;}))message("Note strength: "+Math.round(next*100)+"%");
      return;
     }
-    if (modify(() => {
-     if (existing) editedChunk.notes = editedChunk.notes.filter(n => n.id !== existing.id);
-     else editedChunk.notes.push({
-      id:id(), pitch, start:step,
-      duration:Math.min(Number($("length").value),16-step), velocity:Number($("velocity").value)
-     });
-    }) && !existing && !playback && !pendingPlay) void audition(targetInst,pitch,score).catch(() => {});
+    if(existing && !(event.ctrlKey || event.metaKey)){
+     selectedNoteId=existing.id;
+     renderNotes();
+     return;
+    }
+    if(existing){
+     selectedNoteId=null;
+     modify(()=>{editedChunk.notes=editedChunk.notes.filter(n=>n.id!==existing.id);});
+     return;
+    }
+    const created={id:id(),pitch,start:step,
+     duration:Math.min(Number($("length").value),16-step),velocity:Number($("velocity").value)};
+    selectedNoteId=created.id;
+    if(modify(()=>{editedChunk.notes.push(created);})&&!playback&&!pendingPlay)
+     void audition(targetInst,pitch,score).catch(()=>{});
    }, "note" + (step % 4 === 0 ? " beat" : ""));
    cells.push(cell);
 
@@ -417,6 +430,15 @@ function renderNotes() {
     cell.addEventListener("pointerup", finish);
     cell.addEventListener("pointercancel", cancel);
    });
+   // Backspace/Delete removes a selected note without hijacking text inputs.
+   cell.addEventListener("keydown",event=>{
+    if(!["Backspace","Delete"].includes(event.key))return;
+    const selected=chunk.notes.find(n=>n.id===selectedNoteId);
+    if(!selected||selected.pitch!==pitch||step<selected.start||step>=selected.start+selected.duration)return;
+    event.preventDefault();
+    const id=selectedNoteId;selectedNoteId=null;
+    modify(()=>{chunk.notes=chunk.notes.filter(n=>n.id!==id);});
+   });
    // Keyboard support is also immediate and uses the canonical undo pathway.
    cell.addEventListener("keydown", event => {
     if (!event.altKey || !["ArrowLeft","ArrowRight"].includes(event.key)) return;
@@ -438,6 +460,14 @@ function renderNotes() {
  paintPianoPlayhead();
  scroll.scrollTop = top;
  scroll.scrollLeft = left;
+ const note=chunk.notes.find(entry=>entry.id===selectedNoteId);
+ renderNoteExpression($("note-expression"),note,note?noteLabel(note.pitch):"",bend=>{
+  modify(()=>{const target=chunkFor(instrument()).notes.find(entry=>entry.id===selectedNoteId);if(target)target.bend=bend;});
+ },()=>{
+  const id=selectedNoteId;
+  selectedNoteId=null;
+  modify(()=>{const current=chunkFor(instrument());current.notes=current.notes.filter(entry=>entry.id!==id);});
+ });
 }
 function renderChunkEditor() {
  const inst = instrument(), select = $("chunk");
