@@ -773,3 +773,44 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .mic-synth-result label { display:grid; gap:6px; min-width:0; }
 .mic-synth-result input { width:100%; min-width:0; }
 .mic-synth-result .mic-guidance { margin:0; }
+
+/* Context-sensitive actions on instrument cards and sound-rack rows. */
+.instrument-entry{position:relative;isolation:isolate}
+.instrument-entry:has(.entity-actions[open]){z-index:22}
+.instrument-entry .instrument-card{padding-right:53px}
+.entity-actions summary{
+ display:grid;place-items:center;min-width:36px;min-height:36px;
+ list-style:none;cursor:pointer;color:var(--bright);
+ border:1px solid var(--line);background:var(--void);
+ font-size:20px;line-height:1;
+}
+.entity-actions summary::-webkit-details-marker{display:none}
+.entity-actions summary:hover,.entity-actions[open] summary{background:var(--stripe);border-color:var(--bright)}
+.entity-actions summary:focus-visible{outline:1px dotted var(--bright);outline-offset:2px}
+.entity-action-list{
+ position:absolute;top:calc(100% + 3px);right:0;
+ min-width:170px;padding:4px;border:1px solid var(--bright);
+ background:var(--panel);box-shadow:0 10px 24px #000;z-index:20;
+}
+.entity-action-list button{
+ display:block;width:100%;min-height:39px;
+ padding:9px 10px;text-align:left;white-space:normal;
+ font-size:12px;color:var(--bright);
+}
+.entity-action-list button.danger{color:#ff8a98}
+.entity-action-list button:disabled{color:var(--muted)}
+.instrument-actions{position:absolute;top:12px;right:12px;z-index:10}
+.rack-row-head{
+ position:sticky;left:0;z-index:8;display:flex;align-items:stretch;
+ min-width:0;background:#111;border:1px solid #333;
+}
+.rack-row-head .rack-name{
+ position:static;flex:1;min-width:0;z-index:auto;
+ border:0;background:transparent;padding:6px 3px 6px 8px;
+}
+.selected-sound .rack-row-head{border:2px solid #eee;background:#242424}
+.selected-sound .rack-row-head .rack-name{border:0;padding:5px 3px 5px 7px;background:transparent}
+.rack-row-head:has(.entity-actions[open]){z-index:25}
+.rack-actions{position:relative;flex:none;align-self:center}
+.rack-actions summary{min-width:34px;min-height:40px;border:0}
+.rack-actions .entity-action-list{left:0;right:auto;min-width:176px}
