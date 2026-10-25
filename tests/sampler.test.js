@@ -44,3 +44,17 @@ test("invalid untrusted sample data and external-link-only assets cannot become 
  assert.ok(validateSampleAsset({id:"x",name:"X",mime:"text/html",data:"AAAA",source:"user"}));
  assert.equal(MAX_SCORE_BYTES,1_000_000);
 });
+
+test("optional sample tone controls remain compatible and reject malformed values",()=>{
+ const patch=makeSamplerPatch(SAMPLE_LIBRARY[0]);
+ assert.deepEqual(validatePatch(patch),[],"Legacy sampler presets remain valid");
+ patch.filter={type:"lowpass",cutoff:350,resonance:1};
+ patch.drive=.7;
+ assert.deepEqual(validatePatch(patch),[],"Authored tone settings are portable");
+ patch.filter.cutoff=-1;
+ assert.ok(validatePatch(patch).some(s=>/filter/.test(s)));
+ patch.filter.cutoff=350;patch.drive=2;
+ assert.ok(validatePatch(patch).some(s=>/distortion/.test(s)));
+ delete patch.filter;delete patch.drive;
+ assert.deepEqual(validatePatch(patch),[],"Optional tone settings can be omitted");
+});

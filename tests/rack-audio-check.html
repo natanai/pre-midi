@@ -44,6 +44,23 @@ try{
  const faded=clone(sampled);faded.instruments[0].sounds[0].patch.release=.5;
  const fadedAudio=await render(faded);
  check("one-shot release remains independently editable",fadedAudio.slice(55000,70000).some((value,index)=>Math.abs(value-full[index+55000])>50));
+ // All live, WAV-exported and auditioned sample voices use this same tone path.
+ const filtered=clone(sampled);filtered.instruments[0].sounds[0].patch.filter={
+  type:"lowpass",cutoff:160,resonance:.7
+ };
+ check("sample tone settings validate",!validate(filtered).length);
+ const dull=await render(filtered);
+ check("sample filter audibly changes the recording",dull.some((v,i)=>Math.abs(v-full[i])>120));
+ const distorted=clone(sampled);distorted.instruments[0].sounds[0].patch.drive=.9;
+ check("sample drive settings validate",!validate(distorted).length);
+ const driven=await render(distorted);
+ check("sample distortion audibly changes the recording",driven.some((v,i)=>Math.abs(v-full[i])>120));
+ const bending=clone(sampled);bending.instruments[0].sounds[0].patch.movement.depth=80;
+ const vibrato=await render(bending);
+ let lateMotion=0;
+ for(let i=Math.round(.5*44100*2);i<Math.round(.75*44100*2);i++)
+  lateMotion+=Math.abs(vibrato[i]-full[i]);
+ check("sample vibrato remains active beyond the grid note",lateMotion>10000);
  const longAsset=makeSampleAsset("long-rack-tail","Long author hit","audio/wav",encodeMonoWav(
   Float32Array.from({length:44100*4},(_,i)=>Math.sin(i*2*Math.PI*220/44100)*.25)),"Test recording");
  const long=clone(sampled);long.bpm=240;long.samples=[longAsset];

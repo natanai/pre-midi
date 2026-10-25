@@ -26,7 +26,7 @@ ordinary editable presets.
 4. Convert to synth proposes a harmonic source, noise level, filter, amplitude
    envelope and conservative vibrato estimate. The original audio remains
    temporary recorder state. No score is mutated during analysis or preview.
-5. A bounded deterministic search renders up to 33 candidates using
+5. A bounded deterministic search renders a bounded set of candidates using
    `audio.renderSynthBuffer`, which schedules the actual native voice. It
    minimizes normalized, multi-frame spectral differences at two FFT sizes
    together with loudness-envelope differences. Refinement keeps the best
@@ -48,8 +48,13 @@ instrument. Repeated conversion can use the same original take.
 
 ## Deliberate approximation boundary
 
-The present source is a static harmonic series plus shaped noise, followed by
-the existing single filter, shared ADSR, movement and effects. It does not
+The source has a static 32-partial spectrum per oscillator, but its filter can
+now sweep from an initial brighter/darker cutoff and the noise component can
+decay separately from the shared ADSR. Matching analyzes early-versus-late
+spectral color and optimizes sweep, noise decay, and the prior native controls.
+These editable numeric parameters carry no sampled audio. A single filter sweep
+still cannot reproduce independent, time-varying partials, nonlinear acoustic
+resonances, speech formants, or multiple simultaneous pitches. It does not
 learn an acoustic instrument, infer arbitrary signal graphs, separate chords,
 or reconstruct speech. A single recording does not uniquely determine a
 source recipe or its response to different held-note lengths. Basic pitch
