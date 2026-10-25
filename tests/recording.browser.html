@@ -73,8 +73,18 @@ const result=async()=>{
   await captureAgain("note","Recorded note");
   if(doc.querySelectorAll(".instrument-card").length!==3||!doc.querySelector(".note-name"))
    throw Error("Recording a note on a rack must create a piano roll.");
+  get("record-sound").click();get("mic-length").value="0.75";get("mic-capture").click();
+  for(let i=0;i<300&&get("mic-use").hidden;i++)await new Promise(resolve=>setTimeout(resolve,50));
+  if(get("mic-use").hidden)throw Error("No microphone take for synth conversion.");
+  get("mic-convert").click();
+  for(let i=0;i<500&&(get("mic-synth-result").hidden||get("mic-use-synth").disabled);i++)
+   await new Promise(resolve=>setTimeout(resolve,30));
+  if(get("mic-synth-result").hidden)throw Error("Microphone conversion failed: "+get("mic-status").textContent+" "+get("mic-subtitle").textContent);
+  const convertedName=get("mic-synth-name").value;get("mic-use-synth").click();
+  if(doc.querySelectorAll(".instrument-card").length!==4||!doc.querySelector(".instrument-card.active").textContent.includes(convertedName))
+   throw Error("Microphone conversion did not create its named synth instrument.");
   document.documentElement.dataset.recorder="PASS";
-  pre.textContent="PASS: timed mic capture, audition, drum mode, native instrument, raw WAV ZIP/import, recorded hit appends to rack, recorded note opens piano";
+  pre.textContent="PASS: timed mic capture, audition, raw WAV ZIP/import, hit appends to rack, note opens piano, real microphone converts to named native synth";
  }catch(error){fail(error);}
  const url="/__recorder_result?status="+encodeURIComponent(document.documentElement.dataset.recorder)+
   "&details="+encodeURIComponent(pre.textContent);

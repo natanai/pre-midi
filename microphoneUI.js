@@ -1,145 +1,196 @@
-import {RECORDER_DURATIONS,RECORDING_RATE,pitchLabel,estimatePitch,encodeMonoWav,describeRecording,pcmFromRecordedBlob} from "./recording.js";
+import {RECORDER_DURATIONS,RECORDING_RATE,pitchLabel,estimatePitch,encodeMonoWav,describeRecording,
+ pcmFromRecordedBlob,monoFromAudioBlob,recordingExcerpt} from "./recording.js";
+import {convertToSynth} from "./synthMatch.js";
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-export function installMicrophoneRecorder({get,onUse}){
+export function installMicrophoneRecorder({get,onUse,onSynth}){
  const $=get,dialog=$("microphone-dialog");
- let stream=null,media=null,aborted=false,capture=null,previewUrl=null,active=false;
- const buttons=()=>[$("mic-capture"),$("mic-retry"),$("mic-use")];
+ let stream=null,media=null,capture=null,source=null,converted=null,active=false,generation=0,conversion=null;
+ const urls=new Map();
+ const kind=()=>dialog.querySelector('input[name="mic-kind"]:checked')?.value||"note";
  const status=(label,small="",count="●")=>{
   $("mic-status").textContent=label;$("mic-subtitle").textContent=small;$("mic-count").textContent=count;
  };
- const kind=()=>dialog.querySelector('input[name="mic-kind"]:checked')?.value||"note";
- const dispose=()=>{
-  aborted=true;
+ function audio(id,blob=null){
+  const player=$(id);player.pause();player.removeAttribute("src");player.load();
+  if(urls.has(id)){URL.revokeObjectURL(urls.get(id));urls.delete(id);}
+  if(blob){const url=URL.createObjectURL(blob);urls.set(id,url);player.src=url;}
+ }
+ function clearConversion(){
+  conversion?.abort();conversion=null;converted=null;
+  audio("mic-synth-playback");$("mic-synth-result").hidden=true;
+ }
+ function busy(value){
+  active=value;dialog.setAttribute("aria-busy",String(value));
+  for(const id of ["mic-capture","mic-upload","mic-use","mic-retry","mic-convert","mic-use-synth",
+   "mic-length","mic-root","mic-excerpt-start","mic-excerpt-length","mic-excerpt-use"])
+   $(id).disabled=value;
+  for(const radio of dialog.querySelectorAll('input[name="mic-kind"]'))radio.disabled=value;
+ }
+ function dispose(){
+  generation++;clearConversion();
   if(media&&media.state!=="inactive"){try{media.stop();}catch{}}
   media=null;
   if(stream){for(const track of stream.getTracks())track.stop();stream=null;}
-  if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
-  $("mic-playback").removeAttribute("src");$("mic-playback").load();
-  active=false;capture=null;
- };
- function reset(){
-  dispose();aborted=false;
-  status("Ready when you are","Microphone permission is requested only when you start.");
-  $("mic-preview").hidden=true;
-  $("mic-capture").hidden=false;$("mic-capture").disabled=false;
-  $("mic-use").hidden=true;$("mic-retry").hidden=true;
+  audio("mic-playback");capture=null;source=null;
+  dialog.classList.remove("mic-recording");busy(false);
+ }
+ function reset(defaults=false){
+  dispose();status("Ready when you are","Record one sound or upload a WAV.");
+  $("mic-preview").hidden=true;$("mic-excerpt").hidden=true;
+  $("mic-capture").hidden=false;$("mic-use").hidden=true;$("mic-retry").hidden=true;
   $("mic-name").value="";
-  $("mic-length").disabled=false;
-  for(const radio of dialog.querySelectorAll('input[name="mic-kind"]'))radio.disabled=false;
+  if(defaults){$("mic-length").value="1.5";dialog.querySelector('input[name="mic-kind"][value="note"]').checked=true;}
+ }
+ function showPitch(){
+  if(!capture)return;
+  if(kind()!=="note"){$("mic-pitch-message").textContent="One-shot recording · no note identification needed.";return;}
+  const pitch=capture.pitch;
+  $("mic-root").value=String(Math.max(36,Math.min(96,pitch?.midi??60)));
+  $("mic-pitch-message").textContent=pitch?
+   "Likely "+pitchLabel(pitch.midi)+" ("+Math.round(pitch.hz)+" Hz). Check the note before using.":
+   "Couldn't identify a reliable single pitch. Choose the note you recorded.";
  }
  function updateKind(){
   const pitched=kind()==="note";
   $("mic-hint").textContent=pitched?
    "Play one clear guitar string, whistle or sung note. Leave a tiny bit of quiet before playing. I'll suggest the pitch.":
-   "Make one distinct hit or noise. This plays as a one-shot, without trying to detect a note.";
+   "Make one distinct hit or noise. This plays as a one-shot, without requiring a musical pitch.";
   $("mic-root-field").hidden=!pitched;
-  if(capture)showPitch(capture);
+  clearConversion();showPitch();
  }
- function showPitch(take){
-  if(kind()!=="note"){$("mic-pitch-message").textContent="One-shot recording · no note identification needed.";return;}
-  const pitch=take.pitch;
-  $("mic-root").value=String(pitch?.midi??60);
-  $("mic-pitch-message").textContent=pitch?
-   "Likely "+pitchLabel(pitch.midi)+" ("+Math.round(pitch.hz)+" Hz). Check the note before using.":
-   "Couldn't identify a reliable single pitch. Choose the note you recorded.";
- }
- function reportTake(values){
-  const wav=encodeMonoWav(values,RECORDING_RATE),blob=new Blob([wav],{type:"audio/wav"});
-  capture={wav,pitch:estimatePitch(values,RECORDING_RATE),quality:describeRecording(values)};
-  previewUrl=URL.createObjectURL(blob);
-  $("mic-playback").src=previewUrl;
-  $("mic-name").value=kind()==="note"?"My note":"My hit";
-  $("mic-preview").hidden=false;
-  $("mic-capture").hidden=true;$("mic-use").hidden=false;$("mic-retry").hidden=false;
-  $("mic-length").disabled=false;
-  for(const radio of dialog.querySelectorAll('input[name="mic-kind"]'))radio.disabled=false;
-  showPitch(capture);
+ function reportTake(values,name=kind()==="note"?"My note":"My hit"){
+  clearConversion();
+  const wav=encodeMonoWav(values,RECORDING_RATE);
+  capture={values,wav,pitch:estimatePitch(values,RECORDING_RATE),quality:describeRecording(values)};
+  audio("mic-playback",new Blob([wav],{type:"audio/wav"}));
+  $("mic-name").value=name.slice(0,60);
+  $("mic-preview").hidden=false;$("mic-capture").hidden=true;
+  $("mic-use").hidden=false;$("mic-retry").hidden=false;
+  showPitch();
   const health=capture.quality;
   $("mic-quality").textContent=health.quiet?
    "This recording is extremely quiet. Try moving closer and recording again.":
    health.clipped?"The input may be distorted. Try a quieter sound or move away from the microphone.":
    "Captured "+Math.round(values.length/RECORDING_RATE*100)/100+" seconds · "+Math.round(wav.length/1024)+" KB WAV";
-  status("Listen to your sound","You can re-record it or add it as an instrument.","✓");
+  status("Listen to your sound","Use the recording or convert its sound to synth controls.","✓");
  }
  async function start(){
   if(active)return;
   if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==="undefined"){
-   status("Microphone recording unavailable","Use Import audio to add an existing WAV, OGG or MP3 file.","!");
-   return;
+   status("Microphone recording unavailable","Upload a WAV to use a sound or convert it to synth.","!");return;
   }
-  reset();active=true;$("mic-capture").disabled=true;$("mic-length").disabled=true;
-  for(const radio of dialog.querySelectorAll('input[name="mic-kind"]'))radio.disabled=true;
-  const duration=Number($("mic-length").value);
-  if(!RECORDER_DURATIONS.includes(duration)){active=false;reset();return;}
+  reset();busy(true);const token=generation,duration=Number($("mic-length").value);
+  if(!RECORDER_DURATIONS.includes(duration)){reset();return;}
+  let localStream;
   try{
    status("Requesting microphone","Your browser will ask you to allow microphone use.");
-   stream=await navigator.mediaDevices.getUserMedia({
-    audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false
-   });
-   if(aborted||!dialog.open){dispose();return;}
+   localStream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,
+    noiseSuppression:false,autoGainControl:false},video:false});
+   if(token!==generation||!dialog.open)return;
+   stream=localStream;
    for(let n=3;n>=1;n--){
-    status("Get ready","Recording starts automatically after the countdown.",String(n));
-    await delay(950);
-    if(aborted||!dialog.open){dispose();return;}
+    status("Get ready","Recording starts automatically after the countdown.",String(n));await delay(950);
+    if(token!==generation||!dialog.open)return;
    }
    const options=["audio/webm;codecs=opus","audio/mp4","audio/webm"].find(type=>MediaRecorder.isTypeSupported?.(type));
-   media=new MediaRecorder(stream,options?{mimeType:options}:undefined);
+   const recorder=new MediaRecorder(localStream,options?{mimeType:options}:undefined);media=recorder;
    const chunks=[];
    const finished=new Promise((resolve,reject)=>{
-    media.ondataavailable=event=>{if(event.data.size)chunks.push(event.data);};
-    media.onerror=event=>reject(event.error||Error("Microphone recording failed."));
-    media.onstop=()=>resolve(new Blob(chunks,{type:media.mimeType||chunks[0]?.type||"audio/webm"}));
+    recorder.ondataavailable=event=>{if(event.data.size)chunks.push(event.data);};
+    recorder.onerror=event=>reject(event.error||Error("Microphone recording failed."));
+    recorder.onstop=()=>resolve(new Blob(chunks,{type:recorder.mimeType||chunks[0]?.type||"audio/webm"}));
    });
-   media.start();
-   status("Recording","Make your sound now.","●");
-   dialog.classList.add("mic-recording");
+   void finished.catch(()=>{});
+   recorder.start();status("Recording","Make your sound now.");dialog.classList.add("mic-recording");
    await delay(duration*1000);
-   if(!media||aborted)return;
-   media.stop();
-   const recorded=await finished;
-   dialog.classList.remove("mic-recording");
-   for(const track of stream.getTracks())track.stop();
-   stream=null;
-   if(aborted||!dialog.open)return;
+   if(token!==generation||!dialog.open)return;
+   recorder.stop();const recorded=await finished;
+   for(const track of localStream.getTracks())track.stop();
+   if(token!==generation||!dialog.open)return;
    status("Processing recording","Preparing a WAV and checking its pitch.");
    const values=await pcmFromRecordedBlob(recorded);
-   if(aborted||!dialog.open)return;
-   reportTake(values);
+   if(token===generation&&dialog.open)reportTake(values);
   }catch(error){
-   if(!aborted)status("Recording unavailable",error?.name==="NotAllowedError"?
-    "Microphone permission was denied. Allow it in browser settings, or import a file.":error.message,"!");
-   $("mic-capture").disabled=false;$("mic-length").disabled=false;
-   for(const radio of dialog.querySelectorAll('input[name="mic-kind"]'))radio.disabled=false;
+   if(token===generation)status("Recording unavailable",error?.name==="NotAllowedError"?
+    "Microphone permission was denied. Allow it in browser settings, or upload a WAV.":error.message,"!");
   }finally{
-   if(stream){for(const track of stream.getTracks())track.stop();stream=null;}
-   dialog.classList.remove("mic-recording");
-   active=false;
+   for(const track of localStream?.getTracks()||[])track.stop();
+   if(token===generation){stream=null;media=null;dialog.classList.remove("mic-recording");busy(false);}
   }
  }
+ async function loadFile(blob,name="Uploaded sound"){
+  reset();busy(true);const token=generation;
+  try{
+   if(blob.size>20_000_000)throw Error("Choose a WAV smaller than 20 MB.");
+   status("Reading audio","Choose a short excerpt containing one note or hit.");
+   const values=await monoFromAudioBlob(blob);
+   if(token!==generation||!dialog.open)return;
+   source={values,name:name.replace(/\.[^.]+$/,"").slice(0,60)};
+   const seconds=Math.min(4,values.length/RECORDING_RATE);
+   $("mic-excerpt-start").value="0";$("mic-excerpt-length").value=String(seconds);
+   $("mic-excerpt-start").max=String(Math.max(0,values.length/RECORDING_RATE-.06));
+   $("mic-source-info").textContent=name+" · "+(values.length/RECORDING_RATE).toFixed(2)+" seconds. Previewing the selected excerpt (up to 4 seconds).";
+   reportTake(recordingExcerpt(values,0,seconds),source.name);$("mic-excerpt").hidden=false;
+  }catch(error){if(token===generation)status("Couldn't read this sound",error.message,"!");}
+  finally{if(token===generation)busy(false);}
+ }
+ async function convert(){
+  if(!capture||active)return;
+  clearConversion();busy(true);$("mic-playback").pause();
+  const token=generation,controller=new AbortController();conversion=controller;
+  try{
+   const result=await convertToSynth(capture.values,RECORDING_RATE,{kind:kind(),
+    root:kind()==="note"?Number($("mic-root").value):undefined,signal:controller.signal,
+    onProgress:(label,progress)=>{if(token===generation)status(label,"Finding an editable sound approximation",Math.round(progress*100)+"%");}});
+   if(token!==generation||!dialog.open)return;
+   converted=result;audio("mic-synth-playback",result.preview);$("mic-synth-name").value=result.name;
+   $("mic-synth-result").hidden=false;
+   status("Synth ready","Compare the previews, then use the synth and adjust its dials.","✓");
+  }catch(error){if(token===generation&&error.name!=="AbortError")status("Couldn't convert this sound",error.message,"!");}
+  finally{if(token===generation){conversion=null;busy(false);}}
+ }
  for(let midi=36;midi<=96;midi++){
-  const option=document.createElement("option");option.value=String(midi);option.textContent=pitchLabel(midi);
-  $("mic-root").append(option);
+  const option=document.createElement("option");option.value=String(midi);option.textContent=pitchLabel(midi);$("mic-root").append(option);
  }
  $("mic-root").value="60";
  $("mic-capture").addEventListener("click",()=>void start());
- $("mic-retry").addEventListener("click",()=>{reset();void start();});
- for(const radio of dialog.querySelectorAll('input[name="mic-kind"]'))radio.addEventListener("change",updateKind);
- $("mic-use").addEventListener("click",()=>{
-  if(!capture)return;
-  const input=$("mic-name").value.trim().slice(0,60)||"My recording";
-  const pitched=kind()==="note";
-  const root=Number($("mic-root").value);
-  const sound={wav:capture.wav,name:input,followPitch:pitched,root:pitched?root:60};
-  if(onUse(sound)!==false){dialog.close();dispose();}
+ $("mic-retry").addEventListener("click",()=>void start());
+ $("mic-upload").addEventListener("click",()=>$("mic-file").click());
+ $("mic-file").addEventListener("change",async event=>{
+  const file=event.currentTarget.files?.[0];if(!file)return;
+  try{
+   const header=new Uint8Array(await file.slice(0,12).arrayBuffer());
+   if(new TextDecoder().decode(header.slice(0,4))!=="RIFF"||new TextDecoder().decode(header.slice(8,12))!=="WAVE")
+    throw Error("Choose a file containing WAV audio.");
+   await loadFile(file,file.name);
+  }catch(error){status("Couldn't read this sound",error.message,"!");}
+  finally{$("mic-file").value="";}
  });
- $("mic-close").addEventListener("click",()=>{dialog.close();dispose();});
- dialog.addEventListener("cancel",()=>dispose());
+ $("mic-excerpt-use").addEventListener("click",()=>{
+  if(!source||active)return;
+  try{reportTake(recordingExcerpt(source.values,Number($("mic-excerpt-start").value),Number($("mic-excerpt-length").value)),source.name);}
+  catch(error){status("Choose an excerpt",error.message,"!");}
+ });
+ for(const radio of dialog.querySelectorAll('input[name="mic-kind"]'))radio.addEventListener("change",updateKind);
+ $("mic-root").addEventListener("change",clearConversion);
+ $("mic-convert").addEventListener("click",()=>void convert());
+ $("mic-use").addEventListener("click",()=>{
+  if(!capture||active)return;
+  const name=$("mic-name").value.trim().slice(0,60)||"My recording",pitched=kind()==="note";
+  if(onUse({wav:capture.wav,name,followPitch:pitched,root:pitched?Number($("mic-root").value):60})!==false)dialog.close();
+ });
+ $("mic-use-synth").addEventListener("click",()=>{
+  if(!converted||active)return;
+  if(onSynth({...converted,name:$("mic-synth-name").value.trim().slice(0,60)||converted.name})!==false)dialog.close();
+ });
+ for(const [id,other] of [["mic-playback","mic-synth-playback"],["mic-synth-playback","mic-playback"]])
+  $(id).addEventListener("play",()=>$(other).pause());
+ $("mic-close").addEventListener("click",()=>dialog.close());
+ dialog.addEventListener("cancel",dispose);
+ // A queued close event from a previous take can arrive after a rapid reopen.
+ // It must not dispose the new session or cancel its microphone request.
  dialog.addEventListener("close",()=>{if(!dialog.open)dispose();});
- return {
-  open(){
-   reset();updateKind();
-   if(!dialog.open)dialog.showModal();
-  },
-  close(){dialog.close();dispose();}
- };
+ return {open(){reset(true);updateKind();if(!dialog.open)dialog.showModal();},
+  async openFile(blob,name){reset(true);updateKind();if(!dialog.open)dialog.showModal();await loadFile(blob,name);},
+  close(){dialog.close();dispose();}};
 }

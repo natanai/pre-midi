@@ -29,7 +29,7 @@ async function reportedTest(file,endpoint,width=1440,height=900,microphone=false
   "--autoplay-policy=no-user-gesture-required","--disable-background-timer-throttling","--disable-renderer-backgrounding",
   ...(microphone?["--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream"]:[]),
   "--window-size="+width+","+height,"--no-first-run","--user-data-dir=/tmp/premidi-"+file+"-"+width+"-"+process.pid,
-  "http://127.0.0.1:"+port+"/tests/"+file+".html"],{stdio:"ignore"});
+  "http://127.0.0.1:"+port+"/tests/"+file+".html?width="+width],{stdio:"ignore"});
  try{
   const finished=await Promise.race([result,
    new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(file+" timed out")),45000);}),
@@ -45,5 +45,7 @@ try{
  }
  await reportedTest("rack-audio-check","/__rack_audio_result");
  await reportedTest("audio-check","/__audio_result");
+ await reportedTest("synth-check","/__synth_result",1440,900);
+ await reportedTest("synth-check","/__synth_result",390,844);
  await reportedTest("recording.browser","/__recorder_result",1440,900,true);
 }finally{server.close();}

@@ -16,6 +16,7 @@ import {createSignalDisplay} from "./soundScope.js";
 import {EXAMPLES,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
+import {getAsset} from "./assetRegistry.js";
 
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v5-draft";
@@ -862,6 +863,15 @@ function addAuthoredSample(asset,options={},context=currentContext("add")){
 let recordingMode=null;
 const recorder=installMicrophoneRecorder({
  get:$,
+ onSynth:({patch,name,trigger,referencePitch})=>{
+  if(score.instruments.length>=12){message("The composition supports up to 12 instruments.",true);return false;}
+  const names=new Set(score.instruments.flatMap(inst=>[inst.name,...inst.sounds.map(sound=>sound.name)]));
+  const base=name;let suffix=2;
+  while(names.has(name))name=(base.slice(0,54)+" "+suffix++).slice(0,60);
+  const ok=applySoundSelection(patchCopy(patch),name,trigger,[],{...recordingMode,mode:"add"},null,{referencePitch});
+  if(ok){setInspector(matchMedia("(max-width: 860px)").matches?"expanded":"compact");message("Created "+name+" · edit its synth controls in Sound");}
+  return ok;
+ },
  onUse:({wav,name,root,followPitch})=>{
   try{
    const asset=makeSampleAsset("recorded-"+id(),name,"audio/wav",wav,
@@ -915,6 +925,13 @@ function useImportedAudio(followPitch){
 }
 $("import-as-note").addEventListener("click",()=>useImportedAudio(true));
 $("import-as-hit").addEventListener("click",()=>useImportedAudio(false));
+$("import-as-synth").addEventListener("click",()=>{
+ if(!pendingImport)return;
+ const {asset,name,context}=pendingImport,bytes=getAsset(asset.id);
+ if(!bytes)return message("The imported audio is unavailable. Choose the file again.",true);
+ recordingMode={...context};pendingImport=null;$("audio-kind-dialog").close();
+ void recorder.openFile(new Blob([bytes],{type:asset.mime}),name);
+});
 $("cancel-audio-kind").addEventListener("click",()=>{$("audio-kind-dialog").close();pendingImport=null;});
 async function savePreset(wholeRack=false){
  const inst=instrument(),entry=sound();

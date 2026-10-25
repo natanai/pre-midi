@@ -132,6 +132,33 @@ The recording is a **mono 44.1 kHz, 16-bit PCM WAV**. Short capture windows
 limit file sizes. Automatic pitch estimation is fallible, especially for
 chords, noisy sounds or unusual harmonics.
 
+## Harmonic synthesis and conversion
+
+Choose **Harmonic Keys** or **Harmonic Reed** in the sound library, or change
+either oscillator's Wave to **Harmonic**. The oscillator has 32 independent
+harmonic-strength dials. Its first eight are immediately available; expand
+**Harmonics 9–32** for the rest. Fundamental, All harmonics, and Odd harmonics
+give editable starting shapes. Existing filters, envelopes, movement, effects,
+note bends and the sound visualizer work with these oscillators.
+
+In **Record sound**, record a note or hit, or choose **Upload WAV**. Uploads
+can be up to 20 MB / 30 seconds; select an excerpt up to four seconds long.
+Check the detected note, then choose **Convert to synth**. The studio analyzes
+the sound and compares candidate patches rendered through its actual native
+synth. Listen to the original and converted previews, then choose
+**Use synth instrument**. This creates a separate, automatically named piano-roll
+instrument or hit rack with its harmonic, envelope, filter, noise and movement
+controls populated. The name and every parameter remain editable; saved presets,
+undo, autosave, live playback and WAV export use the same patch.
+
+Conversion produces an approximation, with isolated notes and simple tones as
+the intended inputs. A short recording cannot uniquely reveal an instrument's
+behavior across all pitches and note lengths. Complex acoustic sounds, chords
+and speech may differ substantially. The generated patch needs no source WAV;
+a composition using only synths exports as a small `.premidi`. **Use this recording**
+still retains the actual audio as a separate asset. The [conversion contract](docs/synth-conversion.md)
+documents its algorithm, limits and verification.
+
 ## Separate music data and audio assets
 
 - Synth-only compositions export one small, human-readable **.premidi**.
@@ -156,7 +183,7 @@ The [development direction](docs/development-direction.md) records that boundary
 
 ## Instruments, recordings and samples
 
-**Add instrument** opens one combined library. It includes 23 original
+**Add instrument** opens one combined library. It includes 25 original
 procedural synthesizer recipes *and* 16 sampled instrument choices using 122
 verified CC0 recordings: piano, several acoustic guitars, recorder, whistle,
 kick, snare, clap, closed/open hi-hat and bongo. Preview one, then Add; use

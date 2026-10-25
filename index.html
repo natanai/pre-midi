@@ -121,7 +121,7 @@
 </dialog>
 <dialog id="microphone-dialog" class="instrument-dialog microphone-dialog" aria-labelledby="microphone-dialog-title">
  <div class="library-top">
-  <div><h2 id="microphone-dialog-title">Record a sound</h2><p>Capture one short sound, listen, then make it an instrument.</p></div>
+  <div><h2 id="microphone-dialog-title">Record or upload a sound</h2><p>Use a recording or turn its sound into an editable synth.</p></div>
   <button id="mic-close" type="button" aria-label="Close recording">×</button>
  </div>
  <div class="mic-flow">
@@ -144,14 +144,29 @@
    <small id="mic-subtitle">Mic access is requested only when you start.</small>
   </div>
   <div class="mic-preview" id="mic-preview" hidden>
+   <div id="mic-excerpt" class="mic-excerpt" hidden>
+    <p id="mic-source-info" class="mic-guidance"></p>
+    <label>Start (seconds) <input id="mic-excerpt-start" type="number" min="0" step="0.01" value="0"></label>
+    <label>Length (seconds) <input id="mic-excerpt-length" type="number" min="0.06" max="4" step="0.01" value="1.5"></label>
+    <button id="mic-excerpt-use" type="button">Update excerpt</button>
+   </div>
    <label>Name <input id="mic-name" maxlength="60" placeholder="My recorded sound"></label>
    <label id="mic-root-field">Recorded note <select id="mic-root" aria-label="Pitch of the recorded note"></select></label>
    <p id="mic-pitch-message" class="mic-guidance"></p>
-   <audio id="mic-playback" controls preload="none"></audio>
+   <audio id="mic-playback" aria-label="Original recording preview" controls preload="none"></audio>
    <p id="mic-quality" class="mic-guidance"></p>
+   <button id="mic-convert" type="button">Convert to synth</button>
+   <div id="mic-synth-result" class="mic-synth-result" hidden>
+    <label>Synth name <input id="mic-synth-name" maxlength="60"></label>
+    <audio id="mic-synth-playback" aria-label="Converted synth preview" controls preload="none"></audio>
+    <p class="mic-guidance">Synth approximation · compare with the original above, then edit its sound controls.</p>
+    <button id="mic-use-synth" type="button" class="primary">Use synth instrument</button>
+   </div>
   </div>
   <div class="mic-actions">
    <button id="mic-capture" type="button" class="primary">● Start countdown</button>
+   <button id="mic-upload" type="button">Upload WAV</button>
+   <input id="mic-file" type="file" accept=".wav,audio/wav,audio/x-wav" hidden>
    <button id="mic-use" type="button" class="primary" hidden>Use this recording</button>
    <button id="mic-retry" type="button" hidden>Record again</button>
   </div>
@@ -161,7 +176,7 @@
  <div class="library-top"><h2 id="audio-kind-title">How should this audio play?</h2><button id="cancel-audio-kind" type="button">Cancel</button></div>
  <p>A note uses musical pitches. A hit is triggered from a named sound row.</p>
  <label>Recorded note <select id="import-root"></select></label>
- <div class="mic-actions"><button id="import-as-note" type="button">Play as a note</button><button id="import-as-hit" type="button">Trigger as a hit</button></div>
+ <div class="mic-actions"><button id="import-as-note" type="button">Play as a note</button><button id="import-as-hit" type="button">Trigger as a hit</button><button id="import-as-synth" type="button">Convert to synth</button></div>
 </dialog>
 <script type="module" src="./studio.js"></script>
 </body>
