@@ -824,7 +824,7 @@ async function chooseExample(example){
   });
   $("example-dialog").close();
   resetTo(document);
-  message("Example loaded: "+example.name+" · Edit freely or export it");
+  message("Loaded example: "+example.name);
  }catch(error){message("Could not load "+example.name+": "+error.message,true);}
  finally{
   loadingExample=false;
@@ -999,7 +999,7 @@ const recorder=installMicrophoneRecorder({
 });
 function openRecorder(mode="add"){
  if(mode==="add"&&score.instruments.length>=12)
-  return message("The composition supports up to 12 instruments.",true);
+  return message("Maximum 12 instruments.",true);
  recordingMode=libraryContext&&$("instrument-dialog").open?{...libraryContext}:currentContext(mode);
  if($("instrument-dialog").open)$("instrument-dialog").close();
  recorder.open();
@@ -1058,7 +1058,7 @@ async function savePreset(wholeRack=false){
  const sounds=wholeRack?clone(inst.sounds):[clone(entry)];
  const needs=new Set(sounds.flatMap(sound=>sound.patch.type==="sample"?sound.patch.zones.map(zone=>zone.assetId):[]));
  const samples=score.samples.filter(asset=>needs.has(asset.id));
- const item={id:"user-"+id(),name,category:"Mine",description:wholeRack?"Complete rack · "+sounds.length+" sounds":"Your saved sound",samples};
+ const item={id:"user-"+id(),name,category:"Mine",description:wholeRack?"Rack · "+sounds.length+" sounds":"Saved sound",samples};
  if(wholeRack){item.sounds=sounds;item.layout="rack";item.volume=inst.volume;}
  else {item.patch=entry.patch?patchCopy(entry.patch):null;item.trigger=entry.trigger;item.referencePitch=entry.referencePitch;item.gain=entry.gain;}
  try{

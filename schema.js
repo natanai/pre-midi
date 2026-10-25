@@ -25,7 +25,7 @@ export function makeInstrument(n = 1, bars = 8, sound=makeSound()) {
 }
 export function create() {
  const instrument=makeInstrument();
- instrument.name="Glass Keys";
+ instrument.name="Sine Keys";
  instrument.sounds[0]=makeSound("Glass Keys",makePatch("glass-keys"));
  instrument.chunks[0].name="Chunk 1";
  // A single empty editable slot is assigned so first notes play immediately.

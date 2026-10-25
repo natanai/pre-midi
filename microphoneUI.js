@@ -35,7 +35,7 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
   dialog.classList.remove("mic-recording");busy(false);
  }
  function reset(defaults=false){
-  dispose();status("Ready when you are","Record one sound or upload a WAV.");
+  dispose();status("Ready","Record or upload WAV audio.");
   $("mic-preview").hidden=true;$("mic-excerpt").hidden=true;
   $("mic-capture").hidden=false;$("mic-use").hidden=true;$("mic-retry").hidden=true;
   $("mic-name").value="";
@@ -53,8 +53,8 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
  function updateKind(){
   const pitched=kind()==="note";
   $("mic-hint").textContent=pitched?
-   "Play one clear guitar string, whistle or sung note. Leave a tiny bit of quiet before playing. I'll suggest the pitch.":
-   "Make one distinct hit or noise. This plays as a one-shot, without requiring a musical pitch.";
+   "Record a steady note with brief silence before it. Pitch detection is an estimate.":
+   "Record one percussion hit or noise. One-shot playback does not use note pitch.";
   $("mic-root-field").hidden=!pitched;
   clearConversion();showPitch();
  }
@@ -72,7 +72,7 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
    "This recording is extremely quiet. Try moving closer and recording again.":
    health.clipped?"The input may be distorted. Try a quieter sound or move away from the microphone.":
    "Captured "+Math.round(values.length/RECORDING_RATE*100)/100+" seconds · "+Math.round(wav.length/1024)+" KB WAV";
-  status("Listen to your sound","Use the recording or convert its sound to synth controls.","✓");
+  status("Recording complete","Use as a sample or convert to a synth.","✓");
  }
  async function start(){
   if(active)return;
@@ -89,7 +89,7 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
    if(token!==generation||!dialog.open)return;
    stream=localStream;
    for(let n=3;n>=1;n--){
-    status("Get ready","Recording starts automatically after the countdown.",String(n));await delay(950);
+    status("Countdown","Recording starts after the countdown.",String(n));await delay(950);
     if(token!==generation||!dialog.open)return;
    }
    const options=["audio/webm;codecs=opus","audio/mp4","audio/webm"].find(type=>MediaRecorder.isTypeSupported?.(type));
@@ -101,7 +101,7 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
     recorder.onstop=()=>resolve(new Blob(chunks,{type:recorder.mimeType||chunks[0]?.type||"audio/webm"}));
    });
    void finished.catch(()=>{});
-   recorder.start();status("Recording","Make your sound now.");dialog.classList.add("mic-recording");
+   recorder.start();status("Recording","Capture in progress.");dialog.classList.add("mic-recording");
    await delay(duration*1000);
    if(token!==generation||!dialog.open)return;
    recorder.stop();const recorded=await finished;
@@ -141,11 +141,11 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
   try{
    const result=await convertToSynth(capture.values,RECORDING_RATE,{kind:kind(),
     root:kind()==="note"?Number($("mic-root").value):undefined,signal:controller.signal,
-    onProgress:(label,progress)=>{if(token===generation)status(label,"Finding an editable sound approximation",Math.round(progress*100)+"%");}});
+    onProgress:(label,progress)=>{if(token===generation)status(label,"Estimating synth parameters",Math.round(progress*100)+"%");}});
    if(token!==generation||!dialog.open)return;
    converted=result;audio("mic-synth-playback",result.preview);$("mic-synth-name").value=result.name;
    $("mic-synth-result").hidden=false;
-   status("Synth ready","Compare the previews, then use the synth and adjust its dials.","✓");
+   status("Conversion complete","Compare the source and synth, then edit the parameters.","✓");
   }catch(error){if(token===generation&&error.name!=="AbortError")status("Couldn't convert this sound",error.message,"!");}
   finally{if(token===generation){conversion=null;busy(false);}}
  }

@@ -82,10 +82,10 @@ and timeline lane. See the [implementation contract and verification record](doc
 ## Singing notes, bends and wave modulation
 
 The **Expressive** sound category adds six original sustained synthesizers
-and three recorded guitar interpretations, including **Lap Steel Cry**,
-**Steel Guitar Haunt**, **Nylon String Sigh**, **Midnight Theremin**,
-**Feedback Cry**, **Glass Portamento**, **Broken Siren**, **Pulse Vowel**
-and **Orbiting Wire**. These are editable, real instrument patches, not audio
+and three recorded guitar interpretations, including **Steel Guitar Upward Glide**,
+**Steel Guitar Vibrato**, **Nylon Guitar Glide**, **Theremin Synth**,
+**Distorted Lead**, **Sine Glide**, **Modulated Siren**, **Pulsed Formant**
+and **Modulated Lead**. These are editable, real instrument patches, not audio
 demonstrations or additional runtime systems.
 
 In the piano roll, **normal clicks add or remove notes**. Shift-click an
@@ -134,25 +134,19 @@ The inspector's oscillator/envelope/movement panels now size to their own
 contents, avoiding the formerly large blank grid cells that pushed Notes
 away from composing.
 
-**New always starts blank.** Choose **Examples** only when you want a
-playable demonstration. Five compositions use the normal editor, instruments,
-chunks, rack rows, movement and audio effects: Neon After Hours (dark cinematic
-electronics), Porchlight (acoustic folk), Floating Signals (slow ambient,
-16 bars), Broken Circuit (industrial synth), and Swaying Wire (expressive
-recorded guitar). These are real editable native v7 scores, not preview audio.
+**New always starts blank.** **Examples** loads one of five editable compositions:
+Drum Rack and Bass; Sampled Guitar and Percussion; Sustained Notes and Offsets;
+Synth Step Patterns; Sampled Guitar Pitch Movement. These compositions use
+the same instruments, chunks, rack rows, timeline and audio controls as a new composition.
 Loading a composition asks before replacing the browser draft; save any
 existing draft first if you wish to preserve it.
 
-**Neon After Hours — composition revision (2026-10-25):** This is an original,
-retro-futurist nocturnal cue, not a recreation of an existing soundtrack.
-Its quiet approach establishes low bass and a warning signal, expands into a
-layered driving beat, cuts down to an exposed breakdown and returns for a final
-chase. The nine independently editable rack rows combine analog kick, recorded
-kick, synth noise snare, tape snare, recorded clap, closed hat, noise ticks,
-open hat and a tuned metallic ping. The continuously sustained deep-bass
-instrument is accompanied by a gated, harmonically richer upper-bass line
-that is more audible on small speakers; pads, echoes and expressive sirens
-provide the contrasting atmosphere.
+**Drum Rack and Bass — example:** The exported author revision from
+2026-10-25 has 16 bars, nine independently editable drum-rack sounds, sustained
+sub-bass, a second bass part, chord pad, string pad, lead, keys and modulated siren.
+The lead's first bar is assigned; its first chunk has two C5 notes at steps
+0 and 8, and its second chunk has three notes at steps 0, 12 and 8.
+The rack combines four synthesized hits and five recorded hits.
 
 The measurable compositional changes from the previous demo are:
 

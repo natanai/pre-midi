@@ -27,22 +27,22 @@ const guitarIds = layers => GUITAR_RECORDINGS.filter(row =>
 export const GUITAR_PRESETS = [
  {
   id:"nylon-finger",name:"Nylon Fingerstyle",category:"Guitars",
-  description:"Warm finger-plucked acoustic nylon, sampled up the neck.",
+  description:"Recorded finger-plucked nylon guitar across mapped pitches.",
   assets:guitarIds(["nf"]),followPitch:true,gain:1.25,release:1.65,strumMs:0,preserveDynamics:true
  },
  {
   id:"nylon-guitar",name:"Nylon Picked",category:"Guitars",
-  description:"Light and firm recorded picks, with velocity-sensitive attack.",
+  description:"Recorded nylon guitar with medium and firm picking layers.",
   assets:guitarIds(["np2","np3"]),followPitch:true,gain:1.2,release:1.6,strumMs:0,preserveDynamics:true
  },
  {
   id:"steel-guitar",name:"Steel Acoustic",category:"Guitars",
-  description:"Expressive steel strings with soft, medium and firm plucks.",
+  description:"Recorded steel guitar with three velocity layers.",
   assets:guitarIds(["ss1","ss2","ss3"]),followPitch:true,gain:1.05,release:1.95,strumMs:0,preserveDynamics:true
  },
  {
   id:"steel-strum",name:"Steel Strum",category:"Guitars",
-  description:"Rhythmic steel-string chords, brighter pluck and wider bass-to-treble rake.",
+  description:"Recorded steel guitar with velocity layers and 24 ms strum offset.",
   assets:guitarIds(["ss1","ss2","ss3"]),followPitch:true,gain:1.3,attack:.002,release:1.05,strumMs:24,preserveDynamics:true
  }
 ];

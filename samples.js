@@ -37,31 +37,31 @@ export const SAMPLE_ASSETS=[
   {velocity:item.velocity,string:item.string}))
 ];
 const sampleLibrary=[
- {id:"real-piano",name:"Recorded Piano",category:"Recorded",description:"Layered piano recordings, two key zones.",assets:["piano-c3","piano-c4"],followPitch:true},
+ {id:"real-piano",name:"Recorded Piano",category:"Recorded",description:"Piano samples at C3 and C4.",assets:["piano-c3","piano-c4"],followPitch:true},
  ...GUITAR_PRESETS,
  { ...GUITAR_PRESETS.find(p=>p.id==="steel-guitar"),
-   id:"steel-lap-cry",name:"Lap Steel Cry",category:"Expressive",
-   description:"Real steel guitar sliding up into long, aching sustained notes.",
+   id:"steel-lap-cry",name:"Steel Guitar Upward Glide",category:"Expressive",
+   description:"Recorded steel guitar with upward glide and vibrato.",
    movement:{glide:-4,glideTime:.46,depth:28,rate:5.2,delay:.37,tremolo:.07,tremoloRate:3.1}
  },
  { ...GUITAR_PRESETS.find(p=>p.id==="steel-guitar"),
-   id:"steel-haunt",name:"Steel Guitar Haunt",category:"Expressive",
-   description:"Recorded steel strings with a wavering, otherworldly sustained tone.",
+   id:"steel-haunt",name:"Steel Guitar Vibrato",category:"Expressive",
+   description:"Recorded steel guitar with glide, vibrato, and tremolo.",
    movement:{glide:2,glideTime:.6,depth:53,rate:6,delay:.27,tremolo:.24,tremoloRate:4.2}
  },
  { ...GUITAR_PRESETS.find(p=>p.id==="nylon-finger"),
-   id:"nylon-sob",name:"Nylon String Sigh",category:"Expressive",
-   description:"Warm fingerstyle guitar sliding and sighing between pitches.",
+   id:"nylon-sob",name:"Nylon Guitar Glide",category:"Expressive",
+   description:"Recorded nylon guitar with downward glide and vibrato.",
    movement:{glide:-1.3,glideTime:.28,depth:21,rate:4.6,delay:.5}
  },
- {id:"wood-recorder",name:"Recorder",category:"Recorded",description:"Staccato baroque recorder.",assets:["recorder"],followPitch:true},
- {id:"ball-whistle",name:"Ball Whistle",category:"Textures",description:"Airy recorded whistle with organic motion.",assets:["whistle"],followPitch:false},
- {id:"acoustic-kick",name:"Kick Drum",category:"Drums",description:"Punchy sampled bass drum.",assets:["kick"],followPitch:false},
- {id:"tape-snare",name:"Tape Snare",category:"Drums",description:"Short dusty snare.",assets:["snare"],followPitch:false},
- {id:"hiphop-clap",name:"Hip-Hop Clap",category:"Drums",description:"Compact hand-clap accent.",assets:["clap"],followPitch:false},
- {id:"tight-hat",name:"Closed Hat",category:"Drums",description:"Dry, tight high-hat tick.",assets:["hat-closed"],followPitch:false},
- {id:"open-hat",name:"Open Hat",category:"Drums",description:"Brighter open hi-hat wash.",assets:["hat-open"],followPitch:false},
- {id:"hand-bongo",name:"Bongo",category:"Drums",description:"Acoustic hand percussion.",assets:["bongo"],followPitch:false}
+ {id:"wood-recorder",name:"Recorder",category:"Recorded",description:"Recorded alto recorder, short articulation.",assets:["recorder"],followPitch:true},
+ {id:"ball-whistle",name:"Ball Whistle",category:"Textures",description:"Recorded ball whistle, one-shot playback.",assets:["whistle"],followPitch:false},
+ {id:"acoustic-kick",name:"Kick Drum",category:"Drums",description:"Recorded kick drum, one-shot playback.",assets:["kick"],followPitch:false},
+ {id:"tape-snare",name:"Tape Snare",category:"Drums",description:"Recorded snare, one-shot playback.",assets:["snare"],followPitch:false},
+ {id:"hiphop-clap",name:"Hip-Hop Clap",category:"Drums",description:"Recorded clap, one-shot playback.",assets:["clap"],followPitch:false},
+ {id:"tight-hat",name:"Closed Hat",category:"Drums",description:"Recorded closed hi-hat, one-shot playback.",assets:["hat-closed"],followPitch:false},
+ {id:"open-hat",name:"Open Hat",category:"Drums",description:"Recorded open hi-hat, one-shot playback.",assets:["hat-open"],followPitch:false},
+ {id:"hand-bongo",name:"Bongo",category:"Drums",description:"Recorded bongo, one-shot playback.",assets:["bongo"],followPitch:false}
 ];
 const hitPresets=new Set(["ball-whistle","acoustic-kick","tape-snare","hiphop-clap","tight-hat","open-hat","hand-bongo"]);
 export const SAMPLE_LIBRARY=sampleLibrary.map(preset=>({...preset,trigger:hitPresets.has(preset.id)?"hit":"pitched"}));

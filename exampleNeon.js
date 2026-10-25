@@ -1,13 +1,11 @@
-// Original dark, cinematic electronic composition for the regular pre-midi engine.
-// All sounds are editable native patches; drum rows use the standard rack format.
-// Referencing retro-futurist atmosphere is not transcription of existing music.
+// Native example with layered synth and sample percussion, sustained bass and pitch movement.
+// The instrument definitions build ordinary editable chunks, rack rows and patches.
 const N=(pitch,start,duration=2,velocity=.8,bend)=>[pitch,start,duration,velocity,bend];
 const C=(pitches,velocity=.64)=>pitches.map(pitch=>N(pitch,0,16,velocity));
 const H=(row,start,velocity=.8)=>[row,start,velocity];
 const run=(row,steps,velocity=.7)=>steps.map((start,index)=>H(row,start,Math.max(.12,velocity-(index%2)*.09)));
 
-// Each pattern is one editable bar. In particular, two kicks, two snares,
-// sampled and synthesized hats, and a metallic accent share a *single* rack.
+// Each pattern is one bar. The rack has nine independently editable sound rows.
 const drumPatterns={
  Signal:[
   H("pulse",0,.64),H("impact",0,.63),H("closed",8,.26),H("metal",14,.46)
@@ -74,30 +72,30 @@ const drumPatterns={
 };
 
 export const NEON_AFTER_HOURS={
- id:"neon-after-hours",name:"Neon After Hours",tag:"DARK ELECTRONIC / CINEMATIC",
- description:"Long sub-bass and neon haze collide with a nine-layer drum rack. A quiet approach, heavy drop, empty break and final chase.",
+ id:"neon-after-hours",name:"Drum Rack and Bass",tag:"SYNTH / SAMPLE RACK",
+ description:"Nine-sound drum rack with recorded and synthesized hits, sustained sub-bass, and multiple timeline sections.",
  bpm:108,bars:16,accent:"#08e4ec",
  voices:[
   {
-   name:"Nightdrive · layered drum rack",volume:.88,
+   name:"Drum rack · nine sounds",volume:.88,
    rack:[
-    {key:"pulse",preset:"pulse-kick",name:"Analog kick · low pressure",gain:.84,
+    {key:"pulse",preset:"pulse-kick",name:"Synth kick",gain:.84,
      tone:{filter:{cutoff:700},envelope:{decay:.17,release:.17},effects:{drive:.47}}},
-    {key:"impact",preset:"acoustic-kick",name:"Recorded kick · transient",gain:.72,
+    {key:"impact",preset:"acoustic-kick",name:"Recorded kick",gain:.72,
      tone:{gain:.93,pan:-.04}},
-    {key:"snare",preset:"static-snare",name:"Noise snare · body",gain:.63,
+    {key:"snare",preset:"static-snare",name:"Synth noise snare",gain:.63,
      tone:{noise:.94,filter:{cutoff:1000},envelope:{decay:.14},effects:{drive:.23},pan:-.07}},
-    {key:"tape",preset:"tape-snare",name:"Tape snare · grit",gain:.54,
+    {key:"tape",preset:"tape-snare",name:"Recorded snare",gain:.54,
      tone:{gain:.86,pan:.12}},
-    {key:"clap",preset:"hiphop-clap",name:"Clap · stereo edge",gain:.52,
+    {key:"clap",preset:"hiphop-clap",name:"Recorded clap",gain:.52,
      tone:{gain:.87,pan:.28}},
-    {key:"closed",preset:"tight-hat",name:"Closed hat · clockwork",gain:.39,
+    {key:"closed",preset:"tight-hat",name:"Closed hi-hat",gain:.39,
      tone:{gain:.7,pan:-.3}},
-    {key:"dust",preset:"dust-hat",name:"Noise ticks · 16ths",gain:.33,
+    {key:"dust",preset:"dust-hat",name:"Synth hi-hat",gain:.33,
      tone:{filter:{cutoff:8000},pan:.3}},
-    {key:"open",preset:"open-hat",name:"Open hat · lift",gain:.38,
+    {key:"open",preset:"open-hat",name:"Open hi-hat",gain:.38,
      tone:{gain:.72,pan:.21}},
-    {key:"metal",preset:"signal-bell",name:"Warning ping · metallic",gain:.27,referencePitch:84,
+    {key:"metal",preset:"signal-bell",name:"Sine bell",gain:.27,referencePitch:84,
      tone:{envelope:{attack:.002,decay:.12,sustain:0,release:.23},
       effects:{delayMix:.25,delayTime:.2,delayFeedback:.28},pan:.38}}
    ],
@@ -107,7 +105,7 @@ export const NEON_AFTER_HOURS={
     "Pursuit","Pursuit","Impact","Drive","Chase","Out"]
   },
   {
-   preset:"sub-current",name:"Underpass · sustained sub",volume:.85,
+   preset:"sub-current",name:"Sustained sub-bass",volume:.85,
    tone:{oscillators:[{wave:"sine",level:1,octave:-1,detune:0},
      {wave:"triangle",level:.3,octave:0,detune:0}],
     filter:{cutoff:680},envelope:{attack:.065,decay:.15,sustain:.94,release:.58},
@@ -121,7 +119,7 @@ export const NEON_AFTER_HOURS={
     "E","E","C","C","D","D","B","Return"]
   },
   {
-   preset:"rubber-bass",name:"Voltage · audible bass teeth",volume:.54,
+   preset:"rubber-bass",name:"Short-note bass",volume:.54,
    tone:{filter:{cutoff:1250,resonance:3.1},effects:{drive:.29},
     envelope:{attack:.008,decay:.16,sustain:.57,release:.16}},
    pattern:{
@@ -137,7 +135,7 @@ export const NEON_AFTER_HOURS={
     "-","Stalk","C","C","D","E","B","Chase"]
   },
   {
-   preset:"violet-pad",name:"Streetlights · minor-nine haze",volume:.39,
+   preset:"violet-pad",name:"Chord pad",volume:.39,
    tone:{filter:{cutoff:1800,sweep:-.36,sweepTime:1.4},
     envelope:{attack:.54,decay:.6,sustain:.73,release:1.45},
     effects:{delayMix:.25,delayTime:.44,delayFeedback:.3}},
@@ -151,7 +149,7 @@ export const NEON_AFTER_HOURS={
     "Em9","Em9","Cmaj7","Cmaj7","Dsus","Dsus","Bm","Em9"]
   },
   {
-   preset:"tape-strings",name:"Concrete sky · detuned strings",volume:.25,
+   preset:"tape-strings",name:"String pad",volume:.25,
    tone:{filter:{cutoff:1600},effects:{delayMix:.27,delayTime:.41}},
    pattern:{
     Fog:[N(71,0,16,.45),N(78,0,16,.28)],
@@ -163,20 +161,20 @@ export const NEON_AFTER_HOURS={
     "Blackout","Blackout","Lift","Lift","Threat","Threat","Fog","Blackout"]
   },
   {
-   preset:"neon-lead",name:"Last train · three-note signal",volume:.42,
+   preset:"neon-lead",name:"Synth lead",volume:.42,
    tone:{filter:{cutoff:2800},effects:{drive:.25,delayMix:.26,delayTime:.3,delayFeedback:.34},
     envelope:{attack:.02,decay:.15,sustain:.67,release:.3}},
    pattern:{
-    Call:[N(76,1,4,.8),N(79,7,3,.72),N(78,12,4,.72)],
-    Answer:[N(83,0,5,.87),N(81,7,3,.65),N(79,12,4,.77)],
+    Call:[N(76,0,2,.9),N(76,8,2,.9)],
+    Answer:[N(83,0,5,.87),N(79,12,4,.77),N(81,8,1,.9)],
     Rise:[N(76,0,2,.73),N(78,3,2,.75),N(79,6,3,.8),N(83,10,6,.93)],
     Final:[N(83,0,6,.9),N(78,8,3,.73),N(76,12,4,.84)]
    },
-   timeline:["-","-","-","Call","Answer","Call","Rise","Answer",
+   timeline:["Call","-","-","Call","Answer","Call","Rise","Answer",
     "-","-","Call","Answer","Call","Rise","Answer","Final"]
   },
   {
-   preset:"glass-keys",name:"Rain on glass · staggered echoes",volume:.3,
+   preset:"glass-keys",name:"Sine keys",volume:.3,
    tone:{filter:{cutoff:8100},effects:{delayMix:.32,delayTime:.24,delayFeedback:.35},
     pan:-.18},
    pattern:{
@@ -189,7 +187,7 @@ export const NEON_AFTER_HOURS={
     "-","Spark","Falling","Rush","Spark","Falling","Rush","Spark"]
   },
   {
-   preset:"broken-siren",name:"Distant siren · warning contour",volume:.29,
+   preset:"broken-siren",name:"Pitch-modulated siren",volume:.29,
    tone:{filter:{cutoff:1050,resonance:3.5},effects:{delayMix:.33,delayTime:.39},
     pan:.22},
    pattern:{

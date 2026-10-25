@@ -72,7 +72,7 @@
      <div class="sound-window-actions"><button id="sound-close" type="button" aria-label="Close sound editor">×</button></div>
      <div class="sound-actions"><button id="change-sound" type="button">Browse sounds</button><button id="save-sound" type="button">Save preset</button></div>
     </div>
-    <div class="patch-info"><span id="patch-label"></span><span class="scope-description">Applies to all this instrument's chunks</span></div>
+    <div class="patch-info"><span id="patch-label"></span><span class="scope-description">Sound parameters</span></div>
     <div class="controls">
      <div class="sound-control-group sound-identity-controls">
       <label>Name <input id="instrument-name" maxlength="60"></label>
@@ -107,21 +107,21 @@
 <footer><span id="status" role="status">Saved locally</span><span>.premidi v7 · GAME PARITY PENDING · <a href="https://github.com/natanai/pre-midi">SOURCE</a></span></footer>
 </div>
 <dialog id="instrument-dialog" class="instrument-dialog" aria-labelledby="instrument-dialog-title">
- <div class="library-top"><div><h2 id="instrument-dialog-title">Instrument library</h2><p id="library-description">Procedural synths and CC0 recordings. Preview, then add or replace a sound.</p></div>
+ <div class="library-top"><div><h2 id="instrument-dialog-title">Instrument library</h2><p id="library-description">Synth presets and CC0 recordings. Select a sound to add or replace it.</p></div>
   <button id="close-library" type="button" aria-label="Close instrument library">×</button></div>
  <div class="library-filters" id="library-filters" aria-label="Sound categories"></div>
  <div id="library-sounds" class="library-sounds" aria-label="Available sounds"></div>
 </dialog>
 <dialog id="example-dialog" class="instrument-dialog example-dialog" aria-labelledby="example-dialog-title">
  <div class="library-top">
-  <div><h2 id="example-dialog-title">Example compositions</h2><p>Different arrangements using the studio's existing instruments. New songs still start empty.</p></div>
+  <div><h2 id="example-dialog-title">Example compositions</h2><p>Load a composition into the editor. Replaces the current draft.</p></div>
   <button id="close-examples" type="button" aria-label="Close example library">×</button>
  </div>
  <div id="example-list" class="example-list" aria-label="Example compositions"></div>
 </dialog>
 <dialog id="microphone-dialog" class="instrument-dialog microphone-dialog" aria-labelledby="microphone-dialog-title">
  <div class="library-top">
-  <div><h2 id="microphone-dialog-title">Record or upload a sound</h2><p>Use a recording or turn its sound into an editable synth.</p></div>
+  <div><h2 id="microphone-dialog-title">Record or upload a sound</h2><p>Record or upload WAV audio. Synth conversion is optional.</p></div>
   <button id="mic-close" type="button" aria-label="Close recording">×</button>
  </div>
  <div class="mic-flow">
@@ -136,11 +136,11 @@
     <label><input type="radio" name="mic-kind" value="note" checked> A note · guitar, voice, whistle</label>
     <label><input type="radio" name="mic-kind" value="hit"> A hit · clap, tap, drum, noise</label>
    </fieldset>
-   <p class="mic-guidance" id="mic-hint">For a note, play one string or sing one steady pitch. The studio will suggest the note you played.</p>
+   <p class="mic-guidance" id="mic-hint">For a note, record one steady pitch. Pitch detection is an estimate.</p>
   </div>
   <div class="mic-status" aria-live="polite">
    <span id="mic-count" class="mic-count" aria-hidden="true">●</span>
-   <strong id="mic-status">Ready when you are</strong>
+   <strong id="mic-status">Ready</strong>
    <small id="mic-subtitle">Mic access is requested only when you start.</small>
   </div>
   <div class="mic-preview" id="mic-preview" hidden>
@@ -159,7 +159,7 @@
    <div id="mic-synth-result" class="mic-synth-result" hidden>
     <label>Synth name <input id="mic-synth-name" maxlength="60"></label>
     <audio id="mic-synth-playback" aria-label="Converted synth preview" controls preload="none"></audio>
-    <p class="mic-guidance">Synth approximation · compare with the original above, then edit its sound controls.</p>
+    <p class="mic-guidance">Generated synth approximation. Compare recordings and adjust parameters.</p>
     <button id="mic-use-synth" type="button" class="primary">Use synth instrument</button>
    </div>
   </div>

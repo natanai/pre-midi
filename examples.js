@@ -16,8 +16,8 @@ const piece=(preset,pattern,timeline,volume=.68,options={})=>({
 export const EXAMPLES=[
  NEON_AFTER_HOURS,
  {
-  id:"porchlight",name:"Porchlight",tag:"ACOUSTIC / FOLK",
-  description:"Picked nylon melody, acoustic strummed harmony and organic hand percussion.",
+  id:"porchlight",name:"Sampled Guitar and Percussion",tag:"SAMPLES / GUITAR",
+  description:"Sampled steel and nylon guitars, bongo hits, and synthesized keyboard chords.",
   bpm:94,bars:8,accent:"#ffc266",
   voices:[
    piece("steel-strum",{
@@ -41,8 +41,8 @@ export const EXAMPLES=[
   ]
  },
  {
-  id:"floating-signals",name:"Floating Signals",tag:"AMBIENT / DRONE",
-  description:"A slowly evolving texture: pads, shimmering keys and a singing theremin.",
+  id:"floating-signals",name:"Sustained Notes and Offsets",tag:"CHUNKS / PITCH MOVEMENT",
+  description:"Sustained chords, separate instrument entrances, and per-note pitch bends.",
   bpm:72,bars:16,accent:"#ba82eb",
   voices:[
    piece("violet-pad",{
@@ -68,8 +68,8 @@ export const EXAMPLES=[
   ]
  },
  {
-  id:"broken-circuit",name:"Broken Circuit",tag:"INDUSTRIAL / SYNTH",
-  description:"Rugged acidic bass, stuttering pulses, sirens and angular melodic accents.",
+  id:"broken-circuit",name:"Synth Step Patterns",tag:"SYNTH / SEQUENCING",
+  description:"Synthesized kick and snare patterns, stepped bass notes, and pitch-modulated siren.",
   bpm:144,bars:8,accent:"#ff416d",
   voices:[
    piece("pulse-kick",{
@@ -97,8 +97,8 @@ export const EXAMPLES=[
   ]
  },
  {
-  id:"swaying-wire",name:"Swaying Wire",tag:"CINEMATIC / EXPRESSION",
-  description:"Recorded steel-string cries, hollow chords and a restrained walking bass.",
+  id:"swaying-wire",name:"Sampled Guitar Pitch Movement",tag:"SAMPLES / BENDS",
+  description:"Recorded steel guitar with note bends, electric-key chords, bass, and recorder.",
   bpm:80,bars:8,accent:"#ba82eb",
   voices:[
    piece("steel-lap-cry",{
@@ -164,13 +164,13 @@ export async function buildExample(exampleId,loadAsset){
    instrument.sounds=def.rack.map(row=>exampleSound(row,"hit"));
    const byKey=new Map(def.rack.map((row,index)=>[row.key,instrument.sounds[index].id]));
    if(byKey.size!==def.rack.length)throw Error("Duplicate example rack sound key.");
-   instrument.chunks=Object.entries(def.pattern).map(([name,notes])=>({
-    ...makeChunk(name),notes:notes.map(note=>asRackHit(note,byKey))
+   instrument.chunks=Object.entries(def.pattern).map(([name,notes],index)=>({
+    ...makeChunk("Chunk "+(index+1)),notes:notes.map(note=>asRackHit(note,byKey))
    }));
-  }else instrument.chunks=Object.entries(def.pattern).map(([name,notes])=>({
-   ...makeChunk(name),notes:notes.map(asNote)
+  }else instrument.chunks=Object.entries(def.pattern).map(([name,notes],index)=>({
+   ...makeChunk("Chunk "+(index+1)),notes:notes.map(asNote)
   }));
-  const lookup=new Map(instrument.chunks.map(chunk=>[chunk.name,chunk.id]));
+  const lookup=new Map(Object.keys(def.pattern).map((name,index)=>[name,instrument.chunks[index].id]));
   instrument.timeline=def.timeline.map(name=>name==="-"?null:lookup.get(name)??null);
   score.instruments.push(instrument);
  }

@@ -66,7 +66,7 @@ test("unknown examples reject without changing existing authored scores",async()
  await assert.rejects(()=>buildExample("absent",async id=>stubSample(id)),/Unknown example/);
 });
 
-test("Neon After Hours demonstrates an actual drum stack and sustained cinematic bass",async()=>{
+test("drum rack example has layered percussion and sustained bass",async()=>{
  const doc=await buildExample("neon-after-hours",async id=>stubSample(id));
  assert.equal(doc.bars,16,"The revision should contain an evolving 16-bar structure");
  assert.equal(doc.bpm,108);
@@ -92,14 +92,14 @@ test("Neon After Hours demonstrates an actual drum stack and sustained cinematic
  assert.ok(hitsInBar(14)>hitsInBar(8)*4,
   "The final chase must restore energy after the breakdown");
  assert.ok(new Set(drums.timeline).size>=8,"The drum rack needs several real arrangements");
- const sub=doc.instruments.find(inst=>inst.name.includes("sustained sub"));
+ const sub=doc.instruments.find(inst=>inst.sounds[0].patch.presetId==="sub-current");
  assert.ok(sub&&sub.layout==="pitched","Deep bass must remain an editable piano-roll instrument");
  assert.ok(sub.chunks.every(chunk=>chunk.notes.some(note=>note.duration>=12)));
  assert.ok(sub.chunks.some(chunk=>chunk.notes.some(note=>note.pitch<=40&&note.duration===16)));
  const activeSubBars=sub.timeline.map(chunkId=>sub.chunks.find(chunk=>chunk.id===chunkId))
   .filter(Boolean);
  assert.equal(activeSubBars.length,doc.bars,"The low-frequency bed must cover every bar");
- const mid=doc.instruments.find(inst=>inst.name.includes("audible bass teeth"));
+ const mid=doc.instruments.find(inst=>inst.sounds[0].patch.presetId==="rubber-bass");
  assert.ok(mid?.timeline.includes(null),"Upper harmonics should contrast with a continuous sub");
  assert.ok(doc.instruments.some(inst=>inst.chunks.some(chunk=>
   chunk.notes.some(note=>note.bend?.shape==="wail"))),"The score needs expressive pitch movement");
@@ -118,17 +118,27 @@ test("Neon After Hours demonstrates an actual drum stack and sustained cinematic
   }
  }
  assert.ok(stepEvents(doc,16*5).some(e=>e.instrument.id===drums.id));
+ const lead=doc.instruments.find(inst=>inst.sounds[0].patch.presetId==="neon-lead");
+ assert.ok(lead,"The uploaded revision retains its editable lead instrument");
+ const call=lead.chunks[0],answer=lead.chunks[1];
+ assert.equal(lead.timeline[0],call.id,"The uploaded revision starts with the lead chunk");
+ assert.deepEqual(call.notes.map(n=>[n.pitch,n.start,n.duration,n.velocity]),[
+  [76,0,2,.9],[76,8,2,.9]
+ ]);
+ assert.deepEqual(answer.notes.map(n=>[n.pitch,n.start,n.duration,n.velocity]),[
+  [83,0,5,.87],[79,12,4,.77],[81,8,1,.9]
+ ]);
 });
 
-test("Floating Signals distinguishes shared bar boundaries from actual within-bar note offsets",async()=>{
+test("sustained example has independent within-bar note offsets",async()=>{
  const doc=await buildExample("floating-signals",async id=>stubSample(id));
  assert.equal(doc.bars,16);
  const bar=6,base=bar*16; // Bar 7 in the studio
  const expected=[
-  ["violet-pad","Wide",[0,0,0,0]],
-  ["tape-strings","Bloom",[0,0]],
-  ["midnight-theremin","Hover",[1]],
-  ["glass-keys","Mirror",[0,8,13]]
+  ["violet-pad","Chunk 3",[0,0,0,0]],
+  ["tape-strings","Chunk 3",[0,0]],
+  ["midnight-theremin","Chunk 3",[1]],
+  ["glass-keys","Chunk 2",[0,8,13]]
  ];
  for(const [preset,name,starts] of expected){
   const inst=doc.instruments.find(x=>x.sounds[0].patch.presetId===preset);
