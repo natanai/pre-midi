@@ -68,6 +68,7 @@ export function moveRackSoundToPianoRoll(score,instrumentId,soundId){
    .map(({soundId,...note})=>({...note,id:id(),pitch:entry.referencePitch}))};
  });
  pitched.timeline=source.timeline.map(chunkId=>chunkId===null?null:chunkMap.get(chunkId));
+ pitched.placements=clone(source.placements||Array(score.bars).fill(null));
  if(source.sounds.length===1){
   score.instruments.splice(sourceIndex,1,pitched);
  }else{
