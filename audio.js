@@ -274,6 +274,7 @@ export async function wav(score) {
  const unit=secondsPerStep(score);
  for(const instrument of score.instruments)for(const phrase of phraseInstances(score,instrument)){
   for(const event of phrase.chunk.notes){
+   if(event.start>=phrase.length)continue;
    // A placement may begin partway into its source bar, or repeat past it.
    const onset=phrase.start+event.start;
    if(onset>=score.bars*16)continue;
