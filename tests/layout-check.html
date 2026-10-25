@@ -141,11 +141,12 @@ async function checkLayout(frame){
  frame.contentWindow.confirm=()=>true;
  const demo=[...gallery.querySelectorAll(".example-card")].find(card=>card.textContent.includes("Neon After Hours"));
  demo?.click();
- for(let i=0;i<40&&get("title").value!=="Neon After Hours";i++)
+ for(let i=0;i<220&&get("title").value!=="Neon After Hours";i++)
   await new Promise(resolve=>setTimeout(resolve,30));
  checks.exampleUsesRealComposer=get("title").value==="Neon After Hours" &&
-  doc.querySelectorAll(".instrument-card").length===6 &&
-  doc.querySelectorAll(".arrangement-row").length===6 &&
+  doc.querySelectorAll(".instrument-card").length===8 &&
+  doc.querySelectorAll(".arrangement-row").length===8 &&
+  doc.querySelectorAll("#piano .rack-row").length===9 &&
   doc.querySelectorAll("#piano .note.filled").length>=1 &&
   !gallery.open;
  if(frame.clientWidth>=1400 && checks.exampleUsesRealComposer){

@@ -65,3 +65,57 @@ test("long ambient example uses real arrangement lanes and multiple distinct sec
 test("unknown examples reject without changing existing authored scores",async()=>{
  await assert.rejects(()=>buildExample("absent",async id=>stubSample(id)),/Unknown example/);
 });
+
+test("Neon After Hours demonstrates an actual drum stack and sustained cinematic bass",async()=>{
+ const doc=await buildExample("neon-after-hours",async id=>stubSample(id));
+ assert.equal(doc.bars,16,"The revision should contain an evolving 16-bar structure");
+ assert.equal(doc.bpm,108);
+ assert.ok(doc.instruments.length>=7);
+ const racks=doc.instruments.filter(inst=>inst.layout==="rack");
+ assert.equal(racks.length,1,"Drums should share one editable rack lane");
+ const drums=racks[0];
+ assert.ok(drums.sounds.length>=8,"The kit must visibly layer multiple independent drum sounds");
+ assert.ok(drums.sounds.filter(sound=>sound.patch.type==="sample").length>=4);
+ assert.ok(drums.sounds.filter(sound=>sound.patch.type==="synth").length>=3);
+ assert.ok(drums.sounds.some(sound=>sound.referencePitch===84),"Metallic transient is separately tuned");
+ const punch=drums.sounds.find(sound=>sound.patch.presetId==="pulse-kick");
+ const recorded=drums.sounds.find(sound=>sound.patch.presetId==="acoustic-kick");
+ assert.ok(punch&&recorded&&punch.id!==recorded.id);
+ const hitsInBar=bar=>{
+  const chunk=drums.chunks.find(chunk=>chunk.id===drums.timeline[bar]);
+  return chunk?.notes.length||0;
+ };
+ assert.ok(hitsInBar(5)>hitsInBar(0)*4,
+  "A layered drop must contain far more strikes than the atmospheric introduction");
+ assert.ok(hitsInBar(8)<hitsInBar(5)/4,
+  "The breakdown must genuinely subtract percussion, not just change the label");
+ assert.ok(hitsInBar(14)>hitsInBar(8)*4,
+  "The final chase must restore energy after the breakdown");
+ assert.ok(new Set(drums.timeline).size>=8,"The drum rack needs several real arrangements");
+ const sub=doc.instruments.find(inst=>inst.name.includes("sustained sub"));
+ assert.ok(sub&&sub.layout==="pitched","Deep bass must remain an editable piano-roll instrument");
+ assert.ok(sub.chunks.every(chunk=>chunk.notes.some(note=>note.duration>=12)));
+ assert.ok(sub.chunks.some(chunk=>chunk.notes.some(note=>note.pitch<=40&&note.duration===16)));
+ const activeSubBars=sub.timeline.map(chunkId=>sub.chunks.find(chunk=>chunk.id===chunkId))
+  .filter(Boolean);
+ assert.equal(activeSubBars.length,doc.bars,"The low-frequency bed must cover every bar");
+ const mid=doc.instruments.find(inst=>inst.name.includes("audible bass teeth"));
+ assert.ok(mid?.timeline.includes(null),"Upper harmonics should contrast with a continuous sub");
+ assert.ok(doc.instruments.some(inst=>inst.chunks.some(chunk=>
+  chunk.notes.some(note=>note.bend?.shape==="wail"))),"The score needs expressive pitch movement");
+ const ids=usedSampleIds(doc);
+ assert.ok(ids.size>=4,"Recordings should provide real, editable transient layers");
+ assert.deepEqual(new Set(doc.samples.map(asset=>asset.id)),ids);
+ assert.deepEqual(validate(doc),[]);
+ assert.deepEqual(parse(JSON.stringify(doc)),doc);
+ assert.ok(new TextEncoder().encode(JSON.stringify(doc)).length<1_000_000,
+  "The companion-audio score must still fit the native 1 MB .premidi limit");
+ // Every rack hit must point to its actual sound row; none is a fake piano key.
+ for(const chunk of drums.chunks){
+  for(const hit of chunk.notes){
+   assert.ok(drums.sounds.some(sound=>sound.id===hit.soundId));
+   assert.equal(hit.pitch,undefined);
+  }
+ }
+ assert.ok(stepEvents(doc,16*5).some(e=>e.instrument.id===drums.id));
+});
