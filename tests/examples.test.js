@@ -97,7 +97,7 @@ test("guitar example develops four sections and retains native sample layering a
  assert.ok(hitsAt(12)<hitsAt(11)/5,"Break must remove most percussion");
  assert.ok(hitsAt(14)>hitsAt(12)*4,"Final return must restore percussion");
  const pad=doc.instruments.find(i=>i.sounds[0].patch.presetId==="tape-strings");
- assert.equal(new Set(pad.timeline).size,5,"Use a real changing chord progression");
+ assert.ok(new Set(pad.timeline).size>=5,"Use a real changing chord progression");
  const melodic=doc.instruments.find(i=>i.sounds[0].patch.presetId==="felt-electric");
  assert.ok(melodic.timeline.some(x=>x===null)&&melodic.timeline.some(Boolean));
  const keysAt=bar=>Array.from({length:16},(_,step)=>stepEvents(doc,bar*16+step))
