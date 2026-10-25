@@ -1,5 +1,6 @@
 import {movement,movementDefaults,BEND_SHAPES} from "./expression.js";
 import {createDial} from "./dial.js";
+import {sampleTone,SAMPLE_FILTERS} from "./audioEffects.js";
 // Sample controls and synth controls share the same dial and visualization
 // owner. All durable edits still flow through studio.js modify().
 export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{}){
@@ -9,6 +10,28 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  header.textContent=(metadata&&patch.zones.length<=8?metadata+" · ":"")+
   count+" recorded pitch"+(count===1?"":"es");
  root.append(header);
+ // Direct sound shaping is prominent, including on imported and recorded audio.
+ const tone=sampleTone(patch);
+ const toneGroup=document.createElement("details");toneGroup.className="synth-group sample-tone";toneGroup.open=true;
+ const toneTitle=document.createElement("summary");toneTitle.textContent="Tone · filter & distortion";
+ const toneFields=document.createElement("div");toneFields.className="synth-fields dial-grid";
+ const filterLabel=document.createElement("label");filterLabel.className="synth-field";
+ const filterTitle=document.createElement("span");filterTitle.textContent="Filter type";
+ const filterSelect=document.createElement("select");filterSelect.setAttribute("aria-label","Recorded sound filter type");
+ for(const type of SAMPLE_FILTERS){
+  const option=document.createElement("option");option.value=type;option.textContent=type;filterSelect.append(option);
+ }
+ filterSelect.value=tone.filter.type;
+ filterSelect.addEventListener("change",()=>onChange(["filter"],{...tone.filter,type:filterSelect.value}));
+ filterLabel.append(filterTitle,filterSelect);toneFields.append(filterLabel);
+ for(const [key,label,min,max,step,display,log] of [
+  ["cutoff","Cutoff",50,14000,1,"hz",true],["resonance","Resonance",.1,16,.1,"number",false]
+ ])toneFields.append(createDial({label,min,max,step,display,log},tone.filter[key],
+  value=>onChange(["filter"],{...tone.filter,[key]:value}),
+  value=>onPreview(["filter"],{...tone.filter,[key]:value})));
+ toneFields.append(createDial({label:"Distortion",min:0,max:1,step:.01,display:"percent"},tone.drive,
+  value=>onChange(["drive"],value),value=>onPreview(["drive"],value)));
+ toneGroup.append(toneTitle,toneFields);root.append(toneGroup);
  const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=true;
  const movementTitle=document.createElement("summary");movementTitle.textContent="Movement";
  const movementFields=document.createElement("div");movementFields.className="synth-fields dial-grid";
@@ -23,7 +46,12 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   ["tremoloRate","Pulse speed",.1,20,.1,"hz"]
  ];
  for(const [key,label,min,max,step,display] of movements){
-  movementFields.append(createDial({label,min,max,step,display},m[key],
+  const parent=key==="glideTime"?"Glide from":
+   ["rate","delay"].includes(key)?"Vibrato":key==="tremoloRate"?"Pulse":null;
+  const inactive=parent==="Glide from"&&m.glide===0||
+   parent==="Vibrato"&&m.depth===0||parent==="Pulse"&&m.tremolo===0;
+  movementFields.append(createDial({label,min,max,step,display,disabled:inactive,
+   disabledReason:inactive?"Adjust "+parent+" first.":undefined},m[key],
    value=>onChange(["movement"],{...movement(patch),[key]:value}),
    value=>onPreview(["movement",key],value)));
  }
@@ -38,11 +66,12 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  for(const [key,label,min,max,step,display] of [
   ["amount","Bend amount",0,12,.25,"semitones"],
   ["rate","Wave speed",.1,12,.1,"hz"]
- ])movementFields.append(createDial({label,min,max,step,display},bend[key],
+ ])movementFields.append(createDial({label,min,max,step,display,
+  disabled:bend.shape==="straight",disabledReason:"Choose a bend shape other than Straight first."},bend[key],
   value=>onChange(["bend"],{...bend,[key]:value}),
   value=>onPreview(["bend",key],value)));
  movementGroup.append(movementTitle,movementFields);root.append(movementGroup);
- const details=document.createElement("details");details.className="synth-group sample-shaping";
+ const details=document.createElement("details");details.className="synth-group sample-shaping";details.open=true;
  const summary=document.createElement("summary");summary.textContent="Sample & articulation";
  const fields=document.createElement("div");fields.className="synth-fields dial-grid";
  const configs=[

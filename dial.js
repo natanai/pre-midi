@@ -25,7 +25,8 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
  const control=document.createElement("div");control.className="dial-field";
  const title=document.createElement("span");title.className="dial-label";title.textContent=field.label;
  const knob=document.createElement("div");knob.className="dial-knob";
- knob.tabIndex=0;knob.setAttribute("role","slider");
+ knob.tabIndex=field.disabled?-1:0;knob.setAttribute("role","slider");
+ if(field.disabled){control.classList.add("dial-disabled");knob.setAttribute("aria-disabled","true");}
  knob.setAttribute("aria-label",field.label);
  knob.setAttribute("aria-valuemin",String(field.min));
  knob.setAttribute("aria-valuemax",String(field.max));
@@ -63,7 +64,7 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
  const moveTo=(t)=>update(fromFraction(t,field),true);
  let pointerStart=null,startFraction=0,startValue=value;
  knob.addEventListener("pointerdown",event=>{
-  if(event.button!==0)return;
+  if(field.disabled||event.button!==0)return;
   event.preventDefault();
   knob.focus({preventScroll:true});
   pointerStart={id:event.pointerId,y:event.clientY};
@@ -88,6 +89,7 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
  knob.addEventListener("pointerup",finish);
  knob.addEventListener("pointercancel",finish);
  knob.addEventListener("keydown",event=>{
+  if(field.disabled)return;
   const delta=event.shiftKey?.1:1;
   const up=["ArrowUp","ArrowRight"].includes(event.key);
   const down=["ArrowDown","ArrowLeft"].includes(event.key);
@@ -103,11 +105,12 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
   if(current!==adjusted){update(adjusted,true);onCommit(adjusted);}
  });
  knob.addEventListener("dblclick",()=>{
+  if(field.disabled)return;
   const reset=field.defaultValue??(field.min+field.max)/2;
   const next=fromFraction(fraction(reset,field),field);
   if(current!==next){update(next,true);onCommit(next);}
  });
- knob.title="Drag up/down, use arrows, or double-click to reset";
+ knob.title=field.disabled?(field.disabledReason||"This control is currently inactive."):"Drag up/down, use arrows, or double-click to reset";
  control.append(title,knob,output);
  return control;
 }

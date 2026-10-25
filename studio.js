@@ -51,6 +51,7 @@ let editingNoteEffects = false;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
 let history = [], future = [], playback = null, pendingPlay = false;
+let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
 
@@ -386,7 +387,7 @@ for(const control of [$("sound-reference"),$("import-root")]){
 }
 function selectSound(entry){
  selectedSounds.set(instrument().id,entry.id);selectedNoteId=null;
- if(inspectorState==="closed")setInspector(inspectorViewport.matches?"expanded":"compact");
+ if(inspectorState==="closed")setInspector("expanded");
  renderNotes();renderSound();
 }
 function renderRack(root,inst,chunk){
@@ -652,13 +653,25 @@ function renderSound() {
   parent[path[path.length-1]]=value;
   scope(next);
  };
- const onChange=(path,value)=>modify(()=>{
-  const target=sound().patch;
-  let owner=target;
-  for(let i=0;i<path.length-1;i++)owner=owner[path[i]]??={};
-  owner[path[path.length-1]]=value;
-  target.presetId="custom";
- });
+ const onChange=(path,value)=>{
+  const changed=modify(()=>{
+   const target=sound().patch;
+   let owner=target;
+   for(let i=0;i<path.length-1;i++)owner=owner[path[i]]??={};
+   owner[path[path.length-1]]=value;
+   target.presetId="custom";
+  });
+  if(changed&&!playback&&!pendingPlay){
+   clearTimeout(soundPreviewTimer);
+   const instId=inst.id,soundId=entry.id;
+   soundPreviewTimer=setTimeout(()=>{
+    soundPreviewTimer=null;
+    if(playback||pendingPlay||instrument().id!==instId||sound().id!==soundId)return;
+    void audition(instrument(),sound().referencePitch,score,{soundId,duration:.4})
+     .catch(error=>message("Couldn't preview sound: "+error.message,true));
+   },140);
+  }
+ };
  const volume=$("instrument-volume-dial");
  volume.replaceChildren();
  volume.append(createDial({label:inst.layout==="rack"?"Rack volume":"Volume",min:0,max:1,step:.01,display:"percent"},
@@ -715,13 +728,11 @@ function render() {
 
 function syncInspector(){
  const work=document.querySelector(".work");
- for(const name of ["closed","compact","expanded"])work.classList.toggle("inspector-"+name,inspectorState===name);
+ for(const name of ["closed","expanded"])work.classList.toggle("inspector-"+name,inspectorState===name);
  const opened=inspectorState!=="closed";
  $("sound-section").setAttribute("aria-hidden",String(!opened));
  $("sound-toggle").setAttribute("aria-expanded",String(opened));
  $("sound-toggle").textContent=opened?"✓ Sound":"Sound";
- $("sound-expand").textContent=inspectorState==="expanded"?"Compact":"Expand";
- $("sound-expand").setAttribute("aria-label",inspectorState==="expanded"?"Show compact sound controls":"Expand sound editor");
 }
 function setInspector(state){
  inspectorState=state;
@@ -732,9 +743,8 @@ inspectorViewport.addEventListener("change",event=>{
  setInspector(event.matches?"expanded":"closed");
 });
 $("sound-toggle").addEventListener("click",()=>{
- setInspector(inspectorState==="closed"?(inspectorViewport.matches?"expanded":"compact"):"closed");
+ setInspector(inspectorState==="closed"?"expanded":"closed");
 });
-$("sound-expand").addEventListener("click",()=>setInspector(inspectorState==="expanded"?"compact":"expanded"));
 $("sound-close").addEventListener("click",()=>setInspector("closed"));
 function showExamples(){
  const root=$("example-list");root.replaceChildren();
@@ -921,7 +931,7 @@ const recorder=installMicrophoneRecorder({
   const base=name;let suffix=2;
   while(names.has(name))name=(base.slice(0,54)+" "+suffix++).slice(0,60);
   const ok=applySoundSelection(patchCopy(patch),name,trigger,[],{...recordingMode,mode:"add"},null,{referencePitch});
-  if(ok){setInspector(matchMedia("(max-width: 860px)").matches?"expanded":"compact");message("Created "+name+" · edit its synth controls in Sound");}
+  if(ok){setInspector("expanded");message("Created "+name+" · edit its synth controls in Sound");}
   return ok;
  },
  onUse:({wav,name,root,followPitch})=>{

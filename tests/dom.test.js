@@ -79,3 +79,12 @@ test("guitar dynamics and reachable low-string notes are exposed in the original
  assert.match(studio,/event.shiftKey/);
  assert.match(studio,/pitch >= 36/);
 });
+
+test("an opened Sound inspector exposes full controls without a compact mode",()=>{
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ assert.doesNotMatch(studio,/inspector-compact|setInspector\("compact"\)/);
+ assert.doesNotMatch(css,/inspector-compact/);
+ assert.doesNotMatch(html,/id="sound-expand"/);
+});

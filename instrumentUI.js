@@ -27,7 +27,10 @@ const groups=[
   {path:["filter","type"],label:"Filter",options:FILTERS},
   {path:["filter","cutoff"],label:"Cutoff",min:50,max:14000,step:1,display:"hz",log:true},
   {path:["filter","resonance"],label:"Resonance",min:.1,max:16,step:.1,display:"number"},
-  {path:["noise"],label:"Noise",min:0,max:1,step:.01,display:"percent"}
+  {path:["filter","sweep"],label:"Filter sweep",min:-5,max:5,step:.1,display:"number",defaultValue:0},
+  {path:["filter","sweepTime"],label:"Sweep time",min:.01,max:3,step:.01,display:"seconds",defaultValue:.2},
+  {path:["noise"],label:"Noise",min:0,max:1,step:.01,display:"percent"},
+  {path:["noiseDecay"],label:"Noise decay",min:0,max:4,step:.01,display:"seconds",defaultValue:0}
  ]},
  {name:"Movement",open:true,fields:[
   {path:["bend","shape"],label:"Bend shape",options:BEND_SHAPES.map(([id])=>id)},
@@ -77,10 +80,15 @@ function fromSlider(field,value) {
  ))));
 }
 function renderField(field,patch,onChange,onPreview){
- const value=pathValue(patch,field.path) ?? (field.path[0]==="bend"?
+ const value=pathValue(patch,field.path) ?? (field.defaultValue??(field.path[0]==="bend"?
   (field.path[1]==="shape"?"straight":field.path[1]==="amount"?2:4):
-  (field.options?field.options[0]:0));
- if(!field.options)return createDial(field,value,
+  (field.options?field.options[0]:0)));
+ const parent=field.path[0]==="filter"&&field.path[1]==="sweepTime"?"Filter sweep":
+  field.path[0]==="noiseDecay"?"Noise":null;
+ const disabled=parent==="Filter sweep"&&!(patch.filter?.sweep)||
+  parent==="Noise"&&!patch.noise;
+ if(!field.options)return createDial({...field,disabled,
+  disabledReason:disabled?"Adjust "+parent+" first.":undefined},value,
   next=>onChange(field.path,next),
   next=>onPreview(field.path,next));
  const label=document.createElement("label");

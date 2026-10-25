@@ -2,6 +2,7 @@ import {resolveEvent} from "./soundModel.js";
 import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
 import {putAsset,getAsset,MAX_ASSET_BYTES} from "./assetRegistry.js";
 import { validateMovement, validateBend, movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
+import {driveCurve,validateSampleTone} from "./audioEffects.js";
 // The only durable sample asset representation is the score's samples array.
 // Browser library URLs are staging inputs; .premidi files hold relative audio paths.
 export const MAX_SAMPLE_BYTES=MAX_ASSET_BYTES;
@@ -80,6 +81,7 @@ export function validateSamplerPatch(patch){
  if(typeof patch.followPitch!=="boolean")errors.push("Invalid pitch-follow mode.");
  errors.push(...validateMovement(patch.movement));
  errors.push(...validateBend(patch.bend));
+ const toneError=validateSampleTone(patch);if(toneError)errors.push(toneError);
  if(patch.preserveDynamics!==undefined && typeof patch.preserveDynamics!=="boolean")errors.push("Invalid recorded dynamic preservation.");
  if(patch.strumMs!==undefined && (!Number.isFinite(patch.strumMs)||patch.strumMs < -25||patch.strumMs > 25)) errors.push("Invalid strum timing.");
  for(const [field,lo,hi] of [["transpose",-24,24],["gain",0,2],["attack",0,2],["release",.01,3],["pan",-1,1]]){
@@ -152,10 +154,11 @@ export function scheduleSample(context,out,inst,event,start,duration,score,cache
  const gain=Math.min(2,inst.volume*patch.gain*event.velocity*.7*recordedGain);
  src.buffer=buffer;src.playbackRate.value=playbackRate;
  const motion=movement(patch);
- schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,duration));
  pan.pan.value=patch.pan;
  const length=buffer.duration/playbackRate;
  const life=patch.oneShot?length:Math.min(length,Math.max(.015,duration+patch.release));
+ // The whole recording keeps pitch modulation, not only the short grid note.
+ schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,life));
  const at=start+Math.min(patch.attack,life*.5);
  amp.gain.setValueAtTime(0,start);
  amp.gain.linearRampToValueAtTime(gain,at+0.001);
@@ -167,7 +170,22 @@ export function scheduleSample(context,out,inst,event,start,duration,score,cache
  const pulse=context.createGain();
  pulse.gain.setValueAtTime(1,start);
  scheduleMovementLfo(context,pulse.gain,start,life,motion.tremoloRate,motion.tremolo*.45);
- src.connect(amp);amp.connect(pulse);pulse.connect(pan);pan.connect(out);
+ // Unedited legacy samples preserve the original signal path.
+ let signal=src;const toneNodes=[];
+ if(patch.filter){
+  const filter=context.createBiquadFilter();filter.type=patch.filter.type;
+  filter.frequency.setValueAtTime(patch.filter.cutoff,start);
+  filter.Q.setValueAtTime(patch.filter.resonance,start);
+  signal.connect(filter);signal=filter;toneNodes.push(filter);
+ }
+ if((patch.drive??0)>0){
+  const shaper=context.createWaveShaper(),compensation=context.createGain();
+  shaper.curve=driveCurve(patch.drive);shaper.oversample="none";
+  compensation.gain.value=1/(1+patch.drive*1.1);
+  signal.connect(shaper);shaper.connect(compensation);signal=compensation;
+  toneNodes.push(shaper,compensation);
+ }
+ signal.connect(amp);amp.connect(pulse);pulse.connect(pan);pan.connect(out);
  src.start(start);src.stop(start+life+.01);
- src.onended=()=>{src.disconnect();amp.disconnect();pulse.disconnect();pan.disconnect();};
+ src.onended=()=>{src.disconnect();for(const node of toneNodes)node.disconnect();amp.disconnect();pulse.disconnect();pan.disconnect();};
 }

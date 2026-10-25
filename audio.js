@@ -4,12 +4,12 @@ import { strumOffset } from "./guitarTiming.js";
 import { movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
 import {setOscillatorWave} from "./harmonics.js";
 import {validatePatch} from "./synth.js";
+import {driveCurve} from "./audioEffects.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the resolved sound patch stored in the score.
 export const secondsPerStep = doc => 60/doc.bpm/4;
 export const frequency = pitch => 440*2**((pitch-69)/12);
 const noiseBuffers=new WeakMap();
-const curves=new Map();
 const sampleCaches=new WeakMap();
 const bufferCache=ctx=>{if(!sampleCaches.has(ctx))sampleCaches.set(ctx,new Map());return sampleCaches.get(ctx);};
 export async function primeSamples(score){if(context)await decodeSamples(context,score,bufferCache(context));}
@@ -25,18 +25,6 @@ function noiseBuffer(ctx) {
  }
  noiseBuffers.set(ctx,buffer);
  return buffer;
-}
-function driveCurve(amount) {
- const strength=Math.round(amount*100);
- if(curves.has(strength))return curves.get(strength);
- const k=1+strength*.65;
- const curve=new Float32Array(1024);
- for(let i=0;i<curve.length;i++){
-  const x=(i/(curve.length-1))*2-1;
-  curve[i]=Math.tanh(k*x)/Math.tanh(k);
- }
- curves.set(strength,curve);
- return curve;
 }
 export function stepEvents(doc,absoluteStep) {
  const cycle=Math.max(1,doc.bars*16),songStep=absoluteStep%cycle;
@@ -84,14 +72,21 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
  if(patch.noise>0) {
   const source=ctx.createBufferSource(),gain=add(ctx.createGain());
   source.buffer=noiseBuffer(ctx);source.loop=true;
-  gain.gain.value=patch.noise;
+  gain.gain.setValueAtTime(patch.noise,start);
+   if((patch.noiseDecay??0)>0)gain.gain.setTargetAtTime(0,start,Math.max(.002,patch.noiseDecay/5));
   source.connect(gain);gain.connect(mix);
   source.start(start);source.stop(end);
   sources.push(source);
  }
  const filter=add(ctx.createBiquadFilter());
  filter.type=patch.filter.type;
- filter.frequency.setValueAtTime(patch.filter.cutoff,start);
+ const sweep=patch.filter.sweep??0;
+  if(sweep!==0){
+   const first=Math.max(50,Math.min(14000,patch.filter.cutoff*2**sweep));
+   filter.frequency.setValueAtTime(first,start);
+   filter.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,
+    start+Math.min(duration,patch.filter.sweepTime??.2));
+  }else filter.frequency.setValueAtTime(patch.filter.cutoff,start);
  filter.Q.setValueAtTime(patch.filter.resonance,start);
  mix.connect(filter);
  if(motion.tone>0)scheduleMovementLfo(ctx,filter.frequency,start,duration,

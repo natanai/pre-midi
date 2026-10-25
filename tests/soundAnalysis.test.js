@@ -47,3 +47,16 @@ test("cancellation requires no audio rendering and cannot produce an instrument"
  const controller=new AbortController();controller.abort();
  await assert.rejects(convertToSynth(note(),44100,{signal:controller.signal}),{name:"AbortError"});
 });
+
+test("a native synth can express temporal brightness and transient noise without samples",()=>{
+ const analysis=analyzeSound(note(),44100);
+ const patch=patchFromAnalysis(analysis);
+ assert.equal(typeof patch.filter.sweep,"number");
+ assert.ok(patch.filter.sweepTime>0);
+ assert.equal(patch.noiseDecay,0);
+ assert.deepEqual(validatePatch(patch),[]);
+ patch.filter.sweep=6;
+ assert.ok(validatePatch(patch).some(error=>/filter sweep/.test(error)));
+ patch.filter.sweep=2;patch.noiseDecay=5;
+ assert.ok(validatePatch(patch).some(error=>/noise decay/.test(error)));
+});
