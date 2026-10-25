@@ -50,6 +50,12 @@ export function moveRackSoundToPianoRoll(score,instrumentId,soundId){
  const entry=source.sounds.find(item=>item.id===soundId);
  const moved=clone(entry);
  moved.trigger="pitched";
+ // A hit recording is normally a fixed-pitch one-shot. A piano roll needs
+ // to follow notes and respect note lengths instead.
+ if(moved.patch.type==="sample"){
+  moved.patch.followPitch=true;
+  moved.patch.oneShot=false;
+ }
  const pitched=makeInstrument(score.instruments.length+1,score.bars,moved);
  pitched.name=entry.name;
  pitched.volume=source.volume;
