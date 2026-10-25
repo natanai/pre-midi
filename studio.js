@@ -364,7 +364,7 @@ function openPicker(instId, bar, trigger) {
   const timing=placementFor(inst,bar);
   for(const [labelText,key,min,max] of [
    ["Offset in bar (steps)","offset",0,15],
-   ["Repetitions","repeats",1,16],
+   ["Repetitions","repeats",1,32],
    ["Repeat every (steps)","every",1,64]
   ]){
    const label=element("label",labelText);
