@@ -1,5 +1,5 @@
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
-import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromScore,deleteSoundFromScore} from "./entityActions.js";
+import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromScore,deleteSoundFromScore,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
@@ -404,6 +404,8 @@ function renderRack(root,inst,chunk){
   head.append(name,actionMenu("Actions for "+entry.name,[
    {label:"Rename",run:()=>renameRackSound(inst,entry)},
    {label:"Replace sound",run:()=>{focus(inst);selectSound(entry);openLibrary("replace-row");}},
+   {label:"Move to piano roll",disabled:!canMoveRackSoundToPianoRoll(score,inst.id,entry.id),
+    run:()=>extractSoundToPianoRoll(inst.id,entry.id)},
    {label:"Duplicate sound",disabled:inst.sounds.length>=MAX_SOUNDS,run:()=>duplicateRackSound(inst.id,entry.id)},
    {label:"Move up",disabled:position===0,run:()=>moveRackSound(inst.id,entry.id,-1)},
    {label:"Move down",disabled:position===inst.sounds.length-1,run:()=>moveRackSound(inst.id,entry.id,1)},
@@ -678,7 +680,11 @@ function renderSound() {
  $("convert-rack").disabled=!canConvertToRack(inst);
  $("convert-rack").title=canConvertToRack(inst)?"Use one named sound row":"Keep the piano roll: conversion would change pitches, zones, or simultaneous events";
  $("convert-pitched").hidden=inst.layout!=="rack";
- $("convert-pitched").disabled=inst.sounds.length!==1||entry.referencePitch<36||entry.referencePitch>96;
+ $("convert-pitched").disabled=!canMoveRackSoundToPianoRoll(score,inst.id,entry.id);
+ $("convert-pitched").title=entry.referencePitch<36||entry.referencePitch>96?
+  "Reference note must be within C2–C7 to use the piano roll":
+  score.instruments.length>=12&&inst.sounds.length>1?
+  "The composition already has 12 instruments": "Move this sound to its own piano-roll instrument";
  $("edit-instrument-note").textContent=inst.layout==="rack"?inst.name+" / "+entry.name:inst.name;
  if(patch.type==="sample"){
   renderSamplerEditor($("synth-editor"),patch,onChange,
@@ -1205,14 +1211,27 @@ $("convert-rack").addEventListener("click",()=>{
  if(!canConvertToRack(instrument()))return;
  modify(()=>convertToRack(instrument()));
 });
-$("convert-pitched").addEventListener("click",()=>{
- const inst=instrument();if(inst.sounds.length!==1)return;
+function extractSoundToPianoRoll(instrumentId,soundId){
+ if(!canMoveRackSoundToPianoRoll(score,instrumentId,soundId))return;
+ closePicker();
+ const source=score.instruments.find(item=>item.id===instrumentId);
+ const sourceChunkIndex=source.chunks.findIndex(chunk=>chunk.id===selectedChunks.get(instrumentId));
+ const sourceBar=selectedSlot.instrumentId===instrumentId?selectedSlot.bar:0;
  modify(()=>{
-  const entry=inst.sounds[0];inst.layout="pitched";entry.trigger="pitched";
-  // The piano roll covers C2–C7; refuse references outside that range.
-  for(const chunk of inst.chunks)chunk.notes=chunk.notes.map(({soundId,...note})=>({...note,pitch:entry.referencePitch}));
+  const newId=moveRackSoundToPianoRoll(score,instrumentId,soundId);
+  if(!newId)return;
+  const pitched=score.instruments.find(item=>item.id===newId);
+  selectedInstrumentId=newId;
+  selectedSounds.delete(instrumentId);
+  selectedSounds.set(newId,soundId);
+  selectedNoteId=null;
+  selectedSlot={instrumentId:newId,bar:sourceBar};
+  selectedChunks.set(newId,pitched.chunks[Math.max(0,sourceChunkIndex)].id);
+  if(!score.instruments.some(item=>item.id===instrumentId))
+   selectedChunks.delete(instrumentId);
  });
-});
+}
+$("convert-pitched").addEventListener("click",()=>extractSoundToPianoRoll(instrument().id,sound().id));
 $("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
 
 
