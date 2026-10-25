@@ -106,7 +106,7 @@ frame.addEventListener("load",async()=>{
   check("+ Sound reachable in long scrolled rack",a.top>=r.top&&a.bottom<=r.bottom+1&&a.left>=r.left&&a.right<=r.right);
   check("no page horizontal clipping",d.documentElement.scrollWidth<=frame.clientWidth+3);
   const pageWidth=frame.clientWidth;
-  if(pageWidth<1100){$("sound-expand").click();check("mobile expanded full editor reachable",d.querySelector(".work").classList.contains("inspector-expanded")&&!!d.querySelector("#synth-editor .synth-group"));$("sound-close").click();}
+  if(pageWidth<1100){check("mobile expanded full editor reachable",d.querySelector(".work").classList.contains("inspector-expanded")&&!!d.querySelector("#synth-editor .synth-group"));$("sound-close").click();}
   // Keep a durable preset even after its source project and audio are replaced.
   $("new").click();await delay(100);
   await choose($("add-instrument"),"My complete rack");
