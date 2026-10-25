@@ -5,7 +5,8 @@ import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
 import { renderPatchEditor } from "./instrumentUI.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
-import { loadLibrarySample, makeSampleAsset, MAX_SCORE_BYTES } from "./sampler.js";
+import { loadLibrarySample, makeSampleAsset, MAX_SCORE_BYTES, sampleForNote } from "./sampler.js";
+import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
 import { loadDraft, saveDraft } from "./storage.js";
 
@@ -608,7 +609,8 @@ $("save-sound").addEventListener("click",()=>{
  if(savedSounds.length>=100)return message("Your sound library contains 100 presets.",true);
  const item={id:"user-"+id(),name,category:"Mine",description:"Your saved sound",patch:patchCopy(inst.patch)};
  if(inst.patch.type==="sample") {
-  item.samples=inst.patch.zones.map(zone=>score.samples.find(asset=>asset.id===zone.assetId));
+  item.samples=inst.patch.zones.filter(zone=>!sampleAsset(zone.assetId))
+   .map(zone=>score.samples.find(asset=>asset.id===zone.assetId));
   if(item.samples.some(value=>!value))return message("The sample is missing audio data.",true);
  }
  item.patch.presetId=item.id;
@@ -634,9 +636,13 @@ function openLibrary(mode) {
 const builtinCache=new Map();
 async function resolveSamples(preset) {
  if(preset.patch?.type==="sample") {
-  const assets=preset.samples||[];
-  if(assets.length!==preset.patch.zones.length)throw Error("Saved sample is missing its audio.");
-  return assets;
+  return Promise.all(preset.patch.zones.map(async zone=>{
+   const existing=(preset.samples||[]).find(item=>item.id===zone.assetId)
+    ||score.samples.find(item=>item.id===zone.assetId);
+   if(existing)return existing;
+   if(sampleAsset(zone.assetId))return loadLibrarySample(zone.assetId);
+   throw Error("Saved sample is missing its audio: "+zone.assetId);
+  }));
  }
  if(!preset.assets)return [];
  return Promise.all(preset.assets.map(async assetId=>{
@@ -678,12 +684,17 @@ async function chooseSound(preset) {
 }
 async function auditionPreset(preset) {
  try {
-  const assets=await resolveSamples(preset);
   const patch=preset.category==="Mine"?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
+  const pitch=preset.category==="Bass"?48:preset.category==="Guitars"?57:69;
   const inst={...instrument(),patch,volume:.8};
-  const temp={samples:assets};
-  await audition(inst,preset.category==="Bass"?48:69,temp);
+  const zone=patch.type==="sample"?sampleForNote(patch,pitch,.8):null;
+  // A guitar preview should play immediately, not download 48 audio takes
+  // just to hear the single note selected in the library.
+  const asset=zone?(preset.samples||[]).find(item=>item.id===zone.assetId)
+   ||score.samples.find(item=>item.id===zone.assetId)
+   ||await loadLibrarySample(zone.assetId):null;
+  await audition(inst,pitch,{samples:asset?[asset]:[]});
  }catch(error){message("Preview failed: "+error.message,true);}
 }
 function renderLibrary() {
