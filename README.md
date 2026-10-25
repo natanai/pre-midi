@@ -22,6 +22,9 @@ filled bar also opens three timing settings for **that placement only**:
 
 - **Offset in bar (steps)**: from 0–15 sixteenth-note steps. Choose 8 to begin
   on beat three while other instruments continue from the bar's first beat.
+- **Phrase length (steps)**: how much of the chunk is used for each
+  placement (1–16). A genuine three-beat phrase uses 12. Later notes in that
+  chunk are left unchanged but not played by this placement.
 - **Repetitions**: how many times this chunk starts playing (1–32).
 - **Repeat every (steps)**: the distance between starts (1–64). Choose 12 for
   a three-beat phrase against the shared four-beat bar grid, or 20 for five
