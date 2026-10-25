@@ -294,6 +294,8 @@ function renderTimeline() {
   for(const phrase of phraseInstances(score,inst)){
    const length=Math.min(16,score.bars*16-phrase.start);
    const segment=element("div",undefined,"phrase-segment"+(phrase.index?" repeated":""));
+   segment.dataset.sourceBar=String(phrase.bar);
+   segment.dataset.repeat=String(phrase.index);
    segment.style.setProperty("--phrase-start",String(phrase.start/(score.bars*16)));
    segment.style.setProperty("--phrase-width",String(length/(score.bars*16)));
    segment.setAttribute("aria-hidden","true");
