@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {create,makeInstrument,makeSound,makeChunk,id,validate} from "../schema.js";
+import {makeSampleAsset} from "../sampler.js";
 import {deleteInstrumentFromScore,deleteSoundFromScore,instrumentDeleteLabel,soundDeleteLabel,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "../entityActions.js";
 
 function rack(){
@@ -126,5 +127,22 @@ test("piano roll extraction respects pitch bounds and 12 instrument capacity",()
  const next=moveRackSoundToPianoRoll(score,instrument.id,row.id);
  assert.ok(next);
  assert.equal(score.instruments.length,12);
+ assert.deepEqual(validate(score),[]);
+});
+
+test("moving a recorded hit to piano roll enables audible pitch-following and note lengths",()=>{
+ const {score,instrument}=rack(),entry=instrument.sounds[0];
+ const wav=new Uint8Array(44);
+ wav.set(new TextEncoder().encode("RIFF"),0);
+ wav.set(new TextEncoder().encode("WAVE"),8);
+ score.samples.push(makeSampleAsset("recorded-fixture","Recorded tap","audio/wav",wav,"user"));
+ entry.patch={type:"sample",presetId:"custom",zones:[{assetId:"recorded-fixture",root:60}],
+  followPitch:false,oneShot:true,transpose:0,gain:1,attack:.01,release:.1,pan:0};
+ assert.deepEqual(validate(score),[]);
+ const movedId=moveRackSoundToPianoRoll(score,instrument.id,entry.id);
+ const moved=score.instruments.find(item=>item.id===movedId);
+ assert.equal(moved.sounds[0].patch.followPitch,true);
+ assert.equal(moved.sounds[0].patch.oneShot,false);
+ assert.equal(moved.sounds[0].patch.zones[0].assetId,"recorded-fixture");
  assert.deepEqual(validate(score),[]);
 });
