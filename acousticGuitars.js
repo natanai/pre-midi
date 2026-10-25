@@ -28,21 +28,21 @@ export const GUITAR_PRESETS = [
  {
   id:"nylon-finger",name:"Nylon Fingerstyle",category:"Guitars",
   description:"Warm finger-plucked acoustic nylon, sampled up the neck.",
-  assets:guitarIds(["nf"]),followPitch:true,gain:1.25,release:1.65,strumMs:0
+  assets:guitarIds(["nf"]),followPitch:true,gain:1.25,release:1.65,strumMs:0,preserveDynamics:true
  },
  {
   id:"nylon-guitar",name:"Nylon Picked",category:"Guitars",
   description:"Light and firm recorded picks, with velocity-sensitive attack.",
-  assets:guitarIds(["np2","np3"]),followPitch:true,gain:1.2,release:1.6,strumMs:0
+  assets:guitarIds(["np2","np3"]),followPitch:true,gain:1.2,release:1.6,strumMs:0,preserveDynamics:true
  },
  {
   id:"steel-guitar",name:"Steel Acoustic",category:"Guitars",
   description:"Expressive steel strings with soft, medium and firm plucks.",
-  assets:guitarIds(["ss1","ss2","ss3"]),followPitch:true,gain:1.05,release:1.95,strumMs:0
+  assets:guitarIds(["ss1","ss2","ss3"]),followPitch:true,gain:1.05,release:1.95,strumMs:0,preserveDynamics:true
  },
  {
   id:"steel-strum",name:"Steel Strum",category:"Guitars",
   description:"Layered acoustic chords with a natural bass-to-treble brush.",
-  assets:guitarIds(["ss1","ss2","ss3"]),followPitch:true,gain:1.05,release:2.1,strumMs:11
+  assets:guitarIds(["ss1","ss2","ss3"]),followPitch:true,gain:1.05,release:2.1,strumMs:11,preserveDynamics:true
  }
 ];

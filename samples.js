@@ -62,6 +62,6 @@ export function makeSamplerPatch(preset){
   }),
   followPitch:preset.followPitch,transpose:0,
   gain:preset.gain??.9,attack:.005,release:preset.release??.17,
-  pan:0,strumMs:preset.strumMs??0
+  pan:0,strumMs:preset.strumMs??0,preserveDynamics:preset.preserveDynamics??false
  };
 }

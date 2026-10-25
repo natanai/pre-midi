@@ -43,6 +43,11 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload){
  box.addEventListener("change",()=>onChange(["followPitch"],box.checked));
  follow.append(box,document.createTextNode("Follow note pitch"));
  fields.append(follow);
+ const natural=document.createElement("label");natural.className="sample-pitch-setting";
+ const check=document.createElement("input");check.type="checkbox";check.checked=!!patch.preserveDynamics;
+ check.addEventListener("change",()=>onChange(["preserveDynamics"],check.checked));
+ natural.append(check,document.createTextNode("Keep recorded dynamics"));
+ fields.append(natural);
  root.append(fields);
  const mapping=document.createElement("div");mapping.className="sample-zones";
  const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];

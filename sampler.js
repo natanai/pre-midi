@@ -79,6 +79,7 @@ export function validateSamplerPatch(patch){
     (zone.velocity!==undefined && (!Number.isFinite(zone.velocity)||zone.velocity<0||zone.velocity>1))||
     (zone.string!==undefined && (typeof zone.string!=="string"||zone.string.length>20))))errors.push("Invalid sample key mapping.");
  if(typeof patch.followPitch!=="boolean")errors.push("Invalid pitch-follow mode.");
+ if(patch.preserveDynamics!==undefined && typeof patch.preserveDynamics!=="boolean")errors.push("Invalid recorded dynamic preservation.");
  if(patch.strumMs!==undefined && (!Number.isFinite(patch.strumMs)||patch.strumMs < -25||patch.strumMs > 25)) errors.push("Invalid strum timing.");
  for(const [field,lo,hi] of [["transpose",-24,24],["gain",0,2],["attack",0,2],["release",.01,3],["pan",-1,1]]){
   const value=patch[field];
@@ -144,7 +145,8 @@ export function scheduleSample(context,out,inst,event,start,duration,score,cache
  if(!buffer)return; // Can only happen while freshly imported samples decode during playback.
  const playbackRate=patch.followPitch?2**((event.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12);
  const src=context.createBufferSource(),amp=context.createGain(),pan=context.createStereoPanner();
- const gain=Math.min(2,inst.volume*patch.gain*event.velocity*.7*sampleNormalization(buffer));
+ const recordedGain=patch.preserveDynamics?3.5:sampleNormalization(buffer);
+ const gain=Math.min(2,inst.volume*patch.gain*event.velocity*.7*recordedGain);
  src.buffer=buffer;src.playbackRate.value=playbackRate;
  pan.pan.value=patch.pan;
  const length=buffer.duration/playbackRate;
