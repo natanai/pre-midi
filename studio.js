@@ -13,24 +13,15 @@ import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
 import {createSignalDisplay} from "./soundScope.js";
 import {EXAMPLES,buildExample} from "./examples.js";
-import {exportPackage,importPackage} from "./packageIO.js";
+import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 
 const $ = key => document.getElementById(key);
-const CACHE = "premidi-v4-draft";
+const CACHE = "premidi-v5-draft";
 const SAVED_SOUNDS = "premidi-user-sounds-v1";
 // Recover the browser's own previous synth-only draft in place. Old exported
 // formats deliberately aren't supported; this does not change file parsing.
-const cached=(()=>{
- try {return parse(localStorage.getItem(CACHE)||"");}catch{}
- try {
-  const previous=JSON.parse(localStorage.getItem("premidi-v3-draft")||"null");
-  if(previous?.version!==3||!Array.isArray(previous.instruments))return null;
-  previous.version=4;previous.samples=[];
-  for(const inst of previous.instruments)inst.patch.type="synth";
-  return validate(previous).length?null:previous;
- }catch{return null;}
-})();
+const cached=(()=>{try{return parse(localStorage.getItem(CACHE)||"");}catch{return null;}})();
 const savedSounds=(()=>{
  try {
   const entries=JSON.parse(localStorage.getItem(SAVED_SOUNDS)||"[]");
@@ -638,27 +629,19 @@ $("import").addEventListener("click", () => $("file").click());
 $("file").addEventListener("change",async event=>{
  const file=event.currentTarget.files?.[0];
  if(!file)return;
- try{
-  let next;
-  if(file.name.toLowerCase().endsWith(".zip"))
-   next=importPackage(new Uint8Array(await file.arrayBuffer()));
-  else{
-   if(file.size>MAX_SCORE_BYTES)throw Error("Composition exceeds 15 MB.");
-   next=parse(await file.text());
-   if(next.samples.some(asset=>!asset.data))
-    throw Error("This composition has external audio. Import its complete ZIP package.");
-  }
-  if(confirm("Open "+next.title+"? This replaces the browser draft.")){
-   resetTo(next);message("Opened "+file.name);
-  }
+ try {
+  if(!confirm("Open "+file.name+"? This replaces the browser draft. Export it first if you want a copy."))return;
+  const next=await importProject(file);
+  resetTo(next);
+  message("Opened "+file.name);
  }catch(error){message("Could not open file: "+error.message,true);}
  finally{$("file").value="";}
 });
 $("export").addEventListener("click",()=>{
- try {
-  const result=exportPackage(score);
+ try{
+  const result=exportProject(score);
   download(result.blob,result.name);
-  message(result.name.endsWith(".zip")?"Saved composition and separate audio assets":"Saved .premidi");
+  message(result.name.endsWith(".zip")?"Saved music ZIP with separate audio assets":"Saved .premidi");
  }catch(error){message("Export failed: "+error.message,true);}
 });
 $("wav").addEventListener("click", async () => {
