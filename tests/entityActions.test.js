@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {create,makeInstrument,makeSound,makeChunk,id,validate} from "../schema.js";
-import {deleteInstrumentFromScore,deleteSoundFromScore,instrumentDeleteLabel,soundDeleteLabel} from "../entityActions.js";
+import {deleteInstrumentFromScore,deleteSoundFromScore,instrumentDeleteLabel,soundDeleteLabel,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "../entityActions.js";
 
 function rack(){
  const score=create(),instrument=score.instruments[0];
@@ -64,4 +64,67 @@ test("unknown instrument and sound IDs do not alter the score",()=>{
  assert.equal(deleteSoundFromScore(score,instrument.id,"missing"),null);
  assert.equal(deleteSoundFromScore(score,"missing",instrument.sounds[0].id),null);
  assert.equal(JSON.stringify(score),snapshot);
+});
+
+test("moving one rack row to piano roll preserves its chunk placements and remaining hits",()=>{
+ const {score,instrument}=rack();
+ const first=instrument.sounds[0],second=makeSound("Snare",undefined,"hit");
+ instrument.sounds.push(second);
+ const other=makeChunk("Verse");
+ instrument.chunks.push(other);
+ instrument.timeline[1]=other.id;
+ const firstHit={id:id(),soundId:first.id,start:2,duration:1,velocity:.7};
+ instrument.chunks[0].notes.push(firstHit,{id:id(),soundId:second.id,start:2,duration:1,velocity:.8});
+ other.notes.push({id:id(),soundId:first.id,start:9,duration:1,velocity:.6});
+ const originalId=instrument.id;
+ assert.deepEqual(validate(score),[]);
+ assert.equal(canMoveRackSoundToPianoRoll(score,originalId,first.id),true);
+ const pitchedId=moveRackSoundToPianoRoll(score,originalId,first.id);
+ assert.equal(score.instruments.length,2);
+ assert.equal(score.instruments[0].id,originalId);
+ assert.equal(instrument.sounds.length,1);
+ assert.equal(instrument.sounds[0].id,second.id);
+ assert.deepEqual(instrument.chunks[0].notes.map(event=>event.soundId),[second.id]);
+ assert.equal(instrument.chunks[1].notes.length,0);
+ const pitched=score.instruments[1];
+ assert.equal(pitched.id,pitchedId);
+ assert.equal(pitched.layout,"pitched");
+ assert.equal(pitched.name,first.name);
+ assert.equal(pitched.sounds[0].trigger,"pitched");
+ assert.equal(pitched.chunks[0].notes[0].pitch,first.referencePitch);
+ assert.equal(pitched.chunks[0].notes[0].start,firstHit.start);
+ assert.equal(pitched.chunks[1].notes[0].start,9);
+ assert.equal(pitched.timeline[1],pitched.chunks[1].id);
+ assert.equal(pitched.timeline[0],pitched.chunks[0].id);
+ assert.deepEqual(validate(score),[]);
+});
+
+test("moving the final rack sound replaces rack with a new pitched instrument",()=>{
+ const {score,instrument}=rack(),previousId=instrument.id;
+ instrument.chunks[0].notes.push({id:id(),soundId:instrument.sounds[0].id,start:6,duration:1,velocity:.9});
+ const newId=moveRackSoundToPianoRoll(score,instrument.id,instrument.sounds[0].id);
+ assert.equal(score.instruments.length,1);
+ assert.equal(score.instruments[0].id,newId);
+ assert.notEqual(newId,previousId);
+ assert.equal(score.instruments[0].layout,"pitched");
+ assert.equal(score.instruments[0].chunks[0].notes[0].start,6);
+ assert.deepEqual(validate(score),[]);
+});
+
+test("piano roll extraction respects pitch bounds and 12 instrument capacity",()=>{
+ const {score,instrument}=rack(),row=instrument.sounds[0];
+ row.referencePitch=12;
+ assert.equal(canMoveRackSoundToPianoRoll(score,instrument.id,row.id),false);
+ assert.equal(moveRackSoundToPianoRoll(score,instrument.id,row.id),null);
+ row.referencePitch=60;
+ instrument.sounds.push(makeSound("Other",undefined,"hit"));
+ while(score.instruments.length<12)score.instruments.push(makeInstrument(score.instruments.length+1,score.bars));
+ assert.equal(canMoveRackSoundToPianoRoll(score,instrument.id,row.id),false);
+ assert.equal(moveRackSoundToPianoRoll(score,instrument.id,row.id),null);
+ instrument.sounds.pop();
+ assert.equal(canMoveRackSoundToPianoRoll(score,instrument.id,row.id),true);
+ const next=moveRackSoundToPianoRoll(score,instrument.id,row.id);
+ assert.ok(next);
+ assert.equal(score.instruments.length,12);
+ assert.deepEqual(validate(score),[]);
 });
