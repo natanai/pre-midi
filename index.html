@@ -46,7 +46,7 @@
    <section class="notes-section" aria-label="Chunk note editor">
     <div class="heading notes-heading">
      <div class="chunk-heading"><h2>Notes</h2><span id="editing-identity" class="editing-identity"></span></div>
-     <div class="history-actions"><button id="undo" type="button">Undo</button><button id="redo" type="button">Redo</button></div>
+     <div class="history-actions"><button id="note-mode" type="button" aria-pressed="false">Edit note effects</button><button id="undo" type="button">Undo</button><button id="redo" type="button">Redo</button></div>
     </div>
     <div class="notes-toolbar">
      <div class="chunk-fields">
@@ -73,11 +73,12 @@
     <div class="controls">
      <div class="sound-control-group sound-identity-controls">
       <label>Name <input id="instrument-name" maxlength="60"></label>
-      <label>Volume <input id="volume" type="range" min="0" max="100"><output id="volume-value"></output></label>
+      <div id="instrument-volume-dial" class="instrument-volume-dial" aria-label="Instrument volume"></div>
      </div>
      <button id="remove-instrument" type="button" class="danger">Remove instrument</button>
     </div>
-    <div id="synth-editor" class="synth-editor" aria-label="Synthesizer controls"></div>
+    <div id="sound-visualizer" class="sound-visualizer" aria-label="Instrument sound visualization"></div>
+    <div id="synth-editor" class="synth-editor" aria-label="Instrument sound controls"></div>
    </section>
   </div>
  </div>

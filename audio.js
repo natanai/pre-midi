@@ -65,7 +65,7 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
   const gain=add(ctx.createGain());
   oscillator.type=slot.wave;
   oscillator.frequency.setValueAtTime(Math.min(18000,frequency(event.pitch)*2**slot.octave),start);
-  schedulePitch(ctx,oscillator.detune,event,motion,start,duration,slot.detune);
+  schedulePitch(ctx,oscillator.detune,{...event,bend:event.bend??patch.bend},motion,start,duration,slot.detune);
   gain.gain.value=slot.level;
   oscillator.connect(gain);gain.connect(mix);
   oscillator.start(start);oscillator.stop(end);
@@ -161,6 +161,23 @@ export async function audition(instrument,pitch,score=null,expression=null) {
  soundNote(context,context.destination,instrument,
   {pitch,velocity:expression?.velocity??.8,bend:expression?.bend},
   context.currentTime+.01,expression?.duration??.24,score);
+}
+// Preview a real acoustic chord through the exact same sample voice and
+// strumOffset implementation used by timeline playback and WAV export.
+export async function auditionChord(instrument,pitches,score,velocity=.85) {
+ context||=new AudioContext();
+ if(context.state!=="running")await context.resume();
+ const notes=pitches.map((pitch,index)=>({
+  id:"preview-"+index,pitch,start:0,duration:8,velocity
+ }));
+ const needs=new Set(notes.map(n=>instrument.patch.type==="sample"?
+  sampleForNote(instrument.patch,n.pitch,n.velocity)?.assetId:null).filter(Boolean));
+ await decodeSamples(context,score,bufferCache(context),needs);
+ const now=context.currentTime+.04,duration=.8;
+ for(const note of notes){
+  soundNote(context,context.destination,instrument,note,
+   now+strumOffset(instrument,note,notes),duration,score);
+ }
 }
 export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{}}={}) {
  context||=new AudioContext();

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {create,parse,validate} from "../schema.js";
+import {create,parse,validate,id} from "../schema.js";
 import {makePatch,PRESETS,validatePatch} from "../synth.js";
 import {SAMPLE_LIBRARY,makeSamplerPatch} from "../samples.js";
 import {BEND_SHAPES,bendSemitones,movement,validateBend,validateMovement,pitchCents,schedulePitch} from "../expression.js";
@@ -27,7 +27,8 @@ test("recorded guitars expose the same expressive instrument movement contract",
  }
 });
 test("each bend shape changes pitch on held notes without changing the note's canonical pitch",()=>{
- const doc=create(),note=doc.instruments[0].chunks[0].notes[0];
+ const doc=create(),chunk=doc.instruments[0].chunks[0];
+ const note={id:id(),pitch:60,start:0,duration:4,velocity:.8};chunk.notes.push(note);
  const shapes=BEND_SHAPES.map(([key])=>key);
  for(const shape of shapes) {
   note.bend={shape,amount:4,rate:3.4};
@@ -50,7 +51,8 @@ test("bend boundaries and malformed values are validated",()=>{
  assert.ok(Math.abs(bendSemitones({shape:"dip",amount:4,rate:4},.5)+4)<.001);
 });
 test("instrument glide and per-note bend coexist without requiring a new note type",()=>{
- const doc=create(),note=doc.instruments[0].chunks[0].notes[0];
+ const doc=create(),chunk=doc.instruments[0].chunks[0];
+ const note={id:id(),pitch:60,start:0,duration:4,velocity:.8};chunk.notes.push(note);
  note.duration=16;
  note.bend={shape:"rise",amount:3,rate:4};
  const m=movement({movement:{glide:-5,glideTime:.23}});
@@ -73,4 +75,16 @@ test("audio scheduler writes a real per-note pitch curve and delayed vibrato",()
  assert.equal(curve[3],2);
  assert.ok(curve[1].some(x=>x>200));
  assert.ok(curve[1][0]<5);
+});
+
+test("instrument bends are canonical defaults, while an individual note can override",()=>{
+ const score=create(),inst=score.instruments[0],chunk=inst.chunks[0];
+ inst.patch.bend={shape:"rise",amount:3,rate:4};
+ chunk.notes.push({id:id(),pitch:60,start:0,duration:12,velocity:.8});
+ assert.deepEqual(validate(score),[]);
+ const note=chunk.notes[0];
+ assert.equal(note.bend,undefined);
+ assert.deepEqual(parse(JSON.stringify(score)).instruments[0].patch.bend,inst.patch.bend);
+ note.bend={shape:"fall",amount:2,rate:4};
+ assert.deepEqual(validate(score),[]);
 });

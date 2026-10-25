@@ -42,7 +42,7 @@ export const GUITAR_PRESETS = [
  },
  {
   id:"steel-strum",name:"Steel Strum",category:"Guitars",
-  description:"Layered acoustic chords with a natural bass-to-treble brush.",
-  assets:guitarIds(["ss1","ss2","ss3"]),followPitch:true,gain:1.05,release:2.1,strumMs:11,preserveDynamics:true
+  description:"Rhythmic steel-string chords, brighter pluck and wider bass-to-treble rake.",
+  assets:guitarIds(["ss1","ss2","ss3"]),followPitch:true,gain:1.3,attack:.002,release:1.05,strumMs:24,preserveDynamics:true
  }
 ];

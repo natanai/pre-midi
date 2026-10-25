@@ -1,5 +1,5 @@
 import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
-import { validateMovement, movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
+import { validateMovement, validateBend, movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
 // The only durable sample asset representation is the score's samples array.
 // Browser library URLs are staging inputs; .premidi files contain the audio bytes.
 export const MAX_SAMPLE_BYTES=1_000_000;
@@ -81,6 +81,7 @@ export function validateSamplerPatch(patch){
     (zone.string!==undefined && (typeof zone.string!=="string"||zone.string.length>20))))errors.push("Invalid sample key mapping.");
  if(typeof patch.followPitch!=="boolean")errors.push("Invalid pitch-follow mode.");
  errors.push(...validateMovement(patch.movement));
+ errors.push(...validateBend(patch.bend));
  if(patch.preserveDynamics!==undefined && typeof patch.preserveDynamics!=="boolean")errors.push("Invalid recorded dynamic preservation.");
  if(patch.strumMs!==undefined && (!Number.isFinite(patch.strumMs)||patch.strumMs < -25||patch.strumMs > 25)) errors.push("Invalid strum timing.");
  for(const [field,lo,hi] of [["transpose",-24,24],["gain",0,2],["attack",0,2],["release",.01,3],["pan",-1,1]]){
@@ -151,7 +152,7 @@ export function scheduleSample(context,out,inst,event,start,duration,score,cache
  const gain=Math.min(2,inst.volume*patch.gain*event.velocity*.7*recordedGain);
  src.buffer=buffer;src.playbackRate.value=playbackRate;
  const motion=movement(patch);
- schedulePitch(context,src.detune,event,motion,start,Math.max(.02,duration));
+ schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,duration));
  pan.pan.value=patch.pan;
  const length=buffer.duration/playbackRate;
  const life=Math.min(length,Math.max(.015,duration+patch.release));

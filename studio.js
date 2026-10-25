@@ -1,5 +1,5 @@
 import { create, makeInstrument, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, wav, primeSamples } from "./audio.js";
+import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
@@ -10,6 +10,8 @@ import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
 import { loadDraft, saveDraft } from "./storage.js";
 import { renderNoteExpression } from "./expressionUI.js";
+import {createDial} from "./dial.js";
+import {createSignalDisplay} from "./soundScope.js";
 
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v4-draft";
@@ -39,6 +41,7 @@ let libraryMode="add",libraryCategory="All";
 let score = cached || create();
 let selectedInstrumentId = score.instruments[0].id;
 let selectedNoteId = null;
+let editingNoteEffects = false;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
 let history = [], future = [], playback = null, pendingPlay = false;
@@ -120,6 +123,7 @@ function resetTo(next) {
  stop();
  score = next;
  selectedNoteId=null;
+ editingNoteEffects=false;
  selectedInstrumentId = score.instruments[0].id;
  selectedChunks = new Map();
  selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
@@ -168,6 +172,7 @@ function download(blob, name) {
 }
 function focus(inst, chunkId = null, bar = null) {
  selectedInstrumentId = inst.id;
+ selectedNoteId=null;
  if (chunkId && inst.chunks.some(chunk => chunk.id === chunkId)) selectedChunks.set(inst.id, chunkId);
  if (bar !== null) selectedSlot = { instrumentId: inst.id, bar };
  render();
@@ -344,11 +349,11 @@ function renderNotes() {
     cell.classList.toggle("filled", !!present && present.start === pos);
     cell.classList.toggle("tail", !!present && present.start !== pos);
     cell.classList.toggle("end", !!present && present.start + present.duration - 1 === pos);
-    cell.classList.toggle("selected", !!present && present.id===selectedNoteId);
+    cell.classList.toggle("selected", editingNoteEffects && !!present && present.id===selectedNoteId);
     cell.classList.toggle("bent", !!present && present.bend?.shape && present.bend.shape!=="straight");
     cell.setAttribute("aria-label", noteLabel(pitch) + ", step " + (pos + 1)
-     + (present ? ", note length " + present.duration + " steps; click to select and shape, Ctrl-click to delete" : ", click to add note"));
-    cell.title = present ? "Click to shape pitch · Shift-click strength · Ctrl-click delete · drag end resize" : "Add " + noteLabel(pitch);
+     + (present ? ", note length " + present.duration + " steps; " + (editingNoteEffects?"click to edit note effects":"click to remove") : ", click to add note"));
+    cell.title = present ? (editingNoteEffects?"Click to shape note · Shift-click strength":"Click to remove · Shift-click strength") + " · drag end to resize" : "Add " + noteLabel(pitch);
    }
   }
 
@@ -365,7 +370,7 @@ function renderNotes() {
      if(modify(()=>{existing.velocity=next;}))message("Note strength: "+Math.round(next*100)+"%");
      return;
     }
-    if(existing && !(event.ctrlKey || event.metaKey)){
+    if(existing && editingNoteEffects){
      selectedNoteId=existing.id;
      renderNotes();
      return;
@@ -377,7 +382,7 @@ function renderNotes() {
     }
     const created={id:id(),pitch,start:step,
      duration:Math.min(Number($("length").value),16-step),velocity:Number($("velocity").value)};
-    selectedNoteId=created.id;
+    selectedNoteId=editingNoteEffects?created.id:null;
     if(modify(()=>{editedChunk.notes.push(created);})&&!playback&&!pendingPlay)
      void audition(targetInst,pitch,score).catch(()=>{});
    }, "note" + (step % 4 === 0 ? " beat" : ""));
@@ -460,7 +465,7 @@ function renderNotes() {
  paintPianoPlayhead();
  scroll.scrollTop = top;
  scroll.scrollLeft = left;
- const note=chunk.notes.find(entry=>entry.id===selectedNoteId);
+ const note=editingNoteEffects?chunk.notes.find(entry=>entry.id===selectedNoteId):null;
  renderNoteExpression($("note-expression"),note,note?noteLabel(note.pitch):"",
   note?note.duration*60/score.bpm/4:0,bend=>{
   modify(()=>{const target=chunkFor(instrument()).notes.find(entry=>entry.id===selectedNoteId);if(target)target.bend=bend;});
@@ -475,7 +480,7 @@ function renderNotes() {
    velocity:current.velocity,bend:current.bend,
    duration:current.duration*60/score.bpm/4
   }).catch(error=>message("Couldn't preview note: "+error.message,true));
- });
+ },instrument().patch.bend);
 }
 function renderChunkEditor() {
  const inst = instrument(), select = $("chunk");
@@ -500,30 +505,45 @@ function renderChunkEditor() {
 function renderSound() {
  const inst=instrument(),patch=inst.patch;
  $("instrument-name").value=inst.name;
- $("volume").value=String(Math.round(inst.volume*100));
- $("volume-value").textContent=Math.round(inst.volume*100)+"%";
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
  document.querySelector(".patch-info")?.style.setProperty("--track-accent",signal(inst));
  const preset=getPreset(patch.presetId)||SAMPLE_LIBRARY.find(x=>x.id===patch.presetId)
   ||savedSounds.find(entry=>entry.id===patch.presetId);
  $("patch-label").textContent=(patch.type==="sample"?"Sample · ":"Synth · ")+(preset?.name||"Custom");
+ const scope=createSignalDisplay($("sound-visualizer"),patch,score,signal(inst));
+ const preview=(path,value)=>{
+  // Construct a temporary sound-definition view, not an alternate mutable draft.
+  const next=patchCopy(instrument().patch);
+  let parent=next;
+  for(let i=0;i<path.length-1;i++)parent=parent[path[i]]??={};
+  parent[path[path.length-1]]=value;
+  scope(next);
+ };
  const onChange=(path,value)=>modify(()=>{
   const target=instrument().patch;
   let owner=target;
-  for(let i=0;i<path.length-1;i++)owner=owner[path[i]];
+  for(let i=0;i<path.length-1;i++)owner=owner[path[i]]??={};
   owner[path[path.length-1]]=value;
   target.presetId="custom";
  });
+ const volume=$("instrument-volume-dial");
+ volume.replaceChildren();
+ volume.append(createDial({label:"Volume",min:0,max:1,step:.01,display:"percent"},
+  inst.volume,value=>modify(()=>{instrument().volume=value;})));
  if(patch.type==="sample"){
   renderSamplerEditor($("synth-editor"),patch,onChange,
    patch.zones.map(zone=>score.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
-   ()=>$("sample-file").click());
- }else renderPatchEditor($("synth-editor"),patch,onChange);
+   ()=>$("sample-file").click(),preview);
+ }else renderPatchEditor($("synth-editor"),patch,onChange,preview);
  $("remove-instrument").disabled=score.instruments.length===1;
 }
 function render() {
  repairSelection();
+ $("note-mode").setAttribute("aria-pressed",String(editingNoteEffects));
+ $("note-mode").textContent=editingNoteEffects?"✓ Note effects · Done":"Edit note effects";
+ document.querySelector(".work")?.classList.toggle("editing-note-effects",editingNoteEffects);
+ document.querySelector(".notes-section")?.classList.toggle("editing-note-effects",editingNoteEffects);
  $("title").value = score.title;
  $("bpm").value = String(score.bpm);
  $("bars").value = String(score.bars);
@@ -535,6 +555,14 @@ function render() {
  $("redo").disabled = future.length === 0;
 }
 
+$("note-mode").addEventListener("click",()=>{
+ editingNoteEffects=!editingNoteEffects;
+ selectedNoteId=null;
+ render();
+ if(editingNoteEffects) {
+  $("note-mode").focus({preventScroll:true});
+ }
+});
 $("new").addEventListener("click", () => {
  if (confirm("Start a new composition? Save the current .premidi if you want a copy.")) resetTo(create());
 });
@@ -710,7 +738,10 @@ async function chooseSound(preset) {
     score.instruments.push(inst);selectedInstrumentId=inst.id;
     selectedSlot={instrumentId:inst.id,bar:0};
     selectedChunks.set(inst.id,inst.chunks[0].id);
-   } else instrument().patch=patch;
+   } else {
+    instrument().patch=patch;
+    instrument().name=preset.name;
+   }
   });
   if(ok) {
    dialog.close();
@@ -726,13 +757,19 @@ async function auditionPreset(preset) {
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   const pitch=preset.category==="Bass"?48:preset.category==="Guitars"?57:69;
   const inst={...instrument(),patch,volume:.8};
-  const zone=patch.type==="sample"?sampleForNote(patch,pitch,.8):null;
-  // A guitar preview should play immediately, not download 48 audio takes
-  // just to hear the single note selected in the library.
-  const asset=zone?(preset.samples||[]).find(item=>item.id===zone.assetId)
-   ||score.samples.find(item=>item.id===zone.assetId)
-   ||await loadLibrarySample(zone.assetId):null;
-  await audition(inst,pitch,{samples:asset?[asset]:[]});
+  // Preview strumming as an actual chord, otherwise the Steel Strum and
+  // Steel Acoustic presets can sound like the same single plucked note.
+  const chord=preset.id==="steel-strum"?[52,57,60,64,69]:null;
+  const pitches=chord||[pitch];
+  const ids=[...new Set(pitches.map(key=>patch.type==="sample"?
+   sampleForNote(patch,key,.8)?.assetId:null).filter(Boolean))];
+  const assets=await Promise.all(ids.map(async id=>{
+   return (preset.samples||[]).find(item=>item.id===id)
+    ||score.samples.find(item=>item.id===id)
+    ||await loadLibrarySample(id);
+  }));
+  if(chord)await auditionChord(inst,pitches,{samples:assets});
+  else await audition(inst,pitch,{samples:assets});
  }catch(error){message("Preview failed: "+error.message,true);}
 }
 function renderLibrary() {
@@ -807,8 +844,7 @@ $("delete-chunk").addEventListener("click", () => {
 $("chunk-name").addEventListener("change", event => modify(() => chunkFor(instrument()).name = event.target.value.trim() || "Chunk"));
 $("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
 
-$("volume").addEventListener("change",event=>modify(()=>instrument().volume=Number(event.target.value)/100));
-$("volume").addEventListener("input",event=>$("volume-value").textContent=event.target.value+"%");
+
 $("undo").addEventListener("click", undo);
 $("redo").addEventListener("click", redo);
 document.addEventListener("keydown", event => {

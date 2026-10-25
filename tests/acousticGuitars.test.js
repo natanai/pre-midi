@@ -65,3 +65,15 @@ test("unused velocity takes remain portable but are not decoded into RAM",()=>{
  assert.equal(inst.patch.zones.length,54);
  assert.deepEqual(validate(doc).filter(error=>!error.includes("missing audio")).length,0);
 });
+
+test("Steel Strum is a distinct articulation, not simply a relabeled Steel Acoustic",()=>{
+ const steel=makeSamplerPatch(preset("steel-guitar"));
+ const strum=makeSamplerPatch(preset("steel-strum"));
+ assert.ok(strum.strumMs>=20);
+ assert.equal(steel.strumMs,0);
+ assert.ok(strum.release<steel.release);
+ assert.ok(strum.gain>steel.gain);
+ const chord=[{id:"low",pitch:52,start:0},{id:"middle",pitch:60,start:0},{id:"high",pitch:69,start:0}];
+ assert.deepEqual(chord.map(n=>strumOffset({patch:strum},n,chord)),[0,.024,.048]);
+ assert.deepEqual(chord.map(n=>strumOffset({patch:steel},n,chord)),[0,0,0]);
+});

@@ -22,11 +22,19 @@ async function checkLayout(frame){
   notesControlsFit:controls.every(el=>{const b=rect(el);return b.left>=tools.left-2&&b.right<=tools.right+2;}),
   noPageHorizontalClipping:doc.documentElement.scrollWidth<=frame.clientWidth+3
  };
- // Shape a real authored note, without introducing an alternate editor.
- const first=[...doc.querySelectorAll("#piano .note")].find(el=>
+ // Normal mode is the direct note sequencer: empty by default; click adds,
+ // and a second click removes. No mode switch is needed to compose.
+ const firstNote=()=>[...doc.querySelectorAll("#piano .note")].find(el=>
   el.getAttribute("aria-label")?.includes("C4, step 1"));
- checks.existingNoteReachable=!!first;
- first?.click();
+ checks.newCompositionBlank=doc.querySelectorAll("#piano .note.filled").length===0;
+ firstNote()?.click();
+ checks.noteAddedByClick=doc.querySelectorAll("#piano .note.filled").length>0;
+ firstNote()?.click();
+ checks.noteRemovedByClick=doc.querySelectorAll("#piano .note.filled").length===0;
+ get("note-mode").click();
+ checks.noteModeVisible=get("note-mode").getAttribute("aria-pressed")==="true" &&
+  doc.querySelector(".work").classList.contains("editing-note-effects");
+ firstNote()?.click();
  checks.noteExpressionOpens=!!doc.querySelector("#note-expression:not([hidden]) select[aria-label='Held note bend shape']");
  const shape=doc.querySelector("#note-expression select[aria-label='Held note bend shape']");
  if(shape){
@@ -35,6 +43,15 @@ async function checkLayout(frame){
  }
  checks.noteBendApplied=!!doc.querySelector("#piano .note.bent.selected");
  checks.noteShapePreview=!!doc.querySelector("#note-expression svg polyline[points]");
+ get("note-mode").click();
+ checks.noteModeExits=get("note-mode").getAttribute("aria-pressed")==="false" &&
+  !doc.querySelector(".work").classList.contains("editing-note-effects");
+ checks.soundWaveVisible=!!doc.querySelector("#sound-visualizer svg.signal-scope-graph");
+ checks.instrumentDialsVisible=!!doc.querySelector("#synth-editor .dial-knob[role='slider']");
+ const pitchBefore=doc.querySelector("#sound-visualizer .signal-pitch")?.getAttribute("d");
+ const knob=doc.querySelector("#synth-editor .dial-knob[aria-label='Glide from']");
+ knob?.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+ checks.waveRespondsToDial=pitchBefore!==doc.querySelector("#sound-visualizer .signal-pitch")?.getAttribute("d");
  // Exercise the real preset browser and editor, not a mock copy.
  button.click();
  const library=get("instrument-dialog");
@@ -51,6 +68,12 @@ async function checkLayout(frame){
  checks.presetSelected=get("patch-label").textContent.includes("Neon Lead");
  get("change-sound").click();
  checks.soundReplaceAccessible=library.open;
+ const acid=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Acid Line"));
+ acid?.querySelector(".preset-choose")?.click();
+ for(let attempt=0;attempt<40 && get("instrument-name").value!=="Acid Line";attempt++)
+  await new Promise(resolve=>setTimeout(resolve,25));
+ checks.browseRenamesInstrument=get("instrument-name").value==="Acid Line";
+ get("change-sound").click();
  get("close-library").click();
  checks.libraryCloses=!library.open;
  get("add-instrument").click();
@@ -71,7 +94,7 @@ async function checkLayout(frame){
   checks.guitarPresetAccessible=doc.querySelectorAll(".instrument-card").length===4 &&
    get("patch-label").textContent.includes("Steel Acoustic");
   checks.guitarMappingCollapsible=!!doc.querySelector("#synth-editor .sample-map-details") &&
-   !!doc.querySelector("#synth-editor input[aria-label='Chord strum milliseconds per note']");
+   !!doc.querySelector("#synth-editor .dial-knob[aria-label='Strum']");
  }
 
  
