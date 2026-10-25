@@ -40,6 +40,16 @@ async function checkLayout(frame){
  checks.soundReplaceAccessible=library.open;
  get("close-library").click();
  checks.libraryCloses=!library.open;
+ get("add-instrument").click();
+ const piano=[...library.querySelectorAll(".preset-card")].find(el=>el.textContent.includes("Recorded Piano"));
+ piano?.querySelector(".preset-choose")?.click();
+ for(let attempt=0;attempt<120 && doc.querySelectorAll(".instrument-card").length!==3;attempt++)
+  await new Promise(resolve=>setTimeout(resolve,25));
+ checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
+  get("patch-label").textContent.includes("Recorded Piano") && !library.open;
+ checks.sampleControlsReachable=!!doc.querySelector("#synth-editor .sample-zones") &&
+  !!doc.querySelector("#synth-editor .sample-replace-action");
+ 
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({
   viewport:frame.clientWidth,
