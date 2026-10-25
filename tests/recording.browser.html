@@ -1,0 +1,69 @@
+<!doctype html><html lang="en" data-recorder="RUNNING"><meta charset="utf-8">
+<iframe src="../index.html" title="Pre-midi microphone recording test"></iframe>
+<pre id="result"></pre>
+<script type="module">
+import {readZip} from "../zip.js";
+import {parse} from "../schema.js";
+import {importProject} from "../packageIO.js";
+const pre=document.getElementById("result");
+const iframe=document.querySelector("iframe");
+const fail=error=>{
+ document.documentElement.dataset.recorder="FAIL";
+ pre.textContent=String(error?.stack||error);
+};
+const result=async()=>{
+ try{
+  const doc=iframe.contentDocument,w=iframe.contentWindow;
+  const get=id=>doc.getElementById(id);
+  if(!get("record-sound"))throw Error("Prominent Record Sound action missing.");
+  get("record-sound").click();
+  if(!get("microphone-dialog").open)throw Error("Recorder dialog did not open.");
+  if(get("mic-length").value!=="1.5")throw Error("Short recording default should be 1.5 seconds.");
+  get("mic-length").value="0.75";
+  const hit=doc.querySelector('input[name="mic-kind"][value="hit"]');
+  hit.checked=true;hit.dispatchEvent(new Event("change",{bubbles:true}));
+  if(!get("mic-root-field").hidden)throw Error("Drum mode should not require note pitch.");
+  get("mic-capture").click();
+  for(let i=0;i<300&&get("mic-use").hidden;i++)
+   await new Promise(resolve=>setTimeout(resolve,50));
+  if(get("mic-use").hidden)throw Error("No recording ready: "+get("mic-status").textContent+" "+get("mic-subtitle").textContent);
+  if(!get("mic-playback").src.startsWith("blob:"))throw Error("Recording cannot be auditioned.");
+  get("mic-name").value="My Test Drum";
+  get("mic-use").click();
+  if(get("microphone-dialog").open)throw Error("Recorder did not close after using sample.");
+  if(doc.querySelectorAll(".instrument-card").length!==2)throw Error("Sample did not create native instrument.");
+  let zipped=null;
+  const original=w.URL.createObjectURL.bind(w.URL);
+  w.URL.createObjectURL=blob=>{
+   if(blob?.type==="application/zip")zipped=blob;
+   return original(blob);
+  };
+  // Suppress the actual download while preserving the original export handler.
+  w.HTMLAnchorElement.prototype.click=function(){};
+  get("export").click();
+  if(!zipped)throw Error("Recorded sample did not export as a ZIP.");
+  const entries=await readZip(zipped);
+  const paths=[...entries.keys()];
+  const name=paths.find(path=>path.endsWith(".premidi"));
+  const wav=paths.find(path=>path.startsWith("assets/")&&path.endsWith(".wav"));
+  if(!name||!wav)throw Error("Export lacks the .premidi and companion WAV: "+paths.join(", "));
+  const score=parse(new TextDecoder().decode(entries.get(name)));
+  if(score.samples.length!==1||score.samples[0].path!==wav||
+   score.instruments[1].patch.followPitch!==false)
+   throw Error("Audio link or hit mode lost from music metadata.");
+  if(JSON.stringify(score).includes("data:")||JSON.stringify(score).includes("base64"))
+   throw Error("Manifest contains embedded sound data.");
+  const bytes=entries.get(wav);
+  if(new TextDecoder().decode(bytes.slice(0,4))!=="RIFF")throw Error("Exported recording isn't raw WAV.");
+  const restored=await importProject({name:"music.zip",size:zipped.size,arrayBuffer:()=>zipped.arrayBuffer()});
+  if(restored.samples[0].path!==wav)throw Error("ZIP importer lost the audio reference.");
+  document.documentElement.dataset.recorder="PASS";
+  pre.textContent="PASS: timed mic capture, audition, drum mode, native instrument, raw WAV ZIP and import";
+ }catch(error){fail(error);}
+ const url="/__recorder_result?status="+encodeURIComponent(document.documentElement.dataset.recorder)+
+  "&details="+encodeURIComponent(pre.textContent);
+ void fetch(url).catch(()=>{});
+};
+iframe.addEventListener("load",()=>void result());
+</script>
+</html>
