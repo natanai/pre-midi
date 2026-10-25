@@ -1,4 +1,5 @@
 import {BEND_SHAPES,bendSemitones} from "./expression.js";
+import {createDial} from "./dial.js";
 const svgNS="http://www.w3.org/2000/svg";
 function make(tag,text,cls){
  const element=document.createElement(tag);
@@ -34,24 +35,12 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  select.value=bend.shape;
  select.addEventListener("change",()=>onChange({...bend,shape:select.value}));
  choice.append(select);controls.append(choice);
- const amount=make("label","Amount");
- const amountRow=make("div",undefined,"expression-range");
- const slider=make("input");
- slider.type="range";slider.min="0";slider.max="12";slider.step=".25";
- slider.value=String(bend.amount);slider.setAttribute("aria-label","Bend amount in semitones");
- const output=make("output",bend.amount+" st");
- slider.addEventListener("input",()=>{output.textContent=slider.value+" st";draw();});
- slider.addEventListener("change",()=>onChange({...bend,amount:Number(slider.value)}));
- amountRow.append(slider,output);amount.append(amountRow);controls.append(amount);
- const rate=make("label","Wave speed");
- rate.className="expression-rate";
- const rateRow=make("div",undefined,"expression-range");
- const rateSlider=make("input");rateSlider.type="range";rateSlider.min=".1";rateSlider.max="12";rateSlider.step=".1";
- rateSlider.value=String(bend.rate);rateSlider.setAttribute("aria-label","Pitch wave speed");
- const rateOut=make("output",bend.rate+" Hz");
- rateSlider.addEventListener("input",()=>{rateOut.textContent=rateSlider.value+" Hz";draw();});
- rateSlider.addEventListener("change",()=>onChange({...bend,rate:Number(rateSlider.value)}));
- rateRow.append(rateSlider,rateOut);rate.append(rateRow);controls.append(rate);
+ const current={shape:bend.shape,amount:bend.amount,rate:bend.rate};
+ const amount=createDial({label:"Amount",min:0,max:12,step:.25,display:"semitones"},bend.amount,
+  value=>onChange({...bend,amount:value}),value=>{current.amount=value;draw();});
+ const rate=createDial({label:"Wave speed",min:.1,max:12,step:.1,display:"hz"},bend.rate,
+  value=>onChange({...bend,rate:value}),value=>{current.rate=value;draw();});
+ controls.append(amount,rate);
  const graph=svg("svg",{viewBox:"0 0 320 64","aria-label":"Pitch movement preview",role:"img",preserveAspectRatio:"none"});
  const center=svg("line",{x1:0,x2:320,y1:32,y2:32,stroke:"#484848","stroke-dasharray":"3 4"});
  const shape=svg("polyline",{fill:"none",stroke:"currentColor","stroke-width":2});
@@ -59,7 +48,7 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  const visual=make("div",undefined,"expression-visual");
  visual.append(graph);
  function draw(){
-  const current={shape:select.value,amount:Number(slider.value),rate:Number(rateSlider.value)};
+  current.shape=select.value;
   rate.hidden=current.shape!=="wave";
   const total=durationSeconds;
   const points=Array.from({length:81},(_,i)=>{
