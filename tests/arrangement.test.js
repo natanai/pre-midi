@@ -42,12 +42,13 @@ test("a melody really starts on beat three while the pad continues beneath it",(
 });
 test("three-beat polymeter repeats on 12-step onsets across 4/4 barlines",()=>{
  const score=create(),inst=score.instruments[0];
- inst.chunks[0].notes=[note(60,0,12),note(64,9,2)];
- inst.placements[0]={offset:0,every:12,repeats:8};
+ inst.chunks[0].notes=[note(60,0,12),note(64,9,2),note(72,13,1)];
+ inst.placements[0]={offset:0,length:12,every:12,repeats:8};
  assert.deepEqual(validate(score),[]);
  const starts=[...phraseInstances(score,inst)].map(phrase=>phrase.start);
  assert.deepEqual(starts,[0,12,24,36,48,60,72,84]);
  for(const onset of starts)assert.ok(stepEvents(score,onset).some(e=>e.note.pitch===60));
+ assert.equal(stepEvents(score,13).some(e=>e.note.pitch===72),false,"Steps after a 12-step phrase boundary must not sound");
  assert.ok(stepEvents(score,21).some(e=>e.note.pitch===64));
  assert.ok(stepEvents(score,33).some(e=>e.note.pitch===64));
  assert.equal(stepEvents(score,96).length,0);
