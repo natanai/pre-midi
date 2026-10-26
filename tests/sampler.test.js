@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {create,validate,parse,clone} from "../schema.js";
 import {validatePatch} from "../synth.js";
 import {SAMPLE_LIBRARY,SAMPLE_ASSETS,makeSamplerPatch} from "../samples.js";
-import {validateSampleAsset,makeSampleAsset,sampleForNote,MAX_SCORE_BYTES} from "../sampler.js";
+import {validateSampleAsset,makeSampleAsset,sampleForNote,MAX_BEAT_BYTES} from "../sampler.js";
 import {getAsset} from "../assetRegistry.js";
 test("CC0 sample presets span recorded instruments and multiple percussion voices",()=>{
  assert.ok(SAMPLE_LIBRARY.length>=10);
@@ -42,7 +42,7 @@ test("sample imports keep readable score references separate from native audio b
 test("invalid untrusted sample data and external-link-only assets cannot become playable",()=>{
  assert.ok(validateSampleAsset({id:"x",name:"X",mime:"audio/wav",data:"https://evil.invalid",source:"user"}));
  assert.ok(validateSampleAsset({id:"x",name:"X",mime:"text/html",data:"AAAA",source:"user"}));
- assert.equal(MAX_SCORE_BYTES,1_000_000);
+ assert.equal(MAX_BEAT_BYTES,1_000_000);
 });
 
 test("optional sample tone controls remain compatible and reject malformed values",()=>{
