@@ -3,6 +3,7 @@
 <head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0}</style>
 <script>
 async function checkLayout(frame){
+ try{
  const doc=frame.contentDocument;
  const browserErrors=[];const diagnostics={};
  frame.contentWindow.addEventListener("error",event=>browserErrors.push(String(event.message||event.error)));
@@ -265,6 +266,12 @@ async function checkLayout(frame){
   checks,browserErrors,diagnostics
  });
  void fetch("/__layout_result?status="+document.documentElement.dataset.layout+"&details="+encodeURIComponent(document.getElementById("result").textContent)).catch(()=>{});
+ }catch(error){
+  document.documentElement.dataset.layout="FAIL";
+  const details=String(error?.stack||error);
+  document.getElementById("result").textContent=details;
+  void fetch("/__layout_result?status=FAIL&details="+encodeURIComponent(details)).catch(()=>{});
+ }
 }
 </script>
 </head>
