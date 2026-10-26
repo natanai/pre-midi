@@ -161,6 +161,11 @@ function closePicker() {
  picker = null;
  pickerTrigger = null;
 }
+function setPlaybackButton(isPlaying,playingSong=!!(song&&songExpanded)){
+ const control=$("play");
+ control.textContent=isPlaying?"■ stop":"▶ play";
+ control.setAttribute("aria-label",(isPlaying?"stop ":"play ")+(playingSong?"song":"beat"));
+}
 function stop() {
  playbackGeneration++;
  if (playback) playback.stop();
@@ -168,8 +173,7 @@ function stop() {
  pendingPlay = false;
  playBar = playStep = -1;
  pianoProgress = null;
- $("play").textContent = "▶ Play";
- $("play").setAttribute("aria-label",song&&songExpanded?"Play Song":"Play Beat");
+ setPlaybackButton(false);
  $("position").textContent="1:1";
  $("position").setAttribute("aria-label","bar 1, beat 1");
  songUI?.setPosition(-1);
@@ -1016,7 +1020,7 @@ $("play").addEventListener("click", async () => {
     playback = null;
     playBar = playStep = -1;
     pianoProgress = null;
-    $("play").textContent = "▶ Play";
+    setPlaybackButton(false);
     $("position").textContent="1:1";
     $("position").setAttribute("aria-label","bar 1, beat 1");
     songUI?.setPosition(-1);
@@ -1025,12 +1029,10 @@ $("play").addEventListener("click", async () => {
   });
   if(generation!==playbackGeneration){session.stop();return;}
   playback=session;
-  $("play").setAttribute("aria-label",playingSong?"Stop Song":"Stop Beat");
-  $("play").textContent = "Ⅱ Stop";
+  setPlaybackButton(true,playingSong);
  } catch (error) { message("Playback error: " + error.message, true); }
  finally { pendingPlay = false; }
 });
-$("stop").addEventListener("click", stop);
 $("title").addEventListener("change", event => modify(() => beat.title = event.target.value.trim() || "Untitled beat"));
 $("bpm").addEventListener("change",event=>{
  const next=Math.round(Number(event.target.value));
