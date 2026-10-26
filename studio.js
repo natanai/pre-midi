@@ -169,6 +169,7 @@ function stop() {
  pianoProgress = null;
  $("play").textContent = "▶ Play";
  $("position").textContent="1:1";
+ $("position").setAttribute("aria-label","bar 1, beat 1");
  songUI?.setPosition(-1);
  paintPlayhead();
 }
@@ -762,7 +763,6 @@ function renderSound() {
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
- document.querySelector(".patch-info")?.style.setProperty("--track-accent",signal(inst));
  const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst));
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
@@ -991,6 +991,8 @@ $("play").addEventListener("click", async () => {
     playBar = playStep = -1;
     pianoProgress = null;
     $("play").textContent = "▶ Play";
+    $("position").textContent="1:1";
+    $("position").setAttribute("aria-label","bar 1, beat 1");
     songUI?.setPosition(-1);
     paintPlayhead();
    }
