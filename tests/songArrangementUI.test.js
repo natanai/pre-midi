@@ -85,5 +85,6 @@ test("transport follows expanded Song or currently selected Beat",()=>{
  assert.match(studio,/playingSong=!!\(song&&songExpanded\)/);
  assert.match(studio,/play\(\(\) => playingSong\?song:beat/);
  assert.match(studio,/if\(playback\|\|pendingPlay\)stop\(\)/);
- assert.match(studio,/playingSong\?"Stop Song":"Stop Beat"/);
+ assert.match(studio,/setPlaybackButton\(true,playingSong\)/);
+ assert.match(studio,/\(isPlaying\?"stop ":"play "\)\+\(playingSong\?"song":"beat"\)/);
 });
