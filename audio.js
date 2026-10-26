@@ -7,13 +7,13 @@ import {setOscillatorWave} from "./harmonics.js";
 import {validatePatch} from "./synth.js";
 import {driveCurve} from "./audioEffects.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
-// Everything audible comes from the resolved sound patch stored in the score.
+// Everything audible comes from the resolved sound patch stored in the beat.
 export const secondsPerStep = doc => 60/doc.bpm/4;
 export const frequency = pitch => 440*2**((pitch-69)/12);
 const noiseBuffers=new WeakMap();
 const sampleCaches=new WeakMap();
 const bufferCache=ctx=>{if(!sampleCaches.has(ctx))sampleCaches.set(ctx,new Map());return sampleCaches.get(ctx);};
-export async function primeSamples(score){if(context)await decodeSamples(context,score,bufferCache(context));}
+export async function primeSamples(beat){if(context)await decodeSamples(context,beat,bufferCache(context));}
 function noiseBuffer(ctx) {
  let data=noiseBuffers.get(ctx);
  if(data)return data;
@@ -28,7 +28,7 @@ function noiseBuffer(ctx) {
  return buffer;
 }
 export const stepEvents = eventsAtStep;
-function soundNote(ctx,destination,instrument,event,start,duration,score) {
+function soundNote(ctx,destination,instrument,event,start,duration,beat) {
  if(instrument.sounds){
   const resolved=resolveEvent(instrument,event);
   if(!resolved)return;
@@ -37,7 +37,7 @@ function soundNote(ctx,destination,instrument,event,start,duration,score) {
   instrument=resolved.voice;event=resolved.note;
  }
  if(instrument.patch.type==="sample"){
-  scheduleSample(ctx,destination,instrument,event,start,duration,score,bufferCache(ctx));
+  scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx));
   return;
  }
  const patch=instrument.patch,off=start+Math.max(.015,duration),env=patch.envelope;
@@ -142,18 +142,18 @@ function eventOffset(instrument,note,notes){
  const voice=instrument.sounds?resolveEvent(instrument,note)?.voice:instrument;
  return voice?strumOffset(voice,note,notes):0;
 }
-function renderBar(ctx,out,score,bar,start) {
- const unit=secondsPerStep(score);
+function renderBar(ctx,out,beat,bar,start) {
+ const unit=secondsPerStep(beat);
  for(let step=0;step<16;step++){
-  for(const event of stepEvents(score,bar*16+step)){
+  for(const event of stepEvents(beat,bar*16+step)){
    soundNote(ctx,out,event.instrument,event.note,
     start+step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
-    event.note.duration*unit,score);
+    event.note.duration*unit,beat);
   }
  }
 }
 let context;
-export async function audition(instrument,pitch,score=null,expression=null) {
+export async function audition(instrument,pitch,beat=null,expression=null) {
  let hitDuration=null;
  if(instrument.sounds){
   const sound=instrument.sounds.find(sound=>sound.id===expression?.soundId)||instrument.sounds[0];
@@ -163,17 +163,17 @@ export async function audition(instrument,pitch,score=null,expression=null) {
  }
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
- if(score){
+ if(beat){
   const zone=instrument.patch?.type==="sample"?sampleForNote(instrument.patch,pitch,expression?.velocity??.8):null;
-  await decodeSamples(context,score,bufferCache(context),new Set(zone?[zone.assetId]:[]));
+  await decodeSamples(context,beat,bufferCache(context),new Set(zone?[zone.assetId]:[]));
  }
  soundNote(context,context.destination,instrument,
   {pitch,velocity:expression?.velocity??.8,bend:expression?.bend},
-  context.currentTime+.01,hitDuration??expression?.duration??.24,score);
+  context.currentTime+.01,hitDuration??expression?.duration??.24,beat);
 }
 // Preview a real acoustic chord through the exact same sample voice and
 // strumOffset implementation used by timeline playback and WAV export.
-export async function auditionChord(instrument,pitches,score,velocity=.85) {
+export async function auditionChord(instrument,pitches,beat,velocity=.85) {
  if(instrument.sounds)instrument={patch:instrument.sounds[0].patch,volume:instrument.volume*instrument.sounds[0].gain};
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
@@ -182,17 +182,17 @@ export async function auditionChord(instrument,pitches,score,velocity=.85) {
  }));
  const needs=new Set(notes.map(n=>instrument.patch.type==="sample"?
   sampleForNote(instrument.patch,n.pitch,n.velocity)?.assetId:null).filter(Boolean));
- await decodeSamples(context,score,bufferCache(context),needs);
+ await decodeSamples(context,beat,bufferCache(context),needs);
  const now=context.currentTime+.04,duration=.8;
  for(const note of notes){
   soundNote(context,context.destination,instrument,note,
-   now+strumOffset(instrument,note,notes),duration,score);
+   now+strumOffset(instrument,note,notes),duration,beat);
  }
 }
-export async function play(score,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{}}={}) {
+export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{}}={}) {
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
- const ctx=context,out=ctx.createGain(),read=typeof score==="function"?score:()=>score;
+ const ctx=context,out=ctx.createGain(),read=typeof beat==="function"?beat:()=>beat;
  await decodeSamples(ctx,read(),bufferCache(ctx));
  const loops=()=>typeof loop==="function"?loop():loop;
  out.gain.value=.85;out.connect(ctx.destination);
@@ -265,19 +265,19 @@ export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,s
  soundNote(ctx,ctx.destination,{patch,volume:1},{pitch,velocity:1},0,duration,null);
  return ctx.startRendering();
 }
-export async function wav(score) {
+export async function wav(beat) {
  // Decode once, before choosing the render length: full one-shot tails can
  // extend beyond the old fixed 4.5-second pad. AudioBuffers are reusable.
  const decoder=new OfflineAudioContext(2,1,44100),decoded=new Map();
- await decodeSamples(decoder,score,decoded);
- let seconds=score.bars*16*secondsPerStep(score)+4.5;
- const unit=secondsPerStep(score);
- for(const instrument of score.instruments)for(const phrase of phraseInstances(score,instrument)){
+ await decodeSamples(decoder,beat,decoded);
+ let seconds=beat.bars*16*secondsPerStep(beat)+4.5;
+ const unit=secondsPerStep(beat);
+ for(const instrument of beat.instruments)for(const phrase of phraseInstances(beat,instrument)){
   for(const event of phrase.chunk.notes){
    if(event.start>=phrase.length)continue;
    // A placement may begin partway into its source bar, or repeat past it.
    const onset=phrase.start+event.start;
-   if(onset>=score.bars*16)continue;
+   if(onset>=beat.bars*16)continue;
    const resolved=resolveEvent(instrument,event);if(!resolved)continue;
    const patch=resolved.voice.patch;
    let tail;
@@ -296,6 +296,6 @@ export async function wav(score) {
  const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);
  sampleCaches.set(ctx,decoded);
  const out=ctx.createGain();out.gain.value=.85;out.connect(ctx.destination);
- for(let bar=0;bar<score.bars;bar++)renderBar(ctx,out,score,bar,bar*16*unit);
+ for(let bar=0;bar<beat.bars;bar++)renderBar(ctx,out,beat,bar,bar*16*unit);
  return pcmWav(await ctx.startRendering());
 }

@@ -311,14 +311,14 @@ function asRackHit([key,start,velocity],byKey){
 }
 export async function buildExample(exampleId,loadAsset){
  const example=EXAMPLES.find(entry=>entry.id===exampleId);
- if(!example)throw Error("Unknown example composition.");
- const score=create();
- score.id=id();score.title=example.name;score.bpm=example.bpm;score.bars=example.bars;
- score.instruments=[];
+ if(!example)throw Error("Unknown example beat.");
+ const beat=create();
+ beat.id=id();beat.title=example.name;beat.bpm=example.bpm;beat.bars=example.bars;
+ beat.instruments=[];
  for(const def of example.voices){
   const isRack=Array.isArray(def.rack);
   const sound=isRack?exampleSound(def.rack[0],"hit"):exampleSound(def);
-  const instrument=makeInstrument(score.instruments.length+1,example.bars,sound);
+  const instrument=makeInstrument(beat.instruments.length+1,example.bars,sound);
   instrument.name=def.name||sound.name;
   instrument.volume=def.volume;
   if(isRack){
@@ -338,12 +338,12 @@ export async function buildExample(exampleId,loadAsset){
    if(def.placements.length!==example.bars)throw Error("Example placement count must match bars.");
    instrument.placements=clone(def.placements);
   }
-  score.instruments.push(instrument);
+  beat.instruments.push(instrument);
  }
  // Sample selection is based on the sounds *actually played*, including
  // independent rack rows. Keep .premidi metadata free from audio bytes.
  const assetIds=new Set();
- for(const instrument of score.instruments){
+ for(const instrument of beat.instruments){
   const assigned=new Set(instrument.timeline.filter(Boolean));
   for(const sound of instrument.sounds){
    if(sound.patch.type!=="sample")continue;
@@ -362,8 +362,8 @@ export async function buildExample(exampleId,loadAsset){
    for(const assetId of ids)assetIds.add(assetId);
   }
  }
- score.samples=await Promise.all([...assetIds].map(loadAsset));
- const errors=validate(score);
+ beat.samples=await Promise.all([...assetIds].map(loadAsset));
+ const errors=validate(beat);
  if(errors.length)throw Error("Example cannot be loaded: "+errors.join(", "));
- return score;
+ return beat;
 }

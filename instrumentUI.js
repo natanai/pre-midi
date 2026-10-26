@@ -1,5 +1,5 @@
 // Controls are generated from the same patch keys validated by synth.js.
-// All edits go through the caller's one canonical composition mutation pathway.
+// All edits go through the caller's one canonical beat mutation pathway.
 import { WAVES, FILTERS } from "./synth.js";
 import { BEND_SHAPES } from "./expression.js";
 import { createDial,explainLabel,helpForLabel } from "./dial.js";

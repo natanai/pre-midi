@@ -1,4 +1,4 @@
-// Native score JSON and binary audio have one browser save path.
+// Native beat JSON and binary audio have one browser save path.
 import {getAsset,putAsset} from "./assetRegistry.js";
 const DB="pre-midi-local",VERSION=2,STORE="drafts",ASSETS="assets",KEY="current";
 let dbPromise;
@@ -31,9 +31,9 @@ export async function loadDraft(){
 let pendingDraft=null,saving=false,waiters=[];
 // Coalesce rapid knob/row edits; immutable recordings are written once per ID.
 // A later save always follows the transaction in flight, so a reset cannot be
-// overwritten by an older queued score.
-export function saveDraft(score){
- pendingDraft={json:JSON.stringify(score),samples:[...score.samples]};
+// overwritten by an older queued beat.
+export function saveDraft(beat){
+ pendingDraft={json:JSON.stringify(beat),samples:[...beat.samples]};
  const result=new Promise((resolve,reject)=>waiters.push({resolve,reject}));
  if(!saving){saving=true;void flushDrafts();}
  return result;

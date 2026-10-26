@@ -112,7 +112,7 @@ export function validate(doc) {
    errors.push("Instrument timeline contains a missing chunk.");
   if(instrument.placements!==undefined){
    if(!Array.isArray(instrument.placements)||instrument.placements.length!==doc.bars)
-    errors.push("Phrase placement list must match song bars.");
+    errors.push("Phrase placement list must match Beat bars.");
    else for(let bar=0;bar<doc.bars;bar++){
     const item=instrument.placements[bar];
     if(item===null)continue;

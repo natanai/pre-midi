@@ -1,5 +1,5 @@
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
-import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromScore,deleteSoundFromScore,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
+import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
@@ -45,8 +45,8 @@ let libraryMode="add",libraryCategory="All",libraryContext=null;
 const inspectorViewport=window.matchMedia("(min-width:1100px)");
 let inspectorState=inspectorViewport.matches?"expanded":"closed";
 let loadingExample=false;
-let score = cached || create();
-let selectedInstrumentId = score.instruments[0].id;
+let beat = cached || create();
+let selectedInstrumentId = beat.instruments[0].id;
 let selectedNoteId = null;
 let selectedSounds=new Map();
 let editingNoteEffects = false;
@@ -57,16 +57,16 @@ let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
 
-// Audio assets are immutable blobs. Undo stores only mutable score structure
+// Audio assets are immutable blobs. Undo stores only mutable beat structure
 // plus a shallow list of shared samples, not 100 copies of multi-MB recordings.
 const snapshot = document => {
  const {samples,...mutable}=document;
  return {...clone(mutable),samples:[...samples]};
 };
-const instrument = () => score.instruments.find(entry => entry.id === selectedInstrumentId) || score.instruments[0];
+const instrument = () => beat.instruments.find(entry => entry.id === selectedInstrumentId) || beat.instruments[0];
 const sound = (inst=instrument()) => inst.sounds.find(entry=>entry.id===selectedSounds.get(inst.id))||inst.sounds[0];
 const chunkFor = (inst) => inst.chunks.find(entry => entry.id === selectedChunks.get(inst.id)) || inst.chunks[0];
-const signal = inst => SIGNALS[Math.max(0, score.instruments.findIndex(entry => entry.id === inst.id)) % SIGNALS.length];
+const signal = inst => SIGNALS[Math.max(0, beat.instruments.findIndex(entry => entry.id === inst.id)) % SIGNALS.length];
 
 function element(tag, label, cls) {
  const el = document.createElement(tag);
@@ -114,7 +114,7 @@ function message(text, error = false) {
 }
 let saveGeneration=0;
 function store() {
- const current=score,generation=++saveGeneration;
+ const current=beat,generation=++saveGeneration;
  message("Saving locally…");
  void saveDraft(current).then(()=>{if(generation===saveGeneration)message("Saved locally");}).catch(()=>{
   if(generation!==saveGeneration)return;
@@ -144,13 +144,13 @@ function stop() {
  paintPlayhead();
 }
 function modify(change) {
- const before = snapshot(score);
+ const before = snapshot(beat);
  change();
- const referenced=referencedSampleIds(score.instruments);
- score.samples=score.samples.filter(asset=>referenced.has(asset.id));
- const errors = validate(score);
+ const referenced=referencedSampleIds(beat.instruments);
+ beat.samples=beat.samples.filter(asset=>referenced.has(asset.id));
+ const errors = validate(beat);
  if (errors.length) {
-  score = before;
+  beat = before;
   repairSelection();render();
   message(errors[0], true);
   return false;
@@ -165,10 +165,10 @@ function modify(change) {
 function resetTo(next) {
  closePicker();
  stop();
- score = next;
+ beat = next;
  selectedNoteId=null;
  editingNoteEffects=false;
- selectedInstrumentId = score.instruments[0].id;
+ selectedInstrumentId = beat.instruments[0].id;
  selectedChunks = new Map();
  selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
  history = [];
@@ -179,8 +179,8 @@ function resetTo(next) {
 function undo() {
  if (!history.length) return;
  closePicker();
- future.push(snapshot(score));
- score = history.pop();
+ future.push(snapshot(beat));
+ beat = history.pop();
  repairSelection();
  store();
  render();
@@ -188,17 +188,17 @@ function undo() {
 function redo() {
  if (!future.length) return;
  closePicker();
- history.push(snapshot(score));
- score = future.pop();
+ history.push(snapshot(beat));
+ beat = future.pop();
  repairSelection();
  store();
  render();
 }
 function repairSelection() {
- if (!score.instruments.some(entry => entry.id === selectedInstrumentId)) selectedInstrumentId = score.instruments[0].id;
+ if (!beat.instruments.some(entry => entry.id === selectedInstrumentId)) selectedInstrumentId = beat.instruments[0].id;
  selectedSlot.instrumentId = selectedInstrumentId;
- selectedSlot.bar = Math.min(selectedSlot.bar, score.bars - 1);
- for (const entry of score.instruments) {
+ selectedSlot.bar = Math.min(selectedSlot.bar, beat.bars - 1);
+ for (const entry of beat.instruments) {
   if(!entry.sounds.some(sound=>sound.id===selectedSounds.get(entry.id)))selectedSounds.set(entry.id,entry.sounds[0].id);
   if (!entry.chunks.some(chunk => chunk.id === selectedChunks.get(entry.id))) {
    selectedChunks.set(entry.id, entry.chunks[0].id);
@@ -225,7 +225,7 @@ function focus(inst, chunkId = null, bar = null) {
 function renderInstruments() {
  const list = $("instrument-list");
  list.replaceChildren();
- for (const inst of score.instruments) {
+ for (const inst of beat.instruments) {
   const selected = inst.id === selectedInstrumentId;
   const item=element("div",undefined,"instrument-entry");
   const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
@@ -239,7 +239,7 @@ function renderInstruments() {
   ],"instrument-actions"));
   list.append(item);
  }
- $("add-instrument").disabled = score.instruments.length >= 12;
+ $("add-instrument").disabled = beat.instruments.length >= 12;
 }
 function paintPlayhead() {
  for(const clip of $("arrangement").querySelectorAll(".clip")){
@@ -259,7 +259,7 @@ function paintPianoPlayhead() {
  const activeChunk = chunkFor(currentInstrument);
  const relative = pianoProgress!==null &&
   (playback!==null || pendingPlay) ?
-  chunkProgress(score,currentInstrument.id,activeChunk.id,pianoProgress) : null;
+  chunkProgress(beat,currentInstrument.id,activeChunk.id,pianoProgress) : null;
  marker.hidden = relative===null;
  if(relative===null)return;
  const x=pianoScrubberX(relative,grid.clientWidth,instrument().layout==="rack"?128:63);
@@ -268,13 +268,13 @@ function paintPianoPlayhead() {
 function renderTimeline(){
  const root=$("arrangement");
  root.replaceChildren();
- root.style.setProperty("--bars",score.bars);
+ root.style.setProperty("--bars",beat.bars);
  const heading=element("div",undefined,"arrangement-head");
  heading.append(element("span","INSTRUMENT"));
- for(let bar=0;bar<score.bars;bar++)
+ for(let bar=0;bar<beat.bars;bar++)
   heading.append(element("span",String(bar+1).padStart(2,"0")));
  root.append(heading);
- for(const inst of score.instruments){
+ for(const inst of beat.instruments){
   const lane=element("div",undefined,"arrangement-row"+
    (selectedInstrumentId===inst.id?" active":""));
   lane.style.setProperty("--track-accent",signal(inst));
@@ -299,8 +299,8 @@ function renderTimeline(){
   });
   // The phrase itself is the editable surface. Each repeated instance opens
   // the same placement controls; no decorative duplicate below the bar.
-  for(const phrase of phraseInstances(score,inst)){
-   const length=Math.min(phrase.length,score.bars*16-phrase.start);
+  for(const phrase of phraseInstances(beat,inst)){
+   const length=Math.min(phrase.length,beat.bars*16-phrase.start);
    const timing=placementFor(inst,phrase.bar);
    const selected=selectedSlot.instrumentId===inst.id&&selectedSlot.bar===phrase.bar;
    const repeat=phrase.index>0;
@@ -312,11 +312,11 @@ function renderTimeline(){
    clip.dataset.repeat=String(phrase.index);
    clip.dataset.start=String(phrase.start);
    clip.dataset.length=String(length);
-   clip.style.setProperty("--phrase-start",String(phrase.start/(score.bars*16)));
-   clip.style.setProperty("--phrase-width",String(length/(score.bars*16)));
+   clip.style.setProperty("--phrase-start",String(phrase.start/(beat.bars*16)));
+   clip.style.setProperty("--phrase-width",String(length/(beat.bars*16)));
    clip.setAttribute("aria-label",inst.name+": "+phrase.chunk.name+
     (repeat?", repetition "+(phrase.index+1):"")+
-    ", starts at step "+(phrase.start+1)+" of the composition"+
+    ", starts at step "+(phrase.start+1)+" of the beat"+
     ", source bar "+(phrase.bar+1)+", offset "+timing.offset+
     ", phrase length "+timing.length+". Edit placement");
    clip.setAttribute("aria-haspopup","dialog");
@@ -330,7 +330,7 @@ function renderTimeline(){
 }
 function place(instId, bar, chunkId) {
  closePicker();
- const inst = score.instruments.find(x => x.id === instId);
+ const inst = beat.instruments.find(x => x.id === instId);
  if (!inst) return;
  if (chunkId === inst.timeline[bar]) {
   selectedInstrumentId = instId;
@@ -349,7 +349,7 @@ function place(instId, bar, chunkId) {
 }
 function openPicker(instId, bar, trigger) {
  closePicker();
- const inst = score.instruments.find(candidate => candidate.id === instId);
+ const inst = beat.instruments.find(candidate => candidate.id === instId);
  if (!inst) return;
  selectedInstrumentId = inst.id;
  selectedSlot = { instrumentId: inst.id, bar };
@@ -480,7 +480,7 @@ function renderRack(root,inst,chunk){
   head.append(name,actionMenu("Actions for "+entry.name,[
    {label:"Rename",run:()=>renameRackSound(inst,entry)},
    {label:"Replace sound",run:()=>{focus(inst);selectSound(entry);openLibrary("replace-row");}},
-   {label:"Move to piano roll",disabled:!canMoveRackSoundToPianoRoll(score,inst.id,entry.id),
+   {label:"Move to piano roll",disabled:!canMoveRackSoundToPianoRoll(beat,inst.id,entry.id),
     run:()=>extractSoundToPianoRoll(inst.id,entry.id)},
    {label:"Duplicate sound",disabled:inst.sounds.length>=MAX_SOUNDS,run:()=>duplicateRackSound(inst.id,entry.id)},
    {label:"Move up",disabled:position===0,run:()=>moveRackSound(inst.id,entry.id,-1)},
@@ -501,7 +501,7 @@ function renderRack(root,inst,chunk){
     const note={id:id(),soundId:entry.id,start:step,duration:1,velocity:Number($("velocity").value)};
     selectedNoteId=editingNoteEffects?note.id:null;
     if(modify(()=>chunk.notes.push(note))&&!playback&&!pendingPlay)
-     void audition(inst,entry.referencePitch,score,{soundId:entry.id}).catch(()=>{});
+     void audition(inst,entry.referencePitch,beat,{soundId:entry.id}).catch(()=>{});
    },"note rack-step"+(step%4===0?" beat":"")+(existing?" filled":"")+
     (editingNoteEffects&&existing?.id===selectedNoteId?" selected":"")+
     (existing?.bend?.shape&&existing.bend.shape!=="straight"?" bent":""));
@@ -523,10 +523,10 @@ function renderRack(root,inst,chunk){
  root.append(marker);paintPianoPlayhead();scroll.scrollTop=top;scroll.scrollLeft=left;
  const note=editingNoteEffects?chunk.notes.find(note=>note.id===selectedNoteId):null;
  const entry=note?inst.sounds.find(sound=>sound.id===note.soundId):sound(inst);
- renderNoteExpression($("note-expression"),note,entry.name,note?note.duration*60/score.bpm/4:0,
+ renderNoteExpression($("note-expression"),note,entry.name,note?note.duration*60/beat.bpm/4:0,
   bend=>modify(()=>{note.bend=bend;}),
   ()=>modify(()=>{chunk.notes=chunk.notes.filter(item=>item.id!==note.id);selectedNoteId=null;}),
-  ()=>{void audition(inst,entry.referencePitch,score,{soundId:entry.id,velocity:note.velocity,bend:note.bend}).catch(error=>message(error.message,true));},entry.patch.bend);
+  ()=>{void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:note.velocity,bend:note.bend}).catch(error=>message(error.message,true));},entry.patch.bend);
  if(note){
   const label=element("label","Hit strength ","rack-strength");
   const input=element("input");input.type="range";input.min="0";input.max="1";input.step=".01";input.value=String(note.velocity);
@@ -592,7 +592,7 @@ function renderNotes() {
      duration:Math.min(Number($("length").value),16-step),velocity:Number($("velocity").value)};
     selectedNoteId=editingNoteEffects?created.id:null;
     if(modify(()=>{editedChunk.notes.push(created);})&&!playback&&!pendingPlay)
-     void audition(targetInst,pitch,score).catch(()=>{});
+     void audition(targetInst,pitch,beat).catch(()=>{});
    }, "note" + (step % 4 === 0 ? " beat" : ""));
    cells.push(cell);
 
@@ -608,7 +608,7 @@ function renderNotes() {
     ignoreClick = true;
     const initialX = event.clientX, originalDuration = note.duration;
     const width = bounds.width;
-    const before = snapshot(score);
+    const before = snapshot(beat);
     let finished = false;
     cell.setPointerCapture(event.pointerId);
     cell.classList.add("resizing");
@@ -675,7 +675,7 @@ function renderNotes() {
  scroll.scrollLeft = left;
  const note=editingNoteEffects?chunk.notes.find(entry=>entry.id===selectedNoteId):null;
  renderNoteExpression($("note-expression"),note,note?noteLabel(note.pitch):"",
-  note?note.duration*60/score.bpm/4:0,bend=>{
+  note?note.duration*60/beat.bpm/4:0,bend=>{
   modify(()=>{const target=chunkFor(instrument()).notes.find(entry=>entry.id===selectedNoteId);if(target)target.bend=bend;});
  },()=>{
   const id=selectedNoteId;
@@ -684,9 +684,9 @@ function renderNotes() {
  },()=>{
   const current=chunkFor(instrument()).notes.find(entry=>entry.id===selectedNoteId);
   if(!current)return;
-  void audition(instrument(),current.pitch,score,{
+  void audition(instrument(),current.pitch,beat,{
    velocity:current.velocity,bend:current.bend,
-   duration:current.duration*60/score.bpm/4
+   duration:current.duration*60/beat.bpm/4
   }).catch(error=>message("Couldn't preview note: "+error.message,true));
  },sound().patch.bend);
 }
@@ -717,7 +717,7 @@ function renderSound() {
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
  document.querySelector(".patch-info")?.style.setProperty("--track-accent",signal(inst));
  $("patch-label").textContent=patch.type==="sample"?"sample":"synth";
- const scope=createSignalDisplay($("sound-visualizer"),patch,score,signal(inst));
+ const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst));
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
   const next=patchCopy(sound().patch);
@@ -740,7 +740,7 @@ function renderSound() {
    soundPreviewTimer=setTimeout(()=>{
     soundPreviewTimer=null;
     if(playback||pendingPlay||instrument().id!==instId||sound().id!==soundId)return;
-    void audition(instrument(),sound().referencePitch,score,{soundId,duration:.4})
+    void audition(instrument(),sound().referencePitch,beat,{soundId,duration:.4})
      .catch(error=>message("Couldn't preview sound: "+error.message,true));
    },140);
   }
@@ -767,15 +767,15 @@ function renderSound() {
  $("convert-rack").title=canConvertToRack(inst)?"convert this instrument into a one-sound rack":"requires a single pitch without overlapping hits";
  $("convert-pitched").hidden=inst.layout!=="rack";
  $("convert-pitched").textContent=inst.sounds.length===1?"convert to piano roll":"extract sound to piano roll";
- $("convert-pitched").disabled=!canMoveRackSoundToPianoRoll(score,inst.id,entry.id);
+ $("convert-pitched").disabled=!canMoveRackSoundToPianoRoll(beat,inst.id,entry.id);
  $("convert-pitched").title=entry.referencePitch<36||entry.referencePitch>96?
   "Reference note must be within C2–C7 to use the piano roll":
-  score.instruments.length>=12&&inst.sounds.length>1?
-  "The composition already has 12 instruments": "Move this sound to its own piano-roll instrument";
+  beat.instruments.length>=12&&inst.sounds.length>1?
+  "The beat already has 12 instruments": "Move this sound to its own piano-roll instrument";
  $("edit-instrument-note").textContent=inst.layout==="rack"?inst.name+" / "+entry.name:inst.name;
  if(patch.type==="sample"){
   renderSamplerEditor($("synth-editor"),patch,onChange,
-   patch.zones.map(zone=>score.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
+   patch.zones.map(zone=>beat.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
    ()=>openAudioReplace(),preview);
  }else renderPatchEditor($("synth-editor"),patch,onChange,preview);
  $("remove-instrument").disabled=false;
@@ -788,9 +788,9 @@ function render() {
  $("note-mode").textContent=editingNoteEffects?"✓ Note effects · Done":"Edit note effects";
  document.querySelector(".work")?.classList.toggle("editing-note-effects",editingNoteEffects);
  document.querySelector(".notes-section")?.classList.toggle("editing-note-effects",editingNoteEffects);
- $("title").value = score.title;
- $("bpm").value = String(score.bpm);
- $("bars").value = String(score.bars);
+ $("title").value = beat.title;
+ $("bpm").value = String(beat.bpm);
+ $("bars").value = String(beat.bars);
  renderInstruments();
  renderTimeline();
  renderChunkEditor();
@@ -867,7 +867,7 @@ $("note-mode").addEventListener("click",()=>{
  }
 });
 $("new").addEventListener("click", () => {
- if (confirm("Start a new composition? Save the current .premidi if you want a copy.")) resetTo(create());
+ if (confirm("Start a new beat? Save the current .premidi if you want a copy.")) resetTo(create());
 });
 $("import").addEventListener("click", () => $("file").click());
 $("file").addEventListener("change",async event=>{
@@ -883,7 +883,7 @@ $("file").addEventListener("change",async event=>{
 });
 $("export").addEventListener("click",()=>{
  try{
-  const result=exportProject(score);
+  const result=exportProject(beat);
   download(result.blob,result.name);
   message(result.name.endsWith(".zip")?"Saved music ZIP with separate audio assets":"Saved .premidi");
  }catch(error){message("Export failed: "+error.message,true);}
@@ -892,7 +892,7 @@ $("wav").addEventListener("click", async () => {
  const el = $("wav");
  el.disabled = true;
  message("Rendering WAV...");
- try { download(await wav(score), filename(score,".wav")); message("Saved WAV"); }
+ try { download(await wav(beat), filename(beat,".wav")); message("Saved WAV"); }
  catch (error) { message("WAV error: " + error.message, true); }
  finally { el.disabled = false; }
 });
@@ -901,7 +901,7 @@ $("play").addEventListener("click", async () => {
  if (pendingPlay) return;
  pendingPlay = true;
  try {
-  playback = await play(() => score, {
+  playback = await play(() => beat, {
    loop: () => $("loop").checked,
    onPosition: (bar, step) => {
     $("position").textContent = (bar + 1) + "." + (Math.floor(step / 4) + 1);
@@ -925,12 +925,12 @@ $("play").addEventListener("click", async () => {
  finally { pendingPlay = false; }
 });
 $("stop").addEventListener("click", stop);
-$("title").addEventListener("change", event => modify(() => score.title = event.target.value.trim() || "Untitled composition"));
-$("bpm").addEventListener("change", event => modify(() => score.bpm = Math.round(Number(event.target.value))));
+$("title").addEventListener("change", event => modify(() => beat.title = event.target.value.trim() || "Untitled beat"));
+$("bpm").addEventListener("change", event => modify(() => beat.bpm = Math.round(Number(event.target.value))));
 $("bars").addEventListener("change", event => modify(() => {
  const count = Number(event.target.value);
- score.bars = count;
- for (const inst of score.instruments) {
+ beat.bars = count;
+ for (const inst of beat.instruments) {
   while (inst.timeline.length < count) inst.timeline.push(null);
   inst.timeline.length = count;
   while(inst.placements.length<count)inst.placements.push(null);
@@ -945,23 +945,23 @@ function currentContext(mode="replace"){
  return {mode,instrumentId:instrument().id,soundId:sound().id};
 }
 function applySoundSelection(patch,name,trigger,assets,context,rackSounds=null,settings=null){
- const target=score.instruments.find(inst=>inst.id===context.instrumentId);
+ const target=beat.instruments.find(inst=>inst.id===context.instrumentId);
  if(!target){message("The original instrument was removed. Open the sound library again.",true);return false;}
  const row=target.sounds.find(sound=>sound.id===context.soundId);
  if(context.mode==="replace-row"&&!row)return false;
  const operation=context.mode==="replace-row"?"replace-row":rackSounds?"create-rack":
   selectionOperation(target.layout,trigger,context.mode==="add");
  return modify(()=>{
-  for(const asset of assets)if(!score.samples.some(existing=>existing.id===asset.id))score.samples.push(asset);
+  for(const asset of assets)if(!beat.samples.some(existing=>existing.id===asset.id))beat.samples.push(asset);
   if(operation.startsWith("create-")){
    const entry=makeSound(name.slice(0,60),patch,trigger);
    if(settings){entry.referencePitch=settings.referencePitch??entry.referencePitch;entry.gain=settings.gain??entry.gain;}
-   const inst=makeInstrument(score.instruments.length+1,score.bars,entry);
+   const inst=makeInstrument(beat.instruments.length+1,beat.bars,entry);
    if(rackSounds){
     inst.layout="rack";inst.sounds=clone(rackSounds).map(sound=>({...sound,id:id()}));
    }
    if(rackSounds)inst.volume=settings?.volume??.7;
-   inst.name=name.slice(0,60);score.instruments.push(inst);
+   inst.name=name.slice(0,60);beat.instruments.push(inst);
    selectedInstrumentId=inst.id;selectedSounds.set(inst.id,inst.sounds[0].id);
    selectedSlot={instrumentId:inst.id,bar:0};selectedChunks.set(inst.id,inst.chunks[0].id);
   }else if(operation==="append-rack"){
@@ -985,7 +985,7 @@ function addAuthoredSample(asset,options={},context=currentContext("add")){
   followPitch,oneShot:!followPitch,transpose:0,gain:.9,attack:.005,release:.17,pan:0,
   movement:{rate:5,depth:0,delay:0,glide:0,glideTime:.18,tremolo:0,tremoloRate:5,tone:0,toneRate:2},
   bend:{shape:"straight",amount:2,rate:4}};
- const target=score.instruments.find(inst=>inst.id===context.instrumentId);
+ const target=beat.instruments.find(inst=>inst.id===context.instrumentId);
  const row=target?.sounds.find(sound=>sound.id===context.soundId);
  if(context.mode==="replace-row"&&row){
   // Replacing audio preserves this sound's note/hit intent and recorded pitch.
@@ -995,7 +995,7 @@ function addAuthoredSample(asset,options={},context=currentContext("add")){
  const ok=applySoundSelection(patch,name,followPitch?"pitched":"hit",[asset],context);
  if(ok){
   if($("instrument-dialog").open)$("instrument-dialog").close();
-  if(playback)void primeSamples(score).catch(error=>message(error.message,true));
+  if(playback)void primeSamples(beat).catch(error=>message(error.message,true));
  }
  return ok;
 }
@@ -1003,8 +1003,8 @@ let recordingMode=null;
 const recorder=installMicrophoneRecorder({
  get:$,
  onSynth:({patch,name,trigger,referencePitch})=>{
-  if(score.instruments.length>=12){message("The composition supports up to 12 instruments.",true);return false;}
-  const names=new Set(score.instruments.flatMap(inst=>[inst.name,...inst.sounds.map(sound=>sound.name)]));
+  if(beat.instruments.length>=12){message("The beat supports up to 12 instruments.",true);return false;}
+  const names=new Set(beat.instruments.flatMap(inst=>[inst.name,...inst.sounds.map(sound=>sound.name)]));
   const base=name;let suffix=2;
   while(names.has(name))name=(base.slice(0,54)+" "+suffix++).slice(0,60);
   const ok=applySoundSelection(patchCopy(patch),name,trigger,[],{...recordingMode,mode:"add"},null,{referencePitch});
@@ -1022,7 +1022,7 @@ const recorder=installMicrophoneRecorder({
  }
 });
 function openRecorder(mode="add"){
- if(mode==="add"&&score.instruments.length>=12)
+ if(mode==="add"&&beat.instruments.length>=12)
   return message("Maximum 12 instruments.",true);
  recordingMode=libraryContext&&$("instrument-dialog").open?{...libraryContext}:currentContext(mode);
  if($("instrument-dialog").open)$("instrument-dialog").close();
@@ -1044,7 +1044,7 @@ $("sample-file").addEventListener("change",async event=>{
    new Uint8Array(await file.arrayBuffer()),"Imported by author: "+file.name);
   const name=file.name.replace(/\.[^.]+$/,"").slice(0,60);
   if(context.mode==="replace-row"){
-   const target=score.instruments.find(inst=>inst.id===context.instrumentId);
+   const target=beat.instruments.find(inst=>inst.id===context.instrumentId);
    const row=target?.sounds.find(sound=>sound.id===context.soundId);
    if(!row)throw Error("The original sound was removed.");
    addAuthoredSample(asset,{name,root:row.patch.zones?.[0]?.root??row.referencePitch,followPitch:row.trigger==="pitched"},context);
@@ -1081,7 +1081,7 @@ async function savePreset(wholeRack=false){
  if(savedSounds.length>=100)return message("Your sound library contains 100 presets.",true);
  const sounds=wholeRack?clone(inst.sounds):[clone(entry)];
  const needs=new Set(sounds.flatMap(sound=>sound.patch.type==="sample"?sound.patch.zones.map(zone=>zone.assetId):[]));
- const samples=score.samples.filter(asset=>needs.has(asset.id));
+ const samples=beat.samples.filter(asset=>needs.has(asset.id));
  const item={id:"user-"+id(),name,category:"Mine",description:wholeRack?"Rack · "+sounds.length+" sounds":"Saved sound",samples};
  if(wholeRack){item.sounds=sounds;item.layout="rack";item.volume=inst.volume;}
  else {item.patch=entry.patch?patchCopy(entry.patch):null;item.trigger=entry.trigger;item.referencePitch=entry.referencePitch;item.gain=entry.gain;}
@@ -1089,14 +1089,14 @@ async function savePreset(wholeRack=false){
   await savePresetAssets(samples);
   localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));savedSounds.push(item);
   message("Saved "+name+" in your browser's sound library.");
- }catch(error){message("Could not save preset: "+error.message+". Export your composition to keep it.",true);}
+ }catch(error){message("Could not save preset: "+error.message+". Export your beat to keep it.",true);}
 }
 $("save-sound").addEventListener("click",()=>{void savePreset(instrument().layout==="rack");});
 $("save-row-sound").addEventListener("click",()=>{void savePreset(false);});
 function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...savedSounds];}
 function openLibrary(mode) {
  closePicker();
- if(mode==="add"&&score.instruments.length>=12)return;
+ if(mode==="add"&&beat.instruments.length>=12)return;
  libraryMode=mode;libraryContext=currentContext(mode);
  libraryCategory="All";
  $("library-description").textContent=mode==="add"?"new instrument":mode==="replace-row"?"replaces selected sound":"notes use keys · hits use racks";
@@ -1109,7 +1109,7 @@ async function resolveSamples(preset) {
  const ids=new Set(preset.sounds?preset.sounds.flatMap(sound=>sound.patch.type==="sample"?sound.patch.zones.map(zone=>zone.assetId):[]):
   preset.patch?.type==="sample"?preset.patch.zones.map(zone=>zone.assetId):preset.assets||[]);
  return Promise.all([...ids].map(async assetId=>{
-  const existing=(preset.samples||[]).find(asset=>asset.id===assetId)||score.samples.find(asset=>asset.id===assetId);
+  const existing=(preset.samples||[]).find(asset=>asset.id===assetId)||beat.samples.find(asset=>asset.id===assetId);
   if(existing)return existing;
   if(!sampleAsset(assetId))throw Error("Saved sample is missing its audio: "+assetId);
   if(!builtinCache.has(assetId))builtinCache.set(assetId,loadLibrarySample(assetId).catch(error=>{builtinCache.delete(assetId);throw error;}));
@@ -1133,7 +1133,7 @@ async function chooseSound(preset) {
   if(ok) {
    dialog.close();
    // A new sample can be introduced while the transport is running.
-   if(playback)void primeSamples(score).catch(error=>message("Sample decode failed: "+error.message,true));
+   if(playback)void primeSamples(beat).catch(error=>message("Sample decode failed: "+error.message,true));
    message("Loaded "+preset.name);
   }
  }catch(error){message("Couldn't load "+preset.name+": "+error.message,true);}
@@ -1158,7 +1158,7 @@ async function auditionPreset(preset) {
    sampleForNote(patch,key,.8)?.assetId:null).filter(Boolean))];
   const assets=await Promise.all(ids.map(async id=>{
    return (preset.samples||[]).find(item=>item.id===id)
-    ||score.samples.find(item=>item.id===id)
+    ||beat.samples.find(item=>item.id===id)
     ||await loadLibrarySample(id);
   }));
   if(chord)await auditionChord(inst,pitches,{samples:assets});
@@ -1197,14 +1197,14 @@ function renderLibrary() {
  }
 }
 function removeInstrument(instrumentId){
- const target=score.instruments.find(entry=>entry.id===instrumentId);
+ const target=beat.instruments.find(entry=>entry.id===instrumentId);
  if(!target)return;
- const last=score.instruments.length===1;
+ const last=beat.instruments.length===1;
  if(!confirm(instrumentDeleteLabel(target)+" “"+target.name+"” and all its chunks?"+
   (last?" A fresh, empty instrument will take its place.":"")))return;
  closePicker();
  modify(()=>{
-  const replacementId=deleteInstrumentFromScore(score,instrumentId);
+  const replacementId=deleteInstrumentFromBeat(beat,instrumentId);
   selectedSounds.delete(instrumentId);
   selectedChunks.delete(instrumentId);
   selectedNoteId=null;
@@ -1250,9 +1250,9 @@ $("chunk-name").addEventListener("change", event => modify(() => chunkFor(instru
 $("sound-name").addEventListener("change",event=>modify(()=>{sound().name=event.target.value.trim()||"Sound";}));
 $("sound-reference").addEventListener("change",event=>modify(()=>{sound().referencePitch=Number(event.target.value);}));
 $("replace-row-sound").addEventListener("click",()=>openLibrary("replace-row"));
-$("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,score,{soundId:sound().id}).catch(error=>message(error.message,true));});
+$("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,beat,{soundId:sound().id}).catch(error=>message(error.message,true));});
 function moveRackSound(instrumentId,soundId,offset){
- const inst=score.instruments.find(item=>item.id===instrumentId);
+ const inst=beat.instruments.find(item=>item.id===instrumentId);
  if(!inst)return;
  const index=inst.sounds.findIndex(item=>item.id===soundId);
  if(index<0||index+offset<0||index+offset>=inst.sounds.length)return;
@@ -1263,7 +1263,7 @@ function moveRackSound(instrumentId,soundId,offset){
  });
 }
 function duplicateRackSound(instrumentId,soundId){
- const inst=score.instruments.find(item=>item.id===instrumentId);
+ const inst=beat.instruments.find(item=>item.id===instrumentId);
  const index=inst?.sounds.findIndex(item=>item.id===soundId)??-1;
  if(index<0||inst.sounds.length>=MAX_SOUNDS)return;
  modify(()=>{
@@ -1276,7 +1276,7 @@ function duplicateRackSound(instrumentId,soundId){
  });
 }
 function removeRackSound(instrumentId,soundId){
- const inst=score.instruments.find(item=>item.id===instrumentId);
+ const inst=beat.instruments.find(item=>item.id===instrumentId);
  const entry=inst?.sounds.find(item=>item.id===soundId);
  if(!entry||inst.layout!=="rack")return;
  if(inst.sounds.length===1){removeInstrument(instrumentId);return;}
@@ -1284,7 +1284,7 @@ function removeRackSound(instrumentId,soundId){
  if(count&&!confirm("Remove "+entry.name+" and its "+count+" hits across all chunks?"))return;
  closePicker();
  modify(()=>{
-  deleteSoundFromScore(score,instrumentId,soundId);
+  deleteSoundFromBeat(beat,instrumentId,soundId);
   selectedNoteId=null;
   selectedInstrumentId=instrumentId;
   selectedSounds.delete(instrumentId);
@@ -1299,22 +1299,22 @@ $("convert-rack").addEventListener("click",()=>{
  modify(()=>convertToRack(instrument()));
 });
 function extractSoundToPianoRoll(instrumentId,soundId){
- if(!canMoveRackSoundToPianoRoll(score,instrumentId,soundId))return;
+ if(!canMoveRackSoundToPianoRoll(beat,instrumentId,soundId))return;
  closePicker();
- const source=score.instruments.find(item=>item.id===instrumentId);
+ const source=beat.instruments.find(item=>item.id===instrumentId);
  const sourceChunkIndex=source.chunks.findIndex(chunk=>chunk.id===selectedChunks.get(instrumentId));
  const sourceBar=selectedSlot.instrumentId===instrumentId?selectedSlot.bar:0;
  modify(()=>{
-  const newId=moveRackSoundToPianoRoll(score,instrumentId,soundId);
+  const newId=moveRackSoundToPianoRoll(beat,instrumentId,soundId);
   if(!newId)return;
-  const pitched=score.instruments.find(item=>item.id===newId);
+  const pitched=beat.instruments.find(item=>item.id===newId);
   selectedInstrumentId=newId;
   selectedSounds.delete(instrumentId);
   selectedSounds.set(newId,soundId);
   selectedNoteId=null;
   selectedSlot={instrumentId:newId,bar:sourceBar};
   selectedChunks.set(newId,pitched.chunks[Math.max(0,sourceChunkIndex)].id);
-  if(!score.instruments.some(item=>item.id===instrumentId))
+  if(!beat.instruments.some(item=>item.id===instrumentId))
    selectedChunks.delete(instrumentId);
  });
 }

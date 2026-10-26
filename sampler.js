@@ -3,7 +3,7 @@ import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
 import {putAsset,getAsset,MAX_ASSET_BYTES} from "./assetRegistry.js";
 import { validateMovement, validateBend, movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
 import {driveCurve,validateSampleTone} from "./audioEffects.js";
-// The only durable sample asset representation is the score's samples array.
+// The only durable sample asset representation is the beat's samples array.
 // Browser library URLs are staging inputs; .premidi files hold relative audio paths.
 export const MAX_SAMPLE_BYTES=MAX_ASSET_BYTES;
 export const MAX_SCORE_BYTES=1_000_000;
@@ -90,12 +90,12 @@ export function validateSamplerPatch(patch){
  }
  return errors;
 }
-// Decode only samples that the current composition can actually trigger.
+// Decode only samples that the current beat can actually trigger.
 // Multi-layer instruments can carry dozens of recordings in the portable file
 // without decoding all of their long natural tails into RAM on every Play.
-export function usedSampleIds(score){
+export function usedSampleIds(beat){
  const used=new Set();
- for(const inst of score.instruments||[]){
+ for(const inst of beat.instruments||[]){
   const placed=new Set(inst.timeline.filter(Boolean));
   for(const chunk of inst.chunks||[]){
    if(!placed.has(chunk.id))continue;
@@ -109,9 +109,9 @@ export function usedSampleIds(score){
  }
  return used;
 }
-export async function decodeSamples(context,score,cache,only=usedSampleIds(score)){
+export async function decodeSamples(context,beat,cache,only=usedSampleIds(beat)){
  const waiting=[];
- for(const asset of score.samples||[]) {
+ for(const asset of beat.samples||[]) {
   if(only && !only.has(asset.id))continue;
   if(cache.has(asset.id)){
    const prior=cache.get(asset.id);
@@ -144,7 +144,7 @@ function sampleNormalization(buffer){
  peakLevels.set(buffer,scale);
  return scale;
 }
-export function scheduleSample(context,out,inst,event,start,duration,score,cache) {
+export function scheduleSample(context,out,inst,event,start,duration,beat,cache) {
  const patch=inst.patch,zone=sampleForNote(patch,event.pitch,event.velocity);
  const buffer=zone&&cache.get(zone.assetId);
  if(!buffer)return; // Can only happen while freshly imported samples decode during playback.

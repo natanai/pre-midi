@@ -1,4 +1,4 @@
-// ZIP STORE reader/writer. A package contains exactly one .premidi JSON score
+// ZIP STORE reader/writer. A package contains exactly one .premidi JSON beat
 // and companion assets/*.wav|ogg|mp3, with no external ZIP dependency.
 // Files are uncompressed by design; WAV is an intentional standalone deliverable.
 const encode=new TextEncoder(),decode=new TextDecoder("utf-8",{fatal:true});

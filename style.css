@@ -66,21 +66,21 @@ nav button {min-height:38px}
 nav button:not(.primary)::before {content:"[";color:var(--muted)}
 nav button:not(.primary)::after {content:"]";color:var(--muted)}
 main {flex:1;min-width:0}
-.song {
+.beat-header {
   display:flex;align-items:end;justify-content:space-between;gap:15px 24px;
   flex-wrap:wrap;padding:17px 20px;border-bottom:1px solid var(--line);
 }
-.song>label {
+.beat-header>label {
   display:grid;gap:7px;flex:1;min-width:200px;
   font-size:11px;color:var(--muted);letter-spacing:.02em;
 }
-.song>label input {
+.beat-header>label input {
   display:block;width:min(100%,480px);min-height:37px;padding:4px 0;
   border:0;border-bottom:1px solid var(--line);
   background:transparent;color:var(--bright);
   font-size:19px;letter-spacing:0;
 }
-.song>label input:focus {border-color:var(--bright);outline:0}
+.beat-header>label input:focus {border-color:var(--bright);outline:0}
 .transport {display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap}
 .transport label {display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
 .transport input[type="number"],.transport select {width:65px;color:var(--bright);text-align:center}
@@ -347,8 +347,8 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   .heading small {max-width:55ch}
 }
 @media (max-width:570px) {
-  header,.song {padding:12px}
-  .song>label input {font-size:17px}
+  header,.beat-header {padding:12px}
+  .beat-header>label input {font-size:17px}
   .heading {padding:8px 12px}
   .heading small {display:none}
   .transport {gap:7px 12px}
@@ -655,7 +655,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  * All breakpoints show the same real timeline, notes, instruments and Sound
  * owner. Only their placement changes. No duplicate UI, draft or mutation.
  */
-.song {position:sticky;top:0;z-index:30;background:#030303;
+.beat-header {position:sticky;top:0;z-index:30;background:#030303;
  box-shadow:0 1px 0 var(--line)}
 .work {align-items:start}
 .instrument-pane {position:sticky;top:90px;align-self:start;max-height:calc(100dvh - 105px);
@@ -725,9 +725,9 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .notes-section .notes-toolbar{position:sticky;top:0;z-index:4}
 }
 @media(max-width:570px){
- .song{padding:8px 12px;gap:8px}
- .song>label {min-width:125px;flex-basis:100%}
- .song>label input{font-size:15px;min-height:25px}
+ .beat-header{padding:8px 12px;gap:8px}
+ .beat-header>label {min-width:125px;flex-basis:100%}
+ .beat-header>label input{font-size:15px;min-height:25px}
  .transport{gap:4px 10px}
  .transport #play{min-width:75px}
  .notes-section .notes-toolbar{position:static}
@@ -856,7 +856,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 
 /* quiet studio typography: interface chrome is lowercase, authored names and note pitches remain data */
 .app :is(button, summary, .brand small, .timeline-tick-label, .editing-identity,
- .synth-field, .dial-label, .patch-info, .rack-sound-controls, .song > label,
+ .synth-field, .dial-label, .patch-info, .rack-sound-controls, .beat-header > label,
  .notes-toolbar label, .transport label, .sample-toggles, .mic-guidance,
  .mic-kind, .mic-settings, #status, footer) {text-transform:lowercase}
 .app select {text-transform:lowercase}
