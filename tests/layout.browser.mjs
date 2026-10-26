@@ -44,6 +44,8 @@ try{
   await reportedTest("rack-check","/__rack_result",width,height);
  }
  await reportedTest("rack-audio-check","/__rack_audio_result");
+ await reportedTest("example-presets-check","/__example_presets_result",1440,900);
+ await reportedTest("example-presets-check","/__example_presets_result",390,844);
  await reportedTest("audio-check","/__audio_result");
  await reportedTest("arrangement-audio-check","/__arrangement_audio_result");
  await reportedTest("example-audio-check","/__example_audio_result");
