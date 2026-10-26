@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#000000">
 <title>pre-midi — studio</title>
 <link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./studioAlignment.css">
 </head>
 <body>
 <div class="app">
@@ -56,7 +57,7 @@
    </div>
    <label class="transport-field">bpm <input id="bpm" type="number" min="40" max="240"></label>
    <label class="transport-field">bars <select id="bars"><option>2</option><option>4</option><option>8</option><option>16</option></select></label>
-   <label class="transport-field transport-loop"><span>loop</span><input id="loop" type="checkbox" checked></label>
+   <label class="transport-field transport-loop"><span>loop</span><span class="loop-box"><input id="loop" type="checkbox" checked></span></label>
    <div class="transport-position"><span>bar : beat</span><output id="position" aria-label="bar 1, beat 1">1:1</output></div>
   </div>
  </section>
