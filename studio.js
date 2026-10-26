@@ -845,8 +845,8 @@ function render() {
  $("bars").value = String(beat.bars);
  songUI?.render();
  $("song-expand").textContent=songExpanded?"↓ Beat":"↑ Song";
- $("play").title=playback?"Stop playback":song&&songExpanded?"Play Song":"Play Beat";
- $("play").setAttribute("aria-label",playback?"Stop playback":song&&songExpanded?"Play Song":"Play Beat");
+ setPlaybackButton(!!playback);
+ $("play").title=playback?"stop playback":song&&songExpanded?"play song":"play beat";
  $("song-expand").setAttribute("aria-expanded",String(songExpanded));
  renderInstruments();
  renderTimeline();
