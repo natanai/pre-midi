@@ -1,4 +1,4 @@
-// pre-midi native score. This is the only file-format definition.
+// pre-midi native Beat document. This is the only file-format definition.
 // Pre-midi remains the source of truth; game compatibility is frozen separately.
 export const FORMAT = "pre-midi";
 export const VERSION = 7;
@@ -29,7 +29,7 @@ export function create() {
  instrument.sounds[0]=makeSound("Glass Keys",makePatch("glass-keys"));
  instrument.chunks[0].name="Chunk 1";
  // A single empty editable slot is assigned so first notes play immediately.
- return {format:FORMAT,version:VERSION,id:id(),title:"Untitled composition",
+ return {format:FORMAT,version:VERSION,id:id(),title:"Untitled beat",
   bpm:120,beatsPerBar:4,stepsPerBeat:4,bars:8,samples:[],instruments:[instrument]};
 }
 const object=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
@@ -39,7 +39,7 @@ export function validate(doc) {
  const errors=[];
  if(!object(doc)||doc.format!==FORMAT||doc.version!==VERSION)
   return ["Unsupported .premidi file. The current format is pre-midi v7."];
- if(!text(doc.id,128)||!text(doc.title,100))errors.push("Composition needs an ID and title.");
+ if(!text(doc.id,128)||!text(doc.title,100))errors.push("Beat needs an ID and title.");
  if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
  if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
  if(!Number.isInteger(doc.bars)||!within(doc.bars,1,16))errors.push("Timeline must have 1–16 bars.");
@@ -52,7 +52,7 @@ export function validate(doc) {
   sampleIds.add(asset?.id);
  }
  if(!Array.isArray(doc.instruments)||doc.instruments.length<1||doc.instruments.length>12)
-  return [...errors,"The composition needs 1–12 instruments."];
+  return [...errors,"The beat needs 1–12 instruments."];
  const ids=new Set();
  for(const instrument of doc.instruments) {
   if(!object(instrument)||!text(instrument.id,128)||!text(instrument.name,60)){
@@ -156,10 +156,10 @@ export function migrate(input){
 }
 export function parse(raw) {
  if(typeof raw!=="string"||new TextEncoder().encode(raw).byteLength>MAX_SCORE_BYTES)
-  throw Error("Composition exceeds the 1 MB limit.");
+  throw Error("Beat exceeds the 1 MB limit.");
  const doc=migrate(JSON.parse(raw)),issues=validate(doc);
  if(issues.length)throw Error(issues.join("\n"));
  return doc;
 }
 export const filename=(doc,extension)=>(doc.title.trim().replace(/[^a-z0-9 _-]/gi,"")
- .replace(/\s+/g,"-").slice(0,64)||"composition")+extension;
+ .replace(/\s+/g,"-").slice(0,64)||"beat")+extension;

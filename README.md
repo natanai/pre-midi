@@ -5,6 +5,8 @@ A local-first, standalone music studio for [pre-programmed](https://github.com/n
 **Open the studio:** https://natanai.github.io/pre-midi/ — served by GitHub Pages, no account or backend.
 
 ## Editing
+
+The existing editor is a **Beat** editor. A Beat contains Instruments and reusable one-measure Chunks. Song mode will arrange Beat Clips on Song Tracks without flattening their synthesis instructions. See [Song rollout and terminology](docs/song-rollout.md).
 - **Instruments** own a piano-roll sound or a rack of independent sounds, plus shared chunks, a timeline lane, and master volume. Every sound keeps its complete editable synth or sampler patch.
 - **Timeline** shows the complete composition, one lane per instrument. Click any bar to choose that instrument's chunk, leave it empty, or create and assign a new chunk immediately.
 - **Chunks** are reusable one-bar groups of notes. Selecting one opens its notes; reuse the same chunk in multiple bars without making copies.

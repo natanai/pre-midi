@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "purpose": "Canonical domain vocabulary for pre-midi and pre-programmed. These names must govern UI, source identifiers, serialized schemas, and runtime APIs.",
+  "entities": [
+    {
+      "id": "asset",
+      "name": "Asset",
+      "code": "asset",
+      "parents": [],
+      "definition": "Externally stored audio file, referenced by a relative path; binary bytes never reside inside .premidi."
+    },
+    {
+      "id": "recording",
+      "name": "Recording",
+      "code": "recording",
+      "parents": [
+        "asset"
+      ],
+      "definition": "Captured audio source, usually a vocal take or user sound; its data is referenced as an Asset."
+    },
+    {
+      "id": "sound",
+      "name": "Sound",
+      "code": "sound",
+      "parents": [
+        "instrument"
+      ],
+      "definition": "Playable synth or sampled voice with its own sound controls."
+    },
+    {
+      "id": "rack",
+      "name": "Rack",
+      "code": "rack",
+      "parents": [
+        "instrument"
+      ],
+      "definition": "Instrument layout holding independently triggered Sounds."
+    },
+    {
+      "id": "instrument",
+      "name": "Instrument",
+      "code": "instrument",
+      "parents": [
+        "beat"
+      ],
+      "definition": "Musical lane containing a pitched Sound or Rack, reusable Chunks, and Chunk placements."
+    },
+    {
+      "id": "chunk",
+      "name": "Chunk",
+      "code": "chunk",
+      "parents": [
+        "instrument"
+      ],
+      "definition": "Reusable one-measure note or hit pattern within one Instrument."
+    },
+    {
+      "id": "beat",
+      "name": "Beat",
+      "code": "beat",
+      "parents": [
+        "song"
+      ],
+      "definition": "Standalone 1–16-bar arrangement containing Instruments, Chunks, and their musical placements. May exist without a Song."
+    },
+    {
+      "id": "song",
+      "name": "Song",
+      "code": "song",
+      "parents": [],
+      "definition": "Extended arrangement of independently editable Beats and timeline-positioned Recordings."
+    },
+    {
+      "id": "track",
+      "name": "Track",
+      "code": "track",
+      "parents": [
+        "song"
+      ],
+      "definition": "Horizontal Song lane containing Clips of one media type. Vocal Tracks visually precede every Beat Track."
+    },
+    {
+      "id": "clip",
+      "name": "Clip",
+      "code": "clip",
+      "parents": [
+        "track"
+      ],
+      "variants": [
+        "beat",
+        "vocal"
+      ],
+      "definition": "Positioned, adjustable Song occurrence of a Beat or Recording; never the underlying editable Beat/Recording itself."
+    }
+  ],
+  "timing": {
+    "beat": "Beat is a document entity; musical beat is a time unit and must be explicit in identifiers such as beatsPerBar or beatPosition.",
+    "chunk": "A Chunk is within an Instrument; a Clip is placed on a Song Track.",
+    "track": "An Instrument lane inside a Beat is not a Song Track."
+  },
+  "historical": {
+    "composition": "Deprecated name for the Beat document. Do not introduce new uses.",
+    "score": "Deprecated variable name for a Beat document. Existing identifiers must be migrated deliberately.",
+    "songStep": "Legacy Beat-timeline step; use beatStep for Beat-local timing.",
+    "versioning": "Existing .premidi v5/v6/v7 inputs must remain readable through migrations; never silently reinterpret old serialized fields."
+  },
+  "invariants": [
+    "Beat editing remains independent and primary.",
+    "Song references Beats by identity; Clips never flatten Beat audio.",
+    "Song layout always renders Vocal Tracks above Beat Tracks, with selected Beat editor beneath.",
+    "All recordings reference separate Assets.",
+    "A single native definition is consumable by pre-programmed.",
+    "The browser host must not determine the core format."
+  ]
+}

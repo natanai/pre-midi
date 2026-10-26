@@ -1,5 +1,5 @@
 import {referencedSampleIds} from "./soundModel.js";
-// Compact, plain .premidi score with separate audio files in one portable ZIP.
+// Compact, plain .premidi Beat instructions with separate audio files in one portable ZIP.
 import {parse,filename,validate} from "./schema.js";
 import {createZip,readZip} from "./zip.js";
 import {getAsset,putAsset,MAX_PACKAGE_BYTES} from "./assetRegistry.js";
@@ -14,7 +14,7 @@ export function exportProject(score){
  const referenced=referencedSampleIds(score.instruments);
  const manifest={...score,samples:score.samples.filter(asset=>referenced.has(asset.id))};
  const raw=text.encode(JSON.stringify(manifest));
- if(raw.length>MAX_SCORE_BYTES)throw Error("Composition instructions exceed 1 MB.");
+ if(raw.length>MAX_SCORE_BYTES)throw Error("Beat instructions exceed 1 MB.");
  if(!manifest.samples.length)return {
   name:filename(score,".premidi"),blob:new Blob([raw],{type:"application/json"})
  };
@@ -37,7 +37,7 @@ export async function importProject(file){
   const scores=[...entries].filter(([name])=>name.endsWith(".premidi"));
   if(scores.length!==1)throw Error("Package needs exactly one .premidi.");
   const score=parse(new TextDecoder("utf-8",{fatal:true}).decode(scores[0][1]));
-  if(entries.size!==score.samples.length+1)throw Error("ZIP assets don't match the composition.");
+  if(entries.size!==score.samples.length+1)throw Error("ZIP assets don't match the beat.");
   const payloads=[];
   for(const asset of score.samples){
    const bytes=entries.get(asset.path);
@@ -49,7 +49,7 @@ export async function importProject(file){
   return score;
  }
  if(!file.name.toLowerCase().endsWith(".premidi"))throw Error("Open .premidi or .zip.");
- if(file.size>MAX_SCORE_BYTES)throw Error("Composition instructions exceed 1 MB.");
+ if(file.size>MAX_SCORE_BYTES)throw Error("Beat instructions exceed 1 MB.");
  const score=parse(await file.text());
  if(score.samples.length)throw Error("This composition needs recordings. Open its .zip package instead.");
  return score;
