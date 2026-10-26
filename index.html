@@ -26,12 +26,14 @@
  <section class="beat-header">
   <label>BEAT <input id="title" maxlength="100" aria-label="Beat title"></label>
   <div class="transport">
-   <button id="stop" type="button" aria-label="Stop playback">■</button>
-   <button id="play" type="button" class="primary">▶ Play</button>
-   <label>BPM <input id="bpm" type="number" min="40" max="240"></label>
-   <label>BARS <select id="bars"><option>2</option><option>4</option><option>8</option><option>16</option></select></label>
-   <label><input id="loop" type="checkbox" checked> Loop</label>
-   <output id="position" aria-label="Playback position">1.1</output>
+   <div class="transport-playback">
+    <button id="stop" type="button" aria-label="Stop playback">■</button>
+    <button id="play" type="button" class="primary">▶ Play</button>
+   </div>
+   <label class="transport-field">bpm <input id="bpm" type="number" min="40" max="240"></label>
+   <label class="transport-field">bars <select id="bars"><option>2</option><option>4</option><option>8</option><option>16</option></select></label>
+   <label class="transport-field transport-loop"><span>loop</span><input id="loop" type="checkbox" checked></label>
+   <div class="transport-position"><span>bar : beat</span><output id="position" aria-label="bar 1, beat 1">1:1</output></div>
   </div>
  </section>
  <div class="work">
@@ -68,11 +70,10 @@
    </section>
    <section id="sound-section" class="sound-section" aria-label="Instrument sound">
     <div class="heading sound-section-heading">
-     <div class="sound-heading"><h2>Sound</h2><span id="edit-instrument-note" class="editing-identity"></span></div>
+     <div class="sound-heading"><h2>sound</h2><span id="edit-instrument-note" class="editing-identity"></span></div>
      <div class="sound-window-actions"><button id="sound-close" type="button" aria-label="Close sound editor">×</button></div>
-     <div class="sound-actions"><button id="change-sound" type="button">Browse sounds</button><button id="save-sound" type="button">Save preset</button></div>
     </div>
-    <div class="patch-info"><span id="patch-label"></span></div>
+    <div class="sound-actions"><button id="change-sound" type="button">browse sounds</button><button id="save-sound" type="button">save preset</button></div>
     <div class="controls">
      <div class="sound-control-group sound-identity-controls">
       <label>Name <input id="instrument-name" maxlength="60"></label>
