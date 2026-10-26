@@ -94,7 +94,7 @@ test("Song records vocals above Beats and keeps their bytes external",()=>{
   assert.ok(html.includes('id="'+id+'"'),"Missing vocal control "+id);
  assert.match(studio,/prepareSongTake\(\)/);
  assert.match(studio,/makeRecordingAsset/);
- assert.match(studio,/addVocalTake\(song,asset\)/);
+ assert.match(studio,/addVocalTake\(song,asset,\{startStep:vocalStartStep\}\)/);
  assert.match(ui,/song-vocal-clip/);
  assert.match(ui,/track\.kind==="vocal"/);
  const model=read("songModel.js");
