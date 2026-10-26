@@ -24,7 +24,8 @@ frame.addEventListener("load",async()=>{
   if(!examples)throw Error("Missing Examples sound category");
   examples.click();
   const cards=()=>[...library.querySelectorAll(".preset-card")];
-  checks.exampleCategory=examples.getAttribute("aria-pressed")==="true";
+  checks.exampleCategory=[...doc.querySelectorAll(".library-filter")].some(filter=>
+   filter.textContent==="Examples"&&filter.getAttribute("aria-pressed")==="true");
   const rack=cards().find(card=>card.dataset.presetId==="example-neon-after-hours-0");
   const solo=cards().find(card=>card.dataset.presetId==="example-neon-after-hours-0-pulse");
   const pitched=cards().find(card=>card.dataset.presetId==="example-neon-after-hours-1");
