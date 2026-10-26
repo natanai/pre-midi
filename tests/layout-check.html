@@ -86,6 +86,7 @@ async function checkLayout(frame){
  const card=library.querySelector('.preset-card[data-preset-id="neon-lead"]');
  const leadName=card?.querySelector(".preset-information strong")?.textContent;
  const choice=card?.querySelector(".preset-choose");
+ diagnostics.presetBefore={card:!!card,choice:!!choice,leadName,cardCount:library.querySelectorAll(".preset-card").length,firstIds:[...library.querySelectorAll(".preset-card")].slice(0,8).map(c=>c.dataset.presetId),selectedCategory:[...library.querySelectorAll(".library-filter.selected")].map(c=>c.textContent)};
  if(choice)choice.click();
  // Sample instruments may require an asynchronous asset load; the test follows
  // the completed user operation, not the click's immediate synchronous frame.
