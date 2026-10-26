@@ -23,6 +23,8 @@ jobs:
           node --check audio.js
           node --check schema.js
           npm test
+      - name: Browser Song arrangement smoke check
+        run: node tests/song.browser.mjs
       - name: Fetch pinned CC0 recordings
         run: node scripts/fetch-samples.mjs
       - name: Prepare versioned browser assets

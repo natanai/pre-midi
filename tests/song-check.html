@@ -1,0 +1,73 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Song interaction check</title>
+<iframe id="studio" title="Studio" style="width:100vw;height:100vh;border:0"></iframe>
+<script>
+(async()=>{
+ const frame=document.getElementById("studio"),issues=[];
+ const assert=(condition,label)=>{if(!condition)throw Error(label);};
+ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+ const wait=async(predicate,label,limit=5000)=>{
+  const deadline=Date.now()+limit;
+  while(Date.now()<deadline){if(predicate())return;await pause(30);}
+  throw Error("Timed out: "+label);
+ };
+ const report=(status,detail)=>fetch("/__song_result?status="+status+"&details="+encodeURIComponent(detail)).catch(()=>{});
+ try{
+  frame.src="/index.html";
+  await new Promise((resolve,reject)=>{
+   frame.onload=resolve;
+   frame.onerror=()=>reject(Error("Studio iframe failed to load"));
+  });
+  const win=frame.contentWindow,doc=frame.contentDocument,get=id=>frame.contentDocument.getElementById(id);
+  win.addEventListener("error",e=>issues.push(String(e.message||e.error)));
+  win.addEventListener("unhandledrejection",e=>issues.push(String(e.reason)));
+  await wait(()=>frame.contentDocument.querySelectorAll(".instrument-card").length>=1,"Beat editor initialized");
+  assert(get("song-panel").hidden,"Song must be hidden until requested");
+  get("song-expand").click();
+  await wait(()=>!get("song-panel").hidden&&frame.contentDocument.querySelectorAll(".song-beat-clip").length===1,"Song first open");
+  assert(frame.contentDocument.querySelector("#song-panel").compareDocumentPosition(frame.contentDocument.querySelector(".beat-header"))&Node.DOCUMENT_POSITION_FOLLOWING,"Song above Beat maker");
+  get("song-add-beat").click();
+  await wait(()=>frame.contentDocument.querySelectorAll(".song-track-row").length===2,"Second Beat Track");
+  assert(frame.contentDocument.querySelectorAll(".song-beat-clip").length===2,"Second Beat Clip");
+  get("song-add-track").click();
+  await wait(()=>frame.contentDocument.querySelectorAll(".song-track-row").length===3,"Empty Beat Track");
+  const last=frame.contentDocument.querySelectorAll(".song-track-row")[2];
+  last.querySelector(".song-add-clip").click();
+  await wait(()=>frame.contentDocument.querySelectorAll(".song-beat-clip").length===3,"Clip in new Track");
+  const original=frame.contentDocument.querySelector(".song-beat-clip"),id=original.dataset.clipId;
+  original.click();
+  assert(get("song-clip-settings").hidden===false,"Clip inspector appears");
+  const start=get("song-clip-start");
+  start.value="3";start.dispatchEvent(new Event("change",{bubbles:true}));
+  const moving=frame.contentDocument.querySelector('[data-clip-id="'+id+'"]');
+  assert(Math.abs(parseFloat(moving.style.left)-108)<1,"Clip starts at bar three");
+  get("undo").click();
+  const undone=frame.contentDocument.querySelector('[data-clip-id="'+id+'"]');
+  assert(Math.abs(parseFloat(undone.style.left))<1,"Song Clip move can be undone");
+  undone.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true}));
+  const keyed=frame.contentDocument.querySelector('[data-clip-id="'+id+'"]');
+  assert(Math.abs(parseFloat(keyed.style.left)-54)<1,"Keyboard moves clip by one bar");
+  keyed.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowDown",bubbles:true}));
+  const secondTrack=frame.contentDocument.querySelectorAll(".song-track-row")[1];
+  assert(!!secondTrack.querySelector('[data-clip-id="'+id+'"]'),"Keyboard moves clip to another Track");
+  const label=get("song-title");label.value="Arrangement check";label.dispatchEvent(new Event("change",{bubbles:true}));
+  get("play").click();
+  await wait(()=>get("play").textContent.includes("Stop"),"Song playback started",7000);
+  get("stop").click();
+  await wait(()=>get("play").textContent.includes("Play"),"Song playback stopped");
+  await wait(()=>get("status").textContent.includes("Saved locally"),"Song saved locally",7000);
+  await new Promise(resolve=>{frame.onload=resolve;frame.src="/index.html";});
+  await wait(()=>frame.contentDocument.querySelectorAll(".song-track-row").length===3,"Song restored from local draft",7000);
+  assert(get("song-title").value==="Arrangement check","Song title persisted");
+  assert(frame.contentDocument.querySelectorAll(".song-beat-clip").length===3,"All Song clips persisted");
+  assert(!get("song-panel").hidden,"Song remains expanded on reload");
+  assert(issues.length===0,"Browser exceptions: "+issues.join(", "));
+  document.documentElement.dataset.result="PASS";
+  await report("PASS","Song clips, layering, keyboard, undo, playback, reload");
+ }catch(error){
+  document.documentElement.dataset.result="FAIL";
+  await report("FAIL",String(error?.stack||error));
+ }
+})();
+</script>
