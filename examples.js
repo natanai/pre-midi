@@ -309,59 +309,89 @@ function asRackHit([key,start,velocity],byKey){
  if(!soundId)throw Error("Example rack references missing sound: "+key);
  return {id:id(),soundId,start,duration:1,velocity};
 }
+// Example instruments and selectable sound presets share one construction
+// pathway. Changes to an example patch automatically update its built-in
+// preset: no hand-maintained duplicate synth recipes or sample maps.
+function exampleInstrument(def,bars,index){
+ const rack=Array.isArray(def.rack);
+ const base=rack?exampleSound(def.rack[0],"hit"):exampleSound(def);
+ const inst=makeInstrument(index+1,bars,base);
+ inst.name=def.name||base.name;
+ inst.volume=def.volume;
+ if(rack){
+  inst.sounds=def.rack.map(row=>exampleSound(row,"hit"));
+  const byKey=new Map(def.rack.map((row,i)=>[row.key,inst.sounds[i].id]));
+  if(byKey.size!==def.rack.length)throw Error("Duplicate example rack sound key.");
+  inst.chunks=Object.entries(def.pattern).map(([name,notes],i)=>({
+   ...makeChunk("Chunk "+(i+1)),notes:notes.map(note=>asRackHit(note,byKey))
+  }));
+ }else inst.chunks=Object.entries(def.pattern).map(([name,notes],i)=>({
+  ...makeChunk("Chunk "+(i+1)),notes:notes.map(asNote)
+ }));
+ const lookup=new Map(Object.keys(def.pattern).map((name,i)=>[name,inst.chunks[i].id]));
+ inst.timeline=def.timeline.map(name=>name==="-"?null:lookup.get(name)??null);
+ if(def.placements){
+  if(def.placements.length!==bars)throw Error("Example placement count must match bars.");
+  inst.placements=clone(def.placements);
+ }
+ return inst;
+}
+function retainPlayedSamples(instrument){
+ const assetIds=new Set(),assigned=new Set(instrument.timeline.filter(Boolean));
+ for(const sound of instrument.sounds){
+  if(sound.patch.type!=="sample")continue;
+  const ids=new Set();
+  for(const chunk of instrument.chunks){
+   if(!assigned.has(chunk.id))continue;
+   for(const note of chunk.notes){
+    if(instrument.layout==="rack"&&note.soundId!==sound.id)continue;
+    const zone=sampleForNote(sound.patch,
+     instrument.layout==="rack"?sound.referencePitch:note.pitch,note.velocity);
+    if(zone)ids.add(zone.assetId);
+   }
+  }
+  if(!ids.size)throw Error("Unplayed sample sound in example: "+sound.name);
+  sound.patch.zones=sound.patch.zones.filter(zone=>ids.has(zone.assetId));
+  for(const assetId of ids)assetIds.add(assetId);
+ }
+ return assetIds;
+}
+const presetForSound=(sourceId,name,sound,volume,description)=>({
+ id:sourceId,name,category:"Examples",description,
+ // Presets carry the exact authored sound values, not the factory defaults.
+ patch:clone(sound.patch),trigger:sound.trigger,
+ referencePitch:sound.referencePitch,gain:sound.gain,volume
+});
+export const EXAMPLE_SOUND_PRESETS=EXAMPLES.flatMap(example=>
+ example.voices.flatMap((definition,index)=>{
+  const inst=exampleInstrument(definition,example.bars,index);
+  retainPlayedSamples(inst);
+  const id="example-"+example.id+"-"+index;
+  const description=example.name+" · "+(inst.layout==="rack"?
+   inst.sounds.length+"-sound rack":"instrument");
+  const whole=inst.layout==="rack"?{
+   id,name:inst.name,category:"Examples",description,
+   layout:"rack",sounds:clone(inst.sounds),volume:inst.volume
+  }:presetForSound(id,inst.name,inst.sounds[0],inst.volume,description);
+  // Rack components are also available individually, with their original
+  // names, velocity, reference pitches, and processed patches.
+  return inst.layout==="rack"?
+   [whole,...inst.sounds.map((sound,rowIndex)=>
+    presetForSound(id+"-"+definition.rack[rowIndex].key,sound.name,sound,inst.volume,
+     example.name+" · "+inst.name+" · individual sound"))]:[whole];
+ })
+);
+
 export async function buildExample(exampleId,loadAsset){
  const example=EXAMPLES.find(entry=>entry.id===exampleId);
  if(!example)throw Error("Unknown example beat.");
  const beat=create();
  beat.id=id();beat.title=example.name;beat.bpm=example.bpm;beat.bars=example.bars;
- beat.instruments=[];
- for(const def of example.voices){
-  const isRack=Array.isArray(def.rack);
-  const sound=isRack?exampleSound(def.rack[0],"hit"):exampleSound(def);
-  const instrument=makeInstrument(beat.instruments.length+1,example.bars,sound);
-  instrument.name=def.name||sound.name;
-  instrument.volume=def.volume;
-  if(isRack){
-   instrument.sounds=def.rack.map(row=>exampleSound(row,"hit"));
-   const byKey=new Map(def.rack.map((row,index)=>[row.key,instrument.sounds[index].id]));
-   if(byKey.size!==def.rack.length)throw Error("Duplicate example rack sound key.");
-   instrument.chunks=Object.entries(def.pattern).map(([name,notes],index)=>({
-    ...makeChunk("Chunk "+(index+1)),notes:notes.map(note=>asRackHit(note,byKey))
-   }));
-  }else instrument.chunks=Object.entries(def.pattern).map(([name,notes],index)=>({
-   ...makeChunk("Chunk "+(index+1)),notes:notes.map(asNote)
-  }));
-  const lookup=new Map(Object.keys(def.pattern).map((name,index)=>[name,instrument.chunks[index].id]));
-  instrument.timeline=def.timeline.map(name=>name==="-"?null:lookup.get(name)??null);
-  // Example phrases use the same native v7 placement contract as author-made scores.
-  if(def.placements){
-   if(def.placements.length!==example.bars)throw Error("Example placement count must match bars.");
-   instrument.placements=clone(def.placements);
-  }
-  beat.instruments.push(instrument);
- }
- // Sample selection is based on the sounds *actually played*, including
- // independent rack rows. Keep .premidi metadata free from audio bytes.
+ beat.instruments=example.voices.map((definition,index)=>
+  exampleInstrument(definition,example.bars,index));
  const assetIds=new Set();
- for(const instrument of beat.instruments){
-  const assigned=new Set(instrument.timeline.filter(Boolean));
-  for(const sound of instrument.sounds){
-   if(sound.patch.type!=="sample")continue;
-   const ids=new Set();
-   for(const chunk of instrument.chunks){
-    if(!assigned.has(chunk.id))continue;
-    for(const note of chunk.notes){
-     if(instrument.layout==="rack"&&note.soundId!==sound.id)continue;
-     const zone=sampleForNote(sound.patch,
-      instrument.layout==="rack"?sound.referencePitch:note.pitch,note.velocity);
-     if(zone)ids.add(zone.assetId);
-    }
-   }
-   if(!ids.size)throw Error("Unplayed sample sound in example: "+sound.name);
-   sound.patch.zones=sound.patch.zones.filter(zone=>ids.has(zone.assetId));
-   for(const assetId of ids)assetIds.add(assetId);
-  }
- }
+ for(const instrument of beat.instruments)
+  for(const assetId of retainPlayedSamples(instrument))assetIds.add(assetId);
  beat.samples=await Promise.all([...assetIds].map(loadAsset));
  const errors=validate(beat);
  if(errors.length)throw Error("Example cannot be loaded: "+errors.join(", "));
