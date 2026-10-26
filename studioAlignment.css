@@ -21,7 +21,7 @@
 .notes-toolbar label {gap:4px;line-height:14px}
 .notes-toolbar label :is(input,select) {height:34px;min-height:34px}
 .chunk-fields {align-items:flex-end;gap:10px}
-.chunk-actions {align-items:flex-end;align-self:flex-end;gap:4px;padding:0;height:34px}
+.chunk-actions {align-items:flex-end;align-self:flex-end;gap:4px;padding:0;min-height:34px}
 .chunk-actions button {height:34px;min-height:34px;padding:5px 4px;line-height:1.2}
 .note-length-control {margin-left:0}
 .sound-section-heading {
