@@ -91,10 +91,10 @@ async function checkLayout(frame){
  // the completed user operation, not the click's immediate synchronous frame.
  for(let attempt=0;attempt<90&&doc.querySelectorAll(".instrument-card").length!==2;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
- diagnostics.preset={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("patch-label").textContent};
+ diagnostics.preset={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("instrument-name").value};
   checks.presetCreatesInstrument=doc.querySelectorAll(".instrument-card").length===2 && !library.open;
  checks.patchEditorPresent=!!doc.querySelector("#synth-editor .synth-group");
- checks.presetSelected=!!leadName&&get("patch-label").textContent.includes(leadName);
+ checks.presetSelected=!!leadName&&get("instrument-name").value.includes(leadName);
  get("change-sound").click();
  checks.soundReplaceAccessible=library.open;
  const acid=library.querySelector('.preset-card[data-preset-id="acid-line"]');
@@ -112,9 +112,9 @@ async function checkLayout(frame){
  piano?.querySelector(".preset-choose")?.click();
  for(let attempt=0;attempt<120 && doc.querySelectorAll(".instrument-card").length!==3;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
- diagnostics.sample={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("patch-label").textContent};
+ diagnostics.sample={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("instrument-name").value};
   checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
-  get("patch-label").textContent.includes(pianoName||"!") && !library.open;
+  get("instrument-name").value.includes(pianoName||"!") && !library.open;
  checks.sampleControlsReachable=!!doc.querySelector("#synth-editor .sample-zones") &&
   !!doc.querySelector("#synth-editor .sample-replace-action");
  if(frame.clientWidth>=1400) {
@@ -125,7 +125,7 @@ async function checkLayout(frame){
   for(let attempt=0;attempt<160&&doc.querySelectorAll(".instrument-card").length!==4;attempt++)
    await new Promise(resolve=>setTimeout(resolve,25));
   checks.guitarPresetAccessible=doc.querySelectorAll(".instrument-card").length===4 &&
-   get("patch-label").textContent.includes(steelName||"!");
+   get("instrument-name").value.includes(steelName||"!");
   checks.guitarMappingCollapsible=!!doc.querySelector("#synth-editor .sample-map-details") &&
    !!doc.querySelector("#synth-editor .dial-knob[aria-label='Strum']");
  }
