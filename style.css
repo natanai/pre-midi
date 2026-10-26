@@ -1038,3 +1038,17 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .export-options input{margin:0;accent-color:var(--signal-cyan)}
 .export-actions{display:flex;justify-content:flex-end}
 .export-actions button{min-height:36px}
+
+/* Song's long-form vocal lane always sits before all Beat lanes. */
+#song-record{color:#ff416d;min-height:35px}
+#song-record[aria-pressed="true"]{color:#fff;border-color:#ff416d}
+.song-vocal-clip{
+ position:absolute;top:3px;bottom:3px;border:1px solid #5d816d;
+ background:#14271b;cursor:pointer;overflow:hidden;padding:0;
+ display:flex;align-items:center;min-width:10px;
+}
+.song-vocal-clip.selected{outline:1px solid #b6e7c5;outline-offset:-2px}
+.song-vocal-clip svg{width:100%;height:100%;stroke:#95caa5;fill:none;stroke-width:1}
+.song-vocal-caption{position:absolute;left:5px;bottom:1px;font-size:9px;color:#d9eadd;text-shadow:0 1px 2px #000;pointer-events:none}
+.song-clip-settings [hidden]{display:none!important}
+#song-vocal-level-field input{min-width:105px;min-height:30px}

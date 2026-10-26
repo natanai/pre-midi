@@ -34,6 +34,34 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
  }
  const localBeat=id=>getSong()?.beats.find(beat=>beat.id===id);
  const selected=()=>getSong()?.tracks.flatMap(t=>t.clips.map(c=>({track:t,clip:c}))).find(x=>x.clip.id===selectedClipId);
+ function vocalClipButton(track,clip){
+  const recording=getSong()?.recordings?.find(item=>item.id===clip.recordingId);
+  const block=document.createElement("button");
+  block.type="button";
+  block.className="song-vocal-clip"+(clip.id===selectedClipId?" selected":"");
+  block.dataset.clipId=clip.id;
+  block.style.left=(clip.startStep/BAR_STEPS*BAR_PX)+"px";
+  block.style.width=(clip.lengthSteps/BAR_STEPS*BAR_PX)+"px";
+  block.title="Listen / adjust "+(recording?.name||track.name);
+  block.setAttribute("aria-label","Select vocal recording "+(recording?.name||track.name));
+  block.setAttribute("aria-pressed",String(clip.id===selectedClipId));
+  const peaks=recording?.waveform||[];
+  if(peaks.length){
+   const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+   svg.setAttribute("viewBox","0 0 120 32");
+   svg.setAttribute("preserveAspectRatio","none");
+   const shape=document.createElementNS("http://www.w3.org/2000/svg","path");
+   shape.setAttribute("d",peaks.map((p,i)=>{const x=(i+.5)/peaks.length*120,h=Math.max(.4,p*14);
+    return "M"+x.toFixed(2)+" "+(16-h).toFixed(2)+"V"+(16+h).toFixed(2);
+   }).join(" "));
+   svg.append(shape);block.append(svg);
+  }
+  const label=document.createElement("span");
+  label.className="song-vocal-caption";label.textContent=recording?.name||"Voice";
+  block.append(label);
+  block.addEventListener("click",()=>select(clip.id));
+  return block;
+ }
  function select(clipId){
   selectedClipId=clipId;
   const found=selected();
@@ -171,6 +199,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
    const lane=document.createElement("div");lane.className="song-track-lane";
    lane.style.width=width+"px";
    lane.style.setProperty("--song-bar-px",BAR_PX+"px");
+   if(track.kind==="vocal")for(const clip of track.clips)lane.append(vocalClipButton(track,clip));
    if(track.kind==="beat"){
     for(const clip of track.clips)lane.append(clipButton(track,clip));
     const add=document.createElement("button");add.type="button";add.className="song-add-clip";
@@ -196,9 +225,15 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const selection=selected(),settings=$("song-clip-settings");
   settings.hidden=!selection;
   if(selection){
-   const {clip}=selection;
-   $("song-clip-start").value=String(Math.floor(clip.startStep/BAR_STEPS)+1);
-   $("song-clip-length").value=String(Math.max(1,clip.lengthSteps/BAR_STEPS));
+   const {clip,track}=selection,isVoice=track.kind==="vocal";
+   $("song-beat-start-field").hidden=isVoice;
+   $("song-beat-length-field").hidden=isVoice;
+   $("song-vocal-level-field").hidden=!isVoice;
+   if(isVoice)$("song-vocal-level").value=String(clip.gain??1);
+   else{
+    $("song-clip-start").value=String(Math.floor(clip.startStep/BAR_STEPS)+1);
+    $("song-clip-length").value=String(Math.max(1,clip.lengthSteps/BAR_STEPS));
+   }
   }
  }
  beatMenuToggle.addEventListener("click",toggleBeatMenu);
@@ -242,6 +277,12 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   new ResizeObserver(()=>{if(getSong())render();}).observe(viewport);
  }
  $("song-add-track").addEventListener("click",()=>onChange("add-track"));
+ $("song-vocal-level").addEventListener("change",event=>{
+  const item=selected();
+  if(!item||item.track.kind!=="vocal")return;
+  const gain=Number(event.target.value);
+  if(Number.isFinite(gain)&&gain>=0&&gain<=2)apply(()=>{item.clip.gain=gain;});
+ });
  $("song-clip-start").addEventListener("change",event=>{
   const item=selected();if(!item)return;
   const next=integer(Number(event.target.value)-1,0)*BAR_STEPS;

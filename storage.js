@@ -25,7 +25,11 @@ export async function loadDraft(){
  const db=await openDb();
  const draft=await done(db.transaction(STORE,"readonly").objectStore(STORE).get(KEY));
  const assets=await done(db.transaction(ASSETS,"readonly").objectStore(ASSETS).getAll());
- for(const row of assets){putAsset(row.id,new Uint8Array(row.bytes));persistedAssets.add(row.id);}
+ for(const row of assets){
+  const longForm=row.bytes?.byteLength>1_000_000;
+  putAsset(row.id,new Uint8Array(row.bytes),{longForm});
+  persistedAssets.add(row.id);
+ }
  return draft||null;
 }
 let pendingDraft=null,saving=false,waiters=[];
@@ -33,7 +37,8 @@ let pendingDraft=null,saving=false,waiters=[];
 // A later save always follows the transaction in flight, so a reset cannot be
 // overwritten by an older queued beat.
 export function saveDraft(beat){
- const entries=beat.kind==="song"?beat.beats.flatMap(entry=>entry.samples):beat.samples;
+ const entries=beat.kind==="song"?
+  [...beat.beats.flatMap(entry=>entry.samples),...(beat.recordings||[])]:beat.samples;
  const unique=new Map(entries.map(asset=>[asset.id,asset]));
  pendingDraft={json:JSON.stringify(beat),samples:[...unique.values()]};
  const result=new Promise((resolve,reject)=>waiters.push({resolve,reject}));

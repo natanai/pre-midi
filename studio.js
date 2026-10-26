@@ -20,7 +20,9 @@ import {EXAMPLES,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
-import {createSong,addBeat,addSongTrack,addBeatClip,validateSong} from "./songModel.js";
+import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,validateSong} from "./songModel.js";
+import {makeRecordingAsset} from "./recordingAssets.js";
+import {prepareSongTake,waveformForTake} from "./songRecorder.js";
 import {exportSongProject,importSongProject,parseSong} from "./songIO.js";
 import {readZip} from "./zip.js";
 import {installSongUI} from "./songUI.js";
@@ -63,6 +65,7 @@ let editingNoteEffects = false;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
 let history = [], future = [], playback = null, pendingPlay = false, playbackGeneration=0;
+let vocalTake=null,vocalRequest=false,vocalFinalizing=false;
 let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
@@ -166,8 +169,40 @@ function setPlaybackButton(isPlaying,playingSong=!!(song&&songExpanded)){
  control.textContent=isPlaying?"■ stop":"▶ play";
  control.setAttribute("aria-label",(isPlaying?"stop ":"play ")+(playingSong?"song":"beat"));
 }
+function showVocalState(active=false){
+ const control=$("song-record");
+ control.textContent=active?"■ Stop":"● Record";
+ control.setAttribute("aria-pressed",String(active));
+ control.title=active?"Stop and save vocal take":"Record microphone over Song";
+}
+async function finalizeVocalTake(){
+ const session=vocalTake;
+ if(!session)return;
+ vocalTake=null;vocalFinalizing=true;showVocalState(false);
+ try{
+  const take=await session.finish();
+  if(!take||take.durationSeconds<=take.trimSeconds+.07){
+   message("Recording was too short to save.",true);return;
+  }
+  const assetId="voice-"+id();
+  const asset=makeRecordingAsset(assetId,"Voice "+((song?.recordings?.length||0)+1),
+   take.mime,take.bytes,{durationSeconds:take.durationSeconds,trimSeconds:take.trimSeconds});
+  if(!song)throw Error("No Song is available for this take.");
+  // Persist the recording reference immediately; waveform decoding is optional.
+  const saved=modifySong(()=>addVocalTake(song,asset));
+  if(saved){
+   message("Saved "+asset.name+" · export Song to keep its audio asset.");
+   void waveformForTake(take.bytes).then(peaks=>{
+    if(song?.recordings?.some(item=>item.id===asset.id))
+     modifySong(()=>{song.recordings.find(item=>item.id===asset.id).waveform=peaks;});
+   }).catch(error=>console.warn("Could not read vocal waveform",error));
+  }
+ }catch(error){message("Could not save vocal take: "+error.message,true);}
+ finally{vocalFinalizing=false;showVocalState(false);}
+}
 function stop() {
  playbackGeneration++;
+ if(vocalTake&&!playback)void finalizeVocalTake();
  if (playback) playback.stop();
  playback = null;
  pendingPlay = false;
@@ -217,6 +252,9 @@ function addSongBeat(source){
  });
 }
 function resetTo(next) {
+ if(vocalTake||vocalFinalizing||vocalRequest){
+  message("Stop recording before opening another project.",true);return;
+ }
  closePicker();
  stop();
  if(next.kind==="song"){song=next;beat=song.beats[0];songExpanded=true;}
@@ -994,14 +1032,15 @@ exportForm.addEventListener("submit",async event=>{
  }catch(error){message("Export failed: "+error.message,true);}
  finally{control.disabled=false;}
 });
-$("play").addEventListener("click", async () => {
+async function startTransport({onStart=null,recording=false}={}){
  if (playback) { stop(); return; }
  if (pendingPlay) return;
  pendingPlay = true;
  const playingSong=!!(song&&songExpanded),generation=++playbackGeneration;
  try {
   const session = await play(() => playingSong?song:beat, {
-   loop: () => $("loop").checked,
+   onStart:metadata=>onStart?.(metadata),
+   loop: () => recording?false:$("loop").checked,
    onPosition: (bar, step) => {
     $("position").textContent = (bar+1)+":"+(Math.floor(step/4)+1);
     $("position").setAttribute("aria-label","bar "+(bar+1)+", beat "+(Math.floor(step/4)+1));
@@ -1025,13 +1064,47 @@ $("play").addEventListener("click", async () => {
     $("position").setAttribute("aria-label","bar 1, beat 1");
     songUI?.setPosition(-1);
     paintPlayhead();
+    if(vocalTake)void finalizeVocalTake();
    }
   });
   if(generation!==playbackGeneration){session.stop();return;}
   playback=session;
   setPlaybackButton(true,playingSong);
- } catch (error) { message("Playback error: " + error.message, true); }
+ } catch (error) {
+  if(vocalTake)void finalizeVocalTake();
+  message("Playback error: " + error.message, true);
+ }
  finally { pendingPlay = false; }
+}
+$("play").addEventListener("click",()=>void startTransport());
+$("song-record").addEventListener("click",async()=>{
+ if(vocalTake){stop();return;}
+ if(vocalRequest||vocalFinalizing||!song||!songExpanded)return;
+ if(playback||pendingPlay)stop();
+ vocalRequest=true;
+ $("song-record").disabled=true;
+ message("Requesting microphone...");
+ const originalId=song.id;
+ let prepared;
+ try{
+  prepared=await prepareSongTake();
+  if(!songExpanded||song?.id!==originalId){prepared.cancel();return;}
+  vocalTake=prepared;showVocalState(true);
+  $("song-record").disabled=false;
+  message("Recording Song · headphones recommended");
+  await startTransport({recording:true,onStart:metadata=>{
+   if(vocalTake===prepared&&songExpanded)
+    prepared.begin({...metadata,onLimit:()=>stop()});
+   else prepared.cancel();
+  }});
+ }catch(error){
+  if(vocalTake===prepared)vocalTake=null;
+  prepared?.cancel();
+  showVocalState(false);
+  message("Microphone error: "+(error?.name==="NotAllowedError"?"Permission denied":error.message),true);
+ }finally{
+  vocalRequest=false;$("song-record").disabled=false;
+ }
 });
 $("title").addEventListener("change", event => modify(() => beat.title = event.target.value.trim() || "Untitled beat"));
 $("bpm").addEventListener("change",event=>{

@@ -19,7 +19,7 @@ export function createSong(sourceBeat=create()){
  const beat=clone(sourceBeat),trackId=id();
  return {
   format:FORMAT,kind:"song",version:SONG_VERSION,id:id(),title:"Untitled song",
-  bpm:beat.bpm,beats:[beat],
+  bpm:beat.bpm,beats:[beat],recordings:[],
   tracks:[{id:trackId,kind:"beat",name:"Beat 1",clips:[
    {id:id(),beatId:beat.id,startStep:0,lengthSteps:beatLength(beat)}
   ]}]
@@ -67,6 +67,43 @@ export function editBeatClip(song,clipId,changes){
  Object.assign(clip,next);
  return clip;
 }
+export const MAX_VOCAL_SECONDS=300;
+export function addVocalTake(song,recording,{startStep=0}={}){
+ if(!isObject(song)||!Array.isArray(song.tracks))throw Error("Invalid Song.");
+ song.recordings??=[];
+ const error=validateRecording(recording);
+ if(error)throw Error(error);
+ if(song.recordings.some(item=>item.id===recording.id))throw Error("Duplicate Recording ID.");
+ if(!nonnegative(startStep))throw Error("Invalid vocal start step.");
+ const track=addSongTrack(song,"vocal");
+ const unit=60/song.bpm/4;
+ const clip={
+  id:id(),recordingId:recording.id,startStep,
+  lengthSteps:Math.max(1,Math.ceil((recording.durationSeconds-recording.trimSeconds)/unit)),
+  gain:1
+ };
+ song.recordings.push({...recording});
+ track.clips.push(clip);
+ return {track,clip};
+}
+export function validateRecording(entry){
+ if(!isObject(entry)||!/^[a-zA-Z0-9_-]{1,128}$/.test(entry.id||""))return "Recording requires a safe ID.";
+ if(typeof entry.name!=="string"||!entry.name.trim()||entry.name.length>100)return "Recording needs a name.";
+ if(!["audio/webm","audio/mp4","audio/ogg"].includes(entry.mime))return "Unsupported Recording format.";
+ const ext={"audio/webm":"webm","audio/mp4":"mp4","audio/ogg":"ogg"}[entry.mime];
+ if(entry.path!=="assets/"+entry.id+"."+ext)return "Recording must use its canonical asset path.";
+ if(typeof entry.durationSeconds!=="number"||!Number.isFinite(entry.durationSeconds)||
+    entry.durationSeconds<=.05||entry.durationSeconds>MAX_VOCAL_SECONDS+.5)
+  return "Recording duration is invalid.";
+ if(typeof entry.trimSeconds!=="number"||!Number.isFinite(entry.trimSeconds)||
+    entry.trimSeconds<0||entry.trimSeconds>=entry.durationSeconds)
+  return "Recording trim is invalid.";
+ if(entry.waveform!==undefined&&(!Array.isArray(entry.waveform)||entry.waveform.length>128||
+    entry.waveform.some(value=>!Number.isFinite(value)||value<0||value>1)))
+  return "Invalid Recording waveform.";
+ if("data" in entry||"bytes" in entry)return "Recording bytes must remain outside .premidi.";
+ return null;
+}
 export function songDurationSteps(song){
  return Math.max(0,...song.tracks.flatMap(track=>track.clips.map(clip=>clip.startStep+clip.lengthSteps)));
 }
@@ -99,6 +136,15 @@ export function validateSong(song){
   return [...errors,"Song requires distinct Beats."];
  if(!Array.isArray(song.tracks)||!song.tracks.length||!unique(song.tracks))
   return [...errors,"Song requires distinct Tracks."];
+ const recordings=song.recordings??[];
+ if(!Array.isArray(recordings)||recordings.length>40||!unique(recordings))
+  return [...errors,"Song has invalid or duplicate Recordings."];
+ const knownRecordings=new Set();
+ for(const recording of recordings){
+  const error=validateRecording(recording);
+  if(error)errors.push(error);
+  else knownRecordings.add(recording.id);
+ }
  const known=new Set(song.beats.map(beat=>beat.id));
  for(const beat of song.beats){
   const issues=validateBeat(beat);
@@ -120,12 +166,19 @@ export function validateSong(song){
    }
    clipIds.add(clip.id);
    if(track.kind==="beat"&&!known.has(clip.beatId))errors.push("Beat Clip references a missing Beat.");
-   // Long-form vocal media will be introduced with asset ownership in stage 5.
-   if(track.kind==="vocal")errors.push("Vocal Clips require the forthcoming recording asset schema.");
+   if(track.kind==="vocal"){
+    if(!knownRecordings.has(clip.recordingId))errors.push("Vocal Clip references a missing Recording.");
+    if(!Number.isFinite(clip.gain)||clip.gain<0||clip.gain>2)
+     errors.push("Vocal Clip gain must be between 0 and 2.");
+   }
   }
  }
  // Identical asset IDs in separate Beats may only denote the same metadata.
  const assets=new Map();
+ for(const recording of recordings){
+  if(assets.has(recording.id))errors.push("Conflicting Recording ID.");
+  assets.set(recording.id,JSON.stringify(recording));
+ }
  for(const beat of song.beats)for(const asset of beat.samples||[]){
   const previous=assets.get(asset.id),serialized=JSON.stringify(asset);
   if(previous&&previous!==serialized)errors.push("Conflicting Beat audio asset ID.");

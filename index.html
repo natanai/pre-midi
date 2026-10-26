@@ -27,6 +27,7 @@
   <div class="song-toolbar">
    <label>SONG <input id="song-title" maxlength="100" aria-label="Song title"></label>
    <div class="song-actions">
+    <button id="song-record" type="button" aria-pressed="false" title="Record microphone while Song plays">● Record</button>
     <button id="song-add-track" type="button">+ Track</button>
     <button id="song-collapse" type="button" aria-label="Collapse Song">↓</button>
    </div>
@@ -51,8 +52,9 @@
   </div>
   <input id="song-import-file" type="file" accept=".premidi,.zip" hidden>
   <div id="song-clip-settings" class="song-clip-settings" hidden>
-   <label>Start bar <input id="song-clip-start" type="number" min="1" step="1" value="1"></label>
-   <label>Length (bars) <input id="song-clip-length" type="number" min="1" step="1" value="8"></label>
+   <label id="song-beat-start-field">Start bar <input id="song-clip-start" type="number" min="1" step="1" value="1"></label>
+   <label id="song-beat-length-field">Length (bars) <input id="song-clip-length" type="number" min="1" step="1" value="8"></label>
+   <label id="song-vocal-level-field" hidden>Level <input id="song-vocal-level" type="range" min="0" max="2" step="0.05" value="1" aria-label="Vocal level"></label>
    <button id="song-clip-remove" type="button">Remove clip</button>
   </div>
  </section>

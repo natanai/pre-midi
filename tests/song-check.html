@@ -131,6 +131,22 @@
   assert(get("song-title").value==="Arrangement check","Song title persisted");
   assert(frame.contentDocument.querySelectorAll(".song-beat-clip").length===3,"All Song clips persisted");
   assert(!get("song-panel").hidden,"Song remains expanded on reload");
+  assert(get("song-record"),"Song has a microphone record button");
+  get("song-record").click();
+  await wait(()=>get("song-record").getAttribute("aria-pressed")==="true","vocal recording started",9000);
+  await pause(900);
+  get("song-record").click();
+  await wait(()=>frame.contentDocument.querySelectorAll(".song-vocal-clip").length===1,
+   "microphone creates vocal clip",15000);
+  assert(frame.contentDocument.querySelector(".song-track-row .song-vocal-clip"),
+   "Vocal Track appears above Beat Tracks");
+  frame.contentDocument.querySelector(".song-vocal-clip").click();
+  assert(!get("song-vocal-level-field").hidden,"Vocal level control available");
+  get("song-vocal-level").value="1.3";
+  get("song-vocal-level").dispatchEvent(new Event("change",{bubbles:true}));
+  get("export").click();
+  get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+  await wait(()=>get("status").textContent.includes("Exported song"),"vocal ZIP exported",9000);
   assert(issues.length===0,"Browser exceptions: "+issues.join(", "));
   document.documentElement.dataset.result="PASS";
   await report("PASS","Song clips, layering, keyboard, undo, playback, reload");

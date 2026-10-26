@@ -26,7 +26,8 @@ try{
   const port=server.address().port,chrome=process.env.CHROME_BIN||"google-chrome";
   const result=new Promise(resolve=>{receive=resolve;});
   const child=spawn(chrome,["--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
-   "--autoplay-policy=no-user-gesture-required","--window-size="+width+","+height,
+   "--autoplay-policy=no-user-gesture-required","--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream",
+   "--window-size="+width+","+height,
    "--no-first-run","--user-data-dir=/tmp/premidi-song-"+width+"-"+process.pid,
    "http://127.0.0.1:"+port+"/tests/song-check.html"],{stdio:"ignore"});
   let timer;

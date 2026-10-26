@@ -1,6 +1,6 @@
 # Beat → Song rollout
 
-Status: **Stage 3 initial Song arranging UI in progress**. The Beat editor remains the primary/default view.
+Status: **Stage 5 initial vocal recording in progress**. Song arranging and Beat-only playback remain available.
 
 ## North star
 
@@ -78,3 +78,13 @@ Game-engine parity tracking: [pre-programmed #235](https://github.com/natanai/pr
 - The `+ Beat` row is inside the horizontally scrollable Song timeline and above its scrollbar. A compact visible-bar readout and earlier/later navigation controls explain the scroll direction; all Song lanes remain part of one timeline grid.
 - The main toolbar uses a single **Export** dialog: select Beat or Song (Song available if created), then `.premidi` (default) or WAV. Beat export always uses the currently selected Beat, Song export uses the complete Song; companion audio Assets remain separately packaged as needed.
 - Playback follows visibility: expanded Song runs the Song transport; collapsed Song runs the selected Beat. Expanding/collapsing stops the previous scope cleanly; Beat BPM and Song BPM controls follow the same distinction.
+
+## Vocal milestone — first recording pass
+
+- Song `● Record` records through the microphone while the native Song clock plays from the beginning; pressing Stop saves the take. The existing Sound-level recorder remains unchanged.
+- Every take gets its own Vocal Track before all Beat Tracks. Its waveform is optional derived metadata; compressed audio stays a separate Asset referenced by the Song's `recordings` array and Vocal Clip.
+- V8 Song metadata uses `recordings: [{id,name,mime,path,durationSeconds,trimSeconds,waveform?}]` and Vocal Clips `{id,recordingId,startStep,lengthSteps,gain}`. Existing v8 Songs without a `recordings` array remain readable.
+- MediaRecorder captures WebM/Opus, MP4/AAC or OGG/Opus when the browser supports it. This pass limits a take to five minutes and 48 MB compressed audio because the browser ZIP exporter still has a 64 MB package cap; later native apps can use streaming and higher limits. Microphone permissions are requested only after Record.
+- Recorded audio is decoded for playback and Song WAV export, with no flattening in the native .premidi file. Playback scheduling uses the Song timeline's shared audio context.
+- During recording, Stop or collapsing Song finishes the take; destructive project replacement is blocked until recording finishes.
+- Pending improvements: device-dependent latency calibration, streaming long recordings without decoding the entire asset into memory, and native pre-programmed compatibility. Vocal synth effects and automation remain deferred.

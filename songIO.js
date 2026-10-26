@@ -6,6 +6,7 @@ import {filename} from "./schema.js";
 import {referencedSampleIds} from "./soundModel.js";
 import {getAsset,putAsset,MAX_PACKAGE_BYTES} from "./assetRegistry.js";
 import {inspectAudioBytes} from "./sampler.js";
+import {recordingBytes,inspectRecordingBytes} from "./recordingAssets.js";
 import {createZip,readZip} from "./zip.js";
 
 export const MAX_SONG_DOCUMENT_BYTES=8_000_000;
@@ -27,6 +28,10 @@ const relevantAssets=song=>{
     throw Error("Conflicting audio Asset identity.");
    assets.set(asset.id,asset);
   }
+ }
+ for(const recording of song.recordings||[]){
+  if(assets.has(recording.id))throw Error("Recording and Beat sample IDs must not collide.");
+  assets.set(recording.id,recording);
  }
  return [...assets.values()];
 };
@@ -56,7 +61,9 @@ export function exportSongProject(song){
  for(const asset of assets){
   const bytes=getAsset(asset.id);
   if(!bytes)throw Error("Missing "+asset.path+"; export requires its companion audio Asset.");
-  inspectAudioBytes(bytes,asset.mime);
+  if(song.recordings?.some(recording=>recording.id===asset.id))
+   inspectRecordingBytes(bytes,asset.mime);
+  else inspectAudioBytes(bytes,asset.mime);
   size+=bytes.length;
   if(size>MAX_PACKAGE_BYTES)throw Error("Portable Song exceeds the current 64 MB package limit.");
   entries.push({path:asset.path,data:bytes});
@@ -85,9 +92,11 @@ export async function importSongProject(file){
  for(const asset of assets){
   const bytes=entries.get(asset.path);
   if(!bytes)throw Error("Missing "+asset.path+" in Song package.");
-  inspectAudioBytes(bytes,asset.mime);
-  incoming.push([asset.id,bytes]);
+  const longForm=song.recordings?.some(recording=>recording.id===asset.id);
+  if(longForm)inspectRecordingBytes(bytes,asset.mime);
+  else inspectAudioBytes(bytes,asset.mime);
+  incoming.push([asset.id,bytes,!!longForm]);
  }
- for(const [id,bytes] of incoming)putAsset(id,bytes);
+ for(const [id,bytes,longForm] of incoming)putAsset(id,bytes,{longForm});
  return song;
 }

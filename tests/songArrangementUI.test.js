@@ -87,3 +87,17 @@ test("transport follows expanded Song or currently selected Beat",()=>{
  assert.match(studio,/if\(playback\|\|pendingPlay\)stop\(\)/);
  assert.match(studio,/playingSong\?"Stop Song":"Stop Beat"/);
 });
+
+test("Song records vocals above Beats and keeps their bytes external",()=>{
+ const html=read("index.html"),studio=read("studio.js"),ui=read("songUI.js");
+ for(const id of ["song-record","song-vocal-level","song-vocal-level-field"])
+  assert.ok(html.includes('id="'+id+'"'),"Missing vocal control "+id);
+ assert.match(studio,/prepareSongTake\(\)/);
+ assert.match(studio,/makeRecordingAsset/);
+ assert.match(studio,/addVocalTake\(song,asset\)/);
+ assert.match(ui,/song-vocal-clip/);
+ assert.match(ui,/track\.kind==="vocal"/);
+ const model=read("songModel.js");
+ assert.match(model,/Vocal Tracks must precede Beat Tracks/);
+ assert.match(read("songIO.js"),/inspectRecordingBytes/);
+});

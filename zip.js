@@ -16,7 +16,7 @@ function u16(view,offset,x){view.setUint16(offset,x,true);}
 function u32(view,offset,x){view.setUint32(offset,x>>>0,true);}
 function checkedName(path){
  if(typeof path!=="string"||path.length>240||
-  !/^(?:[a-zA-Z0-9_-]+\.premidi|assets\/[a-zA-Z0-9_-]+\.(?:wav|ogg|mp3))$/.test(path))
+  !/^(?:[a-zA-Z0-9_-]+\.premidi|assets\/[a-zA-Z0-9_-]+\.(?:wav|ogg|mp3|webm|mp4))$/.test(path))
   throw Error("Unsafe or unexpected file in music package: "+path);
  return path;
 }
