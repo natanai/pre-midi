@@ -131,15 +131,30 @@
   assert(get("song-title").value==="Arrangement check","Song title persisted");
   assert(frame.contentDocument.querySelectorAll(".song-beat-clip").length===3,"All Song clips persisted");
   assert(!get("song-panel").hidden,"Song remains expanded on reload");
-  assert(get("song-record"),"Song has a microphone record button");
+  assert(get("song-ruler").getAttribute("aria-valuenow")==="1","Ruler start resets to bar one on a new load");
+  assert(get("song-record").textContent.trim()==="● voice","Voice is the red Song toolbar entry");
+  assert(!get("voice-dialog").open,"Voice setup is initially hidden");
   get("song-record").click();
-  await wait(()=>get("song-record").getAttribute("aria-pressed")==="true","vocal recording started",9000);
-  await pause(900);
-  get("song-record").click();
+  assert(get("voice-dialog").open,"Voice button opens recording setup before requesting permission");
+  assert(get("voice-start").textContent.includes("play + record"),"Dialog explains what recording does");
+  get("voice-start-bar").value="3";
+  get("voice-start-bar").dispatchEvent(new Event("change",{bubbles:true}));
+  assert(get("voice-start-bar").value==="3","Selected Song bar is a valid recording start");
+  get("voice-count-in").value="1";
+  get("voice-start").click();
+  await wait(()=>get("voice-status").textContent.includes("Count-in"),"Optional count-in begins",9000);
+  assert(get("voice-start").getAttribute("aria-pressed")!=="true",
+   "Microphone take has not started during count-in");
+  await wait(()=>get("voice-start").getAttribute("aria-pressed")==="true","Recording begins after count-in",11000);
+  await pause(1000);
+  get("voice-start").click();
   await wait(()=>frame.contentDocument.querySelectorAll(".song-vocal-clip").length===1,
    "microphone creates vocal clip",15000);
   assert(frame.contentDocument.querySelector(".song-track-row .song-vocal-clip"),
    "Vocal Track appears above Beat Tracks");
+  const vocalPlacement=frame.contentDocument.querySelector(".song-vocal-clip");
+  assert(Math.abs(parseFloat(vocalPlacement.style.left)-108)<1,
+   "Vocal Clip starts at the selected third bar");
   frame.contentDocument.querySelector(".song-vocal-clip").click();
   assert(!get("song-vocal-level-field").hidden,"Vocal level control available");
   get("song-vocal-level").value="1.3";

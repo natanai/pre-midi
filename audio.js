@@ -191,7 +191,7 @@ export async function auditionChord(instrument,pitches,beat,velocity=.85) {
    now+strumOffset(instrument,note,notes),duration,beat);
  }
 }
-export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{}}={}) {
+export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0}={}) {
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  const ctx=context,out=ctx.createGain(),read=typeof beat==="function"?beat:()=>beat;
@@ -199,7 +199,8 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  const vocalBuffers=await decodeSongRecordings(ctx,read());
  const loops=()=>typeof loop==="function"?loop():loop;
  out.gain.value=.85;out.connect(ctx.destination);
- let scheduled=0,nextTime=ctx.currentTime+.07,shown=-1,stopped=false,timer,activeStep=null;
+ const start=Number.isSafeInteger(startStep)&&startStep>=0?startStep:0;
+ let scheduled=start,nextTime=ctx.currentTime+.07,shown=-1,stopped=false,timer,activeStep=null;
  onStart({context:ctx,startTime:nextTime});
  const queue=[];
  function stop() {
@@ -223,8 +224,10 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    if(step%16===0)for(const entry of (current.kind==="song"?current.beats:[current]))
     void decodeSamples(ctx,entry,bufferCache(ctx)).catch(console.warn);
    const events=current.kind==="song"?eventsAtSongStep(current,step):stepEvents(current,scheduled);
-   if(current.kind==="song")for(const event of recordingEventsAtStep(current,step))
-    scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers);
+   if(current.kind==="song")for(const event of recordingEventsAtStep(current,step,{
+    includeOverlapping:scheduled===start
+   }))
+    scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers,{elapsedSteps:step-event.clip.startStep});
    for(const event of events)
     soundNote(ctx,out,event.instrument,event.note,
      nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),

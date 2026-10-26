@@ -101,3 +101,19 @@ test("Song records vocals above Beats and keeps their bytes external",()=>{
  assert.match(model,/Vocal Tracks must precede Beat Tracks/);
  assert.match(read("songIO.js"),/inspectRecordingBytes/);
 });
+
+test("Voice setup is explicit and recording starts at the selected Song bar",()=>{
+ const html=read("index.html"),studio=read("studio.js"),ui=read("songUI.js"),audio=read("audio.js");
+ assert.match(html, /id="song-record"[^>]*>● voice<\/button>/);
+ for(const id of ["voice-dialog","voice-start","voice-start-bar","voice-count-in","voice-status","voice-close"])
+  assert.ok(html.includes('id="'+id+'"'),"Missing voice dialog control "+id);
+ assert.match(html,/play \+ record/);
+ assert.match(studio,/voiceDialog\.showModal\(\)/);
+ assert.match(studio,/await songCountIn\(/);
+ assert.match(studio,/startStep:requestedStep/);
+ assert.match(studio,/addVocalTake\(song,asset,\{startStep:vocalStartStep\}\)/);
+ assert.match(ui,/getStartStep:selectedStart/);
+ assert.match(ui,/ruler\.addEventListener\("click"/);
+ assert.match(audio,/startStep=0/);
+ assert.match(audio,/scheduled=start/);
+});

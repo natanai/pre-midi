@@ -5,10 +5,10 @@ import {id} from "./schema.js";
 // determines how much empty timeline is visible. There is no fixed song end.
 const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
 const integer=(value,fallback)=>Number.isFinite(value)?Math.max(0,Math.round(value)):fallback;
-export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat}){
+export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{}}){
  const $=id=>root.querySelector("#"+id);
  const viewport=$("song-scroll"),tracks=$("song-tracks"),ruler=$("song-ruler"),footer=$("song-timeline-footer");
- let selectedClipId=null,dragging=false,ignoreClick=false,playPosition=-1;
+ let selectedClipId=null,dragging=false,ignoreClick=false,playPosition=-1,seekStep=0;
  let timelinePages=1;
  const beatMenu=$("song-beat-choice"),beatMenuToggle=$("song-add-beat");
  function closeBeatMenu(){
@@ -33,6 +33,37 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   render();
  }
  const localBeat=id=>getSong()?.beats.find(beat=>beat.id===id);
+ const selectedStart=()=>seekStep;
+ function updateCursor(){
+  const cursor=$("song-cursor");
+  if(!cursor)return;
+  const position=playPosition>=0?playPosition:seekStep/BAR_STEPS;
+  cursor.hidden=false;
+  cursor.style.left=(LABEL_PX+position*BAR_PX)+"px";
+  cursor.title="Song starts at bar "+(Math.floor(seekStep/BAR_STEPS)+1);
+ }
+ function setStartStep(step){
+  const length=songDurationSteps(getSong());
+  seekStep=Math.min(Math.max(0,Math.floor(step/BAR_STEPS)*BAR_STEPS),
+    Math.max(0,Math.floor(Math.max(0,length-1)/BAR_STEPS)*BAR_STEPS));
+  if(playPosition<0)updateCursor();
+  ruler.setAttribute("aria-valuenow",String(Math.floor(seekStep/BAR_STEPS)+1));
+  onSeek(seekStep);
+  return seekStep;
+ }
+ ruler.setAttribute("title","Click a bar to set the Song playback and recording start.");
+ ruler.setAttribute("tabindex","0");
+ ruler.setAttribute("role","slider");
+ ruler.setAttribute("aria-label","Song start bar");
+ ruler.addEventListener("click",event=>{
+  const x=event.clientX-ruler.getBoundingClientRect().left-LABEL_PX;
+  setStartStep(Math.floor(Math.max(0,x)/BAR_PX)*BAR_STEPS);
+ });
+ ruler.addEventListener("keydown",event=>{
+  if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;
+  event.preventDefault();
+  setStartStep(seekStep+(event.key==="ArrowRight"?BAR_STEPS:-BAR_STEPS));
+ });
  const selected=()=>getSong()?.tracks.flatMap(t=>t.clips.map(c=>({track:t,clip:c}))).find(x=>x.clip.id===selectedClipId);
  function vocalClipButton(track,clip){
   const recording=getSong()?.recordings?.find(item=>item.id===clip.recordingId);
@@ -176,9 +207,11 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
    ruler.append(label);
   }
   const cursor=document.createElement("span");cursor.id="song-cursor";
-  cursor.hidden=playPosition<0;
-  cursor.style.left=(LABEL_PX+playPosition*BAR_PX)+"px";
   ruler.append(cursor);
+  updateCursor();
+  ruler.setAttribute("aria-valuemin","1");
+  ruler.setAttribute("aria-valuemax",String(Math.max(1,Math.ceil(songDurationSteps(song)/BAR_STEPS))));
+  ruler.setAttribute("aria-valuenow",String(Math.floor(seekStep/BAR_STEPS)+1));
   tracks.replaceChildren();
   for(const track of song.tracks){
    const row=document.createElement("div");row.className="song-track-row";row.dataset.trackId=track.id;
@@ -301,9 +334,8 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const value=event.target.value.trim()||"Untitled song";
   apply(()=>{getSong().title=value;});
  });
- return {render,select,setPosition(bar){
+ return {render,select,getStartStep:selectedStart,setStartStep,setPosition(bar){
   playPosition=bar;
-  const cursor=$("song-cursor");
-  if(cursor){cursor.hidden=bar<0;cursor.style.left=(LABEL_PX+bar*BAR_PX)+"px";}
+  updateCursor();
  }};
 }

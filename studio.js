@@ -22,7 +22,7 @@ import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
 import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,validateSong} from "./songModel.js";
 import {makeRecordingAsset} from "./recordingAssets.js";
-import {prepareSongTake,waveformForTake} from "./songRecorder.js";
+import {prepareSongTake,waveformForTake,songCountIn} from "./songRecorder.js";
 import {exportSongProject,importSongProject,parseSong} from "./songIO.js";
 import {readZip} from "./zip.js";
 import {installSongUI} from "./songUI.js";
@@ -65,7 +65,8 @@ let editingNoteEffects = false;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
 let history = [], future = [], playback = null, pendingPlay = false, playbackGeneration=0;
-let vocalTake=null,vocalRequest=false,vocalFinalizing=false;
+let vocalTake=null,vocalRequest=false,vocalFinalizing=false,vocalStartStep=0;
+let voiceCountAbort=null,voiceToken=0;
 let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
@@ -169,16 +170,25 @@ function setPlaybackButton(isPlaying,playingSong=!!(song&&songExpanded)){
  control.textContent=isPlaying?"■ stop":"▶ play";
  control.setAttribute("aria-label",(isPlaying?"stop ":"play ")+(playingSong?"song":"beat"));
 }
+const voiceDialog=$("voice-dialog");
+function voiceStatus(label,error=false){
+ const output=$("voice-status");output.textContent=label;output.dataset.error=String(error);
+}
 function showVocalState(active=false){
- const control=$("song-record");
- control.textContent=active?"■ Stop":"● Record";
+ $("song-record").textContent="● voice";
+ const control=$("voice-start");
+ control.textContent=active?"■ stop + save":"▶ ● play + record";
  control.setAttribute("aria-pressed",String(active));
- control.title=active?"Stop and save vocal take":"Record microphone over Song";
+ control.disabled=vocalFinalizing;
+}
+function cancelVoiceCountdown(){
+ voiceToken++;voiceCountAbort?.abort();voiceCountAbort=null;
 }
 async function finalizeVocalTake(){
  const session=vocalTake;
  if(!session)return;
  vocalTake=null;vocalFinalizing=true;showVocalState(false);
+ voiceStatus("Saving vocal recording…");
  try{
   const take=await session.finish();
   if(!take||take.durationSeconds<=take.trimSeconds+.07){
@@ -189,15 +199,19 @@ async function finalizeVocalTake(){
    take.mime,take.bytes,{durationSeconds:take.durationSeconds,trimSeconds:take.trimSeconds});
   if(!song)throw Error("No Song is available for this take.");
   // Persist the recording reference immediately; waveform decoding is optional.
-  const saved=modifySong(()=>addVocalTake(song,asset));
+  const saved=modifySong(()=>addVocalTake(song,asset,{startStep:vocalStartStep}));
   if(saved){
    message("Saved "+asset.name+" · export Song to keep its audio asset.");
+   voiceStatus("Saved "+asset.name+" at bar "+(Math.floor(vocalStartStep/16)+1)+".");
    void waveformForTake(take.bytes).then(peaks=>{
     if(song?.recordings?.some(item=>item.id===asset.id))
      modifySong(()=>{song.recordings.find(item=>item.id===asset.id).waveform=peaks;});
    }).catch(error=>console.warn("Could not read vocal waveform",error));
   }
- }catch(error){message("Could not save vocal take: "+error.message,true);}
+  }catch(error){
+  voiceStatus("Could not save vocal take: "+error.message,true);
+  message("Could not save vocal take: "+error.message,true);
+ }
  finally{vocalFinalizing=false;showVocalState(false);}
 }
 function stop() {
@@ -1033,7 +1047,7 @@ exportForm.addEventListener("submit",async event=>{
  }catch(error){message("Export failed: "+error.message,true);}
  finally{control.disabled=false;}
 });
-async function startTransport({onStart=null,recording=false}={}){
+async function startTransport({onStart=null,recording=false,startStep=null}={}){
  if (playback) { stop(); return; }
  if (pendingPlay) return;
  pendingPlay = true;
@@ -1041,6 +1055,7 @@ async function startTransport({onStart=null,recording=false}={}){
  try {
   const session = await play(() => playingSong?song:beat, {
    onStart:metadata=>onStart?.(metadata),
+   startStep:playingSong?(startStep??songUI?.getStartStep()??0):0,
    loop: () => recording?false:$("loop").checked,
    onPosition: (bar, step) => {
     $("position").textContent = (bar+1)+":"+(Math.floor(step/4)+1);
@@ -1078,33 +1093,79 @@ async function startTransport({onStart=null,recording=false}={}){
  finally { pendingPlay = false; }
 }
 $("play").addEventListener("click",()=>void startTransport());
-$("song-record").addEventListener("click",async()=>{
+// Voice capture opens a separate dialog; permissions come after explicit Play + Record.
+$("song-record").addEventListener("click",()=>{
+ if(!song||!songExpanded)return;
+ $("voice-start-bar").value=String(Math.floor((songUI?.getStartStep()||0)/16)+1);
+ $("voice-count-in").value="0";
+ voiceStatus("Play the Song and record your microphone from this bar.");
+ showVocalState(!!vocalTake);
+ if(!voiceDialog.open)voiceDialog.showModal();
+});
+$("voice-start-bar").addEventListener("change",event=>{
+ if(!song||vocalRequest||vocalTake)return;
+ const bar=Math.max(1,Math.floor(Number(event.target.value)||1));
+ const step=songUI?.setStartStep((bar-1)*16)??0;
+ event.target.value=String(Math.floor(step/16)+1);
+});
+$("voice-close").addEventListener("click",()=>{
+ if(vocalTake){voiceStatus("Stopping and saving…");stop();return;}
+ if(vocalFinalizing){voiceStatus("Saving vocal recording…");return;}
+ cancelVoiceCountdown();voiceDialog.close();
+});
+voiceDialog.addEventListener("cancel",event=>{
+ if(vocalTake||vocalFinalizing){
+  event.preventDefault();if(vocalTake)stop();
+ }else cancelVoiceCountdown();
+});
+$("voice-start").addEventListener("click",async()=>{
  if(vocalTake){stop();return;}
- if(vocalRequest||vocalFinalizing||!song||!songExpanded)return;
+ if(vocalRequest){cancelVoiceCountdown();voiceStatus("Count-in cancelled.");return;}
+ if(vocalFinalizing||!song||!songExpanded)return;
  if(playback||pendingPlay)stop();
+ const token=++voiceToken,originalId=song.id;
+ const chosenBar=Math.max(1,Math.floor(Number($("voice-start-bar").value)||1));
+ const requestedStep=songUI?.setStartStep((chosenBar-1)*16)??0;
+ const countBars=Number($("voice-count-in").value);
  vocalRequest=true;
- $("song-record").disabled=true;
- message("Requesting microphone...");
- const originalId=song.id;
+ $("voice-start").textContent="cancel";
+ voiceStatus("Requesting microphone permission…");
  let prepared;
  try{
   prepared=await prepareSongTake();
-  if(!songExpanded||song?.id!==originalId){prepared.cancel();return;}
-  vocalTake=prepared;showVocalState(true);
-  $("song-record").disabled=false;
-  message("Recording Song · headphones recommended");
-  await startTransport({recording:true,onStart:metadata=>{
+  if(token!==voiceToken||!voiceDialog.open||!songExpanded||song?.id!==originalId){
+   prepared.cancel();return;
+  }
+  voiceCountAbort=new AbortController();
+  if(countBars){
+   await songCountIn(song.bpm,countBars,{
+    signal:voiceCountAbort.signal,
+    onBeat:({beat,bar,remaining})=>{
+     voiceStatus("Count-in · bar "+bar+" · beat "+beat+" · "+remaining+" left");
+    }
+   });
+  }
+  if(token!==voiceToken||!voiceDialog.open||!songExpanded||song?.id!==originalId){
+   prepared.cancel();return;
+  }
+  vocalStartStep=requestedStep;vocalTake=prepared;
+  showVocalState(true);
+  voiceStatus("Recording from bar "+(Math.floor(requestedStep/16)+1)+". Stop to save.");
+  await startTransport({recording:true,startStep:requestedStep,onStart:metadata=>{
    if(vocalTake===prepared&&songExpanded)
     prepared.begin({...metadata,onLimit:()=>stop()});
    else prepared.cancel();
   }});
  }catch(error){
   if(vocalTake===prepared)vocalTake=null;
-  prepared?.cancel();
-  showVocalState(false);
-  message("Microphone error: "+(error?.name==="NotAllowedError"?"Permission denied":error.message),true);
+  prepared?.cancel();showVocalState(false);
+  if(error?.name!=="AbortError"){
+   const reason=error?.name==="NotAllowedError"?"Microphone permission denied. Check browser permissions.":error.message;
+   voiceStatus(reason,true);message("Microphone error: "+reason,true);
+  }
  }finally{
-  vocalRequest=false;$("song-record").disabled=false;
+  voiceCountAbort=null;vocalRequest=false;
+  if(!vocalTake)showVocalState(false);
  }
 });
 $("title").addEventListener("change", event => modify(() => beat.title = event.target.value.trim() || "Untitled beat"));
@@ -1526,6 +1587,10 @@ songUI=installSongUI({
  root:$("song-panel"),getSong:()=>songExpanded?song:null,
  getSelectedBeatId:()=>selectedBeatId,
  onSelectBeat:selectBeat,onChange:modifySong,
+ onSeek:step=>{
+  if(voiceDialog.open&&!vocalRequest&&!vocalTake)
+   $("voice-start-bar").value=String(Math.floor(step/16)+1);
+ },
  onAddBeat:()=>{const next=create();next.bpm=song.bpm;addSongBeat(next);},
  onImportBeat:()=>$("song-import-file").click()
 });

@@ -80,3 +80,40 @@ export async function waveformForTake(bytes){
   return waveformPeaks(await ctx.decodeAudioData(buffer));
  }finally{await ctx.close();}
 }
+
+export async function songCountIn(bpm,bars,{signal,onBeat=()=>{}}={}){
+ if(![0,1,2].includes(bars))throw Error("Count-in must be none, one, or two bars.");
+ if(!bars)return;
+ if(!Number.isFinite(bpm)||bpm<=0)throw Error("Invalid Song tempo.");
+ const beatMs=60000/bpm;
+ let context=null;
+ try{
+  if(typeof AudioContext!=="undefined"){
+   try{
+    context=new AudioContext();
+    void context.resume().catch(()=>{});
+   }catch{context=null;}
+  }
+  for(let index=0;index<bars*4;index++){
+   if(signal?.aborted)throw new DOMException("Cancelled","AbortError");
+   const remaining=bars*4-index;
+   onBeat({remaining,beat:index%4+1,bar:Math.floor(index/4)+1});
+   if(context?.state==="running"){
+    const t=context.currentTime+.01,osc=context.createOscillator(),gain=context.createGain();
+    osc.frequency.setValueAtTime(index%4===0?880:660,t);
+    gain.gain.setValueAtTime(.0001,t);
+    gain.gain.exponentialRampToValueAtTime(.08,t+.008);
+    gain.gain.exponentialRampToValueAtTime(.0001,t+.08);
+    osc.connect(gain);gain.connect(context.destination);
+    osc.start(t);osc.stop(t+.085);
+    osc.onended=()=>{osc.disconnect();gain.disconnect();};
+   }
+   await new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{signal?.removeEventListener("abort",abort);resolve();},beatMs);
+    const abort=()=>{clearTimeout(timer);signal?.removeEventListener("abort",abort);
+     reject(new DOMException("Cancelled","AbortError"));};
+    signal?.addEventListener("abort",abort,{once:true});
+   });
+  }
+ }finally{if(context)void context.close().catch(()=>{});}
+}

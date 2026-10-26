@@ -88,3 +88,9 @@ Game-engine parity tracking: [pre-programmed #235](https://github.com/natanai/pr
 - Recorded audio is decoded for playback and Song WAV export, with no flattening in the native .premidi file. Playback scheduling uses the Song timeline's shared audio context.
 - During recording, Stop or collapsing Song finishes the take; destructive project replacement is blocked until recording finishes.
 - Pending improvements: device-dependent latency calibration, streaming long recordings without decoding the entire asset into memory, and native pre-programmed compatibility. Vocal synth effects and automation remain deferred.
+
+## Voice capture UX — October 26, 2026
+- Red `● voice` control in Song mode opens a dedicated dialog rather than immediately requesting microphone access. Its primary action explicitly says `▶ ● play + record` and becomes `■ stop + save` while recording.
+- Song ruler now accepts clicks and keyboard arrows to set the bar where Song playback and recording begin. The recording dialog shows an editable start bar, constrained to the existing arrangement.
+- Optional none, one-bar or two-bar count-in produces light metronome clicks and a visible beat countdown before transport and microphone capture begin. Cancellation and microphone errors are reported inside the dialog.
+- The native scheduler accepts `startStep`; recordings are placed at that step. Vocal playback started mid-clip resumes using the correct offset. Beat-only playback remains unchanged when Song mode is closed.

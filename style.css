@@ -1052,3 +1052,22 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .song-vocal-caption{position:absolute;left:5px;bottom:1px;font-size:9px;color:#d9eadd;text-shadow:0 1px 2px #000;pointer-events:none}
 .song-clip-settings [hidden]{display:none!important}
 #song-vocal-level-field input{min-width:105px;min-height:30px}
+
+/* Voice capture is intentionally tucked behind one red Song toolbar action. */
+.song-voice-button{color:#ff416d!important;min-height:35px}
+.song-voice-button:hover,.song-voice-button:focus-visible{border-color:#ff416d!important}
+.voice-dialog{width:min(370px,calc(100vw - 24px))}
+.voice-setup{padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.voice-field{display:grid;gap:7px;min-width:0;font-size:11px;color:var(--muted)}
+.voice-field input,.voice-field select{width:100%;min-height:36px;color:var(--bright)}
+.voice-start-button{grid-column:1/-1;min-height:52px;border:1px solid #ff416d!important;color:#ff416d!important;font-size:13px;text-align:center}
+.voice-start-button:hover,.voice-start-button:focus-visible{background:#211018}
+.voice-start-button[aria-pressed="true"]{background:#47111d;color:#fff!important}
+.voice-start-button:disabled{opacity:.6}
+.voice-status{grid-column:1/-1;min-height:30px;color:var(--muted);font-size:11px;line-height:1.5}
+.voice-status[data-error="true"]{color:#ff416d}
+#song-cursor{border-left-color:#ff416d;z-index:6}
+#song-cursor::after{content:"";position:absolute;top:0;left:-4px;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #ff416d}
+#song-ruler{cursor:crosshair}
+#song-ruler .song-ruler-axis,#song-ruler .song-ruler-mark{cursor:crosshair}
+#song-ruler:focus-visible{outline:1px dotted var(--bright)}
