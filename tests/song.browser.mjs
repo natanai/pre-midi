@@ -33,7 +33,7 @@ try{
   let timer;
   try{
    const done=await Promise.race([result,
-    new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error("Song browser test timed out")),45000);}),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error("Song browser test timed out")),65000);}),
     new Promise((_,reject)=>{child.once("error",reject);child.once("exit",code=>reject(Error("Chrome exited "+code)));})]);
    assert.equal(done?.status,"PASS",done?.details);
    console.log("PASS Song UI",width+"x"+height,done.details);

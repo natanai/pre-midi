@@ -147,6 +147,22 @@
   get("export").click();
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
   await wait(()=>get("status").textContent.includes("Exported song"),"vocal ZIP exported",9000);
+  await wait(()=>get("status").textContent.includes("Saved locally"),"recorded Song saved locally",7000);
+  await new Promise(resolve=>{frame.onload=resolve;frame.src="/index.html";});
+  await wait(()=>frame.contentDocument.querySelectorAll(".song-vocal-clip").length===1,
+   "recorded Vocal Clip restored after reload",9000);
+  assert(frame.contentDocument.querySelector(".song-track-row .song-vocal-clip"),
+   "restored Vocal Track is still above Beats");
+  get("play").click();
+  await wait(()=>get("play").getAttribute("aria-label")==="stop song",
+   "restored Vocal Clip decodes and plays",9000);
+  get("play").click();
+  get("export").click();
+  get("export-form").querySelector('input[name="export-format"][value="wav"]').click();
+  get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+  await wait(()=>/Exported song WAV|Export failed/.test(get("status").textContent),
+   "Song with vocal renders WAV",25000);
+  assert(get("status").textContent.includes("Exported song WAV"),get("status").textContent);
   assert(issues.length===0,"Browser exceptions: "+issues.join(", "));
   document.documentElement.dataset.result="PASS";
   await report("PASS","Song clips, layering, keyboard, undo, playback, reload");
