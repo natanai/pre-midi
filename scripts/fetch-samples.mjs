@@ -1,6 +1,6 @@
 // Reproducibly stage verified CC0 samples in GitHub Pages artifact.
 // The repository stores provenance/IDs; the published site stores the bytes.
-// The native game file embeds the selected bytes and needs neither host afterward.
+// Portable music bundles contain selected audio as separate assets, not embedded JSON.
 import { SAMPLE_ASSETS,rawUrl } from "../samples.js";
 import { mkdir,readFile,writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -12,7 +12,25 @@ function shaOf(bytes){
 }
 // Limit parallel raw.githubusercontent.com requests to avoid API/network throttling.
 const remaining=[...SAMPLE_ASSETS];
-await Promise.all(Array.from({length:8},async()=>{
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function fetchSample(asset){
+ const url=rawUrl(asset);
+ for(let attempt=0;attempt<5;attempt++){
+  let response;
+  try{response=await fetch(url);}
+  catch(error){
+   if(attempt===4)throw Error("Cannot fetch CC0 "+asset.id+": "+error.message);
+   await pause(500*2**attempt);
+   continue;
+  }
+  if(response.ok)return Buffer.from(await response.arrayBuffer());
+  if(attempt===4||![408,429,500,502,503,504].includes(response.status))
+   throw Error("Cannot fetch CC0 "+asset.id+": HTTP "+response.status);
+  await pause(500*2**attempt);
+ }
+ throw Error("Cannot fetch CC0 "+asset.id);
+}
+await Promise.all(Array.from({length:4},async()=>{
  while(remaining.length){
  const asset=remaining.shift();
  const ext=asset.mime==="audio/ogg"?"ogg":"wav";
@@ -20,9 +38,7 @@ await Promise.all(Array.from({length:8},async()=>{
  let bytes;
  try {bytes=await readFile(filename);}catch{}
  if(!bytes||shaOf(bytes)!==asset.sha){
-  const response=await fetch(rawUrl(asset));
-  if(!response.ok)throw Error("Cannot fetch CC0 "+asset.id+": HTTP "+response.status);
-  bytes=Buffer.from(await response.arrayBuffer());
+  bytes=await fetchSample(asset);
   if(shaOf(bytes)!==asset.sha)throw Error("Upstream sample checksum mismatch: "+asset.id);
   await writeFile(filename,bytes);
  }

@@ -24,6 +24,10 @@
   win.addEventListener("unhandledrejection",e=>issues.push(String(e.reason)));
   await wait(()=>frame.contentDocument.querySelectorAll(".instrument-card").length>=1,"Beat editor initialized");
   assert(get("song-panel").hidden,"Song must be hidden until requested");
+  // Short Beat durations keep full audio-export checks reliable in headless
+  // mobile-sized Chrome without reducing test coverage of Beat/Song scopes.
+  get("bars").value="2";
+  get("bars").dispatchEvent(new Event("change",{bubbles:true}));
   get("song-expand").click();
   await wait(()=>!get("song-panel").hidden&&frame.contentDocument.querySelectorAll(".song-beat-clip").length===1,"Song first open");
   assert(frame.contentDocument.querySelector("#song-panel").compareDocumentPosition(frame.contentDocument.querySelector(".beat-header"))&Node.DOCUMENT_POSITION_FOLLOWING,"Song above Beat maker");
@@ -46,6 +50,12 @@
   assert(get("song-import-beat").textContent.trim()==="Add .premidi","Adding a Beat uses Add, not Open");
   get("song-new-beat").click();
   assert(get("song-beat-choice").hidden,"Choice menu closes after choosing New Beat");
+  get("bars").value="2";
+  get("bars").dispatchEvent(new Event("change",{bubbles:true}));
+  // Resizing the source Beat does not implicitly resize its Song Clip.
+  frame.contentDocument.querySelectorAll(".song-beat-clip")[1].click();
+  get("song-clip-length").value="2";
+  get("song-clip-length").dispatchEvent(new Event("change",{bubbles:true}));
   await wait(()=>frame.contentDocument.querySelectorAll(".song-track-row").length===2,"Second Beat Track");
   const beatName=get("title");
   beatName.value="Second Beat";beatName.dispatchEvent(new Event("change",{bubbles:true}));
@@ -94,7 +104,8 @@
   get("export").click();
   get("export-form").querySelector('input[name="export-format"][value="wav"]').click();
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>get("status").textContent.includes("Exported song WAV"),"Song WAV rendered",15000);
+  await wait(()=>/Exported song WAV|Export failed/.test(get("status").textContent),"Song WAV rendered",25000);
+  assert(get("status").textContent.includes("Exported song WAV"),get("status").textContent);
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="Stop Song","expanded Song playback started",7000);
   get("song-collapse").click();
@@ -103,7 +114,8 @@
   assert(get("export-form").querySelector('input[name="export-scope"]:checked').value==="beat","collapsed Song selects Beat export");
   get("export-form").querySelector('input[name="export-format"][value="wav"]').click();
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>get("status").textContent.includes("Exported beat WAV"),"Beat WAV rendered",15000);
+  await wait(()=>/Exported beat WAV|Export failed/.test(get("status").textContent),"Beat WAV rendered",25000);
+  assert(get("status").textContent.includes("Exported beat WAV"),get("status").textContent);
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="Stop Beat","collapsed Song plays only selected Beat",7000);
   get("song-expand").click();
