@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {create,parse,validate} from "../schema.js";
+import {create,parse,validate,filename} from "../schema.js";
 import {makeSampleAsset} from "../sampler.js";
 import {exportProject,importProject} from "../packageIO.js";
 import {readZip} from "../zip.js";
@@ -37,7 +37,7 @@ test("WAV is raw mono PCM and separate from the .premidi file in the ZIP",async(
  const result=exportProject(score);
  assert.match(result.name,/\.zip$/);
  const zip=await readZip(result.blob);
- const manifest=parse(new TextDecoder().decode(zip.get("Guitar-A4.premidi")||zip.get("Untitled-composition.premidi")));
+ const manifest=parse(new TextDecoder().decode(zip.get(filename(score,".premidi"))));
  assert.equal(manifest.samples[0].data,undefined);
  assert.equal(manifest.samples[0].path,"assets/recorded-a4.wav");
  assert.deepEqual(zip.get(manifest.samples[0].path),wav);
