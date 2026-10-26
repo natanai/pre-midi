@@ -22,7 +22,7 @@ test("note end grip, pointer resizing, and live scheduler are connected", () => 
  assert.match(css,/\.note\.end::after/);
  assert.match(studio,/setPointerCapture/);
  assert.match(studio,/resizeNote\(chunk/);
- assert.match(studio,/play\(\(\) => score/);
+ assert.match(studio,/play\(\(\) => beat/);
  const editRoutine = studio.slice(studio.indexOf("function modify("),studio.indexOf("function resetTo("));
  assert.doesNotMatch(editRoutine,/stop\(\)/);
 });
