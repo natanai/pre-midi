@@ -47,6 +47,18 @@ timing. v7 files with offset/repetition instructions require a v7-capable
 reader; compatibility with older pre-programmed engine exports remains
 marked *game parity pending*. No audio bytes are stored inside .premidi.
 
+## Example instrument presets
+
+**Browse sounds → Examples** contains built-in presets for every instrument
+in every example Beat, with the exact instrument name and authored sound,
+including tuned patches, recorded sample zones and volume. They are built
+from the same source definitions as the examples rather than copied by hand.
+
+A multi-sound rack is available as a complete editable rack preset; each
+individual rack sound is also selectable by its original name. These
+presets require no manual saving to the browser's personal sound library
+and contain no notes or arrangement data.
+
 ## Adaptive sequencer and sound racks
 
 | Current editor | Select a note sound | Select a hit sound |
