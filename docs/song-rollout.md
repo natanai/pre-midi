@@ -58,5 +58,6 @@ Vocal synth effects, pitch/formant editing, live dial/keyframe automation, advan
 Do not rename serialized v7 fields without an explicit versioned migration and fixture tests. Do not blend Song Clips into Beat Chunks, introduce a second playback definition, place Vocal Tracks below or between Beat Tracks, or put WAV/OGG bytes into the native JSON. Do not add flavor text or unnecessary explanatory UI labels.
 
 ## Stage log
-- Stage 1 kickoff: glossary established, initial Beat naming changes, and terminology tests introduced.
+- Stage 1: glossary, Beat naming across active engine/UI/transport, and vocabulary regression checks implemented; existing Beat file format remains v7.
+- Stage 2 underway: `songModel.js` introduces pure Song, Track, and Beat Clip operations and repeat/layered event resolution, with domain tests. Song import/export, UI, and runtime scheduling are not yet wired.
 - Remaining: full identifier/API migration, cross-repo vocabulary inventory, compatibility fixture coverage.
