@@ -1,0 +1,46 @@
+/* Studio control rows. Kept separate while the main stylesheet is being edited concurrently. */
+.transport {display:flex;align-items:flex-end;justify-content:flex-start;gap:8px 12px;flex-wrap:wrap}
+.transport-playback {display:flex;align-items:center;gap:4px;height:34px}
+.transport-playback button {display:inline-flex;align-items:center;justify-content:center;height:34px;min-height:34px;padding:4px 6px;line-height:1.1}
+.transport .transport-field,.transport .transport-position {
+ display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;
+ gap:4px;min-height:52px;font-size:11px;line-height:14px;color:var(--muted)
+}
+.transport .transport-field :is(input[type="number"],select) {
+ width:65px;height:34px;min-height:34px;text-align:center
+}
+.transport .transport-loop {align-items:center;min-width:40px;cursor:pointer}
+.transport .loop-box {display:grid;place-items:center;width:40px;height:34px}
+.transport .loop-box input {margin:0;width:15px;height:15px;min-height:15px}
+.transport .transport-position {min-width:66px}
+.transport .transport-position output {
+ display:flex;align-items:center;justify-content:flex-start;
+ height:34px;min-height:34px;min-width:0;font-size:14px;font-variant-numeric:tabular-nums
+}
+.notes-toolbar {align-items:flex-end;justify-content:flex-start;gap:10px 14px}
+.notes-toolbar label {gap:4px;line-height:14px}
+.notes-toolbar label :is(input,select) {height:34px;min-height:34px}
+.chunk-fields {align-items:flex-end;gap:10px}
+.chunk-actions {align-items:flex-end;align-self:flex-end;gap:4px;padding:0;height:34px}
+.chunk-actions button {height:34px;min-height:34px;padding:5px 4px;line-height:1.2}
+.note-length-control {margin-left:0}
+.sound-section-heading {
+ display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:nowrap;gap:8px;min-height:39px;padding:5px 12px 2px;border-bottom:0
+}
+.sound-section-heading .sound-heading {
+ min-width:0;max-width:calc(100% - 40px);flex-wrap:nowrap;align-items:baseline;overflow:hidden
+}
+.sound-section-heading .editing-identity {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sound-window-actions {margin-left:auto;flex:none;align-self:center}
+.sound-window-actions button {height:30px;min-height:30px;line-height:1}
+.sound-section > .sound-actions {
+ display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;
+ gap:4px 10px;padding:0 10px 7px;border-bottom:1px solid var(--line)
+}
+.sound-section > .sound-actions button {height:32px;min-height:32px;padding:5px 3px}
+@media(max-width:570px){
+ .transport {gap:7px 10px}
+ .notes-toolbar {gap:10px}
+ .sound-section > .sound-actions {padding:0 8px 6px}
+}
