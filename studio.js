@@ -839,6 +839,7 @@ function render() {
  $("bars").value = String(beat.bars);
  songUI?.render();
  $("song-expand").textContent=songExpanded?"↓ Beat":"↑ Song";
+ $("export").textContent=song?"Save Song .premidi":"Save .premidi";
  $("song-expand").setAttribute("aria-expanded",String(songExpanded));
  renderInstruments();
  renderTimeline();
@@ -941,7 +942,7 @@ $("file").addEventListener("change",async event=>{
   const kind=JSON.parse(raw).kind;
   if(song&&kind!=="song"){
    const added=await importProject(file);
-   addSongBeat(added);message("Added "+added.title);
+   addSongBeat(added);songExpanded=true;render();message("Added "+added.title);
   }else{
    if(!confirm("Open "+file.name+"? This replaces the current browser draft. Save it first to keep it."))return;
    const next=kind==="song"?await importSongProject(file):await importProject(file);
