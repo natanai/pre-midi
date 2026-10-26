@@ -9,7 +9,7 @@ import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
 import { renderPatchEditor } from "./instrumentUI.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
-import { loadLibrarySample, makeSampleAsset, MAX_SCORE_BYTES, sampleForNote } from "./sampler.js";
+import { loadLibrarySample, makeSampleAsset, MAX_BEAT_BYTES, sampleForNote } from "./sampler.js";
 import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
 import { loadDraft, saveDraft, savePresetAssets } from "./storage.js";

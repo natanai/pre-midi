@@ -6,7 +6,7 @@ import {placementFor,STEPS_PER_BAR} from "./arrangement.js";
 import {MAX_SOUNDS,MAX_EVENTS,canConvertToRack,convertToRack} from "./soundModel.js";
 import { makePatch, validatePatch } from "./synth.js";
 import {validateBend} from "./expression.js";
-import { validateSampleAsset, MAX_SCORE_BYTES } from "./sampler.js";
+import { validateSampleAsset, MAX_BEAT_BYTES } from "./sampler.js";
 export const id = () => globalThis.crypto?.randomUUID?.() || ("id-" + Date.now() + "-" + Math.random().toString(36).slice(2));
 export const clone = x => JSON.parse(JSON.stringify(x));
 
@@ -155,7 +155,7 @@ export function migrate(input){
  return doc;
 }
 export function parse(raw) {
- if(typeof raw!=="string"||new TextEncoder().encode(raw).byteLength>MAX_SCORE_BYTES)
+ if(typeof raw!=="string"||new TextEncoder().encode(raw).byteLength>MAX_BEAT_BYTES)
   throw Error("Beat exceeds the 1 MB limit.");
  const doc=migrate(JSON.parse(raw)),issues=validate(doc);
  if(issues.length)throw Error(issues.join("\n"));

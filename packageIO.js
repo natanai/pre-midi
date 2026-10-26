@@ -3,7 +3,7 @@ import {referencedSampleIds} from "./soundModel.js";
 import {parse,filename,validate} from "./schema.js";
 import {createZip,readZip} from "./zip.js";
 import {getAsset,putAsset,MAX_PACKAGE_BYTES} from "./assetRegistry.js";
-import {inspectAudioBytes,MAX_SCORE_BYTES} from "./sampler.js";
+import {inspectAudioBytes,MAX_BEAT_BYTES} from "./sampler.js";
 const text=new TextEncoder();
 export function exportProject(beat){
  const issues=validate(beat);
@@ -14,7 +14,7 @@ export function exportProject(beat){
  const referenced=referencedSampleIds(beat.instruments);
  const manifest={...beat,samples:beat.samples.filter(asset=>referenced.has(asset.id))};
  const raw=text.encode(JSON.stringify(manifest));
- if(raw.length>MAX_SCORE_BYTES)throw Error("Beat instructions exceed 1 MB.");
+ if(raw.length>MAX_BEAT_BYTES)throw Error("Beat instructions exceed 1 MB.");
  if(!manifest.samples.length)return {
   name:filename(beat,".premidi"),blob:new Blob([raw],{type:"application/json"})
  };
@@ -49,7 +49,7 @@ export async function importProject(file){
   return beat;
  }
  if(!file.name.toLowerCase().endsWith(".premidi"))throw Error("Open .premidi or .zip.");
- if(file.size>MAX_SCORE_BYTES)throw Error("Beat instructions exceed 1 MB.");
+ if(file.size>MAX_BEAT_BYTES)throw Error("Beat instructions exceed 1 MB.");
  const beat=parse(await file.text());
  if(beat.samples.length)throw Error("This beat needs recordings. Open its .zip package instead.");
  return beat;

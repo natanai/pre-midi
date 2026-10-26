@@ -57,6 +57,8 @@ Vocal synth effects, pitch/formant editing, live dial/keyframe automation, advan
 ## Safety rules for agents
 Do not rename serialized v7 fields without an explicit versioned migration and fixture tests. Do not blend Song Clips into Beat Chunks, introduce a second playback definition, place Vocal Tracks below or between Beat Tracks, or put WAV/OGG bytes into the native JSON. Do not add flavor text or unnecessary explanatory UI labels.
 
+Game-engine parity tracking: [pre-programmed #235](https://github.com/natanai/pre-programmed/issues/235). Its current vendor reader is v2; do not claim native v7/v8 playback parity until tested.
+
 ## Stage log
 - Stage 1: glossary, Beat naming across active engine/UI/transport, and vocabulary regression checks implemented; existing Beat file format remains v7.
 - Stage 2 underway: `songModel.js` introduces pure Song, Track, and Beat Clip operations and repeat/layered event resolution, with domain tests. Independent Song import/export helpers now round-trip instruction-only .premidi and ZIPs containing shared audio Assets. The existing Beat UI has **not** yet been switched to Song-aware loading, and Song playback/recording UI is still pending.

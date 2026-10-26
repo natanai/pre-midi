@@ -6,7 +6,7 @@ import {driveCurve,validateSampleTone} from "./audioEffects.js";
 // The only durable sample asset representation is the beat's samples array.
 // Browser library URLs are staging inputs; .premidi files hold relative audio paths.
 export const MAX_SAMPLE_BYTES=MAX_ASSET_BYTES;
-export const MAX_SCORE_BYTES=1_000_000;
+export const MAX_BEAT_BYTES=1_000_000;
 const audioTypes={"audio/wav":"wav","audio/ogg":"ogg","audio/mpeg":"mp3"};
 export function validateSampleAsset(asset){
  if(!asset||typeof asset!=="object"||!/^[A-Za-z0-9_-]{1,128}$/.test(asset.id||""))return "Sample needs a safe ID.";
