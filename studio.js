@@ -16,7 +16,7 @@ import { loadDraft, saveDraft, savePresetAssets } from "./storage.js";
 import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
 import {createSignalDisplay} from "./soundScope.js";
-import {EXAMPLES,buildExample} from "./examples.js";
+import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
@@ -1072,7 +1072,7 @@ function applySoundSelection(patch,name,trigger,assets,context,rackSounds=null,s
    if(rackSounds){
     inst.layout="rack";inst.sounds=clone(rackSounds).map(sound=>({...sound,id:id()}));
    }
-   if(rackSounds)inst.volume=settings?.volume??.7;
+   inst.volume=settings?.volume??inst.volume;
    inst.name=name.slice(0,60);beat.instruments.push(inst);
    selectedInstrumentId=inst.id;selectedSounds.set(inst.id,inst.sounds[0].id);
    selectedSlot={instrumentId:inst.id,bar:0};selectedChunks.set(inst.id,inst.chunks[0].id);
@@ -1205,7 +1205,7 @@ async function savePreset(wholeRack=false){
 }
 $("save-sound").addEventListener("click",()=>{void savePreset(instrument().layout==="rack");});
 $("save-row-sound").addEventListener("click",()=>{void savePreset(false);});
-function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...savedSounds];}
+function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...EXAMPLE_SOUND_PRESETS,...savedSounds];}
 function openLibrary(mode) {
  closePicker();
  if(mode==="add"&&beat.instruments.length>=12)return;
@@ -1237,11 +1237,13 @@ async function chooseSound(preset) {
  message("Loading "+preset.name+"...");
  try {
   const assets=await resolveSamples(preset);
-  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):preset.category==="Mine"?patchCopy(preset.patch):
+  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):preset.patch?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
-  patch.presetId=preset.id;
+  // Preserve the actual source patch identity for example-derived sounds.
+  if(preset.category!=="Examples")patch.presetId=preset.id;
   const trigger=presetTrigger(preset);
-  const ok=applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,preset.category==="Mine"?preset:null);
+  const ok=applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,
+   ["Mine","Examples"].includes(preset.category)?preset:null);
   if(ok) {
    dialog.close();
    // A new sample can be introduced while the transport is running.
@@ -1257,11 +1259,11 @@ async function auditionPreset(preset) {
    await Promise.all(preset.sounds.map(entry=>audition({...makeInstrument(1,1,entry),volume:preset.volume??.7},
     entry.referencePitch,{samples})));return;
   }
-  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):preset.category==="Mine"?patchCopy(preset.patch):
+  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):preset.patch?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   const pitch=preset.referencePitch??(presetTrigger(preset)==="hit"?patch.zones?.[0]?.root??60:preset.category==="Bass"?48:preset.category==="Guitars"?57:69);
-  const inst=makeInstrument(1,1,makeSound(preset.name,patch,presetTrigger(preset)));inst.volume=.8;
-  inst.sounds[0].referencePitch=pitch;inst.sounds[0].gain=preset.category==="Mine"?preset.gain??1:1;
+  const inst=makeInstrument(1,1,makeSound(preset.name,patch,presetTrigger(preset)));inst.volume=preset.volume??.8;
+  inst.sounds[0].referencePitch=pitch;inst.sounds[0].gain=preset.gain??1;
   // Preview strumming as an actual chord, otherwise the Steel Strum and
   // Steel Acoustic presets can sound like the same single plucked note.
   const chord=preset.id==="steel-strum"?[52,57,60,64,69]:null;
@@ -1280,7 +1282,7 @@ async function auditionPreset(preset) {
 function renderLibrary() {
  const filters=$("library-filters"),list=$("library-sounds");
  filters.replaceChildren();list.replaceChildren();
- const categories=["All","Guitars","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
+ const categories=["All","Guitars","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion","Examples",...(savedSounds.length?["Mine"]:[])];
  for(const category of categories) {
   const control=button(category,()=>{libraryCategory=category;renderLibrary();},
    "library-filter"+(libraryCategory===category?" selected":""));
