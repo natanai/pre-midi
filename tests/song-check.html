@@ -107,9 +107,9 @@
   await wait(()=>/Exported song WAV|Export failed/.test(get("status").textContent),"Song WAV rendered",25000);
   assert(get("status").textContent.includes("Exported song WAV"),get("status").textContent);
   get("play").click();
-  await wait(()=>get("play").getAttribute("aria-label")==="Stop Song","expanded Song playback started",7000);
+  await wait(()=>get("play").getAttribute("aria-label")==="stop song","expanded Song playback started",7000);
   get("song-collapse").click();
-  await wait(()=>get("play").getAttribute("aria-label")==="Play Beat"&&get("song-panel").hidden,"collapsing Song stops transport");
+  await wait(()=>get("play").getAttribute("aria-label")==="play beat"&&get("song-panel").hidden,"collapsing Song stops transport");
   get("export").click();
   assert(get("export-form").querySelector('input[name="export-scope"]:checked').value==="beat","collapsed Song selects Beat export");
   get("export-form").querySelector('input[name="export-format"][value="wav"]').click();
@@ -117,11 +117,14 @@
   await wait(()=>/Exported beat WAV|Export failed/.test(get("status").textContent),"Beat WAV rendered",25000);
   assert(get("status").textContent.includes("Exported beat WAV"),get("status").textContent);
   get("play").click();
-  await wait(()=>get("play").getAttribute("aria-label")==="Stop Beat","collapsed Song plays only selected Beat",7000);
+  await wait(()=>get("play").getAttribute("aria-label")==="stop beat","collapsed Song plays only selected Beat",7000);
   get("song-expand").click();
-  await wait(()=>get("play").getAttribute("aria-label")==="Play Song"&&!get("song-panel").hidden,"expanding Song stops Beat playback");
-  get("stop").click();
-  await wait(()=>get("play").textContent.includes("Play"),"transport stopped");
+  await wait(()=>get("play").getAttribute("aria-label")==="play song"&&!get("song-panel").hidden,"expanding Song stops Beat playback");
+  // The single transport button becomes stop while playing; clicking it resets playback.
+  get("play").click();
+  await wait(()=>get("play").getAttribute("aria-label")==="stop song","single transport starts Song");
+  get("play").click();
+  await wait(()=>get("play").getAttribute("aria-label")==="play song"&&get("play").textContent.includes("■")===false,"single transport stops Song");
   await wait(()=>get("status").textContent.includes("Saved locally"),"Song saved locally",7000);
   await new Promise(resolve=>{frame.onload=resolve;frame.src="/index.html";});
   await wait(()=>frame.contentDocument.querySelectorAll(".song-track-row").length===3,"Song restored from local draft",7000);
