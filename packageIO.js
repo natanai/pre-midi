@@ -51,6 +51,6 @@ export async function importProject(file){
  if(!file.name.toLowerCase().endsWith(".premidi"))throw Error("Open .premidi or .zip.");
  if(file.size>MAX_SCORE_BYTES)throw Error("Beat instructions exceed 1 MB.");
  const score=parse(await file.text());
- if(score.samples.length)throw Error("This composition needs recordings. Open its .zip package instead.");
+ if(score.samples.length)throw Error("This beat needs recordings. Open its .zip package instead.");
  return score;
 }
