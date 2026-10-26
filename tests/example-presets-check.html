@@ -1,0 +1,61 @@
+<!doctype html><html lang="en" data-example-presets="PENDING">
+<head><meta charset="utf-8"><title>Example sound preset integration</title></head>
+<body><pre id="results"></pre><iframe src="../index.html" style="width:100%;height:700px;border:0"></iframe>
+<script type="module">
+const frame=document.querySelector("iframe"),result=document.getElementById("results");
+const checks={};
+const wait=async(predicate,label)=>{
+ for(let i=0;i<240;i++){
+  if(predicate())return;
+  await new Promise(resolve=>setTimeout(resolve,25));
+ }
+ throw Error("Timed out: "+label);
+};
+frame.addEventListener("load",async()=>{
+ const doc=frame.contentDocument,win=frame.contentWindow;
+ const get=id=>doc.getElementById(id);
+ const library=get("instrument-dialog");
+ try{
+  win.confirm=()=>true;
+  get("new").click();
+  get("add-instrument").click();
+  await wait(()=>library.open,"Open sound picker");
+  const examples=[...doc.querySelectorAll(".library-filter")].find(button=>button.textContent==="Examples");
+  if(!examples)throw Error("Missing Examples sound category");
+  examples.click();
+  const cards=()=>[...library.querySelectorAll(".preset-card")];
+  checks.exampleCategory=examples.getAttribute("aria-pressed")==="true";
+  const rack=cards().find(card=>card.dataset.presetId==="example-neon-after-hours-0");
+  const solo=cards().find(card=>card.dataset.presetId==="example-neon-after-hours-0-pulse");
+  const pitched=cards().find(card=>card.dataset.presetId==="example-neon-after-hours-1");
+  checks.rackAndSoundCards=!!rack&&!!solo&&!!pitched&&
+   rack.querySelector("strong")?.textContent==="Drum rack · nine sounds"&&
+   solo.querySelector("strong")?.textContent==="Synth kick"&&
+   pitched.querySelector("strong")?.textContent==="Sustained sub-bass";
+  rack?.querySelector(".preset-choose")?.click();
+  await wait(()=>!library.open&&doc.querySelectorAll(".instrument-card").length===2,
+   "Add full example rack");
+  checks.rackEditable=doc.querySelectorAll("#piano .rack-row").length===9 &&
+   get("instrument-name").value==="Drum rack · nine sounds";
+  get("add-instrument").click();examples.click();
+  pitched?.querySelector(".preset-choose")?.click();
+  await wait(()=>!library.open&&doc.querySelectorAll(".instrument-card").length===3,
+   "Add example pitched sound");
+  checks.pitchedEditable=get("instrument-name").value==="Sustained sub-bass" &&
+   !!doc.querySelector("#piano .note-name");
+  get("add-instrument").click();examples.click();
+  solo?.querySelector(".preset-choose")?.click();
+  await wait(()=>!library.open&&doc.querySelectorAll(".instrument-card").length===4,
+   "Add individual example rack row");
+  checks.rowEditable=get("instrument-name").value==="Synth kick"&&
+   doc.querySelectorAll("#piano .rack-row").length===1;
+  document.documentElement.dataset.examplePresets=Object.values(checks).every(Boolean)?"PASS":"FAIL";
+  result.textContent=JSON.stringify(checks);
+ }catch(error){
+  document.documentElement.dataset.examplePresets="FAIL";
+  result.textContent=String(error?.stack||error)+" "+JSON.stringify(checks)+" "+get("status").textContent;
+ }
+ void fetch("/__example_presets_result?status="+document.documentElement.dataset.examplePresets+
+ "&details="+encodeURIComponent(result.textContent)).catch(()=>{});
+},{once:true});
+</script></body></html>
