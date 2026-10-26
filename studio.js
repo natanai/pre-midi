@@ -168,7 +168,7 @@ function stop() {
  playBar = playStep = -1;
  pianoProgress = null;
  $("play").textContent = "▶ Play";
- $("position").textContent="1.1";
+ $("position").textContent="1:1";
  songUI?.setPosition(-1);
  paintPlayhead();
 }
@@ -974,7 +974,8 @@ $("play").addEventListener("click", async () => {
   playback = await play(() => song||beat, {
    loop: () => $("loop").checked,
    onPosition: (bar, step) => {
-    $("position").textContent = (bar + 1) + "." + (Math.floor(step / 4) + 1);
+    $("position").textContent = (bar+1)+":"+(Math.floor(step/4)+1);
+    $("position").setAttribute("aria-label","bar "+(bar+1)+", beat "+(Math.floor(step/4)+1));
     if(song){songUI?.setPosition(bar+step/16);playBar=playStep=-1;}
     else{
      if(playBar!==bar){playBar=bar;paintPlayhead();}

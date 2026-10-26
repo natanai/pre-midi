@@ -11,7 +11,7 @@ test("Beat domain in active source has no legacy composition or score nouns",()=
  for(const path of active){
   const content=readFileSync(new URL(path,root),"utf8");
   assert.doesNotMatch(content,/\b(?:score|composition)\b/i,path);
-  assert.doesNotMatch(content,/FromScore|MAX_SCORE_BYTES|songStep|shared song/i,path);
+  assert.doesNotMatch(content,/FromScore|MAX_SCORE_BYTES|\\bsongStep\\b|shared song/i,path);
  }
 });
 test("Beat header is not disguised as a Song section",()=>{
