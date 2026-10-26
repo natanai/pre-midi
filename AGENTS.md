@@ -11,5 +11,7 @@ This is the native music studio for pre-programmed. The music, its controls, and
 - **Show contextual actions once**. Avoid repeating destructive or arrangement operations in the inspector when a per-row or per-instrument action menu already offers them.
 - **Make non-obvious restrictions discoverable** without explaining them in permanently visible prose: accessible descriptions and disabled-action hints are preferable.
 - New visible copy must earn its space. Prefer fewer words, and test the change at both desktop inspector width and mobile sheet width.
+- **One baseline per control row**. Adjacent selects, buttons, checkboxes and readouts need an intentional common bottom/control baseline; their labels belong above that baseline. Avoid arbitrary bottom padding and `margin-left:auto` gaps that imply mechanical grouping where none exists. Make second rows deliberate rather than accidental flex wraps, and let action groups wrap on mobile.
+- **Transport position is bar:beat**, not part of looping. Show it as a separately labeled readout and keep its accessible value synchronized on start, stop, and position changes.
 
 This is a design constraint, not license to remove essential warnings, error messages, accessibility names, confirmations, or recording guidance.
