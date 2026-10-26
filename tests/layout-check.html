@@ -79,8 +79,14 @@ async function checkLayout(frame){
  const knob=doc.querySelector("#synth-editor .dial-knob[aria-label='Glide from']");
  knob?.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
  checks.waveRespondsToDial=pitchBefore!==doc.querySelector("#sound-visualizer .signal-pitch")?.getAttribute("d");
+ // Test the preset browser from a fresh Beat after completing the separate
+ // note-expression and dial interactions above.
+ const oldConfirm=frame.contentWindow.confirm;
+ frame.contentWindow.confirm=()=>true;
+ get("new").click();
+ frame.contentWindow.confirm=oldConfirm;
  // Exercise the real preset browser and editor, not a mock copy.
- button.click();
+ get("add-instrument").click();
  const library=get("instrument-dialog");
  checks.libraryOpens=library.open && library.querySelectorAll(".preset-card").length>=15;
  const card=library.querySelector('.preset-card[data-preset-id="neon-lead"]');
