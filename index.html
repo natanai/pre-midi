@@ -17,8 +17,7 @@
   <button id="examples" type="button">Examples</button>
   <button id="record-sound" type="button" class="record-sound-action">● Record sound</button>
   <button id="import" type="button">Open .premidi</button>
-  <button id="export" type="button" class="primary">Save .premidi</button>
-  <button id="wav" type="button">Export WAV</button>
+  <button id="export" type="button" class="primary" aria-haspopup="dialog" aria-controls="export-dialog">Export</button>
   <input id="file" type="file" accept=".premidi,.zip,application/zip,application/json" hidden>
   <input id="sample-file" type="file" accept=".wav,.ogg,.mp3,audio/wav,audio/ogg,audio/mpeg" hidden>
  </nav>
@@ -35,13 +34,20 @@
   <div id="song-scroll" class="song-scroll" aria-label="Song timeline" tabindex="0">
    <div id="song-ruler" class="song-ruler"></div>
    <div id="song-tracks" class="song-tracks"></div>
-  </div>
-  <div class="song-beat-add">
-   <button id="song-add-beat" type="button" aria-controls="song-beat-choice" aria-expanded="false">+ Beat</button>
-   <div id="song-beat-choice" class="song-beat-choice" role="group" aria-label="Add Beat" hidden>
-    <button id="song-new-beat" type="button">New Beat</button>
-    <button id="song-import-beat" type="button">Add .premidi</button>
+   <div id="song-timeline-footer" class="song-timeline-footer">
+    <div class="song-beat-add">
+     <button id="song-add-beat" type="button" aria-controls="song-beat-choice" aria-expanded="false">+ Beat</button>
+    </div>
+    <div class="song-scroll-controls" aria-label="Navigate Song timeline">
+     <button id="song-earlier" type="button" aria-label="Earlier bars" title="Scroll to earlier bars">←</button>
+     <output id="song-visible-bars" aria-live="off">bars 1–16</output>
+     <button id="song-later" type="button" aria-label="Later bars" title="Scroll to later bars">→</button>
+    </div>
    </div>
+  </div>
+  <div id="song-beat-choice" class="song-beat-choice" role="group" aria-label="Add Beat" hidden>
+   <button id="song-new-beat" type="button">New Beat</button>
+   <button id="song-import-beat" type="button">Add .premidi</button>
   </div>
   <input id="song-import-file" type="file" accept=".premidi,.zip" hidden>
   <div id="song-clip-settings" class="song-clip-settings" hidden>
@@ -137,6 +143,25 @@
 </main>
 <footer><span id="status" role="status">Saved locally</span><span><a href="https://github.com/natanai/pre-midi">source</a></span></footer>
 </div>
+<dialog id="export-dialog" class="instrument-dialog export-dialog" aria-labelledby="export-dialog-title">
+ <div class="library-top">
+  <h2 id="export-dialog-title">export</h2>
+  <button id="export-close" type="button" aria-label="Close export">×</button>
+ </div>
+ <form id="export-form">
+  <fieldset class="export-options">
+   <legend>source</legend>
+   <label><input type="radio" name="export-scope" value="beat" checked>beat</label>
+   <label><input type="radio" name="export-scope" value="song">song</label>
+  </fieldset>
+  <fieldset class="export-options">
+   <legend>format</legend>
+   <label><input type="radio" name="export-format" value="premidi" checked>.premidi</label>
+   <label><input type="radio" name="export-format" value="wav">wav</label>
+  </fieldset>
+  <div class="export-actions"><button id="export-confirm" type="submit" class="primary">export</button></div>
+ </form>
+</dialog>
 <dialog id="instrument-dialog" class="instrument-dialog" aria-labelledby="instrument-dialog-title">
  <div class="library-top"><div><h2 id="instrument-dialog-title">sounds</h2><p id="library-description"></p></div>
   <button id="close-library" type="button" aria-label="Close instrument library">×</button></div>

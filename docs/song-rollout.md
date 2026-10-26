@@ -73,3 +73,8 @@ Game-engine parity tracking: [pre-programmed #235](https://github.com/natanai/pr
 - The `+ Beat` control sits below Song Tracks at the left; its two explicit options are `New Beat` and `Add .premidi`. The global `Open .premidi` always replaces the current project, rather than behaving differently inside Song mode.
 - Single-Beat Track labels display the Beat's authored name and open the underlying Beat editor when clicked. Multi-Beat Tracks retain their generic Track label.
 - Browser smoke checks cover timeline width, Beat creation choices, selecting Beat by name, and the existing playback/save/reload path.
+
+## Song navigation / export refinements
+- The `+ Beat` row is inside the horizontally scrollable Song timeline and above its scrollbar. A compact visible-bar readout and earlier/later navigation controls explain the scroll direction; all Song lanes remain part of one timeline grid.
+- The main toolbar uses a single **Export** dialog: select Beat or Song (Song available if created), then `.premidi` (default) or WAV. Beat export always uses the currently selected Beat, Song export uses the complete Song; companion audio Assets remain separately packaged as needed.
+- Playback follows visibility: expanded Song runs the Song transport; collapsed Song runs the selected Beat. Expanding/collapsing stops the previous scope cleanly; Beat BPM and Song BPM controls follow the same distinction.

@@ -62,7 +62,7 @@ let selectedSounds=new Map();
 let editingNoteEffects = false;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
-let history = [], future = [], playback = null, pendingPlay = false;
+let history = [], future = [], playback = null, pendingPlay = false, playbackGeneration=0;
 let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
@@ -162,12 +162,14 @@ function closePicker() {
  pickerTrigger = null;
 }
 function stop() {
+ playbackGeneration++;
  if (playback) playback.stop();
  playback = null;
  pendingPlay = false;
  playBar = playStep = -1;
  pianoProgress = null;
  $("play").textContent = "▶ Play";
+ $("play").setAttribute("aria-label",song&&songExpanded?"Play Song":"Play Beat");
  $("position").textContent="1:1";
  $("position").setAttribute("aria-label","bar 1, beat 1");
  songUI?.setPosition(-1);
@@ -835,11 +837,12 @@ function render() {
  document.querySelector(".work")?.classList.toggle("editing-note-effects",editingNoteEffects);
  document.querySelector(".notes-section")?.classList.toggle("editing-note-effects",editingNoteEffects);
  $("title").value = beat.title;
- $("bpm").value = String(song?.bpm??beat.bpm);
+ $("bpm").value = String(song&&songExpanded?song.bpm:beat.bpm);
  $("bars").value = String(beat.bars);
  songUI?.render();
  $("song-expand").textContent=songExpanded?"↓ Beat":"↑ Song";
- $("export").textContent=song?"Save Song .premidi":"Save .premidi";
+ $("play").title=playback?"Stop playback":song&&songExpanded?"Play Song":"Play Beat";
+ $("play").setAttribute("aria-label",playback?"Stop playback":song&&songExpanded?"Play Song":"Play Beat");
  $("song-expand").setAttribute("aria-expanded",String(songExpanded));
  renderInstruments();
  renderTimeline();
@@ -921,10 +924,14 @@ $("new").addEventListener("click", () => {
 });
 $("import").addEventListener("click", () => $("file").click());
 $("song-expand").addEventListener("click",()=>{
+ if(playback||pendingPlay)stop();
  if(!song){song=createSong(beat);selectedBeatId=beat.id;beat=song.beats[0];}
  songExpanded=!songExpanded;store();render();
 });
-$("song-collapse").addEventListener("click",()=>{songExpanded=false;render();});
+$("song-collapse").addEventListener("click",()=>{
+ if(playback||pendingPlay)stop();
+ songExpanded=false;render();
+});
 $("song-import-file").addEventListener("change",async event=>{
  const file=event.currentTarget.files?.[0];if(!file)return;
  try{const imported=await importProject(file);addSongBeat(imported);message("Added "+imported.title);}
@@ -948,40 +955,61 @@ $("file").addEventListener("change",async event=>{
  }catch(error){message("Could not open file: "+error.message,true);}
  finally{$("file").value="";}
 });
+// One export entry point for either editable Beat or full Song.
+const exportDialog=$("export-dialog"),exportForm=$("export-form");
+const exportScope=value=>exportForm.querySelector('input[name="export-scope"][value="'+value+'"]');
+const exportFormat=value=>exportForm.querySelector('input[name="export-format"][value="'+value+'"]');
 $("export").addEventListener("click",()=>{
- try{
-  const result=song?exportSongProject(song):exportProject(beat);
-  download(result.blob,result.name);
-  message(result.name.endsWith(".zip")?"Saved music ZIP with separate audio assets":"Saved .premidi");
- }catch(error){message("Export failed: "+error.message,true);}
+ exportScope("song").disabled=!song;
+ exportScope(song&&songExpanded?"song":"beat").checked=true;
+ exportFormat("premidi").checked=true;
+ $("export-confirm").disabled=false;
+ exportDialog.showModal();
 });
-$("wav").addEventListener("click", async () => {
- const el = $("wav");
- el.disabled = true;
- message("Rendering WAV...");
- try { download(await wav(currentDocument()), filename(currentDocument(),".wav")); message("Saved WAV"); }
- catch (error) { message("WAV error: " + error.message, true); }
- finally { el.disabled = false; }
+$("export-close").addEventListener("click",()=>exportDialog.close());
+exportForm.addEventListener("submit",async event=>{
+ event.preventDefault();
+ const scope=exportForm.querySelector('input[name="export-scope"]:checked')?.value;
+ const format=exportForm.querySelector('input[name="export-format"]:checked')?.value;
+ if(!["beat","song"].includes(scope)||!["premidi","wav"].includes(format))return;
+ if(scope==="song"&&!song)return message("Create a Song before exporting it.",true);
+ const source=scope==="song"?song:beat,control=$("export-confirm");
+ control.disabled=true;
+ try{
+  if(format==="wav"){
+   message("Rendering "+scope+" WAV...");
+   const output=await wav(source);
+   download(output,filename(source,".wav"));
+   message("Exported "+scope+" WAV");
+  }else{
+   const output=scope==="song"?exportSongProject(source):exportProject(source);
+   download(output.blob,output.name);
+   message("Exported "+scope+(output.name.endsWith(".zip")?" with audio assets":".premidi"));
+  }
+  exportDialog.close();
+ }catch(error){message("Export failed: "+error.message,true);}
+ finally{control.disabled=false;}
 });
 $("play").addEventListener("click", async () => {
  if (playback) { stop(); return; }
  if (pendingPlay) return;
  pendingPlay = true;
+ const playingSong=!!(song&&songExpanded),generation=++playbackGeneration;
  try {
-  playback = await play(() => song||beat, {
+  const session = await play(() => playingSong?song:beat, {
    loop: () => $("loop").checked,
    onPosition: (bar, step) => {
     $("position").textContent = (bar+1)+":"+(Math.floor(step/4)+1);
     $("position").setAttribute("aria-label","bar "+(bar+1)+", beat "+(Math.floor(step/4)+1));
-    if(song){songUI?.setPosition(bar+step/16);playBar=playStep=-1;}
+    if(playingSong){songUI?.setPosition(bar+step/16);playBar=playStep=-1;}
     else{
      if(playBar!==bar){playBar=bar;paintPlayhead();}
      playStep=step;
     }
    },
    onProgress: (bar, step) => {
-    pianoProgress=song?null:{bar,step};
-    if(song)songUI?.setPosition(bar+step/16);
+    pianoProgress=playingSong?null:{bar,step};
+    if(playingSong)songUI?.setPosition(bar+step/16);
     else paintPianoPlayhead();
    },
    onStop: () => {
@@ -995,6 +1023,9 @@ $("play").addEventListener("click", async () => {
     paintPlayhead();
    }
   });
+  if(generation!==playbackGeneration){session.stop();return;}
+  playback=session;
+  $("play").setAttribute("aria-label",playingSong?"Stop Song":"Stop Beat");
   $("play").textContent = "Ⅱ Stop";
  } catch (error) { message("Playback error: " + error.message, true); }
  finally { pendingPlay = false; }
@@ -1003,7 +1034,7 @@ $("stop").addEventListener("click", stop);
 $("title").addEventListener("change", event => modify(() => beat.title = event.target.value.trim() || "Untitled beat"));
 $("bpm").addEventListener("change",event=>{
  const next=Math.round(Number(event.target.value));
- if(song)modifySong(()=>{song.bpm=next;});
+ if(song&&songExpanded)modifySong(()=>{song.bpm=next;});
  else modify(()=>{beat.bpm=next;});
 });
 $("bars").addEventListener("change", event => modify(() => {

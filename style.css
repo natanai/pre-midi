@@ -996,3 +996,45 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  color:var(--bright);text-transform:lowercase;
 }
 .song-beat-choice button:hover,.song-beat-choice button:focus-visible{background:#151515}
+
+/* Song scroll owns ruler, tracks and the Add Beat row: the native
+   scrollbar now follows *all three*, not just the first track. */
+.song-timeline-footer{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:12px;min-height:46px;padding-right:6px;background:#060606;
+ border-top:1px solid var(--faint);
+}
+.song-timeline-footer .song-beat-add{
+ position:sticky;left:0;z-index:6;
+ flex:none;min-height:43px;padding:4px 0;
+ background:#060606;
+}
+.song-scroll-controls{
+ position:sticky;right:5px;z-index:6;
+ display:flex;align-items:center;gap:5px;
+ min-width:max-content;background:#060606;
+ font-size:10px;color:var(--muted);
+}
+.song-scroll-controls button{min-height:30px;min-width:30px;padding:3px 7px;color:var(--bright)}
+.song-scroll-controls button:disabled{opacity:.35}
+.song-scroll-controls output{font-size:10px;font-variant-numeric:tabular-nums}
+.song-scroll{scrollbar-color:#595959 #101010;scrollbar-width:thin}
+.song-beat-choice{
+ position:fixed;z-index:90;
+ left:0;top:0;
+ min-width:155px;
+}
+/* Export keeps format and scope as separate explicit choices. */
+.export-dialog{width:min(360px,calc(100vw - 24px))}
+.export-dialog form{padding:12px;display:grid;gap:14px}
+.export-options{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px 14px}
+.export-options legend{color:var(--muted);font-size:11px;margin-bottom:8px}
+.export-options label{
+ display:flex;align-items:center;gap:7px;padding:7px 10px;
+ border:1px solid var(--line);min-height:36px;cursor:pointer
+}
+.export-options label:has(input:checked){border-color:var(--bright);color:var(--bright)}
+.export-options label:has(input:disabled){opacity:.35;cursor:default}
+.export-options input{margin:0;accent-color:var(--signal-cyan)}
+.export-actions{display:flex;justify-content:flex-end}
+.export-actions button{min-height:36px}

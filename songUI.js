@@ -7,7 +7,7 @@ const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
 const integer=(value,fallback)=>Number.isFinite(value)?Math.max(0,Math.round(value)):fallback;
 export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat}){
  const $=id=>root.querySelector("#"+id);
- const viewport=$("song-scroll"),tracks=$("song-tracks"),ruler=$("song-ruler");
+ const viewport=$("song-scroll"),tracks=$("song-tracks"),ruler=$("song-ruler"),footer=$("song-timeline-footer");
  let selectedClipId=null,dragging=false,ignoreClick=false,playPosition=-1;
  let timelinePages=1;
  const beatMenu=$("song-beat-choice"),beatMenuToggle=$("song-add-beat");
@@ -19,7 +19,14 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const opening=beatMenu.hidden;
   beatMenu.hidden=!opening;
   beatMenuToggle.setAttribute("aria-expanded",String(opening));
-  if(opening)$("song-new-beat").focus();
+  if(opening){
+   const button=beatMenuToggle.getBoundingClientRect();
+   const menuWidth=beatMenu.offsetWidth,menuHeight=beatMenu.offsetHeight;
+   beatMenu.style.left=Math.max(8,Math.min(button.left,window.innerWidth-menuWidth-8))+"px";
+   beatMenu.style.top=(button.bottom+menuHeight+6>window.innerHeight
+    ?Math.max(8,button.top-menuHeight-5):button.bottom+5)+"px";
+   $("song-new-beat").focus();
+  }
  }
  function apply(action){
   onChange(action);
@@ -184,6 +191,8 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
    row.append(head,lane);tracks.append(row);
   }
   tracks.style.width=totalWidth+"px";
+  footer.style.width=totalWidth+"px";
+  updateVisibleBars();
   const selection=selected(),settings=$("song-clip-settings");
   settings.hidden=!selection;
   if(selection){
@@ -200,20 +209,34 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   closeBeatMenu();onImportBeat();
  });
  root.addEventListener("pointerdown",event=>{
-  if(!event.target.closest(".song-beat-add"))closeBeatMenu();
+  if(!event.target.closest(".song-beat-add, .song-beat-choice"))closeBeatMenu();
  });
  root.addEventListener("keydown",event=>{
   if(event.key==="Escape"&&!beatMenu.hidden){
    closeBeatMenu();beatMenuToggle.focus();
   }
  });
+ function updateVisibleBars(){
+  if(!getSong())return;
+  const start=Math.max(1,Math.floor(viewport.scrollLeft/BAR_PX)+1);
+  const end=Math.max(start,Math.ceil((viewport.scrollLeft+viewport.clientWidth-LABEL_PX)/BAR_PX));
+  $("song-visible-bars").textContent="bars "+start+"–"+end;
+  $("song-earlier").disabled=viewport.scrollLeft<2;
+ }
  viewport.addEventListener("scroll",()=>{
   if(!getSong())return;
+  updateVisibleBars();
   const remaining=viewport.scrollWidth-viewport.clientWidth-viewport.scrollLeft;
-  if(remaining<BAR_PX*3){
+  if(viewport.scrollWidth>viewport.clientWidth&&remaining<BAR_PX*3){
    timelinePages++;
    render();
   }
+ });
+ $("song-earlier").addEventListener("click",()=>viewport.scrollBy({left:-BAR_PX*4,behavior:"smooth"}));
+ $("song-later").addEventListener("click",()=>{
+  const remaining=viewport.scrollWidth-viewport.clientWidth-viewport.scrollLeft;
+  if(remaining<BAR_PX*4){timelinePages++;render();}
+  viewport.scrollBy({left:BAR_PX*4,behavior:"smooth"});
  });
  if(typeof ResizeObserver!=="undefined"){
   new ResizeObserver(()=>{if(getSong())render();}).observe(viewport);

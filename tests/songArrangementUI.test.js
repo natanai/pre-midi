@@ -6,7 +6,7 @@ const root=new URL("../",import.meta.url),read=p=>readFileSync(new URL(p,root),"
 test("the Song timeline is a separate layer before the unchanged Beat editor",()=>{
  const html=read("index.html"),css=read("style.css");
  for(const id of ["song-expand","song-panel","song-title","song-scroll","song-tracks",
-  "song-add-beat","song-beat-choice","song-new-beat","song-import-beat","song-add-track","song-clip-start",
+  "song-timeline-footer","song-earlier","song-later","song-visible-bars","song-add-beat","song-beat-choice","song-new-beat","song-import-beat","song-add-track","song-clip-start",
   "song-clip-length","song-clip-remove","song-import-file","song-collapse"]){
   assert.ok(html.includes('id="'+id+'"'),"Missing Song control "+id);
  }
@@ -58,4 +58,32 @@ test("Open and Add .premidi have separate project semantics",()=>{
  assert.doesNotMatch(open,/addSongBeat/,"Open must replace, not add to the current Song");
  assert.match(studio,/\$\("song-import-file"\)\.addEventListener\("change"/);
  assert.match(html,/<button id="import" type="button">Open \.premidi<\/button>/);
+});
+
+test("Song navigation lives above the native horizontal scrollbar",()=>{
+ const html=read("index.html"),ui=read("songUI.js");
+ assert.ok(html.indexOf('id="song-tracks"')<html.indexOf('id="song-timeline-footer"'));
+ assert.ok(html.indexOf('id="song-timeline-footer"')<html.indexOf('id="song-beat-choice"'));
+ assert.match(ui,/footer\.style\.width=totalWidth/);
+ assert.match(ui,/updateVisibleBars\(\)/);
+ assert.match(ui,/viewport\.scrollBy/);
+});
+test("one Export dialog supports both document scopes and formats",()=>{
+ const html=read("index.html"),studio=read("studio.js");
+ assert.match(html,/<button id="export"[^>]*>Export<\/button>/);
+ assert.doesNotMatch(html,/id="wav"/);
+ for(const value of ["beat","song"])assert.ok(html.includes('name="export-scope" value="'+value+'"'));
+ for(const value of ["premidi","wav"])assert.ok(html.includes('name="export-format" value="'+value+'"'));
+ assert.match(studio,/exportScope\("song"\)\.disabled=!song/);
+ assert.match(studio,/exportFormat\("premidi"\)\.checked=true/);
+ assert.match(studio,/scope==="song"\?song:beat/);
+ assert.match(studio,/scope==="song"\?exportSongProject\(source\):exportProject\(source\)/);
+ assert.match(studio,/await wav\(source\)/);
+});
+test("transport follows expanded Song or currently selected Beat",()=>{
+ const studio=read("studio.js");
+ assert.match(studio,/playingSong=!!\(song&&songExpanded\)/);
+ assert.match(studio,/play\(\(\) => playingSong\?song:beat/);
+ assert.match(studio,/if\(playback\|\|pendingPlay\)stop\(\)/);
+ assert.match(studio,/playingSong\?"Stop Song":"Stop Beat"/);
 });
