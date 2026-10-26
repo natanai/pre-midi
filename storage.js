@@ -33,7 +33,9 @@ let pendingDraft=null,saving=false,waiters=[];
 // A later save always follows the transaction in flight, so a reset cannot be
 // overwritten by an older queued beat.
 export function saveDraft(beat){
- pendingDraft={json:JSON.stringify(beat),samples:[...beat.samples]};
+ const entries=beat.kind==="song"?beat.beats.flatMap(entry=>entry.samples):beat.samples;
+ const unique=new Map(entries.map(asset=>[asset.id,asset]));
+ pendingDraft={json:JSON.stringify(beat),samples:[...unique.values()]};
  const result=new Promise((resolve,reject)=>waiters.push({resolve,reject}));
  if(!saving){saving=true;void flushDrafts();}
  return result;

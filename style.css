@@ -905,3 +905,46 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 :is(#piano, #note-expression, #sound-reference, #mic-root, #import-root) {text-transform:none}
 .app :is(input:not([type]),input[type="text"]) {text-transform:none}
 .synth-field > .control-help {justify-self:start;width:max-content;max-width:100%}
+
+/* Song is an optional higher level above the unchanged Beat maker. */
+.song-panel{padding:11px 20px 13px;border-bottom:1px solid var(--line)}
+.song-panel[hidden],.song-clip-settings[hidden],#song-cursor[hidden]{display:none!important}
+.song-toolbar{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:end;justify-content:space-between}
+.song-toolbar>label{display:grid;gap:5px;flex:1;min-width:185px;max-width:420px;color:var(--muted);font-size:11px}
+.song-toolbar input{width:100%}
+.song-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.song-actions button{min-height:35px}
+.song-actions button:not(:last-of-type)::before{content:"[";color:var(--muted)}
+.song-actions button:not(:last-of-type)::after{content:"]";color:var(--muted)}
+.beat-identity{display:flex;gap:12px;align-items:end;flex:1;min-width:220px}
+.beat-identity>label{display:grid;gap:7px;flex:1;min-width:130px;font-size:11px;color:var(--muted)}
+.beat-identity input{width:100%}
+#song-expand{font-size:12px;min-width:58px;min-height:35px;color:var(--bright)}
+#song-expand:hover{text-decoration:underline}
+.song-scroll{margin-top:9px;overflow-x:auto;overflow-y:hidden;max-width:100%;border:1px solid var(--faint);background:#030303;scrollbar-width:thin}
+.song-ruler{position:relative;height:22px;background:#0b0b0b;color:var(--muted);font-size:10px;border-bottom:1px solid var(--line)}
+.song-ruler-mark{position:absolute;top:4px;pointer-events:none}
+#song-cursor{position:absolute;top:0;height:22px;border-left:1px solid var(--bright);z-index:4;pointer-events:none}
+.song-tracks{width:max-content}
+.song-track-row{display:flex;min-height:39px;border-bottom:1px solid var(--faint)}
+.song-track-row:last-child{border-bottom:0}
+.song-track-label{position:sticky;left:0;z-index:3;background:#090909;border-right:1px solid var(--line);width:105px;min-width:105px;display:flex;align-items:center;padding:5px 8px;color:var(--bright);font-size:11px}
+.song-track-lane{position:relative;min-height:38px;background-image:linear-gradient(90deg,transparent calc(100% - 1px),#282828 calc(100% - 1px));background-repeat:repeat-x}
+.song-beat-clip{position:absolute;top:4px;bottom:4px;min-width:12px;overflow:hidden;text-align:left;display:flex;align-items:center;background:#16292b;border:1px solid #597a81;color:#d0e6e5;padding:4px 10px 4px 7px;touch-action:none;user-select:none;cursor:grab}
+.song-beat-clip:active{cursor:grabbing}
+.song-beat-clip.selected{border-color:var(--bright);background:#264347;outline:1px solid var(--bright);outline-offset:-3px}
+.song-clip-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+.song-clip-grip{position:absolute;right:0;top:0;bottom:0;width:12px;border-left:1px solid #9caeac;cursor:ew-resize;touch-action:none}
+.song-clip-grip::after{content:"";position:absolute;left:5px;top:25%;height:50%;border-left:1px solid #9caeac}
+.song-add-clip{position:absolute;top:5px;padding:0 5px;height:26px;min-width:24px;border:1px dashed var(--line)}
+.song-clip-settings{display:flex;align-items:end;flex-wrap:wrap;gap:9px 13px;margin-top:9px}
+.song-clip-settings label{display:grid;gap:4px;font-size:11px;color:var(--muted)}
+.song-clip-settings input{width:88px}
+.song-clip-settings button{min-height:34px}
+@media(max-width:570px){
+ .song-panel{padding:10px 12px}
+ .song-toolbar{align-items:stretch}
+ .song-actions{gap:5px 11px}
+ .song-actions button{min-height:39px}
+ .beat-identity{width:100%}
+}

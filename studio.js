@@ -20,13 +20,21 @@ import {EXAMPLES,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
+import {createSong,addBeat,addSongTrack,addBeatClip,validateSong} from "./songModel.js";
+import {exportSongProject,importSongProject,parseSong} from "./songIO.js";
+import {readZip} from "./zip.js";
+import {installSongUI} from "./songUI.js";
 
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v5-draft";
 const SAVED_SOUNDS = "premidi-user-sounds-v1";
 // Retain the previous fallback key. Native v5 drafts and files migrate through
 // the same parser, including safe hit conversion and preserved musical events.
-const cached=(()=>{try{return parse(localStorage.getItem(CACHE)||"");}catch{return null;}})();
+const parseDocument=raw=>{
+ const candidate=JSON.parse(raw);
+ return candidate.kind==="song"?parseSong(raw):parse(raw);
+};
+const cached=(()=>{try{return parseDocument(localStorage.getItem(CACHE)||"");}catch{return null;}})();
 const savedSounds=(()=>{
  try {
   const entries=JSON.parse(localStorage.getItem(SAVED_SOUNDS)||"[]");
@@ -45,8 +53,10 @@ let libraryMode="add",libraryCategory="All",libraryContext=null;
 const inspectorViewport=window.matchMedia("(min-width:1100px)");
 let inspectorState=inspectorViewport.matches?"expanded":"closed";
 let loadingExample=false;
-let beat = cached || create();
-let selectedInstrumentId = beat.instruments[0].id;
+let song=cached?.kind==="song"?cached:null;
+let beat=song?.beats[0]||cached||create();
+let songExpanded=!!song,selectedBeatId=beat.id,songUI=null;
+let selectedInstrumentId=beat.instruments[0].id;
 let selectedNoteId = null;
 let selectedSounds=new Map();
 let editingNoteEffects = false;
@@ -60,9 +70,26 @@ const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
 // Audio assets are immutable blobs. Undo stores only mutable beat structure
 // plus a shallow list of shared samples, not 100 copies of multi-MB recordings.
 const snapshot = document => {
+ if(document.kind==="song")return clone(document);
  const {samples,...mutable}=document;
  return {...clone(mutable),samples:[...samples]};
 };
+const currentDocument=()=>song||beat;
+function restoreDocument(document){
+ if(document.kind==="song"){
+  song=document;beat=song.beats.find(item=>item.id===selectedBeatId)||song.beats[0];
+ }else{song=null;beat=document;songExpanded=false;}
+ selectedBeatId=beat.id;repairSelection();
+}
+function selectBeat(beatId){
+ const candidate=song?.beats.find(item=>item.id===beatId);
+ if(!candidate)return;
+ closePicker();selectedBeatId=beatId;beat=candidate;
+ selectedInstrumentId=beat.instruments[0].id;
+ selectedChunks=new Map();selectedSounds=new Map();
+ selectedSlot={instrumentId:selectedInstrumentId,bar:0};
+ selectedNoteId=null;editingNoteEffects=false;render();
+}
 const instrument = () => beat.instruments.find(entry => entry.id === selectedInstrumentId) || beat.instruments[0];
 const sound = (inst=instrument()) => inst.sounds.find(entry=>entry.id===selectedSounds.get(inst.id))||inst.sounds[0];
 const chunkFor = (inst) => inst.chunks.find(entry => entry.id === selectedChunks.get(inst.id)) || inst.chunks[0];
@@ -114,14 +141,15 @@ function message(text, error = false) {
 }
 let saveGeneration=0;
 function store() {
- const current=beat,generation=++saveGeneration;
+ const current=currentDocument(),generation=++saveGeneration;
  message("Saving locally…");
  void saveDraft(current).then(()=>{if(generation===saveGeneration)message("Saved locally");}).catch(()=>{
   if(generation!==saveGeneration)return;
   // For constrained private-browser modes, small synth-only scores still fit.
   try {
    const json=JSON.stringify(current);
-   if(current.samples.length||json.length>800000)throw Error("large or sampled draft");
+   const assets=current.kind==="song"?current.beats.flatMap(entry=>entry.samples):current.samples;
+    if(assets.length||json.length>800000)throw Error("large or sampled draft");
    localStorage.setItem(CACHE,json);
    message("Saved locally (limited browser storage)");
   }catch{message("Browser storage unavailable. Export .premidi to save your work.",true);}
@@ -140,32 +168,53 @@ function stop() {
  playBar = playStep = -1;
  pianoProgress = null;
  $("play").textContent = "▶ Play";
- $("position").textContent = "1.1";
+ $("position").textContent="1.1";
+ songUI?.setPosition(-1);
  paintPlayhead();
 }
-function modify(change) {
- const before = snapshot(beat);
+function commitChange(before){
+ history.push(before);
+ if(history.length>100)history.shift();
+ future=[];store();render();
+ return true;
+}
+function modify(change){
+ const before=snapshot(currentDocument());
  change();
  const referenced=referencedSampleIds(beat.instruments);
  beat.samples=beat.samples.filter(asset=>referenced.has(asset.id));
- const errors = validate(beat);
- if (errors.length) {
-  beat = before;
-  repairSelection();render();
-  message(errors[0], true);
-  return false;
- }
- history.push(before);
- if (history.length > 100) history.shift();
- future = [];
- store();
- render();
- return true;
+ const errors=validate(beat);
+ if(song)errors.push(...validateSong(song));
+ if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
+ return commitChange(before);
+}
+function modifySong(change){
+ if(!song)return false;
+ const before=snapshot(song);
+ if(change==="add-track")addSongTrack(song);
+ else change();
+ const errors=validateSong(song);
+ if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
+ return commitChange(before);
+}
+function addSongBeat(source){
+ if(!song)return;
+ modifySong(()=>{
+  const added=addBeat(song,source,{independent:song.beats.some(b=>b.id===source.id)});
+  const lane=addSongTrack(song,"beat");
+  addBeatClip(song,lane.id,added.id,0);
+  beat=added;selectedBeatId=beat.id;
+  selectedInstrumentId=beat.instruments[0].id;
+  selectedChunks=new Map();selectedSounds=new Map();
+  selectedSlot={instrumentId:selectedInstrumentId,bar:0};
+ });
 }
 function resetTo(next) {
  closePicker();
  stop();
- beat = next;
+ if(next.kind==="song"){song=next;beat=song.beats[0];songExpanded=true;}
+ else{song=null;beat=next;songExpanded=false;}
+ selectedBeatId=beat.id;
  selectedNoteId=null;
  editingNoteEffects=false;
  selectedInstrumentId = beat.instruments[0].id;
@@ -179,18 +228,16 @@ function resetTo(next) {
 function undo() {
  if (!history.length) return;
  closePicker();
- future.push(snapshot(beat));
- beat = history.pop();
- repairSelection();
+ future.push(snapshot(currentDocument()));
+ restoreDocument(history.pop());
  store();
  render();
 }
 function redo() {
  if (!future.length) return;
  closePicker();
- history.push(snapshot(beat));
- beat = future.pop();
- repairSelection();
+ history.push(snapshot(currentDocument()));
+ restoreDocument(future.pop());
  store();
  render();
 }
@@ -789,8 +836,11 @@ function render() {
  document.querySelector(".work")?.classList.toggle("editing-note-effects",editingNoteEffects);
  document.querySelector(".notes-section")?.classList.toggle("editing-note-effects",editingNoteEffects);
  $("title").value = beat.title;
- $("bpm").value = String(beat.bpm);
+ $("bpm").value = String(song?.bpm??beat.bpm);
  $("bars").value = String(beat.bars);
+ songUI?.render();
+ $("song-expand").textContent=songExpanded?"↓ Beat":"↑ Song";
+ $("song-expand").setAttribute("aria-expanded",String(songExpanded));
  renderInstruments();
  renderTimeline();
  renderChunkEditor();
@@ -867,23 +917,43 @@ $("note-mode").addEventListener("click",()=>{
  }
 });
 $("new").addEventListener("click", () => {
- if (confirm("Start a new beat? Save the current .premidi if you want a copy.")) resetTo(create());
+ if(confirm("Start a new Beat? This replaces the current "+(song?"Song":"Beat")+". Save .premidi first to keep it."))resetTo(create());
 });
 $("import").addEventListener("click", () => $("file").click());
+$("song-expand").addEventListener("click",()=>{
+ if(!song){song=createSong(beat);selectedBeatId=beat.id;beat=song.beats[0];}
+ songExpanded=!songExpanded;store();render();
+});
+$("song-collapse").addEventListener("click",()=>{songExpanded=false;render();});
+$("song-import-file").addEventListener("change",async event=>{
+ const file=event.currentTarget.files?.[0];if(!file)return;
+ try{const imported=await importProject(file);addSongBeat(imported);message("Added "+imported.title);}
+ catch(error){message("Could not add Beat: "+error.message,true);}
+ finally{event.currentTarget.value="";}
+});
 $("file").addEventListener("change",async event=>{
- const file=event.currentTarget.files?.[0];
- if(!file)return;
- try {
-  if(!confirm("Open "+file.name+"? This replaces the browser draft. Export it first if you want a copy."))return;
-  const next=await importProject(file);
-  resetTo(next);
-  message("Opened "+file.name);
+ const file=event.currentTarget.files?.[0];if(!file)return;
+ try{
+  const content=file.name.toLowerCase().endsWith(".zip")?
+   [...(await readZip(file))].find(([path])=>path.endsWith(".premidi"))?.[1]:null;
+  const raw=content?new TextDecoder().decode(content):
+   file.name.toLowerCase().endsWith(".premidi")?await file.text():null;
+  if(!raw)throw Error("Choose a .premidi or music ZIP.");
+  const kind=JSON.parse(raw).kind;
+  if(song&&kind!=="song"){
+   const added=await importProject(file);
+   addSongBeat(added);message("Added "+added.title);
+  }else{
+   if(!confirm("Open "+file.name+"? This replaces the current browser draft. Save it first to keep it."))return;
+   const next=kind==="song"?await importSongProject(file):await importProject(file);
+   resetTo(next);message("Opened "+file.name);
+  }
  }catch(error){message("Could not open file: "+error.message,true);}
  finally{$("file").value="";}
 });
 $("export").addEventListener("click",()=>{
  try{
-  const result=exportProject(beat);
+  const result=song?exportSongProject(song):exportProject(beat);
   download(result.blob,result.name);
   message(result.name.endsWith(".zip")?"Saved music ZIP with separate audio assets":"Saved .premidi");
  }catch(error){message("Export failed: "+error.message,true);}
@@ -892,7 +962,7 @@ $("wav").addEventListener("click", async () => {
  const el = $("wav");
  el.disabled = true;
  message("Rendering WAV...");
- try { download(await wav(beat), filename(beat,".wav")); message("Saved WAV"); }
+ try { download(await wav(currentDocument()), filename(currentDocument(),".wav")); message("Saved WAV"); }
  catch (error) { message("WAV error: " + error.message, true); }
  finally { el.disabled = false; }
 });
@@ -901,22 +971,27 @@ $("play").addEventListener("click", async () => {
  if (pendingPlay) return;
  pendingPlay = true;
  try {
-  playback = await play(() => beat, {
+  playback = await play(() => song||beat, {
    loop: () => $("loop").checked,
    onPosition: (bar, step) => {
     $("position").textContent = (bar + 1) + "." + (Math.floor(step / 4) + 1);
-    if (playBar !== bar) { playBar = bar; paintPlayhead(); }
-    playStep = step;
+    if(song){songUI?.setPosition(bar+step/16);playBar=playStep=-1;}
+    else{
+     if(playBar!==bar){playBar=bar;paintPlayhead();}
+     playStep=step;
+    }
    },
    onProgress: (bar, step) => {
-    pianoProgress = {bar, step};
-    paintPianoPlayhead();
+    pianoProgress=song?null:{bar,step};
+    if(song)songUI?.setPosition(bar+step/16);
+    else paintPianoPlayhead();
    },
    onStop: () => {
     playback = null;
     playBar = playStep = -1;
     pianoProgress = null;
     $("play").textContent = "▶ Play";
+    songUI?.setPosition(-1);
     paintPlayhead();
    }
   });
@@ -926,7 +1001,11 @@ $("play").addEventListener("click", async () => {
 });
 $("stop").addEventListener("click", stop);
 $("title").addEventListener("change", event => modify(() => beat.title = event.target.value.trim() || "Untitled beat"));
-$("bpm").addEventListener("change", event => modify(() => beat.bpm = Math.round(Number(event.target.value))));
+$("bpm").addEventListener("change",event=>{
+ const next=Math.round(Number(event.target.value));
+ if(song)modifySong(()=>{song.bpm=next;});
+ else modify(()=>{beat.bpm=next;});
+});
 $("bars").addEventListener("change", event => modify(() => {
  const count = Number(event.target.value);
  beat.bars = count;
@@ -1334,10 +1413,17 @@ document.addEventListener("keydown", event => {
   event.preventDefault(); $("play").click();
  }
 });
+songUI=installSongUI({
+ root:$("song-panel"),getSong:()=>songExpanded?song:null,
+ getSelectedBeatId:()=>selectedBeatId,
+ onSelectBeat:selectBeat,onChange:modifySong,
+ onAddBeat:()=>{const next=create();next.bpm=song.bpm;addSongBeat(next);},
+ onImportBeat:()=>$("song-import-file").click()
+});
 render();
-if (cached) message("Local synth draft restored");
+if(cached)message("Local draft restored");
 void loadDraft().then(raw=>{
- if(!raw || history.length || future.length)return;
- try {const restored=parse(raw);resetTo(restored);message("Browser draft restored");}
+ if(!raw || history.length || future.length || saveGeneration>0)return;
+ try {const restored=parseDocument(raw);resetTo(restored);message("Browser draft restored");}
  catch(error){console.warn("Draft could not be restored",error);}
 }).catch(()=>{});

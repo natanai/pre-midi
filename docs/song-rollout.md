@@ -1,6 +1,6 @@
 # Beat → Song rollout
 
-Status: **Stage 1 in progress**. This is the implementation contract, not a claim that Song mode exists.
+Status: **Stage 3 initial Song arranging UI in progress**. The Beat editor remains the primary/default view.
 
 ## North star
 
@@ -62,4 +62,8 @@ Game-engine parity tracking: [pre-programmed #235](https://github.com/natanai/pr
 ## Stage log
 - Stage 1: glossary, Beat naming across active engine/UI/transport, and vocabulary regression checks implemented; existing Beat file format remains v7.
 - Stage 2 underway: `songModel.js` introduces pure Song, Track, and Beat Clip operations and repeat/layered event resolution, with domain tests. Independent Song import/export helpers now round-trip instruction-only .premidi and ZIPs containing shared audio Assets. The existing Beat UI has **not** yet been switched to Song-aware loading, and Song playback/recording UI is still pending.
+- Stage 3 first usable arranger: compact upward Song affordance, editable Song timeline, repeated/resizable/positionable Beat Clips, multiple Beat Tracks, adding/importing Beats, selecting a Beat for editing underneath, and keyboard/touch clip interactions.
+- Song playback uses the native event scheduler; WAV rendering and export use the existing native sound engine without flattening Beat instructions.
+- Autosave and native Song ZIP/.premidi export are wired through the same browser draft path. Reopening a Song selects its first Beat.
+- Pending: real-browser manual gesture tests, detailed input/undo smoke passes, vocal recording, and verified pre-programmed parity.
 - Remaining: full identifier/API migration, cross-repo vocabulary inventory, compatibility fixture coverage.

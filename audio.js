@@ -1,5 +1,6 @@
 import {resolveEvent} from "./soundModel.js";
 import {eventsAtStep,phraseInstances} from "./arrangement.js";
+import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
 import { movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
@@ -193,7 +194,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  const ctx=context,out=ctx.createGain(),read=typeof beat==="function"?beat:()=>beat;
- await decodeSamples(ctx,read(),bufferCache(ctx));
+ await Promise.all((read().kind==="song"?read().beats:[read()]).map(entry=>decodeSamples(ctx,entry,bufferCache(ctx))));
  const loops=()=>typeof loop==="function"?loop():loop;
  out.gain.value=.85;out.connect(ctx.destination);
  let scheduled=0,nextTime=ctx.currentTime+.07,shown=-1,stopped=false,timer,activeStep=null;
@@ -212,14 +213,17 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
   if(stopped)return;
   let guarded=0;
   while(nextTime<ctx.currentTime+.095 && guarded++<24) {
-   const current=read(),cycle=current.bars*16;
+   const current=read(),cycle=current.kind==="song"?songDurationSteps(current):current.bars*16;
+   if(cycle===0){stop();return;}
    if(!loops()&&scheduled>=cycle)break;
-   const step=scheduled%cycle,barIndex=Math.floor(step/16),unit=secondsPerStep(current);
-   void decodeSamples(ctx,current,bufferCache(ctx)).catch(console.warn);
-   for(const event of stepEvents(current,scheduled))
+   const step=scheduled%Math.max(1,cycle),barIndex=Math.floor(step/16),unit=secondsPerStep(current);
+   if(step%16===0)for(const entry of (current.kind==="song"?current.beats:[current]))
+    void decodeSamples(ctx,entry,bufferCache(ctx)).catch(console.warn);
+   const events=current.kind==="song"?eventsAtSongStep(current,step):stepEvents(current,scheduled);
+   for(const event of events)
     soundNote(ctx,out,event.instrument,event.note,
      nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),
-     event.note.duration*unit,current);
+     event.note.duration*unit,event.beat||current);
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
   }
@@ -233,7 +237,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    onProgress(activeStep.barIndex,Math.min(16,activeStep.step+Math.min(1,elapsed/activeStep.unit)));
   }
   const current=read();
-  if(!loops()&&scheduled>=current.bars*16&&ctx.currentTime>nextTime+1.1)stop();
+  if(!loops()&&scheduled>=(current.kind==="song"?songDurationSteps(current):current.bars*16)&&ctx.currentTime>nextTime+1.1)stop();
  }
  timer=setInterval(tick,25);tick();return {stop};
 }
@@ -266,6 +270,7 @@ export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,s
  return ctx.startRendering();
 }
 export async function wav(beat) {
+ if(beat.kind==="song")return wavSong(beat);
  // Decode once, before choosing the render length: full one-shot tails can
  // extend beyond the old fixed 4.5-second pad. AudioBuffers are reusable.
  const decoder=new OfflineAudioContext(2,1,44100),decoded=new Map();
@@ -297,5 +302,26 @@ export async function wav(beat) {
  sampleCaches.set(ctx,decoded);
  const out=ctx.createGain();out.gain.value=.85;out.connect(ctx.destination);
  for(let bar=0;bar<beat.bars;bar++)renderBar(ctx,out,beat,bar,bar*16*unit);
+ return pcmWav(await ctx.startRendering());
+}
+
+// Song WAV uses the same native event resolver and voice scheduler as playback.
+async function wavSong(song){
+ const length=songDurationSteps(song);
+ const unit=secondsPerStep(song);
+ const seconds=length*unit+8;
+ if(seconds>600)throw Error("Song WAV exceeds the current 10-minute render limit.");
+ const decoder=new OfflineAudioContext(2,1,44100),decoded=new Map();
+ for(const beat of song.beats)await decodeSamples(decoder,beat,decoded);
+ const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);
+ sampleCaches.set(ctx,decoded);
+ const out=ctx.createGain();out.gain.value=.85;out.connect(ctx.destination);
+ for(let step=0;step<length;step++){
+  const start=step*unit;
+  for(const event of eventsAtSongStep(song,step))
+   soundNote(ctx,out,event.instrument,event.note,
+    start+eventOffset(event.instrument,event.note,event.chunk.notes),
+    event.note.duration*unit,event.beat);
+ }
  return pcmWav(await ctx.startRendering());
 }
