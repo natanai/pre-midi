@@ -940,14 +940,11 @@ $("file").addEventListener("change",async event=>{
    file.name.toLowerCase().endsWith(".premidi")?await file.text():null;
   if(!raw)throw Error("Choose a .premidi or music ZIP.");
   const kind=JSON.parse(raw).kind;
-  if(song&&kind!=="song"){
-   const added=await importProject(file);
-   addSongBeat(added);songExpanded=true;render();message("Added "+added.title);
-  }else{
-   if(!confirm("Open "+file.name+"? This replaces the current browser draft. Save it first to keep it."))return;
-   const next=kind==="song"?await importSongProject(file):await importProject(file);
-   resetTo(next);message("Opened "+file.name);
-  }
+  // "Open" replaces the current project. Only Song's "Add .premidi"
+  // imports a Beat into an existing Song.
+  if(!confirm("Open "+file.name+"? This replaces the current "+(song?"Song":"Beat")+". Save it first to keep it."))return;
+  const next=kind==="song"?await importSongProject(file):await importProject(file);
+  resetTo(next);message("Opened "+file.name);
  }catch(error){message("Could not open file: "+error.message,true);}
  finally{$("file").value="";}
 });

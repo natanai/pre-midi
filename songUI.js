@@ -1,12 +1,26 @@
 // Song arrangement UI. Beat editor remains the existing studio underneath.
 import {songDurationSteps} from "./songModel.js";
 import {id} from "./schema.js";
-const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105;
+// All Song lanes and the bar ruler use the same scale; only the viewport
+// determines how much empty timeline is visible. There is no fixed song end.
+const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
 const integer=(value,fallback)=>Number.isFinite(value)?Math.max(0,Math.round(value)):fallback;
 export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat}){
  const $=id=>root.querySelector("#"+id);
  const viewport=$("song-scroll"),tracks=$("song-tracks"),ruler=$("song-ruler");
  let selectedClipId=null,dragging=false,ignoreClick=false,playPosition=-1;
+ let timelinePages=1;
+ const beatMenu=$("song-beat-choice"),beatMenuToggle=$("song-add-beat");
+ function closeBeatMenu(){
+  beatMenu.hidden=true;
+  beatMenuToggle.setAttribute("aria-expanded","false");
+ }
+ function toggleBeatMenu(){
+  const opening=beatMenu.hidden;
+  beatMenu.hidden=!opening;
+  beatMenuToggle.setAttribute("aria-expanded",String(opening));
+  if(opening)$("song-new-beat").focus();
+ }
  function apply(action){
   onChange(action);
   render();
@@ -19,7 +33,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   if(found?.clip.beatId)onSelectBeat(found.clip.beatId);
   render();
  }
- function clipButton(track,clip,scale){
+ function clipButton(track,clip){
   const beat=localBeat(clip.beatId);
   const block=document.createElement("button");
   block.type="button";block.className="song-beat-clip"+(clip.id===selectedClipId?" selected":"");
@@ -108,13 +122,22 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   root.hidden=!song;
   if(!song)return;
   const view=$("song-title");if(document.activeElement!==view)view.value=song.title;
-  const bars=Math.max(16,Math.ceil(songDurationSteps(song)/BAR_STEPS)+8);
+  const viewportBars=Math.ceil(Math.max(0,viewport.clientWidth-LABEL_PX)/BAR_PX);
+  const songBars=Math.ceil(songDurationSteps(song)/BAR_STEPS);
+  const bars=Math.max(PAGE_BARS*timelinePages,viewportBars,songBars+8);
   const width=bars*BAR_PX;
+  const totalWidth=width+LABEL_PX;
   ruler.replaceChildren();
-  ruler.style.width=(width+LABEL_PX)+"px";
-  for(let n=0;n<bars;n+=4){
+  ruler.style.width=totalWidth+"px";
+  ruler.style.setProperty("--song-bar-px",BAR_PX+"px");
+  const axis=document.createElement("span");
+  axis.className="song-ruler-axis";
+  axis.textContent="bar";
+  ruler.append(axis);
+  for(let n=0;n<bars;n+=1){
+   if(n%4!==0)continue;
    const label=document.createElement("span");label.className="song-ruler-mark";
-   label.style.left=(LABEL_PX+n*BAR_PX)+"px";label.textContent=String(n+1);
+   label.style.left=(LABEL_PX+n*BAR_PX+3)+"px";label.textContent=String(n+1);
    ruler.append(label);
   }
   const cursor=document.createElement("span");cursor.id="song-cursor";
@@ -125,12 +148,24 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   for(const track of song.tracks){
    const row=document.createElement("div");row.className="song-track-row";row.dataset.trackId=track.id;
    const head=document.createElement("div");head.className="song-track-label";
-   head.append(document.createTextNode(track.name));
+   if(track.kind==="beat"&&track.clips.length){
+    const ids=new Set(track.clips.map(clip=>clip.beatId));
+    const first=track.clips[0],firstBeat=localBeat(first.beatId);
+    const heading=ids.size===1?firstBeat?.title||track.name:track.name;
+    const edit=document.createElement("button");
+    edit.type="button";edit.className="song-track-open";
+    edit.textContent=heading;
+    edit.title="Edit "+(firstBeat?.title||"Beat");
+    edit.setAttribute("aria-label",edit.title);
+    edit.setAttribute("aria-pressed",String(getSelectedBeatId()===first.beatId));
+    edit.addEventListener("click",()=>select(first.id));
+    head.append(edit);
+   }else head.textContent=track.name;
    const lane=document.createElement("div");lane.className="song-track-lane";
    lane.style.width=width+"px";
-   lane.style.backgroundSize=BAR_PX+"px 100%";
+   lane.style.setProperty("--song-bar-px",BAR_PX+"px");
    if(track.kind==="beat"){
-    for(const clip of track.clips)lane.append(clipButton(track,clip,width));
+    for(const clip of track.clips)lane.append(clipButton(track,clip));
     const add=document.createElement("button");add.type="button";add.className="song-add-clip";
     add.textContent="+";
     add.title="Add Beat Clip to "+track.name;
@@ -148,7 +183,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
    }
    row.append(head,lane);tracks.append(row);
   }
-  tracks.style.minWidth=(width+LABEL_PX)+"px";
+  tracks.style.width=totalWidth+"px";
   const selection=selected(),settings=$("song-clip-settings");
   settings.hidden=!selection;
   if(selection){
@@ -157,8 +192,32 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
    $("song-clip-length").value=String(Math.max(1,clip.lengthSteps/BAR_STEPS));
   }
  }
- $("song-add-beat").addEventListener("click",onAddBeat);
- $("song-import-beat").addEventListener("click",onImportBeat);
+ beatMenuToggle.addEventListener("click",toggleBeatMenu);
+ $("song-new-beat").addEventListener("click",()=>{
+  closeBeatMenu();onAddBeat();
+ });
+ $("song-import-beat").addEventListener("click",()=>{
+  closeBeatMenu();onImportBeat();
+ });
+ root.addEventListener("pointerdown",event=>{
+  if(!event.target.closest(".song-beat-add"))closeBeatMenu();
+ });
+ root.addEventListener("keydown",event=>{
+  if(event.key==="Escape"&&!beatMenu.hidden){
+   closeBeatMenu();beatMenuToggle.focus();
+  }
+ });
+ viewport.addEventListener("scroll",()=>{
+  if(!getSong())return;
+  const remaining=viewport.scrollWidth-viewport.clientWidth-viewport.scrollLeft;
+  if(remaining<BAR_PX*3){
+   timelinePages++;
+   render();
+  }
+ });
+ if(typeof ResizeObserver!=="undefined"){
+  new ResizeObserver(()=>{if(getSong())render();}).observe(viewport);
+ }
  $("song-add-track").addEventListener("click",()=>onChange("add-track"));
  $("song-clip-start").addEventListener("change",event=>{
   const item=selected();if(!item)return;

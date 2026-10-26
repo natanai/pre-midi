@@ -948,3 +948,51 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .song-actions button{min-height:39px}
  .beat-identity{width:100%}
 }
+
+/* One uninterrupted Song grid: the bar ruler and every lane share the same scale. */
+.song-ruler{
+ background-color:#080808;
+ background-image:linear-gradient(90deg,transparent calc(100% - 1px),#343434 calc(100% - 1px));
+ background-size:var(--song-bar-px,54px) 100%;
+ background-position:105px 0;
+ background-repeat:repeat-x;
+}
+.song-ruler-axis{
+ position:sticky;left:0;top:0;z-index:5;display:flex;align-items:center;
+ width:105px;height:21px;padding-left:8px;border-right:1px solid var(--line);
+ background:#0b0b0b;color:var(--muted);
+}
+.song-ruler-mark{top:4px;color:#aaa}
+.song-ruler-mark::before{
+ content:"";position:absolute;left:-3px;bottom:-5px;width:1px;height:4px;background:var(--muted);
+}
+.song-track-lane{
+ background-color:#030303;
+ background-image:linear-gradient(90deg,transparent calc(100% - 1px),#282828 calc(100% - 1px));
+ background-size:var(--song-bar-px,54px) 100%;
+ background-repeat:repeat-x;
+}
+.song-track-label{min-height:39px}
+.song-track-open{
+ display:block;overflow:hidden;text-overflow:ellipsis;text-align:left;width:100%;
+ padding:4px 0;min-height:30px;color:var(--bright);font-size:11px;
+}
+.song-track-open[aria-pressed="true"]{color:var(--signal-cyan)}
+.song-track-open:focus-visible{outline:1px dotted var(--bright)}
+.song-beat-add{position:relative;padding:5px 0 0;min-height:43px;width:max-content}
+#song-add-beat{
+ color:var(--bright);padding:7px 8px;text-align:left;
+ min-width:105px;min-height:36px;border:1px solid var(--faint);
+}
+#song-add-beat[aria-expanded="true"]{border-color:var(--line)}
+.song-beat-choice{
+ position:absolute;z-index:50;left:0;top:calc(100% + 2px);
+ display:grid;min-width:155px;padding:4px;border:1px solid var(--line);
+ background:#080808;box-shadow:0 6px 12px #000;
+}
+.song-beat-choice[hidden]{display:none!important}
+.song-beat-choice button{
+ width:100%;min-height:36px;text-align:left;padding:6px 9px;
+ color:var(--bright);text-transform:lowercase;
+}
+.song-beat-choice button:hover,.song-beat-choice button:focus-visible{background:#151515}

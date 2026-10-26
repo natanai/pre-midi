@@ -28,17 +28,22 @@
   <div class="song-toolbar">
    <label>SONG <input id="song-title" maxlength="100" aria-label="Song title"></label>
    <div class="song-actions">
-    <button id="song-add-beat" type="button">+ Beat</button>
-    <button id="song-import-beat" type="button">Open .premidi</button>
     <button id="song-add-track" type="button">+ Track</button>
     <button id="song-collapse" type="button" aria-label="Collapse Song">↓</button>
-    <input id="song-import-file" type="file" accept=".premidi,.zip" hidden>
    </div>
   </div>
   <div id="song-scroll" class="song-scroll" aria-label="Song timeline" tabindex="0">
    <div id="song-ruler" class="song-ruler"></div>
    <div id="song-tracks" class="song-tracks"></div>
   </div>
+  <div class="song-beat-add">
+   <button id="song-add-beat" type="button" aria-controls="song-beat-choice" aria-expanded="false">+ Beat</button>
+   <div id="song-beat-choice" class="song-beat-choice" role="group" aria-label="Add Beat" hidden>
+    <button id="song-new-beat" type="button">New Beat</button>
+    <button id="song-import-beat" type="button">Add .premidi</button>
+   </div>
+  </div>
+  <input id="song-import-file" type="file" accept=".premidi,.zip" hidden>
   <div id="song-clip-settings" class="song-clip-settings" hidden>
    <label>Start bar <input id="song-clip-start" type="number" min="1" step="1" value="1"></label>
    <label>Length (bars) <input id="song-clip-length" type="number" min="1" step="1" value="8"></label>

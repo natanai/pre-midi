@@ -67,3 +67,9 @@ Game-engine parity tracking: [pre-programmed #235](https://github.com/natanai/pr
 - Autosave and native Song ZIP/.premidi export are wired through the same browser draft path. Reopening a Song selects its first Beat.
 - Pending: real-browser manual gesture tests, detailed input/undo smoke passes, vocal recording, and verified pre-programmed parity.
 - Remaining: full identifier/API migration, cross-repo vocabulary inventory, compatibility fixture coverage.
+
+## Song UI refinements (October 25, 2026)
+- The Song ruler and Track lanes span the full viewport, share the same bar divisions, and extend automatically when the user scrolls near the visible end. Empty Song space is not a fixed length.
+- The `+ Beat` control sits below Song Tracks at the left; its two explicit options are `New Beat` and `Add .premidi`. The global `Open .premidi` always replaces the current project, rather than behaving differently inside Song mode.
+- Single-Beat Track labels display the Beat's authored name and open the underlying Beat editor when clicked. Multi-Beat Tracks retain their generic Track label.
+- Browser smoke checks cover timeline width, Beat creation choices, selecting Beat by name, and the existing playback/save/reload path.
