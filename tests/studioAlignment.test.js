@@ -36,6 +36,6 @@ test("notes controls align to one baseline and wrap instead of spreading out",()
  assert.match(css,/\.notes-toolbar \{align-items:flex-end;justify-content:flex-start/);
  assert.match(css,/\.chunk-actions \{align-items:flex-end;align-self:flex-end/);
  assert.match(css,/\.note-length-control \{margin-left:0\}/);
- assert.doesNotMatch(css,/\.chunk-actions \{[^}]*height:34px/);
+ assert.match(css,/\.chunk-actions \{[^}]*min-height:34px/);
  assert.match(css,/@media\(max-width:570px\)/);
 });
