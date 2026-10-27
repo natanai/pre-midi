@@ -11,7 +11,12 @@
   const load=name=>import(new URL('./'+name,location.href).href);
   const {saveDraft,loadDraft}=await load('storage.js');
   const {getAsset}=await load('assetRegistry.js');
+  const identity=localStorage.getItem('premidi-smoke-storage-identity');
+  if(info.smokeFresh){
+   assert(!identity&&!localStorage.getItem('premidi-smoke-persistence'),'fresh profile is isolated from other editions');
+  }
   if(info.smokeRestore){
+   assert(identity===info.smokeStorageToken,'expected profile identity survived reopening');
    const marker=JSON.parse(localStorage.getItem('premidi-smoke-persistence')||'null');
    assert(!!marker,'preset/settings marker survived reopening');
    const prior=JSON.parse(await loadDraft());
@@ -19,6 +24,12 @@
    const bytes=getAsset('desktop-storage-wav');
    assert(bytes?.length===marker.bytes&&bytes[0]===82&&bytes.at(-1)===marker.lastByte,'external WAV bytes survived reopening');
    assert(localStorage.getItem('premidi-update-channel')==='preview','update channel setting survived reopening');
+  }
+  if(info.portable){
+   const normalized=path=>path.replaceAll('\\','/');
+   const root=normalized(info.portableRoot);
+   assert(normalized(info.dataPath)===root+'/data/webview','portable WebView profile is inside the executable folder');
+   assert(normalized(info.projectsPath)===root+'/projects'&&normalized(info.exportsPath)===root+'/exports','portable save defaults are inside the executable folder');
   }
   const {create,id}=await load('schema.js'),{makePatch}=await load('synth.js');
   const {exportProject,importProject}=await load('packageIO.js');
@@ -50,9 +61,11 @@
   const asset=makeSampleAsset('desktop-storage-wav','Storage test','audio/wav',bytes,'desktop storage qualification fixture');
   beat.samples.push(asset);await saveDraft(beat);
   localStorage.setItem('premidi-smoke-persistence',JSON.stringify({bytes:bytes.length,lastByte:bytes.at(-1)}));
+  const writtenToken=info.smokeWriteToken??info.smokeStorageToken;
+  localStorage.setItem('premidi-smoke-storage-identity',writtenToken);
   localStorage.setItem('premidi-update-channel','preview');
   const native=await invoke('native_fixture');assert(native.length===48000&&native.some(x=>Math.abs(x)>.01)&&native.every(Number.isFinite),'in-process C++ offline fixture');
   assert(!!navigator.mediaDevices?.getUserMedia,'microphone API exposed (hardware capture untested)');
-  await invoke('smoke_result',{result:{passed:true,version:info.version,checks,limitations:['no human listening or physical microphone test','not an installed upgrade test']}});
+  await invoke('smoke_result',{result:{passed:true,version:info.version,storage:{portable:info.portable,root:info.portableRoot,webview:info.dataPath,identity:writtenToken},checks,limitations:['no human listening or physical microphone test','not an installed upgrade test']}});
  }catch(error){await window.__TAURI__.core.invoke('smoke_result',{result:{passed:false,checks,error:String(error)+"\n"+(error.stack||"")}});}
 })();

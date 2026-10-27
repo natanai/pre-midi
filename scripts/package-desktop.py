@@ -29,7 +29,35 @@ if platform=='windows':
  with zipfile.ZipFile(out/name,'w',zipfile.ZIP_DEFLATED) as z:
   z.write(build/'pre-midi.exe','pre-midi.exe')
   z.writestr('portable.txt','pre-midi portable edition\n')
-  z.writestr('README.txt','Windows 11 x64. Extract the whole ZIP and open pre-midi.exe. WebView2 Runtime is required (normally included in Windows 11). Data stays in your user profile, not this folder. To update, extract a newer ZIP in a separate folder. Automatic installation is available in the installer edition.\n')
+  for folder in ['data/','projects/','exports/']:z.writestr(folder,'')
+  z.writestr('README.txt','''pre-midi portable - Windows 11 x64
+
+Extract the whole ZIP into a writable folder and open pre-midi.exe.
+Keep portable.txt beside the executable: it selects folder-local storage.
+
+data/webview/  presets, settings, autosaved music, recordings and WebView cache
+projects/      default location for project and music ZIP exports
+exports/       default location for WAV exports
+
+Close pre-midi before moving, copying or backing up the entire folder. Each
+portable folder has its own profile and does not share the installer profile.
+Save dialogs start inside this folder; choosing another destination explicitly
+can save outside it. A read-only portable folder produces an error, with no
+fallback to AppData. WebView2 Runtime is an OS dependency, normally on Windows
+11; Windows may maintain its own runtime, temporary files and system records.
+
+Update: close pre-midi, back up this folder, and replace only pre-midi.exe,
+portable.txt and README.txt from the newer ZIP. KEEP data/, projects/ and
+exports/. Do not delete your folder to upgrade. Open pre-midi again manually.
+Automatic installation is unavailable in the portable edition.
+
+Migrating from preview.1 or preview.2: close all pre-midi windows first.
+Those versions saved data in %LOCALAPPDATA%/app.premidi.studio/webview.
+Before first launch, copy that webview folder into this folder's data/.
+Do not copy a live WebView profile. The original is left untouched. Alternatively,
+export music ZIPs in the old edition and import them here (presets/settings
+need the profile copy). A plain .premidi file does not include recorded WAVs.
+''')
  data=(out/name).read_bytes();artifacts.append(dict(name=name,platform=platform,arch=arch,kind='portable',size=len(data),sha256=hashlib.sha256(data).hexdigest(),signature=None))
 elif platform=='darwin':
  collect('dmg/*.dmg','installer','dmg')

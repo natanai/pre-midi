@@ -10,7 +10,7 @@ Tauri is the chosen desktop framework, at Nat's request. The studio remains the 
 | Platform audio | WebView2 on Windows, WKWebView on macOS, WebKitGTK on Linux; each needs qualification | Bundled Chromium reduces browser-engine differences, with a larger runtime |
 | Recording | Web APIs and OS microphone permission; macOS includes usage description | Chromium media APIs plus explicit session permission handlers |
 | Files | Narrow Rust save command opens native dialog; existing input controls open projects | Main-process dialogs and isolated preload bridge |
-| Persistence | WebView profile outside installation directory; same identifier across releases | Chromium profile outside installation directory |
+| Persistence | Installer uses the user profile; Windows portable ZIP keeps its profile inside its own folder | Configurable Chromium profile; portable mode also requires explicit folder-local configuration |
 | Updates | Tauri Minisign artifact verification, version binding, platform installers | electron-updater plus additional signed-manifest or OS-signing configuration |
 | C++ integration | cc compiles a bounded C ABI fixture into the Rust process; expand the same boundary later | Node-API addon or isolated native process |
 | Maintenance | Rust toolchain and system WebView dependencies; smaller application runtime | Chromium/Node runtime updates, larger downloads and an additional IPC boundary |
@@ -27,13 +27,20 @@ The next native adapter should accept validated canonical synth-voice plans on t
 
 ## Storage and backups
 
-- Windows: the WebView profile is explicitly under `%LOCALAPPDATA%\app.premidi.studio\webview`.
+- Windows installer: the WebView profile is explicitly under `%LOCALAPPDATA%\app.premidi.studio\webview`.
+- Windows portable, preview.3 onward: `portable.txt` beside `pre-midi.exe` selects `<executable folder>/data/webview`. This contains localStorage presets/settings, IndexedDB drafts and external recorded WAV bytes, and WebView caches. Project/music ZIP saves default to `<executable folder>/projects`, WAV exports to `<executable folder>/exports`. Paths come from the executable, not the working directory. Moving or copying the closed portable folder carries its data, and separate copies do not share profiles. A folder that cannot be written produces a visible startup error; it never silently falls back to AppData. Existing data-folder junctions/symlinks pointing outside the master folder are rejected.
 - Linux: the WebView profile is explicitly under `$XDG_DATA_HOME/app.premidi.studio/webview`, normally `~/.local/share/app.premidi.studio/webview`.
 - macOS: WKWebView uses its OS-managed website data store outside the .app bundle. Do not assume that copying the .app copies website data. WebKit stores website data under the user's Library; paths can vary with OS versions. Project ZIP export is the portable backup mechanism.
-- Exported projects and recordings go to the path chosen in the native save dialog. No persistent user data belongs in the installation directory. The Windows portable edition also uses the user profile, so extracting a newer ZIP in another folder retains the same profile.
+- Exported projects and recordings go to the path explicitly chosen in the native save dialog. Portable defaults stay inside the master folder; choosing an external destination explicitly can save outside it. Installed editions keep persistent data outside replaceable application files. The portable edition deliberately keeps user data in its own folder, separate from the executable, so updates must preserve `data`, `projects` and `exports`.
 - Presets and settings retain their localStorage keys. Drafts and recording/sample bytes retain the pre-midi-local IndexedDB schema and asset identities. File formats, Song/Beat versions, automation and modulation semantics are unchanged.
 
 Close the app before copying a whole WebView profile. Export music ZIPs for durable project backups with external audio assets. A plain .premidi file does not embed WAV bytes. Browser/PWA profiles do not automatically migrate into the desktop profile. Applying a saved preset and exporting a Beat provides a portable copy of that sound's patch and assets.
+
+**Portable migration from preview.1/.2:** those ZIPs used the installer's AppData profile. They are not silently imported or deleted. Close all pre-midi windows, back up `%LOCALAPPDATA%\app.premidi.studio\webview`, then copy that `webview` folder into the new portable folder's `data` directory before its first launch. To replace an already initialized portable profile, first back up that profile and move it aside; never merge live profile directories. Alternatively export/import music ZIPs; profile copying also retains presets and settings. The original AppData profile remains untouched, so the installed edition continues to work independently.
+
+**Portable upgrade:** close the app, back up the entire master folder, and replace only `pre-midi.exe`, `portable.txt` and `README.txt` from the newer ZIP. Keep `data`, `projects` and `exports`. Extracting a new ZIP elsewhere creates a separate, empty profile until its data is copied. Do not delete the old folder as an upgrade step. Removing `portable.txt` changes the executable to installed-profile behavior, so keep the marker.
+
+Folder locality covers application-managed profile, music and cache data. WebView2 remains a Windows runtime dependency, normally installed with Windows 11; this ZIP does not bundle a fixed WebView2 runtime. Windows can maintain system/runtime files, temporary files and file-dialog history outside the folder. This is not an operating-system sandbox. macOS and Linux storage behavior is unchanged by the Windows portable change.
 
 The close/update path awaits the existing IndexedDB save transaction. An unfinished microphone session prevents closing until it is used or cancelled. Failed saves leave the app open with an error. Cancelling a native save dialog is reported as cancelled, not exported.
 
@@ -50,7 +57,7 @@ Before installation the UI saves local work and displays exactly:
 | Edition | Implemented behavior when signing is configured |
 | --- | --- |
 | Windows installer | Tauri launches the per-user NSIS updater and exits; restart_after_install(false) omits the relaunch flags. No requested elevation. Successful completion still requires installed-upgrade qualification. |
-| Windows portable ZIP | Automatic installation is disabled; extract a new ZIP into another folder or switch to the installer. |
+| Windows portable ZIP | Automatic installation is disabled; close the app, replace release files while retaining `data`, `projects` and `exports`, then reopen manually. |
 | macOS .app | Tauri verifies and stages the .app replacement with its backup/restore flow, then pre-midi exits without relaunching. Apple signing/notarization and quarantine behavior require separate qualification. |
 | Linux AppImage | Tauri verifies and replaces the AppImage with framework backup/restore on errors, then exits without relaunching. Interruption/power-loss recovery is not guaranteed. |
 | Linux DEB | Automatic installation is disabled; use the system package manager. The app does not request unnecessary root privileges. |
@@ -73,7 +80,7 @@ Publish a new preview after setting the keys. Existing previews built without th
 
 ## Build and publication
 
-Use `npm version 0.14.1-preview.3` (or the next intended version) to update the authoritative package version and generated Cargo metadata together. Preview 1 passed all four PR builds but its tagged publication met external runner DNS/package-server failures; preview 2 adds bounded dependency setup and avoids recompiling debug dependencies for the release-policy tests. Older in-flight preview builds are superseded when a newer preview is pushed.
+Use `npm version 0.14.1-preview.4` (or the next intended version) to update the authoritative package version and generated Cargo metadata together. Preview 1 passed all four PR builds but its tagged publication met external runner DNS/package-server failures; preview 2 adds bounded dependency setup and avoids recompiling debug dependencies for the release-policy tests. Preview 3 gives the Windows portable edition an independent folder-local profile. Older in-flight preview builds are superseded when a newer preview is pushed.
 
 - `npm ci` uses package-lock.json; Cargo uses committed Cargo.lock with --locked. Rust is pinned to 1.99.1, Tauri CLI to 2.12.4, and the host/updater/dialog crates to exact versions.
 - `.github/workflows/desktop-release.yml` runs Windows x64, Intel Mac, Apple Silicon Mac and Linux x64 jobs. Windows uses a per-user NSIS installer and a ZIP containing the standalone executable. macOS outputs separate DMGs. Linux outputs AppImage and DEB.
@@ -85,5 +92,7 @@ Use `npm version 0.14.1-preview.3` (or the next intended version) to update the 
 ## Qualification
 
 The workflow distinguishes unit/contract tests, packaged WebView execution and an installed Windows runner smoke. The Windows runner is Windows Server 2022, not a Windows 11 PC. macOS/Linux checks do not imply a physical microphone or listening review. The smoke evidence records each completed check and its limits. Release notes must preserve those distinctions.
+
+The Windows portable check starts with an empty local profile while the installer already has saved data, moves the whole folder, copies it, changes the copy's identity, and reopens each edition to verify independent presets/settings and recorded WAV bytes. It also checks an unusable local data directory fails without using the installed profile. Rust path tests cover marker detection, relocation, separate folders and rejection of an escaping symlink on Unix. These checks do not establish that all Windows system writes are folder-local.
 
 Required physical checks before stable: fresh Windows 11 installation, portable launch, microphone permission and capture, audible playback, preset selection, Beat/Song save/reopen/export, offline launch, current/new-version update checks, successful signed update with manual reopen, and preservation of settings/presets/recording bytes. Repeat practical checks on macOS and Linux. Benchmark native output-device latency and underruns separately from the offline fixture.

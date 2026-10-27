@@ -1,18 +1,26 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod updates;
+mod storage;
 use tauri::{Emitter,Manager};
 use tauri_plugin_dialog::DialogExt;
 use std::sync::atomic::{AtomicBool,Ordering};
 #[derive(Default)]struct Lifecycle(AtomicBool);
 #[tauri::command]
-fn desktop_info(app:tauri::AppHandle)->serde_json::Value{
+fn desktop_info(app:tauri::AppHandle,storage:tauri::State<'_,storage::Storage>)->serde_json::Value{
  serde_json::json!({"version":app.package_info().version.to_string(),"channel":if app.package_info().version.pre.is_empty(){"stable"}else{"preview"},
- "updateSigningConfigured":!updates::KEY.is_empty(),"dataPath":app.path().app_data_dir().ok(),"audioBackend":"web-audio","nativeRealtime":false,"smokeRestore":std::env::var_os("PREMIDI_SMOKE_EXPECT_RESTORE").is_some()})
+ "updateSigningConfigured":!updates::KEY.is_empty(),"dataPath":storage.webview,"portable":storage.portable_root.is_some(),"portableRoot":storage.portable_root,
+ "projectsPath":storage.projects,"exportsPath":storage.exports,"audioBackend":"web-audio","nativeRealtime":false,
+ "smokeRestore":std::env::var_os("PREMIDI_SMOKE_EXPECT_RESTORE").is_some(),"smokeFresh":std::env::var_os("PREMIDI_SMOKE_EXPECT_FRESH").is_some(),
+ "smokeStorageToken":std::env::var("PREMIDI_SMOKE_STORAGE_TOKEN").unwrap_or_default(),
+ "smokeWriteToken":std::env::var("PREMIDI_SMOKE_WRITE_TOKEN").ok()})
 }
 #[tauri::command]
 async fn save_file(app:tauri::AppHandle,name:String,bytes:Vec<u8>)->Result<bool,String>{
  if bytes.len()>256_000_000 || name.is_empty() || name.len()>240 || name.contains(['/', '\\', '\0', ':']) {return Err("Invalid export".into());}
- let file=app.dialog().file().set_file_name(name).blocking_save_file();
+ let storage=app.state::<storage::Storage>();
+ let mut dialog=app.dialog().file().set_file_name(&name);
+ if let Some(directory)=storage.export_directory(&name){dialog=dialog.set_directory(directory);}
+ let file=dialog.blocking_save_file();
  match file{None=>Ok(false),Some(file)=>{
   let path=file.into_path().map_err(|e|e.to_string())?;
   std::fs::write(path,bytes).map_err(|e|e.to_string())?;Ok(true)
@@ -42,10 +50,29 @@ fn main(){
  .plugin(tauri_plugin_dialog::init())
  .plugin(tauri_plugin_updater::Builder::new().build())
  .setup(|app|{
+  let mut storage=storage::Storage::default();
+  if cfg!(target_os="windows"){
+   match storage::Storage::portable(&std::env::current_exe()?){
+    Ok(Some(portable))=>storage=portable,
+    Ok(None)=>{},
+    Err(error)=>{
+     let message=format!("pre-midi needs a writable portable folder. Move the entire extracted folder to a location you can write to and open pre-midi.exe again.\n\n{error}");
+     if let Ok(output)=std::env::var("PREMIDI_SMOKE_OUTPUT"){
+      let _=std::fs::write(output,serde_json::json!({"passed":false,"error":message}).to_string());
+     }else{
+      app.dialog().message(message).title("pre-midi").kind(tauri_plugin_dialog::MessageDialogKind::Error).blocking_show();
+     }
+     return Err(error.into());
+    }
+   }
+  }
+  #[cfg(any(windows,target_os="linux"))]
+  if storage.webview.is_none(){storage.webview=Some(app.path().app_local_data_dir()?.join("webview"));}
+  app.manage(storage);
   let config=app.config().app.windows[0].clone();
   let builder=tauri::WebviewWindowBuilder::from_config(app,&config)?;
   #[cfg(any(windows,target_os="linux"))]
-  let builder=builder.data_directory(app.path().app_local_data_dir()?.join("webview"));
+  let builder=builder.data_directory(app.state::<storage::Storage>().webview.clone().expect("WebView storage configured"));
   builder.on_navigation(|url|{
    url.scheme()=="tauri" || matches!(url.host_str(),Some("tauri.localhost")|Some("localhost"))
   }).build()?;Ok(())

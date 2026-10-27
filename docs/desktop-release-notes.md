@@ -1,6 +1,7 @@
 pre-midi desktop preview uses Tauri with the existing studio and bundled local assets.
 
 - Windows 11 x64: per-user NSIS installer and portable ZIP. WebView2 Runtime is required; it is normally present on Windows 11. Keep the extracted ZIP together.
+- Windows portable preview.3: app-managed presets, settings, drafts, recordings and WebView caches now stay in `data/webview` beside the executable, with `projects` and `exports` as save defaults. Close the app before moving or copying the master folder. Updates must retain those three directories. The installer and other portable folders use separate profiles. Earlier preview data stays untouched in AppData; see [migration and backup instructions](https://github.com/natanai/pre-midi/blob/main/docs/desktop-host.md#storage-and-backups) before replacing an older preview. WebView2 and Windows system files remain OS-managed.
 - macOS 15.4+: separate Intel (x86_64) and Apple Silicon (aarch64) DMGs. Unsigned previews may be blocked by Gatekeeper; Apple signing/notarization is not configured.
 - Linux x86_64: AppImage and DEB, built on Ubuntu 22.04. WebKitGTK 4.1 and desktop audio dependencies are required. AppImage compatibility and physical devices remain under qualification.
 
