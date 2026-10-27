@@ -89,6 +89,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: desktop
+          cache-on-failure: true
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb libfuse2
       - run: npm ci
@@ -96,7 +97,7 @@ jobs:
       - run: node scripts/desktop-config.mjs
       - name: Build exact desktop source
         working-directory: desktop
-        run: npx tauri build --locked --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config ci-config.json
+        run: npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config ci-config.json -- --locked
       - name: Rust update policy tests
         working-directory: desktop
         run: cargo test --locked --target ${{ matrix.target }}
