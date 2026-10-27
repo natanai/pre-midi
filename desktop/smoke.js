@@ -16,7 +16,7 @@
    assert(!identity&&!localStorage.getItem('premidi-smoke-persistence'),'fresh profile is isolated from other editions');
   }
   if(info.smokeRestore){
-   assert(identity===info.smokeStorageToken,'expected profile identity survived reopening');
+   assert(identity===info.smokeStorageToken,`expected profile identity survived reopening (expected ${info.smokeStorageToken}, got ${identity})`);
    const marker=JSON.parse(localStorage.getItem('premidi-smoke-persistence')||'null');
    assert(!!marker,'preset/settings marker survived reopening');
    const prior=JSON.parse(await loadDraft());

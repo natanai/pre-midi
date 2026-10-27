@@ -42,7 +42,7 @@ Close the app before copying a whole WebView profile. Export music ZIPs for dura
 
 Folder locality covers application-managed profile, music and cache data. WebView2 remains a Windows runtime dependency, normally installed with Windows 11; this ZIP does not bundle a fixed WebView2 runtime. Windows can maintain system/runtime files, temporary files and file-dialog history outside the folder. This is not an operating-system sandbox. macOS and Linux storage behavior is unchanged by the Windows portable change.
 
-The close/update path awaits the existing IndexedDB save transaction. An unfinished microphone session prevents closing until it is used or cancelled. Failed saves leave the app open with an error. Cancelling a native save dialog is reported as cancelled, not exported.
+The close/update path awaits the existing IndexedDB save transaction. Normal shutdown closes the WebView window/controller before requesting process exit, so profile writes can complete. The Windows relocation test also waits for WebView2 browser processes to release the profile before moving/copying it, following [Microsoft's user-data-folder lifetime guidance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/user-data-folder). An unfinished microphone session prevents closing until it is used or cancelled. Failed saves leave the app open with an error. Cancelling a native save dialog is reported as cancelled, not exported.
 
 ## Update behavior
 

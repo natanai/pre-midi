@@ -3,8 +3,8 @@ mod updates;
 mod storage;
 use tauri::{Emitter,Manager};
 use tauri_plugin_dialog::DialogExt;
-use std::sync::atomic::{AtomicBool,Ordering};
-#[derive(Default)]struct Lifecycle(AtomicBool);
+use std::sync::atomic::{AtomicBool,AtomicI32,Ordering};
+#[derive(Default)]struct Lifecycle(AtomicBool,AtomicI32);
 #[tauri::command]
 fn desktop_info(app:tauri::AppHandle,storage:tauri::State<'_,storage::Storage>)->serde_json::Value{
  serde_json::json!({"version":app.package_info().version.to_string(),"channel":if app.package_info().version.pre.is_empty(){"stable"}else{"preview"},
@@ -27,7 +27,18 @@ async fn save_file(app:tauri::AppHandle,name:String,bytes:Vec<u8>)->Result<bool,
  }}
 }
 #[tauri::command]
-fn finish_close(app:tauri::AppHandle,state:tauri::State<'_,Lifecycle>){state.0.store(true,Ordering::SeqCst);app.exit(0);}
+fn finish_close(app:tauri::AppHandle)->Result<(),String>{close_app(&app,0)}
+fn close_app(app:&tauri::AppHandle,code:i32)->Result<(),String>{
+ let lifecycle=app.state::<Lifecycle>();
+ lifecycle.1.store(code,Ordering::SeqCst);
+ lifecycle.0.store(true,Ordering::SeqCst);
+ let windows=app.webview_windows();
+ if windows.is_empty(){app.exit(code);}
+ // Closing the controllers lets WebView2 flush and release its profile.
+ // Requesting process exit while a WebView is still open can lose final writes.
+ for window in windows.into_values(){window.close().map_err(|e|e.to_string())?;}
+ Ok(())
+}
 unsafe extern "C"{fn premidi_fixture(output:*mut f32,frames:u32)->i32;}
 #[tauri::command]
 async fn native_fixture()->Result<Vec<f32>,String>{
@@ -42,7 +53,7 @@ async fn native_fixture()->Result<Vec<f32>,String>{
 fn smoke_result(app:tauri::AppHandle,result:serde_json::Value)->Result<(),String>{
  let output=std::env::var("PREMIDI_SMOKE_OUTPUT").map_err(|_|"Smoke mode is disabled")?;
  std::fs::write(output,serde_json::to_vec_pretty(&result).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
- app.exit(if result["passed"]==true{0}else{1});Ok(())
+ close_app(&app,if result["passed"]==true{0}else{1})
 }
 fn main(){
  tauri::Builder::default()
@@ -83,6 +94,10 @@ fn main(){
  .on_window_event(|window,event|{
   if let tauri::WindowEvent::CloseRequested{api,..}=event{
    if !window.state::<Lifecycle>().0.load(Ordering::SeqCst){api.prevent_close();let _=window.emit("desktop:close-request",());}
+  }
+  if matches!(event,tauri::WindowEvent::Destroyed) && window.state::<Lifecycle>().0.load(Ordering::SeqCst)
+   && window.app_handle().webview_windows().len()<=1{
+   window.app_handle().exit(window.state::<Lifecycle>().1.load(Ordering::SeqCst));
   }
  })
  .on_page_load(|window,payload|{

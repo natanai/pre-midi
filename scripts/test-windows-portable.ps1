@@ -3,6 +3,18 @@ $repo = Split-Path $PSScriptRoot -Parent
 $zip = Get-ChildItem (Join-Path $repo 'release/*-portable.zip')
 if (@($zip).Count -ne 1) { throw 'Expected one portable ZIP' }
 
+function Wait-WebViewProfileExit {
+  param([string]$Profile)
+  for ($attempt = 0; $attempt -lt 60; $attempt++) {
+    $children = Get-CimInstance Win32_Process -Filter "Name = 'msedgewebview2.exe'" | Where-Object {
+      $_.CommandLine -and $_.CommandLine.Contains($Profile, [StringComparison]::OrdinalIgnoreCase)
+    }
+    if (!$children) { return }
+    Start-Sleep -Milliseconds 250
+  }
+  throw "WebView2 did not release its profile after closing: $Profile"
+}
+
 function Invoke-StudioSmoke {
   param([string]$Exe, [string]$Name, [string]$Token, [switch]$Restore, [switch]$Fresh,
         [string]$WriteToken = '', [bool]$Portable = $true)
@@ -20,6 +32,9 @@ function Invoke-StudioSmoke {
   if ($app.ExitCode -ne 0) { throw "$Name failed: $($app.ExitCode)" }
   $report = Get-Content $env:PREMIDI_SMOKE_OUTPUT -Raw | ConvertFrom-Json
   if (!$report.passed -or $report.storage.portable -ne $Portable) { throw "$Name storage mode failed" }
+  # Microsoft requires browser-process exit, not merely host-process exit,
+  # before moving or copying a WebView2 user data folder.
+  Wait-WebViewProfileExit $report.storage.webview
   if ($Portable) {
     $expected = Join-Path (Split-Path $Exe -Parent) 'data/webview'
     if ([IO.Path]::GetFullPath($report.storage.webview) -ne [IO.Path]::GetFullPath($expected)) {
