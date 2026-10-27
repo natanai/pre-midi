@@ -34,7 +34,33 @@ async function checkLayout(frame){
  checks.composerVisible=notesBefore.width>180&&rect(doc.querySelector(".timeline-section")).width>180;
  checks.soundInspectorAvailable=!!sound.querySelector("#synth-editor")&&!!sound.querySelector("#sound-visualizer");
  if(frame.clientWidth>=1100) {
-  checks.soundInitiallyBesideComposer=getComputedStyle(sound).position==="sticky" && toggle.getAttribute("aria-expanded")==="true";
+  const viewportHeight=frame.contentWindow.innerHeight;
+  const footer=doc.querySelector("footer");
+  const page=doc.scrollingElement;
+  checks.desktopPageFitsWindow=Math.max(doc.documentElement.scrollHeight,doc.body.scrollHeight)<=viewportHeight+2;
+  checks.soundInitiallyBesideComposer=getComputedStyle(sound).position==="relative" &&
+   toggle.getAttribute("aria-expanded")==="true";
+  checks.inspectorWithinViewport=rect(sound).top>=0 && rect(sound).bottom<=rect(footer).top+2 &&
+   rect(sound).height>100 && getComputedStyle(sound).overflowY==="auto";
+  const pagePosition=page.scrollTop,inspectorHeight=rect(sound).height;
+  const expandable=[...sound.querySelectorAll("details.synth-group")];
+  const lastGroup=expandable.at(-1),wasOpen=lastGroup?.open;
+  if(lastGroup)lastGroup.open=true;
+  sound.scrollTop=sound.scrollHeight;
+  checks.inspectorExpansionKeepsHeight=Math.abs(rect(sound).height-inspectorHeight)<2;
+  checks.inspectorCanReachBottom=!!lastGroup && sound.scrollHeight>sound.clientHeight &&
+   Math.abs(sound.scrollHeight-sound.clientHeight-sound.scrollTop)<=2 &&
+   rect(lastGroup).bottom<=rect(sound).bottom+2;
+  checks.inspectorHeaderStaysVisible=Math.abs(rect(sound.querySelector(".heading")).top-rect(sound).top)<2;
+  checks.soundScrollDoesNotMovePage=page.scrollTop===pagePosition;
+  if(lastGroup)lastGroup.open=wasOpen;
+  sound.scrollTop=0;
+  // Song adds another horizontal timeline, but must not revive page scrolling.
+  get("song-expand").click();
+  checks.expandedSongStillFitsViewport=!get("song-panel").hidden &&
+   Math.max(doc.documentElement.scrollHeight,doc.body.scrollHeight)<=viewportHeight+2 &&
+   rect(sound).bottom<=rect(footer).top+2;
+  get("song-expand").click();
   toggle.click();
   checks.soundCanCollapse=toggle.getAttribute("aria-expanded")==="false" && getComputedStyle(sound).display==="none";
   toggle.click();
