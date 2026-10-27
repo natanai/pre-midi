@@ -17,7 +17,8 @@
     "audio_quality_policy": "tests/audio-quality/policy.json",
     "audio_quality_reference": "tests/audio-quality/reference.json",
     "synth_execution_contract": "docs/dsp-host-contract.json",
-    "synth_voice_planner": "src/dsp/synth-voice.js"
+    "synth_voice_planner": "src/dsp/synth-voice.js",
+    "desktop_host": "docs/desktop-host.md"
   },
   "platform_policy": {
     "priority_order": [
@@ -921,7 +922,11 @@
       ],
       "deliverables": [
         "desktop/",
-        "tests/desktop"
+        ".github/workflows/desktop-release.yml",
+        "tests/desktopRelease.test.js",
+        "desktop/smoke.js",
+        "docs/desktop-host.md",
+        "native/desktop-fixture.cpp"
       ],
       "acceptance": [
         "Standalone desktop works without browser/network runtime.",
@@ -935,12 +940,61 @@
       "desktop_preview": {
         "framework": "tauri",
         "audio": "web-audio",
-        "qualification": "not yet built or hardware tested",
+        "version_source": "package.json",
+        "preview_version": "0.14.1-preview.1",
+        "tag_commit": "e4dc803063794bd2d56f07dc3ac09a67cac7fbb9",
+        "qualification": "All four platform CI builds and actual WebView smoke checks pass. Physical Windows 11/microphone/listening/offline and signed version-to-version update qualification remain open.",
+        "evidence": {
+          "platform_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635962",
+          "browser_and_dsp_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635994",
+          "release_workflow": "https://github.com/natanai/pre-midi/actions/workflows/desktop-release.yml"
+        },
+        "subtasks": [
+          {
+            "id": "host",
+            "status": "done",
+            "result": "Existing studio and pinned assets embedded in Tauri; native save dialog and packaged version in Settings; stable profile paths outside installation files."
+          },
+          {
+            "id": "packaging",
+            "status": "done",
+            "result": "Windows x64 NSIS and portable ZIP; separate Intel/Apple Silicon macOS DMGs; Linux x64 AppImage and DEB. All platform artifacts required before publication."
+          },
+          {
+            "id": "update-infrastructure",
+            "status": "blocked",
+            "result": "Official GitHub Releases discovery, channels, Minisign verification with signed-version binding, save-before-install, and no automatic relaunch implemented. Portable ZIP and DEB use manual installation.",
+            "blocked_by": [
+              "Persistent updater keypair must be provisioned through repository-secret access",
+              "Paired signed release installation test remains unqualified"
+            ]
+          },
+          {
+            "id": "release-qualification",
+            "status": "in_progress",
+            "result": "Windows Server 2022 installation, same-version reinstall and extracted portable ZIP preserve local markers/WAV bytes. All platform WebView tests render audio, round-trip Beat/Song and exercise embedded C++ PCM. This is not physical Windows 11 or successful version-to-version update evidence.",
+            "remaining": [
+              "Real microphone permissions/capture and listening on each supported OS",
+              "Physical Windows 11 offline/install/upgrade checks",
+              "Signed update completion and manual reopening",
+              "OS code signing/notarization credentials and distribution qualification"
+            ]
+          },
+          {
+            "id": "embedded-native-proof",
+            "status": "done",
+            "result": "Bounded C ABI fixture renders the existing C++ Voice in the Rust desktop process; ordinary studio audio remains Web Audio."
+          },
+          {
+            "id": "native-device-host",
+            "status": "planned",
+            "result": "Native audio device callbacks, full project/DSP parity, host lifecycle, latency and underrun qualification are separate unfinished work; unsupported native features must be rejected explicitly."
+          }
+        ],
         "remaining": [
-          "signed updater trust key provisioning",
-          "cross-platform packaging qualification",
-          "installation and update persistence tests",
-          "native audio-device host"
+          "Update signing key provisioning and paired installed-update qualification",
+          "Real hardware and newcomer/listening qualification",
+          "Native audio-device integration and full synthesis parity"
         ]
       }
     },
