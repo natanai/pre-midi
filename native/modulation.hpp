@@ -16,10 +16,12 @@ class Modulation {
   return time<attack?time/attack:e[1]>0&&time<attack+e[1]?1-(1-e[2])*(time-attack)/e[1]:e[2];
  }
 public:
- Modulation(const std::array<Route,16>& input,unsigned length,double sr,double onset,double noteOff,double graphEnd,double key,double touch) noexcept:
+ Modulation(const std::array<Route,16>& input,unsigned length,double sr,double onset,double noteOff,double graphEnd,double key,double touch,const std::array<double,16>* preparedAlpha=nullptr) noexcept:
   routes(input),count(length),sampleRate(sr),start(onset),off(noteOff),end(graphEnd),pitch(key),velocity(touch){
-  for(unsigned i=0;i<count;i++)alpha[i]=routes[i].smoothing>0?1-std::exp(-1/(sr*routes[i].smoothing)):1;
+  if(preparedAlpha)alpha=*preparedAlpha;
+  else for(unsigned i=0;i<count;i++)alpha[i]=routes[i].smoothing>0?1-std::exp(-1/(sr*routes[i].smoothing)):1;
  }
+ std::array<double,16> preparedAlpha()const noexcept{return alpha;}
  std::array<float,6> next(double time) noexcept {
   std::array<float,6> sums{};if(time<start||time>=end)return sums;
   if(!started){for(unsigned i=0;i<count;i++)if(routes[i].kind==0)phase[i]=(time-start)*static_cast<float>(routes[i].rate)*2*3.14159265358979323846;started=true;}

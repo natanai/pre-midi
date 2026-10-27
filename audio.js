@@ -14,7 +14,10 @@ import {applyAmplitudePlan} from "./envelope.js";
 import {planSynthVoice,noteFrequency} from "./src/dsp/synth-voice.js";
 import {attachModulation} from "./src/hosts/web/modulation.js";
 import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
-// One synthesis engine for live transport, pitch preview and offline WAV output.
+import {nativeEnabled,auditionNative,playNative} from "./src/hosts/native/session.js";
+export {nativeEnabled};
+// Canonical plans are shared by native desktop playback and the web adapter.
+// Offline WAV export retains the web adapter in this native device milestone.
 // Everything audible comes from the resolved sound patch stored in the beat.
 export const secondsPerStep = doc => 60/doc.bpm/4;
 export const frequency = noteFrequency;
@@ -143,6 +146,7 @@ function eventOffset(instrument,note,notes){
  return voice?strumOffset(voice,note,notes):0;
 }
 let context,previewSession,previewTimer;
+globalThis.addEventListener?.('premidi-audio-mode',()=>{previewSession?.stop();if(previewTimer)clearInterval(previewTimer);previewTimer=null;previewSession=null;});
 function previews(){
  if(!previewSession||previewSession.closed)previewSession=new VoiceSession(context,context.destination);
  if(!previewTimer)previewTimer=setInterval(()=>{
@@ -159,6 +163,7 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
   if(instrument.layout==="rack"&&sound.patch.type==="synth")hitDuration=Math.max(.015,sound.patch.envelope.attack+sound.patch.envelope.decay);
   instrument={patch:sound.patch,volume:instrument.volume*sound.gain};
  }
+ if(nativeEnabled())return auditionNative(instrument,[{pitch,velocity:expression?.velocity??.8,bend:expression?.bend}],{duration:hitDuration??expression?.duration??.24});
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  if(beat){
@@ -173,6 +178,10 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
 // strumOffset implementation used by timeline playback and WAV export.
 export async function auditionChord(instrument,pitches,beat,velocity=.85) {
  if(instrument.sounds)instrument={patch:instrument.sounds[0].patch,volume:instrument.volume*instrument.sounds[0].gain};
+ if(nativeEnabled()){
+  const notes=pitches.map((pitch,index)=>({id:'preview-'+index,pitch,start:0,duration:8,velocity}));
+  return auditionNative(instrument,notes.map(note=>({...note,at:strumOffset(instrument,note,notes),duration:.8})));
+ }
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  const notes=pitches.map((pitch,index)=>({
@@ -188,6 +197,10 @@ export async function auditionChord(instrument,pitches,beat,velocity=.85) {
  }
 }
 export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0}={}) {
+ if(nativeEnabled()){
+  const document=typeof beat==='function'?beat():beat;
+  return playNative({...document,nativeLengthSteps:document.kind==='song'?songDurationSteps(document):document.bars*16},renderEvents(document),{loop,onPosition,onProgress,onStop,onStart,startStep});
+ }
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  const ctx=context,out=ctx.createGain(),read=typeof beat==="function"?beat:()=>beat;

@@ -926,7 +926,13 @@
         "tests/desktopRelease.test.js",
         "desktop/smoke.js",
         "docs/desktop-host.md",
-        "native/desktop-fixture.cpp"
+        "native/desktop-fixture.cpp",
+        "native/device-host.cpp",
+        "native/session.hpp",
+        "desktop/src/audio.rs",
+        "src/hosts/native/session.js",
+        "scripts/native-device-check.mjs",
+        "docs/native-audio.md"
       ],
       "acceptance": [
         "Standalone desktop works without browser/network runtime.",
@@ -939,10 +945,10 @@
       ],
       "desktop_preview": {
         "framework": "tauri",
-        "audio": "web-audio",
+        "audio": "native-cpp for explicitly supported synth playback; explicit web-audio option and Web Audio export/recording",
         "version_source": "package.json",
-        "preview_version": "0.14.1-preview.3",
-        "qualification": "Preview 2 published after all four platform CI builds/WebView checks. Preview 3 isolates Windows portable profiles under the executable folder; physical hardware and signed version-to-version update qualification remain open.",
+        "preview_version": "0.14.1-preview.4",
+        "qualification": "Native device integration implemented with explicit test-backend callback checks. Local native comparisons and null-device lifecycle tests do not establish physical output quality, latency, underruns or platform hardware qualification.",
         "evidence": {
           "platform_ci": "https://github.com/natanai/pre-midi/actions/runs/40580528484",
           "browser_and_dsp_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635994",
@@ -962,8 +968,8 @@
           },
           {
             "id": "portable-folder-storage",
-            "status": "in_progress",
-            "result": "Windows portable marker selects data/webview, projects and exports beside the executable, never the working directory or an AppData fallback. Existing preview.1/.2 data stays untouched with documented offline migration; CI checks relocation, copying and installer isolation."
+            "status": "done",
+            "result": "Preview.3 Windows installer isolation, portable relocation/copy and external WAV persistence passed CI; preview.4 retains these paths and tests."
           },
           {
             "id": "update-infrastructure",
@@ -992,8 +998,14 @@
           },
           {
             "id": "native-device-host",
-            "status": "planned",
-            "result": "Native audio device callbacks, full project/DSP parity, host lifecycle, latency and underrun qualification are separate unfinished work; unsupported native features must be rejected explicitly."
+            "status": "in_progress",
+            "result": "Pinned miniaudio device layer hosts canonical C++ voices through bounded callbacks; separate transport/preview lanes, pause/resume/seek/loop, device selection and disconnect gating are implemented. Production hardware qualification remains pending.",
+            "remaining": [
+              "Physical Windows 11/macOS/Linux output and listening",
+              "Sustained CPU/underrun/latency, device switch and sleep/resume qualification",
+              "Live edits beyond Play snapshots",
+              "Noise/sweeps/drive/delay/legacy movement/sample and recording parity"
+            ]
           }
         ],
         "remaining": [
@@ -1002,7 +1014,46 @@
           "Native audio-device integration and full synthesis parity"
         ],
         "initial_qualified_preview_version": "0.14.1-preview.1",
-        "initial_qualified_tag_commit": "e4dc803063794bd2d56f07dc3ac09a67cac7fbb9"
+        "initial_qualified_tag_commit": "e4dc803063794bd2d56f07dc3ac09a67cac7fbb9",
+        "native_device_milestone": {
+          "device_framework": "miniaudio 0.11.25",
+          "callback": "C++ Voice synthesis in actual miniaudio callbacks; explicit null backend in CI, never production fallback",
+          "supported": [
+            "canonical synth voice v1/v2/v3",
+            "oscillators/harmonics, ADSR/note-off, prepared pitch curves",
+            "six authoritative modulation targets and cutoff automation",
+            "instrument gain/pan, 64-voice release-first stealing with 5 ms retirement",
+            "shared Beat/Song event timing; loop release overlap; phase/filter-preserving seek"
+          ],
+          "unsupported": [
+            "noise",
+            "filter sweeps",
+            "drive/oversampling",
+            "delay/effect tails",
+            "legacy vibrato/tone/tremolo",
+            "sample and vocal playback",
+            "native microphone input/recording alignment",
+            "live document editing during the Play snapshot"
+          ],
+          "local_evidence": {
+            "comparisons": 42,
+            "rates_hz": [
+              44100,
+              48000,
+              96000
+            ],
+            "voices": [
+              1,
+              8,
+              32,
+              64
+            ],
+            "callback_allocations_asserted_zero": true,
+            "device_backend": "null",
+            "physical_hardware": "pending"
+          },
+          "performance_policy": "Callback render deadline overruns are recorded separately from unmeasured hardware driver underruns and physical latency; software timing does not qualify hardware."
+        }
       }
     },
     {

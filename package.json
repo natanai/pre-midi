@@ -1,11 +1,11 @@
 {
   "name": "pre-midi",
-  "version": "0.14.1-preview.3",
+  "version": "0.14.1-preview.4",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/dsp/synth-voice.js && node --check src/dsp/expression.js && node --check src/dsp/voice-allocator.js && node --check src/dsp/effect-tail.js && node --check src/hosts/web/voice-session.js && node --check src/dsp/amplitude-envelope.js && node --check audioEffects.js && node --check envelope.js && node --check harmonics.js && node --check soundAnalysis.js && node --check synthMatch.js && node --check soundModel.js && node --check entityActions.js && node --check recording.js && node --check microphoneUI.js && node --check packageIO.js && node --check examples.js && node --check arrangement.js && node --check exampleNeon.js && node --check studio.js && node --check songModel.js && node --check songAudio.js && node --check songRecorder.js && node --check recordingAssets.js && node --check songUI.js && node --check songIO.js && node --check audio.js && node --check schema.js && node --check dial.js && node --check dragNumber.js && node --check soundScope.js && node --check expression.js && node --check expressionUI.js && node --check synth.js && node --check acousticGuitars.js && node --check guitarTiming.js && node --check samples.js && node --check sampler.js && node --check samplerUI.js && node --check storage.js && node --check instrumentUI.js && node --check noteEditing.js && node --check pianoPlayhead.js && npm test",
+    "check": "node --check desktopUI.js && node --check desktopAudioUI.js && node --check src/hosts/native/session.js && node --check src/dsp/synth-voice.js && node --check src/dsp/expression.js && node --check src/dsp/voice-allocator.js && node --check src/dsp/effect-tail.js && node --check src/hosts/web/voice-session.js && node --check src/dsp/amplitude-envelope.js && node --check audioEffects.js && node --check envelope.js && node --check harmonics.js && node --check soundAnalysis.js && node --check synthMatch.js && node --check soundModel.js && node --check entityActions.js && node --check recording.js && node --check microphoneUI.js && node --check packageIO.js && node --check examples.js && node --check arrangement.js && node --check exampleNeon.js && node --check studio.js && node --check songModel.js && node --check songAudio.js && node --check songRecorder.js && node --check recordingAssets.js && node --check songUI.js && node --check songIO.js && node --check audio.js && node --check schema.js && node --check dial.js && node --check dragNumber.js && node --check soundScope.js && node --check expression.js && node --check expressionUI.js && node --check synth.js && node --check acousticGuitars.js && node --check guitarTiming.js && node --check samples.js && node --check sampler.js && node --check samplerUI.js && node --check storage.js && node --check instrumentUI.js && node --check noteEditing.js && node --check pianoPlayhead.js && npm test",
     "benchmark:audio": "node scripts/audio-benchmark.mjs",
     "benchmark:voices": "node scripts/audio-benchmark.mjs --suite voices",
     "benchmark:musical": "node scripts/audio-benchmark.mjs --suite musical",
@@ -14,10 +14,11 @@
     "benchmark:modulation": "node scripts/audio-benchmark.mjs --suite modulation",
     "benchmark:onsets": "node scripts/audio-benchmark.mjs --suite onsets",
     "benchmark:automation": "node scripts/audio-benchmark.mjs --suite automation",
-    "desktop:prepare": "node scripts/fetch-samples.mjs && node scripts/prepare-pages.mjs",
+    "desktop:prepare": "node scripts/fetch-miniaudio.mjs && node scripts/fetch-samples.mjs && node scripts/prepare-pages.mjs",
     "desktop:build": "cd desktop && tauri build",
     "desktop:dev": "cd desktop && tauri dev",
-    "version": "node scripts/sync-desktop-version.mjs && git add desktop/Cargo.toml desktop/Cargo.lock"
+    "version": "node scripts/sync-desktop-version.mjs && git add desktop/Cargo.toml desktop/Cargo.lock",
+    "benchmark:device": "node scripts/fetch-miniaudio.mjs && node scripts/native-device-check.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.12.4"

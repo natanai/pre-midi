@@ -19,11 +19,11 @@ Tauri meets the requested host architecture. Engine differences are a qualificat
 
 ## Audio boundary
 
-1. **Desktop-packaged Web Audio:** all ordinary playback, recording, and WAV export still use the existing studio adapters.
+1. **Desktop-packaged Web Audio:** remains an explicit Settings choice; microphone workflows and WAV export retain the existing studio adapters.
 2. **Embedded native DSP proof:** native/desktop-fixture.cpp calls the existing C++ Voice in the Tauri process through a bounded C ABI. native_fixture returns one fixed 48 kHz stereo fixture. It is an offline renderer, not a native output-device backend.
-3. **Fully native real-time playback:** unfinished. Native device hosting, complete synthesis/effects/sample parity, live scheduling, latency, underruns and hardware qualification remain SYN-018 work. SYN-019 remains mobile delivery.
+3. **Native real-time synth vertical slice (preview.4):** the default desktop playback adapter sends supported canonical plans to the C++ miniaudio device host. Production uses WASAPI/CoreAudio/PulseAudio/ALSA. Device selection, pause/resume/seek/loop, voice stealing and separate native previews are implemented. Complete synthesis/effects/sample parity, live edits during playback, latency, underruns and physical hardware qualification remain SYN-018 work. SYN-019 remains mobile delivery.
 
-The next native adapter should accept validated canonical synth-voice plans on the control thread, prepare immutable state, and call Voice::process from an appropriate audio-device callback. Keep native/bridge.mjs's unsupported-feature rejection policy. A project must never silently switch generators when a native feature is unsupported. pre-programmed continues to share the canonical file/plan contracts; desktop packaging does not imply game-host parity.
+The native adapter accepts validated canonical synth-voice plans on a dedicated control thread, prepares immutable instructions/banks/coefficients, and calls Voice::process in miniaudio callbacks. See [native audio architecture and qualification](native-audio.md). Unsupported instructions reject the whole session; the user may explicitly choose Web Audio, with no automatic fallback. pre-programmed continues to share the canonical file/plan contracts; this host does not imply game-host parity.
 
 ## Storage and backups
 

@@ -1,0 +1,75 @@
+import {execFileSync} from 'node:child_process';
+import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
+import {tmpdir,cpus,platform,release,arch} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {makePatch} from '../synth.js';
+import {planSynthVoice} from '../src/dsp/synth-voice.js';
+import {encodeNativeSession} from '../src/hosts/native/session.js';
+import {buildNativeRenderer} from '../native/bridge.mjs';
+const root=fileURLToPath(new URL('../',import.meta.url)),temp=await mkdtemp(join(tmpdir(),'premidi-device-'));
+const binary=join(temp,'device-check'),rows=[],deviceRows=[];
+const run=(args)=>execFileSync(binary,args.map(String),{encoding:'utf8',timeout:90000,maxBuffer:1024*1024});
+const floatArray=bytes=>Array.from({length:bytes.length/4},(_,i)=>bytes.readFloatLE(i*4));
+const sine=()=>{const patch=makePatch('init');patch.oscillators=[{wave:'sine',level:1,octave:0,detune:0},{wave:'sine',level:0,octave:0,detune:0}];patch.envelope={attack:.005,decay:.025,sustain:.65,release:.09};return patch;};
+const plan=(patch,pitch=69,start=0,duration=.12,volume=.15,extra={})=>planSynthVoice({patch,volume},{pitch,velocity:.8},start,duration,extra);
+let renderer;
+try{
+ execFileSync(process.env.CXX||'g++',['-std=c++17','-O2','-ffp-contract=off','-Wall','-Wextra','-Werror','-pedantic','-DPREMIDI_AUDIO_TEST',join(root,'native/session-test.cpp'),join(root,'native/device-host.cpp'),'-pthread','-ldl','-lm','-o',binary],{stdio:'pipe'});
+ renderer=await buildNativeRenderer();
+ async function render(plans,{rate=48000,cycle=1,seek=0,loop=false,seconds=.4,block=128,pause=false}={}){
+  const input=join(temp,'fixture.pms'),output=join(temp,'pcm.f32');await writeFile(input,encodeNativeSession(plans,rate));
+  const frames=Math.round(seconds*rate),report=JSON.parse(run(['--render',input,rate,cycle,seek,Number(loop),frames,block,output,pause?'pause':'none']));
+  return {pcm:floatArray(await readFile(output)),report};
+ }
+ function compare(name,actual,expected,extra={}){
+  if(actual.length!==expected.length)throw Error(name+': PCM length mismatch');
+  let max=0,sum=0;for(let i=0;i<actual.length;i++){const delta=actual[i]-expected[i];max=Math.max(max,Math.abs(delta));sum+=delta*delta;}
+  const rms=Math.sqrt(sum/actual.length);if(max>1e-4||rms>2e-5)throw Error(`${name}: callback/native reference max ${max}, rms ${rms}`);
+  rows.push({name,maxPcm:max,rmsPcm:rms,...extra});
+ }
+ for(const rate of [44100,48000,96000]){
+  for(const patch of [sine(),makePatch('touch-keys'),makePatch('harmonic-keys')]){
+   const voice=plan(patch,62,.010,.14),expected=floatArray(renderer.render(voice,rate,Math.round(rate*.4))).map(v=>v*.85);
+   const one=await render([voice],{rate});compare('canonical-'+patch.presetId+'-'+rate,one.pcm,expected,{rate,allocationAssertions:one.report.allocations===0});
+   const odd=await render([voice],{rate,block:511});compare('block-invariance-'+patch.presetId+'-'+rate,odd.pcm,one.pcm,{rate});
+   const seek=.08,offset=Math.ceil(seek*rate),length=Math.round(.2*rate),full=floatArray(renderer.render(voice,rate,offset+length));
+   const positioned=await render([voice],{rate,seek,seconds:.2});compare('seek-'+patch.presetId+'-'+rate,positioned.pcm,full.slice(2*offset).map(v=>v*.85),{rate});
+  }
+  const base=plan(sine(),69,0,.12,.008),single=floatArray(renderer.render(base,rate,Math.round(rate*.4)));
+  for(const voices of [1,8,32,64]){
+   const plans=Array.from({length:voices},()=>structuredClone(base));
+   const rendered=await render(plans,{rate});compare(`polyphony-${voices}-${rate}`,rendered.pcm,single.map(v=>v*.85*voices),{rate,voices});
+   const input=join(temp,'device.pms');await writeFile(input,encodeNativeSession(plans,rate));
+   const before=performance.now(),result=JSON.parse(run(['--device',input,rate,'null']));
+   deviceRows.push({...result,voices,wallSeconds:(performance.now()-before)/1000,renderCpuPercent:result.renderNs*rate/(result.frames*1e7)});
+  }
+ }
+ const rate=48000,seconds=.4,frames=rate*seconds;
+ const held=plan(sine(),69,0,.2,.004),released=plan(sine(),60,0,.01,.004),incoming=plan(sine(),72,.03,.12,.004);
+ const many=[...Array.from({length:63},()=>structuredClone(held)),released,incoming];
+ const stolen=await render(many,{rate});
+ const a=floatArray(renderer.render(held,rate,frames)),b=floatArray(renderer.render(released,rate,frames)),c=floatArray(renderer.render(incoming,rate,frames));
+ compare('release-first-stealing',stolen.pcm,a.map((v,i)=>.85*(63*v+c[i]+b[i]*(i/2<rate*.03?1:Math.max(0,1-(Math.floor(i/2)-rate*.03)/(rate*.005))))));
+ if(stolen.report.stolen!==1)throw Error('Stealing count mismatch');
+ const automation={version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:[{id:'low',step:0,value:400},{id:'high',step:4,value:6000}]};
+ const automated=plan(makePatch('touch-keys'),60,0,.15,.1,{automation,timeline:{step:0,unit:.125,limitStep:16}});
+ const automatedResult=await render([automated]);compare('v3-cutoff-automation',automatedResult.pcm,floatArray(renderer.render(automated,rate,frames)).map(v=>v*.85));
+ const loopVoice=plan(sine(),69,0,.09,.03),loopSeconds=.125,total=.5,expected=new Array(Math.round(total*rate)*2).fill(0);
+ for(let cycle=0;cycle<4;cycle++){
+  const shifted=structuredClone(loopVoice),shift=cycle*loopSeconds;
+  for(const key of ['start','off','end','graphEnd'])shifted[key]+=shift;
+  shifted.amplitude.events.forEach(event=>event.time+=shift);
+  const pcm=floatArray(renderer.render(shifted,rate,Math.round(total*rate)));for(let i=0;i<expected.length;i++)expected[i]+=pcm[i]*.85;
+ }
+ compare('loop-retains-release-tails',(await render([loopVoice],{cycle:loopSeconds,loop:true,seconds:total})).pcm,expected);
+ const paused=await render([plan(sine(),69,0,.5)],{cycle:1,pause:true});if(paused.report.state===2)throw Error('Resume failed');
+ const malformed=join(temp,'bad.pms');await writeFile(malformed,new Uint8Array([1,2,3]));let rejected=false;
+ try{run(['--render',malformed,rate,1,0,0,100,128,join(temp,'bad.pcm'),'none']);}catch{rejected=true;}if(!rejected)throw Error('Malformed native instructions accepted');
+ const report={version:1,sourceCommit:process.env.GITHUB_SHA??null,os:platform(),osRelease:release(),architecture:arch(),cpu:cpus()[0]?.model,
+  physicalDeviceQualification:'pending',deviceUnderruns:'not measured',physicalLatency:'not measured',comparisons:rows,deviceCallbacks:deviceRows,
+  tests:['C++ new allocation assertions inside mixer and miniaudio callbacks','canonical v1/v2/v3 PCM gates unchanged','arbitrary block sizes','phase/filter-correct seek','release-first stealing','loop release overlap','pause/resume','rapid play/stop and parallel preview','malformed packet rejection'],
+  remaining:['physical Windows 11/macOS/Linux listening and device behavior','sustained playback','physical device switching/disconnect/reconnect','sleep/resume','driver underruns and end-to-end latency']};
+ await writeFile(new URL('../benchmarks/native-device.latest.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
+ console.log('PASS native device milestone: '+rows.length+' PCM comparisons, '+deviceRows.length+' null-backend rate/voice cases; physical hardware pending');
+}finally{await renderer?.dispose();await rm(temp,{recursive:true,force:true});}

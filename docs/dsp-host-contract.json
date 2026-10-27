@@ -5,7 +5,8 @@
     "generator": "src/dsp/synth-voice.js: planSynthVoice",
     "schema": "docs/synth-voice.schema.json",
     "webAdapter": "audio.js: scheduleSynthPlan",
-    "roundTrip": "JSON-serialized plan feeds the current backend without DOM, device or storage objects"
+    "roundTrip": "JSON-serialized plan feeds the current backend without DOM, device or storage objects",
+    "nativeAdapter": "src/hosts/native/plan.js -> native/session.hpp -> native/device-host.cpp"
   },
   "parameters": {
     "registry": "src/dsp/synth-voice.js: SYNTH_PARAMETERS",
@@ -51,7 +52,7 @@
   },
   "voicePolicy": {
     "implementation": "src/dsp/voice-allocator.js",
-    "execution": "Control-thread planner, not a native real-time callback implementation",
+    "execution": "The web allocator remains the shared policy reference. The native callback implements the same chronological equal-priority release-first/oldest/stable policy with 64 active and 64 retiring slots per transport/preview lane; vocal clips remain explicitly unsupported.",
     "defaultTransportBudget": 64,
     "previewBudget": 64,
     "intervals": "Half-open [start,end); release and short graph-settling time consume a voice; shared delay tails do not",
@@ -87,7 +88,7 @@
       "natural playback and WAV export retain long effect tails",
       "saving a solo preset retains its instrument volume"
     ],
-    "limits": "No native device backend or pre-programmed parity is claimed. Extremely dense arrangements above the explicit host budget use voice stealing."
+    "limits": "Desktop has a native device-host vertical slice for supported synth plans; complete native DSP and pre-programmed parity are not claimed. Unsupported native features reject the complete session without falling back."
   },
   "qualification": {
     "acoustic": "npm run benchmark:audio -- --require-clean",
@@ -98,7 +99,8 @@
       "AudioWorklet capture observes render-graph gaps, not device-driver underruns",
       "newcomer action checks do not replace observed comprehension studies",
       "musical polish requires listening review"
-    ]
+    ],
+    "nativeDevice": "npm run benchmark:device"
   },
   "references": [
     "https://www.w3.org/TR/webaudio/"

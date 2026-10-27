@@ -1,3 +1,4 @@
+import {installAudioSettings} from './desktopAudioUI.js';
 export function installDesktopUI({flush}) {
  const tauri=window.__TAURI__,invoke=tauri?.core?.invoke;
  if(!invoke)return;
@@ -37,11 +38,11 @@ export function installDesktopUI({flush}) {
  const menu=element('details');menu.className='desktop-settings entity-actions';
  const toggle=element('summary','settings'),list=element('div');list.className='entity-action-list';
  const version=element('output');version.id='desktop-version';
- const backend=element('output','audio: web audio'),label=element('label','updates '),channel=element('select');channel.setAttribute('aria-label','update channel');
+ const label=element('label','updates '),channel=element('select');channel.setAttribute('aria-label','update channel');
  for(const value of ['stable','preview']){const option=element('option',value);option.value=value;channel.append(option);}
  label.append(channel);
  const check=element('button','check for updates');check.type='button';check.id='check-for-updates';check.onclick=()=>checkUpdates(channel.value);
- list.append(version,backend,label,check);menu.append(toggle,list);document.querySelector('header nav').append(menu);
+ list.append(version);installAudioSettings(list,{element,prompt,menu});list.append(label,check);menu.append(toggle,list);document.querySelector('header nav').append(menu);
  window.premidiDesktop.info().then(info=>{version.textContent='pre-midi '+info.version;channel.value=localStorage.getItem('premidi-update-channel')||info.channel;})
   .catch(error=>prompt('could not read desktop version',String(error)));
  channel.onchange=()=>localStorage.setItem('premidi-update-channel',channel.value);

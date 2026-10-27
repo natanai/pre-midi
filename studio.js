@@ -4,7 +4,7 @@ import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
+import { play, audition, auditionChord, wav, primeSamples, nativeEnabled } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
@@ -174,6 +174,7 @@ function setPlaybackButton(isPlaying,playingSong=!!(song&&songExpanded)){
  const control=$("play");
  control.textContent=isPlaying?"■ stop":"▶ play";
  control.setAttribute("aria-label",(isPlaying?"stop ":"play ")+(playingSong?"song":"beat"));
+ const pause=$("native-pause");if(pause){pause.disabled=!isPlaying;pause.textContent=playback?.paused?'resume':'pause';}
 }
 const voiceDialog=$("voice-dialog");
 function voiceStatus(label,error=false){
@@ -1067,6 +1068,7 @@ async function startTransport({onStart=null,recording=false,startStep=null}={}){
  pendingPlay = true;
  const playingSong=!!(song&&songExpanded),generation=++playbackGeneration;
  try {
+  if(recording&&nativeEnabled())throw Error('Song microphone recording requires Web Audio in this preview. Select Web Audio in Settings.');
   const session = await play(() => playingSong?song:beat, {
    onStart:metadata=>onStart?.(metadata),
    startStep:playingSong?(startStep??songUI?.getStartStep()??0):0,
@@ -1107,6 +1109,13 @@ async function startTransport({onStart=null,recording=false,startStep=null}={}){
  finally { pendingPlay = false; }
 }
 $("play").addEventListener("click",()=>void startTransport());
+window.addEventListener('premidi-audio-mode',()=>stop());
+window.addEventListener('premidi-native-error',event=>message(String(event.detail),true));
+window.addEventListener('premidi-native-pause',async()=>{
+ if(!playback?.pause)return;
+ try{if(playback.paused)await playback.resume();else await playback.pause();setPlaybackButton(true);}
+ catch(error){message('Native audio: '+String(error),true);}
+});
 // Voice capture opens a separate dialog; permissions come after explicit Play + Record.
 $("song-record").addEventListener("click",()=>{
  if(!song||!songExpanded)return;
@@ -1133,6 +1142,7 @@ voiceDialog.addEventListener("cancel",event=>{
  }else cancelVoiceCountdown();
 });
 $("voice-start").addEventListener("click",async()=>{
+ if(nativeEnabled()){voiceStatus('Song recording uses Web Audio in this preview. Choose Web Audio in Settings.',true);return;}
  if(vocalTake){stop();return;}
  if(vocalRequest){cancelVoiceCountdown();voiceStatus("Count-in cancelled.");return;}
  if(vocalFinalizing||!song||!songExpanded)return;
@@ -1607,6 +1617,7 @@ songUI=installSongUI({
  getSelectedBeatId:()=>selectedBeatId,
  onSelectBeat:selectBeat,onChange:modifySong,
  onSeek:step=>{
+  if(playback?.seek)void playback.seek(step).catch(error=>message('Native seek: '+String(error),true));
   if(voiceDialog.open&&!vocalRequest&&!vocalTake)
    $("voice-start-bar").value=String(Math.floor(step/16)+1);
  },

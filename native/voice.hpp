@@ -17,11 +17,12 @@ struct Plan {
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
  std::uint32_t eventCount=0;std::array<Event,6> events{};
 };
+struct VoicePreparation {Biquad filter;std::array<double,16> alpha{};std::array<double,2> initialFrequency{};double left=0,right=0;bool movingCutoff=false;};
 // Prepared on the control thread. process() only touches fixed-size state and a
 // caller-owned output span: no heap allocation, locks, file/device I/O or UI.
 class Voice {
  Plan plan;double rate;std::uint64_t frame=0;std::array<double,2> phases{};
- Biquad filter;Modulation modulation;bool sourceStarted=false,movingCutoff=false;double left,right;std::array<const WaveBank*,2> banks;
+ Biquad filter;Modulation modulation;bool sourceStarted=false,movingCutoff=false;double left,right;std::array<const WaveBank*,2> banks;std::array<double,2> initialFrequency{};
  float envelope(double t) const noexcept {
   if(t<plan.events[0].time)return 0;
   double value=plan.events[0].value;
@@ -52,12 +53,15 @@ public:
 #ifdef PREMIDI_PROBE
  struct Probe {float wave0=0,cents0=0,frequency0=0;};Probe probe{};
 #endif
- Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr}) noexcept:plan(input),rate(sampleRate),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity),banks(waveBanks){
+ Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr},std::uint64_t initialFrame=0,const VoicePreparation* prepared=nullptr) noexcept:plan(input),rate(sampleRate),frame(initialFrame),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity,prepared?&prepared->alpha:nullptr),banks(waveBanks){
+  if(prepared){filter=prepared->filter;movingCutoff=prepared->movingCutoff;left=prepared->left;right=prepared->right;initialFrequency=prepared->initialFrequency;return;}
   for(unsigned i=0;i<plan.routeCount;i++)if(plan.routes[i].target==4)movingCutoff=true;
   if(plan.automationCount)movingCutoff=true;
   filter.configure(plan.filterType,cutoffAt(plan.start),plan.q,rate);
   left=std::cos((plan.pan+1)*pi/4);right=std::sin((plan.pan+1)*pi/4);
+  for(unsigned j=0;j<2;j++){const auto& osc=plan.oscillators[j];initialFrequency[j]=osc.frequency*std::pow(2.,(osc.count?osc.curve[0]:osc.detune)/1200.);}
  }
+ VoicePreparation preparation()const noexcept{return {filter,modulation.preparedAlpha(),initialFrequency,left,right,movingCutoff};}
  void process(float* interleavedStereo,std::size_t frames) noexcept {
   for(std::size_t i=0;i<frames;i++,frame++){
 #ifdef PREMIDI_PROBE
@@ -66,7 +70,7 @@ public:
    const double t=static_cast<double>(frame)/rate;float mix=0;const auto offsets=modulation.next(t);
    if(t>=plan.start&&t<plan.sourceEnd){
     if(!sourceStarted){
-     if(plan.version>=2)for(std::size_t j=0;j<2;j++){const auto& osc=plan.oscillators[j];const double initial=osc.frequency*std::pow(2.,(osc.count?osc.curve[0]:osc.detune)/1200.);phases[j]=(t-plan.start)*initial*(rate<=24000?2048:rate<=88200?4096:16384);}
+     if(plan.version>=2)for(std::size_t j=0;j<2;j++)phases[j]=(t-plan.start)*initialFrequency[j]*(rate<=24000?2048:rate<=88200?4096:16384);
      sourceStarted=true;
     }
     for(std::size_t j=0;j<2;j++){

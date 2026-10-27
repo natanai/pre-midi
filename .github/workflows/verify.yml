@@ -18,6 +18,10 @@ jobs:
       - run: npm run check
       - name: Fetch pinned CC0 recordings
         run: node scripts/fetch-samples.mjs
+      - name: Fetch verified native device dependency
+        run: node scripts/fetch-miniaudio.mjs
+      - name: Qualify native mixer and miniaudio callback lifecycle
+        run: node scripts/native-device-check.mjs
       - name: Stage minimal Pages build
         run: node scripts/prepare-pages.mjs
       - name: Check Song recording, transport and actual WAV downloads
