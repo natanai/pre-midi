@@ -1,3 +1,4 @@
+import {planCutoffAutomation} from "./automation.js";
 import {movement,planPitch} from "./expression.js";
 import {planAmplitudeEnvelope} from "./amplitude-envelope.js";
 import {delayTailSeconds} from "./effect-tail.js";
@@ -5,7 +6,7 @@ export const SYNTH_VOICE_CONTRACT_VERSION=1;
 export const noteFrequency=pitch=>440*2**((pitch-69)/12);
 // Called after patch validation at the document/preview boundary. Plain musical
 // values are copied so an edit cannot mutate a previously scheduled voice.
-export function planSynthVoice(instrument,event,start,duration){
+export function planSynthVoice(instrument,event,start,duration,{automation,timeline}={}){
  const patch=JSON.parse(JSON.stringify(instrument.patch));
  if(!Number.isFinite(event.pitch)||event.pitch<0||event.pitch>127||!Number.isFinite(event.velocity)||event.velocity<0||event.velocity>1||
   !Number.isFinite(instrument.volume)||instrument.volume<0||patch.type!=="synth"||!Number.isFinite(start)||start<0||!Number.isFinite(duration)||duration<=0)
@@ -30,6 +31,7 @@ export function planSynthVoice(instrument,event,start,duration){
   routing:["oscillators_and_noise","filter","drive","amplitude","tremolo","pan","dry_and_delay_send"],
   expression:note};
  if(patch.version===2){result.version=2;result.modulation=patch.modulation;}
+ if(automation){if(!timeline)throw Error("Automation requires a timeline position");result.version=3;result.modulation??={version:1,routes:[]};result.automation=planCutoffAutomation(automation,{...timeline,start,end:result.graphEnd});}
  return result;
 }
 export {SYNTH_PARAMETERS} from "./parameters.js";

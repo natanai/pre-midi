@@ -3,7 +3,7 @@
   "backend": "web-audio-musical-parity",
   "referenceCommit": "b5f8896f2fe70b5c25c7abb17e71fa997325c872",
   "environment": {
-    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36"
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36"
   },
   "summary": {
     "cases": 22,
@@ -60,14 +60,14 @@
     {
       "id": "detuned-lead/44100",
       "metrics": {
-        "max": 0.0000025634653866291046,
-        "rms": 2.735925683426538e-8,
-        "worstAtSeconds": 0.6512698412698412,
-        "referenceAtWorst": 0.00536685436964035,
-        "currentAtWorst": 0.005364290904253721,
+        "max": 0.0000019688159227371216,
+        "rms": 2.2024146603599764e-8,
+        "worstAtSeconds": 0.6626077097505669,
+        "referenceAtWorst": -0.028760939836502075,
+        "currentAtWorst": -0.028762908652424812,
         "legacyRepeat": {
-          "max": 0.0000022761523723602295,
-          "rms": 1.4290944765543963e-8
+          "max": 0.000002562999725341797,
+          "rms": 2.2176599484254644e-8
         },
         "currentRepeat": {
           "max": 0,
@@ -106,18 +106,18 @@
     {
       "id": "expressive-glide/44100",
       "metrics": {
-        "max": 1.2014061212539673e-7,
-        "rms": 1.2834356601853651e-8,
+        "max": 1.1920928955078125e-7,
+        "rms": 1.2804783434406214e-8,
         "worstAtSeconds": 0.7573696145124716,
-        "referenceAtWorst": -0.011007632128894329,
+        "referenceAtWorst": -0.011007633060216904,
         "currentAtWorst": -0.011007752269506454,
         "legacyRepeat": {
-          "max": 2.9802322387695312e-8,
-          "rms": 5.32182946112451e-10
-        },
-        "currentRepeat": {
           "max": 0,
           "rms": 0
+        },
+        "currentRepeat": {
+          "max": 1.4901161193847656e-8,
+          "rms": 2.530988956972137e-9
         }
       },
       "checks": {
@@ -199,17 +199,17 @@
       "id": "detuned-lead/48000",
       "metrics": {
         "max": 0.000003822147846221924,
-        "rms": 4.260860740186093e-8,
+        "rms": 4.319739869683774e-8,
         "worstAtSeconds": 0.6546875,
         "referenceAtWorst": 0.016695216298103333,
         "currentAtWorst": 0.01669139415025711,
         "legacyRepeat": {
-          "max": 7.450580596923828e-9,
-          "rms": 2.3309583026606168e-9
+          "max": 0.0000020936131477355957,
+          "rms": 7.666872479826657e-9
         },
         "currentRepeat": {
-          "max": 7.450580596923828e-9,
-          "rms": 2.3333322015179076e-9
+          "max": 0,
+          "rms": 0
         }
       },
       "checks": {
@@ -245,17 +245,17 @@
       "id": "expressive-glide/48000",
       "metrics": {
         "max": 3.5390257835388184e-7,
-        "rms": 3.7155482145337505e-8,
+        "rms": 3.813672960302174e-8,
         "worstAtSeconds": 0.7573333333333333,
         "referenceAtWorst": -0.028078593313694,
         "currentAtWorst": -0.028078947216272354,
         "legacyRepeat": {
-          "max": 2.598389983177185e-7,
-          "rms": 7.689152033867154e-9
+          "max": 2.7008354663848877e-7,
+          "rms": 1.3689444508398034e-8
         },
         "currentRepeat": {
-          "max": 0,
-          "rms": 0
+          "max": 1.4901161193847656e-8,
+          "rms": 2.550101679144708e-9
         }
       },
       "checks": {
@@ -336,14 +336,14 @@
     {
       "id": "detuned-lead/96000",
       "metrics": {
-        "max": 0.000003863126039505005,
-        "rms": 4.0860286704717014e-8,
+        "max": 0.000003861263394355774,
+        "rms": 4.078846975331339e-8,
         "worstAtSeconds": 0.6298958333333333,
-        "referenceAtWorst": -0.016337046399712563,
+        "referenceAtWorst": -0.016337048262357712,
         "currentAtWorst": -0.016340909525752068,
         "legacyRepeat": {
-          "max": 0.000003864988684654236,
-          "rms": 1.554484002433701e-8
+          "max": 0,
+          "rms": 0
         },
         "currentRepeat": {
           "max": 7.450580596923828e-9,
@@ -383,13 +383,13 @@
       "id": "expressive-glide/96000",
       "metrics": {
         "max": 2.8312206268310547e-7,
-        "rms": 2.9319977062929174e-8,
+        "rms": 2.9875361239976564e-8,
         "worstAtSeconds": 0.7345729166666667,
         "referenceAtWorst": -0.04718939960002899,
         "currentAtWorst": -0.04718911647796631,
         "legacyRepeat": {
-          "max": 2.8312206268310547e-7,
-          "rms": 2.914574828930072e-8
+          "max": 2.7194619178771973e-7,
+          "rms": 4.833869166096639e-9
         },
         "currentRepeat": {
           "max": 0,
@@ -472,21 +472,21 @@
   ],
   "failures": [],
   "suitePolicy": null,
-  "measuredAt": "2026-10-27T14:08:22.882Z",
+  "measuredAt": "2026-10-27T14:58:42.303Z",
   "source": {
-    "commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "tag": null,
-    "baseCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "baseCommit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "4e29de046900d59d3fbf2c9e322f035eebeb808fb6454ca1b89e9de25ddbf0ff"
+    "runtimeAndFixtureSha256": "77daa50b44d7f6130e5ee0e1ac7bcfecae177e46f3fb7df9d781117019623f8e"
   },
   "host": {
     "os": "linux",
-    "release": "6.18.55",
+    "release": "6.17.0-1022-azure",
     "arch": "x64",
-    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
-    "logicalCpus": 9,
-    "node": "v24.22.1"
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "logicalCpus": 4,
+    "node": "v22.23.3"
   },
   "policy": {
     "version": 1,

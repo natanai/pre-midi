@@ -7,7 +7,7 @@ import {cleanPatch} from "./audio-quality/fixtures.js";
 const plan=patch=>planSynthVoice({patch,volume:1},{pitch:69,velocity:.8},0,.2);
 test("native control adapter encodes the canonical plan with explicit bounded transport",()=>{
  const packet=prepareNativePlan(plan(cleanPatch()),48000,24000);
- assert.equal(packet.readUInt32LE(0),0x334e4d50);assert.equal(packet.readUInt32LE(4),48000);assert.equal(packet.readUInt32LE(8),24000);
+ assert.equal(packet.readUInt32LE(0),0x344e4d50);assert.equal(packet.readUInt32LE(4),48000);assert.equal(packet.readUInt32LE(8),24000);
  assert.throws(()=>prepareNativePlan(plan(cleanPatch()),48000,Infinity));
 });
 test("native prototype rejects unsupported features instead of silently changing the sound",()=>{

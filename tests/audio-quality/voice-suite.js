@@ -129,10 +129,10 @@ export async function runVoiceBenchmark(){
    await ctx.suspend();
    const startFrame=Math.ceil((ctx.currentTime+.3)*ctx.sampleRate),first=startFrame+Math.round(.15*ctx.sampleRate),length=Math.round(.4*ctx.sampleRate);
    const capture=new AudioWorkletNode(ctx,"premidi-qualification-capture",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],processorOptions:{first,length}});capture.connect(ctx.destination);
-   let timer;const dataPromise=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(Error("Modulated capture timed out")),15000);capture.port.onmessage=event=>resolve(event.data);});
+   let timer,rejectCapture;const dataPromise=new Promise((resolve,reject)=>{rejectCapture=reject;capture.port.onmessage=event=>resolve(event.data);});
    const session=new VoiceSession(ctx,capture),patch=modulationFixtures().find(fixture=>fixture.id==="maximum-16").patch,started=performance.now();
    for(let i=0;i<count;i++)scheduleNote(ctx,capture,{patch,volume:.005},{pitch:48+i%24,velocity:.8},startFrame/ctx.sampleRate,.8,null,session);
-   const setupMs=performance.now()-started,queuedBeforeOnset=ctx.currentTime<startFrame/ctx.sampleRate;await ctx.resume();const data=await dataPromise;clearTimeout(timer);
+   const setupMs=performance.now()-started,queuedBeforeOnset=ctx.currentTime<startFrame/ctx.sampleRate;await ctx.resume();timer=setTimeout(()=>rejectCapture(Error("Modulated capture timed out")),15000);const data=await dataPromise;clearTimeout(timer);
    const stats=signalStats(data);let silentBlocks=0;for(let i=0;i+128<=data.length;i+=128)if(signalStats(data.subarray(i,i+128)).rms<1e-7)silentBlocks++;
    session.stop();const cleanupStart=performance.now();
    while(session.voices.size&&performance.now()-cleanupStart<5000){await wait(20);session.sweep();}

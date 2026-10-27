@@ -46,11 +46,11 @@
   },
   "automationAlignment": {
     "basePrecedence": "Future SYN-010 automation updates the base value of these same parameter IDs before modulation is combined",
-    "implemented": "Per-note modulation and smoothing only",
+    "implemented": "Initial filter.cutoff timeline slice in docs/automation-contract.json; patch base -> timeline automation -> per-note modulation -> bounded result",
     "notImplemented": [
-      "recorded automation lanes",
-      "mid-note patch editor automation",
-      "Beat/Song/game override recording and precedence persistence"
+      "recording automation",
+      "mid-note plan replacement",
+      "additional targets and Song/game override recording"
     ]
   },
   "native": {
@@ -85,6 +85,9 @@
   ],
   "gameCompatibility": {
     "status": "pending SYN-020",
-    "policy": "Preserve patch v1/v2, Beat v7/v9, Song v8/v10. Never silently downgrade modulation for old game readers or require bounced WAV as the native music format."
+    "policy": "Preserve patch v1/v2, Beat v7/v9, Song v8/v10. Never silently downgrade modulation for old game readers or require bounced WAV as the native music format.",
+    "formats": [
+      "patch v1/v2; Beat v7/v9/v11; Song v8/v10/v12; voice plans v1/v2/v3"
+    ]
   }
 }

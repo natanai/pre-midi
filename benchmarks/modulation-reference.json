@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "backend": "web-audio-general-modulation",
   "environment": {
-    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36"
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36"
   },
   "policy": {
     "version": 1,
@@ -289,7 +289,7 @@
           {
             "target": "oscillators.0.level",
             "max": 1.1920928955078125e-7,
-            "rms": 3.6984435554326263e-9,
+            "rms": 4.207909787140478e-9,
             "tolerance": 0.000005
           },
           {
@@ -1024,13 +1024,13 @@
           {
             "target": "oscillators.0.level",
             "max": 0.000002175569534301758,
-            "rms": 5.945477128268453e-7,
+            "rms": 5.956968586318219e-7,
             "tolerance": 0.000005
           },
           {
             "target": "oscillators.1.detune",
             "max": 0.00019073486328125,
-            "rms": 0.00008298396304394856,
+            "rms": 0.0000830124969170045,
             "tolerance": 0.02
           },
           {
@@ -1048,7 +1048,7 @@
           {
             "target": "pan",
             "max": 1.7881393432617188e-7,
-            "rms": 5.5855516282929014e-8,
+            "rms": 5.589024838358748e-8,
             "tolerance": 0.000005
           }
         ],
@@ -1073,7 +1073,7 @@
           {
             "target": "oscillators.0.level",
             "max": 1.1920928955078125e-7,
-            "rms": 3.720112686093957e-9,
+            "rms": 4.188076146950337e-9,
             "tolerance": 0.000005
           },
           {
@@ -1808,7 +1808,7 @@
           {
             "target": "oscillators.0.level",
             "max": 0.0000011622905731201172,
-            "rms": 3.3874291863701046e-7,
+            "rms": 3.3908408872544586e-7,
             "tolerance": 0.000005
           },
           {
@@ -1832,7 +1832,7 @@
           {
             "target": "pan",
             "max": 1.4901161193847656e-7,
-            "rms": 5.590444049949991e-8,
+            "rms": 5.5884957062384066e-8,
             "tolerance": 0.000005
           }
         ],
@@ -1857,7 +1857,7 @@
           {
             "target": "oscillators.0.level",
             "max": 1.1920928955078125e-7,
-            "rms": 3.7741233695122436e-9,
+            "rms": 3.606996821432763e-9,
             "tolerance": 0.000005
           },
           {
@@ -2591,14 +2591,14 @@
           },
           {
             "target": "oscillators.0.level",
-            "max": 7.450580596923828e-7,
-            "rms": 1.9231999860985357e-7,
+            "max": 7.152557373046875e-7,
+            "rms": 1.9242600432811782e-7,
             "tolerance": 0.000005
           },
           {
             "target": "oscillators.1.detune",
-            "max": 0.000179290771484375,
-            "rms": 0.00007925167171299415,
+            "max": 0.00017547607421875,
+            "rms": 0.00007930590906385238,
             "tolerance": 0.02
           },
           {
@@ -2616,7 +2616,7 @@
           {
             "target": "pan",
             "max": 1.4901161193847656e-7,
-            "rms": 5.5901984760302995e-8,
+            "rms": 5.5871882547478225e-8,
             "tolerance": 0.000005
           }
         ],
@@ -2639,20 +2639,20 @@
       "No recorded automation or device underrun qualification"
     ]
   },
-  "measuredAt": "2026-10-27T14:08:31.267Z",
+  "measuredAt": "2026-10-27T14:59:32.119Z",
   "source": {
-    "commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "tag": null,
-    "baseCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "baseCommit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "eace6e8e36b9eea3e43432cd9117a6a749c3d50e1a65df246e23f3ff3040a584"
+    "runtimeAndFixtureSha256": "69ab5ba94a7ecfaf16a01537b53dd1bbfbfd8124be38e834d49c3e13779bdae1"
   },
   "host": {
     "os": "linux",
-    "release": "6.18.55",
+    "release": "6.17.0-1022-azure",
     "arch": "x64",
-    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
-    "logicalCpus": 9,
-    "node": "v24.22.1"
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "logicalCpus": 4,
+    "node": "v22.23.3"
   }
 }

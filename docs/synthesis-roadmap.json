@@ -134,34 +134,55 @@
     },
     "latest_qualification": {
       "source_working_tree": "clean",
-      "reports": {
-        "web-audio-reference": "benchmarks/web-audio-reference.json",
-        "musical-parity-reference": "benchmarks/musical-parity-reference.json",
-        "voice-lifecycle-reference": "benchmarks/voice-lifecycle-reference.json",
-        "native-parity-reference": "benchmarks/native-parity-reference.json",
-        "modulation-reference": "benchmarks/modulation-reference.json",
-        "onset-reference": "benchmarks/onset-reference.json"
+      "source_commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+      "source_policy": "All seven suites used --require-clean on the GitHub PR merge commit. Its tree was verified identical to the branch head. The tested commit is retained as the parent of this evidence commit; renderer and fixture code are unchanged.",
+      "report": "benchmarks/automation-qualification.json",
+      "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
+      "raw_reports": {
+        "url": "https://github.com/natanai/pre-midi/actions/runs/40526259783/artifacts/12742589644",
+        "artifactId": 12742589644,
+        "sha256": "fa933ccdb04c96f22cc1fc9abdf8f4fcb37509ab1a06f737e1e0836de8141c21",
+        "committedFiles": [
+          "benchmarks/web-audio-reference.json",
+          "benchmarks/automation-reference.json",
+          "benchmarks/modulation-reference.json",
+          "benchmarks/musical-parity-reference.json",
+          "benchmarks/native-parity-reference.json",
+          "benchmarks/onset-reference.json",
+          "benchmarks/voice-lifecycle-reference.json"
+        ],
+        "policy": "Full raw numeric results are committed without rewriting source attribution. The Actions ZIP is an additional copy; its expiration does not remove the committed reports."
       },
       "passed": {
-        "node_tests": 171,
-        "acoustic_cases": 111,
-        "unchanged_acoustic_reference_comparisons": 60,
-        "musical_compatibility_cases": 22,
-        "voice_lifecycle_cases": 19,
-        "native_browser_cases": 214,
-        "audible_modulation_cases": 62,
-        "isolated_onset_cases": 186
+        "nodeTests": 174,
+        "acousticCases": 111,
+        "unchangedAcousticReferenceComparisons": 60,
+        "musicalCompatibilityCases": 22,
+        "voiceLifecycleCases": 19,
+        "nativeBrowserCases": 214,
+        "isolatedOnsetCases": 186,
+        "modulationCases": 62,
+        "automationCases": 25
       },
-      "browser": "Shipped desktop/mobile workflow, preset save/reload, Beat v9/Song v10 export/import, layout, microphone and existing Song transport/WAV download checks",
+      "browser": "Shipped desktop/mobile cutoff editing, playback, remove/undo and Beat v11/Song v12 import/export; existing modulation, newcomer, rack, layout, microphone, example, Song transport and WAV workflows all pass.",
       "scope": "Automated offline, browser control-trace, suspended-preparation AudioWorklet graph and interaction checks only. Maximum-route startup remains slow; no device or human signoff.",
-      "source_policy": "Each report declares its own exact clean source commit; source commits are ancestors of the delivered code",
+      "reports": {
+        "web-audio-reference": "benchmarks/web-audio-reference.json",
+        "automation-reference": "benchmarks/automation-reference.json",
+        "modulation-reference": "benchmarks/modulation-reference.json",
+        "musical-parity-reference": "benchmarks/musical-parity-reference.json",
+        "native-parity-reference": "benchmarks/native-parity-reference.json",
+        "onset-reference": "benchmarks/onset-reference.json",
+        "voice-lifecycle-reference": "benchmarks/voice-lifecycle-reference.json"
+      },
       "source_commits": {
-        "web-audio-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "musical-parity-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "voice-lifecycle-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "native-parity-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "modulation-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "onset-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9"
+        "web-audio-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "automation-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "modulation-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "musical-parity-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "native-parity-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "onset-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "voice-lifecycle-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456"
       }
     }
   },
@@ -261,7 +282,7 @@
         "report": "benchmarks/web-audio-reference.json",
         "contract": "docs/dsp-contract.schema.json",
         "method": "18 constant-input rendered ADSR cases against an independent analytical oracle; overlapping and retriggered production voices at three sample rates",
-        "max_sample_error_gate": 3e-05,
+        "max_sample_error_gate": 0.00003,
         "shared_runtime": "live transport, audition, conversion preview and WAV export all use scheduleNote -> scheduleAmplitudeEnvelope -> planAmplitudeEnvelope",
         "compatibility": "preserves 2 ms attack floor, zero-decay sustain step and 0.000001 release floor; unchanged stored patch v1 and Beat v7/Song v8",
         "scope": "current ADSR scheduling contract; physical live-device loopback and native DSP equivalence are later host qualification"
@@ -509,7 +530,7 @@
         "missing": [
           "selected device host and target-platform builds",
           "real callback/device latency and underrun qualification",
-          "noise/drive/delay/modulation support",
+          "noise/decay, drive and delay support",
           "native oversampling parity",
           "desktop/mobile suspend-resume and device changes"
         ],
@@ -523,7 +544,6 @@
           "remaining": [
             "noise and decay",
             "drive and delay",
-            "v2 modulation",
             "filter sweep and legacy LFOs",
             "hardware/device qualification"
           ]
@@ -549,6 +569,13 @@
             "benchmarks/native-parity-reference.json",
             "benchmarks/onset-reference.json"
           ]
+        },
+        "automation_profile": {
+          "status": "offline_profile_qualified",
+          "planVersion": 3,
+          "evidence": "benchmarks/automation-qualification.json",
+          "scope": "Compiled filter.cutoff curves where the underlying patch is in the existing native profile; effects and legacy motion still reject.",
+          "process_selftest": "400 waveform/filter/rate/extreme profiles, three maximum-route v2 and three v3 profiles at five block sizes, allocation assertions and finite bounded PCM"
         }
       }
     },
@@ -609,9 +636,9 @@
           "tests/audio-quality/modulation-render.html"
         ],
         "remaining": [
-          "native modulation implementation and cross-host parity",
           "maximum-route-count device CPU qualification",
-          "human musical listening review"
+          "human musical listening review",
+          "noise/effects/legacy-motion native compatibility and wider platform qualification"
         ],
         "report": "benchmarks/modulation-reference.json",
         "correctness": {
@@ -647,7 +674,7 @@
       "id": "SYN-010",
       "phase": "modulation",
       "priority": "P0",
-      "status": "planned",
+      "status": "in_progress",
       "title": "Sample-accurate automation and smoothing",
       "depends_on": [
         "SYN-006",
@@ -669,7 +696,46 @@
       "prerequisite_progress": {
         "shared_parameter_ids": "src/dsp/parameters.js",
         "combination_and_smoothing": "docs/modulation-contract.json",
-        "remaining": "No recorded automation or automation-lane persistence is implemented"
+        "remaining": "Recorded automation, held-note chase, additional targets/points and Song/game overrides remain; the persisted two-point cutoff lane is implemented."
+      },
+      "verification": {
+        "implemented": [
+          "One filter.cutoff lane with two stable musical points",
+          "Sample-timed exponential interpolation and base/automation/modulation precedence",
+          "Beat v11 / Song v12 / execution-plan v3 persistence with legacy readers protected",
+          "Native v3 curve execution in the same C++ core",
+          "Beat-clock playback, seeking state, repeated Song clips, Chunk boundaries and WAV parity",
+          "Contextual Cutoff movement controls, remove and undo"
+        ],
+        "contract": "docs/automation-contract.json",
+        "tests": [
+          "tests/automation.test.js",
+          "tests/automation-check.html",
+          "tests/audio-quality/automation-render.html"
+        ],
+        "remaining": [
+          "Held-note chase on seek",
+          "Live automation recording and mid-note plan replacement",
+          "Additional targets, points, Song/game overrides",
+          "Hardware and human musical/newcomer evaluation"
+        ],
+        "report": "benchmarks/automation-qualification.json",
+        "qualification": {
+          "source_commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+          "native_browser_cases": 18,
+          "total_cases": 25,
+          "sample_rates": [
+            44100,
+            48000,
+            96000
+          ],
+          "pcm_limits": {
+            "max_absolute": 0.0001,
+            "rms": 0.00002
+          },
+          "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
+          "raw_reports": "benchmarks/automation-reference.json"
+        }
       }
     },
     {
@@ -969,13 +1035,14 @@
           "no_claim": "Automated action completion does not prove newcomer comprehension or musical polish"
         },
         "human_protocol": "docs/newcomer-observation-protocol.json",
-        "additional_workflow": "tests/modulation-check.html: optional routing, edit amount, save/reload, export/import Beat v9 and Song v10"
+        "additional_workflow": "tests/modulation-check.html: optional routing, edit amount, save/reload, export/import Beat v9 and Song v10",
+        "automation_workflow": "tests/automation-check.html: contextual Cutoff action, musical positions, playback, edit/remove/undo and Beat/Song round trips; observed comprehension remains pending"
       }
     }
   ],
   "next_ready_tasks": [
-    "SYN-009",
     "SYN-007",
+    "SYN-010",
     "SYN-005"
   ]
 }

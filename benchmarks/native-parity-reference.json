@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "backend": "native-cpp-vs-web-audio",
   "environment": {
-    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36"
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36"
   },
   "policy": {
     "version": 1,
@@ -3091,7 +3091,7 @@
       "id": "v2/44100/sum-positive-clamp",
       "metrics": {
         "max": 6.984919309616089e-8,
-        "rms": 1.4872147510901413e-8,
+        "rms": 1.4871112292561159e-8,
         "stats": {
           "dc": 0.0000020779241675397854,
           "rms": 0.01981895881779864,
@@ -3178,8 +3178,8 @@
     {
       "id": "v2/44100/lfo-bipolar",
       "metrics": {
-        "max": 1.0244548320770264e-7,
-        "rms": 2.856463156834995e-8,
+        "max": 1.0337680578231812e-7,
+        "rms": 2.8481033587429703e-8,
         "stats": {
           "dc": 0.0000021674880188846234,
           "rms": 0.00864396478535069,
@@ -3222,8 +3222,8 @@
     {
       "id": "v2/44100/envelope-release",
       "metrics": {
-        "max": 5.681067705154419e-8,
-        "rms": 1.0126261089925833e-8,
+        "max": 5.587935447692871e-8,
+        "rms": 9.575736967052714e-9,
         "stats": {
           "dc": 0.00000242677317031107,
           "rms": 0.013082601858857434,
@@ -3421,7 +3421,7 @@
       "id": "v2/44100/maximum-16",
       "metrics": {
         "max": 1.7881393432617188e-7,
-        "rms": 4.062846163864994e-8,
+        "rms": 4.069634232433317e-8,
         "stats": {
           "dc": 0.0000021854387535166775,
           "rms": 0.01389617912500732,
@@ -4213,7 +4213,7 @@
       "id": "v2/48000/sum-negative-clamp",
       "metrics": {
         "max": 7.2177499532699585e-9,
-        "rms": 1.5937193764403876e-9,
+        "rms": 1.5922802562761461e-9,
         "stats": {
           "dc": 0.000001380573048562493,
           "rms": 0.003085756760940759,
@@ -4278,8 +4278,8 @@
     {
       "id": "v2/48000/lfo-bipolar",
       "metrics": {
-        "max": 6.007030606269836e-8,
-        "rms": 2.082017508043933e-8,
+        "max": 6.05359673500061e-8,
+        "rms": 2.0832570156458947e-8,
         "stats": {
           "dc": 0.0000021680880915939363,
           "rms": 0.008644204139092816,
@@ -4322,8 +4322,8 @@
     {
       "id": "v2/48000/envelope-release",
       "metrics": {
-        "max": 3.5390257835388184e-8,
-        "rms": 5.5549268511075855e-9,
+        "max": 3.166496753692627e-8,
+        "rms": 5.812436463516407e-9,
         "stats": {
           "dc": 0.00000242743125461524,
           "rms": 0.013082899625577588,
@@ -4520,8 +4520,8 @@
     {
       "id": "v2/48000/maximum-16",
       "metrics": {
-        "max": 1.601874828338623e-7,
-        "rms": 4.6839422982907265e-8,
+        "max": 1.6763806343078613e-7,
+        "rms": 4.7178773589984433e-8,
         "stats": {
           "dc": 0.0000021863908337937364,
           "rms": 0.01389649048137316,
@@ -5291,7 +5291,7 @@
       "id": "v2/96000/sum-positive-clamp",
       "metrics": {
         "max": 2.1047890186309814e-7,
-        "rms": 4.187656354905765e-8,
+        "rms": 4.188521852479208e-8,
         "stats": {
           "dc": 0.0000021032977491023297,
           "rms": 0.019820981275158564,
@@ -5379,7 +5379,7 @@
       "id": "v2/96000/lfo-bipolar",
       "metrics": {
         "max": 7.869675755500793e-8,
-        "rms": 2.7308205230630602e-8,
+        "rms": 2.7365330623143044e-8,
         "stats": {
           "dc": 0.0000021693599352254962,
           "rms": 0.008645176333165168,
@@ -5422,8 +5422,8 @@
     {
       "id": "v2/96000/envelope-release",
       "metrics": {
-        "max": 2.0302832126617432e-7,
-        "rms": 2.751218001182071e-8,
+        "max": 1.341104507446289e-7,
+        "rms": 2.515223214236829e-8,
         "stats": {
           "dc": 0.000002428870285878859,
           "rms": 0.013084103714411486,
@@ -5621,7 +5621,7 @@
       "id": "v2/96000/maximum-16",
       "metrics": {
         "max": 2.794622560031712e-7,
-        "rms": 4.2612432060976516e-8,
+        "rms": 4.270123988020129e-8,
         "stats": {
           "dc": 0.0000021883917395226565,
           "rms": 0.0138977547882196,
@@ -6400,7 +6400,7 @@
   ],
   "failures": [],
   "native": {
-    "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+    "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
     "flags": [
       "-std=c++17",
       "-O2",
@@ -6410,7 +6410,7 @@
       "-Werror",
       "-pedantic"
     ],
-    "selfTest": "passed: 400 waveform/filter/rate/extreme and three 16-route v2 profiles, five block sizes and allocation assertions",
+    "selfTest": "passed: 400 waveform/filter/rate/extreme and six 16-route v2/v3 profiles, five block sizes and allocation assertions",
     "scope": "offline C++ core; no device backend or callback latency qualification"
   },
   "suitePolicy": {
@@ -6426,20 +6426,20 @@
       "Fractional-sample note onsets not yet qualified"
     ]
   },
-  "measuredAt": "2026-10-27T14:08:50.401Z",
+  "measuredAt": "2026-10-27T14:59:11.929Z",
   "source": {
-    "commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "tag": null,
-    "baseCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "baseCommit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "1ecf1e14c70e5903a1137a867a87ada37e549ec80a40aea39a75c4af4d93a9e3"
+    "runtimeAndFixtureSha256": "ddefa4c6ed5fba655ef5badd54bc11413193264c5a12bf1fccec2e79a2b16dab"
   },
   "host": {
     "os": "linux",
-    "release": "6.18.55",
+    "release": "6.17.0-1022-azure",
     "arch": "x64",
-    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
-    "logicalCpus": 9,
-    "node": "v24.22.1"
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "logicalCpus": 4,
+    "node": "v22.23.3"
   }
 }

@@ -41,6 +41,8 @@ async function reportedTest(file,endpoint,width=1440,height=900,microphone=false
  }finally{clearTimeout(timer);pending.delete(endpoint);child.kill("SIGKILL");}
 }
 try{
+ await reportedTest("automation-check","/__automation_result",1440,900);
+ await reportedTest("automation-check","/__automation_result",390,844);
  await reportedTest("modulation-check","/__modulation_result",1440,900);
  await reportedTest("modulation-check","/__modulation_result",390,844);
  await reportedTest("newcomer-check","/__newcomer_result",1440,900);

@@ -19,7 +19,7 @@ This is a design constraint, not license to remove essential warnings, error mes
 ## Repository boundaries
 
 - **Native-first synthesis:** `docs/synthesis-roadmap.json` is the machine-readable synthesis/DSP backlog, complementary to the Song feature rollout in `docs/song-rollout.md`. Desktop and mobile hosts are primary; the web host is maintained where feasible, never at the cost of native sound fidelity. Portable patch semantics and tested host parity take precedence over browser-specific APIs.
-- One vocabulary for active code, UI, persisted schema and pre-programmed: `docs/terminology.json`. Legacy native versions: v7 Beat, v8 Song; modulation uses explicit v9 Beat/v10 Song and patch v2. Old files migrate explicitly; do not break readers with textual renames.
+- One vocabulary for active code, UI, persisted schema and pre-programmed: `docs/terminology.json`. Legacy native versions: v7 Beat, v8 Song; modulation uses explicit v9 Beat/v10 Song and patch v2. Cutoff timeline automation uses explicit v11 Beat/v12 Song and voice plan v3. Old files migrate explicitly; do not break readers with textual renames.
 - The source model is Sound → Instrument/Rack → Chunk → Beat → Song Track/Clip. A Song reuses editable Beat identities; a Recording references external audio Assets. Never embed recording bytes in `.premidi`.
 - Vocal Tracks are always above Beat Tracks, with the selected Beat editor below. Expanded Song means Song transport, collapsed Song means selected Beat transport.
 - pre-midi owns studio editing and the native music instructions. pre-programmed owns game State, effects, conditions, Media persistence and dynamic music control. The old game v2 reader remains a compatibility gap, not proof of parity.
