@@ -1,22 +1,152 @@
 {
- "$schema":"https://json-schema.org/draft/2020-12/schema",
- "$id":"https://natanai.github.io/pre-midi/contracts/synth-voice-v1",
- "title":"Host-neutral pre-midi synth voice execution plan v1",
- "description":"Ephemeral execution plan for validated existing patch v1 and note data. Stored Beat v7 and Song v8 remain unchanged. Unknown contract versions must be rejected.",
- "type":"object",
- "required":["contract","version","presetId","patch","start","duration","off","end","graphEnd","audibleEnd","peak","amplitude","filter","movement","oscillators","routing","expression"],
- "additionalProperties":false,
- "properties":{
-  "contract":{"const":"pre-midi-synth-voice"},"version":{"const":1},
-  "presetId":{"type":"string"},"patch":{"type":"object"},
-  "start":{"type":"number","minimum":0},"duration":{"type":"number","exclusiveMinimum":0},
-  "off":{"type":"number","minimum":0},"end":{"type":"number","minimum":0},
-  "graphEnd":{"type":"number","minimum":0},"audibleEnd":{"type":"number","minimum":0},"peak":{"type":"number","minimum":0},
-  "amplitude":{"$ref":"dsp-contract.schema.json"},"filter":{"type":"object"},"movement":{"type":"object"},
-  "oscillators":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"object","required":["wave","level","octave","detune","frequency","pitch"]}},
-  "routing":{"const":["oscillators_and_noise","filter","drive","amplitude","tremolo","pan","dry_and_delay_send"]},
-  "expression":{"type":"object"}
- },
- "x-parameter-registry":"src/dsp/synth-voice.js: SYNTH_PARAMETERS",
- "x-patch-validation":"synth.js: validatePatch, before creating execution plans"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://natanai.github.io/pre-midi/contracts/synth-voice",
+  "title": "Host-neutral pre-midi synth voice execution plans",
+  "description": "v1 preserves original patch semantics; v2 adds explicit canonical modulation. Older project versions are read unchanged; modulated projects use Beat v9/Song v10.",
+  "type": "object",
+  "required": [
+    "contract",
+    "version",
+    "presetId",
+    "patch",
+    "start",
+    "duration",
+    "off",
+    "end",
+    "graphEnd",
+    "audibleEnd",
+    "peak",
+    "amplitude",
+    "filter",
+    "movement",
+    "oscillators",
+    "routing",
+    "expression"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract": {
+      "const": "pre-midi-synth-voice"
+    },
+    "version": {
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "presetId": {
+      "type": "string"
+    },
+    "patch": {
+      "type": "object"
+    },
+    "start": {
+      "type": "number",
+      "minimum": 0
+    },
+    "duration": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "off": {
+      "type": "number",
+      "minimum": 0
+    },
+    "end": {
+      "type": "number",
+      "minimum": 0
+    },
+    "graphEnd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "audibleEnd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "peak": {
+      "type": "number",
+      "minimum": 0
+    },
+    "amplitude": {
+      "$ref": "dsp-contract.schema.json"
+    },
+    "filter": {
+      "type": "object"
+    },
+    "movement": {
+      "type": "object"
+    },
+    "oscillators": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "wave",
+          "level",
+          "octave",
+          "detune",
+          "frequency",
+          "pitch"
+        ]
+      }
+    },
+    "routing": {
+      "const": [
+        "oscillators_and_noise",
+        "filter",
+        "drive",
+        "amplitude",
+        "tremolo",
+        "pan",
+        "dry_and_delay_send"
+      ]
+    },
+    "expression": {
+      "type": "object"
+    },
+    "modulation": {
+      "type": "object",
+      "required": [
+        "version",
+        "routes"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "routes": {
+          "type": "array",
+          "maxItems": 16
+        }
+      }
+    }
+  },
+  "x-parameter-registry": "src/dsp/parameters.js: SYNTH_PARAMETERS",
+  "x-patch-validation": "synth.js: validatePatch, before creating execution plans",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "version": {
+            "const": 2
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "modulation"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "modulation"
+          ]
+        }
+      }
+    }
+  ]
 }

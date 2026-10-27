@@ -2,6 +2,15 @@
 // modify() remain the ONLY mutation path. Drag previews are transient.
 
 const labelHelp=Object.freeze({
+ "movement amount":"how far this movement changes the sound",
+ "movement speed":"how quickly this movement repeats",
+ "movement source":"choose what makes this sound move",
+ "movement target":"choose which part of the sound moves",
+ "movement range":"move in one direction or swing both ways",
+ "move attack":"how slowly the movement rises",
+ "move decay":"how quickly the movement settles after rising",
+ "move sustain":"where the movement stays while the note is held",
+ "move release":"how slowly the movement fades after the note ends",
  "bend shape":"scoop into the note, fall off it, or wobble around",
  "shape":"choose how the pitch gets there",
  "bend amount":"a tiny pitch dip or a full octave yowl",
@@ -54,7 +63,7 @@ const labelHelp=Object.freeze({
  "h7":"things are getting weird",
  "h8":"way up there"
 });
-const unitHelp=Object.freeze({st:"semitones",ct:"cents",hz:"hertz",khz:"kilohertz",ms:"milliseconds","%":"percent",l:"left",r:"right",c:"center"});
+const unitHelp=Object.freeze({oct:"octaves",st:"semitones",ct:"cents",hz:"hertz",khz:"kilohertz",ms:"milliseconds","%":"percent",l:"left",r:"right",c:"center"});
 export function helpForLabel(label){
  const key=String(label).toLowerCase();
  return labelHelp[key] || (/^h(?:[9]|[12][0-9]|3[0-2])$/.test(key)
@@ -192,7 +201,7 @@ function makeUnit(output,abbreviation){
 export function explainUnit(output,rendered){
  installHelp(output.ownerDocument);
  const text=String(rendered).toLowerCase();
- const match=/^(.*?)(\s*)(khz|hz|ms|ct|st|%|l|r|c)$/.exec(text);
+ const match=/^(.*?)(\s*)(khz|hz|ms|ct|st|oct|%|l|r|c)$/.exec(text);
  if(!match){
   const pan=/^(l|r) (\d+)$/.exec(text);
   if(pan)output.replaceChildren(makeUnit(output,pan[1]),
@@ -211,6 +220,7 @@ export const asUnit=(value,display="number")=>{
  if(display==="percent")return Math.round(value*100)+"%";
  if(display==="seconds")return Math.round(value*1000)+" ms";
  if(display==="hz")return value>=1000?(value/1000).toFixed(1)+" kHz":Math.round(value)+" Hz";
+ if(display==="octaves")return pretty(value,2)+" oct";
  if(display==="cents")return Math.round(value)+" ct";
  if(display==="semitones")return (value>0?"+":"")+pretty(value,1)+" st";
  if(display==="pan")return value===0?"C":value<0?"L "+Math.round(-value*100):"R "+Math.round(value*100);

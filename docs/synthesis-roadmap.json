@@ -501,7 +501,7 @@
       "id": "SYN-009",
       "phase": "modulation",
       "priority": "P0",
-      "status": "planned",
+      "status": "in_progress",
       "title": "General modulation matrix",
       "depends_on": [
         "SYN-006"
@@ -518,7 +518,28 @@
       "usability_acceptance": [
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
-      ]
+      ],
+      "verification": {
+        "implemented": [
+          "versioned envelope/LFO/velocity/keytrack routes",
+          "existing parameter IDs with explicit units, polarity, depth, combination and smoothing",
+          "audio-rate Web Audio control graph and one-pole IIR smoothing",
+          "editable Evolving Glass, Breath Lead and Touch Keys presets",
+          "Beat v9/Song v10 and patch v2 persistence, preserving v7/v8/patch v1 reads",
+          "isolated preset-store migration and contextual inspector routing"
+        ],
+        "contract": "docs/modulation-contract.json",
+        "tests": [
+          "tests/modulation.test.js",
+          "tests/modulation-check.html",
+          "tests/audio-quality/modulation-render.html"
+        ],
+        "remaining": [
+          "native modulation implementation and cross-host parity",
+          "maximum-route-count device CPU qualification",
+          "human musical listening review"
+        ]
+      }
     },
     {
       "id": "SYN-010",
@@ -542,7 +563,12 @@
       "usability_acceptance": [
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
-      ]
+      ],
+      "prerequisite_progress": {
+        "shared_parameter_ids": "src/dsp/parameters.js",
+        "combination_and_smoothing": "docs/modulation-contract.json",
+        "remaining": "No recorded automation or automation-lane persistence is implemented"
+      }
     },
     {
       "id": "SYN-011",
@@ -839,7 +865,9 @@
         "human_review": {
           "status": "pending",
           "no_claim": "Automated action completion does not prove newcomer comprehension or musical polish"
-        }
+        },
+        "human_protocol": "docs/newcomer-observation-protocol.json",
+        "additional_workflow": "tests/modulation-check.html: optional routing, edit amount, save/reload, export/import Beat v9 and Song v10"
       }
     }
   ],

@@ -36,7 +36,7 @@ frame.addEventListener("load",async()=>{
    after.sounds[0].patch.envelope.attack>before.sounds[0].patch.envelope.attack&&after.sounds[0].patch.envelope.release>before.sounds[0].patch.envelope.release);
   assert("volume makes the instrument softer",after.volume<before.volume);
   win.prompt=()=>"Newcomer variation";get("save-sound").click();
-  await wait(()=>(win.localStorage.getItem("premidi-user-sounds-v1")||"").includes("Newcomer variation"),"save variation");
+  await wait(()=>(win.localStorage.getItem("premidi-user-sounds-v2")||"").includes("Newcomer variation"),"save variation");
   const reload=new Promise(done=>frame.addEventListener("load",done,{once:true}));win.location.reload();await reload;
   doc=frame.contentDocument;win=frame.contentWindow;capture();
   get("add-instrument").click();

@@ -1,3 +1,4 @@
+import {validateModulation} from "./src/dsp/modulation.js";
 import { validateSamplerPatch } from "./sampler.js";
 import { validateMovement, validateBend, movementDefaults } from "./expression.js";
 import {harmonicRecipe,validHarmonics} from "./harmonics.js";
@@ -22,6 +23,23 @@ const base = {
   bend:{shape:"straight",amount:2,rate:4}
 };
 const presets = [
+ ["evolving-glass","Evolving Glass","Pads","Harmonics with independent envelope and octave filter movement.",{version:2,
+  oscillators:[{wave:"harmonic",harmonics:harmonicRecipe("saw"),level:.8,octave:0,detune:0},{wave:"sine",level:.2,octave:0,detune:0}],
+  filter:{cutoff:450},envelope:{attack:.08,decay:.2,sustain:.85,release:.8},
+  modulation:{version:1,routes:[
+   {id:"bloom",source:{kind:"envelope",envelope:{attack:2,decay:.5,sustain:.7,release:.8}},target:"filter.cutoff",unit:"octaves",depth:3,polarity:"unipolar",smoothing:.005},
+   {id:"drift",source:{kind:"lfo",shape:"sine",rate:.23},target:"filter.cutoff",unit:"octaves",depth:.8,polarity:"bipolar",smoothing:.01}]}}],
+ ["breath-lead","Breath Lead","Lead","Velocity-controlled brightness and independent pitch movement.",{version:2,
+  oscillators:[{wave:"sawtooth",level:1,octave:0,detune:0},{wave:"sine",level:0,octave:0,detune:0}],filter:{cutoff:400},
+  envelope:{attack:.015,decay:.1,sustain:.85,release:.2},modulation:{version:1,routes:[
+   {id:"breath",source:{kind:"velocity"},target:"filter.cutoff",unit:"octaves",depth:4,polarity:"unipolar",smoothing:.008},
+   {id:"pitch",source:{kind:"lfo",shape:"sine",rate:5},target:"oscillators.0.detune",unit:"cents",depth:18,polarity:"bipolar",smoothing:.005}]}}],
+ ["touch-keys","Touch Keys","Keys","Velocity changes brightness and oscillator balance; higher keys open the filter.",{version:2,
+  oscillators:[{wave:"triangle",level:.8,octave:0,detune:0},{wave:"square",level:0,octave:1,detune:0}],filter:{cutoff:1200},
+  envelope:{attack:.01,decay:.3,sustain:.5,release:.4},modulation:{version:1,routes:[
+   {id:"touch-filter",source:{kind:"velocity"},target:"filter.cutoff",unit:"octaves",depth:2.5,polarity:"bipolar",smoothing:.005},
+   {id:"touch-level",source:{kind:"velocity"},target:"oscillators.1.level",unit:"linear_gain",depth:.6,polarity:"unipolar",smoothing:.005},
+   {id:"keys",source:{kind:"keytrack",root:60,span:24},target:"filter.cutoff",unit:"octaves",depth:1,polarity:"bipolar",smoothing:.005}]}}],
  ["harmonic-keys","Harmonic Keys","Keys","Plucked sound with 32 editable harmonic levels.",{oscillators:[{wave:"harmonic",harmonics:harmonicRecipe().map((_,i)=>[1,.38,.22,.08,.14,.04,.06][i]||0),level:1,octave:0,detune:0},{wave:"sine",level:0,octave:0,detune:0}],envelope:{attack:.006,decay:.65,sustain:.12,release:.4},filter:{cutoff:10000}}],
  ["harmonic-reed","Harmonic Reed","Winds","Sustained sound using editable odd harmonics.",{oscillators:[{wave:"harmonic",harmonics:harmonicRecipe("odd"),level:1,octave:0,detune:0},{wave:"sine",level:.08,octave:1,detune:4}],noise:.025,envelope:{attack:.08,decay:.18,sustain:.8,release:.32},filter:{cutoff:6200},movement:{rate:5.2,depth:8}}],
  ["init","Init","Basic","Default two-oscillator patch.",{}],
@@ -71,6 +89,9 @@ const num=(x,min,max)=>typeof x==="number"&&Number.isFinite(x)&&x>=min&&x<=max;
 export function validatePatch(patch) {
  if(patch?.type==="sample")return validateSamplerPatch(patch);
  const errors=[];
+ if(patch?.version!==undefined&&![1,2].includes(patch.version))errors.push("Unsupported synth patch version.");
+ if(patch?.version===2)errors.push(...validateModulation(patch.modulation));
+ else if(patch?.modulation!==undefined)errors.push("Modulation requires synth patch version 2.");
  if(patch?.type!=="synth")errors.push("Unknown instrument source.");
  if(!object(patch))return ["Missing instrument sound definition."];
  if(typeof patch.presetId!=="string"||patch.presetId.length>80)errors.push("Invalid sound preset reference.");
