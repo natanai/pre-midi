@@ -31,6 +31,7 @@ import {readZip} from "./zip.js";
 import {installSongUI} from "./songUI.js";
 
 const $ = key => document.getElementById(key);
+let assetsReady=Promise.resolve();
 const CACHE = "premidi-v5-draft";
 const SAVED_SOUNDS = "premidi-user-sounds-v2";
 // Retain the previous fallback key. Native v5 drafts and files migrate through
@@ -1201,7 +1202,7 @@ function currentContext(mode="replace"){
  return {mode,instrumentId:instrument().id,soundId:sound().id};
 }
 function applySoundSelection(patch,name,trigger,assets,context,rackSounds=null,settings=null){
- const target=beat.instruments.find(inst=>inst.id===context.instrumentId);
+ const target=beat.instruments.find(inst=>inst.id===context.instrumentId)||(context.mode==="add"?instrument():null);
  if(!target){message("The original instrument was removed. Open the sound library again.",true);return false;}
  const row=target.sounds.find(sound=>sound.id===context.soundId);
  if(context.mode==="replace-row"&&!row)return false;
@@ -1241,7 +1242,7 @@ function addAuthoredSample(asset,options={},context=currentContext("add")){
   followPitch,oneShot:!followPitch,transpose:0,gain:.9,attack:.005,release:.17,pan:0,
   movement:{rate:5,depth:0,delay:0,glide:0,glideTime:.18,tremolo:0,tremoloRate:5,tone:0,toneRate:2},
   bend:{shape:"straight",amount:2,rate:4}};
- const target=beat.instruments.find(inst=>inst.id===context.instrumentId);
+ const target=beat.instruments.find(inst=>inst.id===context.instrumentId)||(context.mode==="add"?instrument():null);
  const row=target?.sounds.find(sound=>sound.id===context.soundId);
  if(context.mode==="replace-row"&&row){
   // Replacing audio preserves this sound's note/hit intent and recorded pitch.
@@ -1300,7 +1301,7 @@ $("sample-file").addEventListener("change",async event=>{
    new Uint8Array(await file.arrayBuffer()),"Imported by author: "+file.name);
   const name=file.name.replace(/\.[^.]+$/,"").slice(0,60);
   if(context.mode==="replace-row"){
-   const target=beat.instruments.find(inst=>inst.id===context.instrumentId);
+   const target=beat.instruments.find(inst=>inst.id===context.instrumentId)||(context.mode==="add"?instrument():null);
    const row=target?.sounds.find(sound=>sound.id===context.soundId);
    if(!row)throw Error("The original sound was removed.");
    addAuthoredSample(asset,{name,root:row.patch.zones?.[0]?.root??row.referencePitch,followPitch:row.trigger==="pitched"},context);
@@ -1363,6 +1364,7 @@ function openLibrary(mode) {
 }
 const builtinCache=new Map();
 async function resolveSamples(preset) {
+ await assetsReady;
  const ids=new Set(preset.sounds?preset.sounds.flatMap(sound=>sound.patch.type==="sample"?sound.patch.zones.map(zone=>zone.assetId):[]):
   preset.patch?.type==="sample"?preset.patch.zones.map(zone=>zone.assetId):preset.assets||[]);
  return Promise.all([...ids].map(async assetId=>{
@@ -1609,8 +1611,8 @@ songUI=installSongUI({
 });
 render();
 if(cached)message("Local draft restored");
-void loadDraft().then(raw=>{
- if(!raw || history.length || future.length || saveGeneration>0)return;
+assetsReady=loadDraft().then(raw=>{
+ if(cached || !raw || history.length || future.length || saveGeneration>0)return;
  try {const restored=parseDocument(raw);resetTo(restored);message("Browser draft restored");}
  catch(error){console.warn("Draft could not be restored",error);}
 }).catch(()=>{});
