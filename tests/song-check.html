@@ -30,6 +30,11 @@
   get("bars").dispatchEvent(new Event("change",{bubbles:true}));
   get("song-expand").click();
   await wait(()=>!get("song-panel").hidden&&frame.contentDocument.querySelectorAll(".song-beat-clip").length===1,"Song first open");
+  // This fixture changes the Beat to two bars, but Clips retain their original
+  // lengths unless explicitly resized. Avoid an unnecessary 8-bar WAV render.
+  frame.contentDocument.querySelector(".song-beat-clip").click();
+  get("song-clip-length").value="2";
+  get("song-clip-length").dispatchEvent(new Event("change",{bubbles:true}));
   assert(frame.contentDocument.querySelector("#song-panel").compareDocumentPosition(frame.contentDocument.querySelector(".beat-header"))&Node.DOCUMENT_POSITION_FOLLOWING,"Song above Beat maker");
   const viewport=get("song-scroll"),ruler=get("song-ruler");
   const firstLane=frame.contentDocument.querySelector(".song-track-lane");
