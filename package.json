@@ -1,6 +1,6 @@
 {
   "name": "pre-midi",
-  "version": "0.14.1-preview.1",
+  "version": "0.14.1-preview.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
     "benchmark:automation": "node scripts/audio-benchmark.mjs --suite automation",
     "desktop:prepare": "node scripts/fetch-samples.mjs && node scripts/prepare-pages.mjs",
     "desktop:build": "cd desktop && tauri build",
-    "desktop:dev": "cd desktop && tauri dev"
+    "desktop:dev": "cd desktop && tauri dev",
+    "version": "node scripts/sync-desktop-version.mjs && git add desktop/Cargo.toml desktop/Cargo.lock"
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.12.4"

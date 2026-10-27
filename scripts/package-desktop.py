@@ -18,7 +18,7 @@ def collect(pattern,kind,extension):
  if sig.exists():
   signature=sig.read_text().strip()
   comment=base64.b64decode(signature).decode()
-  if ('\tversion:'+version) not in comment:raise RuntimeError('Updater signature does not bind the release version')
+  if not any(field.splitlines()[0]=='version:'+version for field in comment.split('\t') if field):raise RuntimeError('Updater signature does not bind the release version')
   (out/(name+'.sig')).write_text(signature+'\n')
  data=dest.read_bytes()
  if len(data)<1_000_000:raise RuntimeError('Truncated desktop package')

@@ -941,9 +941,8 @@
         "framework": "tauri",
         "audio": "web-audio",
         "version_source": "package.json",
-        "preview_version": "0.14.1-preview.1",
-        "tag_commit": "e4dc803063794bd2d56f07dc3ac09a67cac7fbb9",
-        "qualification": "All four platform CI builds and actual WebView smoke checks pass. Physical Windows 11/microphone/listening/offline and signed version-to-version update qualification remain open.",
+        "preview_version": "0.14.1-preview.2",
+        "qualification": "Initial preview passed all four platform CI builds/WebView checks. Preview 2 bounds dependency/network setup and reuses release-profile test dependencies; physical hardware and signed version-to-version update qualification remain open.",
         "evidence": {
           "platform_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635962",
           "browser_and_dsp_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635994",
@@ -995,7 +994,9 @@
           "Update signing key provisioning and paired installed-update qualification",
           "Real hardware and newcomer/listening qualification",
           "Native audio-device integration and full synthesis parity"
-        ]
+        ],
+        "initial_qualified_preview_version": "0.14.1-preview.1",
+        "initial_qualified_tag_commit": "e4dc803063794bd2d56f07dc3ac09a67cac7fbb9"
       }
     },
     {

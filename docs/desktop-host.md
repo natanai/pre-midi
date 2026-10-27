@@ -1,6 +1,6 @@
 # Tauri desktop host and release operations
 
-Tauri is the chosen desktop framework, at Nat's request. The studio remains the same HTML/CSS/JavaScript dependency graph as GitHub Pages, embedded with all 122 pinned sample assets. There is no hosted-site dependency or UI rewrite. The authoritative product version is package.json; Tauri reads that file directly and Settings reads the running app's metadata. desktop/Cargo.toml and Cargo.lock must match; scripts/desktop-config.mjs rejects a mismatch.
+Tauri is the chosen desktop framework, at Nat's request. The studio remains the same HTML/CSS/JavaScript dependency graph as GitHub Pages, embedded with all 122 pinned sample assets. There is no hosted-site dependency or UI rewrite. The authoritative product version is package.json; Tauri reads that file directly and Settings reads the running app's metadata. desktop/Cargo.toml and Cargo.lock are synchronized by the npm version hook; scripts/desktop-config.mjs rejects a mismatch.
 
 ## Framework decision
 
@@ -72,6 +72,8 @@ The script creates a Tauri keypair, stores the private key via GitHub CLI stdin 
 Publish a new preview after setting the keys. Existing previews built without the public key require one manual replacement before automatic updates can be trusted. Key rotation requires retaining an established trust path; do not overwrite a key casually.
 
 ## Build and publication
+
+Use `npm version 0.14.1-preview.3` (or the next intended version) to update the authoritative package version and generated Cargo metadata together. Preview 1 passed all four PR builds but its tagged publication met external runner DNS/package-server failures; preview 2 adds bounded dependency setup and avoids recompiling debug dependencies for the release-policy tests. Older in-flight preview builds are superseded when a newer preview is pushed.
 
 - `npm ci` uses package-lock.json; Cargo uses committed Cargo.lock with --locked. Rust is pinned to 1.99.1, Tauri CLI to 2.12.4, and the host/updater/dialog crates to exact versions.
 - `.github/workflows/desktop-release.yml` runs Windows x64, Intel Mac, Apple Silicon Mac and Linux x64 jobs. Windows uses a per-user NSIS installer and a ZIP containing the standalone executable. macOS outputs separate DMGs. Linux outputs AppImage and DEB.

@@ -1,4 +1,4 @@
-import {writeFile,readFile} from 'node:fs/promises';
+import {writeFile,readFile,rm} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),pkg=JSON.parse(await readFile(new URL('package.json',root),'utf8'));
 const cargo=await readFile(new URL('desktop/Cargo.toml',root),'utf8');
 if(!cargo.includes('version = "'+pkg.version+'"'))throw Error('Desktop Cargo version must match package.json');
@@ -7,3 +7,10 @@ if(!!publicKey!==!!privateKey)throw Error('Configure both the update public key 
 const config={bundle:{createUpdaterArtifacts:!!publicKey},plugins:{updater:{pubkey:publicKey}}};
 await writeFile(new URL('desktop/ci-config.json',root),JSON.stringify(config));
 console.log(publicKey?'Update artifact signing enabled':'Unsigned preview: automatic installation is disabled');
+
+const target=process.argv[2];
+if(target){
+ if(!['x86_64-pc-windows-msvc','x86_64-apple-darwin','aarch64-apple-darwin','x86_64-unknown-linux-gnu'].includes(target))throw Error('Unknown desktop target');
+ // Bundles are generated outputs, never reusable compiler cache or user data.
+ await rm(new URL('desktop/target/'+target+'/release/bundle/',root),{recursive:true,force:true});
+}
