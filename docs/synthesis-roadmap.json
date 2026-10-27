@@ -523,6 +523,15 @@
             "filter sweep and legacy LFOs",
             "hardware/device qualification"
           ]
+        },
+        "device_blocker": {
+          "observed": "This Linux worker exposes no /dev/snd hardware endpoint",
+          "required": [
+            "Desktop reference device and named OS/driver/backend",
+            "Pinned native device I/O host",
+            "1/8/32/64-voice callback, latency, underrun, start/stop/device-change tests"
+          ],
+          "status": "blocked; no simulated/offline result is a hardware measurement"
         }
       }
     },
@@ -587,7 +596,29 @@
           "maximum-route-count device CPU qualification",
           "human musical listening review"
         ],
-        "report": "benchmarks/modulation-reference.json"
+        "report": "benchmarks/modulation-reference.json",
+        "correctness": {
+          "fixture": "tests/audio-quality/modulation-fixtures.js",
+          "oracle": "tests/audio-quality/modulation-oracle.js",
+          "controlTraceCases": 48,
+          "coverage": [
+            "multiple routes/signs/polarities",
+            "level/pan/pitch/cutoff saturation",
+            "three sample rates and smoothing",
+            "release, phase and envelope timing",
+            "initially silent oscillator",
+            "bend/glide plus modulation",
+            "16 routes per voice",
+            "32/64-voice AudioWorklet graph stress",
+            "16-route Beat/Song round trips"
+          ],
+          "native": "Separate draft v2 implementation still fails one staggered-onset deep-pitch-LFO RMS gate; not qualified or merged"
+        },
+        "browser_performance_limit": {
+          "observed": "About 3/6 s worker startup for 32/64 voices x16 routes; scheduling during a running clock missed onsets. Not hardware evidence.",
+          "qualification_method": "Prepare with clock suspended, then capture all intended voices in AudioWorklet. Record setup/cleanup costs. No interactive scheduling claim.",
+          "remaining": "Reduce graph preparation overhead and qualify startup/callback deadlines on reference hardware"
+        }
       }
     },
     {

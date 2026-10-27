@@ -1,3 +1,4 @@
+import {modulationFixtures} from "./modulation-fixtures.js";
 import {scheduleNote,scheduleSynthPlan,play,audition} from "../../audio.js";
 import {planSynthVoice} from "../../src/dsp/synth-voice.js";
 import {delayTailSeconds} from "../../src/dsp/effect-tail.js";
@@ -119,6 +120,26 @@ export async function runVoiceBenchmark(){
     ...stats,silentBlocks,minBlockRms,remaining:session.voices.size,
     qualification:"browser render-graph capture only; output device latency, driver underruns and native callback deadlines remain unqualified"},
     {queuedBeforeOnset,finite:stats.nonFinite===0,audible:stats.rms>.0001,noSilentBlocks:silentBlocks===0,headroom:stats.peak<1,cleanup:session.voices.size===0});
+  }finally{await ctx.close();}
+ }
+ for(const count of [32,64]){
+  const ctx=new AudioContext({sampleRate:48000,latencyHint:"interactive"});await ctx.resume();
+  try{
+   await ctx.audioWorklet.addModule("/tests/audio-quality/capture-worklet.js");
+   await ctx.suspend();
+   const startFrame=Math.ceil((ctx.currentTime+.3)*ctx.sampleRate),first=startFrame+Math.round(.15*ctx.sampleRate),length=Math.round(.4*ctx.sampleRate);
+   const capture=new AudioWorkletNode(ctx,"premidi-qualification-capture",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],processorOptions:{first,length}});capture.connect(ctx.destination);
+   let timer;const dataPromise=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(Error("Modulated capture timed out")),15000);capture.port.onmessage=event=>resolve(event.data);});
+   const session=new VoiceSession(ctx,capture),patch=modulationFixtures().find(fixture=>fixture.id==="maximum-16").patch,started=performance.now();
+   for(let i=0;i<count;i++)scheduleNote(ctx,capture,{patch,volume:.005},{pitch:48+i%24,velocity:.8},startFrame/ctx.sampleRate,.8,null,session);
+   const setupMs=performance.now()-started,queuedBeforeOnset=ctx.currentTime<startFrame/ctx.sampleRate;await ctx.resume();const data=await dataPromise;clearTimeout(timer);
+   const stats=signalStats(data);let silentBlocks=0;for(let i=0;i+128<=data.length;i+=128)if(signalStats(data.subarray(i,i+128)).rms<1e-7)silentBlocks++;
+   session.stop();const cleanupStart=performance.now();
+   while(session.voices.size&&performance.now()-cleanupStart<5000){await wait(20);session.sweep();}
+   const cleanupMs=performance.now()-cleanupStart;
+   add("realtime/"+count+"-voices-16-routes",{setupMs,cleanupMs,preparation:"Audio clock suspended during graph preparation; setupMs is startup cost, not callback CPU",...stats,silentBlocks,remaining:session.voices.size,diagnostics:session.diagnostics,
+    qualification:"Browser AudioWorklet graph capture; no driver underrun, device latency or native CPU qualification"},
+    {queuedBeforeOnset,finite:stats.nonFinite===0,audible:stats.rms>.00001,headroom:stats.peak<1,noSilentBlocks:silentBlocks===0,cleanup:session.voices.size===0,noRejections:session.diagnostics.rejected===0,allAdmitted:session.diagnostics.admitted===count});
   }finally{await ctx.close();}
  }
  {

@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {validateModulation,routeValueAt,combineParameter,smoothingAlpha} from "../src/dsp/modulation.js";
+import {validateModulation,routeValueAt,combineParameter,smoothingAlpha,sourceValueAt} from "../src/dsp/modulation.js";
 import {makePatch,validatePatch} from "../synth.js";
+import {modulationFixtures} from "./audio-quality/modulation-fixtures.js";
 import {create,parse,upgradeBeatFeatures} from "../schema.js";
 import {createSong,validateSong,upgradeSongFeatures} from "../songModel.js";
 import {exportProject,importProject} from "../packageIO.js";
@@ -30,4 +31,25 @@ test("v7/v8 files remain readable and unchanged; modulated native files explicit
  const output=exportSongProject(song);assert.deepEqual(await importSongProject(Object.assign(output.blob,{name:output.name})),song);
  assert.ok(validatePatch({...makePatch(),version:99}).length);
  assert.ok(validatePatch({...makePatch(),modulation:{version:1,routes:[route]}}).length);
+});
+
+test("16-route sounds preserve full route identity through Beat and Song round trips",async()=>{
+ const fixture=modulationFixtures().find(fixture=>fixture.id==="maximum-16"),beat=create();beat.instruments[0].sounds[0].patch=fixture.patch;upgradeBeatFeatures(beat);
+ const out=exportProject(beat),copy=await importProject(Object.assign(out.blob,{name:out.name}));assert.deepEqual(copy,beat);
+ const song=createSong(beat),songOut=exportSongProject(song);assert.deepEqual(await importSongProject(Object.assign(songOut.blob,{name:songOut.name})),song);
+ assert.deepEqual(validateModulation(fixture.patch.modulation),[]);
+ assert.ok(validateModulation({version:1,routes:[...fixture.routes,{...fixture.routes[0],id:"seventeen"}]}).length);
+ assert.ok(validateModulation({version:1,routes:[{...route,source:{kind:"envelope",envelope:{attack:.1,decay:.1,sustain:.4,release:.2,unknown:1}}}]}).length);
+});
+test("source timing, signed ranges and destination bounds have analytical values",()=>{
+ const note={elapsed:.125,gate:.2,pitch:36,velocity:.2};
+ assert.ok(Math.abs(sourceValueAt({kind:"lfo",rate:2},note).value-1)<1e-12);
+ assert.equal(sourceValueAt({kind:"keytrack",root:60,span:24},note).value,-1);
+ assert.equal(routeValueAt({...route,depth:1,polarity:"bipolar"},note),-.6);
+ assert.equal(combineParameter("pan",.8,10),1);assert.equal(combineParameter("oscillators.0.detune",17,5000),2417);assert.equal(combineParameter("filter.cutoff",1000,20),256000);
+ const source={kind:"envelope",envelope:{attack:.1,decay:.1,sustain:.4,release:.2}};
+ assert.ok(Math.abs(sourceValueAt(source,{...note,elapsed:.05}).value-.5)<1e-12);
+ assert.ok(Math.abs(sourceValueAt(source,{...note,elapsed:.3}).value-.2000005)<1e-12);
+ assert.equal(routeValueAt({...route,source},{...note,elapsed:-.1}),0);
+ for(const rate of [44100,48000,96000])assert.ok(Math.abs((1-smoothingAlpha(.01,rate))**rate-Math.exp(-100))<1e-45);
 });

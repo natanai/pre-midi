@@ -1,5 +1,6 @@
 <!doctype html><meta charset="utf-8"><title>Modulation audio qualification</title><pre id="status">running</pre>
 <script type="module">
+import {qualifyModulationMath} from "./modulation-oracle.js";
 import {makePatch} from "../../synth.js";
 import {scheduleNote,renderSynthBuffer} from "../../audio.js";
 import {signalStats,difference,spectrum} from "./metrics.js";
@@ -45,6 +46,7 @@ try{
  patch.oscillators[0].level=0;patch.version=2;patch.modulation={version:1,routes:[route]};
  const shaped=await render(patch,{gate:.2,seconds:.4});
  add("zero-level-route",signalStats(shaped),{audible:signalStats(shaped).rms>.005,finite:signalStats(shaped).nonFinite===0});
+ await qualifyModulationMath(add);
  report={schemaVersion:1,backend:"web-audio-general-modulation",environment:{userAgent:navigator.userAgent},policy:{method:"Measure spectral centroid change on sustained sounds; normalize timbre comparison through spectral power ratios rather than raw loudness; compare repeated actual renders and routed-vs-static lead PCM",maxRepeatError:1e-7,listening:"Human musical polish and comprehension review pending",limits:["No native v2 modulation rendering yet","No recorded automation or device underrun qualification"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
 }catch(error){report={error:String(error.stack||error)};}
 document.getElementById("status").textContent=JSON.stringify(report.summary||report);
