@@ -282,7 +282,7 @@
         "report": "benchmarks/web-audio-reference.json",
         "contract": "docs/dsp-contract.schema.json",
         "method": "18 constant-input rendered ADSR cases against an independent analytical oracle; overlapping and retriggered production voices at three sample rates",
-        "max_sample_error_gate": 0.00003,
+        "max_sample_error_gate": 3e-05,
         "shared_runtime": "live transport, audition, conversion preview and WAV export all use scheduleNote -> scheduleAmplitudeEnvelope -> planAmplitudeEnvelope",
         "compatibility": "preserves 2 ms attack floor, zero-decay sustain step and 0.000001 release floor; unchanged stored patch v1 and Beat v7/Song v8",
         "scope": "current ADSR scheduling contract; physical live-device loopback and native DSP equivalence are later host qualification"
@@ -731,7 +731,7 @@
           ],
           "pcm_limits": {
             "max_absolute": 0.0001,
-            "rms": 0.00002
+            "rms": 2e-05
           },
           "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
           "raw_reports": "benchmarks/automation-reference.json"
@@ -912,7 +912,7 @@
       "id": "SYN-018",
       "phase": "delivery",
       "priority": "P0",
-      "status": "planned",
+      "status": "in_progress",
       "title": "Native desktop reference application",
       "depends_on": [
         "SYN-007",
@@ -931,7 +931,18 @@
       "usability_acceptance": [
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
-      ]
+      ],
+      "desktop_preview": {
+        "framework": "tauri",
+        "audio": "web-audio",
+        "qualification": "not yet built or hardware tested",
+        "remaining": [
+          "signed updater trust key provisioning",
+          "cross-platform packaging qualification",
+          "installation and update persistence tests",
+          "native audio-device host"
+        ]
+      }
     },
     {
       "id": "SYN-019",

@@ -1,0 +1,209 @@
+name: Desktop releases
+on:
+  pull_request:
+    branches: [main]
+    paths: ['desktop/**', 'native/**', 'desktopUI.js', 'scripts/*desktop*', '.github/workflows/desktop-release.yml', 'package*.json', 'tests/song-check.html']
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths: ['package.json', '.github/workflows/desktop-release.yml']
+  workflow_dispatch:
+    inputs:
+      publish_preview:
+        description: Publish a prerelease from this exact commit
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  source:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    outputs:
+      commit: ${{ steps.resolve.outputs.commit }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      publish: ${{ steps.resolve.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: resolve
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+            if (!/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(version)) throw Error('Invalid package version');
+            const tag = 'v' + version;
+            const preview = version.includes('-');
+            const tagged = context.ref.startsWith('refs/tags/');
+            if (tagged && context.ref !== 'refs/tags/' + tag) throw Error('Tag/package version mismatch');
+            const publish = context.eventName !== 'pull_request' && (tagged || context.eventName === 'push' || context.payload.inputs?.publish_preview === 'true');
+            if (publish && !preview) throw Error('Stable publication requires documented installed-app and update qualification; this workflow currently permits prereleases only');
+            const commit = require('child_process').execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+            if (publish) {
+              try {
+                const ref = await github.rest.git.getRef({...context.repo,ref:'tags/'+tag});
+                if(ref.data.object.sha !== commit) throw Error('Version tag already points to another commit; bump package.json');
+              } catch(error) {
+                if(error.status !== 404) throw error;
+                await github.rest.git.createRef({...context.repo,ref:'refs/tags/'+tag,sha:commit});
+              }
+            }
+            core.setOutput('commit',commit); core.setOutput('tag',tag); core.setOutput('publish',String(publish));
+  build:
+    needs: source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            bundles: app,dmg
+          - os: macos-15
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: appimage,deb
+    runs-on: ${{ matrix.os }}
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      TAURI_UPDATER_PUBLIC_KEY: ${{ vars.TAURI_UPDATER_PUBLIC_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.publish == 'true' && needs.source.outputs.tag || needs.source.outputs.commit }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+          cache-on-failure: true
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xvfb libfuse2
+      - run: npm ci
+      - run: npm run check
+      - run: node scripts/desktop-config.mjs
+      - name: Build exact desktop source
+        working-directory: desktop
+        run: npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config ci-config.json -- --locked
+      - name: Rust update policy tests
+        working-directory: desktop
+        run: cargo test --locked --target ${{ matrix.target }}
+      - name: WebView smoke on Linux
+        if: runner.os == 'Linux'
+        run: |
+          PREMIDI_SMOKE_OUTPUT="$RUNNER_TEMP/premidi-smoke.json" WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 timeout 120 xvfb-run -a desktop/target/${{ matrix.target }}/release/pre-midi
+          cat "$RUNNER_TEMP/premidi-smoke.json"
+      - name: WebView smoke on macOS
+        if: runner.os == 'macOS'
+        run: |
+          PREMIDI_SMOKE_OUTPUT="$RUNNER_TEMP/premidi-smoke.json" desktop/target/${{ matrix.target }}/release/bundle/macos/pre-midi.app/Contents/MacOS/pre-midi &
+          PID=$!
+          for attempt in {1..120}; do
+            if [ -f "$RUNNER_TEMP/premidi-smoke.json" ]; then break; fi
+            sleep 1
+          done
+          test -f "$RUNNER_TEMP/premidi-smoke.json" || { kill "$PID"; exit 1; }
+          cat "$RUNNER_TEMP/premidi-smoke.json"
+          python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/premidi-smoke.json"))["passed"]'
+      - name: Windows installation and WebView smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem desktop/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+          $installDir = Join-Path $env:RUNNER_TEMP 'premidi-installed'
+          $proc = Start-Process $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
+          if ($proc.ExitCode -ne 0) { throw "Installer failed: $($proc.ExitCode)" }
+          $env:PREMIDI_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'premidi-smoke.json'
+          $app = Start-Process (Join-Path $installDir 'pre-midi.exe') -PassThru
+          if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Installed application smoke timed out' }
+          if ($app.ExitCode -ne 0) { throw "Smoke failed: $($app.ExitCode)" }
+          Get-Content $env:PREMIDI_SMOKE_OUTPUT
+          Remove-Item $env:PREMIDI_SMOKE_OUTPUT
+          $proc = Start-Process $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
+          if ($proc.ExitCode -ne 0) { throw 'Reinstall failed' }
+          $env:PREMIDI_SMOKE_EXPECT_RESTORE = '1'
+          $app = Start-Process (Join-Path $installDir 'pre-midi.exe') -PassThru
+          if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Reinstall smoke timed out' }
+          if ($app.ExitCode -ne 0) { throw 'Reinstall data preservation failed' }
+          Get-Content $env:PREMIDI_SMOKE_OUTPUT
+      - name: Collect required artifacts and checksums
+        run: python scripts/package-desktop.py ${{ matrix.target }}
+      - name: Windows portable ZIP launch and profile persistence
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem release/*-portable.zip
+          $portableDir = Join-Path $env:RUNNER_TEMP 'premidi-portable'
+          Expand-Archive $zip.FullName $portableDir
+          $env:PREMIDI_SMOKE_EXPECT_RESTORE = '1'
+          $env:PREMIDI_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'premidi-portable-smoke.json'
+          $app = Start-Process (Join-Path $portableDir 'pre-midi.exe') -PassThru
+          if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Portable launch timed out' }
+          if ($app.ExitCode -ne 0) { throw 'Portable launch/persistence failed' }
+          Get-Content $env:PREMIDI_SMOKE_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          path: release/
+          if-no-files-found: error
+      - name: Print qualification evidence
+        if: always()
+        run: python -c "from pathlib import Path; import os; [print(p.read_text()) for p in Path(os.environ['RUNNER_TEMP']).glob('premidi*smoke.json')]"
+      - name: Preserve qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qualification-${{ matrix.target }}
+          path: |
+            ${{ runner.temp }}/premidi*smoke.json
+            desktop/Cargo.lock
+          if-no-files-found: error
+  publish:
+    needs: [source, build]
+    if: needs.source.outputs.publish == 'true'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: release
+      - name: Verify complete platform set
+        run: node scripts/publish-desktop.mjs
+      - name: Publish complete prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.source.outputs.tag }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-draft.txt"; then
+            test "$(cat "$RUNNER_TEMP/release-draft.txt")" = true || { echo 'Refusing to overwrite a published release'; exit 1; }
+          else
+            gh release create "$RELEASE_TAG" --draft --prerelease --title "pre-midi ${RELEASE_TAG#v} desktop preview" --notes-file release/release-notes.md
+          fi
+          for file in release/*; do
+            case "$file" in *artifacts-*.json|*release-notes.md) continue;; esac
+            gh release upload "$RELEASE_TAG" "$file" --clobber
+          done
+          gh release edit "$RELEASE_TAG" --draft=false

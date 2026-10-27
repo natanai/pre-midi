@@ -20,17 +20,19 @@
    frame.onerror=()=>reject(Error("Studio iframe failed to load"));
   });
   const win=frame.contentWindow,doc=frame.contentDocument,get=id=>frame.contentDocument.getElementById(id);
-  const wavDownloads=[],createUrl=win.URL.createObjectURL.bind(win.URL);
-  win.URL.createObjectURL=blob=>{
-   if(blob.type==="audio/wav"){
-    wavDownloads.push(blob);
-    // An unrelated asynchronous save can replace transient export status text.
-    // Make that race deterministic: completion must be proved by the file itself.
-    queueMicrotask(()=>get("status").textContent="Saved locally");
-   }
-   return createUrl(blob);
-  };
-  win.HTMLAnchorElement.prototype.click=function(){};
+  const projectDownloads=[],wavDownloads=[];
+  function captureDownloads(view){
+   const createUrl=view.URL.createObjectURL.bind(view.URL);
+   view.URL.createObjectURL=blob=>{
+    if(blob.type==="audio/wav"){
+     wavDownloads.push(blob);
+     queueMicrotask(()=>get("status").textContent="Saved locally");
+    }else projectDownloads.push(blob);
+    return createUrl(blob);
+   };
+   view.HTMLAnchorElement.prototype.click=function(){};
+  }
+  captureDownloads(win);
   const checkWav=async(blob,audible)=>{
    const data=await blob.arrayBuffer(),view=new DataView(data);
    assert(new TextDecoder().decode(new Uint8Array(data,0,4))==="RIFF","WAV header");
@@ -121,11 +123,13 @@
   assert(get("export-form").querySelector('input[name="export-format"]:checked').value==="premidi","premidi is default format");
   assert(get("export-form").querySelector('input[name="export-scope"]:checked').value==="song","expanded Song selects Song export");
   get("export-form").querySelector('input[name="export-scope"][value="beat"]').click();
+  const beatProjectCount=projectDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>get("status").textContent.includes("Exported beat"),"Beat premidi exported");
+  await wait(()=>projectDownloads.length>beatProjectCount,"Beat premidi exported");
   get("export").click();
+  const songProjectCount=projectDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>get("status").textContent.includes("Exported song"),"Song premidi exported");
+  await wait(()=>projectDownloads.length>songProjectCount,"Song premidi exported");
   get("export").click();
   get("export-form").querySelector('input[name="export-format"][value="wav"]').click();
   const songDownload=wavDownloads.length;
@@ -154,6 +158,7 @@
   await wait(()=>get("play").getAttribute("aria-label")==="play song"&&get("play").textContent.includes("■")===false,"single transport stops Song");
   await wait(()=>get("status").textContent.includes("Saved locally"),"Song saved locally",7000);
   await new Promise(resolve=>{frame.onload=resolve;frame.src="/index.html";});
+  captureDownloads(frame.contentWindow);
   await wait(()=>frame.contentDocument.querySelectorAll(".song-track-row").length===3,"Song restored from local draft",7000);
   assert(get("song-title").value==="Arrangement check","Song title persisted");
   assert(frame.contentDocument.querySelectorAll(".song-beat-clip").length===3,"All Song clips persisted");
@@ -187,10 +192,12 @@
   get("song-vocal-level").value="1.3";
   get("song-vocal-level").dispatchEvent(new Event("change",{bubbles:true}));
   get("export").click();
+  const vocalProjectCount=projectDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>get("status").textContent.includes("Exported song"),"vocal ZIP exported",9000);
+  await wait(()=>projectDownloads.length>vocalProjectCount,"vocal ZIP exported",9000);
   await wait(()=>get("status").textContent.includes("Saved locally"),"recorded Song saved locally",7000);
   await new Promise(resolve=>{frame.onload=resolve;frame.src="/index.html";});
+  captureDownloads(frame.contentWindow);
   await wait(()=>frame.contentDocument.querySelectorAll(".song-vocal-clip").length===1,
    "recorded Vocal Clip restored after reload",9000);
   assert(frame.contentDocument.querySelector(".song-track-row .song-vocal-clip"),
@@ -201,10 +208,12 @@
   get("play").click();
   get("export").click();
   get("export-form").querySelector('input[name="export-format"][value="wav"]').click();
+  const vocalWavCount=wavDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>/Exported song WAV|Export failed/.test(get("status").textContent),
+  await wait(()=>wavDownloads.length>vocalWavCount||get("status").textContent.includes("Export failed"),
    "Song with vocal renders WAV",25000);
-  assert(get("status").textContent.includes("Exported song WAV"),get("status").textContent);
+  assert(wavDownloads.length>vocalWavCount,"recorded Song produced a WAV file");
+  await checkWav(wavDownloads.at(-1),true);
   assert(issues.length===0,"Browser exceptions: "+issues.join(", "));
   document.documentElement.dataset.result="PASS";
   await report("PASS","Song clips, layering, keyboard, undo, playback, reload");
