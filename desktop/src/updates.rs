@@ -1,5 +1,5 @@
 use std::{sync::Mutex,time::Duration};
-use tauri::{Manager,State};
+use tauri::State;
 use tauri_plugin_updater::{Update,UpdaterExt};
 use serde::{Deserialize,Serialize};
 use semver::Version;

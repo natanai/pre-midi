@@ -1,6 +1,8 @@
 import {readFile,writeFile,readdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-const dir=new URL('../release/',import.meta.url),root=new URL('../',import.meta.url);
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+const dir=process.argv[2]?pathToFileURL(resolve(process.argv[2])+'/'):new URL('../release/',import.meta.url),root=new URL('../',import.meta.url);
 const {version}=JSON.parse(await readFile(new URL('package.json',root),'utf8'));
 const tag='v'+version,files=await readdir(dir),artifacts=[];
 for(const name of files.filter(name=>/^artifacts-.*\.json$/.test(name)))artifacts.push(...JSON.parse(await readFile(new URL(name,dir),'utf8')));

@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool,Ordering};
 #[tauri::command]
 fn desktop_info(app:tauri::AppHandle)->serde_json::Value{
  serde_json::json!({"version":app.package_info().version.to_string(),"channel":if app.package_info().version.pre.is_empty(){"stable"}else{"preview"},
- "updateSigningConfigured":!updates::KEY.is_empty(),"dataPath":app.path().app_data_dir().ok(),"audioBackend":"web-audio","nativeRealtime":false})
+ "updateSigningConfigured":!updates::KEY.is_empty(),"dataPath":app.path().app_data_dir().ok(),"audioBackend":"web-audio","nativeRealtime":false,"smokeRestore":std::env::var_os("PREMIDI_SMOKE_EXPECT_RESTORE").is_some()})
 }
 #[tauri::command]
 async fn save_file(app:tauri::AppHandle,name:String,bytes:Vec<u8>)->Result<bool,String>{

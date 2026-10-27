@@ -131,20 +131,44 @@ jobs:
           if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Installed application smoke timed out' }
           if ($app.ExitCode -ne 0) { throw "Smoke failed: $($app.ExitCode)" }
           Get-Content $env:PREMIDI_SMOKE_OUTPUT
+          Remove-Item $env:PREMIDI_SMOKE_OUTPUT
+          $proc = Start-Process $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
+          if ($proc.ExitCode -ne 0) { throw 'Reinstall failed' }
+          $env:PREMIDI_SMOKE_EXPECT_RESTORE = '1'
+          $app = Start-Process (Join-Path $installDir 'pre-midi.exe') -PassThru
+          if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Reinstall smoke timed out' }
+          if ($app.ExitCode -ne 0) { throw 'Reinstall data preservation failed' }
+          Get-Content $env:PREMIDI_SMOKE_OUTPUT
       - name: Collect required artifacts and checksums
         run: python scripts/package-desktop.py ${{ matrix.target }}
+      - name: Windows portable ZIP launch and profile persistence
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem release/*-portable.zip
+          $portableDir = Join-Path $env:RUNNER_TEMP 'premidi-portable'
+          Expand-Archive $zip.FullName $portableDir
+          $env:PREMIDI_SMOKE_EXPECT_RESTORE = '1'
+          $env:PREMIDI_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'premidi-portable-smoke.json'
+          $app = Start-Process (Join-Path $portableDir 'pre-midi.exe') -PassThru
+          if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Portable launch timed out' }
+          if ($app.ExitCode -ne 0) { throw 'Portable launch/persistence failed' }
+          Get-Content $env:PREMIDI_SMOKE_OUTPUT
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.target }}
           path: release/
           if-no-files-found: error
+      - name: Print qualification evidence
+        if: always()
+        run: python -c "from pathlib import Path; import os; [print(p.read_text()) for p in Path(os.environ['RUNNER_TEMP']).glob('premidi*smoke.json')]"
       - name: Preserve qualification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qualification-${{ matrix.target }}
           path: |
-            ${{ runner.temp }}/premidi-smoke.json
+            ${{ runner.temp }}/premidi*smoke.json
             desktop/Cargo.lock
           if-no-files-found: error
   publish:
@@ -173,9 +197,13 @@ jobs:
           RELEASE_TAG: ${{ needs.source.outputs.tag }}
         shell: bash
         run: |
-          gh release create "$RELEASE_TAG" --draft --prerelease --title "pre-midi ${RELEASE_TAG#v} desktop preview" --notes-file release/release-notes.md
+          if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-draft.txt"; then
+            test "$(cat "$RUNNER_TEMP/release-draft.txt")" = true || { echo 'Refusing to overwrite a published release'; exit 1; }
+          else
+            gh release create "$RELEASE_TAG" --draft --prerelease --title "pre-midi ${RELEASE_TAG#v} desktop preview" --notes-file release/release-notes.md
+          fi
           for file in release/*; do
             case "$file" in *artifacts-*.json|*release-notes.md) continue;; esac
-            gh release upload "$RELEASE_TAG" "$file"
+            gh release upload "$RELEASE_TAG" "$file" --clobber
           done
           gh release edit "$RELEASE_TAG" --draft=false

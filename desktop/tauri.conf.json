@@ -40,7 +40,8 @@
       }
     },
     "macOS": {
-      "infoPlist": "Info.plist"
+      "infoPlist": "Info.plist",
+      "minimumSystemVersion": "13.3"
     },
     "icon": [
       "icons/icon.png",
