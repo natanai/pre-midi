@@ -60,14 +60,14 @@
     {
       "id": "detuned-lead/44100",
       "metrics": {
-        "max": 9.201467037200928e-7,
-        "rms": 7.472938141868185e-9,
-        "worstAtSeconds": 0.7124489795918367,
-        "referenceAtWorst": -0.0015310291200876236,
-        "currentAtWorst": -0.0015319492667913437,
+        "max": 0.000002562999725341797,
+        "rms": 2.7051406290722998e-8,
+        "worstAtSeconds": 0.6512698412698412,
+        "referenceAtWorst": 0.00536685436964035,
+        "currentAtWorst": 0.0053642913699150085,
         "legacyRepeat": {
-          "max": 0.000002564862370491028,
-          "rms": 2.597716554750627e-8
+          "max": 0.0000022873282432556152,
+          "rms": 1.5454398492594004e-8
         },
         "currentRepeat": {
           "max": 7.450580596923828e-9,
@@ -106,14 +106,14 @@
     {
       "id": "expressive-glide/44100",
       "metrics": {
-        "max": 1.1920928955078125e-7,
-        "rms": 1.2674342949338758e-8,
+        "max": 1.1827796697616577e-7,
+        "rms": 1.2975785103828993e-8,
         "worstAtSeconds": 0.7573696145124716,
         "referenceAtWorst": -0.011007633060216904,
-        "currentAtWorst": -0.011007752269506454,
+        "currentAtWorst": -0.01100775133818388,
         "legacyRepeat": {
-          "max": 2.9802322387695312e-8,
-          "rms": 5.594390491641647e-10
+          "max": 9.313225746154785e-8,
+          "rms": 3.929835837912281e-9
         },
         "currentRepeat": {
           "max": 0,
@@ -199,13 +199,13 @@
       "id": "detuned-lead/48000",
       "metrics": {
         "max": 0.000003822147846221924,
-        "rms": 4.2279217179895184e-8,
+        "rms": 4.2547030066832614e-8,
         "worstAtSeconds": 0.6546875,
         "referenceAtWorst": 0.016695216298103333,
         "currentAtWorst": 0.01669139415025711,
         "legacyRepeat": {
-          "max": 0.0000011026859283447266,
-          "rms": 4.953367609668426e-9
+          "max": 0.000003822147846221924,
+          "rms": 3.375213654827365e-8
         },
         "currentRepeat": {
           "max": 7.450580596923828e-9,
@@ -244,14 +244,14 @@
     {
       "id": "expressive-glide/48000",
       "metrics": {
-        "max": 0,
-        "rms": 0,
-        "worstAtSeconds": 0,
-        "referenceAtWorst": 0,
-        "currentAtWorst": 0,
+        "max": 3.5390257835388184e-7,
+        "rms": 3.751770969032166e-8,
+        "worstAtSeconds": 0.7573333333333333,
+        "referenceAtWorst": -0.028078593313694,
+        "currentAtWorst": -0.028078947216272354,
         "legacyRepeat": {
-          "max": 3.5390257835388184e-7,
-          "rms": 3.7546851074951657e-8
+          "max": 1.825392246246338e-7,
+          "rms": 4.576084565275382e-9
         },
         "currentRepeat": {
           "max": 0,
@@ -336,14 +336,14 @@
     {
       "id": "detuned-lead/96000",
       "metrics": {
-        "max": 0.0000035353004932403564,
-        "rms": 3.940187369150038e-8,
+        "max": 0.0000035371631383895874,
+        "rms": 3.641903619559592e-8,
         "worstAtSeconds": 0.6526875,
         "referenceAtWorst": 0.022568725049495697,
-        "currentAtWorst": 0.022565189749002457,
+        "currentAtWorst": 0.022565187886357307,
         "legacyRepeat": {
-          "max": 1.3969838619232178e-7,
-          "rms": 1.0703567350659836e-9
+          "max": 0,
+          "rms": 0
         },
         "currentRepeat": {
           "max": 7.450580596923828e-9,
@@ -382,18 +382,18 @@
     {
       "id": "expressive-glide/96000",
       "metrics": {
-        "max": 2.868473529815674e-7,
-        "rms": 2.952891524891822e-8,
+        "max": 2.8312206268310547e-7,
+        "rms": 2.92849904418843e-8,
         "worstAtSeconds": 0.7345729166666667,
         "referenceAtWorst": -0.04718939960002899,
-        "currentAtWorst": -0.04718911275267601,
+        "currentAtWorst": -0.04718911647796631,
         "legacyRepeat": {
-          "max": 2.868473529815674e-7,
-          "rms": 7.3061163220935624e-9
+          "max": 2.8312206268310547e-7,
+          "rms": 3.904270350761383e-9
         },
         "currentRepeat": {
-          "max": 0,
-          "rms": 0
+          "max": 1.4901161193847656e-8,
+          "rms": 2.526781382413412e-9
         }
       },
       "checks": {
@@ -471,13 +471,13 @@
     }
   ],
   "failures": [],
-  "measuredAt": "2026-10-27T04:56:18.640Z",
+  "measuredAt": "2026-10-27T05:02:28.781Z",
   "source": {
-    "commit": "61f9aa9d967c9972330736807bc1e44cf7cda500",
+    "commit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
     "tag": null,
-    "baseCommit": "61f9aa9d967c9972330736807bc1e44cf7cda500",
+    "baseCommit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "a64d94482c1a9dcabd01e94cc57272864fa3b9295de463ba0f34c0d87da3ef12"
+    "runtimeAndFixtureSha256": "b68e91c91c78a52c64c0660a70a543648e784740af399e069ff1a59fdbd79e0b"
   },
   "host": {
     "os": "linux",

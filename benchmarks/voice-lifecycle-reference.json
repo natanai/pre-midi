@@ -6,7 +6,7 @@
     "hardwareConcurrency": 9
   },
   "summary": {
-    "cases": 12,
+    "cases": 13,
     "failed": 0,
     "status": "pass"
   },
@@ -15,8 +15,8 @@
     {
       "id": "shared-delay/glass-keys",
       "metrics": {
-        "max": 1.1175870895385742e-8,
-        "rms": 8.608868715933819e-10
+        "max": 1.862645149230957e-8,
+        "rms": 1.013879312477863e-9
       },
       "checks": {
         "compatible": true
@@ -26,8 +26,8 @@
     {
       "id": "shared-delay/neon-lead",
       "metrics": {
-        "max": 1.1175870895385742e-8,
-        "rms": 7.310109787476753e-10
+        "max": 7.450580596923828e-9,
+        "rms": 6.696310445013412e-10
       },
       "checks": {
         "compatible": true
@@ -37,8 +37,8 @@
     {
       "id": "shared-delay/glass-portamento",
       "metrics": {
-        "max": 1.1175870895385742e-8,
-        "rms": 1.089420694821846e-9
+        "max": 1.4901161193847656e-8,
+        "rms": 1.078391301301349e-9
       },
       "checks": {
         "compatible": true
@@ -49,7 +49,7 @@
       "id": "shared-delay/harmonic-keys",
       "metrics": {
         "max": 1.4901161193847656e-8,
-        "rms": 9.798625826129189e-10
+        "rms": 1.0319461389250458e-9
       },
       "checks": {
         "compatible": true
@@ -59,8 +59,8 @@
     {
       "id": "contract/serialized-voice-replay",
       "metrics": {
-        "max": 3.725290298461914e-9,
-        "rms": 6.656452564859825e-10
+        "max": 0,
+        "rms": 0
       },
       "checks": {
         "identical": true
@@ -138,18 +138,18 @@
     {
       "id": "realtime/32-expressive-voices",
       "metrics": {
-        "setupMs": 42.200000000186265,
+        "setupMs": 30.09999999962747,
         "sampleRate": 48000,
         "baseLatency": 0.010020833333333333,
         "outputLatency": 0.032,
-        "dc": 0.000004294608303098357,
-        "rms": 0.006703789539691767,
+        "dc": 0.000004294599537085257,
+        "rms": 0.006703789542824643,
         "peak": 0.022472141310572624,
-        "maxStep": 0.0017092852503992617,
+        "maxStep": 0.0017092859488911927,
         "nonFinite": 0,
         "clipped": 0,
         "silentBlocks": 0,
-        "minBlockRms": 0.002022992817638379,
+        "minBlockRms": 0.002022992859172401,
         "remaining": 0,
         "qualification": "browser render-graph capture only; output device latency, driver underruns and native callback deadlines remain unqualified"
       },
@@ -160,6 +160,16 @@
         "noSilentBlocks": true,
         "headroom": true,
         "cleanup": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "preview/full-nine-sound-rack-budget",
+      "metrics": {
+        "voices": 9
+      },
+      "checks": {
+        "complete": true
       },
       "status": "pass"
     },
@@ -193,13 +203,13 @@
       "status": "pass"
     }
   ],
-  "measuredAt": "2026-10-27T04:57:09.346Z",
+  "measuredAt": "2026-10-27T05:02:31.380Z",
   "source": {
-    "commit": "61f9aa9d967c9972330736807bc1e44cf7cda500",
+    "commit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
     "tag": null,
-    "baseCommit": "61f9aa9d967c9972330736807bc1e44cf7cda500",
+    "baseCommit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "fabe02183d0aea87d53b49ccf7900ed1abd3008ae0e8b50e4959a34f1fb3be5e"
+    "runtimeAndFixtureSha256": "14c0de0d0de92a5ce65ae73bf125930ebd4c25b14b572789d6193106e79c4c65"
   },
   "host": {
     "os": "linux",
