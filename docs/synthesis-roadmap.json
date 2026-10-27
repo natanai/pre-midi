@@ -2,7 +2,7 @@
   "schema_version": 1,
   "program_id": "pre-midi-professional-synthesis",
   "title": "Professional native-first synthesis and DSP",
-  "updated_on": "2026-10-26",
+  "updated_on": "2026-10-27",
   "status": "active",
   "scope": "Synthesizer sound generation, DSP fidelity, quality qualification and cross-host rendering; complements docs/song-rollout.md instead of replacing its Song-specific stages.",
   "mission": "Deliver professionally viable editable instruments that sound correct in native desktop/mobile production and natively in pre-programmed, while retaining a compatible web studio wherever technically feasible.",
@@ -357,6 +357,13 @@
           "The logical budget excludes retiring-source overlap during the 5 ms fade",
           "Shared delay tails do not consume pitched-voice budget",
           "Browser callback graph capture cannot observe driver-side underruns"
+        ],
+        "edge_case_corrections": [
+          "Atomic admission rejects lower-priority incoming voices when higher-priority reservations occupy capacity, including future conflicts",
+          "Rejected graphs are muted, stopped and disposed before attaching a delay bus",
+          "Session completion and bus deadlines derive from shortened voice lifetimes instead of historical maxima",
+          "Diagnostics separate admissions, rejections, steals and actual fade-phase retiring voices",
+          "Regression fixtures include protected vocal pools, transactional rollback, dense long-release arrangements and retained real echoes"
         ]
       }
     },
