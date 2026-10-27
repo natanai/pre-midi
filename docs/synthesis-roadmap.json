@@ -964,7 +964,7 @@
           {
             "id": "packaging",
             "status": "done",
-            "result": "Windows x64 NSIS and portable ZIP; separate Intel/Apple Silicon macOS DMGs; Linux x64 AppImage and DEB. All platform artifacts required before publication."
+            "result": "Current preview publishes only Windows x64 portable ZIP. Existing NSIS, Intel/Apple Silicon macOS and Linux AppImage/DEB package configurations are retained for the full release; preview publication rejects these extra artifacts."
           },
           {
             "id": "portable-folder-storage",
@@ -988,13 +988,14 @@
               "Real microphone permissions/capture and listening on each supported OS",
               "Physical Windows 11 offline/install/upgrade checks",
               "Signed update completion and manual reopening",
-              "OS code signing/notarization credentials and distribution qualification"
+              "OS code signing/notarization credentials and distribution qualification",
+              "Restore full Windows/macOS/Linux release matrix and qualify each platform before full release"
             ]
           },
           {
             "id": "embedded-native-proof",
             "status": "done",
-            "result": "Bounded C ABI fixture renders the existing C++ Voice in the Rust desktop process; ordinary studio audio remains Web Audio."
+            "result": "Bounded offline C++ fixture remains available separately from the native miniaudio device-host path now used by supported desktop synth playback."
           },
           {
             "id": "native-device-host",
@@ -1011,7 +1012,7 @@
         "remaining": [
           "Update signing key provisioning and paired installed-update qualification",
           "Real hardware and newcomer/listening qualification",
-          "Native audio-device integration and full synthesis parity"
+          "Physical native audio-device qualification and full synthesis parity"
         ],
         "initial_qualified_preview_version": "0.14.1-preview.1",
         "initial_qualified_tag_commit": "e4dc803063794bd2d56f07dc3ac09a67cac7fbb9",
@@ -1053,6 +1054,19 @@
             "physical_hardware": "pending"
           },
           "performance_policy": "Callback render deadline overruns are recorded separately from unmeasured hardware driver underruns and physical latency; software timing does not qualify hardware."
+        },
+        "distribution_policy": {
+          "current_previews": [
+            "windows-x86_64-portable-zip"
+          ],
+          "deferred_during_prototyping": [
+            "windows-installer",
+            "macos-intel",
+            "macos-apple-silicon",
+            "linux-appimage",
+            "linux-deb"
+          ],
+          "full_release_requires": "Windows/macOS/Linux device and packaging qualification; shared native architecture retained"
         }
       }
     },
