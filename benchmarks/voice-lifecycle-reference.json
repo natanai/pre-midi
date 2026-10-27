@@ -6,7 +6,7 @@
     "hardwareConcurrency": 9
   },
   "summary": {
-    "cases": 17,
+    "cases": 19,
     "failed": 0,
     "status": "pass"
   },
@@ -15,8 +15,8 @@
     {
       "id": "shared-delay/glass-keys",
       "metrics": {
-        "max": 7.450580596923828e-9,
-        "rms": 7.473650752501275e-10
+        "max": 1.1175870895385742e-8,
+        "rms": 8.425197271832927e-10
       },
       "checks": {
         "compatible": true
@@ -27,7 +27,7 @@
       "id": "shared-delay/neon-lead",
       "metrics": {
         "max": 1.1175870895385742e-8,
-        "rms": 8.97723906851804e-10
+        "rms": 8.420598315076166e-10
       },
       "checks": {
         "compatible": true
@@ -37,8 +37,8 @@
     {
       "id": "shared-delay/glass-portamento",
       "metrics": {
-        "max": 1.4901161193847656e-8,
-        "rms": 1.0430514571469229e-9
+        "max": 2.2351741790771484e-8,
+        "rms": 1.2956461000066437e-9
       },
       "checks": {
         "compatible": true
@@ -49,7 +49,7 @@
       "id": "shared-delay/harmonic-keys",
       "metrics": {
         "max": 1.4901161193847656e-8,
-        "rms": 1.0140388896067558e-9
+        "rms": 1.0984466060404242e-9
       },
       "checks": {
         "compatible": true
@@ -227,18 +227,18 @@
     {
       "id": "realtime/32-expressive-voices",
       "metrics": {
-        "setupMs": 42.299999999813735,
+        "setupMs": 45,
         "sampleRate": 48000,
         "baseLatency": 0.010020833333333333,
         "outputLatency": 0.032,
-        "dc": 0.000004620546144148345,
-        "rms": 0.006703302708228648,
-        "peak": 0.022669043391942978,
-        "maxStep": 0.0016884793294593692,
+        "dc": -0.000012162661532177783,
+        "rms": 0.006715088964959066,
+        "peak": 0.02180907130241394,
+        "maxStep": 0.00181831163354218,
         "nonFinite": 0,
         "clipped": 0,
         "silentBlocks": 0,
-        "minBlockRms": 0.0020704967751104843,
+        "minBlockRms": 0.00236698668814179,
         "remaining": 0,
         "qualification": "browser render-graph capture only; output device latency, driver underruns and native callback deadlines remain unqualified"
       },
@@ -249,6 +249,86 @@
         "noSilentBlocks": true,
         "headroom": true,
         "cleanup": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "realtime/32-voices-16-routes",
+      "metrics": {
+        "setupMs": 6510.800000000279,
+        "cleanupMs": 20.300000000279397,
+        "preparation": "Audio clock suspended during graph preparation; setupMs is startup cost, not callback CPU",
+        "dc": -0.0000017772896052411132,
+        "rms": 0.002753313414915888,
+        "peak": 0.012784432619810104,
+        "maxStep": 0.0004074154421687126,
+        "nonFinite": 0,
+        "clipped": 0,
+        "silentBlocks": 0,
+        "remaining": 0,
+        "diagnostics": {
+          "voices": 0,
+          "buses": 0,
+          "limit": 64,
+          "admitted": 32,
+          "rejected": 0,
+          "steals": 0,
+          "stolen": 0,
+          "active": 0,
+          "queued": 0,
+          "retiring": 0
+        },
+        "qualification": "Browser AudioWorklet graph capture; no driver underrun, device latency or native CPU qualification"
+      },
+      "checks": {
+        "queuedBeforeOnset": true,
+        "finite": true,
+        "audible": true,
+        "headroom": true,
+        "noSilentBlocks": true,
+        "cleanup": true,
+        "noRejections": true,
+        "allAdmitted": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "realtime/64-voices-16-routes",
+      "metrics": {
+        "setupMs": 9992.600000000093,
+        "cleanupMs": 57.299999999813735,
+        "preparation": "Audio clock suspended during graph preparation; setupMs is startup cost, not callback CPU",
+        "dc": 0.0000026701354501312835,
+        "rms": 0.005413820941547654,
+        "peak": 0.024397309869527817,
+        "maxStep": 0.0008086934685707092,
+        "nonFinite": 0,
+        "clipped": 0,
+        "silentBlocks": 0,
+        "remaining": 0,
+        "diagnostics": {
+          "voices": 0,
+          "buses": 0,
+          "limit": 64,
+          "admitted": 64,
+          "rejected": 0,
+          "steals": 0,
+          "stolen": 0,
+          "active": 0,
+          "queued": 0,
+          "retiring": 0
+        },
+        "qualification": "Browser AudioWorklet graph capture; no driver underrun, device latency or native CPU qualification"
+      },
+      "checks": {
+        "queuedBeforeOnset": true,
+        "finite": true,
+        "audible": true,
+        "headroom": true,
+        "noSilentBlocks": true,
+        "cleanup": true,
+        "noRejections": true,
+        "allAdmitted": true
       },
       "status": "pass"
     },
@@ -311,19 +391,19 @@
     }
   ],
   "suitePolicy": null,
-  "measuredAt": "2026-10-27T05:56:17.129Z",
+  "measuredAt": "2026-10-27T13:32:27.895Z",
   "source": {
-    "commit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "commit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
     "tag": null,
-    "baseCommit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "baseCommit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "97850d197fadec6d09ac35cda494f5ef7b4dde362e293d2567df71535dc62309"
+    "runtimeAndFixtureSha256": "0e1b887523c5312c1b27d2520eb751ed9c43cc9e77abb9f2f68cecf8756ad2c9"
   },
   "host": {
     "os": "linux",
     "release": "6.18.55",
     "arch": "x64",
-    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
     "logicalCpus": 9,
     "node": "v24.22.1"
   },
