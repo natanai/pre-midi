@@ -59,10 +59,13 @@ fn main(){
      let message=format!("pre-midi needs a writable portable folder. Move the entire extracted folder to a location you can write to and open pre-midi.exe again.\n\n{error}");
      if let Ok(output)=std::env::var("PREMIDI_SMOKE_OUTPUT"){
       let _=std::fs::write(output,serde_json::json!({"passed":false,"error":message}).to_string());
-     }else{
-      app.dialog().message(message).title("pre-midi").kind(tauri_plugin_dialog::MessageDialogKind::Error).blocking_show();
+      return Err(error.into());
      }
-     return Err(error.into());
+     // setup runs on the main thread: keep the event loop available for the
+     // native dialog instead of deadlocking it with a blocking_show call.
+     let handle=app.handle().clone();
+     app.dialog().message(message).title("pre-midi").kind(tauri_plugin_dialog::MessageDialogKind::Error).show(move |_|handle.exit(1));
+     return Ok(());
     }
    }
   }
