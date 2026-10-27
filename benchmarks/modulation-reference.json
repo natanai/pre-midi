@@ -76,7 +76,7 @@
     }
   },
   "summary": {
-    "cases": 11,
+    "cases": 62,
     "failed": 0,
     "status": "pass"
   },
@@ -242,6 +242,2391 @@
         "finite": true
       },
       "status": "pass"
+    },
+    {
+      "id": "timing/queued-note-frequency/44100",
+      "metrics": {
+        "max": 7.28759914636612e-8,
+        "rms": 1.846537526034015e-8
+      },
+      "checks": {
+        "sameOnset": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "timing/queued-note-frequency/48000",
+      "metrics": {
+        "max": 5.681067705154419e-8,
+        "rms": 9.026768010653502e-9
+      },
+      "checks": {
+        "sameOnset": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "timing/queued-note-frequency/96000",
+      "metrics": {
+        "max": 2.3457687348127365e-7,
+        "rms": 5.6607409771296065e-8
+      },
+      "checks": {
+        "sameOnset": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/sum-positive-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 1.1920928955078125e-7,
+            "rms": 4.207909787140478e-9,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/sum-negative-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 7.450580596923828e-8,
+            "rms": 2.230381027985869e-9,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/cancel",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/bipolar-velocity",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 1.1920928955078125e-7,
+            "rms": 5.644871623511158e-8,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/lfo-bipolar",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0.0003871917724609375,
+            "rms": 0.00010603543651318314,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/lfo-unipolar-negative",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.00225830078125,
+            "rms": 0.0008017351417866051,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/envelope-release",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 2.980232238769531e-7,
+            "rms": 7.234082698895091e-8,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/bipolar-envelope",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0.0003204345703125,
+            "rms": 0.00010729500674225616,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/keytrack-low",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.00048828125,
+            "rms": 0.00008627515857677133,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/keytrack-high",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.000732421875,
+            "rms": 0.00014673861259024656,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/pan-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 1.341104507446289e-7,
+            "rms": 4.272251130831572e-9,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/filter-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.0009765625,
+            "rms": 0.000046812886994529724,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/pitch-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0.00048828125,
+            "rms": 0.00001438010205286183,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/silent-oscillator",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 2.980232238769531e-7,
+            "rms": 8.371794982799338e-8,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/expression-plus-modulation",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0.0001621246337890625,
+            "rms": 0.00006846966167829272,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/44100/maximum-16",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0.000002175569534301758,
+            "rms": 5.958062357978983e-7,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0.00019073486328125,
+            "rms": 0.0000830124969170045,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.000457763671875,
+            "rms": 0.00045297020290519397,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 1.7881393432617188e-7,
+            "rms": 5.589024838358748e-8,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 16
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/sum-positive-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 1.1920928955078125e-7,
+            "rms": 3.802108489571726e-9,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/sum-negative-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 8.195638656616211e-8,
+            "rms": 2.1318112956570506e-9,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/cancel",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/bipolar-velocity",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 1.1920928955078125e-7,
+            "rms": 5.644767560027781e-8,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/lfo-bipolar",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0.00026702880859375,
+            "rms": 0.00008193147587071024,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/lfo-unipolar-negative",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.0013427734375,
+            "rms": 0.0005577369226104705,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/envelope-release",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 2.980232238769531e-7,
+            "rms": 7.476380129643267e-8,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/bipolar-envelope",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0.00029754638671875,
+            "rms": 0.00010074027031234061,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/keytrack-low",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.00048828125,
+            "rms": 0.00008589451553026401,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/keytrack-high",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.000732421875,
+            "rms": 0.00014513463683781295,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/pan-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 1.7881393432617188e-7,
+            "rms": 4.708264619948144e-9,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/filter-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.0009765625,
+            "rms": 0.000055510276408735576,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/pitch-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0.00048828125,
+            "rms": 0.000015044382369445389,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/silent-oscillator",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 2.682209014892578e-7,
+            "rms": 6.290152687074053e-8,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/expression-plus-modulation",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0.000156402587890625,
+            "rms": 0.00006740998720427218,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/48000/maximum-16",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0.0000011622905731201172,
+            "rms": 3.385286144211293e-7,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0.00019025802612304688,
+            "rms": 0.00008213276603761552,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.000457763671875,
+            "rms": 0.00045297020290519397,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 1.4901161193847656e-7,
+            "rms": 5.5192767881925985e-8,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 16
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/sum-positive-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 1.1920928955078125e-7,
+            "rms": 3.7741233695122436e-9,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/sum-negative-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 8.940696716308594e-8,
+            "rms": 2.0846422756189423e-9,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/cancel",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/bipolar-velocity",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 1.1920928955078125e-7,
+            "rms": 5.641351912100922e-8,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/lfo-bipolar",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0.000217437744140625,
+            "rms": 0.00007263572947254496,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/lfo-unipolar-negative",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.0009765625,
+            "rms": 0.00034335737275397523,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/envelope-release",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 2.384185791015625e-7,
+            "rms": 6.176993026878845e-8,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/bipolar-envelope",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0.000244140625,
+            "rms": 0.0000925237124141936,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/keytrack-low",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.00048828125,
+            "rms": 0.00008567565171738418,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/keytrack-high",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.000732421875,
+            "rms": 0.0001457886142576614,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/pan-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 1.7881393432617188e-7,
+            "rms": 4.839817662490462e-9,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/filter-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.0009765625,
+            "rms": 0.00005239262967817808,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/pitch-clamp",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0.00048828125,
+            "rms": 0.000014403598036382825,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 2
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/silent-oscillator",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 2.086162567138672e-7,
+            "rms": 5.467314822492032e-8,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/expression-plus-modulation",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0.0001506805419921875,
+            "rms": 0.0000670799906380607,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 1
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/96000/maximum-16",
+      "metrics": {
+        "errors": [
+          {
+            "target": "oscillators.0.detune",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.0.level",
+            "max": 7.152557373046875e-7,
+            "rms": 1.907349273786425e-7,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "oscillators.1.detune",
+            "max": 0.000179290771484375,
+            "rms": 0.00007925167171299415,
+            "tolerance": 0.02
+          },
+          {
+            "target": "oscillators.1.level",
+            "max": 0,
+            "rms": 0,
+            "tolerance": 0.000005
+          },
+          {
+            "target": "filter.cutoff",
+            "max": 0.000457763671875,
+            "rms": 0.00045297020290519397,
+            "tolerance": 0.04
+          },
+          {
+            "target": "pan",
+            "max": 1.4901161193847656e-7,
+            "rms": 5.5901984760302995e-8,
+            "tolerance": 0.000005
+          }
+        ],
+        "routes": 16
+      },
+      "checks": {
+        "math": true,
+        "finite": true
+      },
+      "status": "pass"
     }
   ],
   "failures": [],
@@ -254,19 +2639,19 @@
       "No recorded automation or device underrun qualification"
     ]
   },
-  "measuredAt": "2026-10-27T05:56:16.874Z",
+  "measuredAt": "2026-10-27T13:32:19.045Z",
   "source": {
-    "commit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "commit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
     "tag": null,
-    "baseCommit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "baseCommit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "29206feb986158878bc70080cd80be16ce93e296e1ffed54948752b4a6b0db23"
+    "runtimeAndFixtureSha256": "0f9653fd4e6683b7a091dc13a414263ee7f17564c2e66a98c584c84eed188b92"
   },
   "host": {
     "os": "linux",
     "release": "6.18.55",
     "arch": "x64",
-    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
     "logicalCpus": 9,
     "node": "v24.22.1"
   }

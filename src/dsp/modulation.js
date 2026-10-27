@@ -28,7 +28,8 @@ export function validateModulation(modulation){
   if(source.kind==="lfo"&&(!finite(source.rate,.05,20)||source.shape!=="sine"))errors.push("Invalid modulation LFO.");
   if(source.kind==="keytrack"&&(!finite(source.root,0,127)||!finite(source.span,1,127)))errors.push("Invalid key tracking.");
   if(source.kind==="envelope"){
-   const e=source.envelope;if(!e||!finite(e.attack,0,3)||!finite(e.decay,0,3)||!finite(e.sustain,0,1)||!finite(e.release,.01,4))errors.push("Invalid modulation envelope.");
+   const e=source.envelope;if(e&&Object.keys(e).some(key=>!["attack","decay","sustain","release"].includes(key)))errors.push("Unknown modulation envelope field.");
+   if(!e||!finite(e.attack,0,3)||!finite(e.decay,0,3)||!finite(e.sustain,0,1)||!finite(e.release,.01,4))errors.push("Invalid modulation envelope.");
   }
  }
  return errors;

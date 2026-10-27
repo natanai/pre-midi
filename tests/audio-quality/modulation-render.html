@@ -1,5 +1,6 @@
 <!doctype html><meta charset="utf-8"><title>Modulation audio qualification</title><pre id="status">running</pre>
 <script type="module">
+import {qualifyModulationMath} from "./modulation-oracle.js";
 import {makePatch} from "../../synth.js";
 import {scheduleNote,renderSynthBuffer} from "../../audio.js";
 import {signalStats,difference,spectrum} from "./metrics.js";
@@ -9,9 +10,9 @@ let report;
 try{
  const results=[],failures=[];
  const add=(id,metrics,checks)=>{const bad=Object.keys(checks).filter(k=>!checks[k]);failures.push(...bad.map(check=>({id,check})));results.push({id,metrics,checks,status:bad.length?"fail":"pass"});};
- const render=async(patch,{velocity=1,pitch=60,gate=2,seconds=3,rate=48000}={})=>{
+ const render=async(patch,{velocity=1,pitch=60,gate=2,seconds=3,rate=48000,start=0}={})=>{
   const context=new OfflineAudioContext(1,Math.ceil(seconds*rate),rate);
-  scheduleNote(context,context.destination,{patch,volume:.3},{pitch,velocity},0,gate,null);
+  scheduleNote(context,context.destination,{patch,volume:.3},{pitch,velocity},start,gate,null);
   return (await context.startRendering()).getChannelData(0);
  };
  const centroid=(data,at,rate=48000)=>{
@@ -45,6 +46,12 @@ try{
  patch.oscillators[0].level=0;patch.version=2;patch.modulation={version:1,routes:[route]};
  const shaped=await render(patch,{gate:.2,seconds:.4});
  add("zero-level-route",signalStats(shaped),{audible:signalStats(shaped).rms>.005,finite:signalStats(shaped).nonFinite===0});
+ for(const rate of [44100,48000,96000]){
+  const patch=cleanPatch(),offset=Math.round(.01*rate),base=await render(patch,{rate,gate:.2,seconds:.5}),shifted=await render(patch,{rate,gate:.2,seconds:.5,start:.01});
+  const error=difference(base.subarray(0,Math.round(.4*rate)),shifted.subarray(offset,offset+Math.round(.4*rate)));
+  add("timing/queued-note-frequency/"+rate,error,{sameOnset:error.max<.000001});
+ }
+ await qualifyModulationMath(add);
  report={schemaVersion:1,backend:"web-audio-general-modulation",environment:{userAgent:navigator.userAgent},policy:{method:"Measure spectral centroid change on sustained sounds; normalize timbre comparison through spectral power ratios rather than raw loudness; compare repeated actual renders and routed-vs-static lead PCM",maxRepeatError:1e-7,listening:"Human musical polish and comprehension review pending",limits:["No native v2 modulation rendering yet","No recorded automation or device underrun qualification"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
 }catch(error){report={error:String(error.stack||error)};}
 document.getElementById("status").textContent=JSON.stringify(report.summary||report);

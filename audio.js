@@ -62,6 +62,9 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
   const oscillator=ctx.createOscillator();
   const gain=add(ctx.createGain());
   setOscillatorWave(ctx,oscillator,slot);
+  // Initialize before scheduling: a start inside a render quantum must not
+  // consume the OscillatorNode default 440 Hz from its pre-onset parameter span.
+  if(start>0)oscillator.frequency.value=slot.frequency;
   oscillator.frequency.setValueAtTime(slot.frequency,start);
   schedulePitchPlan(ctx,oscillator.detune,slot.pitch,owner);
   gain.gain.value=slot.level;

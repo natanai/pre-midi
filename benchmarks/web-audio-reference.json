@@ -815,8 +815,8 @@
       "id": "voices/overlap-retrigger",
       "sampleRate": 44100,
       "metrics": {
-        "max": 2.2351741790771484e-8,
-        "rms": 2.8884048973509222e-9
+        "max": 2.9802322387695312e-8,
+        "rms": 3.1452189420152327e-9
       },
       "checks": {
         "independent": true
@@ -910,8 +910,8 @@
         },
         "improvementDb": 50.224265197298045,
         "offlineMedianMs": {
-          "none": 2.7000000001862645,
-          "4x": 14
+          "none": 5.5,
+          "4x": 9
         }
       },
       "checks": {
@@ -992,8 +992,8 @@
         },
         "improvementDb": 21.049220997556553,
         "offlineMedianMs": {
-          "none": 6.800000000745058,
-          "4x": 5.400000000372529
+          "none": 2,
+          "4x": 5.100000000093132
         }
       },
       "checks": {
@@ -1843,7 +1843,7 @@
       "sampleRate": 48000,
       "metrics": {
         "max": 2.2351741790771484e-8,
-        "rms": 3.1012263534268163e-9
+        "rms": 2.9078426301550965e-9
       },
       "checks": {
         "independent": true
@@ -1937,8 +1937,8 @@
         },
         "improvementDb": 50.224260822272456,
         "offlineMedianMs": {
-          "none": 3,
-          "4x": 6.400000000372529
+          "none": 6.7000000001862645,
+          "4x": 18.800000000279397
         }
       },
       "checks": {
@@ -2019,8 +2019,8 @@
         },
         "improvementDb": 21.049223892311403,
         "offlineMedianMs": {
-          "none": 3.900000000372529,
-          "4x": 7.199999999254942
+          "none": 3.2999999998137355,
+          "4x": 12.200000000186265
         }
       },
       "checks": {
@@ -2879,8 +2879,8 @@
       "id": "voices/overlap-retrigger",
       "sampleRate": 96000,
       "metrics": {
-        "max": 2.9802322387695312e-8,
-        "rms": 2.8917708387922624e-9
+        "max": 2.2351741790771484e-8,
+        "rms": 2.606110132725568e-9
       },
       "checks": {
         "independent": true
@@ -2974,8 +2974,8 @@
         },
         "improvementDb": 50.22425204567561,
         "offlineMedianMs": {
-          "none": 6.7000000001862645,
-          "4x": 14.700000000186265
+          "none": 15.299999999813735,
+          "4x": 27.700000000186265
         }
       },
       "checks": {
@@ -3056,8 +3056,8 @@
         },
         "improvementDb": 21.049214602376715,
         "offlineMedianMs": {
-          "none": 6.400000000372529,
-          "4x": 11.800000000745058
+          "none": 18.600000000093132,
+          "4x": 43.5
         }
       },
       "checks": {
@@ -3111,19 +3111,19 @@
     "failures": []
   },
   "suitePolicy": null,
-  "measuredAt": "2026-10-27T05:56:18.289Z",
+  "measuredAt": "2026-10-27T13:32:13.402Z",
   "source": {
-    "commit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "commit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
     "tag": null,
-    "baseCommit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "baseCommit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "ef8eac5130f672a925400b8597289667817ed3cfc7c0f7b0a5515007b92932dd"
+    "runtimeAndFixtureSha256": "d0c25db6c5eb287e3caaf24009bfe29e5c8cf982c608888eefadc574ec858751"
   },
   "host": {
     "os": "linux",
     "release": "6.18.55",
     "arch": "x64",
-    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
     "logicalCpus": 9,
     "node": "v24.22.1"
   },
