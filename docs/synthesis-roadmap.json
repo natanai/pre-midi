@@ -289,7 +289,11 @@
           "native oversampling parity depends on SYN-007",
           "absolute alias floor across more signals and filter implementations",
           "real-time device CPU and latency qualification"
-        ]
+        ],
+        "native_progress": {
+          "policy": "native/fidelity-policy.json",
+          "scope": "Band-limited waveform bank compared spectrally and in PCM at 44.1/48/96 kHz; broader alias sweeps/oversampling remain pending"
+        }
       }
     },
     {
@@ -490,16 +494,29 @@
           "native/bridge.mjs"
         ],
         "command": "npm run benchmark:native -- --require-clean",
-        "native_scope": "Original C++ oscillator/pitch/ADSR/static-lowpass/pan block core; existing v1 JSON plan is prepared by a control-host adapter, not synthesized in Web Audio",
+        "native_scope": "Original C++ sine/triangle/square/sawtooth/harmonic, prepared pitch, ADSR, four static biquads and pan; no Web Audio synthesis in native process",
         "missing": [
           "selected device host and target-platform builds",
           "real callback/device latency and underrun qualification",
-          "full oscillator/noise/drive/delay/modulation support",
+          "noise/drive/delay/modulation support",
           "native oversampling parity",
           "desktop/mobile suspend-resume and device changes"
         ],
         "no_completion_claim": "Offline synthesis and block allocation assertions do not establish device performance",
-        "report": "benchmarks/native-parity-reference.json"
+        "report": "benchmarks/native-parity-reference.json",
+        "waveform_filter_extension": {
+          "policy": "native/fidelity-policy.json",
+          "cases": 64,
+          "musical_fixture": "felt-electric / Triangle Keys",
+          "process_selftest": "400 waveform/filter/rate/extreme profiles x five block sizes, no C++ allocation and finite bounded PCM",
+          "remaining": [
+            "noise and decay",
+            "drive and delay",
+            "v2 modulation",
+            "filter sweep and legacy LFOs",
+            "hardware/device qualification"
+          ]
+        }
       }
     },
     {
