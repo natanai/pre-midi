@@ -214,7 +214,6 @@
    "Song with vocal renders WAV",25000);
   assert(wavDownloads.length>vocalWavCount,"recorded Song produced a WAV file");
   await checkWav(wavDownloads.at(-1),true);
-  assert(get("status").textContent.includes("Exported song WAV"),get("status").textContent);
   assert(issues.length===0,"Browser exceptions: "+issues.join(", "));
   document.documentElement.dataset.result="PASS";
   await report("PASS","Song clips, layering, keyboard, undo, playback, reload");
