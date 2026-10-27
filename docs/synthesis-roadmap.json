@@ -133,7 +133,6 @@
       "human_qualification": "Observed newcomer comprehension and musical listening signoff remain explicit release requirements; successful clicks are not evidence of intuitive understanding"
     },
     "latest_qualification": {
-      "source_commit": "5326635b6bcfc128089c098a918d02a0754e26a7",
       "source_working_tree": "clean",
       "reports": {
         "web-audio-reference": "benchmarks/web-audio-reference.json",
@@ -143,16 +142,24 @@
         "modulation-reference": "benchmarks/modulation-reference.json"
       },
       "passed": {
-        "node_tests": 166,
+        "node_tests": 167,
         "acoustic_cases": 111,
         "unchanged_acoustic_reference_comparisons": 60,
         "musical_compatibility_cases": 22,
         "voice_lifecycle_cases": 17,
-        "native_browser_cases": 19,
+        "native_browser_cases": 64,
         "audible_modulation_cases": 11
       },
       "browser": "Shipped desktop/mobile workflow, preset save/reload, Beat v9/Song v10 export/import, layout, microphone and existing Song transport/WAV download checks",
-      "scope": "Automated offline/rendering-graph and browser interaction qualification; no output-device or human-comprehension signoff"
+      "scope": "Automated offline/rendering-graph and browser interaction qualification; no output-device or human-comprehension signoff",
+      "source_policy": "Each report declares its own exact clean source commit; source commits are ancestors of the delivered code",
+      "source_commits": {
+        "web-audio-reference": "5326635b6bcfc128089c098a918d02a0754e26a7",
+        "musical-parity-reference": "5326635b6bcfc128089c098a918d02a0754e26a7",
+        "voice-lifecycle-reference": "5326635b6bcfc128089c098a918d02a0754e26a7",
+        "native-parity-reference": "eaf61afe4c9db4a2d876820efa8252ca20421f34",
+        "modulation-reference": "5326635b6bcfc128089c098a918d02a0754e26a7"
+      }
     }
   },
   "phases": [
