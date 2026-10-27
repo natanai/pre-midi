@@ -132,7 +132,7 @@ function installHelp(doc=document){
  });
  doc.addEventListener("pointerout",event=>{
   const target=nodeFor(event.target);
-  if(target===state.target&&!state.pinned&&!target.contains(event.relatedTarget))hide();
+  if(target&&target===state.target&&!state.pinned&&!target.contains(event.relatedTarget))hide();
  });
  doc.addEventListener("focusin",event=>{
   const target=nodeFor(event.target);
@@ -140,7 +140,7 @@ function installHelp(doc=document){
  });
  doc.addEventListener("focusout",event=>{
   const target=nodeFor(event.target);
-  if(target===state.target&&!state.pinned&&!target.contains(event.relatedTarget))hide();
+  if(target&&target===state.target&&!state.pinned&&!target.contains(event.relatedTarget))hide();
  });
  doc.addEventListener("click",event=>{
   const target=nodeFor(event.target);
