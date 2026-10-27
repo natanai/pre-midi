@@ -336,7 +336,7 @@
       ],
       "verification": {
         "implemented": [
-          "64-voice transport budget and 8-voice preview budget",
+          "64-voice budgets for transport and preview; full rack auditions are not restricted to eight simultaneous sounds",
           "release-first/oldest deterministic stealing with vocal priority",
           "5 ms source fade and cancellation of future starts",
           "owned synth, modulation, noise, sample and vocal source cleanup",

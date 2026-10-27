@@ -1,4 +1,4 @@
-import {scheduleNote,scheduleSynthPlan,play} from "../../audio.js";
+import {scheduleNote,scheduleSynthPlan,play,audition} from "../../audio.js";
 import {planSynthVoice} from "../../src/dsp/synth-voice.js";
 import {VoiceSession} from "../../src/hosts/web/voice-session.js";
 import {scheduleSample} from "../../sampler.js";
@@ -89,6 +89,13 @@ export async function runVoiceBenchmark(){
     qualification:"browser render-graph capture only; output device latency, driver underruns and native callback deadlines remain unqualified"},
     {queuedBeforeOnset,finite:stats.nonFinite===0,audible:stats.rms>.0001,noSilentBlocks:silentBlocks===0,headroom:stats.peak<1,cleanup:session.voices.size===0});
   }finally{await ctx.close();}
+ }
+ {
+  const patch=cleanPatch(),voices=[];
+  for(let i=0;i<9;i++)voices.push(await audition({patch,volume:.1},60+i,null,{duration:.8}));
+  const complete=voices.every(voice=>voice.end-voice.start>.8);
+  voices.forEach(voice=>voice.stop(0));
+  add("preview/full-nine-sound-rack-budget",{voices:voices.length},{complete});
  }
  // Repeated stop/start/seek/loop sessions must clean their actual owned graphs.
  {

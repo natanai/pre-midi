@@ -1,15 +1,93 @@
 {
- "version":1,
- "scope":"Existing synth interpretation, shared musical semantics, host voice ownership. No new persisted sound parameters or game scripting language.",
- "plan":{"generator":"src/dsp/synth-voice.js: planSynthVoice","schema":"docs/synth-voice.schema.json","webAdapter":"audio.js: scheduleSynthPlan","roundTrip":"JSON-serialized plan feeds the current backend without DOM, device or storage objects"},
- "parameters":{"registry":"src/dsp/synth-voice.js: SYNTH_PARAMETERS","units":"seconds, hz, cents, semitones, octaves, linear_gain, normalized, Q, pan, enum","controlChanges":"Existing patches are snapshots at note-on. Interpolation metadata specifies target host policy; mid-note automation is not implemented until SYN-010."},
- "oscillators":{"tuning":"A4=440 Hz, equal temperament, frequency capped at 18000 Hz before detune","waves":"sine, triangle, square, sawtooth, 32-harmonic sine-coefficient recipe","harmonicIndex":"array[0] is fundamental; DC coefficient zero","bandLimiting":"Reference is the current Web Audio oscillator/normalized PeriodicWave. Future implementations must pass acoustic fixtures; bit equality across hosts is not required.","gain":"Levels sum with noise; normalize by max(1,total level); note peak=min(0.31,volume*velocity*0.27)*normalization, floored at 1e-6"},
- "noise":{"seed":"0x7f41a08b","recurrence":"uint32(1664525*seed+1013904223)","sample":"((seed/4294967296)*2-1)*0.85","loop":"ceil(sampleRate*2) samples, zero initial phase per voice","decay":"exponential target zero with time constant max(0.002,noiseDecay/5)"},
- "filter":{"types":["lowpass","highpass","bandpass","notch"],"reference":"Web Audio biquad frequency and Q semantics","sweep":"initial cutoff=clamp(cutoff*2^sweep,50,14000), exponentially ramps to cutoff at start+min(gate,sweepTime)"},
- "expression":{"planner":"src/dsp/expression.js: planPitch","pitchCurve":"16..600 Float32 values at nominal 80 Hz control sampling; existing bend and glide semantics retained","vibrato":"sine, delayed depth ramp over 0.13 seconds, 0.02 second fade at gate end","toneLfo":"sine cutoff modulation at depth=cutoff*tone*0.8","tremolo":"unity plus sine modulation at depth=tremolo*0.45"},
- "effects":{"drive":"Existing 1024-point quantized tanh curve, 4x oversampling, compensation 1/(1+drive*1.1)","delay":"linear per-voice dry path 1-delayMix*0.4; shared send delayMix*0.55; feedback; wet=0.8","sharing":"Only identical delayMix/time/feedback tuples share a bus in the same session. Patch edits create a different bus; old tails retain their original settings.","tail":"Conservative feedback recurrence bound at 1e-5 (-100 dBFS) for a full-scale input. Native release qualification still needs true-peak/headroom and device tests."},
- "voicePolicy":{"implementation":"src/dsp/voice-allocator.js","execution":"Control-thread planner, not a native real-time callback implementation","defaultTransportBudget":64,"previewBudget":8,"intervals":"Half-open [start,end); release and short graph-settling time consume a voice; shared delay tails do not","stealOrder":"lowest priority, released voices, oldest onset, stable admission order; vocal clips have priority 1, other voices 0","futureNotes":"Reservations include queued strums; overlapping future intervals are resolved deterministically even if requests arrive out of onset order","stealFadeSeconds":0.005,"physicalOverlap":"Retiring sources can overlap replacements for the 5 ms fade; the logical voice budget excludes that bounded-duration transition","stop":"Stops owned oscillators, LFOs, noise, sample and vocal sources, cancels future starts, fades wet buses and disconnects after an audio-time deadline","sustain":"Current authored gate/release only; MIDI sustain pedal is unimplemented and remains in SYN-016"},
- "compatibility":{"unchangedPersistence":["patch v1","Beat v7","Song v8"],"intendedBehaviorFixes":["Stop actually terminates queued and sounding resources","identical delay lines share processing without changing musical routing","natural playback and WAV export retain long effect tails","saving a solo preset retains its instrument volume"],"limits":"No native device backend or pre-programmed parity is claimed. Extremely dense arrangements above the explicit host budget use voice stealing."},
- "qualification":{"acoustic":"npm run benchmark:audio -- --require-clean","musicalParity":"npm run benchmark:musical -- --require-clean","lifecycle":"npm run benchmark:voices -- --require-clean","newcomer":"tests/newcomer-check.html at desktop and phone widths","limitations":["AudioWorklet capture observes render-graph gaps, not device-driver underruns","newcomer action checks do not replace observed comprehension studies","musical polish requires listening review"]},
- "references":["https://www.w3.org/TR/webaudio/"]
+  "version": 1,
+  "scope": "Existing synth interpretation, shared musical semantics, host voice ownership. No new persisted sound parameters or game scripting language.",
+  "plan": {
+    "generator": "src/dsp/synth-voice.js: planSynthVoice",
+    "schema": "docs/synth-voice.schema.json",
+    "webAdapter": "audio.js: scheduleSynthPlan",
+    "roundTrip": "JSON-serialized plan feeds the current backend without DOM, device or storage objects"
+  },
+  "parameters": {
+    "registry": "src/dsp/synth-voice.js: SYNTH_PARAMETERS",
+    "units": "seconds, hz, cents, semitones, octaves, linear_gain, normalized, Q, pan, enum",
+    "controlChanges": "Existing patches are snapshots at note-on. Interpolation metadata specifies target host policy; mid-note automation is not implemented until SYN-010."
+  },
+  "oscillators": {
+    "tuning": "A4=440 Hz, equal temperament, frequency capped at 18000 Hz before detune",
+    "waves": "sine, triangle, square, sawtooth, 32-harmonic sine-coefficient recipe",
+    "harmonicIndex": "array[0] is fundamental; DC coefficient zero",
+    "bandLimiting": "Reference is the current Web Audio oscillator/normalized PeriodicWave. Future implementations must pass acoustic fixtures; bit equality across hosts is not required.",
+    "gain": "Levels sum with noise; normalize by max(1,total level); note peak=min(0.31,volume*velocity*0.27)*normalization, floored at 1e-6"
+  },
+  "noise": {
+    "seed": "0x7f41a08b",
+    "recurrence": "uint32(1664525*seed+1013904223)",
+    "sample": "((seed/4294967296)*2-1)*0.85",
+    "loop": "ceil(sampleRate*2) samples, zero initial phase per voice",
+    "decay": "exponential target zero with time constant max(0.002,noiseDecay/5)"
+  },
+  "filter": {
+    "types": [
+      "lowpass",
+      "highpass",
+      "bandpass",
+      "notch"
+    ],
+    "reference": "Web Audio biquad frequency and Q semantics",
+    "sweep": "initial cutoff=clamp(cutoff*2^sweep,50,14000), exponentially ramps to cutoff at start+min(gate,sweepTime)"
+  },
+  "expression": {
+    "planner": "src/dsp/expression.js: planPitch",
+    "pitchCurve": "16..600 Float32 values at nominal 80 Hz control sampling; existing bend and glide semantics retained",
+    "vibrato": "sine, delayed depth ramp over 0.13 seconds, 0.02 second fade at gate end",
+    "toneLfo": "sine cutoff modulation at depth=cutoff*tone*0.8",
+    "tremolo": "unity plus sine modulation at depth=tremolo*0.45"
+  },
+  "effects": {
+    "drive": "Existing 1024-point quantized tanh curve, 4x oversampling, compensation 1/(1+drive*1.1)",
+    "delay": "linear per-voice dry path 1-delayMix*0.4; shared send delayMix*0.55; feedback; wet=0.8",
+    "sharing": "Only identical delayMix/time/feedback tuples share a bus in the same session. Patch edits create a different bus; old tails retain their original settings.",
+    "tail": "Conservative feedback recurrence bound at 1e-5 (-100 dBFS) for a full-scale input. Native release qualification still needs true-peak/headroom and device tests."
+  },
+  "voicePolicy": {
+    "implementation": "src/dsp/voice-allocator.js",
+    "execution": "Control-thread planner, not a native real-time callback implementation",
+    "defaultTransportBudget": 64,
+    "previewBudget": 64,
+    "intervals": "Half-open [start,end); release and short graph-settling time consume a voice; shared delay tails do not",
+    "stealOrder": "lowest priority, released voices, oldest onset, stable admission order; vocal clips have priority 1, other voices 0",
+    "futureNotes": "Reservations include queued strums; overlapping future intervals are resolved deterministically even if requests arrive out of onset order",
+    "stealFadeSeconds": 0.005,
+    "physicalOverlap": "Retiring sources can overlap replacements for the 5 ms fade; the logical voice budget excludes that bounded-duration transition",
+    "stop": "Stops owned oscillators, LFOs, noise, sample and vocal sources, cancels future starts, fades wet buses and disconnects after an audio-time deadline",
+    "sustain": "Current authored gate/release only; MIDI sustain pedal is unimplemented and remains in SYN-016"
+  },
+  "compatibility": {
+    "unchangedPersistence": [
+      "patch v1",
+      "Beat v7",
+      "Song v8"
+    ],
+    "intendedBehaviorFixes": [
+      "Stop actually terminates queued and sounding resources",
+      "identical delay lines share processing without changing musical routing",
+      "natural playback and WAV export retain long effect tails",
+      "saving a solo preset retains its instrument volume"
+    ],
+    "limits": "No native device backend or pre-programmed parity is claimed. Extremely dense arrangements above the explicit host budget use voice stealing."
+  },
+  "qualification": {
+    "acoustic": "npm run benchmark:audio -- --require-clean",
+    "musicalParity": "npm run benchmark:musical -- --require-clean",
+    "lifecycle": "npm run benchmark:voices -- --require-clean",
+    "newcomer": "tests/newcomer-check.html at desktop and phone widths",
+    "limitations": [
+      "AudioWorklet capture observes render-graph gaps, not device-driver underruns",
+      "newcomer action checks do not replace observed comprehension studies",
+      "musical polish requires listening review"
+    ]
+  },
+  "references": [
+    "https://www.w3.org/TR/webaudio/"
+  ]
 }

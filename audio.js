@@ -123,7 +123,7 @@ function eventOffset(instrument,note,notes){
 }
 let context,previewSession,previewTimer;
 function previews(){
- if(!previewSession||previewSession.closed)previewSession=new VoiceSession(context,context.destination,{maxVoices:8});
+ if(!previewSession||previewSession.closed)previewSession=new VoiceSession(context,context.destination);
  if(!previewTimer)previewTimer=setInterval(()=>{
   previewSession.sweep();
   if(context.currentTime>=previewSession.end){previewSession.stop();clearInterval(previewTimer);previewTimer=null;previewSession=null;}
@@ -144,7 +144,7 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
   const zone=instrument.patch?.type==="sample"?sampleForNote(instrument.patch,pitch,expression?.velocity??.8):null;
   await decodeSamples(context,beat,bufferCache(context),new Set(zone?[zone.assetId]:[]));
  }
- scheduleNote(context,context.destination,instrument,
+ return scheduleNote(context,context.destination,instrument,
   {pitch,velocity:expression?.velocity??.8,bend:expression?.bend},
   context.currentTime+.01,hitDuration??expression?.duration??.24,beat,previews());
 }
