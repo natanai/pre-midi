@@ -16,7 +16,7 @@ export function renderModulationEditor(patch,onChange){
   const depth=createDial({label:"Movement amount",help:"how far this movement changes the sound",min:-target.limit,max:target.limit,step:target.unit==="cents"?1:.01,display:target.unit==="cents"?"cents":target.unit==="octaves"?"octaves":target.unit==="linear_gain"?"percent":"number"},route.depth,value=>update(index,{depth:value}));
   depth.querySelector('[role="slider"]').setAttribute("aria-label","Movement amount "+(index+1));row.append(depth);
   if(route.source.kind==="lfo")row.append(createDial({label:"Movement speed",min:.05,max:20,step:.05,display:"hz"},route.source.rate,value=>update(index,{source:{...route.source,rate:value}})));
-  const settings=document.createElement("details"),heading=document.createElement("summary");heading.textContent="routing";settings.append(heading);
+  const settings=document.createElement("details"),heading=document.createElement("summary");heading.textContent="routing";settings.className="modulation-routing";settings.append(heading);
   const select=(label,values,current,apply)=>{
    const field=document.createElement("label"),title=document.createElement("span"),input=document.createElement("select");title.textContent=label;explainLabel(title,label);field.className="synth-field";input.setAttribute("aria-label",label+" "+(index+1));
    for(const [value,text] of values){const option=document.createElement("option");option.value=value;option.textContent=text;input.append(option);}

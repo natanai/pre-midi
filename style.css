@@ -1067,3 +1067,14 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 #song-ruler{cursor:crosshair}
 #song-ruler .song-ruler-axis,#song-ruler .song-ruler-mark{cursor:crosshair}
 #song-ruler:focus-visible{outline:1px dotted var(--bright)}
+
+/* Movement stays contextual and shares the inspector's two-control rows. */
+.modulation-editor .modulation-route.synth-fields:has(.dial-field) {
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;
+}
+.modulation-route > span,.modulation-route > .modulation-routing {grid-column:1/-1}
+.modulation-routing > .synth-field {margin-top:9px}
+.modulation-routing > button {margin-top:9px}
+.modulation-editor .modulation-routing:not([open]) > summary::after {content:"+"}
+.modulation-editor .modulation-routing[open] > summary::after {content:"−"}
+.modulation-editor > button {margin:0 12px 12px}
