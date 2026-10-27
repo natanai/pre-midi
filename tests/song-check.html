@@ -190,8 +190,9 @@
   get("song-vocal-level").value="1.3";
   get("song-vocal-level").dispatchEvent(new Event("change",{bubbles:true}));
   get("export").click();
+  const vocalProjectCount=projectDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>get("status").textContent.includes("Exported song"),"vocal ZIP exported",9000);
+  await wait(()=>projectDownloads.length>vocalProjectCount,"vocal ZIP exported",9000);
   await wait(()=>get("status").textContent.includes("Saved locally"),"recorded Song saved locally",7000);
   await new Promise(resolve=>{frame.onload=resolve;frame.src="/index.html";});
   await wait(()=>frame.contentDocument.querySelectorAll(".song-vocal-clip").length===1,

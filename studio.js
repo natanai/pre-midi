@@ -318,8 +318,8 @@ function repairSelection() {
   }
  }
 }
-async function download(blob, name) {
- if(window.premidiDesktop)return window.premidiDesktop.saveFile(name,await blob.arrayBuffer());
+function download(blob, name) {
+ if(window.premidiDesktop)return blob.arrayBuffer().then(bytes=>window.premidiDesktop.saveFile(name,bytes));
  const url = URL.createObjectURL(blob);
  const a = element("a");
  a.href = url;
@@ -1048,11 +1048,13 @@ exportForm.addEventListener("submit",async event=>{
   if(format==="wav"){
    message("Rendering "+scope+" WAV...");
    const output=await wav(source);
-   await download(output,filename(source,".wav"));
+   const saved=download(output,filename(source,".wav"));
+   if(saved?.then && !await saved){message("export cancelled");return;}
    message("Exported "+scope+" WAV");
   }else{
    const output=scope==="song"?exportSongProject(source):exportProject(source);
-   await download(output.blob,output.name);
+   const saved=download(output.blob,output.name);
+   if(saved?.then && !await saved){message("export cancelled");return;}
    message("Exported "+scope+(output.name.endsWith(".zip")?" with audio assets":".premidi"));
   }
   exportDialog.close();
