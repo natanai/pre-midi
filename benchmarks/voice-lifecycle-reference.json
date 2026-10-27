@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "backend": "web-audio-voice-lifecycle",
   "environment": {
-    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36",
-    "hardwareConcurrency": 9
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+    "hardwareConcurrency": 4
   },
   "summary": {
     "cases": 19,
@@ -16,7 +16,7 @@
       "id": "shared-delay/glass-keys",
       "metrics": {
         "max": 1.1175870895385742e-8,
-        "rms": 8.940051264940739e-10
+        "rms": 8.416021568727796e-10
       },
       "checks": {
         "compatible": true
@@ -26,8 +26,8 @@
     {
       "id": "shared-delay/neon-lead",
       "metrics": {
-        "max": 1.1175870895385742e-8,
-        "rms": 8.740722523464055e-10
+        "max": 7.450580596923828e-9,
+        "rms": 5.270783535383444e-10
       },
       "checks": {
         "compatible": true
@@ -38,7 +38,7 @@
       "id": "shared-delay/glass-portamento",
       "metrics": {
         "max": 1.4901161193847656e-8,
-        "rms": 1.1387046600796561e-9
+        "rms": 1.2862186126474664e-9
       },
       "checks": {
         "compatible": true
@@ -49,7 +49,7 @@
       "id": "shared-delay/harmonic-keys",
       "metrics": {
         "max": 1.4901161193847656e-8,
-        "rms": 1.0558658729854843e-9
+        "rms": 1.0245488308191029e-9
       },
       "checks": {
         "compatible": true
@@ -59,8 +59,8 @@
     {
       "id": "contract/serialized-voice-replay",
       "metrics": {
-        "max": 3.725290298461914e-9,
-        "rms": 6.577225163252177e-10
+        "max": 0,
+        "rms": 0
       },
       "checks": {
         "identical": true
@@ -227,18 +227,18 @@
     {
       "id": "realtime/32-expressive-voices",
       "metrics": {
-        "setupMs": 36.69999999925494,
+        "setupMs": 19.699999999982538,
         "sampleRate": 48000,
         "baseLatency": 0.010020833333333333,
         "outputLatency": 0.032,
-        "dc": -0.000012399348561795402,
-        "rms": 0.006715698931859872,
-        "peak": 0.02180938608944416,
-        "maxStep": 0.0018340832903049886,
+        "dc": -0.000012399343548812189,
+        "rms": 0.0067156989345451956,
+        "peak": 0.02180938795208931,
+        "maxStep": 0.0018340816022828221,
         "nonFinite": 0,
         "clipped": 0,
         "silentBlocks": 0,
-        "minBlockRms": 0.0023391339513032846,
+        "minBlockRms": 0.0023391339409241326,
         "remaining": 0,
         "qualification": "browser render-graph capture only; output device latency, driver underruns and native callback deadlines remain unqualified"
       },
@@ -255,13 +255,13 @@
     {
       "id": "realtime/32-voices-16-routes",
       "metrics": {
-        "setupMs": 3450.2999999998137,
-        "cleanupMs": 52.200000000186265,
+        "setupMs": 814.8999999999942,
+        "cleanupMs": 20.10000000000582,
         "preparation": "Audio clock suspended during graph preparation; setupMs is startup cost, not callback CPU",
-        "dc": -0.0000016374719191366202,
-        "rms": 0.0027491095087648454,
-        "peak": 0.012749713845551014,
-        "maxStep": 0.0004126005806028843,
+        "dc": -0.000001724443826276456,
+        "rms": 0.0027525324873612063,
+        "peak": 0.01277830358594656,
+        "maxStep": 0.00040842220187187195,
         "nonFinite": 0,
         "clipped": 0,
         "silentBlocks": 0,
@@ -295,13 +295,13 @@
     {
       "id": "realtime/64-voices-16-routes",
       "metrics": {
-        "setupMs": 6324.399999999441,
-        "cleanupMs": 44.80000000074506,
+        "setupMs": 1817.7999999999884,
+        "cleanupMs": 40.30000000001746,
         "preparation": "Audio clock suspended during graph preparation; setupMs is startup cost, not callback CPU",
-        "dc": 0.0000027279314453683884,
-        "rms": 0.005412016582753614,
-        "peak": 0.024393606930971146,
-        "maxStep": 0.0008116494864225388,
+        "dc": 0.0000026931267941184462,
+        "rms": 0.005413066722563629,
+        "peak": 0.02439585141837597,
+        "maxStep": 0.0008099284023046494,
         "nonFinite": 0,
         "clipped": 0,
         "silentBlocks": 0,
@@ -314,7 +314,7 @@
           "rejected": 0,
           "steals": 0,
           "stolen": 0,
-          "active": 64,
+          "active": 0,
           "queued": 0,
           "retiring": 0
         },
@@ -391,21 +391,21 @@
     }
   ],
   "suitePolicy": null,
-  "measuredAt": "2026-10-27T14:08:38.953Z",
+  "measuredAt": "2026-10-27T14:58:50.597Z",
   "source": {
-    "commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "tag": null,
-    "baseCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "baseCommit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "212d5177fe6791bc40f4021827821608b36c4c5b0bd3aa7d7c2f84d61b647cca"
+    "runtimeAndFixtureSha256": "8a83ba6df8df1811aefc71b1881571eec489af656859d7189fbfe6b92bd78eee"
   },
   "host": {
     "os": "linux",
-    "release": "6.18.55",
+    "release": "6.17.0-1022-azure",
     "arch": "x64",
-    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
-    "logicalCpus": 9,
-    "node": "v24.22.1"
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "logicalCpus": 4,
+    "node": "v22.23.3"
   },
   "policy": {
     "version": 1,

@@ -1,0 +1,648 @@
+{
+  "schemaVersion": 1,
+  "backend": "canonical-cutoff-automation",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36"
+  },
+  "policy": {
+    "version": 1,
+    "method": {
+      "pcm": "Float32 before WAV quantization; signal peak is sample peak, not reconstructed true peak",
+      "spectrum": "16384-point four-term Blackman-Harris FFT; sum power within +/-5 bins of each expected in-band harmonic; residual excludes bins 0..5",
+      "offHarmonicDb": "10 log10(residual / harmonic energy). Alias proxy only for stationary periodic fixtures without modulation or noise; not a universal alias meter. Aliases landing inside harmonic masks are unobservable.",
+      "tuning": "Interpolated rising zero crossings on a steady sine; cents = 1200 log2(measured/expected)",
+      "envelope": "Constant unity input through actual scheduled gain vs independently evaluated piecewise linear reference at every sample",
+      "clicks": "Maximum step in envelope error residual; zero-decay sustain step is intentional legacy behavior",
+      "cost": "Offline wall milliseconds including context setup; median of 5 measured runs after warm-up; informational only, no real-time CPU claim",
+      "repeatability": "Maximum and RMS PCM difference between equivalent independently constructed offline graphs in the same browser process"
+    },
+    "gates": {
+      "envelopeMaxError": 0.00003,
+      "envelopeResidualStep": 0.00003,
+      "tuningCents": 0.3,
+      "sineOffHarmonicDb": -65,
+      "steadyDc": 0.002,
+      "determinismMaxError": 1e-7,
+      "releasedRms": 0.000002,
+      "stereoLeakRms": 1e-7,
+      "overlapMaxError": 2e-7,
+      "driveMinimumImprovementDb": 6,
+      "driveRouteOffHarmonicDb": -25
+    },
+    "deferred": [
+      {
+        "metric": "bright oscillator absolute alias floor",
+        "reason": "record baseline first; harmonic residual has masking blind spots and browser band-limiting differs"
+      },
+      {
+        "metric": "drive absolute alias floor",
+        "reason": "relative 4x-vs-none gate applies to specified high sine fixture only; compare native reconstruction filters when SYN-007 exists"
+      },
+      {
+        "metric": "CPU ceiling",
+        "reason": "virtualized offline timings cannot establish desktop/mobile callback deadlines or underruns"
+      },
+      {
+        "metric": "native parity",
+        "reason": "no native DSP backend yet"
+      },
+      {
+        "metric": "live device acoustic parity",
+        "reason": "live/offline share scheduler; hardware loopback capture is still required"
+      }
+    ],
+    "references": [
+      {
+        "url": "https://www.w3.org/TR/webaudio/",
+        "sections": [
+          "AudioParam",
+          "WaveShaperNode",
+          "OfflineAudioContext"
+        ],
+        "use": "automation ordering, oversampling latency and offline rendering contracts"
+      },
+      {
+        "url": "https://holometer.fnal.gov/GH_FFT.pdf",
+        "authors": "Heinzel, Ruediger, Schilling (2002)",
+        "use": "window leakage, spectral resolution and power-ratio methodology"
+      }
+    ],
+    "gateRationale": {
+      "envelope": "3e-5 absolute gain error allows floating-point and sub-sample scheduling variation; measured maximum at baseline is below 1e-6; no perceptual click-free claim for the intentional zero-decay step",
+      "tuning": "0.3 cents is a conservative numerical tuning regression budget, not a hearing threshold",
+      "signalLevels": "DC/peak/RMS and silence thresholds detect basic waveform/path regressions; they are not mastering or true-peak qualification",
+      "drive": "6 dB relative alias-proxy improvement is a conservative regression budget below the observed 21-50 dB on the specified fixtures; -25 dB on the production route fixtures guards gross loss of oversampling",
+      "referenceIdentity": "Stored steady spectra use 5% plus 1e-4 absolute amplitude tolerance and 10% plus 2e-4 absolute harmonic power-ratio tolerance; timings are excluded from comparisons"
+    }
+  },
+  "summary": {
+    "cases": 25,
+    "failed": 0,
+    "status": "pass"
+  },
+  "results": [
+    {
+      "id": "native/44100/0/false",
+      "metrics": {
+        "max": 0.000007076188921928406,
+        "rms": 3.4708119991447886e-7,
+        "version": 3,
+        "startValue": 8000,
+        "stats": {
+          "dc": 0.0000016709124285055092,
+          "rms": 0.01939679227619993,
+          "peak": 0.05478266254067421,
+          "maxStep": 0.03990341164171696,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/44100/0/true",
+      "metrics": {
+        "max": 0.0000014444813132286072,
+        "rms": 4.667780160530622e-7,
+        "version": 3,
+        "startValue": 8000,
+        "stats": {
+          "dc": 0.000001413155484058721,
+          "rms": 0.01778041549532469,
+          "peak": 0.0644841343164444,
+          "maxStep": 0.04130073823034763,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/44100/4/false",
+      "metrics": {
+        "max": 0.000002510088961571455,
+        "rms": 1.8551308217292515e-7,
+        "version": 3,
+        "startValue": 1549.1933384829667,
+        "stats": {
+          "dc": 0.000001808366913194751,
+          "rms": 0.01884076433623282,
+          "peak": 0.048733826726675034,
+          "maxStep": 0.008995396085083485,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/44100/4/true",
+      "metrics": {
+        "max": 6.94766640663147e-7,
+        "rms": 2.0967529357340574e-7,
+        "version": 3,
+        "startValue": 1549.1933384829667,
+        "stats": {
+          "dc": 0.0000016922674249306064,
+          "rms": 0.019559846649224943,
+          "peak": 0.06909641623497009,
+          "maxStep": 0.044249121099710464,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/44100/8/false",
+      "metrics": {
+        "max": 5.282927304506302e-7,
+        "rms": 1.277506312989734e-7,
+        "version": 3,
+        "startValue": 300,
+        "stats": {
+          "dc": 0.0000021760617310459875,
+          "rms": 0.018192713242485153,
+          "peak": 0.03268730267882347,
+          "maxStep": 0.0014979960396885872,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/44100/8/true",
+      "metrics": {
+        "max": 6.94766640663147e-7,
+        "rms": 1.995251547175237e-7,
+        "version": 3,
+        "startValue": 300,
+        "stats": {
+          "dc": 0.0000026703655712809765,
+          "rms": 0.02062140535380845,
+          "peak": 0.06807506829500198,
+          "maxStep": 0.04359842836856842,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/48000/0/false",
+      "metrics": {
+        "max": 0.000009423121809959412,
+        "rms": 4.225606978917301e-7,
+        "version": 3,
+        "startValue": 8000,
+        "stats": {
+          "dc": 0.0000016715396725461441,
+          "rms": 0.019398778942972976,
+          "peak": 0.05451243370771408,
+          "maxStep": 0.03773386590182781,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/48000/0/true",
+      "metrics": {
+        "max": 0.0000015978584997355938,
+        "rms": 5.237242411986025e-7,
+        "version": 3,
+        "startValue": 8000,
+        "stats": {
+          "dc": 0.0000014143767674161664,
+          "rms": 0.01778078676517797,
+          "peak": 0.0644845962524414,
+          "maxStep": 0.04129767790436745,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/48000/4/false",
+      "metrics": {
+        "max": 0.000003255903720855713,
+        "rms": 2.4504634938898085e-7,
+        "version": 3,
+        "startValue": 1549.1933384829667,
+        "stats": {
+          "dc": 0.000001808150899841017,
+          "rms": 0.01884109046645213,
+          "peak": 0.04871702194213867,
+          "maxStep": 0.008277649176307023,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/48000/4/true",
+      "metrics": {
+        "max": 8.912757039070129e-7,
+        "rms": 2.394951047864469e-7,
+        "version": 3,
+        "startValue": 1549.1933384829667,
+        "stats": {
+          "dc": 0.0000016922962539772657,
+          "rms": 0.01956000775789978,
+          "peak": 0.06909657269716263,
+          "maxStep": 0.04424613527953625,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/48000/8/false",
+      "metrics": {
+        "max": 8.4657222032547e-7,
+        "rms": 1.8336579407431666e-7,
+        "version": 3,
+        "startValue": 300,
+        "stats": {
+          "dc": 0.0000021759436167280392,
+          "rms": 0.01819275423880992,
+          "peak": 0.03268986940383911,
+          "maxStep": 0.001376334112137556,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/48000/8/true",
+      "metrics": {
+        "max": 8.912757039070129e-7,
+        "rms": 2.2632091500717044e-7,
+        "version": 3,
+        "startValue": 300,
+        "stats": {
+          "dc": 0.0000026700964480882946,
+          "rms": 0.0206214196775002,
+          "peak": 0.0680776908993721,
+          "maxStep": 0.04358965903520584,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/96000/0/false",
+      "metrics": {
+        "max": 0.00000387849286198616,
+        "rms": 1.4415526548394035e-7,
+        "version": 3,
+        "startValue": 8000,
+        "stats": {
+          "dc": 0.0000016743872768540909,
+          "rms": 0.01940100722848669,
+          "peak": 0.05326537787914276,
+          "maxStep": 0.021808624267578125,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/96000/0/true",
+      "metrics": {
+        "max": 0.0000015105688362382352,
+        "rms": 4.807058351742003e-7,
+        "version": 3,
+        "startValue": 8000,
+        "stats": {
+          "dc": 0.0000014201127348217128,
+          "rms": 0.017782324932008896,
+          "peak": 0.06449250876903534,
+          "maxStep": 0.04127991944551468,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/96000/4/false",
+      "metrics": {
+        "max": 8.200295269489288e-7,
+        "rms": 1.1097957191815506e-7,
+        "version": 3,
+        "startValue": 1549.1933384829667,
+        "stats": {
+          "dc": 0.0000018073275772526621,
+          "rms": 0.018836601221582108,
+          "peak": 0.04866510629653931,
+          "maxStep": 0.004168186045717448,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/96000/4/true",
+      "metrics": {
+        "max": 0.0000011939555406570435,
+        "rms": 2.426640524640667e-7,
+        "version": 3,
+        "startValue": 1549.1933384829667,
+        "stats": {
+          "dc": 0.0000016934652083637655,
+          "rms": 0.01956068245627046,
+          "peak": 0.06909879297018051,
+          "maxStep": 0.04422877915203571,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/96000/8/false",
+      "metrics": {
+        "max": 6.423797458410263e-7,
+        "rms": 1.3609457741771335e-7,
+        "version": 3,
+        "startValue": 300,
+        "stats": {
+          "dc": 0.0000021754678996581373,
+          "rms": 0.01818729656252468,
+          "peak": 0.03268992155790329,
+          "maxStep": 0.0006880499422550201,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "native/96000/8/true",
+      "metrics": {
+        "max": 0.0000011939555406570435,
+        "rms": 2.5803832666424283e-7,
+        "version": 3,
+        "startValue": 300,
+        "stats": {
+          "dc": 0.000002670229174180622,
+          "rms": 0.02062151108039589,
+          "peak": 0.06807883828878403,
+          "maxStep": 0.04357545264065266,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "pcmMax": true,
+        "pcmRms": true,
+        "finite": true,
+        "correctSeekStart": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "musical/brightness-fall",
+      "metrics": {
+        "early": 684.7335309943076,
+        "late": 269.6349337468554
+      },
+      "checks": {
+        "darker": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "timeline/chunk-boundary",
+      "metrics": {
+        "steps": [
+          0,
+          16
+        ]
+      },
+      "checks": {
+        "absoluteBeatClock": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "timeline/song-repeat",
+      "metrics": {
+        "steps": [
+          0,
+          16,
+          0,
+          16
+        ]
+      },
+      "checks": {
+        "resetsPerBeat": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "transport/seek/0",
+      "metrics": {
+        "captured": [
+          8000
+        ],
+        "wanted": 8000
+      },
+      "checks": {
+        "state": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "transport/seek/16",
+      "metrics": {
+        "captured": [
+          1549.1933384829667
+        ],
+        "wanted": 1549.1933384829667
+      },
+      "checks": {
+        "state": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "transport/loop",
+      "metrics": {
+        "captured": [
+          8000,
+          8000
+        ]
+      },
+      "checks": {
+        "reset": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "export/wav",
+      "metrics": {
+        "frames": 186632,
+        "maxLsb": 0.9999997410923243,
+        "energy": 754523161372,
+        "seconds": 4.232018140589569
+      },
+      "checks": {
+        "canonicalParity": true,
+        "completeTail": true,
+        "audible": true
+      },
+      "status": "pass"
+    }
+  ],
+  "failures": [],
+  "native": {
+    "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "flags": [
+      "-std=c++17",
+      "-O2",
+      "-ffp-contract=off",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic"
+    ],
+    "selfTest": "passed: 400 waveform/filter/rate/extreme and six 16-route v2/v3 profiles, five block sizes and allocation assertions",
+    "scope": "offline C++ core; no device backend or callback latency qualification"
+  },
+  "suitePolicy": {
+    "maxPcm": 0.0001,
+    "rmsPcm": 0.00002,
+    "precedence": "Patch base -> Beat-clock automation -> per-note modulation -> bounded filter frequency",
+    "scope": "Filter cutoff on piano-roll synths. Existing onset-based seeking is retained; voices sounding before seek are not reconstructed. End-of-cycle/clip release tails hold the terminal value. No hardware qualification."
+  },
+  "measuredAt": "2026-10-27T14:59:39.471Z",
+  "source": {
+    "commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+    "tag": null,
+    "baseCommit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+    "workingTreeDirty": false,
+    "runtimeAndFixtureSha256": "ddefa4c6ed5fba655ef5badd54bc11413193264c5a12bf1fccec2e79a2b16dab"
+  },
+  "host": {
+    "os": "linux",
+    "release": "6.17.0-1022-azure",
+    "arch": "x64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "logicalCpus": 4,
+    "node": "v22.23.3"
+  }
+}

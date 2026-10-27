@@ -134,24 +134,24 @@
     },
     "latest_qualification": {
       "source_working_tree": "clean",
-      "source_commit": "d435c0d34416c9fa876201e51d754ca4e1ccce21",
-      "source_policy": "Every CI audio suite used --require-clean; raw reports contain exact source and fixture hashes. The following reporting-only commit changes no renderer or fixtures.",
+      "source_commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+      "source_policy": "All seven suites used --require-clean on the GitHub PR merge commit. Its tree was verified identical to the branch head. The tested commit is retained as the parent of this evidence commit; renderer and fixture code are unchanged.",
       "report": "benchmarks/automation-qualification.json",
-      "ci": "https://github.com/natanai/pre-midi/actions/runs/40525102547",
+      "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
       "raw_reports": {
-        "url": "https://github.com/natanai/pre-midi/actions/runs/40525102547/artifacts/12743327372",
-        "artifactId": 12743327372,
-        "sha256": "6fc10a3e33472fea2c762145c03ab525e51cf52cd954ff19c989cc7e5169772a",
-        "retention": "Actions artifact expires 2027-01-25; committed pre-automation reference reports retain their own earlier exact source attribution.",
-        "files": [
-          "audio-quality.latest.json",
-          "musical-parity.latest.json",
-          "voice-lifecycle.latest.json",
-          "native-parity.latest.json",
-          "onsets.latest.json",
-          "modulation.latest.json",
-          "automation.latest.json"
-        ]
+        "url": "https://github.com/natanai/pre-midi/actions/runs/40526259783/artifacts/12742589644",
+        "artifactId": 12742589644,
+        "sha256": "fa933ccdb04c96f22cc1fc9abdf8f4fcb37509ab1a06f737e1e0836de8141c21",
+        "committedFiles": [
+          "benchmarks/web-audio-reference.json",
+          "benchmarks/automation-reference.json",
+          "benchmarks/modulation-reference.json",
+          "benchmarks/musical-parity-reference.json",
+          "benchmarks/native-parity-reference.json",
+          "benchmarks/onset-reference.json",
+          "benchmarks/voice-lifecycle-reference.json"
+        ],
+        "policy": "Full raw numeric results are committed without rewriting source attribution. The Actions ZIP is an additional copy; its expiration does not remove the committed reports."
       },
       "passed": {
         "nodeTests": 174,
@@ -164,24 +164,26 @@
         "modulationCases": 62,
         "automationCases": 25
       },
-      "committed_baseline_reports": {
-        "web-audio-reference": "benchmarks/web-audio-reference.json",
-        "musical-parity-reference": "benchmarks/musical-parity-reference.json",
-        "voice-lifecycle-reference": "benchmarks/voice-lifecycle-reference.json",
-        "native-parity-reference": "benchmarks/native-parity-reference.json",
-        "modulation-reference": "benchmarks/modulation-reference.json",
-        "onset-reference": "benchmarks/onset-reference.json"
-      },
-      "committed_baseline_source_commits": {
-        "web-audio-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "musical-parity-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "voice-lifecycle-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "native-parity-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "modulation-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
-        "onset-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9"
-      },
       "browser": "Shipped desktop/mobile cutoff editing, playback, remove/undo and Beat v11/Song v12 import/export; existing modulation, newcomer, rack, layout, microphone, example, Song transport and WAV workflows all pass.",
-      "scope": "Automated offline, browser control-trace, suspended-preparation AudioWorklet graph and interaction checks only. Maximum-route startup remains slow; no device or human signoff."
+      "scope": "Automated offline, browser control-trace, suspended-preparation AudioWorklet graph and interaction checks only. Maximum-route startup remains slow; no device or human signoff.",
+      "reports": {
+        "web-audio-reference": "benchmarks/web-audio-reference.json",
+        "automation-reference": "benchmarks/automation-reference.json",
+        "modulation-reference": "benchmarks/modulation-reference.json",
+        "musical-parity-reference": "benchmarks/musical-parity-reference.json",
+        "native-parity-reference": "benchmarks/native-parity-reference.json",
+        "onset-reference": "benchmarks/onset-reference.json",
+        "voice-lifecycle-reference": "benchmarks/voice-lifecycle-reference.json"
+      },
+      "source_commits": {
+        "web-audio-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "automation-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "modulation-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "musical-parity-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "native-parity-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "onset-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+        "voice-lifecycle-reference": "58d2eef4fd230f0fe251287c2d3725b0c1d77456"
+      }
     }
   },
   "phases": [
@@ -719,7 +721,7 @@
         ],
         "report": "benchmarks/automation-qualification.json",
         "qualification": {
-          "source_commit": "d435c0d34416c9fa876201e51d754ca4e1ccce21",
+          "source_commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
           "native_browser_cases": 18,
           "total_cases": 25,
           "sample_rates": [
@@ -731,8 +733,8 @@
             "max_absolute": 0.0001,
             "rms": 0.00002
           },
-          "ci": "https://github.com/natanai/pre-midi/actions/runs/40525102547",
-          "raw_reports": "https://github.com/natanai/pre-midi/actions/runs/40525102547/artifacts/12743327372"
+          "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
+          "raw_reports": "benchmarks/automation-reference.json"
         }
       }
     },

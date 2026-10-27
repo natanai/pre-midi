@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "backend": "native-web-isolated-onset-probe",
   "environment": {
-    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36"
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36"
   },
   "summary": {
     "cases": 186,
@@ -8251,7 +8251,7 @@
   ],
   "failures": [],
   "native": {
-    "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+    "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
     "flags": [
       "-std=c++17",
       "-DPREMIDI_PROBE",
@@ -8262,7 +8262,7 @@
       "-Werror",
       "-pedantic"
     ],
-    "selfTest": "passed: 400 waveform/filter/rate/extreme and three 16-route v2 profiles, five block sizes and allocation assertions",
+    "selfTest": "passed: 400 waveform/filter/rate/extreme and six 16-route v2/v3 profiles, five block sizes and allocation assertions",
     "scope": "offline C++ core; no device backend or callback latency qualification"
   },
   "suitePolicy": {
@@ -8270,20 +8270,20 @@
     "sourceMaxAmplitude": 0.00002,
     "method": "Actual native Voice compiled with probe-only instrumentation; browser raw oscillator and control graph; independent phase integration with two predeclared onset models"
   },
-  "measuredAt": "2026-10-27T14:08:44.679Z",
+  "measuredAt": "2026-10-27T14:59:27.977Z",
   "source": {
-    "commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "tag": null,
-    "baseCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+    "baseCommit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "1ecf1e14c70e5903a1137a867a87ada37e549ec80a40aea39a75c4af4d93a9e3"
+    "runtimeAndFixtureSha256": "ddefa4c6ed5fba655ef5badd54bc11413193264c5a12bf1fccec2e79a2b16dab"
   },
   "host": {
     "os": "linux",
-    "release": "6.18.55",
+    "release": "6.17.0-1022-azure",
     "arch": "x64",
-    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
-    "logicalCpus": 9,
-    "node": "v24.22.1"
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "logicalCpus": 4,
+    "node": "v22.23.3"
   }
 }

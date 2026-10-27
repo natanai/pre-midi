@@ -3,30 +3,32 @@
   "task": "SYN-010",
   "status": "automated_profile_qualified",
   "source": {
-    "commit": "d435c0d34416c9fa876201e51d754ca4e1ccce21",
+    "commit": "58d2eef4fd230f0fe251287c2d3725b0c1d77456",
+    "branchHead": "02e9b3eafdea8b3b6dc20bf3e8778f2aeb305da5",
+    "tree": "98951084b6b4889cdc52e8d4a4427a8b4a93b040",
     "workingTreeDirty": false,
-    "attribution": "All seven suites ran with --require-clean on this exact source. This report-only commit does not change renderer or fixture code."
+    "attribution": "All seven suites used --require-clean on the GitHub PR merge commit. Its tree was verified identical to the branch head. The tested commit is retained as the parent of this evidence commit; renderer and fixture code are unchanged."
   },
   "ci": {
-    "url": "https://github.com/natanai/pre-midi/actions/runs/40525102547",
-    "job": 122262409658,
+    "url": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
+    "job": 122266564571,
     "conclusion": "success",
     "runner": "GitHub-hosted Ubuntu 24.04.5 x86_64; not audio device reference hardware"
   },
   "rawReports": {
-    "url": "https://github.com/natanai/pre-midi/actions/runs/40525102547/artifacts/12743327372",
-    "artifactId": 12743327372,
-    "sha256": "6fc10a3e33472fea2c762145c03ab525e51cf52cd954ff19c989cc7e5169772a",
-    "retention": "Actions artifact expires 2027-01-25; committed pre-automation reference reports retain their own earlier exact source attribution.",
-    "files": [
-      "audio-quality.latest.json",
-      "musical-parity.latest.json",
-      "voice-lifecycle.latest.json",
-      "native-parity.latest.json",
-      "onsets.latest.json",
-      "modulation.latest.json",
-      "automation.latest.json"
-    ]
+    "url": "https://github.com/natanai/pre-midi/actions/runs/40526259783/artifacts/12742589644",
+    "artifactId": 12742589644,
+    "sha256": "fa933ccdb04c96f22cc1fc9abdf8f4fcb37509ab1a06f737e1e0836de8141c21",
+    "committedFiles": [
+      "benchmarks/web-audio-reference.json",
+      "benchmarks/automation-reference.json",
+      "benchmarks/modulation-reference.json",
+      "benchmarks/musical-parity-reference.json",
+      "benchmarks/native-parity-reference.json",
+      "benchmarks/onset-reference.json",
+      "benchmarks/voice-lifecycle-reference.json"
+    ],
+    "policy": "Full raw numeric results are committed without rewriting source attribution. The Actions ZIP is an additional copy; its expiration does not remove the committed reports."
   },
   "passed": {
     "nodeTests": 174,
@@ -68,5 +70,69 @@
     "No audio-device latency, callback deadline, CPU or underrun qualification",
     "No human listening-panel or newcomer comprehension evidence",
     "pre-programmed needs explicit Beat v11/Song v12/execution v3 integration; no silent downgrade"
-  ]
+  ],
+  "environment": {
+    "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+    "host": {
+      "os": "linux",
+      "release": "6.17.0-1022-azure",
+      "arch": "x64",
+      "cpu": "AMD EPYC 9V74 80-Core Processor",
+      "logicalCpus": 4,
+      "node": "v22.23.3"
+    },
+    "native": {
+      "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+      "flags": [
+        "-std=c++17",
+        "-O2",
+        "-ffp-contract=off",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic"
+      ],
+      "selfTest": "passed: 400 waveform/filter/rate/extreme and six 16-route v2/v3 profiles, five block sizes and allocation assertions",
+      "scope": "offline C++ core; no device backend or callback latency qualification"
+    }
+  },
+  "measurements": {
+    "originalPitchCase": {
+      "id": "v2/44100/lfo-bipolar",
+      "before": {
+        "max": 0.00007014954462647438,
+        "rms": 0.00003380568782438191
+      },
+      "after": {
+        "max": 1.0337680578231812e-7,
+        "rms": 2.8481033587429703e-8,
+        "stats": {
+          "dc": 0.0000021674880188846234,
+          "rms": 0.00864396478535069,
+          "peak": 0.023676110431551933,
+          "maxStep": 0.0011832115123979747,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      }
+    },
+    "nativeV2Worst": {
+      "max": 0.00006439629942178726,
+      "rms": 0.0000023195551019374315
+    },
+    "automationWorst": {
+      "max": 0.000009423121809959412,
+      "rms": 5.237242411986025e-7
+    },
+    "brightness": {
+      "early": 684.7335309943076,
+      "late": 269.6349337468554
+    },
+    "wav": {
+      "frames": 186632,
+      "maxLsb": 0.9999997410923243,
+      "energy": 754523161372,
+      "seconds": 4.232018140589569
+    }
+  }
 }
