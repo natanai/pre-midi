@@ -16,7 +16,10 @@ for(const a of artifacts){
 }
 const platforms={};
 for(const a of artifacts.filter(a=>a.signature)){
- const kind=a.platform==='windows'?'nsis':a.platform==='linux'?'appimage':'app';
+ const kind=a.platform==='windows'&&a.kind==='installer'?'nsis':
+  a.platform==='linux'&&a.kind==='portable'?'appimage':
+  a.platform==='darwin'&&a.kind==='updater'?'app':null;
+ if(!kind)continue;
  platforms[[a.platform,a.arch,kind].join('-')]={url:`https://github.com/natanai/pre-midi/releases/download/${tag}/${a.name}`,signature:a.signature};
 }
 const required=['windows-x86_64-nsis','darwin-x86_64-app','darwin-aarch64-app','linux-x86_64-appimage'];
