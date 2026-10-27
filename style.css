@@ -861,22 +861,23 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .mic-kind, .mic-settings, #status, footer) {text-transform:lowercase}
 .app select {text-transform:lowercase}
 
-/* The label alone reveals a short sound description; values and knobs are separate targets */
-.control-help, .unit-help {position:relative;cursor:help}
-.control-help::after, .unit-help::after {
- content:attr(data-help);
- display:none;
- position:absolute;
- left:50%;
- bottom:calc(100% + 7px);
- transform:translateX(-50%);
+/* Help appears in one fixed layer outside scrolling instrument panels. */
+.control-help, .unit-help {cursor:help}
+.control-help:focus-visible, .unit-help:focus-visible {
+ outline:1px dotted var(--bright);outline-offset:2px
+}
+.floating-help {
+ position:fixed;
+ z-index:2147483647;
+ left:0;top:0;
+ display:block;
  width:max-content;
- max-width:min(255px, calc(100vw - 28px));
+ max-width:min(255px,calc(100vw - 16px));
+ max-height:calc(100dvh - 16px);
+ overflow-wrap:anywhere;
  white-space:normal;
  text-align:left;
- font-size:11px;
- line-height:1.35;
- font-weight:normal;
+ font:normal 11px/1.35 "Courier New",ui-monospace,monospace;
  text-transform:none;
  color:var(--bright);
  padding:6px 8px;
@@ -884,13 +885,8 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  border:1px solid var(--line);
  box-shadow:0 2px 10px #000;
  pointer-events:none;
- z-index:90;
 }
-.control-help:hover::after, .control-help.help-open::after,
-.unit-help:hover::after, .unit-help.help-open::after {display:block}
-.dial-field:has(.control-help:hover), .dial-field:has(.unit-help:hover),
-.dial-field:has(.help-open) {z-index:4}
-.dial-field {position:relative}
+.floating-help[hidden] {display:none!important}
 .unit-help {font-size:inherit}
 .layout-actions {border-top:1px solid var(--faint);padding-top:6px}
 .layout-actions button {color:var(--muted);text-transform:lowercase}
