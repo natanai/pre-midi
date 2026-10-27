@@ -3,7 +3,8 @@
 import {planSynthVoice} from "../../src/dsp/synth-voice.js";
 import {scheduleSynthPlan} from "../../audio.js";
 import {cleanPatch} from "./fixtures.js";
-import {difference,signalStats,crossingFrequency} from "./metrics.js";
+import {makePatch} from "../../synth.js";
+import {difference,signalStats,crossingFrequency,harmonicMetrics} from "./metrics.js";
 let report;
 try{
  const results=[],failures=[];
@@ -24,11 +25,29 @@ try{
   const stats=signalStats(native),max=Math.max(...errors.map(e=>e.max)),rms=Math.max(...errors.map(e=>e.rms));
   add(sampleRate+"/"+pitch+"/"+gate,{max,rms,stats,nativeCents,browserCents,levelError},{finite:stats.nonFinite===0,audible:stats.rms>.001,maxError:max<.0001,rmsError:rms<.00002,tuning:Math.abs(nativeCents)<.01&&Math.abs(browserCents)<.01,level:levelError<.001});
  }
- const unsupported=cleanPatch("square"),plan=planSynthVoice({patch:unsupported,volume:1},{pitch:69,velocity:1},0,.2);
+ // New feature gates are declared before measurement, without changing legacy thresholds.
+ for(const sampleRate of [44100,48000,96000]){
+  const fixtures=[];
+  for(const wave of ["triangle","square","sawtooth","harmonic"])for(const pitch of [45,93])fixtures.push({id:wave+"/"+pitch,patch:cleanPatch(wave),pitch});
+  for(const type of ["highpass","bandpass","notch"])for(const q of [.1,16]){const patch=cleanPatch("triangle");patch.filter={...patch.filter,type,cutoff:1200,resonance:q};fixtures.push({id:type+"/"+q,patch,pitch:69});}
+  fixtures.push({id:"preset/felt-electric",patch:makePatch("felt-electric"),pitch:60});
+  for(const {id,patch,pitch} of fixtures){
+   const plan=planSynthVoice({patch,volume:1},{pitch,velocity:.8},0,.6),frames=Math.ceil(1.2*sampleRate);
+   const response=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate,frames})});if(!response.ok)throw Error(id+": "+await response.text());
+   const pcm=new Float32Array(await response.arrayBuffer()),native=Float32Array.from({length:frames},(_,i)=>pcm[2*i]);
+   const context=new OfflineAudioContext(2,frames,sampleRate);scheduleSynthPlan(context,context.destination,plan);const browser=(await context.startRendering()).getChannelData(0),error=difference(native,browser),stats=signalStats(native);
+   const frequency=440*2**((pitch-69)/12),begin=Math.round(.05*sampleRate),size=16384;
+   const n=harmonicMetrics(native.subarray(begin,begin+size),sampleRate,frequency),b=harmonicMetrics(browser.subarray(begin,begin+size),sampleRate,frequency);
+   const spectral=n.harmonicPowerRatios.every((value,i)=>Math.abs(value-b.harmonicPowerRatios[i])<.00001+.01*Math.abs(b.harmonicPowerRatios[i]));
+   const relativeRms=Math.abs(stats.rms/signalStats(browser).rms-1);
+   add("extended/"+sampleRate+"/"+id,{error,relativeRms,nativeSpectrum:n,browserSpectrum:b,stats},{finite:stats.nonFinite===0,audible:stats.rms>.00001,maxError:error.max<.0001,rmsError:error.rms<.00002,level:relativeRms<.001,spectrum:spectral,alias:n.offHarmonicDb< -65});
+  }
+ }
+ const unsupported=cleanPatch();unsupported.noise=.1;const plan=planSynthVoice({patch:unsupported,volume:1},{pitch:69,velocity:1},0,.2);
  const rejected=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate:48000,frames:24000})});
- add("unsupported-wave",{status:rejected.status},{explicitRejection:rejected.status===422});
+ add("unsupported-noise",{status:rejected.status},{explicitRejection:rejected.status===422});
  report={schemaVersion:1,backend:"native-cpp-vs-web-audio",environment:{userAgent:navigator.userAgent},
-  policy:{maxPcmError:.0001,maxRmsError:.00002,initialRmsTarget:.00001,toleranceRationale:"The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",method:"same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",scope:"sine oscillators, pitch, static lowpass, ADSR and pan",limits:["Not full native patch support","Not a device performance or aliasing qualification","Fractional-sample note onsets not yet qualified"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
+  policy:{maxPcmError:.0001,maxRmsError:.00002,initialRmsTarget:.00001,toleranceRationale:"The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",method:"same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",scope:"all five existing oscillator shapes, four static filters, pitch, ADSR and pan",limits:["Not full native patch support","Not a device performance or aliasing qualification","Fractional-sample note onsets not yet qualified"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
 }catch(error){report={error:String(error.stack||error)};}
 document.getElementById("status").textContent=JSON.stringify(report.summary||report);
 await fetch("/__audio_benchmark",{method:"POST",body:JSON.stringify(report)});

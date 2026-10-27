@@ -1,0 +1,10 @@
+{
+ "version":1,
+ "sources":["https://www.w3.org/TR/2021/REC-webaudio-20210617/#oscillator-coefficients","https://www.w3.org/TR/2021/REC-webaudio-20210617/#filters-characteristics","https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/webaudio/periodic_wave_handler.cc"],
+ "implementation":"Original C++ sine-series/IFFT bank and biquad implementation; no browser code runs in the native process",
+ "waveforms":{"shapes":["sine","triangle","square","sawtooth","harmonic"],"harmonics":"32 editable sine coefficients, index zero means fundamental; all-zero recipe stays silent","normalization":"Fixed peak of the complete sampled periodic recipe, independent of playing pitch; never normalize each band separately","antialias":"Three progressively truncated harmonic tables per octave, interpolated by instantaneous fundamental; no naive discontinuous square/saw sampling","compatibility":"Chromium-compatible bank sizes: 2048 at <=24kHz, 4096 at <=88.2kHz, 16384 above; these are implementation choices, not Web Audio normative requirements","preparation":"FFT and vectors allocated outside process(); immutable banks may be shared by future device hosts","limitations":["Other browser engines and cross-architecture FFT differences unqualified","Table-bank preparation/cache memory is not a device CPU or memory qualification","No oversampling claim"]},
+ "filters":{"types":["lowpass","highpass","bandpass","notch"],"q":"Legacy low/highpass use dB; bandpass/notch use linear Q","denormals":"Biquad state below 1e-30 flushed to zero","cutoff":"Clamped to sample-rate Nyquist"},
+ "gates":{"legacySine":{"maxPcm":0.0001,"rmsPcm":0.00002},"newWaveFilter":{"maxPcm":0.0001,"rmsPcm":0.00002,"relativeRms":0.001,"harmonicPowerAbsolute":0.00001,"harmonicPowerRelative":0.01,"offHarmonicDb":-65},"blockSizes":[1,17,64,128,511],"sampleRates":[44100,48000,96000]},
+ "unsupported":["noise","drive","delay","legacy LFOs","filter sweep","v2 modulation"],
+ "scope":"Offline PCM identity, bounded state and block invariance only; no hardware output or human listening findings"
+}

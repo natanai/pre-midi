@@ -1,12 +1,152 @@
 {
- "reviewed_on":"2026-10-27",
- "decision":{"status":"prototype_only","dspCore":"Original framework-neutral C++17 block processor","deviceHost":"not selected","rationale":"Demonstrate the portable voice contract with a small compiler-only kernel before committing to a UI/device framework. Keep the device boundary and licensing decision separate from DSP fidelity.","measuredCandidates":["standalone C++17 offline core"],"notMeasured":["JUCE device callback","Rust/CPAL device callback","miniaudio device callback","iOS/Android devices"]},
- "candidates":[
-  {"id":"juce-cpp","platforms":["Windows","macOS","Linux","iOS","Android"],"license":"AGPLv3 or commercial JUCE licence; exact release terms must be reviewed before adoption","strengths":["audio-device and plugin infrastructure","DSP and MIDI modules","offline processing can reuse DSP code"],"costs":["larger framework and build/distribution surface","licence selection affects distribution","UI framework unnecessary for an existing web-based editor"],"maintenance":"Active upstream framework; version pin and upgrade checks required","callback":"high-priority audio-device callback, still requires allocation/I/O discipline in our code","reuse":"C++ library boundary could serve a desktop host, mobile host and a pre-programmed native bridge","sources":["https://github.com/juce-framework/JUCE","https://github.com/juce-framework/JUCE/blob/master/LICENSE.md","https://docs.juce.com/master/classjuce_1_1AudioIODeviceCallback.html"]},
-  {"id":"rust-cpal","platforms":["Windows","macOS","Linux","iOS","Android"],"license":"CPAL Apache-2.0; evaluate licences of additional DSP crates and optional platform backends independently","strengths":["low-level audio I/O separated from DSP","Rust memory-safety tooling","can expose a C ABI for application/game reuse"],"costs":["need to select or implement DSP components separately","mobile platform packaging/context setup","Rust toolchain is absent in this worker environment, so no Rust performance comparison was run"],"maintenance":"RustAudio upstream; platform feature flags and backend versions need pinning","callback":"stream callback must use prepared bounded state; Rust alone does not guarantee deadline compliance","reuse":"native library plus host ABI; offline rendering can use the same DSP functions","sources":["https://github.com/RustAudio/cpal","https://github.com/RustAudio/cpal/blob/master/Cargo.toml"]},
-  {"id":"cpp-miniaudio","platforms":["Windows","macOS","Linux","iOS","Android"],"license":"Upstream offers public domain or MIT No Attribution","strengths":["small C device-I/O boundary","can host an independent C++ DSP library","does not require replacing the existing editor"],"costs":["we must provide synth/modulation/effects and higher-level session handling","mobile lifecycle, device changes and low-latency behaviour still need prototypes"],"maintenance":"Pin an upstream revision and validate supported backends on target devices","callback":"device callback only processes prepared buffers/state; no file parsing or UI calls","reuse":"compact native host around the same standalone core and offline processor","sources":["https://github.com/mackron/miniaudio","https://github.com/mackron/miniaudio/blob/master/LICENSE","https://miniaud.io/docs/manual/"]}
- ],
- "prototype":{"files":["native/voice.hpp","native/render.cpp","native/bridge.mjs"],"input":"Existing pre-midi-synth-voice v1 JSON is validated/prepared by a Node control-host adapter, then transferred as a bounded little-endian IPC packet. The packet is not a new musical persistence format.","output":"Interleaved stereo Float32 little-endian PCM produced by C++, without Web Audio","supported":["two sine oscillator slots","equal-tempered prepared frequency/detune","prepared glide/bend pitch curves","ordered linear ADSR events","static lowpass with Web Audio Q-in-dB compatibility","equal-power pan"],"unsupportedPolicy":"Reject unsupported contract versions and features explicitly; never substitute another oscillator or silently bypass drive/noise/delay/modulation","renderCommand":"npm run native:render -- request.json output.f32le","qualificationCommand":"npm run benchmark:native -- --require-clean","callbackContract":["All parsing/preparation/allocation occurs outside process()","Fixed-size voice/envelope/pitch state","Caller-owned output buffer and bounded frame count","No file/device I/O, UI calls or locks inside process()","Block-size invariance and unchanged C++ operator-new counter are executable assertions"],"limitations":["Offline prototype; no device adapter or installable desktop/mobile app","Not all patch v1 capabilities are implemented","No native oversampling or broad oscillator alias qualification","No native allocator/device underrun/thermal/suspend-resume qualification","Compiler build tested on Linux only","No claim that process-per-voice CLI IPC is suitable for real-time hosting; embed the block core instead","Denormal handling and cross-architecture floating-point qualification remain pending"]},
- "referenceEquations":{"biquad":"https://www.w3.org/TR/webaudio/#filters-characteristics","note":"Lowpass/highpass Q is in dB under the current browser contract; do not reinterpret existing saved resonance as linear Q."},
- "nextExperiments":["Host this same block core in miniaudio and/or JUCE on real desktop/mobile devices","Compare latency/underruns/CPU under the same 32/64-voice fixtures","Evaluate a Rust core/CPAL prototype if its safety/tooling advantages justify the additional DSP port","Choose and pin a device framework only after those measurements"]
+  "reviewed_on": "2026-10-27",
+  "decision": {
+    "status": "prototype_only",
+    "dspCore": "Original framework-neutral C++17 block processor",
+    "deviceHost": "not selected",
+    "rationale": "Demonstrate the portable voice contract with a small compiler-only kernel before committing to a UI/device framework. Keep the device boundary and licensing decision separate from DSP fidelity.",
+    "measuredCandidates": [
+      "standalone C++17 offline core"
+    ],
+    "notMeasured": [
+      "JUCE device callback",
+      "Rust/CPAL device callback",
+      "miniaudio device callback",
+      "iOS/Android devices"
+    ]
+  },
+  "candidates": [
+    {
+      "id": "juce-cpp",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux",
+        "iOS",
+        "Android"
+      ],
+      "license": "AGPLv3 or commercial JUCE licence; exact release terms must be reviewed before adoption",
+      "strengths": [
+        "audio-device and plugin infrastructure",
+        "DSP and MIDI modules",
+        "offline processing can reuse DSP code"
+      ],
+      "costs": [
+        "larger framework and build/distribution surface",
+        "licence selection affects distribution",
+        "UI framework unnecessary for an existing web-based editor"
+      ],
+      "maintenance": "Active upstream framework; version pin and upgrade checks required",
+      "callback": "high-priority audio-device callback, still requires allocation/I/O discipline in our code",
+      "reuse": "C++ library boundary could serve a desktop host, mobile host and a pre-programmed native bridge",
+      "sources": [
+        "https://github.com/juce-framework/JUCE",
+        "https://github.com/juce-framework/JUCE/blob/master/LICENSE.md",
+        "https://docs.juce.com/master/classjuce_1_1AudioIODeviceCallback.html"
+      ]
+    },
+    {
+      "id": "rust-cpal",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux",
+        "iOS",
+        "Android"
+      ],
+      "license": "CPAL Apache-2.0; evaluate licences of additional DSP crates and optional platform backends independently",
+      "strengths": [
+        "low-level audio I/O separated from DSP",
+        "Rust memory-safety tooling",
+        "can expose a C ABI for application/game reuse"
+      ],
+      "costs": [
+        "need to select or implement DSP components separately",
+        "mobile platform packaging/context setup",
+        "Rust toolchain is absent in this worker environment, so no Rust performance comparison was run"
+      ],
+      "maintenance": "RustAudio upstream; platform feature flags and backend versions need pinning",
+      "callback": "stream callback must use prepared bounded state; Rust alone does not guarantee deadline compliance",
+      "reuse": "native library plus host ABI; offline rendering can use the same DSP functions",
+      "sources": [
+        "https://github.com/RustAudio/cpal",
+        "https://github.com/RustAudio/cpal/blob/master/Cargo.toml"
+      ]
+    },
+    {
+      "id": "cpp-miniaudio",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux",
+        "iOS",
+        "Android"
+      ],
+      "license": "Upstream offers public domain or MIT No Attribution",
+      "strengths": [
+        "small C device-I/O boundary",
+        "can host an independent C++ DSP library",
+        "does not require replacing the existing editor"
+      ],
+      "costs": [
+        "we must provide synth/modulation/effects and higher-level session handling",
+        "mobile lifecycle, device changes and low-latency behaviour still need prototypes"
+      ],
+      "maintenance": "Pin an upstream revision and validate supported backends on target devices",
+      "callback": "device callback only processes prepared buffers/state; no file parsing or UI calls",
+      "reuse": "compact native host around the same standalone core and offline processor",
+      "sources": [
+        "https://github.com/mackron/miniaudio",
+        "https://github.com/mackron/miniaudio/blob/master/LICENSE",
+        "https://miniaud.io/docs/manual/"
+      ]
+    }
+  ],
+  "prototype": {
+    "files": [
+      "native/voice.hpp",
+      "native/render.cpp",
+      "native/bridge.mjs"
+    ],
+    "input": "Existing pre-midi-synth-voice v1 JSON is validated/prepared by a Node control-host adapter, then transferred as a bounded little-endian IPC packet. The packet is not a new musical persistence format.",
+    "output": "Interleaved stereo Float32 little-endian PCM produced by C++, without Web Audio",
+    "supported": [
+      "two oscillator slots: sine, triangle, square, sawtooth, 32-harmonic editable recipes",
+      "frequency-dependent band limiting with fixed recipe normalization",
+      "equal-tempered frequency/detune and prepared glide/bend curves",
+      "ordered linear ADSR events",
+      "static lowpass/highpass (Q in dB), bandpass/notch (linear Q)",
+      "equal-power pan"
+    ],
+    "unsupportedPolicy": "Reject unsupported contract versions and features explicitly; never substitute another oscillator or silently bypass drive/noise/delay/modulation",
+    "renderCommand": "npm run native:render -- request.json output.f32le",
+    "qualificationCommand": "npm run benchmark:native -- --require-clean",
+    "callbackContract": [
+      "All parsing/preparation/allocation occurs outside process()",
+      "Fixed-size voice/envelope/pitch state",
+      "Caller-owned output buffer and bounded frame count",
+      "No file/device I/O, UI calls or locks inside process()",
+      "Block-size invariance and unchanged C++ operator-new counter are executable assertions"
+    ],
+    "limitations": [
+      "Offline prototype; no device adapter or installable desktop/mobile app",
+      "Not all patch v1 capabilities are implemented",
+      "No native oversampling or broad oscillator alias qualification",
+      "No native allocator/device underrun/thermal/suspend-resume qualification",
+      "Compiler build tested on Linux only",
+      "No claim that process-per-voice CLI IPC is suitable for real-time hosting; embed the block core instead",
+      "Biquad denormals flushed below 1e-30; cross-architecture floating-point qualification pending"
+    ],
+    "fidelity_policy": "native/fidelity-policy.json"
+  },
+  "referenceEquations": {
+    "biquad": "https://www.w3.org/TR/webaudio/#filters-characteristics",
+    "note": "Lowpass/highpass Q is in dB under the current browser contract; do not reinterpret existing saved resonance as linear Q."
+  },
+  "nextExperiments": [
+    "Host this same block core in miniaudio and/or JUCE on real desktop/mobile devices",
+    "Compare latency/underruns/CPU under the same 32/64-voice fixtures",
+    "Evaluate a Rust core/CPAL prototype if its safety/tooling advantages justify the additional DSP port",
+    "Choose and pin a device framework only after those measurements"
+  ]
 }
