@@ -1,0 +1,39 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema",
+ "$id":"https://natanai.github.io/pre-midi/contracts/amplitude-envelope-v1",
+ "title":"Pre-midi amplitude-envelope execution plan v1",
+ "description":"An ephemeral interpretation of existing synth patch envelope fields. Does not change .premidi v7/v8 or patch v1 persistence. Implemented slice only; oscillator/filter/voice-host contracts are future work.",
+ "type":"object",
+ "required":["contract","version","releaseLevel","end","events"],
+ "additionalProperties":false,
+ "properties":{
+  "contract":{"const":"pre-midi-amplitude-envelope"},
+  "version":{"const":1},
+  "releaseLevel":{"type":"number","minimum":0},
+  "end":{"type":"number","minimum":0},
+  "events":{
+   "type":"array","minItems":4,"maxItems":6,
+   "items":{
+    "type":"object","additionalProperties":false,"required":["kind","value","time","order"],
+    "properties":{
+     "kind":{"enum":["set","linear"]},
+     "value":{"type":"number","minimum":0},
+     "time":{"type":"number","minimum":0},
+     "order":{"type":"integer","minimum":0}
+    }
+   }
+  }
+ },
+ "x-parameter-definitions":"src/dsp/amplitude-envelope.js: ENVELOPE_PARAMETERS",
+ "x-scheduling":{
+  "clock":"absolute audio seconds, independent of UI clocks and device sample rates",
+  "same_time_order":"array order; stable event.order breaks timestamp ties; never sort by kind",
+  "linear":"ramp from the preceding event value/time to this event value/time; target is evaluated continuously then sampled by the backend",
+  "before_first_event":"voice input must be silent or gain initialized to zero",
+  "after_last_event":"hold legacy gain floor 0.000001 until source termination at off + release + 0.012 seconds",
+  "note_duration":"current synth scheduler clamps gate to at least 0.015 seconds; the envelope planner accepts shorter positive gates for other hosts and qualification fixtures",
+  "zero_decay":"instant sustain step at attack completion is intentional legacy behavior",
+  "control":"patch envelope fields are snapshotted when the voice plan is made; no mid-note mutation or automation support is claimed",
+  "compatibility":"unknown execution-plan versions must be rejected; no migration of stored patches is needed for this behavior-preserving slice"
+ }
+}

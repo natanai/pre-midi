@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>Audio quality benchmark</title><pre id="status">loading</pre>
+<script type="module">
+import {runAudioBenchmark} from "./suite.js";
+const status=document.getElementById("status");
+try{
+ const response=await fetch("./policy.json");if(!response.ok)throw Error("Cannot load quality policy");
+ const policy=await response.json();
+ const report=await runAudioBenchmark(policy,message=>status.textContent=message);
+ await fetch("/__audio_benchmark",{method:"POST",body:JSON.stringify(report)});
+ status.textContent=JSON.stringify(report.summary);
+}catch(error){
+ const report={error:String(error.stack||error)};status.textContent=report.error;
+ await fetch("/__audio_benchmark",{method:"POST",body:JSON.stringify(report)});
+}
+</script>

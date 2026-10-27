@@ -1,0 +1,3198 @@
+{
+  "schemaVersion": 1,
+  "backend": "web-audio-offline",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36",
+    "platform": "Linux x86_64",
+    "hardwareConcurrency": 9
+  },
+  "summary": {
+    "cases": 111,
+    "failed": 0,
+    "status": "pass"
+  },
+  "failures": [],
+  "results": [
+    {
+      "id": "envelope/attack-release",
+      "sampleRate": 44100,
+      "metrics": {
+        "error": {
+          "max": 2.3345379063233196e-7,
+          "rms": 7.830012160018123e-8
+        },
+        "residualMaxStep": 2.3671909082922937e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/decay-release",
+      "sampleRate": 44100,
+      "metrics": {
+        "error": {
+          "max": 8.491233376428653e-7,
+          "rms": 2.3627223229876669e-7
+        },
+        "residualMaxStep": 8.430234845757667e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/sustain-release",
+      "sampleRate": 44100,
+      "metrics": {
+        "error": {
+          "max": 5.92296842460982e-7,
+          "rms": 1.1226150567222866e-7
+        },
+        "residualMaxStep": 5.470922475048212e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/subsample-gate",
+      "sampleRate": 44100,
+      "metrics": {
+        "error": {
+          "max": 1.7506223971537963e-10,
+          "rms": 2.810530117811209e-11
+        },
+        "residualMaxStep": 1.6607303179134655e-10
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/zero-decay",
+      "sampleRate": 44100,
+      "metrics": {
+        "error": {
+          "max": 1.8378233967997204e-7,
+          "rms": 2.256565620099205e-8
+        },
+        "residualMaxStep": 1.7097477489347312e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/silent-sustain",
+      "sampleRate": 44100,
+      "metrics": {
+        "error": {
+          "max": 3.1052133131481696e-7,
+          "rms": 4.9704696126753534e-8
+        },
+        "residualMaxStep": 2.8102035709576256e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/45",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.00044345922568922447,
+        "rms": 0.1349858951832685,
+        "peak": 0.1909216195344925,
+        "maxStep": 0.0029924160335212946,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -94.96843204908095,
+        "thdDb": -115.37116888332861,
+        "harmonicPowerRatios": [
+          1,
+          1.4485952233407258e-12,
+          5.576012142080507e-13,
+          2.1409577715154443e-13,
+          1.2515803750571554e-13,
+          8.72051552155372e-14,
+          6.105467098596552e-14,
+          4.637840826686346e-14
+        ],
+        "tuningCents": -0.00007341784586234222,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/69",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": 0.0000608242057908992,
+        "rms": 0.13501956578267454,
+        "peak": 0.19096378982067108,
+        "maxStep": 0.011969469953328371,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.23546414091379,
+        "thdDb": -117.05404261992017,
+        "harmonicPowerRatios": [
+          1,
+          9.791595021254904e-13,
+          3.175031205627676e-13,
+          1.6008436647904508e-13,
+          9.835985477621763e-14,
+          6.660109111234264e-14,
+          4.8972868001509646e-14,
+          3.696576185771793e-14
+        ],
+        "tuningCents": -0.00005657044036468173,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/93",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.000022110015591603194,
+        "rms": 0.13551740523892114,
+        "peak": 0.19164635241031647,
+        "maxStep": 0.04793093726038933,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -95.3233326565374,
+        "thdDb": -136.04393505979155,
+        "harmonicPowerRatios": [
+          1,
+          1.4971492581813608e-14,
+          2.481056637511787e-15,
+          1.9777872094493726e-15,
+          1.367214895123052e-15,
+          9.67077736598253e-16,
+          1.4532812940070215e-15,
+          6.647521897143505e-16
+        ],
+        "tuningCents": -0.000007725513048542216,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/105",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.00003285363815086484,
+        "rms": 0.13711595194376291,
+        "peak": 0.19392196834087372,
+        "maxStep": 0.09623884037137032,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.04061044728522,
+        "thdDb": -136.39865707355088,
+        "harmonicPowerRatios": [
+          1,
+          1.4903332326103667e-14,
+          1.6683608315930951e-15,
+          6.0461374485211924e-15,
+          2.1536282058987493e-16,
+          8.256802272017774e-17
+        ],
+        "tuningCents": -0.0005694062992862714,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/45",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.0003266900296821085,
+        "rms": 0.11026845980854154,
+        "peak": 0.19052931666374207,
+        "maxStep": 0.002588808536529541,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -94.69414790863152,
+        "thdDb": -18.33146668002396,
+        "harmonicPowerRatios": [
+          1,
+          1.441067551842962e-12,
+          0.012348548755438398,
+          5.059850296290034e-13,
+          0.0016011173901847053,
+          1.6124295667339366e-13,
+          0.0004170762710642681,
+          8.931666622557093e-14
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/69",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": 0.00005709702471863587,
+        "rms": 0.11026514842289192,
+        "peak": 0.18925443291664124,
+        "maxStep": 0.010353177785873413,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.24053191368006,
+        "thdDb": -18.30475723055671,
+        "harmonicPowerRatios": [
+          1,
+          8.589326131180903e-13,
+          0.012392548303529,
+          2.149095784103488e-13,
+          0.0016184458678488022,
+          9.33820725487293e-14,
+          0.0004262780902428407,
+          5.117074417015406e-14
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/93",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.00001548125605954631,
+        "rms": 0.11073744336569065,
+        "peak": 0.1841573864221573,
+        "maxStep": 0.04143889248371124,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -95.03080721889307,
+        "thdDb": -17.99915749323495,
+        "harmonicPowerRatios": [
+          1,
+          1.662504730761794e-14,
+          0.013182902388165454,
+          2.6127464448895614e-15,
+          0.001994444576566338,
+          1.4305747185966287e-15,
+          0.0006168204419578161,
+          8.189860490915404e-16
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/105",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.00002737120053353248,
+        "rms": 0.11209790482805664,
+        "peak": 0.1773827224969864,
+        "maxStep": 0.0819564051926136,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.04379440225776,
+        "thdDb": -17.722115317130804,
+        "harmonicPowerRatios": [
+          1,
+          1.459871016550979e-14,
+          0.016777316976632692,
+          3.825513911988349e-15,
+          0.00011886071788635156,
+          1.9819804792198586e-16
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/45",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.0005264485271538888,
+        "rms": 0.16184634494504382,
+        "peak": 0.23030784726142883,
+        "maxStep": 0.22862035781145096,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -91.03672703260047,
+        "thdDb": -6.339333196929613,
+        "harmonicPowerRatios": [
+          1,
+          6.284708775577856e-11,
+          0.11113697796851478,
+          6.090510115511939e-11,
+          0.04002795094680277,
+          6.120803988294965e-11,
+          0.02043670769027002,
+          6.172902819316648e-11
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/69",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": 0.00005202437942841698,
+        "rms": 0.1615869752108373,
+        "peak": 0.2303985059261322,
+        "maxStep": 0.22877779603004456,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.35071362230605,
+        "thdDb": -6.42415295389191,
+        "harmonicPowerRatios": [
+          1,
+          1.3341944525231373e-12,
+          0.11153285573912677,
+          3.936246285577715e-14,
+          0.040461151607502764,
+          1.067600283753079e-13,
+          0.020887575891085124,
+          3.0522272338787934e-14
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/93",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.00003347059100633487,
+        "rms": 0.1605416152737367,
+        "peak": 0.23060806095600128,
+        "maxStep": 0.22876884788274765,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -93.14096864961311,
+        "thdDb": -6.916142361494605,
+        "harmonicPowerRatios": [
+          1,
+          2.847375421681633e-14,
+          0.1186460779891953,
+          2.2103124363792882e-14,
+          0.0498611344866075,
+          2.523343738633786e-14,
+          0.030224112349937344,
+          2.0392501077762213e-14
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/105",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.00003339814146596787,
+        "rms": 0.15907515648750045,
+        "peak": 0.22795671224594116,
+        "maxStep": 0.22269084304571152,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.06462052494714,
+        "thdDb": -8.125715658631469,
+        "harmonicPowerRatios": [
+          1,
+          9.119147829011395e-15,
+          0.15099576103039605,
+          9.534573302562534e-15,
+          0.0029715177575683612,
+          5.226990843413435e-17
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/45",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.00013853916145381562,
+        "rms": 0.09357247063419988,
+        "peak": 0.229057177901268,
+        "maxStep": 0.22785074263811111,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -89.82008466781183,
+        "thdDb": -1.923544718647701,
+        "harmonicPowerRatios": [
+          1,
+          0.2500219861608761,
+          0.11113703145123587,
+          0.06252732214073398,
+          0.04002797147924379,
+          0.027806104887949115,
+          0.020436709035988092,
+          0.015653710631914248
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/69",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": 0.00002439382015140268,
+        "rms": 0.09312254256548887,
+        "peak": 0.22571466863155365,
+        "maxStep": 0.226121187210083,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -88.24139010955697,
+        "thdDb": -1.983272311631406,
+        "harmonicPowerRatios": [
+          1,
+          0.25035451714334783,
+          0.11153285652054241,
+          0.06294721419125178,
+          0.04046114967168215,
+          0.028248798393992126,
+          0.02088757238556995,
+          0.016112430434767074
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/93",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.000006506859322019665,
+        "rms": 0.09225005899723734,
+        "peak": 0.21180309355258942,
+        "maxStep": 0.21780679374933243,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -91.95244041162765,
+        "thdDb": -2.30804022151175,
+        "harmonicPowerRatios": [
+          1,
+          0.2559718954118759,
+          0.11864607766235774,
+          0.07117246676723249,
+          0.049861127393479865,
+          0.03865028857220078,
+          0.03022409789810956,
+          0.017782987484936393
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/105",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.000012938715952315327,
+        "rms": 0.09077013067309136,
+        "peak": 0.1936439424753189,
+        "maxStep": 0.20681343227624893,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -89.54323980516277,
+        "thdDb": -2.997376017936468,
+        "harmonicPowerRatios": [
+          1,
+          0.2780490714334754,
+          0.15099578150280726,
+          0.06947376501447561,
+          0.002971521593156098,
+          3.19107286141635e-16
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/45",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.0004345757523966792,
+        "rms": 0.09953119234871796,
+        "peak": 0.1909639835357666,
+        "maxStep": 0.014299614354968071,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -91.941930871739,
+        "thdDb": -2.776870661428868,
+        "harmonicPowerRatios": [
+          1,
+          0.25002156900978373,
+          0.1111368937399181,
+          0.0625272165144864,
+          0.040027904579594265,
+          0.02780604793576785,
+          0.02043668124860712,
+          0.01565358437333
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/69",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": 0.000028348778228215465,
+        "rms": 0.09989555268875824,
+        "peak": 0.19177143275737762,
+        "maxStep": 0.057303907349705696,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -88.33699312620466,
+        "thdDb": -2.7527823744240942,
+        "harmonicPowerRatios": [
+          1,
+          0.25035447944966854,
+          0.11153283660447612,
+          0.06294720551183158,
+          0.04046113959283312,
+          0.028248793882821137,
+          0.020887563118769055,
+          0.016112415710420536
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/93",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.00002947216173110334,
+        "rms": 0.10180517784981348,
+        "peak": 0.2241823971271515,
+        "maxStep": 0.227715365588665,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -91.9495625186376,
+        "thdDb": -2.3484637751402664,
+        "harmonicPowerRatios": [
+          1,
+          0.2559719558599508,
+          0.11864607792705935,
+          0.07117249818758564,
+          0.049861139848488716,
+          0.03865032804853991,
+          0.030224131962952545,
+          0.01778302905771631
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/105",
+      "sampleRate": 44100,
+      "metrics": {
+        "dc": -0.000022637884589116197,
+        "rms": 0.10035542380098542,
+        "peak": 0.2141183614730835,
+        "maxStep": 0.22868040949106216,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -89.54303422575808,
+        "thdDb": -2.9973781313087393,
+        "harmonicPowerRatios": [
+          1,
+          0.27804898245737614,
+          0.1509957317050861,
+          0.06947366727277056,
+          0.002971514072631355,
+          9.553902107847108e-16
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "repeatability/harmonic",
+      "sampleRate": 44100,
+      "metrics": {
+        "max": 0,
+        "rms": 0
+      },
+      "checks": {
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "repeatability/noise",
+      "sampleRate": 44100,
+      "metrics": {
+        "max": 0,
+        "rms": 0
+      },
+      "checks": {
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "voices/overlap-retrigger",
+      "sampleRate": 44100,
+      "metrics": {
+        "max": 2.9802322387695312e-8,
+        "rms": 3.133676666652158e-9
+      },
+      "checks": {
+        "independent": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stereo/-1",
+      "sampleRate": 44100,
+      "metrics": {
+        "left": 0.1549464750436688,
+        "right": 0,
+        "difference": 0.270063579082489
+      },
+      "checks": {
+        "routing": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stereo/0",
+      "sampleRate": 44100,
+      "metrics": {
+        "left": 0.10956370318825258,
+        "right": 0.10956370318825258,
+        "difference": 0
+      },
+      "checks": {
+        "routing": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stereo/1",
+      "sampleRate": 44100,
+      "metrics": {
+        "left": 9.487735241269898e-18,
+        "right": 0.1549464750436688,
+        "difference": 0.270063579082489
+      },
+      "checks": {
+        "routing": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "effects/delay-tail",
+      "sampleRate": 44100,
+      "metrics": {
+        "dryTail": 0,
+        "wetTail": 0.006541700171957409,
+        "lateTail": 0.000002306239594602932
+      },
+      "checks": {
+        "audibleTail": true,
+        "decaying": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/0.25",
+      "sampleRate": 44100,
+      "metrics": {
+        "none": {
+          "offHarmonicDb": -17.275145030949112,
+          "thdDb": -7.957343912034211,
+          "harmonicPowerRatios": [
+            1,
+            1.5907742728203224e-16,
+            0.10733095050583344,
+            1.9540948970268513e-16,
+            0.03608149694382481,
+            1.9941959943474068e-16,
+            0.01664121219922252,
+            1.5184488169293487e-16
+          ]
+        },
+        "four": {
+          "offHarmonicDb": -67.49941022824716,
+          "thdDb": -7.957351901837332,
+          "harmonicPowerRatios": [
+            1,
+            1.623676991450932e-16,
+            0.10733088336704669,
+            7.953360513642894e-17,
+            0.03608139310018397,
+            4.693771141230181e-17,
+            0.01664108872797759,
+            7.096460955641012e-17
+          ]
+        },
+        "improvementDb": 50.224265197298045,
+        "offlineMedianMs": {
+          "none": 2.7999999998137355,
+          "4x": 5.7999999998137355
+        }
+      },
+      "checks": {
+        "aliasReduction": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/routes/0.25",
+      "sampleRate": 44100,
+      "metrics": {
+        "synth": {
+          "offHarmonicDb": -56.811559313974804,
+          "thdDb": -7.847799832787981,
+          "harmonicPowerRatios": [
+            1,
+            1.164477755241858e-16,
+            0.10872071448980458,
+            1.725594989316902e-16,
+            0.03748432582504072,
+            1.8047696472682746e-16,
+            0.017937071524421817,
+            1.045111258047845e-16
+          ]
+        },
+        "sample": {
+          "offHarmonicDb": -67.4994890825546,
+          "thdDb": -7.957351795878632,
+          "harmonicPowerRatios": [
+            1,
+            8.380571193436183e-17,
+            0.10733088468333266,
+            4.1690631222614025e-17,
+            0.03608139480692213,
+            4.4073365465401265e-17,
+            0.016641089609918426,
+            5.760136374678663e-17
+          ]
+        }
+      },
+      "checks": {
+        "synthAlias": true,
+        "sampleAlias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/0.8",
+      "sampleRate": 44100,
+      "metrics": {
+        "none": {
+          "offHarmonicDb": -14.104818395738166,
+          "thdDb": -7.689603670155622,
+          "harmonicPowerRatios": [
+            1,
+            1.0677601336819818e-11,
+            0.11070423251655102,
+            1.073482849291878e-11,
+            0.039562497496889754,
+            1.082970720474341e-11,
+            0.01996465510409947,
+            1.0961478689548242e-11
+          ]
+        },
+        "four": {
+          "offHarmonicDb": -35.15403939329472,
+          "thdDb": -7.6896121955118915,
+          "harmonicPowerRatios": [
+            1,
+            3.405929608608139e-16,
+            0.11070416248034773,
+            4.281875412640529e-16,
+            0.03956238372752429,
+            4.535803213031715e-16,
+            0.019964504782890444,
+            3.873205865498798e-16
+          ]
+        },
+        "improvementDb": 21.049220997556553,
+        "offlineMedianMs": {
+          "none": 2.5,
+          "4x": 5
+        }
+      },
+      "checks": {
+        "aliasReduction": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/routes/0.8",
+      "sampleRate": 44100,
+      "metrics": {
+        "synth": {
+          "offHarmonicDb": -32.67859905107339,
+          "thdDb": -7.677481168672785,
+          "harmonicPowerRatios": [
+            1,
+            1.5270500157449376e-15,
+            0.11085509728552166,
+            1.3565679620446514e-15,
+            0.03972422865470668,
+            1.0707835774371266e-15,
+            0.02012789142692964,
+            1.1324655358800726e-15
+          ]
+        },
+        "sample": {
+          "offHarmonicDb": -35.154035335831445,
+          "thdDb": -7.6896121504403645,
+          "harmonicPowerRatios": [
+            1,
+            3.2925804870479197e-16,
+            0.11070416408063248,
+            3.505033417493503e-16,
+            0.039562384056796296,
+            4.2283961566343084e-16,
+            0.01996450462000906,
+            4.527483564350857e-16
+          ]
+        }
+      },
+      "checks": {
+        "synthAlias": true,
+        "sampleAlias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/attack-release",
+      "sampleRate": 48000,
+      "metrics": {
+        "error": {
+          "max": 1.6560639037876967e-7,
+          "rms": 5.8026123667862975e-8
+        },
+        "residualMaxStep": 1.6272389730120906e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/decay-release",
+      "sampleRate": 48000,
+      "metrics": {
+        "error": {
+          "max": 9.76339975866658e-7,
+          "rms": 3.2197898847595656e-7
+        },
+        "residualMaxStep": 9.317350770920996e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/sustain-release",
+      "sampleRate": 48000,
+      "metrics": {
+        "error": {
+          "max": 9.76339975866658e-7,
+          "rms": 2.443564908747629e-7
+        },
+        "residualMaxStep": 9.314219158174097e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/subsample-gate",
+      "sampleRate": 48000,
+      "metrics": {
+        "error": {
+          "max": 2.6754537322572214e-10,
+          "rms": 5.983732754117504e-11
+        },
+        "residualMaxStep": 2.3832122478814957e-10
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/zero-decay",
+      "sampleRate": 48000,
+      "metrics": {
+        "error": {
+          "max": 2.0027160640978536e-7,
+          "rms": 2.5858907396730562e-8
+        },
+        "residualMaxStep": 1.5894571914198963e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/silent-sustain",
+      "sampleRate": 48000,
+      "metrics": {
+        "error": {
+          "max": 2.0027160640978536e-7,
+          "rms": 1.4474321013509592e-8
+        },
+        "residualMaxStep": 1.5894571914198963e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/45",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": 0.0002864387687213643,
+        "rms": 0.13507973339267562,
+        "peak": 0.19092217087745667,
+        "maxStep": 0.002749329316429794,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.23456988658981,
+        "thdDb": -105.57043404180112,
+        "harmonicPowerRatios": [
+          1,
+          1.0267378104890923e-11,
+          5.17174525316378e-12,
+          2.8254724098096236e-12,
+          1.754467198549468e-12,
+          1.2243273266836661e-12,
+          8.770761510079695e-13,
+          6.588742842597633e-13
+        ],
+        "tuningCents": -0.00006299233304081657,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/69",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.00014757222649341983,
+        "rms": 0.13502922183624816,
+        "peak": 0.1909724324941635,
+        "maxStep": 0.010997775942087173,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -92.21201188146236,
+        "thdDb": -122.74117942201768,
+        "harmonicPowerRatios": [
+          1,
+          3.0032507676684343e-13,
+          7.238732663334798e-14,
+          3.733001660010527e-14,
+          2.4788626510226678e-14,
+          1.481962917433394e-14,
+          1.3847613252392329e-14,
+          8.169388795082188e-15
+        ],
+        "tuningCents": -0.00005683606061864874,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/93",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.000018933636376061713,
+        "rms": 0.1356275895084003,
+        "peak": 0.19178406894207,
+        "maxStep": 0.04408462531864643,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.01173743213464,
+        "thdDb": -128.58563211726556,
+        "harmonicPowerRatios": [
+          1,
+          4.0946392471605773e-14,
+          1.224611913494855e-14,
+          7.437748173081285e-15,
+          4.66779300139538e-15,
+          3.377415248943917e-14,
+          2.5637571254902974e-15,
+          3.045427066614386e-14
+        ],
+        "tuningCents": 0.00003893579367581367,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/105",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.00002586707605622962,
+        "rms": 0.1375122957627233,
+        "peak": 0.19443953037261963,
+        "maxStep": 0.08880098909139633,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.2073350474806,
+        "thdDb": -133.10021677876423,
+        "harmonicPowerRatios": [
+          1,
+          2.6365239015628462e-14,
+          8.653517307646691e-15,
+          9.748671637383822e-15,
+          2.2752062836572266e-15,
+          1.93280301496866e-15
+        ],
+        "tuningCents": -0.000522852727332944,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/45",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": 0.0002634439849352743,
+        "rms": 0.1103443843129121,
+        "peak": 0.1905660629272461,
+        "maxStep": 0.0024173706769943237,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.22400101652178,
+        "thdDb": -18.331108954296962,
+        "harmonicPowerRatios": [
+          1,
+          9.354989694360892e-12,
+          0.012349101786981894,
+          3.5462794691905044e-12,
+          0.0016013358577814038,
+          1.6280790545403065e-12,
+          0.0004171882980736096,
+          8.65460474138489e-13
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/69",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.00010866236425099984,
+        "rms": 0.11027014656585629,
+        "peak": 0.18940092623233795,
+        "maxStep": 0.009668171405792236,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -92.10437598359532,
+        "thdDb": -18.299397398425427,
+        "harmonicPowerRatios": [
+          1,
+          2.881193112319403e-13,
+          0.012401468634930352,
+          6.146714945628012e-14,
+          0.0016219310552454574,
+          1.851810390779598e-14,
+          0.00042810174424435957,
+          1.3396785905596785e-14
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/93",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.00001353800898407087,
+        "rms": 0.11083969998493458,
+        "peak": 0.18474449217319489,
+        "maxStep": 0.03870236873626709,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.01584123285286,
+        "thdDb": -17.941855752381237,
+        "harmonicPowerRatios": [
+          1,
+          4.552728942207294e-14,
+          0.01332671878958516,
+          8.244603435646164e-15,
+          0.002043173018594697,
+          3.0457795676146354e-14,
+          0.000612847843618564,
+          3.347609176751149e-14
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/105",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.000023002896718082866,
+        "rms": 0.11244363765554155,
+        "peak": 0.1785019338130951,
+        "maxStep": 0.0769406259059906,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.20727882037501,
+        "thdDb": -17.628032168699125,
+        "harmonicPowerRatios": [
+          1,
+          2.2160254203515112e-14,
+          0.01702547673070554,
+          1.283848759633196e-14,
+          0.00024072390345272922,
+          2.257191086219497e-15
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/45",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": 0.00024690874290911324,
+        "rms": 0.16187099618855838,
+        "peak": 0.2329038381576538,
+        "maxStep": 0.2205103002488613,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -82.19633359323801,
+        "thdDb": -6.332553742711698,
+        "harmonicPowerRatios": [
+          1,
+          1.6208209632237563e-11,
+          0.11114199590429223,
+          4.232493480800517e-12,
+          0.040033371178430054,
+          4.527489483958143e-12,
+          0.020442240246977203,
+          3.91095532605777e-12
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/69",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.00020118598112617292,
+        "rms": 0.16168418985957697,
+        "peak": 0.23295128345489502,
+        "maxStep": 0.22028987482190132,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.87727320530331,
+        "thdDb": -6.398275740785601,
+        "harmonicPowerRatios": [
+          1,
+          5.779879634127067e-13,
+          0.11161320119473056,
+          2.8125575477623817e-13,
+          0.04054827301939551,
+          2.3773583424740237e-13,
+          0.020976951512684177,
+          2.610524132235073e-13
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/93",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.000021898702854628027,
+        "rms": 0.16093566159357636,
+        "peak": 0.23317641019821167,
+        "maxStep": 0.2204703353345394,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.04154992603043,
+        "thdDb": -6.829352928838361,
+        "harmonicPowerRatios": [
+          1,
+          6.468712406541986e-14,
+          0.11994050272535385,
+          6.436539364123422e-14,
+          0.051079261718223204,
+          5.757544080126242e-14,
+          0.03002950591023997,
+          3.89874536428755e-14
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/105",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.00002126582955278445,
+        "rms": 0.15989459827301022,
+        "peak": 0.2322225123643875,
+        "maxStep": 0.21770521998405457,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.20729974834194,
+        "thdDb": -7.979279288358815,
+        "harmonicPowerRatios": [
+          1,
+          2.9002160639215574e-14,
+          0.15322920245268098,
+          1.2282406740252839e-14,
+          0.006018095146873787,
+          1.8839594220985014e-15
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/45",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": 0.00011199446582965678,
+        "rms": 0.09391732437890805,
+        "peak": 0.2317083328962326,
+        "maxStep": 0.219740379601717,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -81.0845336071117,
+        "thdDb": -1.9186628218949553,
+        "harmonicPowerRatios": [
+          1,
+          0.2500258967738673,
+          0.11114191537195901,
+          0.06253253607781038,
+          0.04003335529421769,
+          0.027811564034096067,
+          0.02044222673720624,
+          0.01565925864762429
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/69",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.000046070770122863536,
+        "rms": 0.0932603634286697,
+        "peak": 0.22842377424240112,
+        "maxStep": 0.21786785125732422,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -89.92634901094915,
+        "thdDb": -1.964710289213025,
+        "harmonicPowerRatios": [
+          1,
+          0.2504222010433386,
+          0.11161320170346514,
+          0.0630321074826411,
+          0.040548274914128025,
+          0.02833726022136518,
+          0.02097695353302255,
+          0.016202509181461943
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/93",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.0000056855231185259925,
+        "rms": 0.09256167087390126,
+        "peak": 0.21450597047805786,
+        "maxStep": 0.21021393686532974,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -89.56387952378114,
+        "thdDb": -2.248639598162244,
+        "harmonicPowerRatios": [
+          1,
+          0.257056189336969,
+          0.11994050422125456,
+          0.07251183623697274,
+          0.051079322472845926,
+          0.03938819867893346,
+          0.030029502942800806,
+          0.017820567413962516
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/105",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.000010749459981695964,
+        "rms": 0.09131405368663807,
+        "peak": 0.19630642235279083,
+        "maxStep": 0.19986724108457565,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -88.35199067220671,
+        "thdDb": -2.9185892713921002,
+        "harmonicPowerRatios": [
+          1,
+          0.2820864246519214,
+          0.15322922143020948,
+          0.06932669743630519,
+          0.006018100601254862,
+          0.000010411287944705608
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/45",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": 0.0001408849449113913,
+        "rms": 0.09918257260757053,
+        "peak": 0.1909722238779068,
+        "maxStep": 0.013139770831912756,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -88.36633443397254,
+        "thdDb": -2.776561962843218,
+        "harmonicPowerRatios": [
+          1,
+          0.2500261225430568,
+          0.11114207395007851,
+          0.06253261000693491,
+          0.04003339685798565,
+          0.027811593511631594,
+          0.02044226198219875,
+          0.015659342644644674
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/69",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.00017558385014104783,
+        "rms": 0.0998741858336239,
+        "peak": 0.19191226363182068,
+        "maxStep": 0.05273849330842495,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.50632568704941,
+        "thdDb": -2.747972032757408,
+        "harmonicPowerRatios": [
+          1,
+          0.25042216628917385,
+          0.11161319308461885,
+          0.06303209356116861,
+          0.04054826610134722,
+          0.028337247006552522,
+          0.020976944003788685,
+          0.016202492128145868
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/93",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.000017236905668127633,
+        "rms": 0.10204580095178614,
+        "peak": 0.2248711735010147,
+        "maxStep": 0.21313411742448807,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -89.56836359020824,
+        "thdDb": -2.3075156687311176,
+        "harmonicPowerRatios": [
+          1,
+          0.25705606118513674,
+          0.11994038648784043,
+          0.07251172235141735,
+          0.05107921162270257,
+          0.03938808818687052,
+          0.030029532831095263,
+          0.017820512482284813
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/105",
+      "sampleRate": 48000,
+      "metrics": {
+        "dc": -0.000011638295330129722,
+        "rms": 0.1009421507979809,
+        "peak": 0.21706166863441467,
+        "maxStep": 0.22099876403808594,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -88.35236484988981,
+        "thdDb": -2.918591370229055,
+        "harmonicPowerRatios": [
+          1,
+          0.28208633731539884,
+          0.15322917212528314,
+          0.06932659811950574,
+          0.006018089841496048,
+          0.00001041121151892073
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "repeatability/harmonic",
+      "sampleRate": 48000,
+      "metrics": {
+        "max": 0,
+        "rms": 0
+      },
+      "checks": {
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "repeatability/noise",
+      "sampleRate": 48000,
+      "metrics": {
+        "max": 0,
+        "rms": 0
+      },
+      "checks": {
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "voices/overlap-retrigger",
+      "sampleRate": 48000,
+      "metrics": {
+        "max": 2.7474015951156616e-8,
+        "rms": 2.648725194018026e-9
+      },
+      "checks": {
+        "independent": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stereo/-1",
+      "sampleRate": 48000,
+      "metrics": {
+        "left": 0.15495347875290025,
+        "right": 0,
+        "difference": 0.2700757682323456
+      },
+      "checks": {
+        "routing": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stereo/0",
+      "sampleRate": 48000,
+      "metrics": {
+        "left": 0.10956865556028735,
+        "right": 0.10956865556028735,
+        "difference": 0
+      },
+      "checks": {
+        "routing": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stereo/1",
+      "sampleRate": 48000,
+      "metrics": {
+        "left": 9.488164090123435e-18,
+        "right": 0.15495347875290025,
+        "difference": 0.2700757682323456
+      },
+      "checks": {
+        "routing": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "effects/delay-tail",
+      "sampleRate": 48000,
+      "metrics": {
+        "dryTail": 0,
+        "wetTail": 0.006542042142093333,
+        "lateTail": 0.0000022508493199430073
+      },
+      "checks": {
+        "audibleTail": true,
+        "decaying": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/0.25",
+      "sampleRate": 48000,
+      "metrics": {
+        "none": {
+          "offHarmonicDb": -17.275144162754344,
+          "thdDb": -7.957343845312819,
+          "harmonicPowerRatios": [
+            1,
+            1.331172726082153e-16,
+            0.10733095131841273,
+            1.7024274194142266e-16,
+            0.03608149778463445,
+            1.7754440369379065e-16,
+            0.016641213004765013,
+            1.399922584650809e-16
+          ]
+        },
+        "four": {
+          "offHarmonicDb": -67.4994049850268,
+          "thdDb": -7.957351908349308,
+          "harmonicPowerRatios": [
+            1,
+            1.5181794225847953e-16,
+            0.10733088324701144,
+            6.871385837148493e-17,
+            0.03608139294344407,
+            4.668184404349805e-17,
+            0.0166410887647627,
+            6.633466530041577e-17
+          ]
+        },
+        "improvementDb": 50.224260822272456,
+        "offlineMedianMs": {
+          "none": 2,
+          "4x": 4.699999999720603
+        }
+      },
+      "checks": {
+        "aliasReduction": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/routes/0.25",
+      "sampleRate": 48000,
+      "metrics": {
+        "synth": {
+          "offHarmonicDb": -56.66483368372221,
+          "thdDb": -7.84643470282262,
+          "harmonicPowerRatios": [
+            1,
+            9.582893005111619e-17,
+            0.10873795142240962,
+            5.545489075361006e-17,
+            0.0375019964751638,
+            9.530675802295819e-17,
+            0.017953767299688998,
+            9.857890878544986e-17
+          ]
+        },
+        "sample": {
+          "offHarmonicDb": -67.49947269270264,
+          "thdDb": -7.957351809050736,
+          "harmonicPowerRatios": [
+            1,
+            8.59452349818588e-17,
+            0.1073308844370557,
+            4.3362802566497706e-17,
+            0.03608139454302491,
+            4.923510947559429e-17,
+            0.016641089634652464,
+            5.706931107517248e-17
+          ]
+        }
+      },
+      "checks": {
+        "synthAlias": true,
+        "sampleAlias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/0.8",
+      "sampleRate": 48000,
+      "metrics": {
+        "none": {
+          "offHarmonicDb": -14.104815347608863,
+          "thdDb": -7.6896035524389275,
+          "harmonicPowerRatios": [
+            1,
+            1.0767077985169502e-11,
+            0.11070423397854028,
+            1.0824789909863853e-11,
+            0.03956249906498672,
+            1.0920465862926294e-11,
+            0.01996465668781903,
+            1.1053332242873834e-11
+          ]
+        },
+        "four": {
+          "offHarmonicDb": -35.154039239920266,
+          "thdDb": -7.689612199229615,
+          "harmonicPowerRatios": [
+            1,
+            3.1354785685187807e-16,
+            0.11070416240536807,
+            3.991205107618026e-16,
+            0.039562383778434296,
+            4.238807299018019e-16,
+            0.01996450466123605,
+            3.7559846728236803e-16
+          ]
+        },
+        "improvementDb": 21.049223892311403,
+        "offlineMedianMs": {
+          "none": 2,
+          "4x": 6.399999999906868
+        }
+      },
+      "checks": {
+        "aliasReduction": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/routes/0.8",
+      "sampleRate": 48000,
+      "metrics": {
+        "synth": {
+          "offHarmonicDb": -32.64603343881943,
+          "thdDb": -7.6773314463863525,
+          "harmonicPowerRatios": [
+            1,
+            1.3488744758844916e-16,
+            0.11085695921416132,
+            1.590767342372239e-16,
+            0.039726228598247856,
+            2.915858210873308e-16,
+            0.020129914758579136,
+            1.7203141269929392e-16
+          ]
+        },
+        "sample": {
+          "offHarmonicDb": -35.15403493025655,
+          "thdDb": -7.689612164130896,
+          "harmonicPowerRatios": [
+            1,
+            3.3149932634087814e-16,
+            0.11070416356548828,
+            3.7380134055604733e-16,
+            0.03956238413956161,
+            4.36884638032407e-16,
+            0.01996450451575813,
+            4.753630135140517e-16
+          ]
+        }
+      },
+      "checks": {
+        "synthAlias": true,
+        "sampleAlias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/attack-release",
+      "sampleRate": 96000,
+      "metrics": {
+        "error": {
+          "max": 9.413208618136437e-8,
+          "rms": 3.600571490068041e-8
+        },
+        "residualMaxStep": 9.626310984445219e-8
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/decay-release",
+      "sampleRate": 96000,
+      "metrics": {
+        "error": {
+          "max": 5.40002187077171e-7,
+          "rms": 2.1116594687631463e-7
+        },
+        "residualMaxStep": 5.475680033839581e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/sustain-release",
+      "sampleRate": 96000,
+      "metrics": {
+        "error": {
+          "max": 5.40002187077171e-7,
+          "rms": 1.4512298370262215e-7
+        },
+        "residualMaxStep": 5.475680033839581e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/subsample-gate",
+      "sampleRate": 96000,
+      "metrics": {
+        "error": {
+          "max": 3.310029795286322e-10,
+          "rms": 5.6346335902520845e-11
+        },
+        "residualMaxStep": 3.465006748323493e-10
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/zero-decay",
+      "sampleRate": 96000,
+      "metrics": {
+        "error": {
+          "max": 2.3682912220213126e-7,
+          "rms": 1.9119780168144124e-8
+        },
+        "residualMaxStep": 2.1855036380635795e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "envelope/silent-sustain",
+      "sampleRate": 96000,
+      "metrics": {
+        "error": {
+          "max": 2.3682912220213126e-7,
+          "rms": 1.326053073502709e-8
+        },
+        "residualMaxStep": 2.1855036380635795e-7
+      },
+      "checks": {
+        "shape": true,
+        "discontinuity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/45",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.0010769515166919597,
+        "rms": 0.13527646666659435,
+        "peak": 0.19092470407485962,
+        "maxStep": 0.001374568761093542,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.92669138263973,
+        "thdDb": -105.59962021016815,
+        "harmonicPowerRatios": [
+          1,
+          6.837852176275119e-12,
+          4.526018731242447e-12,
+          3.277711062753721e-12,
+          2.2928453942698307e-12,
+          1.679591307108744e-12,
+          1.217937996232036e-12,
+          1.0006279414271385e-12
+        ],
+        "tuningCents": -0.00007622230295074398,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/69",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.0001976158410004203,
+        "rms": 0.13509984893724267,
+        "peak": 0.1910123974084854,
+        "maxStep": 0.005500592524185777,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -97.85264285751794,
+        "thdDb": -122.26452118723508,
+        "harmonicPowerRatios": [
+          1,
+          4.484429429536445e-13,
+          4.922561435227363e-14,
+          2.5960127127085785e-14,
+          1.2665949478977666e-14,
+          8.879640105547683e-15,
+          6.0293226699855996e-15,
+          4.695254564839032e-15
+        ],
+        "tuningCents": -0.00007030740842210448,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/93",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": 0.00014479158020108684,
+        "rms": 0.13606598470520137,
+        "peak": 0.1924179196357727,
+        "maxStep": 0.022152922116219997,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.8520771950109,
+        "thdDb": -125.83308374097406,
+        "harmonicPowerRatios": [
+          1,
+          1.4404566554549317e-13,
+          4.1430758885102834e-14,
+          1.889133694497371e-14,
+          1.2016521421065073e-14,
+          7.634419443830288e-15,
+          5.666872233863862e-15,
+          4.244298930848137e-15
+        ],
+        "tuningCents": -0.00005961176391510637,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sine/105",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.00007333557793742784,
+        "rms": 0.13924608866438784,
+        "peak": 0.19694551825523376,
+        "maxStep": 0.04527272470295429,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.01425681717747,
+        "thdDb": -136.13152165906388,
+        "harmonicPowerRatios": [
+          1,
+          1.460264448489499e-14,
+          2.824794448499189e-15,
+          1.8231146914838794e-15,
+          3.715596953996895e-16,
+          3.716138896923178e-15,
+          1.4607123319810201e-16,
+          6.101567936527384e-16
+        ],
+        "tuningCents": 0.000018472059998126213,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true,
+        "tuning": true,
+        "sinePurity": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/45",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.000783945479109871,
+        "rms": 0.11053403684453324,
+        "peak": 0.19072753190994263,
+        "maxStep": 0.001232147216796875,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.88841811628163,
+        "thdDb": -18.329437511646788,
+        "harmonicPowerRatios": [
+          1,
+          7.156081530051694e-12,
+          0.012351719605819898,
+          3.97462552619111e-12,
+          0.0016023530016210904,
+          1.5877189901375719e-12,
+          0.0004177205026974866,
+          1.1994654210476415e-12
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/69",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.00015186149902168822,
+        "rms": 0.11031512515524329,
+        "peak": 0.19012542068958282,
+        "maxStep": 0.004928812384605408,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -97.44893626506786,
+        "thdDb": -18.27545175444981,
+        "harmonicPowerRatios": [
+          1,
+          2.92941009050531e-13,
+          0.012442794916292448,
+          9.002593221330444e-14,
+          0.0016379782266839856,
+          4.000262429844489e-14,
+          0.0004364262215064617,
+          1.1414544284476946e-14
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/93",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": 0.00011882557721243359,
+        "rms": 0.11122788505030762,
+        "peak": 0.1877179592847824,
+        "maxStep": 0.01971447467803955,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -87.91000223317981,
+        "thdDb": -17.726947761439117,
+        "harmonicPowerRatios": [
+          1,
+          1.48688213473419e-13,
+          0.013944004145094625,
+          1.4369269674839933e-14,
+          0.00220247593448719,
+          8.801422875623323e-15,
+          0.0005864558983351998,
+          2.4064214368141765e-15
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/triangle/105",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.00006127546507173065,
+        "rms": 0.11388602621945854,
+        "peak": 0.18463461101055145,
+        "maxStep": 0.039404869079589844,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.01996001434617,
+        "thdDb": -17.43223996381668,
+        "harmonicPowerRatios": [
+          1,
+          1.0700271314411131e-14,
+          0.017289505150595613,
+          5.645485217255949e-15,
+          0.0007470820347111425,
+          3.487112346008563e-15,
+          0.000024692595783055032,
+          7.029746633893623e-16
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/45",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.0014666402122713862,
+        "rms": 0.1619671549598878,
+        "peak": 0.23042556643486023,
+        "maxStep": 0.14929720759391785,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.56639149189294,
+        "thdDb": -6.305746635744134,
+        "harmonicPowerRatios": [
+          1,
+          9.09120130295204e-12,
+          0.11116558652737644,
+          6.879309511872992e-12,
+          0.04005885258053656,
+          4.967238542122929e-12,
+          0.020468241720374213,
+          2.4756631379204438e-12
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/69",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.00020137994205526866,
+        "rms": 0.16206408495455912,
+        "peak": 0.23045562207698822,
+        "maxStep": 0.1492920145392418,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -94.30649572269715,
+        "thdDb": -6.299491190913153,
+        "harmonicPowerRatios": [
+          1,
+          1.6837302442444477e-12,
+          0.11198517391727854,
+          1.5665785344010607e-12,
+          0.040949439262133,
+          1.4564443225752728e-12,
+          0.021384871219876086,
+          1.3773188468461277e-12
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/93",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": 0.00015617298880954422,
+        "rms": 0.1624442613536416,
+        "peak": 0.23044495284557343,
+        "maxStep": 0.14931363984942436,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -88.42446611347789,
+        "thdDb": -6.53136694152471,
+        "harmonicPowerRatios": [
+          1,
+          1.1870315078839404e-13,
+          0.12549613752109576,
+          2.7918813540858708e-14,
+          0.055061876467585945,
+          3.5483869447799502e-15,
+          0.028736369463745023,
+          1.8365433470940122e-14
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/square/105",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.00007306610245905176,
+        "rms": 0.16306201632535955,
+        "peak": 0.23029164969921112,
+        "maxStep": 0.14910761266946793,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -90.05489384934506,
+        "thdDb": -7.5551179491688885,
+        "harmonicPowerRatios": [
+          1,
+          6.535449825742452e-14,
+          0.15560561525399141,
+          3.7831363858729144e-14,
+          0.018677042801121365,
+          7.404166932284396e-15,
+          0.0012099359576211912,
+          7.912623361763315e-16
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/45",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.0003324237653988815,
+        "rms": 0.09401549527193251,
+        "peak": 0.2293773740530014,
+        "maxStep": 0.14894745498895645,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -88.51668508930274,
+        "thdDb": -1.8991559907806113,
+        "harmonicPowerRatios": [
+          1,
+          0.2500463179451233,
+          0.11116568827124274,
+          0.06255755468277968,
+          0.040058905151110206,
+          0.02783744124286182,
+          0.020468266824522015,
+          0.01568542793284583
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/69",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.00006443857165128186,
+        "rms": 0.09356087823060394,
+        "peak": 0.22619101405143738,
+        "maxStep": 0.14785093441605568,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -93.12796240704475,
+        "thdDb": -1.892636551954268,
+        "harmonicPowerRatios": [
+          1,
+          0.2507360741309109,
+          0.11198516948835337,
+          0.06342419230366389,
+          0.040949429882336824,
+          0.028742957394374477,
+          0.021384867011368977,
+          0.016611136171470815
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/93",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": 0.00009956698050705981,
+        "rms": 0.09375249657912788,
+        "peak": 0.21341948211193085,
+        "maxStep": 0.1434800587594509,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -88.66314677029806,
+        "thdDb": -2.026625439090168,
+        "harmonicPowerRatios": [
+          1,
+          0.2619056208285227,
+          0.12549613120626146,
+          0.0777889336014511,
+          0.05506187128201089,
+          0.04075396138477026,
+          0.02873636715244039,
+          0.017861547613162384
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/sawtooth/105",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.000030126889054571393,
+        "rms": 0.09350980430806759,
+        "peak": 0.1968768686056137,
+        "maxStep": 0.1376311555504799,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -89.49829150891472,
+        "thdDb": -2.6300798050138767,
+        "harmonicPowerRatios": [
+          1,
+          0.2970113882847473,
+          0.15560562385980395,
+          0.06819855538685786,
+          0.01867706504490409,
+          0.004593645265262835,
+          0.0012099358340220483,
+          0.0003357788349690901
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/45",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.001298686246494496,
+        "rms": 0.09919739665092063,
+        "peak": 0.19101150333881378,
+        "maxStep": 0.006572922226041555,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -92.41280143394869,
+        "thdDb": -2.775161476040238,
+        "harmonicPowerRatios": [
+          1,
+          0.2500454541179462,
+          0.11116545728654714,
+          0.06255731158329407,
+          0.04005876687462172,
+          0.027837281461273955,
+          0.020468175628345863,
+          0.01568513451883822
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/69",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.00015210611383563005,
+        "rms": 0.0999475611640418,
+        "peak": 0.19259385764598846,
+        "maxStep": 0.026578819379210472,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -93.17222864299512,
+        "thdDb": -2.7259367551948444,
+        "harmonicPowerRatios": [
+          1,
+          0.2507361702421342,
+          0.11198519013024177,
+          0.06342422985920552,
+          0.040949454661563287,
+          0.028742987702653232,
+          0.02138489528420142,
+          0.016611187468813363
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/93",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": 0.000063515852950502,
+        "rms": 0.10300617296150714,
+        "peak": 0.22658845782279968,
+        "maxStep": 0.11433267965912819,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -88.66860149990865,
+        "thdDb": -2.1637892755812382,
+        "harmonicPowerRatios": [
+          1,
+          0.26190564241930364,
+          0.12549615872061698,
+          0.07778896902695402,
+          0.05506189763811403,
+          0.04075397436043181,
+          0.028736402576807353,
+          0.0178615822873655
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "synth/harmonic/105",
+      "sampleRate": 96000,
+      "metrics": {
+        "dc": -0.0000475321874109369,
+        "rms": 0.10340629731009712,
+        "peak": 0.2192971110343933,
+        "maxStep": 0.14961577579379082,
+        "nonFinite": 0,
+        "clipped": 0,
+        "offHarmonicDb": -89.49806056097333,
+        "thdDb": -2.6310053764371455,
+        "harmonicPowerRatios": [
+          1,
+          0.29701123010041897,
+          0.15560548638918403,
+          0.06819844855660416,
+          0.018677022422191502,
+          0.004593632280311014,
+          0.0012099371577262718,
+          0.000335777783837958
+        ],
+        "tuningCents": null,
+        "tailRms": 0
+      },
+      "checks": {
+        "finite": true,
+        "headroom": true,
+        "audible": true,
+        "dc": true,
+        "released": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "repeatability/harmonic",
+      "sampleRate": 96000,
+      "metrics": {
+        "max": 0,
+        "rms": 0
+      },
+      "checks": {
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "repeatability/noise",
+      "sampleRate": 96000,
+      "metrics": {
+        "max": 0,
+        "rms": 0
+      },
+      "checks": {
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "voices/overlap-retrigger",
+      "sampleRate": 96000,
+      "metrics": {
+        "max": 2.9802322387695312e-8,
+        "rms": 2.8917708387922624e-9
+      },
+      "checks": {
+        "independent": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stereo/-1",
+      "sampleRate": 96000,
+      "metrics": {
+        "left": 0.15498591477296988,
+        "right": 0,
+        "difference": 0.2701323330402374
+      },
+      "checks": {
+        "routing": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stereo/0",
+      "sampleRate": 96000,
+      "metrics": {
+        "left": 0.10959159128134321,
+        "right": 0.10959159128134321,
+        "difference": 0
+      },
+      "checks": {
+        "routing": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stereo/1",
+      "sampleRate": 96000,
+      "metrics": {
+        "left": 9.490150223676137e-18,
+        "right": 0.15498591477296988,
+        "difference": 0.2701323330402374
+      },
+      "checks": {
+        "routing": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "effects/delay-tail",
+      "sampleRate": 96000,
+      "metrics": {
+        "dryTail": 0,
+        "wetTail": 0.006543663042289602,
+        "lateTail": 0.0000020498625643161836
+      },
+      "checks": {
+        "audibleTail": true,
+        "decaying": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/0.25",
+      "sampleRate": 96000,
+      "metrics": {
+        "none": {
+          "offHarmonicDb": -17.275144507422098,
+          "thdDb": -7.957343845316615,
+          "harmonicPowerRatios": [
+            1,
+            1.2670535837782382e-16,
+            0.10733095136927294,
+            1.7606581044576115e-16,
+            0.036081497791222814,
+            1.8952369349286033e-16,
+            0.016641212947176555,
+            1.4158429953507382e-16
+          ]
+        },
+        "four": {
+          "offHarmonicDb": -67.49939655309771,
+          "thdDb": -7.95735177351511,
+          "harmonicPowerRatios": [
+            1,
+            1.310787175382834e-16,
+            0.10733088560612392,
+            9.638753855694419e-17,
+            0.03608139482753075,
+            1.1235010771634678e-16,
+            0.01664108949069574,
+            6.672322860933606e-17
+          ]
+        },
+        "improvementDb": 50.22425204567561,
+        "offlineMedianMs": {
+          "none": 6.099999999627471,
+          "4x": 14.699999999720603
+        }
+      },
+      "checks": {
+        "aliasReduction": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/routes/0.25",
+      "sampleRate": 96000,
+      "metrics": {
+        "synth": {
+          "offHarmonicDb": -53.94494255205534,
+          "thdDb": -7.821838272680841,
+          "harmonicPowerRatios": [
+            1,
+            8.050880043864658e-17,
+            0.10904815612532157,
+            9.67017815954311e-17,
+            0.037821189559258714,
+            1.7299482256540226e-16,
+            0.018256925038281177,
+            1.008042193968103e-16
+          ]
+        },
+        "sample": {
+          "offHarmonicDb": -67.49949230584329,
+          "thdDb": -7.957351684325269,
+          "harmonicPowerRatios": [
+            1,
+            9.314741267140899e-17,
+            0.10733088754258087,
+            4.933587428807474e-17,
+            0.036081395634404406,
+            5.891417654470898e-17,
+            0.01664109003433655,
+            6.334543926015259e-17
+          ]
+        }
+      },
+      "checks": {
+        "synthAlias": true,
+        "sampleAlias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/0.8",
+      "sampleRate": 96000,
+      "metrics": {
+        "none": {
+          "offHarmonicDb": -14.104820525011368,
+          "thdDb": -7.689603741028522,
+          "harmonicPowerRatios": [
+            1,
+            1.0621639899763075e-11,
+            0.11070423163644463,
+            1.0678499963636247e-11,
+            0.03956249655283049,
+            1.0772777229288132e-11,
+            0.019964654150471103,
+            1.0903727458515571e-11
+          ]
+        },
+        "four": {
+          "offHarmonicDb": -35.154035127388084,
+          "thdDb": -7.6896121950725425,
+          "harmonicPowerRatios": [
+            1,
+            4.558158240088847e-16,
+            0.11070416184946055,
+            3.53565620692461e-16,
+            0.039562383207687145,
+            3.7456989048517096e-16,
+            0.01996450595083606,
+            3.5024056840849225e-16
+          ]
+        },
+        "improvementDb": 21.049214602376715,
+        "offlineMedianMs": {
+          "none": 6.7999999998137355,
+          "4x": 14
+        }
+      },
+      "checks": {
+        "aliasReduction": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "drive/routes/0.8",
+      "sampleRate": 96000,
+      "metrics": {
+        "synth": {
+          "offHarmonicDb": -32.04948542056789,
+          "thdDb": -7.674639721610169,
+          "harmonicPowerRatios": [
+            1,
+            1.5594654812384936e-15,
+            0.11089042736873624,
+            1.5951385379559371e-15,
+            0.03976218754690173,
+            1.1629862104938264e-15,
+            0.02016632715772329,
+            1.2678489906361734e-15
+          ]
+        },
+        "sample": {
+          "offHarmonicDb": -35.15403461315471,
+          "thdDb": -7.6896121340044745,
+          "harmonicPowerRatios": [
+            1,
+            4.0291591771707997e-16,
+            0.1107041649538695,
+            3.6811925540107793e-16,
+            0.03956238289358708,
+            4.4304855321932063e-16,
+            0.019964505554221256,
+            3.861845798109865e-16
+          ]
+        }
+      },
+      "checks": {
+        "synthAlias": true,
+        "sampleAlias": true
+      },
+      "status": "pass"
+    }
+  ],
+  "referenceComparison": {
+    "status": "pass",
+    "compared": 60,
+    "failures": []
+  },
+  "measuredAt": "2026-10-27T04:20:43.270Z",
+  "source": {
+    "baseCommit": "eb6d6bd973c8f791de10058a57950e348f622425",
+    "workingTreeDirty": true,
+    "runtimeAndFixtureSha256": "92014d34d5ef1ec7347e32176dd7b3173a2790fefb33fca0eab82e9ed3c38604"
+  },
+  "host": {
+    "os": "linux",
+    "release": "6.18.55",
+    "arch": "x64",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logicalCpus": 9,
+    "node": "v24.22.1"
+  },
+  "policy": {
+    "version": 1,
+    "method": {
+      "pcm": "Float32 before WAV quantization; signal peak is sample peak, not reconstructed true peak",
+      "spectrum": "16384-point four-term Blackman-Harris FFT; sum power within +/-5 bins of each expected in-band harmonic; residual excludes bins 0..5",
+      "offHarmonicDb": "10 log10(residual / harmonic energy). Alias proxy only for stationary periodic fixtures without modulation or noise; not a universal alias meter. Aliases landing inside harmonic masks are unobservable.",
+      "tuning": "Interpolated rising zero crossings on a steady sine; cents = 1200 log2(measured/expected)",
+      "envelope": "Constant unity input through actual scheduled gain vs independently evaluated piecewise linear reference at every sample",
+      "clicks": "Maximum step in envelope error residual; zero-decay sustain step is intentional legacy behavior",
+      "cost": "Offline wall milliseconds including context setup; median of 5 measured runs after warm-up; informational only, no real-time CPU claim",
+      "repeatability": "Maximum and RMS PCM difference between equivalent independently constructed offline graphs in the same browser process"
+    },
+    "gates": {
+      "envelopeMaxError": 0.00003,
+      "envelopeResidualStep": 0.00003,
+      "tuningCents": 0.3,
+      "sineOffHarmonicDb": -65,
+      "steadyDc": 0.002,
+      "determinismMaxError": 1e-7,
+      "releasedRms": 0.000002,
+      "stereoLeakRms": 1e-7,
+      "overlapMaxError": 2e-7,
+      "driveMinimumImprovementDb": 6,
+      "driveRouteOffHarmonicDb": -25
+    },
+    "deferred": [
+      {
+        "metric": "bright oscillator absolute alias floor",
+        "reason": "record baseline first; harmonic residual has masking blind spots and browser band-limiting differs"
+      },
+      {
+        "metric": "drive absolute alias floor",
+        "reason": "relative 4x-vs-none gate applies to specified high sine fixture only; compare native reconstruction filters when SYN-007 exists"
+      },
+      {
+        "metric": "CPU ceiling",
+        "reason": "virtualized offline timings cannot establish desktop/mobile callback deadlines or underruns"
+      },
+      {
+        "metric": "native parity",
+        "reason": "no native DSP backend yet"
+      },
+      {
+        "metric": "live device acoustic parity",
+        "reason": "live/offline share scheduler; hardware loopback capture is still required"
+      }
+    ],
+    "references": [
+      {
+        "url": "https://www.w3.org/TR/webaudio/",
+        "sections": [
+          "AudioParam",
+          "WaveShaperNode",
+          "OfflineAudioContext"
+        ],
+        "use": "automation ordering, oversampling latency and offline rendering contracts"
+      },
+      {
+        "url": "https://holometer.fnal.gov/GH_FFT.pdf",
+        "authors": "Heinzel, Ruediger, Schilling (2002)",
+        "use": "window leakage, spectral resolution and power-ratio methodology"
+      }
+    ],
+    "gateRationale": {
+      "envelope": "3e-5 absolute gain error allows floating-point and sub-sample scheduling variation; measured maximum at baseline is below 1e-6; no perceptual click-free claim for the intentional zero-decay step",
+      "tuning": "0.3 cents is a conservative numerical tuning regression budget, not a hearing threshold",
+      "signalLevels": "DC/peak/RMS and silence thresholds detect basic waveform/path regressions; they are not mastering or true-peak qualification",
+      "drive": "6 dB relative alias-proxy improvement is a conservative regression budget below the observed 21-50 dB on the specified fixtures; -25 dB on the production route fixtures guards gross loss of oversampling",
+      "referenceIdentity": "Stored steady spectra use 5% plus 1e-4 absolute amplitude tolerance and 10% plus 2e-4 absolute harmonic power-ratio tolerance; timings are excluded from comparisons"
+    }
+  }
+}

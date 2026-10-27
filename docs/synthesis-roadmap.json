@@ -12,7 +12,10 @@
     "sound_schema": "synth.js",
     "beat_schema": "schema.js",
     "current_audio": "audio.js",
-    "game_integration": "https://github.com/natanai/pre-programmed/issues/235"
+    "game_integration": "https://github.com/natanai/pre-programmed/issues/235",
+    "envelope_contract": "src/dsp/amplitude-envelope.js",
+    "audio_quality_policy": "tests/audio-quality/policy.json",
+    "audio_quality_reference": "tests/audio-quality/reference.json"
   },
   "platform_policy": {
     "priority_order": [
@@ -36,7 +39,8 @@
     {
       "id": "ARCH-001",
       "decision": "Separate platform-neutral synth graph and parameter/event semantics from the current Web Audio voice implementation.",
-      "status": "proposed"
+      "status": "accepted",
+      "implemented_scope": "versioned amplitude-envelope event plan and Web Audio adapter; remaining graph contracts unimplemented"
     },
     {
       "id": "ARCH-002",
@@ -46,7 +50,8 @@
     {
       "id": "ARCH-003",
       "decision": "Use shared test fixtures and reference audio analysis to establish host parity; bit-identical floating-point samples are not assumed across implementations.",
-      "status": "proposed"
+      "status": "accepted",
+      "implemented_scope": "host-neutral PCM metrics and tolerant acoustic fingerprints; current measured backend is Chromium offline Web Audio only"
     },
     {
       "id": "ARCH-004",
@@ -88,8 +93,7 @@
       "no_native_host",
       "no_general_wavetable_morphing",
       "no_granular_engine",
-      "limited_fx_routing",
-      "no_audio_quality_benchmarks"
+      "limited_fx_routing"
     ],
     "audit_files": [
       "synth.js",
@@ -189,19 +193,32 @@
       "id": "SYN-001",
       "phase": "quality",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "title": "Correct note-off and envelope state",
-      "depends_on": [],
+      "depends_on": [
+        "SYN-003"
+      ],
       "deliverables": [
         "envelope.js",
         "audio.js",
-        "tests/audioQuality.test.js"
+        "tests/audioQuality.test.js",
+        "src/dsp/amplitude-envelope.js",
+        "tests/dspContract.test.js"
       ],
       "acceptance": [
         "An early release begins from the actual attack/decay level, with no jump to sustain.",
         "Long notes retain intended ADSR durations.",
         "Synth preview and offline rendering use the same envelope contract."
-      ]
+      ],
+      "verification": {
+        "report": "benchmarks/web-audio-reference.json",
+        "contract": "docs/dsp-contract.schema.json",
+        "method": "18 constant-input rendered ADSR cases against an independent analytical oracle; overlapping and retriggered production voices at three sample rates",
+        "max_sample_error_gate": 3e-05,
+        "shared_runtime": "live transport, audition, conversion preview and WAV export all use scheduleNote -> scheduleAmplitudeEnvelope -> planAmplitudeEnvelope",
+        "compatibility": "preserves 2 ms attack floor, zero-decay sustain step and 0.000001 release floor; unchanged stored patch v1 and Beat v7/Song v8",
+        "scope": "current ADSR scheduling contract; physical live-device loopback and native DSP equivalence are later host qualification"
+      }
     },
     {
       "id": "SYN-002",
@@ -209,7 +226,9 @@
       "priority": "P0",
       "status": "in_progress",
       "title": "Oversampled nonlinear drive",
-      "depends_on": [],
+      "depends_on": [
+        "SYN-003"
+      ],
       "deliverables": [
         "audioEffects.js",
         "audio.js",
@@ -220,27 +239,65 @@
         "Distortion on synth and sampler uses 4x oversampled WaveShaper where supported.",
         "Spectrum benchmarks quantify aliasing at representative pitches and drive settings.",
         "Native DSP backend reproduces equivalent anti-aliasing behavior."
-      ]
+      ],
+      "verification": {
+        "report": "benchmarks/web-audio-reference.json",
+        "method": "bin-coherent high sine into identical drive curve at 0.25 and 0.8, none versus 4x, at 44.1/48/96 kHz",
+        "observed_alias_proxy_improvement_db": [
+          21.049,
+          50.225
+        ],
+        "performance": "offline setup-plus-render medians recorded after warm-up, not a real-time CPU guarantee",
+        "remaining": [
+          "native oversampling parity depends on SYN-007",
+          "absolute alias floor across more signals and filter implementations",
+          "real-time device CPU and latency qualification"
+        ]
+      }
     },
     {
       "id": "SYN-003",
       "phase": "quality",
       "priority": "P0",
-      "status": "planned",
+      "status": "done",
       "title": "Measured audio quality regression harness",
-      "depends_on": [
-        "SYN-001",
-        "SYN-002"
-      ],
+      "depends_on": [],
       "deliverables": [
         "tests/audio-quality/",
-        "scripts/audio-benchmark.mjs"
+        "scripts/audio-benchmark.mjs",
+        "tests/audio-quality/reference.json",
+        "benchmarks/web-audio-reference.json",
+        "tests/audioMetrics.test.js"
       ],
       "acceptance": [
         "Automated tests measure alias-to-signal energy, DC offset, peaks, attack/release discontinuities and RMS.",
         "Reference renders and threshold metadata are versioned; regressions fail CI.",
         "Test results distinguish browser/device variance from DSP defects."
-      ]
+      ],
+      "dependency_rationale": "Measurements are prerequisites for verifying SYN-001/002, not successors; no native backend is required to establish current browser baselines.",
+      "verification": {
+        "command": "npm run benchmark:audio",
+        "environment": "CHROME_BIN selects a Chromium executable; no runtime/npm dependencies",
+        "report": "benchmarks/web-audio-reference.json",
+        "method_and_thresholds": "tests/audio-quality/policy.json",
+        "acoustic_reference": "tests/audio-quality/reference.json",
+        "coverage": [
+          "44.1/48/96 kHz",
+          "sine/triangle/square/sawtooth/32-harmonic voices at MIDI 45/69/93/105",
+          "early/late/subsample release and zero decay",
+          "overlap/retrigger linearity",
+          "seeded noise and harmonic repeated renders",
+          "DC/peak/RMS/tuning/harmonic power",
+          "stereo panning and delay tails",
+          "4x drive alias reduction and offline wall time",
+          "synth and sampled drive routes"
+        ],
+        "limitations": [
+          "off-harmonic residual is a fixture-specific alias proxy with masked-harmonic blind spots",
+          "timings are offline wall times on a virtualized host, not real-time CPU qualification",
+          "native backend and hardware loopback parity remain unverified"
+        ]
+      }
     },
     {
       "id": "SYN-004",
@@ -284,11 +341,11 @@
       "id": "SYN-006",
       "phase": "architecture",
       "priority": "P0",
-      "status": "planned",
+      "status": "in_progress",
       "title": "Host-neutral synth graph and versioned DSP contracts",
       "depends_on": [
         "SYN-001",
-        "SYN-002"
+        "SYN-003"
       ],
       "deliverables": [
         "src/dsp/",
@@ -298,7 +355,27 @@
         "Patch interpretation requires no DOM, microphone, IndexedDB or window object.",
         "Parameter identifiers and units are stable and versioned, with explicit migration.",
         "The same canonical events and patch semantics feed standalone, game and optional web renderers."
-      ]
+      ],
+      "dependency_rationale": "Canonical envelope semantics and fixtures can proceed before native oversampling parity; requiring completed SYN-002 would implicitly block the native backend needed to finish it.",
+      "verification": {
+        "implemented": [
+          "stable amplitude-envelope parameter IDs, units, ranges, defaults and interpolation",
+          "pure JSON-serializable v1 execution plan with stable same-time ordering",
+          "current Web Audio adapter executing plan for all synth notes",
+          "browser packaging of nested DSP dependency graph"
+        ],
+        "tests": [
+          "tests/dspContract.test.js",
+          "tests/audio-quality/suite.js",
+          "tests/pages.test.js"
+        ],
+        "remaining": [
+          "oscillator/filter/modulation/routing graph contracts",
+          "native host implementation and matched-render fixtures",
+          "game parameter control parity"
+        ],
+        "compatibility": "no persistent schema changes and no game playback parity claim"
+      }
     },
     {
       "id": "SYN-007",
@@ -603,5 +680,10 @@
         "Publish measured limitations and regressions without claiming fidelity from mere feature existence."
       ]
     }
+  ],
+  "next_ready_tasks": [
+    "SYN-004",
+    "SYN-005",
+    "SYN-006"
   ]
 }

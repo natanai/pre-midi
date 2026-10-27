@@ -1,9 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFileSync,readdirSync} from "node:fs";
-import {versionPage,runtimeModules} from "../scripts/prepare-pages.mjs";
-test("the deployed page versions every transitive module and its stylesheet together",()=>{
- const root=new URL("../",import.meta.url),files=readdirSync(root).filter(file=>file.endsWith(".js"));
+import {readFileSync} from "node:fs";
+import {mkdtemp,mkdir,writeFile,readFile,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {pathToFileURL} from "node:url";
+import {SAMPLE_ASSETS} from "../samples.js";
+import {versionPage,runtimeModules,preparePages} from "../scripts/prepare-pages.mjs";
+test("the deployed page versions every transitive module and its stylesheet together",async()=>{
+ const root=new URL("../",import.meta.url),files=await runtimeModules(root);
  const html=versionPage(readFileSync(new URL("index.html",root),"utf8"),files,"abcd1234abcd1234");
  const map=JSON.parse(html.match(/id="premidi-modules">(.*?)<\/script>/)[1]).imports;
  assert.match(html,/src="\.\/studio\.js\?build=abcd1234abcd"/);
@@ -41,4 +46,24 @@ test("deployment stages runtime files instead of the repository checkout",()=>{
  assert.ok(build.includes("THIRD_PARTY_NOTICES.md"));
  assert.ok(build.includes("SAMPLE_ASSETS"));
  assert.ok(build.includes("await rm(output,"));
+});
+
+test("Pages stages nested DSP modules and both stylesheets without development files",async()=>{
+ const dir=await mkdtemp(join(tmpdir(),"premidi-build-")),root=pathToFileURL(dir+"/");
+ try{
+  await mkdir(new URL("src/dsp/",root),{recursive:true});
+  await mkdir(new URL("samples/",root));
+  const files={"studio.js":'import {value} from "./src/dsp/value.js";',
+   "src/dsp/value.js":'export const value=1;',"style.css":"body{}","studioAlignment.css":".row{}",
+   "THIRD_PARTY_NOTICES.md":"notices","index.html":'<head></head><script type="module" src="./studio.js"></script>'};
+  for(const [file,content] of Object.entries(files))await writeFile(new URL(file,root),content);
+  for(const asset of SAMPLE_ASSETS)await writeFile(new URL("samples/"+asset.id+(asset.mime==="audio/ogg"?".ogg":".wav"),root),"fixture");
+  await preparePages(root,"abcdef123456");
+  assert.equal(await readFile(new URL("dist/src/dsp/value.js",root),"utf8"),files["src/dsp/value.js"]);
+  assert.equal(await readFile(new URL("dist/studioAlignment.css",root),"utf8"),files["studioAlignment.css"]);
+  const html=await readFile(new URL("dist/index.html",root),"utf8");
+  assert.ok(html.includes('./src/dsp/value.js?build=abcdef123456'));
+  await writeFile(new URL("src/dsp/value.js",root),'import "../../../outside.js";');
+  await assert.rejects(runtimeModules(root),/Unsafe module dependency/);
+ }finally{await rm(dir,{recursive:true,force:true});}
 });

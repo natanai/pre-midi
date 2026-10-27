@@ -18,5 +18,14 @@ jobs:
         run: node scripts/fetch-samples.mjs
       - name: Stage minimal Pages build
         run: node scripts/prepare-pages.mjs
-      - name: Check actual desktop and mobile layout in Chrome
-        run: node tests/layout.browser.mjs
+      - name: Measure actual offline audio against versioned reference fixtures
+        run: npm run benchmark:audio
+      - name: Upload audio qualification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audio-quality
+          path: benchmarks/audio-quality.latest.json
+          if-no-files-found: error
+      - name: Check shipped desktop and mobile studio in Chrome
+        run: PREMIDI_APP_ROOT=dist node tests/layout.browser.mjs

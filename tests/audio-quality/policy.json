@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "method": {
+    "pcm": "Float32 before WAV quantization; signal peak is sample peak, not reconstructed true peak",
+    "spectrum": "16384-point four-term Blackman-Harris FFT; sum power within +/-5 bins of each expected in-band harmonic; residual excludes bins 0..5",
+    "offHarmonicDb": "10 log10(residual / harmonic energy). Alias proxy only for stationary periodic fixtures without modulation or noise; not a universal alias meter. Aliases landing inside harmonic masks are unobservable.",
+    "tuning": "Interpolated rising zero crossings on a steady sine; cents = 1200 log2(measured/expected)",
+    "envelope": "Constant unity input through actual scheduled gain vs independently evaluated piecewise linear reference at every sample",
+    "clicks": "Maximum step in envelope error residual; zero-decay sustain step is intentional legacy behavior",
+    "cost": "Offline wall milliseconds including context setup; median of 5 measured runs after warm-up; informational only, no real-time CPU claim",
+    "repeatability": "Maximum and RMS PCM difference between equivalent independently constructed offline graphs in the same browser process"
+  },
+  "gates": {
+    "envelopeMaxError": 3e-05,
+    "envelopeResidualStep": 3e-05,
+    "tuningCents": 0.3,
+    "sineOffHarmonicDb": -65,
+    "steadyDc": 0.002,
+    "determinismMaxError": 1e-07,
+    "releasedRms": 2e-06,
+    "stereoLeakRms": 1e-07,
+    "overlapMaxError": 2e-07,
+    "driveMinimumImprovementDb": 6,
+    "driveRouteOffHarmonicDb": -25
+  },
+  "deferred": [
+    {
+      "metric": "bright oscillator absolute alias floor",
+      "reason": "record baseline first; harmonic residual has masking blind spots and browser band-limiting differs"
+    },
+    {
+      "metric": "drive absolute alias floor",
+      "reason": "relative 4x-vs-none gate applies to specified high sine fixture only; compare native reconstruction filters when SYN-007 exists"
+    },
+    {
+      "metric": "CPU ceiling",
+      "reason": "virtualized offline timings cannot establish desktop/mobile callback deadlines or underruns"
+    },
+    {
+      "metric": "native parity",
+      "reason": "no native DSP backend yet"
+    },
+    {
+      "metric": "live device acoustic parity",
+      "reason": "live/offline share scheduler; hardware loopback capture is still required"
+    }
+  ],
+  "references": [
+    {
+      "url": "https://www.w3.org/TR/webaudio/",
+      "sections": [
+        "AudioParam",
+        "WaveShaperNode",
+        "OfflineAudioContext"
+      ],
+      "use": "automation ordering, oversampling latency and offline rendering contracts"
+    },
+    {
+      "url": "https://holometer.fnal.gov/GH_FFT.pdf",
+      "authors": "Heinzel, Ruediger, Schilling (2002)",
+      "use": "window leakage, spectral resolution and power-ratio methodology"
+    }
+  ],
+  "gateRationale": {
+    "envelope": "3e-5 absolute gain error allows floating-point and sub-sample scheduling variation; measured maximum at baseline is below 1e-6; no perceptual click-free claim for the intentional zero-decay step",
+    "tuning": "0.3 cents is a conservative numerical tuning regression budget, not a hearing threshold",
+    "signalLevels": "DC/peak/RMS and silence thresholds detect basic waveform/path regressions; they are not mastering or true-peak qualification",
+    "drive": "6 dB relative alias-proxy improvement is a conservative regression budget below the observed 21-50 dB on the specified fixtures; -25 dB on the production route fixtures guards gross loss of oversampling",
+    "referenceIdentity": "Stored steady spectra use 5% plus 1e-4 absolute amplitude tolerance and 10% plus 2e-4 absolute harmonic power-ratio tolerance; timings are excluded from comparisons"
+  }
+}
