@@ -6,12 +6,14 @@
 #include <cstdint>
 #include "waves.hpp"
 #include "filter.hpp"
+#include "modulation.hpp"
 namespace premidi {
 constexpr double pi=3.14159265358979323846;
 struct Event {std::uint32_t kind;double time,value;};
 struct Oscillator {double frequency=440,level=0,detune=0;std::uint32_t wave=0,count=0;std::array<double,32> harmonics{};std::array<double,600> curve{};};
 struct Plan {
  double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7;
+ std::uint32_t version=1,routeCount=0;double off=1,pitch=60,velocity=1;std::array<Route,16> routes{};
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
  std::uint32_t eventCount=0;std::array<Event,6> events{};
 };
@@ -19,7 +21,7 @@ struct Plan {
 // caller-owned output span: no heap allocation, locks, file/device I/O or UI.
 class Voice {
  Plan plan;double rate;std::uint64_t frame=0;std::array<double,2> phases{};
- Biquad filter;double left,right;std::array<const WaveBank*,2> banks;
+ Biquad filter;Modulation modulation;bool movingCutoff=false;double left,right;std::array<const WaveBank*,2> banks;
  float envelope(double t) const noexcept {
   if(t<plan.events[0].time)return 0;
   double value=plan.events[0].value;
@@ -41,22 +43,27 @@ class Voice {
   return static_cast<float>(osc.curve[index]+(osc.curve[next]-osc.curve[index])*(position-index));
  }
 public:
- Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr}) noexcept:plan(input),rate(sampleRate),banks(waveBanks){
+ Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr}) noexcept:plan(input),rate(sampleRate),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity),banks(waveBanks){
+  for(unsigned i=0;i<plan.routeCount;i++)if(plan.routes[i].target==4)movingCutoff=true;
   filter.configure(plan.filterType,plan.cutoff,plan.q,rate);
   left=std::cos((plan.pan+1)*pi/4);right=std::sin((plan.pan+1)*pi/4);
  }
  void process(float* interleavedStereo,std::size_t frames) noexcept {
   for(std::size_t i=0;i<frames;i++,frame++){
-   const double t=static_cast<double>(frame)/rate;float mix=0;
+   const double t=static_cast<double>(frame)/rate;float mix=0;const auto offsets=modulation.next(t);
    if(t>=plan.start&&t<plan.sourceEnd){
     for(std::size_t j=0;j<2;j++){
      const auto& osc=plan.oscillators[j];
-     const double frequency=osc.frequency*std::pow(2.,cents(osc,t-plan.start)/1200.);
-     const float wave=osc.wave==0?static_cast<float>(std::sin(phases[j])):banks[j]->sample(phases[j],frequency);
-     mix+=wave*static_cast<float>(osc.level);
-     phases[j]=osc.wave?banks[j]->advance(phases[j],frequency):std::fmod(phases[j]+2*pi*frequency/rate,2*pi);
+     const float detune=cents(osc,t-plan.start)+std::clamp(offsets[2*j],-2400.f,2400.f);
+     const double frequency=std::min(rate/2,osc.frequency*std::pow(2.,detune/1200.));
+     const bool banked=osc.wave||plan.version==2;
+     const float wave=!banked?static_cast<float>(std::sin(phases[j])):banks[j]->sample(phases[j],frequency);
+     mix+=wave*std::clamp(static_cast<float>(osc.level)+offsets[2*j+1],0.f,1.f);
+     phases[j]=banked?banks[j]->advance(phases[j],frequency):std::fmod(phases[j]+2*pi*frequency/rate,2*pi);
     }
    }
+   if(movingCutoff)filter.configure(plan.filterType,plan.cutoff*std::pow(2.,std::clamp(offsets[4],-8.f,8.f)),plan.q,rate);
+   if(plan.routeCount){const double pan=std::clamp(static_cast<float>(plan.pan)+std::clamp(offsets[5],-2.f,2.f),-1.f,1.f);left=std::cos((pan+1)*pi/4);right=std::sin((pan+1)*pi/4);}
    const float filtered=filter.process(mix);
    const float sample=t>=plan.graphEnd?0:static_cast<float>(filtered)*envelope(t);
    interleavedStereo[2*i]=static_cast<float>(sample*left);interleavedStereo[2*i+1]=static_cast<float>(sample*right);

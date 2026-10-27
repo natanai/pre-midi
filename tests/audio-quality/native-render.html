@@ -1,5 +1,6 @@
 <!doctype html><meta charset="utf-8"><title>Native DSP parity</title><pre id="status">running</pre>
 <script type="module">
+import {modulationFixtures} from "./modulation-fixtures.js";
 import {planSynthVoice} from "../../src/dsp/synth-voice.js";
 import {scheduleSynthPlan} from "../../audio.js";
 import {cleanPatch} from "./fixtures.js";
@@ -43,11 +44,22 @@ try{
    add("extended/"+sampleRate+"/"+id,{error,relativeRms,nativeSpectrum:n,browserSpectrum:b,stats},{finite:stats.nonFinite===0,audible:stats.rms>.00001,maxError:error.max<.0001,rmsError:error.rms<.00002,level:relativeRms<.001,spectrum:spectral,alias:n.offHarmonicDb< -65});
   }
  }
+ for(const sampleRate of [44100,48000,96000]){
+  const fixtures=[...modulationFixtures(),...["evolving-glass","breath-lead","touch-keys"].map(id=>({id:"preset/"+id,patch:makePatch(id),pitch:60,velocity:.8}))];
+  for(const fixture of fixtures){
+   const plan=planSynthVoice({patch:fixture.patch,volume:.3},{pitch:fixture.pitch,velocity:fixture.velocity,...fixture.expression},fixture.start??0,.2),frames=Math.ceil(.6*sampleRate);
+   const response=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate,frames})});if(!response.ok)throw Error(fixture.id+": "+await response.text());
+   const native=new Float32Array(await response.arrayBuffer()),context=new OfflineAudioContext(2,frames,sampleRate);scheduleSynthPlan(context,context.destination,plan);const browser=await context.startRendering();
+   const errors=[0,1].map(channel=>difference(Float32Array.from({length:frames},(_,i)=>native[2*i+channel]),browser.getChannelData(channel)));
+   const stats=signalStats(native),max=Math.max(...errors.map(error=>error.max)),rms=Math.max(...errors.map(error=>error.rms));
+   add("v2/"+sampleRate+"/"+fixture.id,{max,rms,stats},{finite:stats.nonFinite===0,maxError:max<.0001,rmsError:rms<.00002,headroom:stats.peak<1});
+  }
+ }
  const unsupported=cleanPatch();unsupported.noise=.1;const plan=planSynthVoice({patch:unsupported,volume:1},{pitch:69,velocity:1},0,.2);
  const rejected=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate:48000,frames:24000})});
  add("unsupported-noise",{status:rejected.status},{explicitRejection:rejected.status===422});
  report={schemaVersion:1,backend:"native-cpp-vs-web-audio",environment:{userAgent:navigator.userAgent},
-  policy:{maxPcmError:.0001,maxRmsError:.00002,initialRmsTarget:.00001,toleranceRationale:"The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",method:"same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",scope:"all five existing oscillator shapes, four static filters, pitch, ADSR and pan",limits:["Not full native patch support","Not a device performance or aliasing qualification","Fractional-sample note onsets not yet qualified"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
+  policy:{maxPcmError:.0001,maxRmsError:.00002,initialRmsTarget:.00001,toleranceRationale:"The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",method:"same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",scope:"all five existing oscillator shapes, four filters, pitch/ADSR/pan and canonical v2 modulation",limits:["Not full native patch support: noise/drive/delay/legacy motion reject","Not a device performance or aliasing qualification","Fractional-sample note onsets not yet qualified"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
 }catch(error){report={error:String(error.stack||error)};}
 document.getElementById("status").textContent=JSON.stringify(report.summary||report);
 await fetch("/__audio_benchmark",{method:"POST",body:JSON.stringify(report)});

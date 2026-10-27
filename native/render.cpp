@@ -36,21 +36,39 @@ int main(int argc,char** argv){
      }
     }
    }
-   std::cerr<<"PASS: 400 waveform/filter/rate/extreme profiles, 5 block sizes, finite bounded PCM and no C++ allocations in process\n";return 0;
+   for(const unsigned rate:{44100u,48000u,96000u}){
+    premidi::Plan plan;plan.version=2;plan.routeCount=16;plan.start=.002;plan.off=.015;plan.sourceEnd=.04;plan.graphEnd=.05;plan.oscillators[0].level=.5;plan.oscillators[1].wave=1;plan.oscillators[1].level=0;
+    plan.eventCount=2;plan.events[0]={0,.002,.1};plan.events[1]={1,.04,0};
+    for(unsigned i=0;i<16;i++){auto& r=plan.routes[i];r.target=i%6;r.kind=i%4;r.bipolar=i%2;r.depth=r.target%2?.5:10;r.smoothing=i%2?.01:0;r.envelope={.01,.01,.4,.01};if(r.target==4)r.depth=.5;}
+    premidi::WaveBank sine(0,plan.oscillators[0].harmonics,rate),triangle(1,plan.oscillators[1].harmonics,rate);
+    std::array<float,8192> first{},second{};premidi::Voice reference(plan,rate,{&sine,&triangle});auto before=allocations;reference.process(first.data(),4096);require(before==allocations,"v2 reference allocated");
+    for(const std::size_t block:{1,17,64,128,511}){
+     premidi::Voice voice(plan,rate,{&sine,&triangle});before=allocations;
+     for(std::size_t at=0;at<4096;at+=block)voice.process(second.data()+2*at,std::min<std::size_t>(block,4096-at));
+     require(before==allocations&&first==second,"v2 allocation or block invariance failed");for(float v:second)require(std::isfinite(v)&&std::abs(v)<16,"Unstable v2 PCM");
+    }
+   }
+   std::cerr<<"PASS: 400 waveform/filter/rate/extreme and 3 maximum-route v2 profiles, 5 block sizes, finite bounded PCM and no C++ allocations in process\n";return 0;
   }
 #ifdef _WIN32
   _setmode(_fileno(stdin),_O_BINARY);_setmode(_fileno(stdout),_O_BINARY);
 #endif
-  require(u32()==0x324e4d50,"Unsupported prepared transport version");
+  require(u32()==0x334e4d50,"Unsupported prepared transport version");
   const auto rate=u32(),frames=u32();require(rate>=8000&&rate<=192000&&frames>0&&frames<=rate*12,"Invalid render size");
-  premidi::Plan plan;plan.start=f64();plan.duration=f64();plan.sourceEnd=f64();plan.graphEnd=f64();plan.pan=f64();plan.cutoff=f64();plan.q=f64();plan.filterType=u32();require(plan.filterType<=3,"Invalid filter type");
+  premidi::Plan plan;plan.version=u32();require(plan.version==1||plan.version==2,"Unsupported execution contract");plan.start=f64();plan.duration=f64();plan.sourceEnd=f64();plan.graphEnd=f64();plan.pan=f64();plan.cutoff=f64();plan.q=f64();plan.filterType=u32();require(plan.filterType<=3,"Invalid filter type");
   require(plan.start>=0&&plan.duration>0&&plan.sourceEnd>plan.start&&plan.graphEnd>=plan.sourceEnd&&std::abs(plan.pan)<=1&&plan.cutoff>=50&&plan.cutoff<=14000&&plan.q>=.1&&plan.q<=16,"Invalid prepared voice");
   for(auto& osc:plan.oscillators){osc.frequency=f64();osc.level=f64();osc.detune=f64();osc.wave=u32();require(osc.wave<=4,"Invalid waveform");for(auto& h:osc.harmonics){h=f64();require(h>=0&&h<=1,"Invalid harmonic recipe");}osc.count=u32();require(osc.count<=600&&osc.frequency>0&&osc.frequency<=18000&&osc.level>=0&&osc.level<=1&&std::abs(osc.detune)<=100,"Invalid oscillator");for(std::uint32_t i=0;i<osc.count;i++){osc.curve[i]=f64();require(std::abs(osc.curve[i])<=2500,"Pitch curve out of range");}}
+  plan.off=f64();plan.pitch=f64();plan.velocity=f64();plan.routeCount=u32();require(plan.off>plan.start&&plan.off<=plan.sourceEnd&&plan.pitch>=0&&plan.pitch<=127&&plan.velocity>=0&&plan.velocity<=1&&plan.routeCount<=16&&(plan.version==2||plan.routeCount==0),"Invalid modulation bounds");
+  for(unsigned i=0;i<plan.routeCount;i++){
+   auto& r=plan.routes[i];r.target=u32();r.kind=u32();r.bipolar=u32();r.depth=f64();r.smoothing=f64();r.rate=f64();r.root=f64();r.span=f64();for(auto& v:r.envelope)v=f64();
+   const double limit=r.target==4?8:r.target==5?2:r.target%2?1:2400;
+   require(r.target<6&&r.kind<4&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.05&&r.rate<=20&&r.root>=0&&r.root<=127&&r.span>=1&&r.span<=127&&r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4,"Invalid prepared modulation route");
+  }
   plan.eventCount=u32();require(plan.eventCount>=4&&plan.eventCount<=6,"Invalid envelope count");
   double previous=-1;for(std::uint32_t i=0;i<plan.eventCount;i++){auto& event=plan.events[i];event.kind=u32();event.time=f64();event.value=f64();require(event.kind<=1&&event.time>=previous&&event.value>=0&&event.value<=1,"Invalid envelope event");previous=event.time;}
   require(std::cin.peek()==std::char_traits<char>::eof(),"Trailing prepared data");
   std::array<std::unique_ptr<premidi::WaveBank>,2> ownedBanks;std::array<const premidi::WaveBank*,2> banks{};
-  for(std::size_t i=0;i<2;i++)if(plan.oscillators[i].wave){ownedBanks[i]=std::make_unique<premidi::WaveBank>(plan.oscillators[i].wave,plan.oscillators[i].harmonics,rate);banks[i]=ownedBanks[i].get();}
+  for(std::size_t i=0;i<2;i++)if(plan.oscillators[i].wave||plan.version==2){ownedBanks[i]=std::make_unique<premidi::WaveBank>(plan.oscillators[i].wave,plan.oscillators[i].harmonics,rate);banks[i]=ownedBanks[i].get();}
   premidi::Voice voice(plan,rate,banks);std::vector<float> output(static_cast<std::size_t>(frames)*2);
   const auto before=allocations;for(std::size_t offset=0;offset<frames;offset+=128)voice.process(output.data()+2*offset,std::min<std::size_t>(128,frames-offset));
   require(allocations==before,"Audio processing allocated memory");

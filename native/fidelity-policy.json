@@ -1,10 +1,105 @@
 {
- "version":1,
- "sources":["https://www.w3.org/TR/2021/REC-webaudio-20210617/#oscillator-coefficients","https://www.w3.org/TR/2021/REC-webaudio-20210617/#filters-characteristics","https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/webaudio/periodic_wave_handler.cc"],
- "implementation":"Original C++ sine-series/IFFT bank and biquad implementation; no browser code runs in the native process",
- "waveforms":{"shapes":["sine","triangle","square","sawtooth","harmonic"],"harmonics":"32 editable sine coefficients, index zero means fundamental; all-zero recipe stays silent","normalization":"Fixed peak of the complete sampled periodic recipe, independent of playing pitch; never normalize each band separately","antialias":"Three progressively truncated harmonic tables per octave, interpolated by instantaneous fundamental; no naive discontinuous square/saw sampling","compatibility":"Chromium-compatible bank sizes: 2048 at <=24kHz, 4096 at <=88.2kHz, 16384 above; these are implementation choices, not Web Audio normative requirements","preparation":"FFT and vectors allocated outside process(); immutable banks may be shared by future device hosts","limitations":["Other browser engines and cross-architecture FFT differences unqualified","Table-bank preparation/cache memory is not a device CPU or memory qualification","No oversampling claim"]},
- "filters":{"types":["lowpass","highpass","bandpass","notch"],"q":"Legacy low/highpass use dB; bandpass/notch use linear Q","denormals":"Biquad state below 1e-30 flushed to zero","cutoff":"Clamped to sample-rate Nyquist"},
- "gates":{"legacySine":{"maxPcm":0.0001,"rmsPcm":0.00002},"newWaveFilter":{"maxPcm":0.0001,"rmsPcm":0.00002,"relativeRms":0.001,"harmonicPowerAbsolute":0.00001,"harmonicPowerRelative":0.01,"offHarmonicDb":-65},"blockSizes":[1,17,64,128,511],"sampleRates":[44100,48000,96000]},
- "unsupported":["noise","drive","delay","legacy LFOs","filter sweep","v2 modulation"],
- "scope":"Offline PCM identity, bounded state and block invariance only; no hardware output or human listening findings"
+  "version": 1,
+  "sources": [
+    "https://www.w3.org/TR/2021/REC-webaudio-20210617/#oscillator-coefficients",
+    "https://www.w3.org/TR/2021/REC-webaudio-20210617/#filters-characteristics",
+    "https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/webaudio/periodic_wave_handler.cc"
+  ],
+  "implementation": "Original C++ sine-series/IFFT bank and biquad implementation; no browser code runs in the native process",
+  "waveforms": {
+    "shapes": [
+      "sine",
+      "triangle",
+      "square",
+      "sawtooth",
+      "harmonic"
+    ],
+    "harmonics": "32 editable sine coefficients, index zero means fundamental; all-zero recipe stays silent",
+    "normalization": "Fixed peak of the complete sampled periodic recipe, independent of playing pitch; never normalize each band separately",
+    "antialias": "Three progressively truncated harmonic tables per octave, interpolated by instantaneous fundamental; no naive discontinuous square/saw sampling",
+    "compatibility": "Chromium-compatible bank sizes: 2048 at <=24kHz, 4096 at <=88.2kHz, 16384 above; these are implementation choices, not Web Audio normative requirements",
+    "preparation": "FFT and vectors allocated outside process(); immutable banks may be shared by future device hosts",
+    "limitations": [
+      "Other browser engines and cross-architecture FFT differences unqualified",
+      "Table-bank preparation/cache memory is not a device CPU or memory qualification",
+      "No oversampling claim"
+    ]
+  },
+  "filters": {
+    "types": [
+      "lowpass",
+      "highpass",
+      "bandpass",
+      "notch"
+    ],
+    "q": "Legacy low/highpass use dB; bandpass/notch use linear Q",
+    "denormals": "Direct-form I output history below 1e-30 flushed to zero",
+    "cutoff": "Clamped to sample-rate Nyquist"
+  },
+  "gates": {
+    "legacySine": {
+      "maxPcm": 0.0001,
+      "rmsPcm": 2e-05
+    },
+    "newWaveFilter": {
+      "maxPcm": 0.0001,
+      "rmsPcm": 2e-05,
+      "relativeRms": 0.001,
+      "harmonicPowerAbsolute": 1e-05,
+      "harmonicPowerRelative": 0.01,
+      "offHarmonicDb": -65
+    },
+    "blockSizes": [
+      1,
+      17,
+      64,
+      128,
+      511
+    ],
+    "sampleRates": [
+      44100,
+      48000,
+      96000
+    ],
+    "nativeSelfTest": "400 waveform/filter/rate/extreme profiles plus three 16-route v2 profiles across five block sizes"
+  },
+  "unsupported": [
+    "noise",
+    "drive",
+    "delay",
+    "legacy LFOs",
+    "filter sweep"
+  ],
+  "scope": "Offline PCM identity, bounded state and block invariance only; no hardware output or human listening findings",
+  "modulation": {
+    "contract": "Execution plan v2, modulation block v1",
+    "sources": [
+      "sine LFO",
+      "independent ADSR",
+      "velocity",
+      "key tracking"
+    ],
+    "targets": "Same six IDs in src/dsp/modulation.js",
+    "routes": 16,
+    "processing": "One-pole smoothing per route, stable route-ID sum, bounded offset then base addition/clamping; final oscillator frequency limited to Nyquist",
+    "fixtures": "tests/audio-quality/modulation-fixtures.js",
+    "controlTraceOracle": "tests/audio-quality/modulation-oracle.js",
+    "parity": "Original max 1e-4 / RMS 2e-5 PCM gates retained for all native v2 fixtures",
+    "corrections": "Dynamic biquad requires direct form I input/output state; transposed state caused transient errors when coefficients changed. Exact Nyquist lowpass/notch identity and highpass/bandpass zero prevent cancelled-pole ringing.",
+    "qualificationStatus": "DRAFT: offset 10 ms / 80-cent LFO at 44.1kHz still exceeds RMS 2e-5; do not merge or claim complete parity until corrected",
+    "remainingFailure": {
+      "fixture": "v2/44100/lfo-bipolar",
+      "onsetSeconds": 0.01,
+      "lfoDepthCents": 80,
+      "maxPcm": 7.014954462647438e-05,
+      "rmsPcm": 3.380568782438191e-05,
+      "maxGate": 0.0001,
+      "rmsGate": 2e-05,
+      "investigation": "Chromium OscillatorHandler ProcessARate consumes the parameter span prefix for starts inside a render quantum. Initializing frequency removes the 440 Hz default transient; the connected pitch-control prefix still causes a phase difference. Keep the native deterministic source math and strict gate; correction remains open."
+    }
+  },
+  "sanitizers": {
+    "worker": "ASan/UBSan self-test passed with ASAN_OPTIONS=detect_leaks=0",
+    "limitation": "LeakSanitizer cannot inspect /proc/task under this worker sandbox; no leak-sanitizer pass is claimed"
+  }
 }

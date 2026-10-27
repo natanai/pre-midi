@@ -533,6 +533,13 @@
             "1/8/32/64-voice callback, latency, underrun, start/stop/device-change tests"
           ],
           "status": "blocked; no simulated/offline result is a hardware measurement"
+        },
+        "native_modulation_candidate": {
+          "status": "blocked_not_qualified",
+          "implementation": "native/modulation.hpp",
+          "policy": "native/fidelity-policy.json",
+          "qualification": "benchmarks/native-modulation-candidate.json",
+          "blocker": "Non-aligned 10 ms onset / 80-cent LFO at 44.1kHz exceeds unchanged 2e-5 RMS gate. Do not merge or mark complete."
         }
       }
     },
