@@ -1,4 +1,4 @@
-name: Desktop releases
+name: Windows portable preview
 on:
   pull_request:
     branches: [main]
@@ -61,22 +61,13 @@ jobs:
         include:
           - os: windows-2022
             target: x86_64-pc-windows-msvc
-            bundles: nsis
-          - os: macos-15-intel
-            target: x86_64-apple-darwin
-            bundles: app,dmg
-          - os: macos-15
-            target: aarch64-apple-darwin
-            bundles: app,dmg
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-            bundles: appimage,deb
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       TAURI_UPDATER_PUBLIC_KEY: ${{ vars.TAURI_UPDATER_PUBLIC_KEY }}
+      PREMIDI_NATIVE_TEST_BACKEND: 'null'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -92,63 +83,31 @@ jobs:
         with:
           workspaces: desktop
           cache-on-failure: true
-      - name: Install Linux desktop dependencies
-        if: runner.os == 'Linux'
-        timeout-minutes: 6
-        run: bash scripts/install-linux-desktop.sh
       - run: npm ci
       - run: npm run check
-      - run: node scripts/desktop-config.mjs ${{ matrix.target }}
+      - run: node scripts/fetch-miniaudio.mjs
+      - run: node scripts/desktop-config.mjs ${{ matrix.target }} --windows-portable-only
       - name: Build exact desktop source
         working-directory: desktop
-        run: npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config ci-config.json -- --locked
+        run: npx tauri build --target ${{ matrix.target }} --no-bundle --config ci-config.json -- --locked
       - name: Rust update policy tests
         working-directory: desktop
         run: cargo test --release --locked --target ${{ matrix.target }}
-      - name: WebView smoke on Linux
-        if: runner.os == 'Linux'
-        run: |
-          PREMIDI_SMOKE_OUTPUT="$RUNNER_TEMP/premidi-smoke.json" WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 timeout 120 xvfb-run -a desktop/target/${{ matrix.target }}/release/pre-midi
-          cat "$RUNNER_TEMP/premidi-smoke.json"
-      - name: WebView smoke on macOS
-        if: runner.os == 'macOS'
-        run: |
-          PREMIDI_SMOKE_OUTPUT="$RUNNER_TEMP/premidi-smoke.json" desktop/target/${{ matrix.target }}/release/bundle/macos/pre-midi.app/Contents/MacOS/pre-midi &
-          PID=$!
-          for attempt in {1..120}; do
-            if [ -f "$RUNNER_TEMP/premidi-smoke.json" ]; then break; fi
-            sleep 1
-          done
-          test -f "$RUNNER_TEMP/premidi-smoke.json" || { kill "$PID"; exit 1; }
-          cat "$RUNNER_TEMP/premidi-smoke.json"
-          python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/premidi-smoke.json"))["passed"]'
-      - name: Windows installation and WebView smoke
+      - name: Verify Windows portable runtime dependencies
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $installer = Get-ChildItem desktop/target/${{ matrix.target }}/release/bundle/nsis/*.exe
-          $installDir = Join-Path $env:RUNNER_TEMP 'premidi-installed'
-          $proc = Start-Process $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
-          if ($proc.ExitCode -ne 0) { throw "Installer failed: $($proc.ExitCode)" }
-          $env:PREMIDI_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'premidi-smoke.json'
-          $env:PREMIDI_SMOKE_STORAGE_TOKEN = 'installed-profile'
-          $env:PREMIDI_SMOKE_EXPECT_FRESH = '1'
-          $app = Start-Process (Join-Path $installDir 'pre-midi.exe') -PassThru
-          if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Installed application smoke timed out' }
-          if ($app.ExitCode -ne 0) { throw "Smoke failed: $($app.ExitCode)" }
-          Get-Content $env:PREMIDI_SMOKE_OUTPUT
-          Remove-Item $env:PREMIDI_SMOKE_OUTPUT
-          $proc = Start-Process $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
-          if ($proc.ExitCode -ne 0) { throw 'Reinstall failed' }
-          $env:PREMIDI_SMOKE_EXPECT_RESTORE = '1'
-          Remove-Item Env:PREMIDI_SMOKE_EXPECT_FRESH
-          $app = Start-Process (Join-Path $installDir 'pre-midi.exe') -PassThru
-          if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Reinstall smoke timed out' }
-          if ($app.ExitCode -ne 0) { throw 'Reinstall data preservation failed' }
-          Get-Content $env:PREMIDI_SMOKE_OUTPUT
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsRoot = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $dumpbin = Get-ChildItem "$vsRoot\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          if (!$dumpbin) { throw 'Could not inspect Windows runtime dependencies' }
+          $imports = & $dumpbin.FullName /DEPENDENTS desktop/target/${{ matrix.target }}/release/pre-midi.exe
+          $imports
+          if ($LASTEXITCODE -ne 0) { throw 'Windows dependency inspection failed' }
+          if ($imports -match '(?i)(MSVCP|VCRUNTIME|CONCRT)[0-9_]*\.dll') { throw 'Portable executable requires an external Visual C++ runtime' }
       - name: Collect required artifacts and checksums
-        run: python scripts/package-desktop.py ${{ matrix.target }}
-      - name: Windows portable isolation, relocation, copy and failure recovery
+        run: python scripts/package-desktop.py ${{ matrix.target }} --windows-portable-only
+      - name: Windows portable upgrade, isolation, relocation, copy and failure recovery
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/test-windows-portable.ps1
@@ -187,8 +146,8 @@ jobs:
           pattern: desktop-*
           merge-multiple: true
           path: release
-      - name: Verify complete platform set
-        run: node scripts/publish-desktop.mjs
+      - name: Verify Windows portable preview only
+        run: node scripts/publish-desktop.mjs release --windows-portable-only
       - name: Publish complete prerelease
         env:
           GH_TOKEN: ${{ github.token }}
@@ -198,7 +157,7 @@ jobs:
           if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-draft.txt"; then
             test "$(cat "$RUNNER_TEMP/release-draft.txt")" = true || { echo 'Refusing to overwrite a published release'; exit 1; }
           else
-            gh release create "$RELEASE_TAG" --draft --prerelease --title "pre-midi ${RELEASE_TAG#v} desktop preview" --notes-file release/release-notes.md
+            gh release create "$RELEASE_TAG" --draft --prerelease --title "pre-midi ${RELEASE_TAG#v} Windows portable preview" --notes-file release/release-notes.md
           fi
           for file in release/*; do
             case "$file" in *artifacts-*.json|*release-notes.md) continue;; esac

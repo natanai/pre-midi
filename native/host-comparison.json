@@ -1,19 +1,24 @@
 {
   "reviewed_on": "2026-10-27",
   "decision": {
-    "status": "prototype_only",
+    "status": "desktop_vertical_slice",
     "dspCore": "Original framework-neutral C++17 block processor",
-    "deviceHost": "not selected",
-    "rationale": "Demonstrate the portable voice contract with a small compiler-only kernel before committing to a UI/device framework. Keep the device boundary and licensing decision separate from DSP fidelity.",
+    "deviceHost": "miniaudio 0.11.25",
+    "rationale": "A compact device-only layer around the existing framework-neutral C++ core. Tauri and the shared studio stay intact; production output uses WASAPI/CoreAudio/PulseAudio/ALSA. The null backend is explicit test infrastructure, never a production fallback.",
     "measuredCandidates": [
-      "standalone C++17 offline core"
+      "standalone C++17 offline core",
+      "miniaudio null-backend callbacks on Linux"
     ],
     "notMeasured": [
+      "physical Windows WASAPI output",
+      "physical macOS CoreAudio output",
+      "physical Linux PulseAudio/ALSA output",
       "JUCE device callback",
       "Rust/CPAL device callback",
-      "miniaudio device callback",
       "iOS/Android devices"
-    ]
+    ],
+    "pinnedRevision": "9634bedb5b5a2ca38c1ee7108a9358a4e233f14d",
+    "headerSha256": "ac7af4de748b7e26b777f37e01cee313a308a7296a3eb080e2906b320cc55c89"
   },
   "candidates": [
     {
@@ -131,11 +136,11 @@
       "Block-size invariance and unchanged C++ operator-new counter are executable assertions"
     ],
     "limitations": [
-      "Offline prototype; no device adapter or installable desktop/mobile app",
+      "The offline CLI remains a reference/comparison tool; desktop now also has an embedded miniaudio device host.",
       "Not all patch v1 capabilities are implemented",
       "No native oversampling or broad oscillator alias qualification",
-      "No native allocator/device underrun/thermal/suspend-resume qualification",
-      "Compiler build tested on Linux only",
+      "Native allocator and callback tests exist; physical driver underrun/thermal/suspend-resume qualification remains pending.",
+      "Desktop packaging/FFI is checked by Windows/macOS/Linux CI; no physical audio qualification is inferred.",
       "No claim that process-per-voice CLI IPC is suitable for real-time hosting; embed the block core instead",
       "Biquad denormals flushed below 1e-30; cross-architecture floating-point qualification pending"
     ],
@@ -146,9 +151,11 @@
     "note": "Lowpass/highpass Q is in dB under the current browser contract; do not reinterpret existing saved resonance as linear Q."
   },
   "nextExperiments": [
-    "Host this same block core in miniaudio and/or JUCE on real desktop/mobile devices",
-    "Compare latency/underruns/CPU under the same 32/64-voice fixtures",
-    "Evaluate a Rust core/CPAL prototype if its safety/tooling advantages justify the additional DSP port",
-    "Choose and pin a device framework only after those measurements"
+    "Qualify the real desktop device backends on named Windows 11/macOS/Linux hardware",
+    "Measure sustained 1/8/32/64-voice callback CPU, underruns and round-trip/output latency at 44.1/48/96 kHz",
+    "Qualify disconnect/reconnect, device switching and sleep/resume",
+    "Expand native noise, sweeps, drive/oversampling, delay, legacy movement and sample/recording parity incrementally",
+    "Add live editing/replanning beyond the current Play snapshot and optimize bounded seek preparation",
+    "Evaluate mobile miniaudio lifecycle separately under SYN-019"
   ]
 }

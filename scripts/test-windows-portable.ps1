@@ -63,6 +63,28 @@ Invoke-StudioSmoke (Join-Path $copied 'pre-midi.exe') 'portable-copied' 'portabl
 Invoke-StudioSmoke (Join-Path $copied 'pre-midi.exe') 'portable-copy-reopened' 'portable-b' -Restore
 Invoke-StudioSmoke (Join-Path $moved 'pre-midi.exe') 'portable-original-isolated' 'portable-a' -Restore
 
+# Qualify the documented portable upgrade: replace only application files after
+# the previous official preview has closed and released its local WebView profile.
+$previousZip = Join-Path $env:RUNNER_TEMP 'premidi-previous-portable.zip'
+Invoke-WebRequest 'https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.3/pre-midi-0.14.1-preview.3-windows-x86_64-portable.zip' -OutFile $previousZip
+if ((Get-FileHash $previousZip -Algorithm SHA256).Hash.ToLowerInvariant() -ne '3ae5fc8815bd4c0b1ad45f81801cf7116484c4d91cef26be70db490893f9efd3') {
+  throw 'Previous official portable release checksum mismatch'
+}
+$upgrade = Join-Path $env:RUNNER_TEMP 'premidi portable upgrade'
+Expand-Archive $previousZip $upgrade
+Invoke-StudioSmoke (Join-Path $upgrade 'pre-midi.exe') 'portable-previous' 'portable-upgrade' -Fresh
+$replacement = Join-Path $env:RUNNER_TEMP 'premidi portable replacement'
+Expand-Archive $zip.FullName $replacement
+foreach ($name in @('pre-midi.exe', 'portable.txt', 'README.txt')) {
+  Copy-Item (Join-Path $replacement $name) (Join-Path $upgrade $name) -Force
+}
+if (Get-Process -Name 'pre-midi' -ErrorAction SilentlyContinue) { throw 'Portable replacement unexpectedly launched the app' }
+Invoke-StudioSmoke (Join-Path $upgrade 'pre-midi.exe') 'portable-upgraded' 'portable-upgrade' -Restore
+foreach ($name in @('pre-midi.exe', 'portable.txt', 'README.txt')) {
+  Copy-Item (Join-Path $replacement $name) (Join-Path $upgrade $name) -Force
+}
+Invoke-StudioSmoke (Join-Path $upgrade 'pre-midi.exe') 'portable-replaced-again' 'portable-upgrade' -Restore
+
 # An unusable local data path must fail rather than silently use AppData.
 $blocked = Join-Path $env:RUNNER_TEMP 'premidi portable blocked'
 Expand-Archive $zip.FullName $blocked
@@ -76,5 +98,3 @@ if ($app.ExitCode -eq 0 -or $failure.passed -or $failure.error -notlike '*writab
   throw 'Unusable portable folder did not fail safely'
 }
 Write-Host (Get-Content $env:PREMIDI_SMOKE_OUTPUT -Raw)
-
-Invoke-StudioSmoke (Join-Path $env:RUNNER_TEMP 'premidi-installed/pre-midi.exe') 'installed-after-portable' 'installed-profile' -Restore -Portable $false

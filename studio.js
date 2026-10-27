@@ -4,7 +4,7 @@ import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, auditionChord, wav, primeSamples } from "./audio.js";
+import { play, audition, auditionChord, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
@@ -174,6 +174,7 @@ function setPlaybackButton(isPlaying,playingSong=!!(song&&songExpanded)){
  const control=$("play");
  control.textContent=isPlaying?"■ stop":"▶ play";
  control.setAttribute("aria-label",(isPlaying?"stop ":"play ")+(playingSong?"song":"beat"));
+ const pause=$("native-pause");if(pause){pause.disabled=!isPlaying;pause.textContent=playback?.paused?'resume':'pause';}
 }
 const voiceDialog=$("voice-dialog");
 function voiceStatus(label,error=false){
@@ -221,6 +222,7 @@ async function finalizeVocalTake(){
 }
 function stop() {
  playbackGeneration++;
+ if(window.__TAURI__)void cancelNativeTransport().catch(error=>console.warn('Native stop:',error));
  if(vocalTake&&!playback)void finalizeVocalTake();
  if (playback) playback.stop();
  playback = null;
@@ -237,6 +239,7 @@ function commitChange(before){
  history.push(before);
  if(history.length>100)history.shift();
  future=[];store();render();
+ if(playback?.backend==='native-cpp')message('restart playback to hear edits');
  return true;
 }
 function modify(change){
@@ -1067,6 +1070,7 @@ async function startTransport({onStart=null,recording=false,startStep=null}={}){
  pendingPlay = true;
  const playingSong=!!(song&&songExpanded),generation=++playbackGeneration;
  try {
+  if(recording&&nativeEnabled())throw Error('Song microphone recording requires Web Audio in this preview. Select Web Audio in Settings.');
   const session = await play(() => playingSong?song:beat, {
    onStart:metadata=>onStart?.(metadata),
    startStep:playingSong?(startStep??songUI?.getStartStep()??0):0,
@@ -1102,11 +1106,19 @@ async function startTransport({onStart=null,recording=false,startStep=null}={}){
   setPlaybackButton(true,playingSong);
  } catch (error) {
   if(vocalTake)void finalizeVocalTake();
-  message("Playback error: " + error.message, true);
+  if(generation===playbackGeneration)message("Playback error: " + error.message, true);
  }
  finally { pendingPlay = false; }
 }
 $("play").addEventListener("click",()=>void startTransport());
+window.addEventListener('premidi-audio-mode',()=>stop());
+window.addEventListener('premidi-native-error',event=>message(String(event.detail),true));
+window.addEventListener('premidi-native-pause',async()=>{
+ if(!playback?.pause)return;
+ const current=playback;
+ try{if(current.paused)await current.resume();else await current.pause();if(playback===current)setPlaybackButton(true);}
+ catch(error){message('Native audio: '+String(error),true);}
+});
 // Voice capture opens a separate dialog; permissions come after explicit Play + Record.
 $("song-record").addEventListener("click",()=>{
  if(!song||!songExpanded)return;
@@ -1133,6 +1145,7 @@ voiceDialog.addEventListener("cancel",event=>{
  }else cancelVoiceCountdown();
 });
 $("voice-start").addEventListener("click",async()=>{
+ if(nativeEnabled()){voiceStatus('Song recording uses Web Audio in this preview. Choose Web Audio in Settings.',true);return;}
  if(vocalTake){stop();return;}
  if(vocalRequest){cancelVoiceCountdown();voiceStatus("Count-in cancelled.");return;}
  if(vocalFinalizing||!song||!songExpanded)return;
@@ -1607,6 +1620,7 @@ songUI=installSongUI({
  getSelectedBeatId:()=>selectedBeatId,
  onSelectBeat:selectBeat,onChange:modifySong,
  onSeek:step=>{
+  if(playback?.seek)void playback.seek(step).catch(error=>message('Native seek: '+String(error),true));
   if(voiceDialog.open&&!vocalRequest&&!vocalTake)
    $("voice-start-bar").value=String(Math.floor(step/16)+1);
  },

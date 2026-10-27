@@ -4,10 +4,12 @@ from pathlib import Path
 root=Path(__file__).resolve().parent.parent
 version=json.loads((root/'package.json').read_text())['version']
 target=sys.argv[1]; build=root/'desktop/target'/target/'release'; bundle=build/'bundle'
+portable_only='--windows-portable-only' in sys.argv[2:]
 out=root/'release';out.mkdir(exist_ok=True)
 platform='windows' if 'windows' in target else 'darwin' if 'apple' in target else 'linux'
 arch='aarch64' if target.startswith('aarch64') else 'x86_64'
 artifacts=[]
+if portable_only and platform!='windows':raise RuntimeError('Portable preview requires a Windows target')
 def collect(pattern,kind,extension):
  matches=list(bundle.glob(pattern))
  if len(matches)!=1:raise RuntimeError(f'Expected exactly one {pattern}, got {matches}')
@@ -24,7 +26,8 @@ def collect(pattern,kind,extension):
  if len(data)<1_000_000:raise RuntimeError('Truncated desktop package')
  artifacts.append(dict(name=name,platform=platform,arch=arch,kind=kind,size=len(data),sha256=hashlib.sha256(data).hexdigest(),signature=signature))
 if platform=='windows':
- collect('nsis/*.exe','installer','exe')
+ if not portable_only:collect('nsis/*.exe','installer','exe')
+ if (build/'pre-midi.exe').stat().st_size<1_000_000:raise RuntimeError('Missing or truncated portable executable')
  name=f'pre-midi-{version}-windows-{arch}-portable.zip'
  with zipfile.ZipFile(out/name,'w',zipfile.ZIP_DEFLATED) as z:
   z.write(build/'pre-midi.exe','pre-midi.exe')

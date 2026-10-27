@@ -20,3 +20,5 @@ desktop/ci-config.json
 desktop/gen/
 
 __pycache__/
+native/vendor/miniaudio/miniaudio.h
+benchmarks/native-device.latest.json

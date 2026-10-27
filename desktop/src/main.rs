@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod updates;
 mod storage;
+mod audio;
 use tauri::{Emitter,Manager};
 use tauri_plugin_dialog::DialogExt;
 use std::sync::atomic::{AtomicBool,AtomicI32,Ordering};
@@ -9,7 +10,7 @@ use std::sync::atomic::{AtomicBool,AtomicI32,Ordering};
 fn desktop_info(app:tauri::AppHandle,storage:tauri::State<'_,storage::Storage>)->serde_json::Value{
  serde_json::json!({"version":app.package_info().version.to_string(),"channel":if app.package_info().version.pre.is_empty(){"stable"}else{"preview"},
  "updateSigningConfigured":!updates::KEY.is_empty(),"dataPath":storage.webview,"portable":storage.portable_root.is_some(),"portableRoot":storage.portable_root,
- "projectsPath":storage.projects,"exportsPath":storage.exports,"audioBackend":"web-audio","nativeRealtime":false,
+ "projectsPath":storage.projects,"exportsPath":storage.exports,"audioBackend":"native-cpp","nativeRealtime":true,
  "smokeRestore":std::env::var_os("PREMIDI_SMOKE_EXPECT_RESTORE").is_some(),"smokeFresh":std::env::var_os("PREMIDI_SMOKE_EXPECT_FRESH").is_some(),
  "smokeStorageToken":std::env::var("PREMIDI_SMOKE_STORAGE_TOKEN").unwrap_or_default(),
  "smokeWriteToken":std::env::var("PREMIDI_SMOKE_WRITE_TOKEN").ok()})
@@ -29,6 +30,7 @@ async fn save_file(app:tauri::AppHandle,name:String,bytes:Vec<u8>)->Result<bool,
 #[tauri::command]
 fn finish_close(app:tauri::AppHandle)->Result<(),String>{close_app(&app,0)}
 fn close_app(app:&tauri::AppHandle,code:i32)->Result<(),String>{
+ audio::shutdown(app);
  let lifecycle=app.state::<Lifecycle>();
  lifecycle.1.store(code,Ordering::SeqCst);
  lifecycle.0.store(true,Ordering::SeqCst);
@@ -53,11 +55,13 @@ async fn native_fixture()->Result<Vec<f32>,String>{
 fn smoke_result(app:tauri::AppHandle,result:serde_json::Value)->Result<(),String>{
  let output=std::env::var("PREMIDI_SMOKE_OUTPUT").map_err(|_|"Smoke mode is disabled")?;
  std::fs::write(output,serde_json::to_vec_pretty(&result).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
- close_app(&app,if result["passed"]==true{0}else{1})
+ if result["passed"]!=true{audio::shutdown(&app);app.exit(1);return Ok(());}
+ close_app(&app,0)
 }
 fn main(){
  tauri::Builder::default()
  .manage(Lifecycle::default()).manage(updates::Pending::default())
+ .manage(audio::Audio::default())
  .plugin(tauri_plugin_dialog::init())
  .plugin(tauri_plugin_updater::Builder::new().build())
  .setup(|app|{
@@ -106,6 +110,6 @@ fn main(){
   }
  })
  .invoke_handler(tauri::generate_handler![desktop_info,save_file,finish_close,native_fixture,smoke_result,
-  updates::check_updates,updates::download_update,updates::install_update])
+  audio::native_audio,updates::check_updates,updates::download_update,updates::install_update])
  .run(tauri::generate_context!()).expect("Could not launch pre-midi");
 }
