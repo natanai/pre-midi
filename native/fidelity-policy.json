@@ -86,8 +86,7 @@
     "controlTraceOracle": "tests/audio-quality/modulation-oracle.js",
     "parity": "Original max 1e-4 / RMS 2e-5 PCM gates retained for all native v2 fixtures",
     "corrections": "Dynamic biquad requires direct form I input/output state; transposed state caused transient errors when coefficients changed. Exact Nyquist lowpass/notch identity and highpass/bandpass zero prevent cancelled-pole ringing.",
-    "qualificationStatus": "DRAFT: offset 10 ms / 80-cent LFO at 44.1kHz still exceeds RMS 2e-5; do not merge or claim complete parity until corrected",
-    "remainingFailure": {
+    "historicalFailure": {
       "fixture": "v2/44100/lfo-bipolar",
       "onsetSeconds": 0.01,
       "lfoDepthCents": 80,
@@ -95,11 +94,14 @@
       "rmsPcm": 3.380568782438191e-05,
       "maxGate": 0.0001,
       "rmsGate": 2e-05,
-      "investigation": "Chromium OscillatorHandler ProcessARate consumes the parameter span prefix for starts inside a render quantum. Initializing frequency removes the 440 Hz default transient; the connected pitch-control prefix still causes a phase difference. Keep the native deterministic source math and strict gate; correction remains open."
-    }
+      "investigation": "Chromium OscillatorHandler ProcessARate consumes the parameter span prefix for starts inside a render quantum. Initializing frequency removes the 440 Hz default transient; the connected pitch-control prefix still causes a phase difference. Keep the native deterministic source math and strict gate; correction remains open.",
+      "resolution": "Browser carrier now silently pre-rolls from a render boundary with phase-compensated Fourier coefficients and fixed original normalization. Native v2 also advances fractional-sample initial phase instead of rounding it away. Original failing musical fixture and unchanged gates remain."
+    },
+    "qualification": "benchmarks/native-parity-reference.json and benchmarks/onset-reference.json; full CI required"
   },
   "sanitizers": {
     "worker": "ASan/UBSan self-test passed with ASAN_OPTIONS=detect_leaks=0",
     "limitation": "LeakSanitizer cannot inspect /proc/task under this worker sandbox; no leak-sanitizer pass is claimed"
-  }
+  },
+  "onsetInvestigation": "docs/native-onset-investigation.json"
 }

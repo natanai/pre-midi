@@ -69,8 +69,18 @@ int main(int argc,char** argv){
   require(std::cin.peek()==std::char_traits<char>::eof(),"Trailing prepared data");
   std::array<std::unique_ptr<premidi::WaveBank>,2> ownedBanks;std::array<const premidi::WaveBank*,2> banks{};
   for(std::size_t i=0;i<2;i++)if(plan.oscillators[i].wave||plan.version==2){ownedBanks[i]=std::make_unique<premidi::WaveBank>(plan.oscillators[i].wave,plan.oscillators[i].harmonics,rate);banks[i]=ownedBanks[i].get();}
-  premidi::Voice voice(plan,rate,banks);std::vector<float> output(static_cast<std::size_t>(frames)*2);
-  const auto before=allocations;for(std::size_t offset=0;offset<frames;offset+=128)voice.process(output.data()+2*offset,std::min<std::size_t>(128,frames-offset));
+  premidi::Voice voice(plan,rate,banks);std::size_t channels=2;
+#ifdef PREMIDI_PROBE
+  const bool probeMode=argc==2&&std::strcmp(argv[1],"--probe")==0;if(probeMode)channels=5;
+#endif
+  std::vector<float> output(static_cast<std::size_t>(frames)*channels);
+  const auto before=allocations;
+#ifdef PREMIDI_PROBE
+  if(probeMode){
+   for(unsigned i=0;i<frames;i++){float pcm[2];voice.process(pcm,1);const auto& p=voice.probe;output[5*i]=p.wave0;output[5*i+1]=p.cents0;output[5*i+2]=p.frequency0;output[5*i+3]=pcm[0];output[5*i+4]=pcm[1];}
+  }else
+#endif
+  for(std::size_t offset=0;offset<frames;offset+=128)voice.process(output.data()+2*offset,std::min<std::size_t>(128,frames-offset));
   require(allocations==before,"Audio processing allocated memory");
   for(float sample:output)require(std::isfinite(sample),"Nonfinite PCM");
   // Portable little-endian PCM serialization is a host operation, outside process.

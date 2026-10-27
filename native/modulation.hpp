@@ -10,7 +10,7 @@ struct Route {
 };
 class Modulation {
  std::array<Route,16> routes;std::array<double,16> state{},alpha{},phase{};
- unsigned count;double sampleRate,start,off,end,pitch,velocity;
+ bool started=false;unsigned count;double sampleRate,start,off,end,pitch,velocity;
  static double held(const Route& route,double time) noexcept {
   const auto& e=route.envelope;const double attack=std::max(.002,e[0]);
   return time<attack?time/attack:e[1]>0&&time<attack+e[1]?1-(1-e[2])*(time-attack)/e[1]:e[2];
@@ -22,6 +22,7 @@ public:
  }
  std::array<float,6> next(double time) noexcept {
   std::array<float,6> sums{};if(time<start||time>=end)return sums;
+  if(!started){for(unsigned i=0;i<count;i++)if(routes[i].kind==0)phase[i]=(time-start)*static_cast<float>(routes[i].rate)*2*3.14159265358979323846;started=true;}
   for(unsigned i=0;i<count;i++){
    const auto& route=routes[i];float value;
    if(route.kind==0){

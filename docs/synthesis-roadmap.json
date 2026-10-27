@@ -535,11 +535,12 @@
           "status": "blocked; no simulated/offline result is a hardware measurement"
         },
         "native_modulation_candidate": {
-          "status": "blocked_not_qualified",
+          "status": "implemented_pending_clean_source_CI",
           "implementation": "native/modulation.hpp",
           "policy": "native/fidelity-policy.json",
-          "qualification": "benchmarks/native-modulation-candidate.json",
-          "blocker": "Non-aligned 10 ms onset / 80-cent LFO at 44.1kHz exceeds unchanged 2e-5 RMS gate. Do not merge or mark complete."
+          "investigation": "docs/native-onset-investigation.json",
+          "evidence": "214 native/browser cases and 186 isolated onset cases; original PCM gates unchanged",
+          "remaining": "hardware host/performance, unsupported noise/drive/delay/sweep/legacy motion and wider platform qualification"
         }
       }
     },
@@ -620,12 +621,17 @@
             "32/64-voice AudioWorklet graph stress",
             "16-route Beat/Song round trips"
           ],
-          "native": "Separate draft v2 implementation still fails one staggered-onset deep-pitch-LFO RMS gate; not qualified or merged"
+          "native": "C++ v2 sources and targets compared against Web Audio and an independent phase oracle; full CI gates retained"
         },
         "browser_performance_limit": {
           "observed": "About 3/6 s worker startup for 32/64 voices x16 routes; scheduling during a running clock missed onsets. Not hardware evidence.",
           "qualification_method": "Prepare with clock suspended, then capture all intended voices in AudioWorklet. Record setup/cleanup costs. No interactive scheduling claim.",
           "remaining": "Reduce graph preparation overhead and qualify startup/callback deadlines on reference hardware"
+        },
+        "native_onsets": {
+          "cases": 186,
+          "rootCause": "Browser a-rate span-prefix consumption on the first partial quantum, plus fractional frame scheduling; independent native phase law confirmed",
+          "correction": "Browser silent phase-compensated pre-roll, with no native algorithm substitution or threshold relaxation"
         }
       }
     },

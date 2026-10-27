@@ -46,6 +46,11 @@ try{
  }
  for(const sampleRate of [44100,48000,96000]){
   const fixtures=[...modulationFixtures(),...["evolving-glass","breath-lead","touch-keys"].map(id=>({id:"preset/"+id,patch:makePatch(id),pitch:60,velocity:.8}))];
+  for(const wave of ["sine","triangle","square","sawtooth","harmonic"])for(const onset of [416,441,480,416.25,441.5,480.75]){
+   const patch=cleanPatch(wave);patch.version=2;patch.modulation={version:1,routes:[{id:"pitch",source:{kind:"lfo",shape:"sine",rate:7.3},target:"oscillators.0.detune",unit:"cents",depth:80,polarity:"bipolar",smoothing:0}]};
+   fixtures.push({id:"offset/"+wave+"/"+onset,patch,start:onset/sampleRate,pitch:onset===441?45:69,velocity:.8});
+  }
+  const bent=structuredClone(modulationFixtures().find(f=>f.id==="expression-plus-modulation"));bent.id="offset/expression";bent.start=441/sampleRate;fixtures.push(bent);
   for(const fixture of fixtures){
    const plan=planSynthVoice({patch:fixture.patch,volume:.3},{pitch:fixture.pitch,velocity:fixture.velocity,...fixture.expression},fixture.start??0,.2),frames=Math.ceil(.6*sampleRate);
    const response=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate,frames})});if(!response.ok)throw Error(fixture.id+": "+await response.text());

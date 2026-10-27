@@ -30,14 +30,15 @@ export function prepareNativePlan(plan,sampleRate,frames){
  u32(plan.amplitude.events.length);for(const event of plan.amplitude.events){if(!["set","linear"].includes(event.kind))throw Error("Unknown envelope event");u32(event.kind==="set"?0:1);f64(event.time);f64(Math.fround(event.value));}
  return Buffer.concat(parts);
 }
-export async function buildNativeRenderer(){
+export async function buildNativeRenderer({probe=false}={}){
  const directory=await mkdtemp(join(tmpdir(),"premidi-native-")),binary=join(directory,process.platform==="win32"?"render.exe":"render");
  const compiler=process.env.CXX||"g++",root=fileURLToPath(new URL("./",import.meta.url));
  try{
   const args=["-std=c++17","-O2","-ffp-contract=off","-Wall","-Wextra","-Werror","-pedantic",join(root,"render.cpp"),"-o",binary];
+  if(probe)args.splice(1,0,"-DPREMIDI_PROBE");
   execFileSync(compiler,args,{stdio:"pipe"});const selfTest=execFileSync(binary,["--selftest"],{encoding:"utf8",stdio:["ignore","pipe","pipe"]});
-  return {binary,compiler:execFileSync(compiler,["--version"],{encoding:"utf8"}).split("\n")[0],flags:args.slice(0,7),selfTest:"passed: 400 waveform/filter/rate/extreme and three 16-route v2 profiles, five block sizes and allocation assertions",
-   render(plan,sampleRate,frames){const result=spawnSync(binary,[],{input:prepareNativePlan(plan,sampleRate,frames),maxBuffer:32*1024*1024});if(result.status!==0)throw Error(result.stderr?.toString()||"Native render failed");if(result.stdout.length!==frames*8)throw Error("Native PCM length mismatch");return result.stdout;},
+  return {binary,compiler:execFileSync(compiler,["--version"],{encoding:"utf8"}).split("\n")[0],flags:args.slice(0,args.indexOf(join(root,"render.cpp"))),selfTest:"passed: 400 waveform/filter/rate/extreme and three 16-route v2 profiles, five block sizes and allocation assertions",
+   render(plan,sampleRate,frames,inspect=false){if(inspect&&!probe)throw Error("Native probe build required");const result=spawnSync(binary,inspect&&probe?["--probe"]:[],{input:prepareNativePlan(plan,sampleRate,frames),maxBuffer:32*1024*1024});if(result.status!==0)throw Error(result.stderr?.toString()||"Native render failed");if(result.stdout.length!==frames*(inspect&&probe?20:8))throw Error("Native PCM length mismatch");return result.stdout;},
    dispose:()=>rm(directory,{recursive:true,force:true})};
  }catch(error){await rm(directory,{recursive:true,force:true});throw error;}
 }

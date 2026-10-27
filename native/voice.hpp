@@ -21,7 +21,7 @@ struct Plan {
 // caller-owned output span: no heap allocation, locks, file/device I/O or UI.
 class Voice {
  Plan plan;double rate;std::uint64_t frame=0;std::array<double,2> phases{};
- Biquad filter;Modulation modulation;bool movingCutoff=false;double left,right;std::array<const WaveBank*,2> banks;
+ Biquad filter;Modulation modulation;bool sourceStarted=false,movingCutoff=false;double left,right;std::array<const WaveBank*,2> banks;
  float envelope(double t) const noexcept {
   if(t<plan.events[0].time)return 0;
   double value=plan.events[0].value;
@@ -43,6 +43,9 @@ class Voice {
   return static_cast<float>(osc.curve[index]+(osc.curve[next]-osc.curve[index])*(position-index));
  }
 public:
+#ifdef PREMIDI_PROBE
+ struct Probe {float wave0=0,cents0=0,frequency0=0;};Probe probe{};
+#endif
  Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr}) noexcept:plan(input),rate(sampleRate),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity),banks(waveBanks){
   for(unsigned i=0;i<plan.routeCount;i++)if(plan.routes[i].target==4)movingCutoff=true;
   filter.configure(plan.filterType,plan.cutoff,plan.q,rate);
@@ -50,14 +53,24 @@ public:
  }
  void process(float* interleavedStereo,std::size_t frames) noexcept {
   for(std::size_t i=0;i<frames;i++,frame++){
+#ifdef PREMIDI_PROBE
+   probe={};
+#endif
    const double t=static_cast<double>(frame)/rate;float mix=0;const auto offsets=modulation.next(t);
    if(t>=plan.start&&t<plan.sourceEnd){
+    if(!sourceStarted){
+     if(plan.version==2)for(std::size_t j=0;j<2;j++){const auto& osc=plan.oscillators[j];const double initial=osc.frequency*std::pow(2.,(osc.count?osc.curve[0]:osc.detune)/1200.);phases[j]=(t-plan.start)*initial*(rate<=24000?2048:rate<=88200?4096:16384);}
+     sourceStarted=true;
+    }
     for(std::size_t j=0;j<2;j++){
      const auto& osc=plan.oscillators[j];
      const float detune=cents(osc,t-plan.start)+std::clamp(offsets[2*j],-2400.f,2400.f);
      const double frequency=std::min(rate/2,osc.frequency*std::pow(2.,detune/1200.));
      const bool banked=osc.wave||plan.version==2;
      const float wave=!banked?static_cast<float>(std::sin(phases[j])):banks[j]->sample(phases[j],frequency);
+#ifdef PREMIDI_PROBE
+     if(j==0)probe={wave,detune,static_cast<float>(frequency)};
+#endif
      mix+=wave*std::clamp(static_cast<float>(osc.level)+offsets[2*j+1],0.f,1.f);
      phases[j]=banked?banks[j]->advance(phases[j],frequency):std::fmod(phases[j]+2*pi*frequency/rate,2*pi);
     }
