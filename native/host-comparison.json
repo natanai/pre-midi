@@ -108,7 +108,7 @@
       "native/render.cpp",
       "native/bridge.mjs"
     ],
-    "input": "Existing pre-midi-synth-voice v1 JSON is validated/prepared by a Node control-host adapter, then transferred as a bounded little-endian IPC packet. The packet is not a new musical persistence format.",
+    "input": "Existing pre-midi-synth-voice v1/v2 JSON is validated/prepared by a Node control-host adapter, then transferred as a bounded little-endian IPC packet. The packet is not a new musical persistence format.",
     "output": "Interleaved stereo Float32 little-endian PCM produced by C++, without Web Audio",
     "supported": [
       "two oscillator slots: sine, triangle, square, sawtooth, 32-harmonic editable recipes",
@@ -116,9 +116,10 @@
       "equal-tempered frequency/detune and prepared glide/bend curves",
       "ordered linear ADSR events",
       "static lowpass/highpass (Q in dB), bandpass/notch (linear Q)",
-      "equal-power pan"
+      "equal-power pan",
+      "DRAFT, not qualified: Canonical v2 modulation: all four sources, six target IDs, max 16 routes, one-pole smoothing and bounded combination"
     ],
-    "unsupportedPolicy": "Reject unsupported contract versions and features explicitly; never substitute another oscillator or silently bypass drive/noise/delay/modulation",
+    "unsupportedPolicy": "Reject unsupported contract versions and features explicitly; never substitute another oscillator or silently bypass drive/noise/delay/legacy movement",
     "renderCommand": "npm run native:render -- request.json output.f32le",
     "qualificationCommand": "npm run benchmark:native -- --require-clean",
     "callbackContract": [

@@ -40,7 +40,9 @@
     "keyTracking": "clamp((MIDI pitch-root)/span,-1,1), root and span explicit",
     "smoothing": "Per-route first-order recurrence y[n]=alpha*x[n]+(1-alpha)*y[n-1], alpha=1-exp(-1/(sampleRate*seconds)); reset to zero at note-on",
     "web": "Actual audio-rate oscillator/constant/envelope control signals and IIR smoothing; no JavaScript per-sample arrays or timer-based parameter updates",
-    "oracle": "Graph control traces compared to portable mathematics at three rates: 0.02 cents pitch, 0.04 cents filter detune, 5e-6 gain/pan"
+    "oracle": "Graph control traces compared to portable mathematics at three rates: 0.02 cents pitch, 0.04 cents filter detune, 5e-6 gain/pan",
+    "phase": "Phase zero at the authored note-on, including the fractional interval before the first output sample in v2. Native timing does not depend on a host render quantum.",
+    "browserOnset": "Pitch-controlled v2 carriers silently pre-roll on a preceding boundary with an equal/opposite Fourier phase rotation. Recipe normalization stays fixed; source gains are muted until the authored note-on. See docs/native-onset-investigation.json."
   },
   "automationAlignment": {
     "basePrecedence": "Future SYN-010 automation updates the base value of these same parameter IDs before modulation is combined",
@@ -52,8 +54,9 @@
     ]
   },
   "native": {
-    "profile": "The current C++ prototype explicitly rejects execution-plan v2; no native modulation parity is claimed",
-    "future": "Evaluate these same bounded source/range/depth/smoothing/combination semantics in a native callback without parsing JSON or allocating per block"
+    "profile": "Native C++ execution-plan v1/v2, all four canonical sources and six target IDs with up to 16 routes; unsupported noise/drive/delay/filter-sweep/legacy LFO paths reject explicitly",
+    "future": "Evaluate these same bounded source/range/depth/smoothing/combination semantics in a native callback without parsing JSON or allocating per block",
+    "qualification": "native/fidelity-policy.json, benchmarks/native-parity-reference.json and benchmarks/onset-reference.json"
   },
   "usability": {
     "basicControls": "Cutoff, attack, release and volume remain unchanged and directly reachable",

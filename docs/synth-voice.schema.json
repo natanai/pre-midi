@@ -148,5 +148,6 @@
         }
       }
     }
-  ]
+  ],
+  "x-phase-contract": "v2 phase is relative to exact authored note-on, including fractional-sample initial interval; browser host corrections cannot redefine native semantics"
 }

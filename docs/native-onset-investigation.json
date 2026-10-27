@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "task": "SYN-007/SYN-009",
+  "originalCase": {
+    "sampleRate": 44100,
+    "noteOnSeconds": 0.01,
+    "depthCents": 80,
+    "lfoHz": 7.3,
+    "maximumPcm": 7.015e-05,
+    "rmsPcm": 3.381e-05,
+    "maximumGate": 0.0001,
+    "rmsGate": 2e-05,
+    "historicalReport": "benchmarks/native-modulation-candidate.json"
+  },
+  "sources": [
+    "https://github.com/chromium/chromium/blob/a835ff011005f51f3895d6b46dea1da8609cf561/third_party/blink/renderer/modules/webaudio/oscillator_handler.cc",
+    "https://www.w3.org/TR/2021/REC-webaudio-20210617/#oscillatornode"
+  ],
+  "method": {
+    "native": "Probe-only C++ build observes actual Voice raw source, detune control, effective frequency and full PCM. Production builds contain no probe state or stores.",
+    "browser": "Capture uncorrected carrier, actual control graph and corrected carrier in the same OfflineAudioContext.",
+    "independentOracle": "Integrate phase from observed controls using float parameter quantization. Compare canonical note-on timing with a predeclared first-quantum prefix model; retain raw first-quantum vectors for the original case.",
+    "matrix": "44.1/48/96 kHz; zero, aligned and offsets 1/32/57/96/127; quarter/half/three-quarter sample positions; independent depth and LFO-rate sweeps. Exact cases and environment in report.",
+    "limits": "This is offline evidence for the stated profile, not device/callback latency or every browser engine."
+  },
+  "finding": {
+    "controls": "Native and browser detune traces agree within 0.002 cents; control math, smoothing and units are not the cause.",
+    "carrier": "For nonaligned starts the uncorrected browser oscillator follows the parameter-span prefix, while native follows the canonical note-relative integral. The pattern appears across sample rates; the full-voice threshold was crossed in the original 44.1kHz case.",
+    "rounding": "Some represented integer onsets multiply just above the nominal sample frame. An a-rate start can emit its first phase sample one frame late; the scheduling model accounts for this separately.",
+    "nativeFractionalCorrection": "v2 now includes the sub-sample initial phase interval in carrier and LFO state; v1 behavior remains unchanged."
+  },
+  "correction": {
+    "location": [
+      "src/hosts/web/oscillator.js",
+      "src/dsp/periodic-wave.js",
+      "native/modulation.hpp",
+      "native/voice.hpp"
+    ],
+    "behavior": "Start only pitch-controlled v2 carriers on a preceding render boundary. Rotate Fourier coefficients by the negative silent pre-roll phase, using the original recipe normalization. Mute the carrier gain until note-on, so filter state remains at rest. Control graphs keep authored timing. The native core stays quantum-independent.",
+    "compatibility": "Patch/project/execution versions v1/v2 are unchanged; legacy browser voices are not moved. No samples are baked, no fixture is removed and no PCM gate is widened.",
+    "resourceScope": "FFT/normalization work and bounded phase caches are control-thread preparation. Interactive preparation and hardware qualification remain open."
+  },
+  "reports": [
+    "benchmarks/native-parity-reference.json",
+    "benchmarks/onset-reference.json"
+  ],
+  "acceptance": {
+    "sourceAmplitudeError": 2e-05,
+    "controlCentsError": 0.002,
+    "nativePcmMaximum": 0.0001,
+    "nativePcmRms": 2e-05
+  },
+  "status": "Offline native v2 profile passes unchanged PCM gates and the independent onset matrix; hardware and complete patch support remain pending",
+  "qualifiedSourceCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9"
+}

@@ -60,14 +60,14 @@
     {
       "id": "detuned-lead/44100",
       "metrics": {
-        "max": 0.0000014957040548324585,
-        "rms": 1.5712059497376838e-8,
-        "worstAtSeconds": 0.6829931972789116,
-        "referenceAtWorst": -0.010948272421956062,
-        "currentAtWorst": -0.010949768126010895,
+        "max": 0.0000025634653866291046,
+        "rms": 2.735925683426538e-8,
+        "worstAtSeconds": 0.6512698412698412,
+        "referenceAtWorst": 0.00536685436964035,
+        "currentAtWorst": 0.005364290904253721,
         "legacyRepeat": {
-          "max": 0.000002562999725341797,
-          "rms": 2.7007112809130136e-8
+          "max": 0.0000022761523723602295,
+          "rms": 1.4290944765543963e-8
         },
         "currentRepeat": {
           "max": 0,
@@ -106,18 +106,18 @@
     {
       "id": "expressive-glide/44100",
       "metrics": {
-        "max": 1.1175870895385742e-7,
-        "rms": 1.0638132942808317e-8,
-        "worstAtSeconds": 0.8298866213151928,
-        "referenceAtWorst": -0.059153564274311066,
-        "currentAtWorst": -0.05915367603302002,
+        "max": 1.2014061212539673e-7,
+        "rms": 1.2834356601853651e-8,
+        "worstAtSeconds": 0.7573696145124716,
+        "referenceAtWorst": -0.011007632128894329,
+        "currentAtWorst": -0.011007752269506454,
         "legacyRepeat": {
-          "max": 1.1920928955078125e-7,
-          "rms": 6.590993365417123e-9
+          "max": 2.9802322387695312e-8,
+          "rms": 5.32182946112451e-10
         },
         "currentRepeat": {
-          "max": 1.4901161193847656e-8,
-          "rms": 2.530988956972137e-9
+          "max": 0,
+          "rms": 0
         }
       },
       "checks": {
@@ -199,17 +199,17 @@
       "id": "detuned-lead/48000",
       "metrics": {
         "max": 0.000003822147846221924,
-        "rms": 4.2510554375957605e-8,
+        "rms": 4.260860740186093e-8,
         "worstAtSeconds": 0.6546875,
         "referenceAtWorst": 0.016695216298103333,
         "currentAtWorst": 0.01669139415025711,
         "legacyRepeat": {
-          "max": 0.0000021848827600479126,
-          "rms": 8.469837555860645e-9
+          "max": 7.450580596923828e-9,
+          "rms": 2.3309583026606168e-9
         },
         "currentRepeat": {
-          "max": 0,
-          "rms": 0
+          "max": 7.450580596923828e-9,
+          "rms": 2.3333322015179076e-9
         }
       },
       "checks": {
@@ -245,17 +245,17 @@
       "id": "expressive-glide/48000",
       "metrics": {
         "max": 3.5390257835388184e-7,
-        "rms": 3.790470764646534e-8,
+        "rms": 3.7155482145337505e-8,
         "worstAtSeconds": 0.7573333333333333,
         "referenceAtWorst": -0.028078593313694,
         "currentAtWorst": -0.028078947216272354,
         "legacyRepeat": {
-          "max": 3.5390257835388184e-7,
-          "rms": 1.494751582922578e-8
+          "max": 2.598389983177185e-7,
+          "rms": 7.689152033867154e-9
         },
         "currentRepeat": {
-          "max": 1.4901161193847656e-8,
-          "rms": 2.550101679144708e-9
+          "max": 0,
+          "rms": 0
         }
       },
       "checks": {
@@ -336,14 +336,14 @@
     {
       "id": "detuned-lead/96000",
       "metrics": {
-        "max": 0.0000035371631383895874,
-        "rms": 3.899606497609886e-8,
-        "worstAtSeconds": 0.6526875,
-        "referenceAtWorst": 0.022568725049495697,
-        "currentAtWorst": 0.022565187886357307,
+        "max": 0.000003863126039505005,
+        "rms": 4.0860286704717014e-8,
+        "worstAtSeconds": 0.6298958333333333,
+        "referenceAtWorst": -0.016337046399712563,
+        "currentAtWorst": -0.016340909525752068,
         "legacyRepeat": {
-          "max": 0.000003863126039505005,
-          "rms": 1.2202447067764084e-8
+          "max": 0.000003864988684654236,
+          "rms": 1.554484002433701e-8
         },
         "currentRepeat": {
           "max": 7.450580596923828e-9,
@@ -382,14 +382,14 @@
     {
       "id": "expressive-glide/96000",
       "metrics": {
-        "max": 2.682209014892578e-7,
-        "rms": 2.9020747746740548e-8,
-        "worstAtSeconds": 0.7504479166666667,
-        "referenceAtWorst": -0.05205904692411423,
-        "currentAtWorst": -0.05205877870321274,
+        "max": 2.8312206268310547e-7,
+        "rms": 2.9319977062929174e-8,
+        "worstAtSeconds": 0.7345729166666667,
+        "referenceAtWorst": -0.04718939960002899,
+        "currentAtWorst": -0.04718911647796631,
         "legacyRepeat": {
-          "max": 2.868473529815674e-7,
-          "rms": 6.6938727177919e-9
+          "max": 2.8312206268310547e-7,
+          "rms": 2.914574828930072e-8
         },
         "currentRepeat": {
           "max": 0,
@@ -472,13 +472,13 @@
   ],
   "failures": [],
   "suitePolicy": null,
-  "measuredAt": "2026-10-27T13:32:07.311Z",
+  "measuredAt": "2026-10-27T14:08:22.882Z",
   "source": {
-    "commit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
+    "commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
     "tag": null,
-    "baseCommit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
+    "baseCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "a313d14c4b87f3f1f06cdaf4a5490d16c39c922f37b676709266e20d532285d7"
+    "runtimeAndFixtureSha256": "4e29de046900d59d3fbf2c9e322f035eebeb808fb6454ca1b89e9de25ddbf0ff"
   },
   "host": {
     "os": "linux",

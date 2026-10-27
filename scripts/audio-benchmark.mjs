@@ -15,15 +15,15 @@ for(let i=0;i<args.length;i++){
  if(args[i]==="--out")out=args[++i];
  else if(args[i]==="--suite")suite=args[++i];
  else if(args[i]==="--require-clean")requireClean=true;
- else throw Error("Usage: audio-benchmark.mjs [--suite quality|voices|musical|native|modulation] [--out path.json] [--require-clean]");
+ else throw Error("Usage: audio-benchmark.mjs [--suite quality|voices|musical|native|modulation|onsets] [--out path.json] [--require-clean]");
 }
-if(!["quality","voices","musical","native","modulation"].includes(suite))throw Error("Unknown audio suite");
+if(!["quality","voices","musical","native","modulation","onsets"].includes(suite))throw Error("Unknown audio suite");
 const workingTreeDirty=execFileSync("git",["status","--porcelain"],{cwd:root,encoding:"utf8"}).trim().length>0;
 if(requireClean&&workingTreeDirty)throw Error("Reference qualification requires a clean committed working tree");
-const output=resolve(root,out||"benchmarks/"+(suite==="voices"?"voice-lifecycle":suite==="musical"?"musical-parity":suite==="native"?"native-parity":suite==="modulation"?"modulation":"audio-quality")+".latest.json");
-const page=suite==="voices"?"voice-render.html":suite==="musical"?"parity-render.html":suite==="native"?"native-render.html":suite==="modulation"?"modulation-render.html":"render.html";
+const output=resolve(root,out||"benchmarks/"+(suite==="voices"?"voice-lifecycle":suite==="musical"?"musical-parity":suite==="native"?"native-parity":suite==="modulation"?"modulation":suite==="onsets"?"onsets":"audio-quality")+".latest.json");
+const page=suite==="voices"?"voice-render.html":suite==="musical"?"parity-render.html":suite==="native"?"native-render.html":suite==="modulation"?"modulation-render.html":suite==="onsets"?"onset-render.html":"render.html";
 let referenceRoot=null;
-const nativeRenderer=suite==="native"?await buildNativeRenderer():null;
+const nativeRenderer=["native","onsets"].includes(suite)?await buildNativeRenderer({probe:suite==="onsets"}):null;
 if(suite==="musical"){
  const manifest=JSON.parse(await readFile(resolve(root,"tests/audio-quality/musical-fixtures.json"),"utf8"));
  referenceRoot=await mkdtemp(resolve(tmpdir(),"premidi-reference-"));
@@ -37,7 +37,7 @@ const server=createServer(async(request,response)=>{
   const url=new URL(request.url,"http://127.0.0.1");
   if(url.pathname==="/__native_render"&&request.method==="POST"&&nativeRenderer){
    let body="";for await(const chunk of request){body+=chunk;if(body.length>1_000_000)throw Error("Native request too large");}
-   try{const request=JSON.parse(body),pcm=nativeRenderer.render(request.plan,request.sampleRate,request.frames);response.writeHead(200,{"Content-Type":"application/octet-stream"});response.end(pcm);}
+   try{const request=JSON.parse(body),pcm=nativeRenderer.render(request.plan,request.sampleRate,request.frames,request.probe);response.writeHead(200,{"Content-Type":"application/octet-stream"});response.end(pcm);}
    catch(error){response.writeHead(422,{"Content-Type":"application/json"});response.end(JSON.stringify({error:error.message}));}return;
   }
   if(url.pathname==="/__audio_benchmark"&&request.method==="POST"){
@@ -69,7 +69,7 @@ try{
   report.summary.failed=report.failures.length;
   report.summary.status=report.failures.length?"fail":"pass";
  }
- const files=[...await runtimeModules(new URL("../",import.meta.url)),"tests/audio-quality/metrics.js","tests/audio-quality/fixtures.js","tests/audio-quality/suite.js","tests/audio-quality/policy.json","tests/audio-quality/reference.json",...(suite==="voices"?["tests/audio-quality/voice-suite.js","tests/audio-quality/capture-worklet.js","tests/audio-quality/modulation-fixtures.js"]:suite==="musical"?["tests/audio-quality/musical-fixtures.json","tests/audio-quality/parity-render.html"]:suite==="native"?["native/voice.hpp","native/waves.hpp","native/filter.hpp","native/fidelity-policy.json","native/render.cpp","native/bridge.mjs","tests/audio-quality/native-render.html","tests/audio-quality/modulation-fixtures.js"]:suite==="modulation"?["tests/audio-quality/modulation-render.html","tests/audio-quality/modulation-oracle.js","tests/audio-quality/modulation-fixtures.js"]:[])].sort();
+ const files=[...await runtimeModules(new URL("../",import.meta.url)),"tests/audio-quality/metrics.js","tests/audio-quality/fixtures.js","tests/audio-quality/suite.js","tests/audio-quality/policy.json","tests/audio-quality/reference.json",...(suite==="voices"?["tests/audio-quality/voice-suite.js","tests/audio-quality/capture-worklet.js","tests/audio-quality/modulation-fixtures.js"]:suite==="musical"?["tests/audio-quality/musical-fixtures.json","tests/audio-quality/parity-render.html"]:["native","onsets"].includes(suite)?["tests/audio-quality/onset-render.html","native/voice.hpp","native/waves.hpp","native/filter.hpp","native/modulation.hpp","native/fidelity-policy.json","native/render.cpp","native/bridge.mjs","tests/audio-quality/native-render.html","tests/audio-quality/modulation-fixtures.js"]:suite==="modulation"?["tests/audio-quality/modulation-render.html","tests/audio-quality/modulation-oracle.js","tests/audio-quality/modulation-fixtures.js"]:[])].sort();
  const hash=createHash("sha256");for(const file of files){hash.update(file+"\0");hash.update(await readFile(resolve(root,file)));}
  let tag=null;try{tag=execFileSync("git",["describe","--tags","--exact-match"],{cwd:root,encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();}catch{}
  let commit=null;try{commit=execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8"}).trim();}catch{}

@@ -1,3 +1,4 @@
+import {prepareOscillator} from "./src/hosts/web/oscillator.js";
 import {validateModulation} from "./src/dsp/modulation.js";
 import {resolveEvent} from "./soundModel.js";
 import {eventsAtStep} from "./arrangement.js";
@@ -6,7 +7,6 @@ import {decodeSongRecordings,recordingEventsAtStep,scheduleVocal} from "./songAu
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
 import { schedulePitchPlan, scheduleMovementLfo } from "./expression.js";
-import {setOscillatorWave} from "./harmonics.js";
 import {validatePatch} from "./synth.js";
 import {configureDriveShaper} from "./audioEffects.js";
 import {applyAmplitudePlan} from "./envelope.js";
@@ -59,18 +59,18 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  const mix=add(ctx.createGain());
  for(const [index,slot] of plan.oscillators.entries()){
   if(!slot.level&&!plan.modulation?.routes.some(route=>route.target===`oscillators.${index}.level`))continue;
-  const oscillator=ctx.createOscillator();
+  const {oscillator,sourceStart,warmed}=prepareOscillator(ctx,slot,plan,index);
   const gain=add(ctx.createGain());
-  setOscillatorWave(ctx,oscillator,slot);
   // Initialize before scheduling: a start inside a render quantum must not
   // consume the OscillatorNode default 440 Hz from its pre-onset parameter span.
   if(start>0)oscillator.frequency.value=slot.frequency;
   oscillator.frequency.setValueAtTime(slot.frequency,start);
   schedulePitchPlan(ctx,oscillator.detune,slot.pitch,owner);
   gain.gain.value=slot.level;
+  if(warmed&&!plan.modulation.routes.some(route=>route.target===`oscillators.${index}.level`)){gain.gain.value=0;gain.gain.setValueAtTime(slot.level,start);}
   destinations.set(`oscillators.${index}.level`,gain.gain);destinations.set(`oscillators.${index}.detune`,oscillator.detune);
   oscillator.connect(gain);gain.connect(mix);
-  oscillator.start(start);oscillator.stop(end);
+  oscillator.start(sourceStart);oscillator.stop(end);
   sources.push(oscillator);
  }
  if(patch.noise>0) {

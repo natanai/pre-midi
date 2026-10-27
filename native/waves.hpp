@@ -31,7 +31,7 @@ public:
   std::vector<double> coefficients(size/2);
   for(std::size_t h=1;h<size/2;h++){
    const float factor=2/(static_cast<float>(h)*static_cast<float>(wavePi));
-   coefficients[h]=shape==1?(h%2?static_cast<float>(8*std::sin(h*wavePi/2)/(wavePi*wavePi*h*h)):0):
+   coefficients[h]=shape==0?(h==1?1:0):shape==1?(h%2?static_cast<float>(8*std::sin(h*wavePi/2)/(wavePi*wavePi*h*h)):0):
     shape==2?(h%2?2*factor:0):shape==3?(h%2?factor:-factor):h<=32?static_cast<float>(harmonics[h-1]):0;
   }
   std::vector<std::complex<double>> frequency(size);
