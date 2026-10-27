@@ -18,3 +18,12 @@ export function validateSampleTone(patch){
  if(patch.drive!==undefined&&(typeof patch.drive!=="number"||!Number.isFinite(patch.drive)||patch.drive<0||patch.drive>1))return "Invalid sample distortion.";
  return null;
 }
+
+// Waveshaper oversampling reduces aliasing from non-linear drive on bright notes.
+// All hosts must match this sound-quality policy, not necessarily this Web Audio API.
+export const DRIVE_OVERSAMPLE="4x";
+export function configureDriveShaper(shaper,amount){
+ shaper.curve=driveCurve(amount);
+ shaper.oversample=DRIVE_OVERSAMPLE;
+ return shaper;
+}
