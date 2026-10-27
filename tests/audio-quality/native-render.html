@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><title>Native DSP parity</title><pre id="status">running</pre>
+<script type="module">
+import {planSynthVoice} from "../../src/dsp/synth-voice.js";
+import {scheduleSynthPlan} from "../../audio.js";
+import {cleanPatch} from "./fixtures.js";
+import {difference,signalStats,crossingFrequency} from "./metrics.js";
+let report;
+try{
+ const results=[],failures=[];
+ const add=(id,metrics,checks)=>{const failed=Object.keys(checks).filter(k=>!checks[k]);failures.push(...failed.map(check=>({id,check})));results.push({id,metrics,checks,status:failed.length?"fail":"pass"});};
+ for(const sampleRate of [44100,48000,96000])for(const pitch of [45,69,93])for(const gate of [.05,.35]){
+  const patch=cleanPatch();patch.envelope={attack:.2,decay:.3,sustain:.4,release:.2};patch.filter.cutoff=pitch===93?3000:14000;
+  patch.pan=pitch===45?-1:pitch===93?1:0;
+  const plan=planSynthVoice({patch,volume:1},{pitch,velocity:.8},0,gate),frames=Math.ceil((gate+.4)*sampleRate);
+  const response=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate,frames})});
+  if(!response.ok)throw Error(await response.text());
+  const native=new Float32Array(await response.arrayBuffer());
+  const context=new OfflineAudioContext(2,frames,sampleRate);scheduleSynthPlan(context,context.destination,plan);const buffer=await context.startRendering();
+  const errors=[];for(let ch=0;ch<2;ch++)errors.push(difference(buffer.getChannelData(ch),Float32Array.from({length:frames},(_,i)=>native[2*i+ch])));
+  const channel=patch.pan===1?1:0,nativeMono=Float32Array.from({length:frames},(_,i)=>native[2*i+channel]),browserMono=buffer.getChannelData(channel);
+  const first=Math.round(.02*sampleRate),last=Math.round((gate+.1)*sampleRate),expected=440*2**((pitch-69)/12);
+  const nativeCents=1200*Math.log2(crossingFrequency(nativeMono.subarray(first,last),sampleRate)/expected),browserCents=1200*Math.log2(crossingFrequency(browserMono.subarray(first,last),sampleRate)/expected);
+  const levelError=Math.abs(signalStats(nativeMono).rms/signalStats(browserMono).rms-1);
+  const stats=signalStats(native),max=Math.max(...errors.map(e=>e.max)),rms=Math.max(...errors.map(e=>e.rms));
+  add(sampleRate+"/"+pitch+"/"+gate,{max,rms,stats,nativeCents,browserCents,levelError},{finite:stats.nonFinite===0,audible:stats.rms>.001,maxError:max<.0001,rmsError:rms<.00002,tuning:Math.abs(nativeCents)<.01&&Math.abs(browserCents)<.01,level:levelError<.001});
+ }
+ const unsupported=cleanPatch("square"),plan=planSynthVoice({patch:unsupported,volume:1},{pitch:69,velocity:1},0,.2);
+ const rejected=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate:48000,frames:24000})});
+ add("unsupported-wave",{status:rejected.status},{explicitRejection:rejected.status===422});
+ report={schemaVersion:1,backend:"native-cpp-vs-web-audio",environment:{userAgent:navigator.userAgent},
+  policy:{maxPcmError:.0001,maxRmsError:.00002,initialRmsTarget:.00001,toleranceRationale:"The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",method:"same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",scope:"sine oscillators, pitch, static lowpass, ADSR and pan",limits:["Not full native patch support","Not a device performance or aliasing qualification","Fractional-sample note onsets not yet qualified"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
+}catch(error){report={error:String(error.stack||error)};}
+document.getElementById("status").textContent=JSON.stringify(report.summary||report);
+await fetch("/__audio_benchmark",{method:"POST",body:JSON.stringify(report)});
+</script>

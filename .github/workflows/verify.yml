@@ -28,6 +28,8 @@ jobs:
         run: npm run benchmark:musical -- --require-clean
       - name: Qualify voice lifecycle and real-time browser graph
         run: npm run benchmark:voices -- --require-clean
+      - name: Compare native C++ synthesis with browser reference
+        run: npm run benchmark:native -- --require-clean
       - name: Upload audio qualification report
         if: always()
         uses: actions/upload-artifact@v4
