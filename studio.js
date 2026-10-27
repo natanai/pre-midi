@@ -29,6 +29,7 @@ import {prepareSongTake,waveformForTake,songCountIn} from "./songRecorder.js";
 import {exportSongProject,importSongProject,parseSong} from "./songIO.js";
 import {readZip} from "./zip.js";
 import {installSongUI} from "./songUI.js";
+import {installDesktopUI} from "./desktopUI.js";
 
 const $ = key => document.getElementById(key);
 let assetsReady=Promise.resolve();
@@ -317,7 +318,8 @@ function repairSelection() {
   }
  }
 }
-function download(blob, name) {
+async function download(blob, name) {
+ if(window.premidiDesktop)return window.premidiDesktop.saveFile(name,await blob.arrayBuffer());
  const url = URL.createObjectURL(blob);
  const a = element("a");
  a.href = url;
@@ -1046,11 +1048,11 @@ exportForm.addEventListener("submit",async event=>{
   if(format==="wav"){
    message("Rendering "+scope+" WAV...");
    const output=await wav(source);
-   download(output,filename(source,".wav"));
+   await download(output,filename(source,".wav"));
    message("Exported "+scope+" WAV");
   }else{
    const output=scope==="song"?exportSongProject(source):exportProject(source);
-   download(output.blob,output.name);
+   await download(output.blob,output.name);
    message("Exported "+scope+(output.name.endsWith(".zip")?" with audio assets":".premidi"));
   }
   exportDialog.close();
@@ -1616,3 +1618,10 @@ assetsReady=loadDraft().then(raw=>{
  try {const restored=parseDocument(raw);resetTo(restored);message("Browser draft restored");}
  catch(error){console.warn("Draft could not be restored",error);}
 }).catch(()=>{});
+installDesktopUI({flush:async()=>{
+ if(vocalTake||vocalRequest||$("microphone-dialog").open)
+  throw Error("Finish and use or cancel your recording before closing pre-midi.");
+ await assetsReady;
+ await saveDraft(currentDocument());
+ stop();
+}});

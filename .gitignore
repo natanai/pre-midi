@@ -1,5 +1,9 @@
 samples/
 dist/
+node_modules/
+release/
+desktop/build/
+desktop/test-results/
 benchmarks/audio-quality.latest.json
 benchmarks/voice-lifecycle.latest.json
 benchmarks/musical-parity.latest.json
@@ -9,3 +13,5 @@ benchmarks/modulation.latest.json
 benchmarks/onsets.latest.json
 
 benchmarks/automation.latest.json
+
+desktop/target/

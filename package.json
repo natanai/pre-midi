@@ -1,6 +1,6 @@
 {
   "name": "pre-midi",
-  "version": "0.14.0",
+  "version": "0.14.1-preview.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,12 @@
     "native:render": "node native/bridge.mjs",
     "benchmark:modulation": "node scripts/audio-benchmark.mjs --suite modulation",
     "benchmark:onsets": "node scripts/audio-benchmark.mjs --suite onsets",
-    "benchmark:automation": "node scripts/audio-benchmark.mjs --suite automation"
+    "benchmark:automation": "node scripts/audio-benchmark.mjs --suite automation",
+    "desktop:prepare": "node scripts/fetch-samples.mjs && node scripts/prepare-pages.mjs",
+    "desktop:build": "cd desktop && tauri build",
+    "desktop:dev": "cd desktop && tauri dev"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4"
   }
 }

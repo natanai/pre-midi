@@ -1087,3 +1087,8 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .automation-point input {width:100%;min-width:0}
 .automation-point legend {padding:0 0 8px;color:var(--muted);font-size:11px}
 .automation-point .synth-field {gap:8px}
+/* Desktop Settings uses the same compact action menu as the studio. */
+.desktop-settings{position:relative}
+.desktop-settings summary{cursor:pointer;padding:7px 10px;border:1px solid #444;list-style:none}
+.desktop-settings .entity-action-list{right:0;left:auto;min-width:250px;z-index:100}
+.desktop-settings output,.desktop-settings label{display:block;padding:7px 10px;white-space:nowrap;font-size:12px}
