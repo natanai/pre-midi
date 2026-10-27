@@ -1,3 +1,4 @@
+import {renderCutoffAutomation} from "./automationUI.js";
 import {upgradeBeatFeatures} from "./schema.js";
 import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
@@ -872,8 +873,8 @@ function renderSound() {
   value=>modify(()=>{sound().gain=value;})));
  $("sound-reference").value=String(entry.referencePitch);
  $("convert-rack").hidden=inst.layout==="rack";
- $("convert-rack").disabled=!canConvertToRack(inst);
- $("convert-rack").title=canConvertToRack(inst)?"convert this instrument into a one-sound rack":"requires a single pitch without overlapping hits";
+ $("convert-rack").disabled=!!inst.automation||!canConvertToRack(inst);
+ $("convert-rack").title=inst.automation?"remove cutoff movement before converting to rack":canConvertToRack(inst)?"convert this instrument into a one-sound rack":"requires a single pitch without overlapping hits";
  $("convert-pitched").hidden=inst.layout!=="rack";
  $("convert-pitched").textContent=inst.sounds.length===1?"convert to piano roll":"extract sound to piano roll";
  $("convert-pitched").disabled=!canMoveRackSoundToPianoRoll(beat,inst.id,entry.id);
@@ -886,7 +887,10 @@ function renderSound() {
   renderSamplerEditor($("synth-editor"),patch,onChange,
    patch.zones.map(zone=>beat.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
    ()=>openAudioReplace(),preview);
- }else renderPatchEditor($("synth-editor"),patch,onChange,preview);
+ }else {
+  renderPatchEditor($("synth-editor"),patch,onChange,preview);
+  renderCutoffAutomation($("synth-editor"),inst,beat,block=>{const changed=modify(()=>{if(block)instrument().automation=block;else delete instrument().automation;});if(changed&&playback)message("cutoff movement updates with new notes");});
+ }
  $("remove-instrument").disabled=false;
   $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }
@@ -1382,7 +1386,11 @@ async function chooseSound(preset) {
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   if(preset.category!=="Examples")patch.presetId=preset.id;
   const trigger=presetTrigger(preset);
-  const ok=applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,
+  const selected=beat.instruments.find(item=>item.id===context.instrumentId);
+  if(context.mode!=="add"&&selected?.automation&&patch.type!=="synth"&&trigger==="pitched"&&!preset.sounds){
+   message("Remove cutoff movement before replacing this instrument with a recording.",true);return;
+  }
+ const ok=applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,
    ["Mine","Examples"].includes(preset.category)?preset:null);
   if(ok) {
    dialog.close();

@@ -34,6 +34,8 @@ jobs:
         run: npm run benchmark:onsets -- --require-clean
       - name: Verify audible canonical modulation
         run: npm run benchmark:modulation -- --require-clean
+      - name: Verify cutoff automation playback, seeking and export
+        run: npm run benchmark:automation -- --require-clean
       - name: Upload audio qualification report
         if: always()
         uses: actions/upload-artifact@v4

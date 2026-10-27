@@ -1,23 +1,63 @@
 {
- "version":1,
- "task":"SYN-022",
- "status":"pending_real_participants",
- "purpose":"Observe comprehension and musical control separately from scripted action tests",
- "participants":"People who have not previously used pre-midi; record prior music/synthesis experience rather than assuming every participant is a beginner",
- "session":"One desktop or phone session, approximately 10 minutes; allow normal label hints and exploration",
- "moderator":"State the musical goal without naming the correct control. Ask the participant to think aloud. Record assistance; do not convert a coached completion into an unassisted success.",
- "tasks":[
-  {"goal":"Choose an instrument and hear it","observe":"Can they distinguish preview, selection and hearing the current edited sound?"},
-  {"goal":"Make it brighter, then darker","observe":"Can they predict and hear the cutoff edit with normal help?"},
-  {"goal":"Make the note start slowly, then quickly","observe":"Can they find attack without opening routing controls?"},
-  {"goal":"Make it fade sooner, then later","observe":"Can they distinguish release from volume?"},
-  {"goal":"Make it quieter","observe":"Can they adjust instrument volume and hear the result?"},
-  {"goal":"Save this variation, reload and find it again","observe":"Does the reopened variation match their intended sound and loudness?"},
-  {"goal":"Explore a sound that changes over time","observe":"Can they discover movement routes, adjust amount/speed and describe the audible change?"}
- ],
- "recordForEachTask":["completed_without_assistance","completed_with_assistance","not_completed","first_action","hesitations_or_wrong_turns","help_used","participant_prediction","participant_description_of_sound","elapsed_seconds"],
- "listeningCriteria":["timbre movement is useful and not unintentionally harsh","lead movement remains controllable","velocity changes tone as well as loudness","saved variation retains the intended identity"],
- "decision":"Report task-level findings and revise concrete friction points. Do not infer professional sound quality from waveform differences or newcomer comprehension from successful scripted clicks.",
- "results":[],
- "limitation":"No human sessions or listening-panel findings have been collected by this worker"
+  "version": 1,
+  "task": "SYN-022",
+  "status": "pending_real_participants",
+  "purpose": "Observe comprehension and musical control separately from scripted action tests",
+  "participants": "People who have not previously used pre-midi; record prior music/synthesis experience rather than assuming every participant is a beginner",
+  "session": "One desktop or phone session, approximately 10 minutes; allow normal label hints and exploration",
+  "moderator": "State the musical goal without naming the correct control. Ask the participant to think aloud. Record assistance; do not convert a coached completion into an unassisted success.",
+  "tasks": [
+    {
+      "goal": "Choose an instrument and hear it",
+      "observe": "Can they distinguish preview, selection and hearing the current edited sound?"
+    },
+    {
+      "goal": "Make it brighter, then darker",
+      "observe": "Can they predict and hear the cutoff edit with normal help?"
+    },
+    {
+      "goal": "Make the note start slowly, then quickly",
+      "observe": "Can they find attack without opening routing controls?"
+    },
+    {
+      "goal": "Make it fade sooner, then later",
+      "observe": "Can they distinguish release from volume?"
+    },
+    {
+      "goal": "Make it quieter",
+      "observe": "Can they adjust instrument volume and hear the result?"
+    },
+    {
+      "goal": "Save this variation, reload and find it again",
+      "observe": "Does the reopened variation match their intended sound and loudness?"
+    },
+    {
+      "goal": "Explore a sound that changes over time",
+      "observe": "Can they discover movement routes, adjust amount/speed and describe the audible change?"
+    },
+    {
+      "goal": "Make the sound gradually darker by the next bar, then change the destination and remove the movement",
+      "observe": "Can they find the contextual Cutoff action, predict bar/beat positions, hear the change and distinguish Beat timeline movement from a sound preset?"
+    }
+  ],
+  "recordForEachTask": [
+    "completed_without_assistance",
+    "completed_with_assistance",
+    "not_completed",
+    "first_action",
+    "hesitations_or_wrong_turns",
+    "help_used",
+    "participant_prediction",
+    "participant_description_of_sound",
+    "elapsed_seconds"
+  ],
+  "listeningCriteria": [
+    "timbre movement is useful and not unintentionally harsh",
+    "lead movement remains controllable",
+    "velocity changes tone as well as loudness",
+    "saved variation retains the intended identity"
+  ],
+  "decision": "Report task-level findings and revise concrete friction points. Do not infer professional sound quality from waveform differences or newcomer comprehension from successful scripted clicks.",
+  "results": [],
+  "limitation": "No human sessions or listening-panel findings have been collected by this worker"
 }

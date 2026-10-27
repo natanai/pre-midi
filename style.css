@@ -1078,3 +1078,12 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .modulation-editor .modulation-routing:not([open]) > summary::after {content:"+"}
 .modulation-editor .modulation-routing[open] > summary::after {content:"−"}
 .modulation-editor > button {margin:0 12px 12px}
+
+.automation-toggle {font-size:10px;padding:4px 0;min-height:0;text-decoration:underline}
+.cutoff-automation {margin:0 12px 12px;border-top:1px solid var(--line)}
+.cutoff-automation:not([open]) > summary::after {content:"+"}
+.cutoff-automation[open] > summary::after {content:"−"}
+.automation-point {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:start;min-width:0;margin:12px 0;border:0;padding:0}
+.automation-point input {width:100%;min-width:0}
+.automation-point legend {padding:0 0 8px;color:var(--muted);font-size:11px}
+.automation-point .synth-field {gap:8px}

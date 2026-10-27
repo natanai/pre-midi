@@ -31,7 +31,8 @@
     "version": {
       "enum": [
         1,
-        2
+        2,
+        3
       ]
     },
     "presetId": {
@@ -122,6 +123,10 @@
           "maxItems": 16
         }
       }
+    },
+    "automation": {
+      "type": "object",
+      "description": "v3 compiled filter.cutoff timeline; validated by src/dsp/automation.js"
     }
   },
   "x-parameter-registry": "src/dsp/parameters.js: SYNTH_PARAMETERS",
@@ -131,7 +136,10 @@
       "if": {
         "properties": {
           "version": {
-            "const": 2
+            "enum": [
+              2,
+              3
+            ]
           }
         }
       },
@@ -147,7 +155,28 @@
           ]
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "version": {
+            "const": 3
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "automation"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "automation"
+          ]
+        }
+      }
     }
   ],
-  "x-phase-contract": "v2 phase is relative to exact authored note-on, including fractional-sample initial interval; browser host corrections cannot redefine native semantics"
+  "x-phase-contract": "v2/v3 phase is relative to exact authored note-on, including fractional-sample initial interval; browser host corrections cannot redefine native semantics"
 }

@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8"><style>body{margin:0}iframe{width:100%;height:100vh;border:0}</style><iframe src="about:blank"></iframe><pre id="result" hidden></pre>
+<script type="module">
+import {parse} from '../schema.js';import {parseSong} from '../songIO.js';
+const frame=document.querySelector('iframe'),checks={},wait=async(fn,label)=>{for(let i=0;i<240;i++){if(fn())return;await new Promise(done=>setTimeout(done,25));}throw Error('Timed out: '+label);},check=(label,value)=>{checks[label]=!!value;if(!value)throw Error(label);};
+frame.addEventListener('load',async()=>{
+ let d=frame.contentDocument,w=frame.contentWindow,blob,ramps=0;const get=id=>d.getElementById(id);
+ const capture=()=>{const create=w.URL.createObjectURL.bind(w.URL);w.URL.createObjectURL=b=>{if(b.type==='application/json')blob=b;return create(b);};w.HTMLAnchorElement.prototype.click=function(){};};
+ const exported=async()=>{blob=null;get('export').click();get('export-confirm').click();await wait(()=>!!blob,'download');return JSON.parse(await blob.text());};
+ const upload=async(doc,name)=>{const t=new w.DataTransfer();t.items.add(new w.File([JSON.stringify(doc)],name,{type:'application/json'}));get('file').files=t.files;get('file').dispatchEvent(new w.Event('change',{bubbles:true}));await wait(()=>get('status').textContent==='Opened '+name,'open '+name);};
+ let status='FAIL';try{
+  w.confirm=()=>true;get('new').click();capture();get('add-instrument').click();d.querySelector('[data-preset-id="touch-keys"] .preset-choose').click();await wait(()=>!get('instrument-dialog').open,'choose');if(get('sound-toggle').getAttribute('aria-expanded')!=='true')get('sound-toggle').click();
+  check('no automation workstation initially',!d.querySelector('.cutoff-automation'));d.querySelector('[aria-label="Automate cutoff"]').click();check('control opens its own movement',d.querySelector('.cutoff-automation').open);
+  const end=d.querySelector('[aria-label="End bar"]');end.value=3;end.dispatchEvent(new w.Event('change',{bubbles:true}));const cutoff=d.querySelector('[aria-label="End cutoff"]');cutoff.value=180;cutoff.dispatchEvent(new w.Event('change',{bubbles:true}));
+  const beat=await exported(),inst=beat.instruments.at(-1);check('explicit Beat v11 export',beat.version===11&&parse(JSON.stringify(beat)).version===11);check('editable endpoints persist',inst.automation.target==='filter.cutoff'&&inst.automation.points[1].step===32&&inst.automation.points[1].value===180);
+  d.querySelectorAll('#instrument-list .instrument-card').item(beat.instruments.length-1).click();const note=d.querySelector('#piano .note[aria-label^="C4, step 1,"]');note.click();
+  const createFilter=w.AudioContext.prototype.createBiquadFilter;w.AudioContext.prototype.createBiquadFilter=function(){const node=createFilter.call(this),ramp=node.frequency.exponentialRampToValueAtTime.bind(node.frequency);node.frequency.exponentialRampToValueAtTime=(...args)=>{ramps++;return ramp(...args);};return node;};get('play').click();await wait(()=>ramps>0,'play cutoff timeline');get('play').click();check('live playback schedules the movement',ramps>0);
+  d.querySelector('.cutoff-automation > button').click();check('movement can be removed',!d.querySelector('.cutoff-automation'));get('undo').click();check('undo restores it',!!d.querySelector('.cutoff-automation'));
+  get('new').click();await upload(beat,'automation.premidi');d.querySelector('#instrument-list .instrument-entry:last-child .instrument-card').click();check('import preserves the lane',JSON.stringify((await exported()).instruments.at(-1).automation)===JSON.stringify(inst.automation));
+  get('song-expand').click();const song=await exported();check('explicit Song v12 export',song.version===12&&parseSong(JSON.stringify(song)).version===12);get('new').click();await upload(song,'automation-song.premidi');check('Song import retains movement',JSON.stringify((await exported()).beats[0].instruments.at(-1).automation)===JSON.stringify(inst.automation));
+  check('single base cutoff control',d.querySelectorAll('[aria-label="Cutoff"]').length===1);check('no horizontal clipping',d.documentElement.scrollWidth<=frame.clientWidth+3);status='PASS';
+ }catch(error){checks.error=String(error.stack||error);}
+ document.getElementById('result').textContent=JSON.stringify(checks);await fetch('/__automation_result?status='+status+'&details='+encodeURIComponent(JSON.stringify(checks)));
+},{once:true});frame.src='../index.html';
+</script>

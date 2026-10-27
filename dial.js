@@ -2,6 +2,11 @@
 // modify() remain the ONLY mutation path. Drag previews are transient.
 
 const labelHelp=Object.freeze({
+ "cutoff timeline":"move brightness between two spots in this beat; presets keep the base sound",
+ "automation bar":"the bar where this value belongs",
+ "automation beat":"the beat inside that bar; quarters pick the smaller grid steps",
+ "begin cutoff":"how bright it is at the first spot",
+ "end cutoff":"how bright it becomes at the last spot",
  "movement amount":"how far this movement changes the sound",
  "movement speed":"how quickly this movement repeats",
  "movement source":"choose what makes this sound move",

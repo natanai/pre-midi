@@ -1,14 +1,13 @@
 import {phaseCoefficients} from '../../dsp/periodic-wave.js';
 import {setOscillatorWave} from '../../../harmonics.js';
-// A v2 pitch-controlled source may be started on the preceding render boundary.
+// A v2/v3 source may be started on the preceding render boundary.
 // Its periodic recipe compensates that silent pre-roll, keeping phase zero at
 // the authored onset. The carrier then consumes complete control quanta.
 const phases=new WeakMap();
 export function prepareOscillator(context,slot,plan,index=0){
  const oscillator=context.createOscillator();
  const frame=plan.start*context.sampleRate,quantum=128,warmFrame=Math.floor(frame/quantum)*quantum;
- const pitchRoute=plan.modulation?.routes.some(route=>route.target===`oscillators.${index}.detune`);
- const warmed=plan.version===2&&(pitchRoute||slot.pitch.values)&&frame%quantum!==0;
+ const warmed=plan.version>=2&&frame%quantum!==0;
  let sourceStart=plan.start;
  if(warmed){
   sourceStart=warmFrame/context.sampleRate;

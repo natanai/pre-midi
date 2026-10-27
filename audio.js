@@ -1,3 +1,4 @@
+import {validateAutomationPlan} from "./src/dsp/automation.js";
 import {prepareOscillator} from "./src/hosts/web/oscillator.js";
 import {validateModulation} from "./src/dsp/modulation.js";
 import {resolveEvent} from "./soundModel.js";
@@ -35,7 +36,8 @@ function noiseBuffer(ctx) {
  return buffer;
 }
 export const stepEvents = eventsAtStep;
-export function scheduleNote(ctx,destination,instrument,event,start,duration,beat,session=null) {
+export function scheduleNote(ctx,destination,instrument,event,start,duration,beat,session=null,timeline=null) {
+ const automation=timeline?instrument.automation:undefined;
  if(instrument.sounds){
   const resolved=resolveEvent(instrument,event);
   if(!resolved)return;
@@ -46,12 +48,14 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
  if(instrument.patch.type==="sample"){
   return scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx),session);
  }
- return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration),session);
+ return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline}),session);
 }
 export function scheduleSynthPlan(ctx,destination,plan,session=null){
- if(plan.contract!=="pre-midi-synth-voice"||![1,2].includes(plan.version))throw Error("Unsupported synth voice plan");
+ if(plan.contract!=="pre-midi-synth-voice"||![1,2,3].includes(plan.version))throw Error("Unsupported synth voice plan");
  if(plan.version===1&&plan.modulation!==undefined)throw Error("Modulation requires synth voice contract v2");
- if(plan.version===2){const errors=validateModulation(plan.modulation);if(errors.length)throw Error(errors.join(" "));
+ if(plan.version!==3&&plan.automation!==undefined)throw Error("Automation requires synth voice contract v3");
+ if(plan.version===3){const errors=validateAutomationPlan(plan.automation);if(errors.length)throw Error(errors.join(" "));}
+ if(plan.version>=2){const errors=validateModulation(plan.modulation);if(errors.length)throw Error(errors.join(" "));
   if(plan.modulation.routes.some(route=>route.smoothing>0)&&typeof ctx.createIIRFilter!=="function")throw Error("This host does not support smoothed modulation");}
  const {patch,off,end,start,duration}=plan,motion=plan.movement;
  const sources=[],nodes=[],owner={sources,nodes},destinations=new Map();
@@ -86,8 +90,14 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  filter.type=patch.filter.type;
  destinations.set("filter.cutoff",filter.detune);
  const sweep=patch.filter.sweep??0;
- filter.frequency.setValueAtTime(plan.filter.startCutoff,start);
- if(sweep!==0)filter.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,plan.filter.sweepEnd);
+ if(plan.automation){
+  const points=plan.automation.points;filter.frequency.value=points[0].value;filter.frequency.setValueAtTime(points[0].value,points[0].time);
+  for(const point of points.slice(1))filter.frequency.exponentialRampToValueAtTime(point.value,point.time);
+  if(sweep!==0){const source=ctx.createConstantSource(),base=points[0].value,initial=Math.max(50,Math.min(14000,base*2**sweep));source.offset.setValueAtTime(1200*Math.log2(initial/base),start);source.offset.linearRampToValueAtTime(0,plan.filter.sweepEnd);source.connect(filter.detune);source.start(start);source.stop(plan.graphEnd);sources.push(source);}
+ }else{
+  filter.frequency.setValueAtTime(plan.filter.startCutoff,start);
+  if(sweep!==0)filter.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,plan.filter.sweepEnd);
+ }
  filter.Q.setValueAtTime(patch.filter.resonance,start);
  mix.connect(filter);
  if(motion.tone>0)scheduleMovementLfo(ctx,filter.frequency,start,duration,
@@ -218,7 +228,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    for(const event of events)
     scheduleNote(ctx,out,event.instrument,event.note,
      nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),
-     event.note.duration*unit,event.beat||current,session);
+     event.note.duration*unit,event.beat||current,session,{step:event.beatStep??step,unit,limitStep:event.clip?Math.min(event.beat.bars*16,(event.beatStep??step)+event.clip.startStep+event.clip.lengthSteps-step):current.bars*16});
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
   }
@@ -274,7 +284,7 @@ export function renderEvents(document){
    events.push({kind:"vocal",at:step*unit,event});
   for(const event of (song?eventsAtSongStep(document,step):stepEvents(document,step)))
    events.push({kind:"note",at:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
-    instrument:event.instrument,note:event.note,duration:event.note.duration*unit,beat:event.beat||document});
+    instrument:event.instrument,note:event.note,duration:event.note.duration*unit,beat:event.beat||document,timeline:{step:event.beatStep??step,unit,limitStep:event.clip?Math.min(event.beat.bars*16,event.beatStep+event.clip.startStep+event.clip.lengthSteps-step):document.bars*16}});
  }
  return events.sort((a,b)=>a.at-b.at);
 }
@@ -311,7 +321,7 @@ export async function wav(document){
  const session=new VoiceSession(ctx,out,{chronological:true});
  for(const event of events){
   if(event.kind==="vocal")scheduleVocal(ctx,out,event.event,event.at,secondsPerStep(document),vocals,{session});
-  else scheduleNote(ctx,out,event.instrument,event.note,event.at,event.duration,event.beat,session);
+  else scheduleNote(ctx,out,event.instrument,event.note,event.at,event.duration,event.beat,session,event.timeline);
  }
  return pcmWav(await ctx.startRendering());
 }

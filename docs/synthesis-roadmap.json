@@ -549,7 +549,8 @@
             "benchmarks/native-parity-reference.json",
             "benchmarks/onset-reference.json"
           ]
-        }
+        },
+        "automation_profile": "Execution plan v3 supports compiled filter.cutoff curves where the underlying patch is in the existing native profile; effects/legacy motion still reject."
       }
     },
     {
@@ -647,7 +648,7 @@
       "id": "SYN-010",
       "phase": "modulation",
       "priority": "P0",
-      "status": "planned",
+      "status": "in_progress",
       "title": "Sample-accurate automation and smoothing",
       "depends_on": [
         "SYN-006",
@@ -670,6 +671,28 @@
         "shared_parameter_ids": "src/dsp/parameters.js",
         "combination_and_smoothing": "docs/modulation-contract.json",
         "remaining": "No recorded automation or automation-lane persistence is implemented"
+      },
+      "verification": {
+        "implemented": [
+          "One filter.cutoff lane with two stable musical points",
+          "Sample-timed exponential interpolation and base/automation/modulation precedence",
+          "Beat v11 / Song v12 / execution-plan v3 persistence with legacy readers protected",
+          "Native v3 curve execution in the same C++ core",
+          "Beat-clock playback, seeking state, repeated Song clips, Chunk boundaries and WAV parity",
+          "Contextual Cutoff movement controls, remove and undo"
+        ],
+        "contract": "docs/automation-contract.json",
+        "tests": [
+          "tests/automation.test.js",
+          "tests/automation-check.html",
+          "tests/audio-quality/automation-render.html"
+        ],
+        "remaining": [
+          "Held-note chase on seek",
+          "Live automation recording and mid-note plan replacement",
+          "Additional targets, points, Song/game overrides",
+          "Hardware and human musical/newcomer evaluation"
+        ]
       }
     },
     {
@@ -969,7 +992,8 @@
           "no_claim": "Automated action completion does not prove newcomer comprehension or musical polish"
         },
         "human_protocol": "docs/newcomer-observation-protocol.json",
-        "additional_workflow": "tests/modulation-check.html: optional routing, edit amount, save/reload, export/import Beat v9 and Song v10"
+        "additional_workflow": "tests/modulation-check.html: optional routing, edit amount, save/reload, export/import Beat v9 and Song v10",
+        "automation_workflow": "tests/automation-check.html: contextual Cutoff action, musical positions, playback, edit/remove/undo and Beat/Song round trips; observed comprehension remains pending"
       }
     }
   ],
