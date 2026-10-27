@@ -104,7 +104,7 @@ frame.addEventListener("load",async()=>{
   }
   await importAudio(false,"Recorded tap");check("imported hit appends row",rows().length===4&&count()===6);
   const importedRack=(await score()).instruments[1];
-  $("save-sound").click();await waitFor(()=>w.localStorage.getItem("premidi-user-sounds-v1")?.includes("My complete rack"),"rack preset save");
+  $("save-sound").click();await waitFor(()=>w.localStorage.getItem("premidi-user-sounds-v2")?.includes("My complete rack"),"rack preset save");
   await choose($("add-instrument"),"My complete rack");
   const restored=(await score()).instruments[6];
   check("complete rack preset restores all settings and independent IDs",count()===7&&rows().length===4&&

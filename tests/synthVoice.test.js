@@ -11,7 +11,7 @@ test("every stock synth compiles to a host-neutral stable immutable voice plan",
   assert.deepEqual(JSON.parse(JSON.stringify(plan)),plan);
   assert.deepEqual(patch,before);
   assert.equal(plan.presetId,preset.id);
-  assert.equal(plan.version,1);
+  assert.equal(plan.version,patch.version===2?2:1);
   assert.equal(plan.oscillators[0].frequency,440*2**patch.oscillators[0].octave);
   patch.filter.cutoff=50;assert.equal(plan.patch.filter.cutoff,before.filter.cutoff);
   assert.ok(plan.routing.includes("drive"));assert.ok(plan.amplitude.events.length);

@@ -6,7 +6,7 @@
     "hardwareConcurrency": 9
   },
   "summary": {
-    "cases": 13,
+    "cases": 17,
     "failed": 0,
     "status": "pass"
   },
@@ -15,8 +15,8 @@
     {
       "id": "shared-delay/glass-keys",
       "metrics": {
-        "max": 1.862645149230957e-8,
-        "rms": 1.013879312477863e-9
+        "max": 7.450580596923828e-9,
+        "rms": 7.473650752501275e-10
       },
       "checks": {
         "compatible": true
@@ -26,8 +26,8 @@
     {
       "id": "shared-delay/neon-lead",
       "metrics": {
-        "max": 7.450580596923828e-9,
-        "rms": 6.696310445013412e-10
+        "max": 1.1175870895385742e-8,
+        "rms": 8.97723906851804e-10
       },
       "checks": {
         "compatible": true
@@ -38,7 +38,7 @@
       "id": "shared-delay/glass-portamento",
       "metrics": {
         "max": 1.4901161193847656e-8,
-        "rms": 1.078391301301349e-9
+        "rms": 1.0430514571469229e-9
       },
       "checks": {
         "compatible": true
@@ -49,7 +49,7 @@
       "id": "shared-delay/harmonic-keys",
       "metrics": {
         "max": 1.4901161193847656e-8,
-        "rms": 1.0319461389250458e-9
+        "rms": 1.0140388896067558e-9
       },
       "checks": {
         "compatible": true
@@ -136,20 +136,109 @@
       "status": "pass"
     },
     {
+      "id": "priority/reject-lower-synth",
+      "metrics": {
+        "diagnostics": {
+          "voices": 1,
+          "buses": 0,
+          "limit": 1,
+          "admitted": 1,
+          "rejected": 1,
+          "steals": 0,
+          "stolen": 0,
+          "active": 1,
+          "queued": 0,
+          "retiring": 0
+        },
+        "end": 1,
+        "rms": 0.10000000149010946
+      },
+      "checks": {
+        "rejected": true,
+        "protected": true,
+        "noRejectedBus": true,
+        "noStaleEnd": true,
+        "audible": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "completion/stolen-long-release/false",
+      "metrics": {
+        "end": 0.32200000000000006,
+        "oldEnd": 0.10500000000000001,
+        "tailRms": 0
+      },
+      "checks": {
+        "shortened": true,
+        "fadePreserved": true,
+        "silentAfterBound": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "completion/stolen-long-release/true",
+      "metrics": {
+        "end": 1.125,
+        "oldEnd": 0.10500000000000001,
+        "tailRms": 1.697680206444867e-7
+      },
+      "checks": {
+        "shortened": true,
+        "fadePreserved": true,
+        "silentAfterBound": true,
+        "realEcho": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "completion/dense-long-releases",
+      "metrics": {
+        "end": 0.937,
+        "diagnostics": {
+          "voices": 132,
+          "buses": 0,
+          "limit": 4,
+          "admitted": 132,
+          "rejected": 0,
+          "steals": 128,
+          "stolen": 128,
+          "active": 1,
+          "queued": 131,
+          "retiring": 0
+        },
+        "after": {
+          "dc": 0,
+          "rms": 0,
+          "peak": 0,
+          "maxStep": 0,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "bound": true,
+        "stolen": true,
+        "finite": true,
+        "silent": true
+      },
+      "status": "pass"
+    },
+    {
       "id": "realtime/32-expressive-voices",
       "metrics": {
-        "setupMs": 30.09999999962747,
+        "setupMs": 42.299999999813735,
         "sampleRate": 48000,
         "baseLatency": 0.010020833333333333,
         "outputLatency": 0.032,
-        "dc": 0.000004294599537085257,
-        "rms": 0.006703789542824643,
-        "peak": 0.022472141310572624,
-        "maxStep": 0.0017092859488911927,
+        "dc": 0.000004620546144148345,
+        "rms": 0.006703302708228648,
+        "peak": 0.022669043391942978,
+        "maxStep": 0.0016884793294593692,
         "nonFinite": 0,
         "clipped": 0,
         "silentBlocks": 0,
-        "minBlockRms": 0.002022992859172401,
+        "minBlockRms": 0.0020704967751104843,
         "remaining": 0,
         "qualification": "browser render-graph capture only; output device latency, driver underruns and native callback deadlines remain unqualified"
       },
@@ -180,20 +269,38 @@
           {
             "voices": 0,
             "buses": 0,
+            "limit": 64,
+            "admitted": 1,
+            "rejected": 0,
             "steals": 0,
-            "limit": 64
+            "stolen": 0,
+            "active": 0,
+            "queued": 0,
+            "retiring": 0
           },
           {
             "voices": 0,
             "buses": 0,
+            "limit": 64,
+            "admitted": 1,
+            "rejected": 0,
             "steals": 0,
-            "limit": 64
+            "stolen": 0,
+            "active": 0,
+            "queued": 0,
+            "retiring": 0
           },
           {
             "voices": 0,
             "buses": 0,
+            "limit": 64,
+            "admitted": 0,
+            "rejected": 0,
             "steals": 0,
-            "limit": 64
+            "stolen": 0,
+            "active": 0,
+            "queued": 0,
+            "retiring": 0
           }
         ]
       },
@@ -203,13 +310,14 @@
       "status": "pass"
     }
   ],
-  "measuredAt": "2026-10-27T05:02:31.380Z",
+  "suitePolicy": null,
+  "measuredAt": "2026-10-27T05:56:17.129Z",
   "source": {
-    "commit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
+    "commit": "5326635b6bcfc128089c098a918d02a0754e26a7",
     "tag": null,
-    "baseCommit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
+    "baseCommit": "5326635b6bcfc128089c098a918d02a0754e26a7",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "14c0de0d0de92a5ce65ae73bf125930ebd4c25b14b572789d6193106e79c4c65"
+    "runtimeAndFixtureSha256": "97850d197fadec6d09ac35cda494f5ef7b4dde362e293d2567df71535dc62309"
   },
   "host": {
     "os": "linux",

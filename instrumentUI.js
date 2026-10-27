@@ -1,3 +1,4 @@
+import {renderModulationEditor} from "./modulationUI.js";
 // Controls are generated from the same patch keys validated by synth.js.
 // All edits go through the caller's one canonical beat mutation pathway.
 import { WAVES, FILTERS } from "./synth.js";
@@ -164,5 +165,6 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{}) {
   }
   grid.append(details);
  }
+ grid.append(renderModulationEditor(patch,onChange));
  root.append(grid);
 }

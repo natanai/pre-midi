@@ -1,3 +1,4 @@
+import {validateModulation} from "./src/dsp/modulation.js";
 import {resolveEvent} from "./soundModel.js";
 import {eventsAtStep} from "./arrangement.js";
 import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
@@ -10,6 +11,7 @@ import {validatePatch} from "./synth.js";
 import {configureDriveShaper} from "./audioEffects.js";
 import {applyAmplitudePlan} from "./envelope.js";
 import {planSynthVoice,noteFrequency} from "./src/dsp/synth-voice.js";
+import {attachModulation} from "./src/hosts/web/modulation.js";
 import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the resolved sound patch stored in the beat.
@@ -47,19 +49,23 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
  return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration),session);
 }
 export function scheduleSynthPlan(ctx,destination,plan,session=null){
- if(plan.contract!=="pre-midi-synth-voice"||plan.version!==1)throw Error("Unsupported synth voice plan");
+ if(plan.contract!=="pre-midi-synth-voice"||![1,2].includes(plan.version))throw Error("Unsupported synth voice plan");
+ if(plan.version===1&&plan.modulation!==undefined)throw Error("Modulation requires synth voice contract v2");
+ if(plan.version===2){const errors=validateModulation(plan.modulation);if(errors.length)throw Error(errors.join(" "));
+  if(plan.modulation.routes.some(route=>route.smoothing>0)&&typeof ctx.createIIRFilter!=="function")throw Error("This host does not support smoothed modulation");}
  const {patch,off,end,start,duration}=plan,motion=plan.movement;
- const sources=[],nodes=[],owner={sources,nodes};
+ const sources=[],nodes=[],owner={sources,nodes},destinations=new Map();
  const add=node=>{nodes.push(node);return node;};
  const mix=add(ctx.createGain());
- for(const slot of plan.oscillators){
-  if(!slot.level)continue;
+ for(const [index,slot] of plan.oscillators.entries()){
+  if(!slot.level&&!plan.modulation?.routes.some(route=>route.target===`oscillators.${index}.level`))continue;
   const oscillator=ctx.createOscillator();
   const gain=add(ctx.createGain());
   setOscillatorWave(ctx,oscillator,slot);
   oscillator.frequency.setValueAtTime(slot.frequency,start);
   schedulePitchPlan(ctx,oscillator.detune,slot.pitch,owner);
   gain.gain.value=slot.level;
+  destinations.set(`oscillators.${index}.level`,gain.gain);destinations.set(`oscillators.${index}.detune`,oscillator.detune);
   oscillator.connect(gain);gain.connect(mix);
   oscillator.start(start);oscillator.stop(end);
   sources.push(oscillator);
@@ -75,6 +81,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  }
  const filter=add(ctx.createBiquadFilter());
  filter.type=patch.filter.type;
+ destinations.set("filter.cutoff",filter.detune);
  const sweep=patch.filter.sweep??0;
  filter.frequency.setValueAtTime(plan.filter.startCutoff,start);
  if(sweep!==0)filter.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,plan.filter.sweepEnd);
@@ -94,7 +101,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  applyAmplitudePlan(amp.gain,plan.amplitude);
  signal.connect(amp);
  const pan=add(ctx.createStereoPanner());
- pan.pan.value=patch.pan;
+ pan.pan.value=patch.pan;destinations.set("pan",pan.pan);
 const pulse=add(ctx.createGain());
  pulse.gain.setValueAtTime(1,start);
  if(motion.tremolo>0)scheduleMovementLfo(ctx,pulse.gain,start,duration,
@@ -112,6 +119,7 @@ const pulse=add(ctx.createGain());
    pan.connect(send);send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination);
   }
  }
+ attachModulation(ctx,plan,destinations,owner);
  const voice=ownVoice(ctx,{sources,nodes,gate,start,release:off,end:session?plan.graphEnd:plan.audibleEnd});
  if(session){session.adopt(voice);if(voice.admitted&&mixAmount>0)pan.connect(session.delay(fx,voice));}
  return voice;

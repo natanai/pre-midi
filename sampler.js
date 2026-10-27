@@ -72,6 +72,7 @@ export function sampleForNote(patch,pitch,velocity=.8){
 export function validateSamplerPatch(patch){
  if(!patch||patch.type!=="sample")return ["Invalid sampler instrument."];
  const errors=[];
+ if(patch.modulation!==undefined)errors.push("General modulation currently requires a synth sound.");
  if(typeof patch.presetId!=="string"||patch.presetId.length>100)errors.push("Invalid sample preset.");
  if(!Array.isArray(patch.zones)||patch.zones.length<1||patch.zones.length>64||
    patch.zones.some(zone=>typeof zone?.assetId!=="string"||!zone.assetId||

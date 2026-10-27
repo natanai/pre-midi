@@ -1,3 +1,5 @@
+import {upgradeBeatFeatures} from "./schema.js";
+import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
@@ -29,7 +31,7 @@ import {installSongUI} from "./songUI.js";
 
 const $ = key => document.getElementById(key);
 const CACHE = "premidi-v5-draft";
-const SAVED_SOUNDS = "premidi-user-sounds-v1";
+const SAVED_SOUNDS = "premidi-user-sounds-v2";
 // Retain the previous fallback key. Native v5 drafts and files migrate through
 // the same parser, including safe hit conversion and preserved musical events.
 const parseDocument=raw=>{
@@ -39,7 +41,7 @@ const parseDocument=raw=>{
 const cached=(()=>{try{return parseDocument(localStorage.getItem(CACHE)||"");}catch{return null;}})();
 const savedSounds=(()=>{
  try {
-  const entries=JSON.parse(localStorage.getItem(SAVED_SOUNDS)||"[]");
+  const entries=JSON.parse(localStorage.getItem(SAVED_SOUNDS)||localStorage.getItem("premidi-user-sounds-v1")||"[]");
   return Array.isArray(entries)?entries.filter(item=>
    item && typeof item.id==="string" && item.id.length<80 &&
    typeof item.name==="string" && item.name.length<=60 && item.name.trim() &&
@@ -48,7 +50,7 @@ const savedSounds=(()=>{
 })();
 function validRackPreset(item){
  const trial=create(),inst=trial.instruments[0];
- inst.layout="rack";inst.sounds=item.sounds;trial.samples=item.samples||[];
+ inst.layout="rack";inst.sounds=item.sounds;trial.samples=item.samples||[];upgradeBeatFeatures(trial);
  return validate(trial).length===0;
 }
 let libraryMode="add",libraryCategory="All",libraryContext=null;
@@ -239,6 +241,7 @@ function modify(change){
  change();
  const referenced=referencedSampleIds(beat.instruments);
  beat.samples=beat.samples.filter(asset=>referenced.has(asset.id));
+ if(song)upgradeSongFeatures(song);else upgradeBeatFeatures(beat);
  const errors=validate(beat);
  if(song)errors.push(...validateSong(song));
  if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
@@ -249,6 +252,7 @@ function modifySong(change){
  const before=snapshot(song);
  if(change==="add-track")addSongTrack(song);
  else change();
+ upgradeSongFeatures(song);
  const errors=validateSong(song);
  if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
  return commitChange(before);
@@ -836,6 +840,7 @@ function renderSound() {
    let owner=target;
    for(let i=0;i<path.length-1;i++)owner=owner[path[i]]??={};
    owner[path[path.length-1]]=value;
+   if(target.modulation!==undefined)target.version=2;
    target.presetId="custom";
   });
   if(changed&&!playback&&!pendingPlay){

@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><style>body{margin:0}iframe{width:100%;height:100vh;border:0}</style>
+<iframe src="about:blank" title="Editable modulation workflow"></iframe><pre id="result" hidden></pre>
+<script type="module">
+import {makePatch} from "../synth.js";
+import {parse} from "../schema.js";
+import {parseSong} from "../songIO.js";
+const frame=document.querySelector("iframe"),checks={};
+const legacy=JSON.stringify([{id:"user-legacy",name:"Legacy sound",category:"Mine",patch:makePatch(),trigger:"pitched",referencePitch:60,gain:1}]);
+localStorage.setItem("premidi-user-sounds-v1",legacy);localStorage.removeItem("premidi-user-sounds-v2");
+const wait=async(predicate,label)=>{for(let i=0;i<200;i++){if(predicate())return;await new Promise(done=>setTimeout(done,25));}throw Error("Timed out: "+label);};
+const check=(label,value)=>{checks[label]=!!value;if(!value)throw Error(label);};
+frame.addEventListener("load",async()=>{
+ let doc=frame.contentDocument,win=frame.contentWindow,blob;
+ const get=id=>doc.getElementById(id);
+ const capture=()=>{const create=win.URL.createObjectURL.bind(win.URL);win.URL.createObjectURL=value=>{if(value.type==="application/json")blob=value;return create(value);};win.HTMLAnchorElement.prototype.click=function(){};};
+ const exported=async()=>{blob=null;get("export").click();get("export-confirm").click();check("native JSON download",!!blob);return JSON.parse(await blob.text());};
+ const choose=async(id,name)=>{get(id).click();const card=[...doc.querySelectorAll(".preset-card")].find(card=>card.dataset.presetId===name||card.querySelector("strong").textContent===name);check("preset exists "+name,!!card);card.querySelector(".preset-choose").click();await wait(()=>!get("instrument-dialog").open,"choose "+name);};
+ const upload=async(document,name)=>{const transfer=new win.DataTransfer();transfer.items.add(new win.File([JSON.stringify(document)],name,{type:"application/json"}));get("file").files=transfer.files;get("file").dispatchEvent(new win.Event("change",{bubbles:true}));};
+ let status="FAIL";
+ try{
+  win.confirm=()=>true;get("new").click();capture();
+  await choose("add-instrument","user-legacy");
+  await choose("add-instrument","touch-keys");
+  if(get("sound-toggle").getAttribute("aria-expanded")!=="true")get("sound-toggle").click();
+  let panel=doc.querySelector(".modulation-editor");check("routing is optional",!panel.open);panel.querySelector("summary").click();
+  const knob=panel.querySelector('[aria-label="Movement amount 1"]'),before=Number(knob.getAttribute("aria-valuenow"));
+  knob.dispatchEvent(new win.KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+  panel=doc.querySelector(".modulation-editor");panel.querySelector(":scope > button").click();
+  const beat=await exported();check("modulated Beat uses v9",beat.version===9);check("v9 parses",parse(JSON.stringify(beat)).version===9);
+  const patch=beat.instruments.at(-1).sounds[0].patch;
+  check("native routes remain editable",patch.version===2&&patch.modulation.routes.length===4&&patch.modulation.routes[0].depth>before);
+  win.prompt=()=>"Moving variation";get("save-sound").click();await wait(()=>(win.localStorage.getItem("premidi-user-sounds-v2")||"").includes("Moving variation"),"save moving patch");
+  check("legacy preset storage stays intact",win.localStorage.getItem("premidi-user-sounds-v1")===legacy);
+  const reload=new Promise(done=>frame.addEventListener("load",done,{once:true}));win.location.reload();await reload;doc=frame.contentDocument;win=frame.contentWindow;win.confirm=()=>true;capture();
+  await choose("add-instrument","Moving variation");const reopened=await exported();
+  check("saved routes survive reload",JSON.stringify(reopened.instruments.at(-1).sounds[0].patch.modulation)===JSON.stringify(patch.modulation));
+  get("song-expand").click();const song=await exported();check("Song uses v10",song.version===10&&parseSong(JSON.stringify(song)).beats[0].version===9);
+  get("new").click();await upload(beat,"moving.premidi");await wait(()=>doc.querySelectorAll("#instrument-list .instrument-card").length===beat.instruments.length,"import v9 Beat");doc.querySelector("#instrument-list .instrument-entry:last-child .instrument-card").click();
+  check("v9 import retains routes",(await exported()).instruments.at(-1).sounds[0].patch.modulation.routes.length===4);
+  get("new").click();await upload(song,"moving-song.premidi");await wait(()=>!get("song-panel").hidden,"import v10 Song");
+  check("v10 import retains routes",(await exported()).beats[0].instruments.at(-1).sounds[0].patch.modulation.routes.length===4);
+  check("no horizontal clipping",doc.documentElement.scrollWidth<=frame.clientWidth+3);status="PASS";
+ }catch(error){checks.error=String(error.stack||error);}
+ document.getElementById("result").textContent=JSON.stringify(checks);
+ await fetch("/__modulation_result?status="+status+"&details="+encodeURIComponent(JSON.stringify(checks)));
+},{once:true});frame.src="../index.html";
+</script>

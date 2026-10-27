@@ -815,8 +815,8 @@
       "id": "voices/overlap-retrigger",
       "sampleRate": 44100,
       "metrics": {
-        "max": 2.421438694000244e-8,
-        "rms": 2.4903780637704835e-9
+        "max": 2.2351741790771484e-8,
+        "rms": 2.8884048973509222e-9
       },
       "checks": {
         "independent": true
@@ -910,8 +910,8 @@
         },
         "improvementDb": 50.224265197298045,
         "offlineMedianMs": {
-          "none": 2.2000000001862645,
-          "4x": 5.2000000001862645
+          "none": 2.7000000001862645,
+          "4x": 14
         }
       },
       "checks": {
@@ -992,8 +992,8 @@
         },
         "improvementDb": 21.049220997556553,
         "offlineMedianMs": {
-          "none": 2.400000000372529,
-          "4x": 5.5
+          "none": 6.800000000745058,
+          "4x": 5.400000000372529
         }
       },
       "checks": {
@@ -1842,8 +1842,8 @@
       "id": "voices/overlap-retrigger",
       "sampleRate": 48000,
       "metrics": {
-        "max": 2.7474015951156616e-8,
-        "rms": 2.648725194018026e-9
+        "max": 2.2351741790771484e-8,
+        "rms": 3.1012263534268163e-9
       },
       "checks": {
         "independent": true
@@ -1937,8 +1937,8 @@
         },
         "improvementDb": 50.224260822272456,
         "offlineMedianMs": {
-          "none": 2.2000000001862645,
-          "4x": 5.5
+          "none": 3,
+          "4x": 6.400000000372529
         }
       },
       "checks": {
@@ -2019,8 +2019,8 @@
         },
         "improvementDb": 21.049223892311403,
         "offlineMedianMs": {
-          "none": 3.2000000001862645,
-          "4x": 5
+          "none": 3.900000000372529,
+          "4x": 7.199999999254942
         }
       },
       "checks": {
@@ -2879,8 +2879,8 @@
       "id": "voices/overlap-retrigger",
       "sampleRate": 96000,
       "metrics": {
-        "max": 2.514570951461792e-8,
-        "rms": 2.74191689999676e-9
+        "max": 2.9802322387695312e-8,
+        "rms": 2.8917708387922624e-9
       },
       "checks": {
         "independent": true
@@ -2974,8 +2974,8 @@
         },
         "improvementDb": 50.22425204567561,
         "offlineMedianMs": {
-          "none": 7.8999999994412065,
-          "4x": 13.899999999441206
+          "none": 6.7000000001862645,
+          "4x": 14.700000000186265
         }
       },
       "checks": {
@@ -3056,8 +3056,8 @@
         },
         "improvementDb": 21.049214602376715,
         "offlineMedianMs": {
-          "none": 7.7999999998137355,
-          "4x": 14.399999999441206
+          "none": 6.400000000372529,
+          "4x": 11.800000000745058
         }
       },
       "checks": {
@@ -3110,13 +3110,14 @@
     "compared": 60,
     "failures": []
   },
-  "measuredAt": "2026-10-27T05:02:26.454Z",
+  "suitePolicy": null,
+  "measuredAt": "2026-10-27T05:56:18.289Z",
   "source": {
-    "commit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
+    "commit": "5326635b6bcfc128089c098a918d02a0754e26a7",
     "tag": null,
-    "baseCommit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
+    "baseCommit": "5326635b6bcfc128089c098a918d02a0754e26a7",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "45cc7673a921f99fbae5489a23ea84436e3af06a54096f79e10839d30a934994"
+    "runtimeAndFixtureSha256": "ef8eac5130f672a925400b8597289667817ed3cfc7c0f7b0a5515007b92932dd"
   },
   "host": {
     "os": "linux",

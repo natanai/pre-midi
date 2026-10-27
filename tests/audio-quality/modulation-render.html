@@ -1,0 +1,52 @@
+<!doctype html><meta charset="utf-8"><title>Modulation audio qualification</title><pre id="status">running</pre>
+<script type="module">
+import {makePatch} from "../../synth.js";
+import {scheduleNote,renderSynthBuffer} from "../../audio.js";
+import {signalStats,difference,spectrum} from "./metrics.js";
+import {smoothingAlpha} from "../../src/dsp/modulation.js";
+import {cleanPatch} from "./fixtures.js";
+let report;
+try{
+ const results=[],failures=[];
+ const add=(id,metrics,checks)=>{const bad=Object.keys(checks).filter(k=>!checks[k]);failures.push(...bad.map(check=>({id,check})));results.push({id,metrics,checks,status:bad.length?"fail":"pass"});};
+ const render=async(patch,{velocity=1,pitch=60,gate=2,seconds=3,rate=48000}={})=>{
+  const context=new OfflineAudioContext(1,Math.ceil(seconds*rate),rate);
+  scheduleNote(context,context.destination,{patch,volume:.3},{pitch,velocity},0,gate,null);
+  return (await context.startRendering()).getChannelData(0);
+ };
+ const centroid=(data,at,rate=48000)=>{
+  const window=data.subarray(Math.round(at*rate),Math.round(at*rate)+8192),power=spectrum(window);
+  let weight=0,energy=0;for(let i=1;i<power.length;i++){energy+=power[i];weight+=power[i]*i*rate/8192;}return weight/energy;
+ };
+ for(const rate of [44100,48000,96000]){
+  const evolving=makePatch("evolving-glass"),a=await render(evolving,{rate}),b=await render(evolving,{rate});
+  const error=difference(a,b),early=centroid(a,.1,rate),late=centroid(a,1.5,rate);
+  const staticPatch=structuredClone(evolving);staticPatch.modulation.routes=[];
+  const stationary=await render(staticPatch,{rate}),change=difference(a,stationary);
+  add("evolving/"+rate,{early,late,error,change},{finite:signalStats(a).nonFinite===0,evolves:late>early*1.5,audibleDifference:change.rms>.005,deterministic:error.max<.0000001});
+  const touch=makePatch("touch-keys"),soft=await render(touch,{velocity:.2,rate}),hard=await render(touch,{velocity:1,rate});
+  const softCentroid=centroid(soft,.2,rate),hardCentroid=centroid(hard,.2,rate);
+  add("velocity-timbre/"+rate,{softCentroid,hardCentroid},{differentTone:hardCentroid>softCentroid*2});
+  const lead=makePatch("breath-lead"),moving=await render(lead,{rate}),still=structuredClone(lead);
+  still.modulation.routes=still.modulation.routes.filter(route=>route.source.kind!=="lfo");
+  const noLfo=await render(still,{rate}),delta=difference(moving,noLfo);
+  add("lead-pitch/"+rate,delta,{audibleMovement:delta.rms>.005,finite:signalStats(moving).nonFinite===0});
+ }
+ // An actual Web Audio control filter must match an independent exponential step.
+ {
+  const rate=48000,length=4800,context=new OfflineAudioContext(1,length,rate),source=context.createConstantSource();
+  source.offset.value=1;const alpha=smoothingAlpha(.01,rate),filter=context.createIIRFilter([alpha],[1,-(1-alpha)]);
+  source.connect(filter);filter.connect(context.destination);source.start(0);
+  const actual=(await context.startRendering()).getChannelData(0),expected=Float64Array.from(actual,(_,i)=>1-Math.exp(-(i+1)/(rate*.01))),error=difference(actual,expected);
+  add("smoothing/one-pole-step",error,{exponential:error.max<.000001});
+ }
+ // A level route can open a silent oscillator without bypassing normalization.
+ const patch=cleanPatch(),route={id:"smooth",source:{kind:"velocity"},target:"oscillators.0.level",unit:"linear_gain",depth:1,polarity:"unipolar",smoothing:.01};
+ patch.oscillators[0].level=0;patch.version=2;patch.modulation={version:1,routes:[route]};
+ const shaped=await render(patch,{gate:.2,seconds:.4});
+ add("zero-level-route",signalStats(shaped),{audible:signalStats(shaped).rms>.005,finite:signalStats(shaped).nonFinite===0});
+ report={schemaVersion:1,backend:"web-audio-general-modulation",environment:{userAgent:navigator.userAgent},policy:{method:"Measure spectral centroid change on sustained sounds; normalize timbre comparison through spectral power ratios rather than raw loudness; compare repeated actual renders and routed-vs-static lead PCM",maxRepeatError:1e-7,listening:"Human musical polish and comprehension review pending",limits:["No native v2 modulation rendering yet","No recorded automation or device underrun qualification"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
+}catch(error){report={error:String(error.stack||error)};}
+document.getElementById("status").textContent=JSON.stringify(report.summary||report);
+await fetch("/__audio_benchmark",{method:"POST",body:JSON.stringify(report)});
+</script>

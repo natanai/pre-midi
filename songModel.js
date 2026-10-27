@@ -1,9 +1,11 @@
 // Native Song domain model. No file I/O or browser dependencies.
-// Version 8 is reserved for Songs; the Beat schema remains v7 until
-// versioned parse/export and pre-programmed parity are implemented.
-import {FORMAT,VERSION as BEAT_VERSION,clone,create,id,validate as validateBeat} from "./schema.js";
+// Legacy Songs use v8 with v7 Beats; modulation explicitly requires v10/v9.
+// pre-programmed reader compatibility remains separately qualified.
+import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
 export const SONG_VERSION=8;
+export const MODULATION_SONG_VERSION=10;
+export function upgradeSongFeatures(song){song.beats.forEach(upgradeBeatFeatures);if(song.beats.some(beat=>beat.version===MODULATION_BEAT_VERSION))song.version=MODULATION_SONG_VERSION;return song;}
 const isObject=value=>value!==null&&typeof value==="object"&&!Array.isArray(value);
 const positive=value=>Number.isSafeInteger(value)&&value>0;
 const nonnegative=value=>Number.isSafeInteger(value)&&value>=0;
@@ -18,7 +20,7 @@ export function createSong(sourceBeat=create()){
  ensureBeat(sourceBeat);
  const beat=clone(sourceBeat),trackId=id();
  return {
-  format:FORMAT,kind:"song",version:SONG_VERSION,id:id(),title:"Untitled song",
+  format:FORMAT,kind:"song",version:beat.version===MODULATION_BEAT_VERSION?MODULATION_SONG_VERSION:SONG_VERSION,id:id(),title:"Untitled song",
   bpm:beat.bpm,beats:[beat],recordings:[],
   tracks:[{id:trackId,kind:"beat",name:"Beat 1",clips:[
    {id:id(),beatId:beat.id,startStep:0,lengthSteps:beatLength(beat)}
@@ -31,7 +33,7 @@ export function addBeat(song,sourceBeat,{independent=false}={}){
  const beat=clone(sourceBeat);
  if(independent)beat.id=id();
  if(song.beats.some(item=>item.id===beat.id))throw Error("Beat already exists in this Song. Use its existing identity or make an independent copy.");
- song.beats.push(beat);
+ song.beats.push(beat);upgradeSongFeatures(song);
  return beat;
 }
 export function addSongTrack(song,kind="beat"){
@@ -127,7 +129,7 @@ export function eventsAtSongStep(song,step){
 }
 export function validateSong(song){
  const errors=[];
- if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||song.version!==SONG_VERSION)
+ if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION].includes(song.version))
   return ["Unsupported Song format."];
  if(typeof song.id!=="string"||!song.id.trim()||typeof song.title!=="string"||!song.title.trim())
   errors.push("Song identity or title is missing.");
@@ -149,7 +151,8 @@ export function validateSong(song){
  for(const beat of song.beats){
   const issues=validateBeat(beat);
   if(issues.length)errors.push("Invalid Beat "+(beat?.id||"unknown")+": "+issues[0]);
-  if(beat?.version!==BEAT_VERSION)errors.push("Embedded Beat must use the current Beat format.");
+  if(song.version===SONG_VERSION&&beat?.version===MODULATION_BEAT_VERSION)errors.push("Modulated Beats require Song v10.");
+  if(!BEAT_VERSIONS.includes(beat?.version))errors.push("Embedded Beat must use the current Beat format.");
  }
  let seenBeat=false;
  const clipIds=new Set();
