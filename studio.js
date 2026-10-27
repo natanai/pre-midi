@@ -1372,7 +1372,7 @@ async function chooseSound(preset) {
  message("Loading "+preset.name+"...");
  try {
   const assets=await resolveSamples(preset);
-  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):preset.patch?patchCopy(preset.patch):
+  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):getPreset(preset.id)?makePatch(preset.id):preset.patch?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   if(preset.category!=="Examples")patch.presetId=preset.id;
   const trigger=presetTrigger(preset);
@@ -1393,7 +1393,7 @@ async function auditionPreset(preset) {
    await Promise.all(preset.sounds.map(entry=>audition({...makeInstrument(1,1,entry),volume:preset.volume??.7},
     entry.referencePitch,{samples})));return;
   }
-  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):preset.patch?patchCopy(preset.patch):
+  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):getPreset(preset.id)?makePatch(preset.id):preset.patch?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   const pitch=preset.referencePitch??(presetTrigger(preset)==="hit"?patch.zones?.[0]?.root??60:preset.category==="Bass"?48:preset.category==="Guitars"?57:69);
   const inst=makeInstrument(1,1,makeSound(preset.name,patch,presetTrigger(preset)));inst.volume=preset.volume??.8;
