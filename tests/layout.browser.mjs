@@ -59,5 +59,7 @@ try{
  await reportedTest("example-audio-check","/__example_audio_result");
  await reportedTest("synth-check","/__synth_result",1440,900);
  await reportedTest("synth-check","/__synth_result",390,844);
+ // A short desktop viewport catches inspector clipping hidden by full-height monitors.
+ await reportedTest("layout-check","/__layout_result",1440,640);
  await reportedTest("recording.browser","/__recorder_result",1440,900,true);
 }finally{server.close();}
