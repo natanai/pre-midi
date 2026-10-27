@@ -20,6 +20,8 @@ jobs:
         run: node scripts/fetch-samples.mjs
       - name: Stage minimal Pages build
         run: node scripts/prepare-pages.mjs
+      - name: Check Song recording, transport and actual WAV downloads
+        run: node tests/song.browser.mjs
       - name: Measure actual offline audio against versioned reference fixtures
         run: npm run benchmark:audio -- --require-clean
       - name: Verify musical compatibility with the previous renderer

@@ -20,6 +20,24 @@
    frame.onerror=()=>reject(Error("Studio iframe failed to load"));
   });
   const win=frame.contentWindow,doc=frame.contentDocument,get=id=>frame.contentDocument.getElementById(id);
+  const wavDownloads=[],createUrl=win.URL.createObjectURL.bind(win.URL);
+  win.URL.createObjectURL=blob=>{
+   if(blob.type==="audio/wav"){
+    wavDownloads.push(blob);
+    // An unrelated asynchronous save can replace transient export status text.
+    // Make that race deterministic: completion must be proved by the file itself.
+    queueMicrotask(()=>get("status").textContent="Saved locally");
+   }
+   return createUrl(blob);
+  };
+  win.HTMLAnchorElement.prototype.click=function(){};
+  const checkWav=async(blob,audible)=>{
+   const data=await blob.arrayBuffer(),view=new DataView(data);
+   assert(new TextDecoder().decode(new Uint8Array(data,0,4))==="RIFF","WAV header");
+   assert(view.getUint16(22,true)===2&&view.getUint32(24,true)===44100,"stereo 44.1 kHz WAV");
+   assert(view.getUint32(40,true)===data.byteLength-44&&data.byteLength>44,"complete WAV frame data");
+   if(audible){let peak=0;for(let offset=44;offset<data.byteLength;offset+=2)peak=Math.max(peak,Math.abs(view.getInt16(offset,true)));assert(peak>10,"authored Song note must be audible in WAV");}
+  };
   win.addEventListener("error",e=>issues.push(String(e.message||e.error)));
   win.addEventListener("unhandledrejection",e=>issues.push(String(e.reason)));
   await wait(()=>frame.contentDocument.querySelectorAll(".instrument-card").length>=1,"Beat editor initialized");
@@ -28,6 +46,8 @@
   // mobile-sized Chrome without reducing test coverage of Beat/Song scopes.
   get("bars").value="2";
   get("bars").dispatchEvent(new Event("change",{bubbles:true}));
+  const authored=doc.querySelector('#piano .note[aria-label^="C4, step 1,"]');
+  authored.click();assert(doc.querySelectorAll("#piano .note.filled").length>0,"WAV fixture includes a real note");
   get("song-expand").click();
   await wait(()=>!get("song-panel").hidden&&frame.contentDocument.querySelectorAll(".song-beat-clip").length===1,"Song first open");
   // This fixture changes the Beat to two bars, but Clips retain their original
@@ -108,9 +128,10 @@
   await wait(()=>get("status").textContent.includes("Exported song"),"Song premidi exported");
   get("export").click();
   get("export-form").querySelector('input[name="export-format"][value="wav"]').click();
+  const songDownload=wavDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>/Exported song WAV|Export failed/.test(get("status").textContent),"Song WAV rendered",25000);
-  assert(get("status").textContent.includes("Exported song WAV"),get("status").textContent);
+  await wait(()=>wavDownloads.length>songDownload,"Song WAV downloaded",25000);
+  await checkWav(wavDownloads.at(-1),true);
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="stop song","expanded Song playback started",7000);
   get("song-collapse").click();
@@ -118,9 +139,10 @@
   get("export").click();
   assert(get("export-form").querySelector('input[name="export-scope"]:checked').value==="beat","collapsed Song selects Beat export");
   get("export-form").querySelector('input[name="export-format"][value="wav"]').click();
+  const beatDownload=wavDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>/Exported beat WAV|Export failed/.test(get("status").textContent),"Beat WAV rendered",25000);
-  assert(get("status").textContent.includes("Exported beat WAV"),get("status").textContent);
+  await wait(()=>wavDownloads.length>beatDownload,"Beat WAV downloaded",25000);
+  await checkWav(wavDownloads.at(-1),false);
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="stop beat","collapsed Song plays only selected Beat",7000);
   get("song-expand").click();
