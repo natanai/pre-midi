@@ -21,7 +21,10 @@ frame.addEventListener("load",async()=>{
   }
   captureExports();
   async function score(){
-   exported=null;$("export").click();if(!exported)throw Error("Export failed: "+$("status").textContent);
+   exported=null;$("export").click();
+   if(!$("export-dialog").open)throw Error("Export options did not open");
+   $("export-confirm").click();
+   if(!exported)throw Error("Export failed: "+$("status").textContent);
    if(exported.type==="application/json")return parse(await exported.text());
    const entries=await readZip(exported);const entry=[...entries].find(([path])=>path.endsWith(".premidi"));
    return parse(new TextDecoder().decode(entry[1]));

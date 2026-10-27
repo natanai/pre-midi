@@ -40,7 +40,7 @@ const result=async()=>{
   };
   // Suppress the actual download while preserving the original export handler.
   w.HTMLAnchorElement.prototype.click=function(){};
-  get("export").click();
+  get("export").click();get("export-confirm").click();
   if(!zipped)throw Error("Recorded sample did not export as a ZIP.");
   const entries=await readZip(zipped);
   const paths=[...entries.keys()];
