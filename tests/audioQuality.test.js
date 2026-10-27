@@ -11,23 +11,27 @@ function mockParam(){
  };
 }
 const near=(actual,expected)=>assert.ok(Math.abs(actual-expected)<1e-9,actual+" != "+expected);
+const timesNear=(events,expected)=>{
+ assert.equal(events.length,expected.length);
+ events.forEach((event,index)=>near(event.time,expected[index]));
+};
 test("release during attack starts from actual envelope level",()=>{
  const param=mockParam(),level=scheduleAmplitudeEnvelope(param,{start:1,off:1.05,peak:1,envelope:env});
  near(level,.25);
- assert.deepEqual(param.events.map(e=>e.time),[1,1.05,1.05,1.35]);
+ timesNear(param.events,[1,1.05,1.05,1.35]);
  near(param.events.at(-2).value,.25);
  assert.ok(!param.events.some(e=>e.time>1.05&&e.value===1));
 });
 test("release during decay preserves its instantaneous value",()=>{
  const param=mockParam(),level=scheduleAmplitudeEnvelope(param,{start:0,off:.35,peak:1,envelope:env});
  near(level,.82);
- assert.deepEqual(param.events.map(e=>e.time),[0,.2,.35,.35,.65]);
+ timesNear(param.events,[0,.2,.35,.35,.65]);
  near(param.events.at(-2).value,.82);
 });
 test("sustained and zero-decay notes settle at sustain without discontinuities",()=>{
  const param=mockParam(),level=scheduleAmplitudeEnvelope(param,{start:2,off:3,peak:.75,envelope:env});
  near(level,.3);
- assert.deepEqual(param.events.map(e=>e.time),[2,2.2,2.7,3,3.3]);
+ timesNear(param.events,[2,2.2,2.7,3,3.3]);
  near(envelopeLevelAt({...env,attack:0,decay:0},1,1),.4);
 });
 test("extremely short attack uses bounded ramp and note-off cannot precede note-on",()=>{
