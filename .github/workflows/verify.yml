@@ -36,6 +36,17 @@ jobs:
         run: npm run benchmark:modulation -- --require-clean
       - name: Verify cutoff automation playback, seeking and export
         run: npm run benchmark:automation -- --require-clean
+      - name: Record source-attributed raw measurements
+        if: always()
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir, readFile } from 'node:fs/promises';
+          for (const name of (await readdir('benchmarks')).filter(name => name.endsWith('.latest.json')).sort()) {
+            console.log('::group::' + name);
+            console.log('AUDIO_REPORT ' + name + ' ' + JSON.stringify(JSON.parse(await readFile('benchmarks/' + name, 'utf8'))));
+            console.log('::endgroup::');
+          }
+          NODE
       - name: Upload audio qualification report
         if: always()
         uses: actions/upload-artifact@v4

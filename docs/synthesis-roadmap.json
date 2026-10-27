@@ -134,7 +134,37 @@
     },
     "latest_qualification": {
       "source_working_tree": "clean",
-      "reports": {
+      "source_commit": "d435c0d34416c9fa876201e51d754ca4e1ccce21",
+      "source_policy": "Every CI audio suite used --require-clean; raw reports contain exact source and fixture hashes. The following reporting-only commit changes no renderer or fixtures.",
+      "report": "benchmarks/automation-qualification.json",
+      "ci": "https://github.com/natanai/pre-midi/actions/runs/40525102547",
+      "raw_reports": {
+        "url": "https://github.com/natanai/pre-midi/actions/runs/40525102547/artifacts/12743327372",
+        "artifactId": 12743327372,
+        "sha256": "6fc10a3e33472fea2c762145c03ab525e51cf52cd954ff19c989cc7e5169772a",
+        "retention": "Actions artifact expires 2027-01-25; committed pre-automation reference reports retain their own earlier exact source attribution.",
+        "files": [
+          "audio-quality.latest.json",
+          "musical-parity.latest.json",
+          "voice-lifecycle.latest.json",
+          "native-parity.latest.json",
+          "onsets.latest.json",
+          "modulation.latest.json",
+          "automation.latest.json"
+        ]
+      },
+      "passed": {
+        "nodeTests": 174,
+        "acousticCases": 111,
+        "unchangedAcousticReferenceComparisons": 60,
+        "musicalCompatibilityCases": 22,
+        "voiceLifecycleCases": 19,
+        "nativeBrowserCases": 214,
+        "isolatedOnsetCases": 186,
+        "modulationCases": 62,
+        "automationCases": 25
+      },
+      "committed_baseline_reports": {
         "web-audio-reference": "benchmarks/web-audio-reference.json",
         "musical-parity-reference": "benchmarks/musical-parity-reference.json",
         "voice-lifecycle-reference": "benchmarks/voice-lifecycle-reference.json",
@@ -142,27 +172,16 @@
         "modulation-reference": "benchmarks/modulation-reference.json",
         "onset-reference": "benchmarks/onset-reference.json"
       },
-      "passed": {
-        "node_tests": 171,
-        "acoustic_cases": 111,
-        "unchanged_acoustic_reference_comparisons": 60,
-        "musical_compatibility_cases": 22,
-        "voice_lifecycle_cases": 19,
-        "native_browser_cases": 214,
-        "audible_modulation_cases": 62,
-        "isolated_onset_cases": 186
-      },
-      "browser": "Shipped desktop/mobile workflow, preset save/reload, Beat v9/Song v10 export/import, layout, microphone and existing Song transport/WAV download checks",
-      "scope": "Automated offline, browser control-trace, suspended-preparation AudioWorklet graph and interaction checks only. Maximum-route startup remains slow; no device or human signoff.",
-      "source_policy": "Each report declares its own exact clean source commit; source commits are ancestors of the delivered code",
-      "source_commits": {
+      "committed_baseline_source_commits": {
         "web-audio-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
         "musical-parity-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
         "voice-lifecycle-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
         "native-parity-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
         "modulation-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
         "onset-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9"
-      }
+      },
+      "browser": "Shipped desktop/mobile cutoff editing, playback, remove/undo and Beat v11/Song v12 import/export; existing modulation, newcomer, rack, layout, microphone, example, Song transport and WAV workflows all pass.",
+      "scope": "Automated offline, browser control-trace, suspended-preparation AudioWorklet graph and interaction checks only. Maximum-route startup remains slow; no device or human signoff."
     }
   },
   "phases": [
@@ -261,7 +280,7 @@
         "report": "benchmarks/web-audio-reference.json",
         "contract": "docs/dsp-contract.schema.json",
         "method": "18 constant-input rendered ADSR cases against an independent analytical oracle; overlapping and retriggered production voices at three sample rates",
-        "max_sample_error_gate": 3e-05,
+        "max_sample_error_gate": 0.00003,
         "shared_runtime": "live transport, audition, conversion preview and WAV export all use scheduleNote -> scheduleAmplitudeEnvelope -> planAmplitudeEnvelope",
         "compatibility": "preserves 2 ms attack floor, zero-decay sustain step and 0.000001 release floor; unchanged stored patch v1 and Beat v7/Song v8",
         "scope": "current ADSR scheduling contract; physical live-device loopback and native DSP equivalence are later host qualification"
@@ -509,7 +528,7 @@
         "missing": [
           "selected device host and target-platform builds",
           "real callback/device latency and underrun qualification",
-          "noise/drive/delay/modulation support",
+          "noise/decay, drive and delay support",
           "native oversampling parity",
           "desktop/mobile suspend-resume and device changes"
         ],
@@ -523,7 +542,6 @@
           "remaining": [
             "noise and decay",
             "drive and delay",
-            "v2 modulation",
             "filter sweep and legacy LFOs",
             "hardware/device qualification"
           ]
@@ -550,7 +568,13 @@
             "benchmarks/onset-reference.json"
           ]
         },
-        "automation_profile": "Execution plan v3 supports compiled filter.cutoff curves where the underlying patch is in the existing native profile; effects/legacy motion still reject."
+        "automation_profile": {
+          "status": "offline_profile_qualified",
+          "planVersion": 3,
+          "evidence": "benchmarks/automation-qualification.json",
+          "scope": "Compiled filter.cutoff curves where the underlying patch is in the existing native profile; effects and legacy motion still reject.",
+          "process_selftest": "400 waveform/filter/rate/extreme profiles, three maximum-route v2 and three v3 profiles at five block sizes, allocation assertions and finite bounded PCM"
+        }
       }
     },
     {
@@ -610,9 +634,9 @@
           "tests/audio-quality/modulation-render.html"
         ],
         "remaining": [
-          "native modulation implementation and cross-host parity",
           "maximum-route-count device CPU qualification",
-          "human musical listening review"
+          "human musical listening review",
+          "noise/effects/legacy-motion native compatibility and wider platform qualification"
         ],
         "report": "benchmarks/modulation-reference.json",
         "correctness": {
@@ -670,7 +694,7 @@
       "prerequisite_progress": {
         "shared_parameter_ids": "src/dsp/parameters.js",
         "combination_and_smoothing": "docs/modulation-contract.json",
-        "remaining": "No recorded automation or automation-lane persistence is implemented"
+        "remaining": "Recorded automation, held-note chase, additional targets/points and Song/game overrides remain; the persisted two-point cutoff lane is implemented."
       },
       "verification": {
         "implemented": [
@@ -692,7 +716,24 @@
           "Live automation recording and mid-note plan replacement",
           "Additional targets, points, Song/game overrides",
           "Hardware and human musical/newcomer evaluation"
-        ]
+        ],
+        "report": "benchmarks/automation-qualification.json",
+        "qualification": {
+          "source_commit": "d435c0d34416c9fa876201e51d754ca4e1ccce21",
+          "native_browser_cases": 18,
+          "total_cases": 25,
+          "sample_rates": [
+            44100,
+            48000,
+            96000
+          ],
+          "pcm_limits": {
+            "max_absolute": 0.0001,
+            "rms": 0.00002
+          },
+          "ci": "https://github.com/natanai/pre-midi/actions/runs/40525102547",
+          "raw_reports": "https://github.com/natanai/pre-midi/actions/runs/40525102547/artifacts/12743327372"
+        }
       }
     },
     {
@@ -998,8 +1039,8 @@
     }
   ],
   "next_ready_tasks": [
-    "SYN-009",
     "SYN-007",
+    "SYN-010",
     "SYN-005"
   ]
 }
