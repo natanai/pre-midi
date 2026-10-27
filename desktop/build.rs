@@ -6,8 +6,9 @@ fn main() {
  }
  cc::Build::new().cpp(true).file("../native/desktop-fixture.cpp")
   .file("../native/device-host.cpp")
+  .define("NOMINMAX",None)
   .std("c++17").flag_if_supported("-ffp-contract=off")
-  .flag_if_supported("/fp:strict").compile("premidi_fixture");
+  .flag_if_supported("/fp:strict").flag_if_supported("/EHsc").compile("premidi_fixture");
  let target=std::env::var("CARGO_CFG_TARGET_OS").unwrap();
  if target=="windows" {for name in ["ole32","uuid","avrt","winmm"] {println!("cargo:rustc-link-lib={name}");}}
  if target=="macos" {for name in ["CoreAudio","AudioToolbox","CoreFoundation"] {println!("cargo:rustc-link-lib=framework={name}");}}

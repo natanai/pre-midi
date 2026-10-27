@@ -34,6 +34,12 @@ inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
   require(r.target<6&&r.kind<4&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.05&&r.rate<=20&&r.root>=0&&r.root<=127&&r.span>=1&&r.span<=127&&r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4,"Invalid native modulation route");
  }
  p.automationCount=in.u32();require(p.automationCount<=6&&(p.version==3?p.automationCount>=2:p.automationCount==0),"Invalid native automation count");
+ for(unsigned index=0;index<2;index++){
+  const auto& o=p.oscillators[index];double highest=o.detune,offset=0;
+  for(unsigned i=0;i<o.count;i++)highest=std::max(highest,o.curve[i]);
+  for(unsigned i=0;i<p.routeCount;i++)if(p.routes[i].target==index*2)offset+=std::abs(p.routes[i].depth);
+  require(o.frequency*std::pow(2.,(highest+std::min(2400.,offset))/1200.)<rate/2.,"Native modulated pitch reaches Nyquist");
+ }
  double previous=-1;for(unsigned i=0;i<p.automationCount;i++){auto& e=p.automation[i];e.time=in.f64();e.value=in.f64();require(e.time>previous&&e.time>=p.start&&e.time<=p.graphEnd&&e.value>=50&&e.value<=14000,"Invalid native automation point");previous=e.time;}
  p.eventCount=in.u32();require(p.eventCount>=4&&p.eventCount<=6,"Invalid native envelope count");previous=-1;
  for(unsigned i=0;i<p.eventCount;i++){auto& e=p.events[i];e.kind=in.u32();e.time=in.f64();e.value=in.f64();require(e.kind<=1&&e.time>=previous&&e.time>=p.start&&e.time<=p.sourceEnd&&e.value>=0&&e.value<=1,"Invalid native envelope event");previous=e.time;}

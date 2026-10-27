@@ -13,6 +13,13 @@ extern "C" void premidi_test_callback_guard(int enabled){callbackScope=enabled!=
 __attribute__((noinline)) void* operator new(std::size_t count){if(callbackScope)callbackAllocations.fetch_add(1);if(auto* p=std::malloc(count))return p;throw std::bad_alloc();}
 __attribute__((noinline)) void operator delete(void* p)noexcept{std::free(p);}
 __attribute__((noinline)) void operator delete(void* p,std::size_t)noexcept{std::free(p);}
+__attribute__((noinline)) void* operator new(std::size_t count,const std::nothrow_t&)noexcept{try{return ::operator new(count);}catch(...){return nullptr;}}
+__attribute__((noinline)) void operator delete(void* p,const std::nothrow_t&)noexcept{std::free(p);}
+__attribute__((noinline)) void* operator new[](std::size_t count){return ::operator new(count);}
+__attribute__((noinline)) void* operator new[](std::size_t count,const std::nothrow_t&)noexcept{try{return ::operator new(count);}catch(...){return nullptr;}}
+__attribute__((noinline)) void operator delete[](void* p)noexcept{std::free(p);}
+__attribute__((noinline)) void operator delete[](void* p,std::size_t)noexcept{std::free(p);}
+__attribute__((noinline)) void operator delete[](void* p,const std::nothrow_t&)noexcept{std::free(p);}
 int main(int argc,char** argv){
  try{
   premidi::require(argc>=3,"Missing test arguments");std::ifstream source(argv[2],std::ios::binary);

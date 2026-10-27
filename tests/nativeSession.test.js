@@ -37,3 +37,8 @@ test('native session packet enforces its preparation bound',()=>{
  const doc=beat(),plans=nativePlans(renderEvents(doc));plans[0].patch.noise=.1;
  assert.throws(()=>encodeNativeSession(plans,48000),/Unsupported native profile/);
 });
+test('native modulated pitch is rejected when it can exceed device Nyquist',()=>{
+ const patch=makePatch('breath-lead');patch.modulation.routes.find(route=>route.target==='oscillators.0.detune').depth=2400;
+ const plan=planSynthVoice({patch,volume:.2},{pitch:127,velocity:.8},0,.1);
+ assert.throws(()=>encodeNativeSession([plan],44100),/modulated pitch above Nyquist/);
+});

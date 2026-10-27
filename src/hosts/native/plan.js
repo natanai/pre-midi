@@ -14,6 +14,10 @@ export function encodeNativePlan(plan,sampleRate,frames){
   plan.movement.depth!==0||plan.movement.tone!==0||plan.movement.tremolo!==0)
   throw Error("Unsupported native profile: no noise/drive/delay/filter-sweep/legacy LFO modulation");
  if(plan.oscillators.some(osc=>osc.frequency*2**(Math.max(osc.detune,...(osc.pitch.values??[]))/1200)>=sampleRate/2))throw Error("Unsupported native pitch above Nyquist");
+ if(plan.oscillators.some((osc,index)=>{
+  const possible=(plan.modulation?.routes??[]).filter(route=>route.target===`oscillators.${index}.detune`).reduce((sum,route)=>sum+Math.abs(route.depth),0);
+  return osc.frequency*2**((Math.max(osc.detune,...(osc.pitch.values??[]))+Math.min(2400,possible))/1200)>=sampleRate/2;
+ }))throw Error('Unsupported native modulated pitch above Nyquist');
  const parts=[],u32=n=>{if(!Number.isInteger(n)||n<0||n>0xffffffff)throw Error("Invalid native integer");const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n,true);parts.push(b);},f64=n=>{if(!Number.isFinite(n))throw Error("Nonfinite native parameter");const b=new Uint8Array(8);new DataView(b.buffer).setFloat64(0,n,true);parts.push(b);};
  u32(0x344e4d50);u32(sampleRate);u32(frames);u32(plan.version);
  for(const n of [plan.start,plan.duration,plan.end,plan.graphEnd,p.pan,p.filter.cutoff,p.filter.resonance])f64(n);u32(["lowpass","highpass","bandpass","notch"].indexOf(p.filter.type));

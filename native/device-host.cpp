@@ -1,3 +1,6 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #define MINIAUDIO_IMPLEMENTATION
 #define MA_NO_DECODING
 #define MA_NO_ENCODING
