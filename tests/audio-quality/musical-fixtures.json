@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "referenceCommit": "b5f8896f2fe70b5c25c7abb17e71fa997325c872",
+  "purpose": "Cross-revision musical sound identity and editable basic-control qualification; musical polish still requires listening review",
+  "sampleRates": [
+    44100,
+    48000,
+    96000
+  ],
+  "maxPcmDifference": 1e-05,
+  "fixtures": [
+    {
+      "id": "soft-keys",
+      "preset": "felt-electric",
+      "pitch": 60,
+      "duration": 0.6,
+      "seconds": 1.5
+    },
+    {
+      "id": "resonant-bass",
+      "preset": "acid-line",
+      "pitch": 45,
+      "duration": 0.45,
+      "seconds": 1.5
+    },
+    {
+      "id": "detuned-lead",
+      "preset": "neon-lead",
+      "pitch": 69,
+      "duration": 0.6,
+      "seconds": 1.8
+    },
+    {
+      "id": "harmonic-keys",
+      "preset": "harmonic-keys",
+      "pitch": 64,
+      "duration": 0.5,
+      "seconds": 1.5
+    },
+    {
+      "id": "expressive-glide",
+      "preset": "glass-portamento",
+      "pitch": 69,
+      "duration": 0.7,
+      "seconds": 1.8
+    },
+    {
+      "id": "noise-percussion",
+      "preset": "static-snare",
+      "pitch": 60,
+      "duration": 0.08,
+      "seconds": 0.5
+    }
+  ],
+  "listeningReview": {
+    "status": "pending",
+    "criteria": [
+      "usable as a musical starting sound",
+      "no unintended transient or harsh tail",
+      "brightness, volume, onset and fade edits are easy to hear"
+    ],
+    "limitation": "Automated compatibility is not evidence that users find these sounds polished"
+  },
+  "maxRmsDifference": 1e-07,
+  "toleranceRationale": "Original modulation nodes disconnect from ended handlers on the control thread. Self-comparisons expose variation near source teardown; allow at most -100 dBFS sample error and -140 dBFS RMS across revisions, and separately gate current-render repeatability at 1e-7. The original 60 steady reference gates are unchanged."
+}

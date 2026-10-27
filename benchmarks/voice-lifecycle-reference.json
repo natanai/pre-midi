@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "backend": "web-audio-voice-lifecycle",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36",
+    "hardwareConcurrency": 9
+  },
+  "summary": {
+    "cases": 13,
+    "failed": 0,
+    "status": "pass"
+  },
+  "failures": [],
+  "results": [
+    {
+      "id": "shared-delay/glass-keys",
+      "metrics": {
+        "max": 1.862645149230957e-8,
+        "rms": 1.013879312477863e-9
+      },
+      "checks": {
+        "compatible": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "shared-delay/neon-lead",
+      "metrics": {
+        "max": 7.450580596923828e-9,
+        "rms": 6.696310445013412e-10
+      },
+      "checks": {
+        "compatible": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "shared-delay/glass-portamento",
+      "metrics": {
+        "max": 1.4901161193847656e-8,
+        "rms": 1.078391301301349e-9
+      },
+      "checks": {
+        "compatible": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "shared-delay/harmonic-keys",
+      "metrics": {
+        "max": 1.4901161193847656e-8,
+        "rms": 1.0319461389250458e-9
+      },
+      "checks": {
+        "compatible": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "contract/serialized-voice-replay",
+      "metrics": {
+        "max": 0,
+        "rms": 0
+      },
+      "checks": {
+        "identical": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "steal/retains-echo",
+      "metrics": {
+        "dry": 0,
+        "echo": 0.023724705737550308,
+        "steals": 1
+      },
+      "checks": {
+        "dryStops": true,
+        "echoSurvives": true,
+        "stolen": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stop/active",
+      "metrics": {
+        "tail": 0,
+        "disposed": true,
+        "remaining": 0,
+        "buses": 0
+      },
+      "checks": {
+        "silence": true,
+        "disposed": true,
+        "empty": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stop/queued",
+      "metrics": {
+        "tail": 0,
+        "disposed": true,
+        "remaining": 0,
+        "buses": 0
+      },
+      "checks": {
+        "silence": true,
+        "disposed": true,
+        "empty": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stop/sample",
+      "metrics": {
+        "tail": 0,
+        "disposed": true
+      },
+      "checks": {
+        "silence": true,
+        "disposed": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "stop/vocal",
+      "metrics": {
+        "tail": 0,
+        "disposed": true
+      },
+      "checks": {
+        "silence": true,
+        "disposed": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "realtime/32-expressive-voices",
+      "metrics": {
+        "setupMs": 30.09999999962747,
+        "sampleRate": 48000,
+        "baseLatency": 0.010020833333333333,
+        "outputLatency": 0.032,
+        "dc": 0.000004294599537085257,
+        "rms": 0.006703789542824643,
+        "peak": 0.022472141310572624,
+        "maxStep": 0.0017092859488911927,
+        "nonFinite": 0,
+        "clipped": 0,
+        "silentBlocks": 0,
+        "minBlockRms": 0.002022992859172401,
+        "remaining": 0,
+        "qualification": "browser render-graph capture only; output device latency, driver underruns and native callback deadlines remain unqualified"
+      },
+      "checks": {
+        "queuedBeforeOnset": true,
+        "finite": true,
+        "audible": true,
+        "noSilentBlocks": true,
+        "headroom": true,
+        "cleanup": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "preview/full-nine-sound-rack-budget",
+      "metrics": {
+        "voices": 9
+      },
+      "checks": {
+        "complete": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "transport/stop-seek-loop",
+      "metrics": {
+        "diagnostics": [
+          {
+            "voices": 0,
+            "buses": 0,
+            "steals": 0,
+            "limit": 64
+          },
+          {
+            "voices": 0,
+            "buses": 0,
+            "steals": 0,
+            "limit": 64
+          },
+          {
+            "voices": 0,
+            "buses": 0,
+            "steals": 0,
+            "limit": 64
+          }
+        ]
+      },
+      "checks": {
+        "empty": true
+      },
+      "status": "pass"
+    }
+  ],
+  "measuredAt": "2026-10-27T05:02:31.380Z",
+  "source": {
+    "commit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
+    "tag": null,
+    "baseCommit": "a5827df8050edfb45b98f37237d8b68a87cbaf14",
+    "workingTreeDirty": false,
+    "runtimeAndFixtureSha256": "14c0de0d0de92a5ce65ae73bf125930ebd4c25b14b572789d6193106e79c4c65"
+  },
+  "host": {
+    "os": "linux",
+    "release": "6.18.55",
+    "arch": "x64",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logicalCpus": 9,
+    "node": "v24.22.1"
+  },
+  "policy": {
+    "version": 1,
+    "method": {
+      "pcm": "Float32 before WAV quantization; signal peak is sample peak, not reconstructed true peak",
+      "spectrum": "16384-point four-term Blackman-Harris FFT; sum power within +/-5 bins of each expected in-band harmonic; residual excludes bins 0..5",
+      "offHarmonicDb": "10 log10(residual / harmonic energy). Alias proxy only for stationary periodic fixtures without modulation or noise; not a universal alias meter. Aliases landing inside harmonic masks are unobservable.",
+      "tuning": "Interpolated rising zero crossings on a steady sine; cents = 1200 log2(measured/expected)",
+      "envelope": "Constant unity input through actual scheduled gain vs independently evaluated piecewise linear reference at every sample",
+      "clicks": "Maximum step in envelope error residual; zero-decay sustain step is intentional legacy behavior",
+      "cost": "Offline wall milliseconds including context setup; median of 5 measured runs after warm-up; informational only, no real-time CPU claim",
+      "repeatability": "Maximum and RMS PCM difference between equivalent independently constructed offline graphs in the same browser process"
+    },
+    "gates": {
+      "envelopeMaxError": 0.00003,
+      "envelopeResidualStep": 0.00003,
+      "tuningCents": 0.3,
+      "sineOffHarmonicDb": -65,
+      "steadyDc": 0.002,
+      "determinismMaxError": 1e-7,
+      "releasedRms": 0.000002,
+      "stereoLeakRms": 1e-7,
+      "overlapMaxError": 2e-7,
+      "driveMinimumImprovementDb": 6,
+      "driveRouteOffHarmonicDb": -25
+    },
+    "deferred": [
+      {
+        "metric": "bright oscillator absolute alias floor",
+        "reason": "record baseline first; harmonic residual has masking blind spots and browser band-limiting differs"
+      },
+      {
+        "metric": "drive absolute alias floor",
+        "reason": "relative 4x-vs-none gate applies to specified high sine fixture only; compare native reconstruction filters when SYN-007 exists"
+      },
+      {
+        "metric": "CPU ceiling",
+        "reason": "virtualized offline timings cannot establish desktop/mobile callback deadlines or underruns"
+      },
+      {
+        "metric": "native parity",
+        "reason": "no native DSP backend yet"
+      },
+      {
+        "metric": "live device acoustic parity",
+        "reason": "live/offline share scheduler; hardware loopback capture is still required"
+      }
+    ],
+    "references": [
+      {
+        "url": "https://www.w3.org/TR/webaudio/",
+        "sections": [
+          "AudioParam",
+          "WaveShaperNode",
+          "OfflineAudioContext"
+        ],
+        "use": "automation ordering, oversampling latency and offline rendering contracts"
+      },
+      {
+        "url": "https://holometer.fnal.gov/GH_FFT.pdf",
+        "authors": "Heinzel, Ruediger, Schilling (2002)",
+        "use": "window leakage, spectral resolution and power-ratio methodology"
+      }
+    ],
+    "gateRationale": {
+      "envelope": "3e-5 absolute gain error allows floating-point and sub-sample scheduling variation; measured maximum at baseline is below 1e-6; no perceptual click-free claim for the intentional zero-decay step",
+      "tuning": "0.3 cents is a conservative numerical tuning regression budget, not a hearing threshold",
+      "signalLevels": "DC/peak/RMS and silence thresholds detect basic waveform/path regressions; they are not mastering or true-peak qualification",
+      "drive": "6 dB relative alias-proxy improvement is a conservative regression budget below the observed 21-50 dB on the specified fixtures; -25 dB on the production route fixtures guards gross loss of oversampling",
+      "referenceIdentity": "Stored steady spectra use 5% plus 1e-4 absolute amplitude tolerance and 10% plus 2e-4 absolute harmonic power-ratio tolerance; timings are excluded from comparisons"
+    }
+  }
+}

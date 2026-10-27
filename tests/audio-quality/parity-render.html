@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><title>Musical sound compatibility</title><pre id="status">running</pre>
+<script type="module">
+import {renderSynthBuffer as current,scheduleNote} from "../../audio.js";
+import {renderSynthBuffer as previous} from "/reference/audio.js";
+import {makePatch} from "../../synth.js";
+import {difference,signalStats,harmonicMetrics} from "./metrics.js";
+import {cleanPatch} from "./fixtures.js";
+let report;
+try{
+ const manifest=await (await fetch("./musical-fixtures.json")).json(),results=[],failures=[];
+ const add=(id,metrics,checks)=>{
+  const failed=Object.keys(checks).filter(key=>!checks[key]);failures.push(...failed.map(check=>({id,check})));
+  results.push({id,metrics,checks,status:failed.length?"fail":"pass"});
+ };
+ for(const sampleRate of manifest.sampleRates)for(const fixture of manifest.fixtures){
+  const patch=makePatch(fixture.preset),options={sampleRate,seconds:fixture.seconds};
+  const a=await previous(patch,fixture.pitch,fixture.duration,options),b=await current(patch,fixture.pitch,fixture.duration,options);
+  const oldAgain=await previous(patch,fixture.pitch,fixture.duration,options),newAgain=await current(patch,fixture.pitch,fixture.duration,options);
+  const legacyRepeat=difference(a.getChannelData(0),oldAgain.getChannelData(0)),currentRepeat=difference(b.getChannelData(0),newAgain.getChannelData(0));
+  const oldPcm=a.getChannelData(0),newPcm=b.getChannelData(0),error=difference(oldPcm,newPcm);
+  let worst=0;for(let i=0;i<oldPcm.length;i++)if(Math.abs(oldPcm[i]-newPcm[i])>Math.abs(oldPcm[worst]-newPcm[worst]))worst=i;
+  error.worstAtSeconds=worst/sampleRate;error.referenceAtWorst=oldPcm[worst];error.currentAtWorst=newPcm[worst];
+  add(fixture.id+"/"+sampleRate,{...error,legacyRepeat,currentRepeat},{compatible:error.max<=manifest.maxPcmDifference&&error.rms<=manifest.maxRmsDifference,repeatable:currentRepeat.max<=0.0000001});
+ }
+ const render=async(patch,volume=1)=>{
+  const ctx=new OfflineAudioContext(1,48000,48000);scheduleNote(ctx,ctx.destination,{patch,volume},{pitch:69,velocity:1},0,.3,null);
+  return (await ctx.startRendering()).getChannelData(0);
+ };
+ const patch=cleanPatch("sawtooth"),dark=cleanPatch("sawtooth");dark.filter.cutoff=600;
+ const brightAudio=await render(patch),darkAudio=await render(dark),window=data=>data.subarray(4800,4800+8192);
+ const bright=harmonicMetrics(window(brightAudio),48000,440),muffled=harmonicMetrics(window(darkAudio),48000,440);
+ add("editing/brightness",{bright:bright.thdDb,dark:muffled.thdDb},{moreHighHarmonics:bright.thdDb>muffled.thdDb+6});
+ const slow=cleanPatch();slow.envelope.attack=.4;const fast=await render(cleanPatch()),soft=await render(cleanPatch(),.25),slowAudio=await render(slow);
+ const rms=(data,a,b)=>signalStats(data.subarray(a*48000,b*48000)).rms;
+ add("editing/softness",{normal:rms(fast,.1,.2),soft:rms(soft,.1,.2)},{quieter:rms(soft,.1,.2)<rms(fast,.1,.2)*.3});
+ add("editing/attack",{fast:rms(fast,.02,.06),slow:rms(slowAudio,.02,.06)},{slower:rms(slowAudio,.02,.06)<rms(fast,.02,.06)*.2});
+ const long=cleanPatch();long.envelope.release=.6;const longAudio=await render(long);
+ add("editing/release",{short:rms(fast,.45,.55),long:rms(longAudio,.45,.55)},{longer:rms(longAudio,.45,.55)>.01&&rms(fast,.45,.55)<.000002});
+ report={schemaVersion:1,backend:"web-audio-musical-parity",referenceCommit:manifest.referenceCommit,
+  environment:{userAgent:navigator.userAgent},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
+}catch(error){report={error:String(error.stack||error)};}
+document.getElementById("status").textContent=JSON.stringify(report.summary||report);
+await fetch("/__audio_benchmark",{method:"POST",body:JSON.stringify(report)});
+</script>

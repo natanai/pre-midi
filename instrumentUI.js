@@ -5,6 +5,11 @@ import { BEND_SHAPES } from "./expression.js";
 import { createDial,explainLabel,helpForLabel } from "./dial.js";
 import {HARMONIC_COUNT,harmonicRecipe} from "./harmonics.js";
 const groups=[
+ {name:"Sound",open:true,fields:[
+  {path:["filter","cutoff"],label:"Cutoff",min:50,max:14000,step:1,display:"hz",log:true},
+  {path:["envelope","attack"],label:"Attack",min:0,max:3,step:.01,display:"seconds"},
+  {path:["envelope","release"],label:"Release",min:.01,max:4,step:.01,display:"seconds"}
+ ]},
  {name:"Oscillator 1",open:true,fields:[
   {path:["oscillators",0,"wave"],label:"Wave",options:WAVES},
   {path:["oscillators",0,"level"],label:"Level",min:0,max:1,step:.01,display:"percent"},
@@ -17,22 +22,19 @@ const groups=[
   {path:["oscillators",1,"octave"],label:"Octave",options:[-2,-1,0,1,2]},
   {path:["oscillators",1,"detune"],label:"Detune",min:-100,max:100,step:1,display:"cents"}
  ]},
- {name:"Envelope",open:true,fields:[
-  {path:["envelope","attack"],label:"Attack",min:0,max:3,step:.01,display:"seconds"},
+ {name:"Envelope",open:false,fields:[
   {path:["envelope","decay"],label:"Decay",min:0,max:3,step:.01,display:"seconds"},
-  {path:["envelope","sustain"],label:"Sustain",min:0,max:1,step:.01,display:"percent"},
-  {path:["envelope","release"],label:"Release",min:.01,max:4,step:.01,display:"seconds"}
+  {path:["envelope","sustain"],label:"Sustain",min:0,max:1,step:.01,display:"percent"}
  ]},
- {name:"Filter & noise",open:true,fields:[
+ {name:"Filter & noise",open:false,fields:[
   {path:["filter","type"],label:"Filter",options:FILTERS},
-  {path:["filter","cutoff"],label:"Cutoff",min:50,max:14000,step:1,display:"hz",log:true},
   {path:["filter","resonance"],label:"Resonance",min:.1,max:16,step:.1,display:"number"},
   {path:["filter","sweep"],label:"Filter sweep",min:-5,max:5,step:.1,display:"number",defaultValue:0},
   {path:["filter","sweepTime"],label:"Sweep time",min:.01,max:3,step:.01,display:"seconds",defaultValue:.2},
   {path:["noise"],label:"Noise",min:0,max:1,step:.01,display:"percent"},
   {path:["noiseDecay"],label:"Noise decay",min:0,max:4,step:.01,display:"seconds",defaultValue:0}
  ]},
- {name:"Movement",open:true,fields:[
+ {name:"Movement",open:false,fields:[
   {path:["bend","shape"],label:"Bend shape",options:BEND_SHAPES.map(([id])=>id)},
   {path:["bend","amount"],label:"Bend amount",min:0,max:12,step:.25,display:"semitones"},
   {path:["bend","rate"],label:"Wave speed",min:.1,max:12,step:.1,display:"hz"},
@@ -55,8 +57,7 @@ const groups=[
  ]}
 ];
 const expanded=new Set(groups.filter(g=>g.open).map(g=>g.name));
-// Movement is a primary creative surface; advanced shaping stays available on demand.
-groups.sort((a,b)=>a.name==="Movement"?-1:b.name==="Movement"?1:0);
+// Common musical edits stay first; deeper controls reuse the same patch fields.
 const pathValue=(obj,path)=>path.reduce((target,key)=>target?.[key],obj);
 const fieldTitle=field=>field.label+" ("+field.path.join(".")+")";
 function format(value,display) {

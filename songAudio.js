@@ -1,3 +1,4 @@
+import {ownVoice} from "./src/hosts/web/voice-session.js";
 // Native timeline audio for continuous vocal takes.
 import {recordingBytes} from "./recordingAssets.js";
 const cache=new WeakMap();
@@ -23,7 +24,7 @@ export function recordingEventsAtStep(song,step,{includeOverlapping=false}={}){
     clip.startStep+clip.lengthSteps>step)))
    .map(clip=>({recording:recordings.get(clip.recordingId),clip,track})));
 }
-export function scheduleVocal(context,destination,event,startTime,unit,decoded,{elapsedSteps=0}={}){
+export function scheduleVocal(context,destination,event,startTime,unit,decoded,{elapsedSteps=0,session=null}={}){
  const buffer=decoded.get(event.recording.id);
  if(!buffer)return;
  const {recording,clip}=event;
@@ -33,9 +34,10 @@ export function scheduleVocal(context,destination,event,startTime,unit,decoded,{
   Math.max(0,recording.durationSeconds-offset),
   Math.max(0,clip.lengthSteps*unit-elapsed));
  if(!(duration>.005))return;
- const source=context.createBufferSource(),level=context.createGain();
+ const source=context.createBufferSource(),level=context.createGain(),gate=context.createGain();
  source.buffer=buffer;level.gain.value=clip.gain??1;
- source.connect(level);level.connect(destination);
+ source.connect(level);level.connect(gate);gate.connect(destination);
  source.start(startTime,offset,duration);
- source.onended=()=>{try{source.disconnect();level.disconnect();}catch{}};
+ const voice=ownVoice(context,{sources:[source],nodes:[level,gate],gate,priority:1,start:startTime,release:startTime+duration,end:startTime+duration});
+ return session?session.adopt(voice):voice;
 }

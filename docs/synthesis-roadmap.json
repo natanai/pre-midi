@@ -15,7 +15,9 @@
     "game_integration": "https://github.com/natanai/pre-programmed/issues/235",
     "envelope_contract": "src/dsp/amplitude-envelope.js",
     "audio_quality_policy": "tests/audio-quality/policy.json",
-    "audio_quality_reference": "tests/audio-quality/reference.json"
+    "audio_quality_reference": "tests/audio-quality/reference.json",
+    "synth_execution_contract": "docs/dsp-host-contract.json",
+    "synth_voice_planner": "src/dsp/synth-voice.js"
   },
   "platform_policy": {
     "priority_order": [
@@ -89,7 +91,6 @@
     ],
     "limitations": [
       "no_general_modulation_matrix",
-      "no_polyphony_budget",
       "no_native_host",
       "no_general_wavetable_morphing",
       "no_granular_engine",
@@ -117,7 +118,20 @@
       "claim state-of-the-art quality on feature count alone",
       "silently replace native sounds with samples",
       "sacrifice native DSP to preserve browser support"
-    ]
+    ],
+    "usability_gate": {
+      "principle": "Professional complexity underneath, immediate musical control on the surface",
+      "applies_to": "All synthesis, host, automation and sound-editing roadmap tasks",
+      "acceptance": [
+        "A preset can be previewed, selected and heard from the current inspector",
+        "Volume, brightness, attack and release remain directly reachable without a beginner/expert mode switch",
+        "The same authored parameters back common controls and deeper editing; no duplicate competing systems",
+        "A saved variation preserves the edited sound and volume and can be reopened on desktop and mobile",
+        "Each new capability earns its UI space and has sound-specific accessible label help"
+      ],
+      "automated_workflow": "tests/newcomer-check.html",
+      "human_qualification": "Observed newcomer comprehension and musical listening signoff remain explicit release requirements; successful clicks are not evidence of intuitive understanding"
+    }
   },
   "phases": [
     {
@@ -127,7 +141,8 @@
       "gate_task_ids": [
         "SYN-003",
         "SYN-004",
-        "SYN-005"
+        "SYN-005",
+        "SYN-022"
       ]
     },
     {
@@ -303,20 +318,47 @@
       "id": "SYN-004",
       "phase": "quality",
       "priority": "P0",
-      "status": "planned",
+      "status": "in_progress",
       "title": "Polyphony and shared voice lifecycle",
       "depends_on": [
         "SYN-003"
       ],
       "deliverables": [
-        "src/dsp/voice-manager",
-        "tests/voice-lifecycle"
+        "src/dsp/voice-allocator.js",
+        "src/hosts/web/voice-session.js",
+        "tests/voiceAllocator.test.js",
+        "tests/audio-quality/voice-suite.js"
       ],
       "acceptance": [
         "Voice budget and stealing policy are explicit and deterministic.",
         "32 sustained voices are glitch-free on a specified desktop reference configuration.",
         "Stop/seek/loop cannot leak oscillators or drop shared delay tails."
-      ]
+      ],
+      "verification": {
+        "implemented": [
+          "64-voice budgets for transport and preview; full rack auditions are not restricted to eight simultaneous sounds",
+          "release-first/oldest deterministic stealing with vocal priority",
+          "5 ms source fade and cancellation of future starts",
+          "owned synth, modulation, noise, sample and vocal source cleanup",
+          "identical linear delay buses shared per session; tails survive steals",
+          "feedback-derived live completion and Beat/Song WAV tail lengths"
+        ],
+        "commands": [
+          "npm run benchmark:voices -- --require-clean",
+          "npm run benchmark:musical -- --require-clean"
+        ],
+        "realtime_scope": "AudioWorklet capture of 32 sustained expressive voices in the browser rendering graph, with finite/peak/RMS/silent-block and cleanup gates",
+        "remaining": [
+          "real output-device underrun/latency qualification on documented desktop/mobile hardware",
+          "native allocation-free callback implementation and CPU scaling tests under SYN-007",
+          "MIDI sustain pedal handling under SYN-016"
+        ],
+        "limitations": [
+          "The logical budget excludes retiring-source overlap during the 5 ms fade",
+          "Shared delay tails do not consume pitched-voice budget",
+          "Browser callback graph capture cannot observe driver-side underruns"
+        ]
+      }
     },
     {
       "id": "SYN-005",
@@ -341,40 +383,55 @@
       "id": "SYN-006",
       "phase": "architecture",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "title": "Host-neutral synth graph and versioned DSP contracts",
       "depends_on": [
         "SYN-001",
         "SYN-003"
       ],
       "deliverables": [
-        "src/dsp/",
-        "docs/dsp-contract.schema.json"
+        "src/dsp/synth-voice.js",
+        "src/dsp/expression.js",
+        "src/dsp/amplitude-envelope.js",
+        "docs/synth-voice.schema.json",
+        "docs/dsp-host-contract.json",
+        "tests/synthVoice.test.js",
+        "tests/audio-quality/parity-render.html"
       ],
       "acceptance": [
-        "Patch interpretation requires no DOM, microphone, IndexedDB or window object.",
-        "Parameter identifiers and units are stable and versioned, with explicit migration.",
-        "The same canonical events and patch semantics feed standalone, game and optional web renderers."
+        "Patch and note interpretation produces a versioned JSON synth plan without DOM, microphone, IndexedDB or AudioNode objects.",
+        "Existing oscillator, harmonic, filter, ADSR, expression, effects and routing parameter identifiers, units, defaults and interpolation policy are explicit without changing patch v1 persistence.",
+        "The current Web Audio adapter renders serialized canonical plans within measured tolerances of the pre-refactor implementation; native/game adapters consume this contract and are separately qualified in SYN-007/SYN-020."
       ],
       "dependency_rationale": "Canonical envelope semantics and fixtures can proceed before native oversampling parity; requiring completed SYN-002 would implicitly block the native backend needed to finish it.",
       "verification": {
-        "implemented": [
-          "stable amplitude-envelope parameter IDs, units, ranges, defaults and interpolation",
-          "pure JSON-serializable v1 execution plan with stable same-time ordering",
-          "current Web Audio adapter executing plan for all synth notes",
-          "browser packaging of nested DSP dependency graph"
-        ],
+        "contract": "docs/dsp-host-contract.json",
+        "parameter_registry": "src/dsp/synth-voice.js: SYNTH_PARAMETERS",
         "tests": [
+          "tests/synthVoice.test.js",
           "tests/dspContract.test.js",
-          "tests/audio-quality/suite.js",
-          "tests/pages.test.js"
+          "tests/audio-quality/voice-suite.js",
+          "tests/audio-quality/parity-render.html"
         ],
-        "remaining": [
-          "oscillator/filter/modulation/routing graph contracts",
-          "native host implementation and matched-render fixtures",
-          "game parameter control parity"
+        "parity_reference_commit": "b5f8896f2fe70b5c25c7abb17e71fa997325c872",
+        "reference_method": "Render actual previous-commit code in an isolated local namespace, compare six musical fixture sounds at three sample rates; separately measure original and current repeatability. A serialized voice plan is rendered through the current adapter.",
+        "preserved_formats": [
+          "patch v1",
+          "Beat v7",
+          "Song v8"
         ],
-        "compatibility": "no persistent schema changes and no game playback parity claim"
+        "remaining_host_qualification": [
+          "SYN-007 native backend",
+          "SYN-020 pre-programmed parity"
+        ]
+      },
+      "acceptance_adjustment": {
+        "reason": "Separate completion of the portable representation and working compatibility adapter from creation of future native/game hosts; otherwise SYN-007 depends on a task that cannot finish before SYN-007 exists. Native parity is retained as a mandatory later gate, not claimed here.",
+        "native_qualification_tasks": [
+          "SYN-007",
+          "SYN-020",
+          "SYN-021"
+        ]
       }
     },
     {
@@ -432,6 +489,10 @@
         "Velocity, key tracking, envelopes and LFOs can target multiple supported synthesis parameters.",
         "Bipolar/unipolar ranges, depth, polarity and modulation rate are explicit.",
         "Modulation is deterministic under offline rendering and gameplay control."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -452,6 +513,10 @@
         "Parameter changes during sustained notes are smooth and free of zipper noise.",
         "Beat definition, Song override and game state commands have an explicit precedence contract.",
         "Recorded movements survive native project round-trip."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -472,6 +537,10 @@
         "Interpolation is continuous; band-limiting avoids obvious aliasing.",
         "Frequency/phase modulation is available with independently routable depths.",
         "Original harmonic patches retain sound identity via migrations."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -492,6 +561,10 @@
         "Multiple filter stages may run serially or in parallel.",
         "Ladder, comb and formant options are benchmarked for resonance and stability.",
         "Extreme modulation does not generate NaNs, runaway gain or unstable feedback."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -512,6 +585,10 @@
         "Grain scheduling and time-varying partials are project-portable.",
         "Attacks, sustained harmonics and noise can evolve independently.",
         "Native playback does not require retaining entire long recordings in memory."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -532,6 +609,10 @@
         "Sustain loops and crossfades are supported.",
         "Independent pitch and time adjustment has measurable quality limits.",
         "External asset paths remain portable, verified and separate from .premidi JSON."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -552,6 +633,10 @@
         "Chorus, reverb, EQ, compressors and upgraded delay have predictable tails.",
         "Per-voice and shared-bus effects are distinct to bound CPU cost.",
         "Effect routing is versioned, bypassable, automatable and recallable."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -572,6 +657,10 @@
         "Velocity can shape timbre, not only gain.",
         "MIDI note input, sustain and pitch-bend behavior are verified.",
         "Where supported, independent per-note expression is preserved in native files."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -594,6 +683,10 @@
         "Fit time-varying harmonics and transients, not only averaged spectra.",
         "Report perceptual/audio error and disclose irreducible mismatch.",
         "Test several pitch ranges, velocities, attacks and noisy sources."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -615,6 +708,10 @@
         "Standalone desktop works without browser/network runtime.",
         "Offline render and device playback match canonical DSP fixtures.",
         "Can save and reopen .premidi plus external audio assets."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -635,6 +732,10 @@
         "Suspend/resume and device-rate changes preserve voice state or terminate safely.",
         "Audio remains responsive under representative mobile CPU and thermal constraints.",
         "Touch editing uses same native project semantics."
+      ],
+      "usability_acceptance": [
+        "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
+        "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ]
     },
     {
@@ -668,7 +769,8 @@
         "SYN-004",
         "SYN-005",
         "SYN-018",
-        "SYN-020"
+        "SYN-020",
+        "SYN-022"
       ],
       "deliverables": [
         "benchmarks/",
@@ -679,11 +781,46 @@
         "Prove project round-trip, crash recovery, stable rendering and tested polyphony.",
         "Publish measured limitations and regressions without claiming fidelity from mere feature existence."
       ]
+    },
+    {
+      "id": "SYN-022",
+      "phase": "quality",
+      "priority": "P0",
+      "status": "in_progress",
+      "title": "Newcomer sound-design and musical-reference qualification",
+      "depends_on": [
+        "SYN-003",
+        "SYN-006"
+      ],
+      "deliverables": [
+        "tests/newcomer-check.html",
+        "tests/audio-quality/musical-fixtures.json"
+      ],
+      "acceptance": [
+        "Desktop and phone workflows cover preview, selection, hearing, brightness/volume/onset/fade edits, native export, save and reload of a variation.",
+        "A small set of musical sounds has versioned acoustic compatibility fixtures and audible control-response checks.",
+        "Observed newcomer sessions and listening review confirm comprehension and musical usefulness without requiring oscillator or modulation mathematics."
+      ],
+      "verification": {
+        "automated": [
+          "tests/newcomer-check.html at 1440px and 390px",
+          "npm run benchmark:musical -- --require-clean"
+        ],
+        "interface_changes": [
+          "Cutoff, Attack and Release share a compact first group with no duplicate controls",
+          "An explicit Hear sound action uses the current patch",
+          "Solo preset variations preserve instrument volume"
+        ],
+        "human_review": {
+          "status": "pending",
+          "no_claim": "Automated action completion does not prove newcomer comprehension or musical polish"
+        }
+      }
     }
   ],
   "next_ready_tasks": [
-    "SYN-004",
-    "SYN-005",
-    "SYN-006"
+    "SYN-009",
+    "SYN-007",
+    "SYN-005"
   ]
 }

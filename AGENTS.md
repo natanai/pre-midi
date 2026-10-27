@@ -25,6 +25,10 @@ This is a design constraint, not license to remove essential warnings, error mes
 - pre-midi owns studio editing and the native music instructions. pre-programmed owns game State, effects, conditions, Media persistence and dynamic music control. The old game v2 reader remains a compatibility gap, not proof of parity.
 - Preserve web, future standalone and game-host portability; browser-specific storage/microphone APIs cannot define musical semantics.
 
+## Sound-design qualification
+
+Professional capability and newcomer comprehension are both release requirements. Keep volume, brightness, onset and fade easy to reach in the existing inspector, with deeper controls available contextually. Do not add a mandatory beginner/expert mode. Preserve the select → hear → edit → save variation workflow at desktop and phone widths. Automated clicks do not replace observed newcomer or listening review.
+
 ## Visual system
 
 Black or near-black surfaces, grayscale chrome, thin rules, monospace typography and square controls. Use saturated color for data (selected musical signals, recording state), not decoration. Selected notes and instruments require an outline as well as color; focus and accessibility remain visible. Desktop and mobile share the same editing behaviors.

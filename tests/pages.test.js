@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {mkdtemp,mkdir,writeFile,readFile,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,posix} from "node:path";
 import {pathToFileURL} from "node:url";
 import {SAMPLE_ASSETS} from "../samples.js";
 import {versionPage,runtimeModules,preparePages} from "../scripts/prepare-pages.mjs";
@@ -17,8 +17,8 @@ test("the deployed page versions every transitive module and its stylesheet toge
  for(const file of files){
   assert.equal(map["./"+file],"./"+file+"?build=abcd1234abcd");
   const source=readFileSync(new URL(file,root),"utf8");
-  for(const [,path] of source.matchAll(/(?:from\s*|import\s*)["'](\.\/[^"']+\.js)["']/g))
-   assert.ok(map[path],"Unversioned dependency: "+file+" → "+path);
+  for(const [,path] of source.matchAll(/(?:from\s*|import\s*)["'](\.{1,2}\/[^"']+\.js)["']/g))
+   assert.ok(map["./"+posix.normalize(posix.join(posix.dirname(file),path))],"Unversioned dependency: "+file+" → "+path);
  }
  assert.equal(versionPage(html,files,"abcd1234abcd1234"),html);
 });
@@ -33,8 +33,8 @@ test("minimal website build includes the entire runtime import graph",async()=>{
  assert.equal(modules.length,new Set(modules).size);
  for(const file of modules){
   const source=readFileSync(new URL(file,root),"utf8");
-  for(const [,dep] of source.matchAll(/(?:from\s*|import\s*)["'](\.\/[^"']+\.js)["']/g))
-   assert.ok(modules.includes(dep.slice(2)),"Missing runtime dependency: "+file+" -> "+dep);
+  for(const [,dep] of source.matchAll(/(?:from\s*|import\s*)["'](\.{1,2}\/[^"']+\.js)["']/g))
+   assert.ok(modules.includes(posix.normalize(posix.join(posix.dirname(file),dep))),"Missing runtime dependency: "+file+" -> "+dep);
  }
 });
 test("deployment stages runtime files instead of the repository checkout",()=>{
