@@ -680,17 +680,40 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .example-card span:last-child{font-size:11px;line-height:1.4;color:var(--muted)}
 #example-list button:focus-visible{outline-offset:-3px}
 @media(min-width:1100px){
+ /* Desktop studio owns the viewport. No page scroll competing with inspector. */
+ html,body {height:100%;overflow:hidden}
+ .app {height:100dvh;min-height:0;overflow:hidden}
+ .app > header,.app > footer {flex:0 0 auto}
+ main {display:flex;flex-direction:column;min-height:0;overflow:hidden}
+ .song-panel {
+  flex:0 1 auto;min-height:0;max-height:min(32dvh,340px);
+  overflow-y:auto;overscroll-behavior:contain;
+ }
+ .beat-header {position:relative;top:auto;flex:0 0 auto}
+ .work {flex:1 1 0;min-height:0;overflow:hidden;align-items:stretch}
+ .instrument-pane {
+  position:static;top:auto;align-self:stretch;min-height:0;max-height:none;
+  overflow-y:auto;overscroll-behavior:contain;
+ }
  .mainwork{
   display:grid;grid-template-areas:"timeline sound" "notes sound";
   grid-template-columns:minmax(0,1fr) clamp(340px,27vw,510px);
-  grid-template-rows:max-content max-content;
-  column-gap:0;align-items:start;
+  /* Short timelines only use their content height; long ones scroll internally. */
+  grid-template-rows:fit-content(32%) minmax(0,1fr);
+  column-gap:0;align-items:stretch;min-height:0;overflow:hidden;
  }
- .timeline-section{grid-area:timeline;min-width:0}
- .notes-section{grid-area:notes;min-width:0}
+ .timeline-section {
+  grid-area:timeline;min-width:0;min-height:0;
+  overflow-y:auto;overscroll-behavior:contain;
+ }
+ .notes-section {
+  grid-area:notes;min-width:0;min-height:0;
+  overflow-y:auto;overscroll-behavior:contain;
+ }
+ .notes-section .notes-heading {position:sticky;top:0;z-index:6}
  .sound-section{
-  grid-area:sound;position:sticky;top:90px;align-self:start;
-  max-height:calc(100dvh - 102px);overflow-y:auto;
+  grid-area:sound;position:relative;top:auto;align-self:stretch;min-height:0;
+  max-height:none;overflow-y:auto;scrollbar-gutter:stable;
   border-left:1px solid var(--line);overscroll-behavior:contain;
  }
  .work.inspector-closed .mainwork {grid-template-areas:"timeline" "notes";grid-template-columns:minmax(0,1fr)}
