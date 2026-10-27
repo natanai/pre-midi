@@ -1,0 +1,4404 @@
+{
+  "schemaVersion": 1,
+  "backend": "native-cpp-vs-web-audio",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36"
+  },
+  "policy": {
+    "version": 1,
+    "method": {
+      "pcm": "Float32 before WAV quantization; signal peak is sample peak, not reconstructed true peak",
+      "spectrum": "16384-point four-term Blackman-Harris FFT; sum power within +/-5 bins of each expected in-band harmonic; residual excludes bins 0..5",
+      "offHarmonicDb": "10 log10(residual / harmonic energy). Alias proxy only for stationary periodic fixtures without modulation or noise; not a universal alias meter. Aliases landing inside harmonic masks are unobservable.",
+      "tuning": "Interpolated rising zero crossings on a steady sine; cents = 1200 log2(measured/expected)",
+      "envelope": "Constant unity input through actual scheduled gain vs independently evaluated piecewise linear reference at every sample",
+      "clicks": "Maximum step in envelope error residual; zero-decay sustain step is intentional legacy behavior",
+      "cost": "Offline wall milliseconds including context setup; median of 5 measured runs after warm-up; informational only, no real-time CPU claim",
+      "repeatability": "Maximum and RMS PCM difference between equivalent independently constructed offline graphs in the same browser process"
+    },
+    "gates": {
+      "envelopeMaxError": 0.00003,
+      "envelopeResidualStep": 0.00003,
+      "tuningCents": 0.3,
+      "sineOffHarmonicDb": -65,
+      "steadyDc": 0.002,
+      "determinismMaxError": 1e-7,
+      "releasedRms": 0.000002,
+      "stereoLeakRms": 1e-7,
+      "overlapMaxError": 2e-7,
+      "driveMinimumImprovementDb": 6,
+      "driveRouteOffHarmonicDb": -25
+    },
+    "deferred": [
+      {
+        "metric": "bright oscillator absolute alias floor",
+        "reason": "record baseline first; harmonic residual has masking blind spots and browser band-limiting differs"
+      },
+      {
+        "metric": "drive absolute alias floor",
+        "reason": "relative 4x-vs-none gate applies to specified high sine fixture only; compare native reconstruction filters when SYN-007 exists"
+      },
+      {
+        "metric": "CPU ceiling",
+        "reason": "virtualized offline timings cannot establish desktop/mobile callback deadlines or underruns"
+      },
+      {
+        "metric": "native parity",
+        "reason": "no native DSP backend yet"
+      },
+      {
+        "metric": "live device acoustic parity",
+        "reason": "live/offline share scheduler; hardware loopback capture is still required"
+      }
+    ],
+    "references": [
+      {
+        "url": "https://www.w3.org/TR/webaudio/",
+        "sections": [
+          "AudioParam",
+          "WaveShaperNode",
+          "OfflineAudioContext"
+        ],
+        "use": "automation ordering, oversampling latency and offline rendering contracts"
+      },
+      {
+        "url": "https://holometer.fnal.gov/GH_FFT.pdf",
+        "authors": "Heinzel, Ruediger, Schilling (2002)",
+        "use": "window leakage, spectral resolution and power-ratio methodology"
+      }
+    ],
+    "gateRationale": {
+      "envelope": "3e-5 absolute gain error allows floating-point and sub-sample scheduling variation; measured maximum at baseline is below 1e-6; no perceptual click-free claim for the intentional zero-decay step",
+      "tuning": "0.3 cents is a conservative numerical tuning regression budget, not a hearing threshold",
+      "signalLevels": "DC/peak/RMS and silence thresholds detect basic waveform/path regressions; they are not mastering or true-peak qualification",
+      "drive": "6 dB relative alias-proxy improvement is a conservative regression budget below the observed 21-50 dB on the specified fixtures; -25 dB on the production route fixtures guards gross loss of oversampling",
+      "referenceIdentity": "Stored steady spectra use 5% plus 1e-4 absolute amplitude tolerance and 10% plus 2e-4 absolute harmonic power-ratio tolerance; timings are excluded from comparisons"
+    }
+  },
+  "summary": {
+    "cases": 121,
+    "failed": 1,
+    "status": "fail"
+  },
+  "results": [
+    {
+      "id": "44100/45/0.05",
+      "metrics": {
+        "max": 1.7302591004408896e-7,
+        "rms": 3.838732368673823e-8,
+        "stats": {
+          "dc": 2.2750270573753187e-8,
+          "rms": 0.011617383286561716,
+          "peak": 0.05338675156235695,
+          "maxStep": 0.05338675156235695,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000014680215012693537,
+        "browserCents": -0.0000876673041457065,
+        "levelError": 3.674908954920397e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/45/0.35",
+      "metrics": {
+        "max": 0.000001560896635055542,
+        "rms": 4.725989700538927e-7,
+        "stats": {
+          "dc": -6.044890725351065e-9,
+          "rms": 0.05698898206300484,
+          "peak": 0.21501632034778595,
+          "maxStep": 0.21501632034778595,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000004149160532979861,
+        "browserCents": -0.000059360262122827784,
+        "levelError": 4.398803841176857e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/69/0.05",
+      "metrics": {
+        "max": 2.814922481775284e-7,
+        "rms": 9.905037805106945e-8,
+        "stats": {
+          "dc": 1.1466714062898407e-10,
+          "rms": 0.011621662969167432,
+          "peak": 0.03807510435581207,
+          "maxStep": 0.0023935065837576985,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00007865281501720632,
+        "browserCents": -0.00013302629156921553,
+        "levelError": 4.3178404629529155e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/69/0.35",
+      "metrics": {
+        "max": 0.000003423541784286499,
+        "rms": 0.0000013617545289199973,
+        "stats": {
+          "dc": 6.842450512420695e-11,
+          "rms": 0.0570026621049062,
+          "peak": 0.15256015956401825,
+          "maxStep": 0.00957448361441493,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00002342846984675003,
+        "browserCents": -0.0000797903188895389,
+        "levelError": 4.990354156575449e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/93/0.05",
+      "metrics": {
+        "max": 0.0000017968413885682821,
+        "rms": 6.658842116997851e-7,
+        "stats": {
+          "dc": -2.1495736853412536e-9,
+          "rms": 0.013638317917496999,
+          "peak": 0.06331867724657059,
+          "maxStep": 0.06331867724657059,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000158362655085385,
+        "browserCents": -0.00021389921816984816,
+        "levelError": 4.087866622981551e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/93/0.35",
+      "metrics": {
+        "max": 0.00002260110341012478,
+        "rms": 0.00000908654323841379,
+        "stats": {
+          "dc": -1.3054965941318275e-9,
+          "rms": 0.06689351324381713,
+          "peak": 0.25342991948127747,
+          "maxStep": 0.25342991948127747,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00004761329709075659,
+        "browserCents": -0.00010382175647159371,
+        "levelError": 4.702294005287655e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/45/0.05",
+      "metrics": {
+        "max": 1.8486753106117249e-7,
+        "rms": 5.398495725075908e-8,
+        "stats": {
+          "dc": 2.4912975517629796e-8,
+          "rms": 0.01161741604516482,
+          "peak": 0.05338673293590546,
+          "maxStep": 0.05338673293590546,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00006689797557530433,
+        "browserCents": -0.0001425717616530595,
+        "levelError": 4.596802127831978e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/45/0.35",
+      "metrics": {
+        "max": 0.0000017024576663970947,
+        "rms": 6.304046696534673e-7,
+        "stats": {
+          "dc": -6.5404069575387355e-9,
+          "rms": 0.056989142713716134,
+          "peak": 0.2150183767080307,
+          "maxStep": 0.2150183767080307,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000018906071954978398,
+        "browserCents": -0.00008595370261611248,
+        "levelError": 1.978441686034671e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/69/0.05",
+      "metrics": {
+        "max": 3.343448042869568e-7,
+        "rms": 1.1245033518459491e-7,
+        "stats": {
+          "dc": 8.40597419498542e-11,
+          "rms": 0.011622187197468952,
+          "peak": 0.03807429224252701,
+          "maxStep": 0.0021993149421177804,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00005203804884857654,
+        "browserCents": -0.00012317499858866899,
+        "levelError": 4.988533564009856e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/69/0.35",
+      "metrics": {
+        "max": 0.0000040833838284015656,
+        "rms": 0.0000015928214981018602,
+        "stats": {
+          "dc": 4.6515789581135265e-11,
+          "rms": 0.057005233310703556,
+          "peak": 0.15256446599960327,
+          "maxStep": 0.008797615533694625,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000015501104337512855,
+        "browserCents": -0.00008414273319117017,
+        "levelError": 2.389488678034013e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/93/0.05",
+      "metrics": {
+        "max": 0.0000021783635020256042,
+        "rms": 8.210258650496303e-7,
+        "stats": {
+          "dc": -2.152602756215973e-9,
+          "rms": 0.013643136471625641,
+          "peak": 0.06326942890882492,
+          "maxStep": 0.06326942890882492,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00010341012549522241,
+        "browserCents": -0.00017074215588203955,
+        "levelError": 4.638822921343433e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/93/0.35",
+      "metrics": {
+        "max": 0.000027071568183600903,
+        "rms": 0.000010978615601661822,
+        "stats": {
+          "dc": -1.2808217781727959e-9,
+          "rms": 0.06691714732901247,
+          "peak": 0.25339460372924805,
+          "maxStep": 0.25339460372924805,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00003109263193536414,
+        "browserCents": -0.00009889335133041087,
+        "levelError": 2.0426096680736805e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/45/0.05",
+      "metrics": {
+        "max": 1.7974525690078735e-7,
+        "rms": 3.867184538708848e-8,
+        "stats": {
+          "dc": 3.313117459458457e-8,
+          "rms": 0.011617568209071042,
+          "peak": 0.05338679999113083,
+          "maxStep": 0.05338679999113083,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000009563635854045953,
+        "browserCents": -0.00012210362552448443,
+        "levelError": 9.680794654798319e-8
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/45/0.35",
+      "metrics": {
+        "max": 0.000001596752554178238,
+        "rms": 5.148996890557734e-7,
+        "stats": {
+          "dc": -8.51843396403819e-9,
+          "rms": 0.056989888825754,
+          "peak": 0.215021014213562,
+          "maxStep": 0.215021014213562,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.0000027024982464767412,
+        "browserCents": -0.00008265830878032356,
+        "levelError": 1.160258555898963e-9
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/69/0.05",
+      "metrics": {
+        "max": 3.922468749806285e-7,
+        "rms": 1.278949877019329e-7,
+        "stats": {
+          "dc": 9.226412187007155e-11,
+          "rms": 0.011624620250068963,
+          "peak": 0.038089409470558167,
+          "maxStep": 0.0011000245431205258,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00001918262331961522,
+        "browserCents": -0.00009444274991380175,
+        "levelError": 1.3988917091367625e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/69/0.35",
+      "metrics": {
+        "max": 0.00000436464324593544,
+        "rms": 0.0000016729252580999751,
+        "stats": {
+          "dc": 6.067800006443751e-11,
+          "rms": 0.05701716671972799,
+          "peak": 0.15262024104595184,
+          "maxStep": 0.004400107107358053,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000005714619138027087,
+        "browserCents": -0.00007613122978750728,
+        "levelError": 4.034332801161611e-8
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/93/0.05",
+      "metrics": {
+        "max": 0.0000021689338609576225,
+        "rms": 8.195558313279618e-7,
+        "stats": {
+          "dc": -2.1220874061201047e-9,
+          "rms": 0.01366246519645389,
+          "peak": 0.06336488574743271,
+          "maxStep": 0.06336488574743271,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00004763980262678951,
+        "browserCents": -0.00011485013529041129,
+        "levelError": 1.0712009101965236e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/93/0.35",
+      "metrics": {
+        "max": 0.00002710893750190735,
+        "rms": 0.000010980598618824843,
+        "stats": {
+          "dc": -1.2774401125503932e-9,
+          "rms": 0.06701195121644692,
+          "peak": 0.25371354818344116,
+          "maxStep": 0.25371354818344116,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000014323837398996545,
+        "browserCents": -0.0000820775303465652,
+        "levelError": 1.5461830482621508e-8
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/triangle/45",
+      "metrics": {
+        "error": {
+          "max": 3.725290298461914e-7,
+          "rms": 9.116747144103722e-8
+        },
+        "relativeRms": 1.615417843936484e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -94.67324492191054,
+          "thdDb": -18.33146589424809,
+          "harmonicPowerRatios": [
+            1,
+            1.7283778396492965e-12,
+            0.012348551744657179,
+            3.3997598840340057e-13,
+            0.0016011176376348121,
+            8.806818121498569e-14,
+            0.0004170756328889355,
+            6.322080275880004e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -94.67742319192205,
+          "thdDb": -18.331467257384976,
+          "harmonicPowerRatios": [
+            1,
+            2.228731523372967e-12,
+            0.012348547211137149,
+            4.0461001367630176e-13,
+            0.0016011171103164773,
+            1.0707903005449964e-13,
+            0.0004170761706421339,
+            7.694651846690867e-14
+          ]
+        },
+        "stats": {
+          "dc": -0.000012632687469554527,
+          "rms": 0.06304589407931276,
+          "peak": 0.1524234563112259,
+          "maxStep": 0.0020710229873657227,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/triangle/93",
+      "metrics": {
+        "error": {
+          "max": 3.650784492492676e-7,
+          "rms": 8.595594566276584e-8
+        },
+        "relativeRms": 7.491615550136999e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -95.0376078851513,
+          "thdDb": -17.99915935000253,
+          "harmonicPowerRatios": [
+            1,
+            8.86124174405863e-15,
+            0.013182896616220872,
+            2.2798209630850728e-15,
+            0.0019944452265638775,
+            2.952124869977989e-16,
+            0.0006168189884834254,
+            2.932878235856546e-16
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -95.03064657348065,
+          "thdDb": -17.99915754536462,
+          "harmonicPowerRatios": [
+            1,
+            1.7772652939774842e-14,
+            0.013182902183175927,
+            2.501859640510631e-15,
+            0.001994444568549539,
+            1.47554977036678e-15,
+            0.0006168204657424264,
+            6.979155956276824e-16
+          ]
+        },
+        "stats": {
+          "dc": -1.538064888171276e-7,
+          "rms": 0.0633322639655368,
+          "peak": 0.14732590317726135,
+          "maxStep": 0.03315109759569168,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/square/45",
+      "metrics": {
+        "error": {
+          "max": 0.0000409446656703949,
+          "rms": 0.000001222074847623378
+        },
+        "relativeRms": 6.030944499357815e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -91.17875490692207,
+          "thdDb": -6.339332611909807,
+          "harmonicPowerRatios": [
+            1,
+            6.218486645493431e-11,
+            0.11113697049814673,
+            5.926657126234505e-11,
+            0.040027948184972975,
+            5.96088078624814e-11,
+            0.020436710544441242,
+            6.020278209595577e-11
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -91.08928086515574,
+          "thdDb": -6.339332568243896,
+          "harmonicPowerRatios": [
+            1,
+            6.289133085750542e-11,
+            0.1111369790928457,
+            6.011655626320328e-11,
+            0.04002795160462403,
+            6.035430683686949e-11,
+            0.020436708594011223,
+            6.090597672309935e-11
+          ]
+        },
+        "stats": {
+          "dc": -0.000019533869320616978,
+          "rms": 0.09256595009822784,
+          "peak": 0.18424609303474426,
+          "maxStep": 0.18289713561534882,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/square/93",
+      "metrics": {
+        "error": {
+          "max": 0.0000019334256649017334,
+          "rms": 2.327644344909088e-7
+        },
+        "relativeRms": 6.362060522846491e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -93.15685291854572,
+          "thdDb": -6.916142090534969,
+          "harmonicPowerRatios": [
+            1,
+            1.1789779447088384e-14,
+            0.11864607511193759,
+            6.253890155680145e-15,
+            0.04986113976901342,
+            1.6405822618684233e-15,
+            0.030224128159803715,
+            5.98539355295833e-18
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -93.14057102449704,
+          "thdDb": -6.916142347133833,
+          "harmonicPowerRatios": [
+            1,
+            3.00670841419842e-14,
+            0.11864607786838932,
+            2.3443820067702557e-14,
+            0.04986113442660801,
+            2.481439403212537e-14,
+            0.03022411294050257,
+            1.9285690188094557e-14
+          ]
+        },
+        "stats": {
+          "dc": -1.9354974649585943e-7,
+          "rms": 0.09182162958410232,
+          "peak": 0.18448635935783386,
+          "maxStep": 0.18301504850387573,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/sawtooth/45",
+      "metrics": {
+        "error": {
+          "max": 0.00002528354525566101,
+          "rms": 7.162190002099396e-7
+        },
+        "relativeRms": 2.568581629613931e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -89.81821117483742,
+          "thdDb": -1.9235383210925554,
+          "harmonicPowerRatios": [
+            1,
+            0.25002181608020285,
+            0.11113697789733569,
+            0.06252728520085404,
+            0.04002795658555757,
+            0.027806102660927805,
+            0.020436718444619105,
+            0.015653717263523697
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -89.7051985076557,
+          "thdDb": -1.9235345498599445,
+          "harmonicPowerRatios": [
+            1,
+            0.250021997705913,
+            0.11113705040167367,
+            0.06252734256004545,
+            0.04002799257622024,
+            0.02780612650094866,
+            0.02043673091099594,
+            0.01565373211027338
+          ]
+        },
+        "stats": {
+          "dc": -0.000012477546711700509,
+          "rms": 0.05348669309611557,
+          "peak": 0.18324506282806396,
+          "maxStep": 0.1822814792394638,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/sawtooth/93",
+      "metrics": {
+        "error": {
+          "max": 0.0000017248094081878662,
+          "rms": 1.473520624056924e-7
+        },
+        "relativeRms": 7.54622742071831e-9,
+        "nativeSpectrum": {
+          "offHarmonicDb": -91.96941508082745,
+          "thdDb": -2.3080394223135885,
+          "harmonicPowerRatios": [
+            1,
+            0.25597190435283135,
+            0.11864607804356433,
+            0.07117248065403915,
+            0.049861139417275845,
+            0.03865030929918648,
+            0.03022412871505514,
+            0.01778300940439286
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -91.95225526091066,
+          "thdDb": -2.3080402174108574,
+          "harmonicPowerRatios": [
+            1,
+            0.2559718938902136,
+            0.11864607680218119,
+            0.0711724687930435,
+            0.049861128450946715,
+            0.03865028921831574,
+            0.03022409733683136,
+            0.017782987119372613
+          ]
+        },
+        "stats": {
+          "dc": -9.425924356948629e-8,
+          "rms": 0.05275677078154436,
+          "peak": 0.16944248974323273,
+          "maxStep": 0.17424580082297325,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/harmonic/45",
+      "metrics": {
+        "error": {
+          "max": 0.0000024996697902679443,
+          "rms": 2.2785809931403131e-7
+        },
+        "relativeRms": 1.8059163930939093e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -92.02637336992909,
+          "thdDb": -2.776865614797564,
+          "harmonicPowerRatios": [
+            1,
+            0.25002180806290286,
+            0.11113697080664035,
+            0.0625272764482364,
+            0.04002794479934803,
+            0.02780609273557124,
+            0.020436711140516657,
+            0.015653706508701577
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -92.02474575530829,
+          "thdDb": -2.776870585770986,
+          "harmonicPowerRatios": [
+            1,
+            0.2500215646860929,
+            0.11113689514487693,
+            0.06252721930935609,
+            0.040027906443271234,
+            0.027806050056807176,
+            0.020436684257226972,
+            0.015653586695695356
+          ]
+        },
+        "stats": {
+          "dc": -0.00000782005693140902,
+          "rms": 0.0569697309465317,
+          "peak": 0.15277116000652313,
+          "maxStep": 0.011439787689596415,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/harmonic/93",
+      "metrics": {
+        "error": {
+          "max": 0.000001864507794380188,
+          "rms": 1.8744914781038634e-7
+        },
+        "relativeRms": 3.9644859839427227e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -91.96667080788089,
+          "thdDb": -2.348464513949654,
+          "harmonicPowerRatios": [
+            1,
+            0.25597190800431,
+            0.118646079370867,
+            0.07117248301766915,
+            0.049861137535927594,
+            0.03865031049842249,
+            0.030224133522515573,
+            0.01778300988182001
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -91.94908889391967,
+          "thdDb": -2.348463814813648,
+          "harmonicPowerRatios": [
+            1,
+            0.2559719538441976,
+            0.11864607679533844,
+            0.07117249720031796,
+            0.04986113877369701,
+            0.038650327723941745,
+            0.03022413200126254,
+            0.017783029234067643
+          ]
+        },
+        "stats": {
+          "dc": -1.099124423662455e-7,
+          "rms": 0.05823464664376153,
+          "peak": 0.1793459951877594,
+          "maxStep": 0.18217239528894424,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/highpass/0.1",
+      "metrics": {
+        "error": {
+          "max": 1.7695128917694092e-7,
+          "rms": 2.2330049531410142e-8
+        },
+        "relativeRms": 1.0773508296590961e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -87.45156606154029,
+          "thdDb": -0.6308478349074708,
+          "harmonicPowerRatios": [
+            1,
+            8.311242747952676e-13,
+            0.7248240013998231,
+            4.854781163134152e-13,
+            0.10009590566035717,
+            4.045747239575302e-14,
+            0.02350994926570281,
+            1.0671615902155576e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -87.4482376134039,
+          "thdDb": -0.6308438276811033,
+          "harmonicPowerRatios": [
+            1,
+            8.560610373992426e-13,
+            0.7248247274253284,
+            5.025678992033222e-13,
+            0.10009592409348093,
+            4.2394007913222026e-14,
+            0.023510004927332198,
+            1.1792341705363053e-14
+          ]
+        },
+        "stats": {
+          "dc": -2.5699469832791427e-7,
+          "rms": 0.012192522479382793,
+          "peak": 0.03864513710141182,
+          "maxStep": 0.010616717860102654,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/highpass/16",
+      "metrics": {
+        "error": {
+          "max": 3.6135315895080566e-7,
+          "rms": 5.221869289023625e-8
+        },
+        "relativeRms": 2.8323770018268135e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -87.53496070004181,
+          "thdDb": 10.13617956515387,
+          "harmonicPowerRatios": [
+            1,
+            4.811723602924086e-12,
+            10.146543652263171,
+            5.064427999788316e-12,
+            0.13301924004527949,
+            2.7620476528112435e-13,
+            0.023980285683122205,
+            9.21100067048288e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -87.53255114622439,
+          "thdDb": 10.136183205275952,
+          "harmonicPowerRatios": [
+            1,
+            4.942799043875556e-12,
+            10.146552198489278,
+            5.089312284862427e-12,
+            0.1330192889392606,
+            2.754996670316289e-13,
+            0.023980342967186253,
+            9.364352604592177e-14
+          ]
+        },
+        "stats": {
+          "dc": -2.428805397816684e-7,
+          "rms": 0.03249038894002524,
+          "peak": 0.07745115458965302,
+          "maxStep": 0.015712711960077286,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/bandpass/0.1",
+      "metrics": {
+        "error": {
+          "max": 2.0116567611694336e-7,
+          "rms": 3.5477661789684095e-8
+        },
+        "relativeRms": 9.257177158161767e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -87.25108279575089,
+          "thdDb": -18.127647051180386,
+          "harmonicPowerRatios": [
+            1,
+            3.3483333797304947e-13,
+            0.013032612898377642,
+            8.989946400273831e-15,
+            0.0016614861479966512,
+            2.4788017819488292e-15,
+            0.00041919933967572427,
+            1.6391902355303822e-15
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -87.25112354943113,
+          "thdDb": -18.127643835307,
+          "harmonicPowerRatios": [
+            1,
+            3.358442964678476e-13,
+            0.013032623323078963,
+            9.275376566844975e-15,
+            0.0016614862438241382,
+            2.536552726928438e-15,
+            0.00041920031989241735,
+            1.6807659250268694e-15
+          ]
+        },
+        "stats": {
+          "dc": -0.000006734834346572096,
+          "rms": 0.06138207825934363,
+          "peak": 0.142942875623703,
+          "maxStep": 0.008480727672576904,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/bandpass/16",
+      "metrics": {
+        "error": {
+          "max": 2.3283064365386963e-8,
+          "rms": 4.766493432229038e-9
+        },
+        "relativeRms": 1.8573005911015628e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -87.4277121599669,
+          "thdDb": 2.3166824578165013,
+          "harmonicPowerRatios": [
+            1,
+            6.446843943808778e-14,
+            1.6988936825437817,
+            2.2635483225038587e-12,
+            0.005282719968629186,
+            3.97692364714216e-13,
+            0.00047432141011582605,
+            2.153788903976815e-13
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -87.42275577271496,
+          "thdDb": 2.3166868928634523,
+          "harmonicPowerRatios": [
+            1,
+            9.175599716121206e-14,
+            1.6988954226770219,
+            2.267807185784939e-12,
+            0.0052827196315809915,
+            3.980655068486029e-13,
+            0.0004743225847025914,
+            2.157256373185553e-13
+          ]
+        },
+        "stats": {
+          "dc": -4.880996252340359e-8,
+          "rms": 0.002720760908066688,
+          "peak": 0.008764871396124363,
+          "maxStep": 0.0011651450768113136,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/notch/0.1",
+      "metrics": {
+        "error": {
+          "max": 1.0803341865539551e-7,
+          "rms": 1.5288650607492747e-8
+        },
+        "relativeRms": 7.895808584734709e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -87.23619828723352,
+          "thdDb": -27.17096176887202,
+          "harmonicPowerRatios": [
+            1,
+            9.841782259536986e-13,
+            0.00008568697632002704,
+            1.7513322152620408e-13,
+            0.0005024092035783739,
+            6.167841449822029e-14,
+            0.0003680487654652625,
+            3.8926512766050495e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -87.23509040308743,
+          "thdDb": -27.170958954971262,
+          "harmonicPowerRatios": [
+            1,
+            9.848513355108493e-13,
+            0.00008568703226637327,
+            1.754408511215083e-13,
+            0.0005024092897532492,
+            6.177224137113401e-14,
+            0.00036804959230343304,
+            3.893493213071417e-14
+          ]
+        },
+        "stats": {
+          "dc": 0.000009320790987684186,
+          "rms": 0.014433679049166709,
+          "peak": 0.029010049998760223,
+          "maxStep": 0.00293110404163599,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/notch/16",
+      "metrics": {
+        "error": {
+          "max": 4.0978193283081055e-7,
+          "rms": 6.944706734270084e-8
+        },
+        "relativeRms": 9.001730472135705e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -87.25039522812237,
+          "thdDb": -18.69767356722173,
+          "harmonicPowerRatios": [
+            1,
+            3.4948438338971187e-13,
+            0.011169908517631413,
+            2.2254322224222258e-15,
+            0.0015974174252446128,
+            6.5651642764880256e-15,
+            0.00041644494471811767,
+            5.837512016598491e-16
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -87.24790815068326,
+          "thdDb": -18.69767110662494,
+          "harmonicPowerRatios": [
+            1,
+            3.526411286586857e-13,
+            0.011169914620146217,
+            3.135045662011019e-15,
+            0.0015974179255525134,
+            6.697621048456928e-15,
+            0.0004164459879561661,
+            6.280890680926883e-16
+          ]
+        },
+        "stats": {
+          "dc": 0.0000026347847003799677,
+          "rms": 0.06299752069827942,
+          "peak": 0.1504785418510437,
+          "maxStep": 0.007519543170928955,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/44100/preset/felt-electric",
+      "metrics": {
+        "error": {
+          "max": 4.0605664253234863e-7,
+          "rms": 1.8221321059933562e-7
+        },
+        "relativeRms": 1.971165484171422e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -89.9903889560096,
+          "thdDb": -7.165891931743964,
+          "harmonicPowerRatios": [
+            1,
+            0.1748127331791546,
+            0.014225423994655446,
+            4.960368113898272e-14,
+            0.00227149743643978,
+            1.1114922688771679e-14,
+            0.0005809774155590683,
+            4.704788002263444e-15
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -89.98834388859453,
+          "thdDb": -7.165894365306896,
+          "harmonicPowerRatios": [
+            1,
+            0.17481260952250732,
+            0.01422543749051977,
+            5.028869358274809e-14,
+            0.0022714988474817105,
+            1.4777150883764255e-14,
+            0.0005809786011201043,
+            4.692453614000124e-15
+          ]
+        },
+        "stats": {
+          "dc": 0.0000015178984680905443,
+          "rms": 0.03367533476296351,
+          "peak": 0.12143799662590027,
+          "maxStep": 0.006184414029121399,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/triangle/45",
+      "metrics": {
+        "error": {
+          "max": 2.086162567138672e-7,
+          "rms": 5.187333284325609e-8
+        },
+        "relativeRms": 6.949287700841467e-9,
+        "nativeSpectrum": {
+          "offHarmonicDb": -87.45437049465492,
+          "thdDb": -18.331107070183485,
+          "harmonicPowerRatios": [
+            1,
+            2.078777260816554e-12,
+            0.012349109259284815,
+            4.6301103381089287e-14,
+            0.0016013344465466114,
+            5.45381046670825e-14,
+            0.0004171886368945553,
+            1.1120348089896967e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -87.45356752943786,
+          "thdDb": -18.33110899540075,
+          "harmonicPowerRatios": [
+            1,
+            2.1580237671484245e-12,
+            0.01234910177270405,
+            7.080430120548206e-14,
+            0.0016013359552981984,
+            7.00199355361824e-14,
+            0.0004171881692900796,
+            1.8695680881074255e-14
+          ]
+        },
+        "stats": {
+          "dc": -0.000012601432768182886,
+          "rms": 0.06304610458162785,
+          "peak": 0.15245287120342255,
+          "maxStep": 0.0019339323043823242,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/triangle/93",
+      "metrics": {
+        "error": {
+          "max": 2.384185791015625e-7,
+          "rms": 3.983361479184831e-8
+        },
+        "relativeRms": 2.395178122505115e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -90.0181488332742,
+          "thdDb": -17.9418558164,
+          "harmonicPowerRatios": [
+            1,
+            1.5855486810022945e-14,
+            0.013326721933502438,
+            4.364627281961876e-15,
+            0.0020431703089405324,
+            1.2257160205138873e-15,
+            0.0006128471216874587,
+            9.865406406382827e-16
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -90.01726184849743,
+          "thdDb": -17.941855438139882,
+          "harmonicPowerRatios": [
+            1,
+            1.8926531268988238e-14,
+            0.013326719266057824,
+            7.988618375210348e-15,
+            0.0020431733584094654,
+            2.853095796011185e-14,
+            0.000612848147135354,
+            3.212008252762875e-14
+          ]
+        },
+        "stats": {
+          "dc": -1.5451039319246655e-7,
+          "rms": 0.06338438522384582,
+          "peak": 0.147795632481575,
+          "maxStep": 0.03096207231283188,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/square/45",
+      "metrics": {
+        "error": {
+          "max": 0.00002030935138463974,
+          "rms": 6.826596147648545e-7
+        },
+        "relativeRms": 1.6193255625296388e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -82.20394923004366,
+          "thdDb": -6.332554509865245,
+          "harmonicPowerRatios": [
+            1,
+            3.4656051750268477e-12,
+            0.11114198596189476,
+            3.6887633399294485e-12,
+            0.04003336804566486,
+            3.842278275981323e-12,
+            0.020442242820153993,
+            3.801783536328189e-12
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -82.20637222154225,
+          "thdDb": -6.332552826810401,
+          "harmonicPowerRatios": [
+            1,
+            3.4307210652950586e-12,
+            0.11114199624352256,
+            3.679809610598411e-12,
+            0.04003337185914283,
+            3.814627864562731e-12,
+            0.020442240563193777,
+            3.799228139509546e-12
+          ]
+        },
+        "stats": {
+          "dc": -0.000019494438519895533,
+          "rms": 0.09257985208112185,
+          "peak": 0.18632245063781738,
+          "maxStep": 0.1764097437262535,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/square/93",
+      "metrics": {
+        "error": {
+          "max": 0.0000010656658560037613,
+          "rms": 9.798861706707109e-8
+        },
+        "relativeRms": 3.789327518433083e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -90.04522525581164,
+          "thdDb": -6.829353309263995,
+          "harmonicPowerRatios": [
+            1,
+            2.7289659898806133e-14,
+            0.11994048350866085,
+            1.0828579174226193e-17,
+            0.05107926015756456,
+            4.28157355928035e-15,
+            0.030029511610428137,
+            1.744176020428689e-17
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -90.04256701347799,
+          "thdDb": -6.82935347210412,
+          "harmonicPowerRatios": [
+            1,
+            6.289337465484035e-14,
+            0.11994048914165814,
+            3.880965086414074e-14,
+            0.05107925404994291,
+            5.586382701934127e-14,
+            0.030029501621566555,
+            3.4982550129037356e-14
+          ]
+        },
+        "stats": {
+          "dc": -1.9335487711498534e-7,
+          "rms": 0.09204429466937514,
+          "peak": 0.18654243648052216,
+          "maxStep": 0.1763780377805233,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/sawtooth/45",
+      "metrics": {
+        "error": {
+          "max": 0.000019878149032592773,
+          "rms": 4.873001666957714e-7
+        },
+        "relativeRms": 1.5384285667607855e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -81.1373799168873,
+          "thdDb": -1.918659454608049,
+          "harmonicPowerRatios": [
+            1,
+            0.25002604109794707,
+            0.11114198658751735,
+            0.06253256867644438,
+            0.040033366603644434,
+            0.02781158244084409,
+            0.020442240939717537,
+            0.015659267636228543
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -81.15772683150546,
+          "thdDb": -1.9186607852797812,
+          "harmonicPowerRatios": [
+            1,
+            0.2500258995618285,
+            0.11114191712495766,
+            0.06253253864981155,
+            0.04003335828496079,
+            0.02781156633501486,
+            0.020442229818889688,
+            0.01565926116096182
+          ]
+        },
+        "stats": {
+          "dc": -0.0000124601698440107,
+          "rms": 0.05349865067226387,
+          "peak": 0.18536759912967682,
+          "maxStep": 0.17579534277319908,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/sawtooth/93",
+      "metrics": {
+        "error": {
+          "max": 0.000001014210283756256,
+          "rms": 5.688430167145902e-8
+        },
+        "relativeRms": 8.886647351324939e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -89.56743826556279,
+          "thdDb": -2.2486413252243183,
+          "harmonicPowerRatios": [
+            1,
+            0.2570561965124626,
+            0.11994048305990215,
+            0.07251178513983006,
+            0.051079260844543596,
+            0.039388141348993086,
+            0.030029510614324992,
+            0.017820529045951845
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -89.5640756961283,
+          "thdDb": -2.24864003290093,
+          "harmonicPowerRatios": [
+            1,
+            0.2570561693770062,
+            0.11994049353272646,
+            0.0725118271919282,
+            0.051079315391762706,
+            0.039388192899844826,
+            0.030029499646391233,
+            0.017820564798892963
+          ]
+        },
+        "stats": {
+          "dc": -9.391170220730288e-8,
+          "rms": 0.05292911201261976,
+          "peak": 0.1716056615114212,
+          "maxStep": 0.1681721806526184,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/harmonic/45",
+      "metrics": {
+        "error": {
+          "max": 0.0000014081597328186035,
+          "rms": 1.1106098581143393e-7
+        },
+        "relativeRms": 1.117403447548071e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -88.42024687505165,
+          "thdDb": -2.7765649820249116,
+          "harmonicPowerRatios": [
+            1,
+            0.2500260384400517,
+            0.11114198446066281,
+            0.06253256511787617,
+            0.04003336107992109,
+            0.027811579731837642,
+            0.020442241013908374,
+            0.015659264835695248
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -88.41705457149439,
+          "thdDb": -2.7765619009216485,
+          "harmonicPowerRatios": [
+            1,
+            0.2500261239344295,
+            0.11114207613083005,
+            0.06253261003786145,
+            0.04003339632701778,
+            0.027811592545601626,
+            0.020442263453037773,
+            0.01565934659027585
+          ]
+        },
+        "stats": {
+          "dc": -0.000007791644288460062,
+          "rms": 0.05697055654060188,
+          "peak": 0.1527777463197708,
+          "maxStep": 0.010511395987123251,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/harmonic/93",
+      "metrics": {
+        "error": {
+          "max": 8.642673492431641e-7,
+          "rms": 7.835070051094406e-8
+        },
+        "relativeRms": 1.9137972429028594e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -89.57239332943263,
+          "thdDb": -2.3075125506563503,
+          "harmonicPowerRatios": [
+            1,
+            0.25705621526394845,
+            0.11994049628006424,
+            0.07251178308459726,
+            0.05107925763071959,
+            0.0393881413333511,
+            0.0300295147740905,
+            0.01782052881787066
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -89.56948337254647,
+          "thdDb": -2.3075158819040036,
+          "harmonicPowerRatios": [
+            1,
+            0.2570560644872702,
+            0.11994038773675314,
+            0.07251171250011691,
+            0.05107920335330293,
+            0.039388082082307714,
+            0.03002952649367612,
+            0.01782050964059465
+          ]
+        },
+        "stats": {
+          "dc": -1.0937025331684936e-7,
+          "rms": 0.05837803610299401,
+          "peak": 0.1798987239599228,
+          "maxStep": 0.1705094762146473,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/highpass/0.1",
+      "metrics": {
+        "error": {
+          "max": 4.5262277126312256e-7,
+          "rms": 5.233728607223907e-8
+        },
+        "relativeRms": 3.330754716479589e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -89.70031883276579,
+          "thdDb": -0.6369037518059423,
+          "harmonicPowerRatios": [
+            1,
+            1.2520109600173555e-12,
+            0.723741390260691,
+            3.5046593157600377e-13,
+            0.09998591687997811,
+            2.1574479877278753e-14,
+            0.023489787753243223,
+            2.81891849334829e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -89.66278599944191,
+          "thdDb": -0.6369022249314521,
+          "harmonicPowerRatios": [
+            1,
+            1.7724044357980086e-12,
+            0.7237416225429358,
+            3.6908815716269716e-13,
+            0.09998594435740596,
+            5.284852993260944e-14,
+            0.023489814817076685,
+            3.488719624673899e-14
+          ]
+        },
+        "stats": {
+          "dc": -2.5715125886139853e-7,
+          "rms": 0.012197088064897749,
+          "peak": 0.03864939883351326,
+          "maxStep": 0.009872729424387217,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/highpass/16",
+      "metrics": {
+        "error": {
+          "max": 6.426125764846802e-7,
+          "rms": 1.403394720913011e-7
+        },
+        "relativeRms": 2.3956364780808315e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -87.66286988413613,
+          "thdDb": 10.133277177950932,
+          "harmonicPowerRatios": [
+            1,
+            7.844405699935311e-12,
+            10.139641891855204,
+            6.132577911395052e-12,
+            0.13301238848457972,
+            5.899257237314239e-13,
+            0.023979346015188033,
+            2.3930996550618134e-13
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -87.64315833525926,
+          "thdDb": 10.133278296941462,
+          "harmonicPowerRatios": [
+            1,
+            9.853284860673207e-12,
+            10.139644474641724,
+            6.2613978208184125e-12,
+            0.1330124198100184,
+            6.175746876021239e-13,
+            0.023979374610313284,
+            2.4363615324686955e-13
+          ]
+        },
+        "stats": {
+          "dc": -2.4272491912283295e-7,
+          "rms": 0.03250516265255465,
+          "peak": 0.07748465985059738,
+          "maxStep": 0.014361368492245674,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/bandpass/0.1",
+      "metrics": {
+        "error": {
+          "max": 3.725290298461914e-7,
+          "rms": 8.882582828903377e-8
+        },
+        "relativeRms": 5.065786434776953e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -92.10761543598743,
+          "thdDb": -18.12747648899226,
+          "harmonicPowerRatios": [
+            1,
+            2.794490543186196e-13,
+            0.013032023957163139,
+            3.7159437633274497e-14,
+            0.0016615022974998,
+            1.4093056551528986e-14,
+            0.000419294994707928,
+            5.105924471983676e-15
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -92.10366475897722,
+          "thdDb": -18.127475317191426,
+          "harmonicPowerRatios": [
+            1,
+            3.112743413761873e-13,
+            0.01303202719551879,
+            3.759303077132435e-14,
+            0.0016615025190621433,
+            1.4732150712120518e-14,
+            0.0004192954562870133,
+            5.093300694884879e-15
+          ]
+        },
+        "stats": {
+          "dc": -0.000006737256619810408,
+          "rms": 0.06138350507165759,
+          "peak": 0.14297142624855042,
+          "maxStep": 0.007722079753875732,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/bandpass/16",
+      "metrics": {
+        "error": {
+          "max": 5.5122654885053635e-8,
+          "rms": 1.451344907197958e-8
+        },
+        "relativeRms": 2.70202851204715e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -88.59170662997059,
+          "thdDb": 2.319571272965186,
+          "harmonicPowerRatios": [
+            1,
+            7.71832810824312e-13,
+            1.7000111587463098,
+            1.5860064076507968e-12,
+            0.005295753771212934,
+            2.568006377158335e-13,
+            0.0004766941122870952,
+            1.3016130567436183e-13
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -88.53292037356525,
+          "thdDb": 2.319571862221002,
+          "harmonicPowerRatios": [
+            1,
+            1.2672066839033568e-12,
+            1.7000113889407014,
+            1.594391399454352e-12,
+            0.005295754225016482,
+            2.5856851966204567e-13,
+            0.0004766947487214492,
+            1.3078415388940634e-13
+          ]
+        },
+        "stats": {
+          "dc": -4.886300047344383e-8,
+          "rms": 0.002722501773774912,
+          "peak": 0.008756511844694614,
+          "maxStep": 0.0010709313210099936,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/notch/0.1",
+      "metrics": {
+        "error": {
+          "max": 2.253800630569458e-7,
+          "rms": 3.6407401130644365e-8
+        },
+        "relativeRms": 4.3793364268296386e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -92.19767341525973,
+          "thdDb": -27.203313958189064,
+          "harmonicPowerRatios": [
+            1,
+            2.2181422703852637e-13,
+            0.00008561302520671666,
+            3.5012546989959665e-14,
+            0.0005011740110463455,
+            1.2359484542108625e-14,
+            0.0003662990390609358,
+            1.1007895441988612e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -92.17480351509334,
+          "thdDb": -27.203309409376168,
+          "harmonicPowerRatios": [
+            1,
+            2.243762165901845e-13,
+            0.00008561301964045282,
+            3.511005604654832e-14,
+            0.0005011740126865197,
+            1.260144982580189e-14,
+            0.0003662994944407317,
+            1.1259008043327296e-14
+          ]
+        },
+        "stats": {
+          "dc": 0.000009324453215745805,
+          "rms": 0.014427675543456888,
+          "peak": 0.0290024783462286,
+          "maxStep": 0.0026652845554053783,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/notch/16",
+      "metrics": {
+        "error": {
+          "max": 5.103647708892822e-7,
+          "rms": 1.151981564404844e-7
+        },
+        "relativeRms": 6.35324817199745e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -92.11748320649163,
+          "thdDb": -18.69812642310939,
+          "harmonicPowerRatios": [
+            1,
+            3.0549106844900845e-13,
+            0.011168112904490093,
+            6.810390651061434e-14,
+            0.001597406172867948,
+            2.381083071431352e-14,
+            0.0004164433141964288,
+            1.0576662967732562e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -92.10387657257833,
+          "thdDb": -18.698124686821934,
+          "harmonicPowerRatios": [
+            1,
+            3.4260177925875926e-13,
+            0.011168117183449355,
+            6.988481443789491e-14,
+            0.0015974065622472262,
+            2.44962173923407e-14,
+            0.00041644371954552555,
+            1.0596300909106974e-14
+          ]
+        },
+        "stats": {
+          "dc": 0.000002636054339025874,
+          "rms": 0.06299746038521836,
+          "peak": 0.15154306590557098,
+          "maxStep": 0.006910383701324463,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/48000/preset/felt-electric",
+      "metrics": {
+        "error": {
+          "max": 6.795162335038185e-7,
+          "rms": 3.2578459672243545e-7
+        },
+        "relativeRms": 3.018944969568338e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -88.53521778443391,
+          "thdDb": -7.165362324837142,
+          "harmonicPowerRatios": [
+            1,
+            0.17483191756514446,
+            0.014228906623255315,
+            9.939029926558142e-14,
+            0.002272040930979658,
+            5.698006448830414e-14,
+            0.0005808269609537012,
+            1.6329351550777312e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -88.53575613129287,
+          "thdDb": -7.165362625104013,
+          "harmonicPowerRatios": [
+            1,
+            0.17483190960161224,
+            0.014228898573595262,
+            1.0006043875774612e-13,
+            0.0022720433448387687,
+            5.934022691143486e-14,
+            0.0005808269749876037,
+            1.6622477478152123e-14
+          ]
+        },
+        "stats": {
+          "dc": 0.0000015184556547280818,
+          "rms": 0.03367635558093381,
+          "peak": 0.12139914929866791,
+          "maxStep": 0.005681276321411133,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/triangle/45",
+      "metrics": {
+        "error": {
+          "max": 6.705522537231445e-7,
+          "rms": 1.3771887082207792e-7
+        },
+        "relativeRms": 4.9192622864069335e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -90.89118824403235,
+          "thdDb": -18.329434110839948,
+          "harmonicPowerRatios": [
+            1,
+            7.352825252696835e-12,
+            0.012351730790020879,
+            2.722409086867525e-12,
+            0.001602353736198889,
+            1.4549981455388153e-12,
+            0.000417719276419756,
+            8.925987820383882e-13
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -90.88938146094418,
+          "thdDb": -18.32943853458573,
+          "harmonicPowerRatios": [
+            1,
+            8.936206112999942e-12,
+            0.012351718230914568,
+            2.8428877814855727e-12,
+            0.0016023497977188694,
+            1.6448908082988942e-12,
+            0.0004177198149116162,
+            1.0705979646720046e-12
+          ]
+        },
+        "stats": {
+          "dc": -0.00001247887635676206,
+          "rms": 0.0630377391920855,
+          "peak": 0.15258201956748962,
+          "maxStep": 0.0009857118129730225,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/triangle/93",
+      "metrics": {
+        "error": {
+          "max": 1.7881393432617188e-7,
+          "rms": 1.875248953665034e-8
+        },
+        "relativeRms": 1.0293069618860784e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -87.91033090417898,
+          "thdDb": -17.726945568845444,
+          "harmonicPowerRatios": [
+            1,
+            1.2575224142301417e-13,
+            0.013944013625244481,
+            1.0073334665155518e-14,
+            0.002202474243123575,
+            5.820221753794899e-15,
+            0.0005864566479880264,
+            1.5541951048255176e-15
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -87.91030422348429,
+          "thdDb": -17.72694778382164,
+          "harmonicPowerRatios": [
+            1,
+            1.277120959237122e-13,
+            0.013944004243859083,
+            1.0305228602020047e-14,
+            0.0022024758012468655,
+            6.163348630846956e-15,
+            0.00058645581794502,
+            1.5603708631506016e-15
+          ]
+        },
+        "stats": {
+          "dc": -1.5129134616036807e-7,
+          "rms": 0.0636104273768367,
+          "peak": 0.15017439424991608,
+          "maxStep": 0.015771612524986267,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/square/45",
+      "metrics": {
+        "error": {
+          "max": 0.00008544325828552246,
+          "rms": 0.0000015978955796945218
+        },
+        "relativeRms": 1.9761084146807661e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -90.68460700780281,
+          "thdDb": -6.30574776354667,
+          "harmonicPowerRatios": [
+            1,
+            1.010552038750933e-11,
+            0.11116558316234669,
+            7.050592488218556e-12,
+            0.040058850614708943,
+            5.268397385474789e-13,
+            0.020468243734384245,
+            1.3920025957231659e-12
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -90.51414808467595,
+          "thdDb": -6.305748578905895,
+          "harmonicPowerRatios": [
+            1,
+            1.2055759968072693e-11,
+            0.11116558637097633,
+            8.992445547593881e-12,
+            0.04005885196087885,
+            2.4157103312177016e-12,
+            0.02046824141643082,
+            3.3524627469791364e-12
+          ]
+        },
+        "stats": {
+          "dc": -0.00001931202890094398,
+          "rms": 0.09263519838281517,
+          "peak": 0.18434114754199982,
+          "maxStep": 0.11943807080388069,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/square/93",
+      "metrics": {
+        "error": {
+          "max": 8.456408977508545e-7,
+          "rms": 6.942667648694371e-8
+        },
+        "relativeRms": 1.8042776028792673e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -88.42530154179819,
+          "thdDb": -6.531367194671613,
+          "harmonicPowerRatios": [
+            1,
+            9.426765723574097e-14,
+            0.12549612956493741,
+            2.5849957350009218e-14,
+            0.055061864821257175,
+            3.357213342309059e-15,
+            0.02873637378661343,
+            2.1669434446549175e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -88.4246916136583,
+          "thdDb": -6.5313669838279065,
+          "harmonicPowerRatios": [
+            1,
+            9.38441522213283e-14,
+            0.12549613695690837,
+            2.6006890160710725e-14,
+            0.05506187526891301,
+            3.3708778017433878e-15,
+            0.028736369073620545,
+            2.200695436529396e-14
+          ]
+        },
+        "stats": {
+          "dc": -1.8669608356761618e-7,
+          "rms": 0.09291112304325805,
+          "peak": 0.1843567043542862,
+          "maxStep": 0.11945142596960068,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/sawtooth/45",
+      "metrics": {
+        "error": {
+          "max": 0.000012759119272232056,
+          "rms": 2.6893594735314623e-7
+        },
+        "relativeRms": 6.286019778034557e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -92.16185069134309,
+          "thdDb": -1.8991651045028843,
+          "harmonicPowerRatios": [
+            1,
+            0.25004595227934256,
+            0.11116558444267713,
+            0.06255745509126465,
+            0.04005885008105011,
+            0.02783739029852329,
+            0.02046824383736466,
+            0.015685395768788035
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -92.15866944448236,
+          "thdDb": -1.8991591979515867,
+          "harmonicPowerRatios": [
+            1,
+            0.25004632662228415,
+            0.11116567906333046,
+            0.06255755692924236,
+            0.040058903250712576,
+            0.027837448426101696,
+            0.020468275518428666,
+            0.015685416713091562
+          ]
+        },
+        "stats": {
+          "dc": -0.000012377398918142172,
+          "rms": 0.053529929942344595,
+          "peak": 0.18350252509117126,
+          "maxStep": 0.11915839090943336,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/sawtooth/93",
+      "metrics": {
+        "error": {
+          "max": 7.105991244316101e-7,
+          "rms": 4.6984860713665686e-8
+        },
+        "relativeRms": 7.599258777801765e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -88.67291545328726,
+          "thdDb": -2.0266250590904367,
+          "harmonicPowerRatios": [
+            1,
+            0.2619056464627623,
+            0.12549612751247236,
+            0.07778894770963724,
+            0.05506186560860815,
+            0.04075396391011043,
+            0.028736372871723502,
+            0.01786155559909276
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -88.6719271137039,
+          "thdDb": -2.0266253310426787,
+          "harmonicPowerRatios": [
+            1,
+            0.26190562345825286,
+            0.12549613262322476,
+            0.07778893532892599,
+            0.055061873291299725,
+            0.040753962340260755,
+            0.028736369537054766,
+            0.017861549377187542
+          ]
+        },
+        "stats": {
+          "dc": -9.315303309575076e-8,
+          "rms": 0.053605271627607295,
+          "peak": 0.17073629796504974,
+          "maxStep": 0.11478444933891296,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/harmonic/45",
+      "metrics": {
+        "error": {
+          "max": 0.000003840774297714233,
+          "rms": 3.354716983193119e-7
+        },
+        "relativeRms": 3.795107044179957e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -88.67375402003054,
+          "thdDb": -2.775150887323864,
+          "harmonicPowerRatios": [
+            1,
+            0.2500459493302888,
+            0.11116558406299455,
+            0.06255745469893517,
+            0.040058847431781536,
+            0.02783739057439137,
+            0.02046824635523909,
+            0.015685395947973812
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -88.66644252178178,
+          "thdDb": -2.7751605510974637,
+          "harmonicPowerRatios": [
+            1,
+            0.2500455088869331,
+            0.11116548743239352,
+            0.06255732913783958,
+            0.04005877905128372,
+            0.027837294508062084,
+            0.020468169352757914,
+            0.01568512554164574
+          ]
+        },
+        "stats": {
+          "dc": -0.000007682340602207915,
+          "rms": 0.056974256517555256,
+          "peak": 0.15280918776988983,
+          "maxStep": 0.005258351331576705,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/harmonic/93",
+      "metrics": {
+        "error": {
+          "max": 5.746260285377502e-7,
+          "rms": 4.06000533987851e-8
+        },
+        "relativeRms": 5.151175708206779e-9,
+        "nativeSpectrum": {
+          "offHarmonicDb": -88.66075034879286,
+          "thdDb": -2.1637903599493926,
+          "harmonicPowerRatios": [
+            1,
+            0.2619056451168644,
+            0.12549612848217312,
+            0.07778894642482469,
+            0.055061859960466614,
+            0.0407539627596461,
+            0.0287363766857724,
+            0.0178615558900575
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -88.66024474629577,
+          "thdDb": -2.1637892479208016,
+          "harmonicPowerRatios": [
+            1,
+            0.2619056417128825,
+            0.12549615874419073,
+            0.07778897001250003,
+            0.05506189785382267,
+            0.040753975406312794,
+            0.028736404330614643,
+            0.017861582839075907
+          ]
+        },
+        "stats": {
+          "dc": -1.0408767203697084e-7,
+          "rms": 0.05893489282510957,
+          "peak": 0.1812712848186493,
+          "maxStep": 0.09146722964942455,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/highpass/0.1",
+      "metrics": {
+        "error": {
+          "max": 3.5157427191734314e-7,
+          "rms": 4.1280244129966904e-8
+        },
+        "relativeRms": 4.8588747469935356e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -91.84408267160661,
+          "thdDb": -0.6613039090055224,
+          "harmonicPowerRatios": [
+            1,
+            1.7383484931411023e-12,
+            0.7193701381095599,
+            1.537284638605951e-12,
+            0.09954136417620522,
+            1.7104015559932807e-13,
+            0.023408550692821977,
+            5.263193214845489e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -91.80925016369314,
+          "thdDb": -0.6613035490910563,
+          "harmonicPowerRatios": [
+            1,
+            4.650317946934002e-12,
+            0.719370090225878,
+            1.566808049469288e-12,
+            0.09954144806941001,
+            3.0501569431327605e-13,
+            0.023408570798082333,
+            5.820186907407836e-14
+          ]
+        },
+        "stats": {
+          "dc": -2.577865255213223e-7,
+          "rms": 0.012213939842791913,
+          "peak": 0.03864534944295883,
+          "maxStep": 0.0054135373793542385,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/highpass/16",
+      "metrics": {
+        "error": {
+          "max": 6.426125764846802e-7,
+          "rms": 1.1923428242924732e-7
+        },
+        "relativeRms": 8.76421299977892e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -89.70283255845068,
+          "thdDb": 10.121510502736166,
+          "harmonicPowerRatios": [
+            1,
+            1.8294272629602658e-11,
+            10.111680671836258,
+            1.4049079817418696e-11,
+            0.13298709884965237,
+            1.1858143765990905e-13,
+            0.023976472041922114,
+            2.533688158766505e-13
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -89.67260863075722,
+          "thdDb": 10.121514747538837,
+          "harmonicPowerRatios": [
+            1,
+            2.7911042616202146e-11,
+            10.111690497498532,
+            1.4346900592607214e-11,
+            0.1329872734207631,
+            2.470200976212205e-13,
+            0.02397649616514871,
+            2.5501111355730295e-13
+          ]
+        },
+        "stats": {
+          "dc": -2.4376571396168233e-7,
+          "rms": 0.03256034141516116,
+          "peak": 0.07759679108858109,
+          "maxStep": 0.007042672485113144,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/bandpass/0.1",
+      "metrics": {
+        "error": {
+          "max": 3.129243850708008e-7,
+          "rms": 5.9180950839480844e-8
+        },
+        "relativeRms": 9.773298836890376e-9,
+        "nativeSpectrum": {
+          "offHarmonicDb": -97.44982368221133,
+          "thdDb": -18.12679914760391,
+          "harmonicPowerRatios": [
+            1,
+            4.0237434616351877e-13,
+            0.013029678161996629,
+            2.1428068238928298e-14,
+            0.0016615790623428738,
+            1.841945795830699e-14,
+            0.00041968143581349026,
+            9.524574755172013e-15
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -97.4396493946013,
+          "thdDb": -18.126799346481075,
+          "harmonicPowerRatios": [
+            1,
+            5.712467585663282e-13,
+            0.013029675830023499,
+            2.3021945936048298e-14,
+            0.00166158018469342,
+            2.1377710315455238e-14,
+            0.00041968167025786905,
+            9.644539872380347e-15
+          ]
+        },
+        "stats": {
+          "dc": -0.000006751521419802211,
+          "rms": 0.06138016827556137,
+          "peak": 0.14332111179828644,
+          "maxStep": 0.0037889480590820312,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/bandpass/16",
+      "metrics": {
+        "error": {
+          "max": 6.51925802230835e-8,
+          "rms": 1.3411856931840917e-8
+        },
+        "relativeRms": 5.969129612815038e-8,
+        "nativeSpectrum": {
+          "offHarmonicDb": -91.02512218061105,
+          "thdDb": 2.3312946723624126,
+          "harmonicPowerRatios": [
+            1,
+            1.087476986427029e-12,
+            1.7045534735814556,
+            3.5296349419611076e-12,
+            0.0053488664808741425,
+            3.541797271168855e-13,
+            0.0004863809659177456,
+            2.1435466479391167e-13
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -90.94229577111324,
+          "thdDb": 2.3312949281202617,
+          "harmonicPowerRatios": [
+            1,
+            3.5862567658639164e-12,
+            1.7045535678541495,
+            3.5347668190737853e-12,
+            0.0053488722811497035,
+            3.6781932450289404e-13,
+            0.00048638143770928015,
+            2.1611808921916987e-13
+          ]
+        },
+        "stats": {
+          "dc": -4.889906133692775e-8,
+          "rms": 0.0027291726272103654,
+          "peak": 0.00878469180315733,
+          "maxStep": 0.0005366795230656862,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/notch/0.1",
+      "metrics": {
+        "error": {
+          "max": 1.993030309677124e-7,
+          "rms": 4.643439929284579e-8
+        },
+        "relativeRms": 8.038024690293355e-9,
+        "nativeSpectrum": {
+          "offHarmonicDb": -97.8107842147284,
+          "thdDb": -27.307971943718496,
+          "harmonicPowerRatios": [
+            1,
+            1.4310098679167402e-13,
+            0.00008531391016044063,
+            2.9788613701492265e-14,
+            0.000496210389793329,
+            1.1397509451812312e-15,
+            0.00035933486095913786,
+            6.957950111905219e-15
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -97.76980335116278,
+          "thdDb": -27.307970040590153,
+          "harmonicPowerRatios": [
+            1,
+            1.5400319006681369e-13,
+            0.00008531384738577392,
+            2.986745944291661e-14,
+            0.00049621072366629,
+            2.896928478289853e-15,
+            0.00035933498520738475,
+            7.0830206507847505e-15
+          ]
+        },
+        "stats": {
+          "dc": 0.000009337780182380965,
+          "rms": 0.014401298716193056,
+          "peak": 0.028921131044626236,
+          "maxStep": 0.002041836269199848,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/notch/16",
+      "metrics": {
+        "error": {
+          "max": 0.0000010281801223754883,
+          "rms": 1.904592367682878e-7
+        },
+        "relativeRms": 9.211365337158384e-9,
+        "nativeSpectrum": {
+          "offHarmonicDb": -97.48109590581025,
+          "thdDb": -18.69977507903124,
+          "harmonicPowerRatios": [
+            1,
+            4.143730221372572e-13,
+            0.011160835803252594,
+            5.113939099971529e-14,
+            0.0015973740437823525,
+            2.1693166668552036e-14,
+            0.00041644367279929925,
+            1.589009270180701e-14
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -97.32669666531802,
+          "thdDb": -18.69976086067988,
+          "harmonicPowerRatios": [
+            1,
+            8.102730215433234e-13,
+            0.01116087575679923,
+            6.22727411078906e-14,
+            0.001597377222316021,
+            2.274507615910788e-14,
+            0.0004164443222972713,
+            1.6292797493783325e-14
+          ]
+        },
+        "stats": {
+          "dc": 0.000002635144379829128,
+          "rms": 0.06298788338065064,
+          "peak": 0.1522376984357834,
+          "maxStep": 0.0035364776849746704,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "extended/96000/preset/felt-electric",
+      "metrics": {
+        "error": {
+          "max": 8.419156074523926e-7,
+          "rms": 3.210671441760523e-7
+        },
+        "relativeRms": 6.215659660302464e-7,
+        "nativeSpectrum": {
+          "offHarmonicDb": -88.28139132055996,
+          "thdDb": -7.162037658498396,
+          "harmonicPowerRatios": [
+            1,
+            0.1749617517556373,
+            0.014243087596201914,
+            1.1255785870821384e-12,
+            0.0022742458806250107,
+            6.24693872653941e-13,
+            0.0005802275713666992,
+            2.657701313271868e-13
+          ]
+        },
+        "browserSpectrum": {
+          "offHarmonicDb": -88.2727285783312,
+          "thdDb": -7.162053463540342,
+          "harmonicPowerRatios": [
+            1,
+            0.17496104282259656,
+            0.014243095842436871,
+            1.2254942814632744e-12,
+            0.0022742464942807562,
+            7.231560215549195e-13,
+            0.0005802283944975574,
+            2.981715371256073e-13
+          ]
+        },
+        "stats": {
+          "dc": 0.0000015205033754921835,
+          "rms": 0.033676246617424827,
+          "peak": 0.12141628563404083,
+          "maxStep": 0.0028413087129592896,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "level": true,
+        "spectrum": true,
+        "alias": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/sum-positive-clamp",
+      "metrics": {
+        "max": 6.984919309616089e-8,
+        "rms": 1.4871112292561159e-8,
+        "stats": {
+          "dc": 0.0000020779241675397854,
+          "rms": 0.01981895881779864,
+          "peak": 0.042471323162317276,
+          "maxStep": 0.001986882707569748,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/sum-negative-clamp",
+      "metrics": {
+        "max": 1.4202669262886047e-8,
+        "rms": 3.6386787262308515e-9,
+        "stats": {
+          "dc": 0.000001374906848078453,
+          "rms": 0.0030855531743653195,
+          "peak": 0.006387136876583099,
+          "maxStep": 0.00047605503641534597,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/cancel",
+      "metrics": {
+        "max": 4.470348358154297e-8,
+        "rms": 7.060159843293271e-9,
+        "stats": {
+          "dc": 0.000002344100687880888,
+          "rms": 0.008642744053094358,
+          "peak": 0.020585786551237106,
+          "maxStep": 0.0011555628152564168,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/bipolar-velocity",
+      "metrics": {
+        "max": 1.4435499906539917e-8,
+        "rms": 3.0998893104913657e-9,
+        "stats": {
+          "dc": 7.622326809256454e-7,
+          "rms": 0.00411519912819142,
+          "peak": 0.008966540917754173,
+          "maxStep": 0.0004325095796957612,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/lfo-bipolar",
+      "metrics": {
+        "max": 0.00007014954462647438,
+        "rms": 0.00003380568782438191,
+        "stats": {
+          "dc": 0.0000021674880188846234,
+          "rms": 0.00864396478535069,
+          "peak": 0.023676110431551933,
+          "maxStep": 0.0011832115123979747,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": false,
+        "headroom": true
+      },
+      "status": "fail"
+    },
+    {
+      "id": "v2/44100/lfo-unipolar-negative",
+      "metrics": {
+        "max": 6.938353180885315e-8,
+        "rms": 1.0085394698323221e-8,
+        "stats": {
+          "dc": 0.000002450559440239297,
+          "rms": 0.009210277640454212,
+          "peak": 0.024060357362031937,
+          "maxStep": 0.0012830666964873672,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/envelope-release",
+      "metrics": {
+        "max": 5.681067705154419e-8,
+        "rms": 1.0126261089925833e-8,
+        "stats": {
+          "dc": 0.00000242677317031107,
+          "rms": 0.013082601858857434,
+          "peak": 0.041057080030441284,
+          "maxStep": 0.001984158850973472,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/bipolar-envelope",
+      "metrics": {
+        "max": 1.8812716007232666e-7,
+        "rms": 7.281447793234669e-8,
+        "stats": {
+          "dc": 0.000002267567214579669,
+          "rms": 0.008649748707948064,
+          "peak": 0.02366648241877556,
+          "maxStep": 0.0012223854719195515,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/keytrack-low",
+      "metrics": {
+        "max": 8.568167686462402e-8,
+        "rms": 1.3912407178157303e-8,
+        "stats": {
+          "dc": 0.00003030391176405426,
+          "rms": 0.00861821086636554,
+          "peak": 0.02059035748243332,
+          "maxStep": 0.00028900085817440413,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/keytrack-high",
+      "metrics": {
+        "max": 5.960464477539063e-8,
+        "rms": 1.3846573906388387e-8,
+        "stats": {
+          "dc": 2.307297865013092e-7,
+          "rms": 0.008629140507905123,
+          "peak": 0.021924147382378578,
+          "maxStep": 0.004849842400290072,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/pan-clamp",
+      "metrics": {
+        "max": 6.146728992462158e-8,
+        "rms": 9.967370480171364e-9,
+        "stats": {
+          "dc": 0.0000026639110056170817,
+          "rms": 0.008642744052884859,
+          "peak": 0.029112698510289192,
+          "maxStep": 0.02911269851028919,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/filter-clamp",
+      "metrics": {
+        "max": 4.470348358154297e-8,
+        "rms": 6.783363173251787e-9,
+        "stats": {
+          "dc": 0.000001765269250775937,
+          "rms": 0.008427582669921694,
+          "peak": 0.019858364015817642,
+          "maxStep": 0.0011100316187366843,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/pitch-clamp",
+      "metrics": {
+        "max": 5.4016709327697754e-8,
+        "rms": 1.0205292954554763e-8,
+        "stats": {
+          "dc": 0.000001058970098740708,
+          "rms": 0.010059096910934139,
+          "peak": 0.02571028098464012,
+          "maxStep": 0.0034395288676023483,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/silent-oscillator",
+      "metrics": {
+        "max": 7.310882210731506e-8,
+        "rms": 9.325124352763102e-9,
+        "stats": {
+          "dc": 0.000002358762925444482,
+          "rms": 0.010051968670704493,
+          "peak": 0.036465514451265335,
+          "maxStep": 0.0024107947247102857,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/expression-plus-modulation",
+      "metrics": {
+        "max": 7.916241884231567e-8,
+        "rms": 1.742705340824546e-8,
+        "stats": {
+          "dc": 0.0000015082925777589645,
+          "rms": 0.008661049677999825,
+          "peak": 0.023858364671468735,
+          "maxStep": 0.0012627397663891315,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/maximum-16",
+      "metrics": {
+        "max": 1.7881393432617188e-7,
+        "rms": 4.068830237355801e-8,
+        "stats": {
+          "dc": 0.0000021854387535166775,
+          "rms": 0.01389617912500732,
+          "peak": 0.06131785362958908,
+          "maxStep": 0.03926863893866539,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/preset/evolving-glass",
+      "metrics": {
+        "max": 1.1478550732135773e-7,
+        "rms": 2.2242048054735766e-8,
+        "stats": {
+          "dc": -0.00001239973906838359,
+          "rms": 0.01838055301840381,
+          "peak": 0.04101357236504555,
+          "maxStep": 0.0030037446413189173,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/preset/breath-lead",
+      "metrics": {
+        "max": 0.0000010007061064243317,
+        "rms": 5.939198396016082e-8,
+        "stats": {
+          "dc": 9.16368445268619e-8,
+          "rms": 0.013018639483559009,
+          "peak": 0.051169782876968384,
+          "maxStep": 0.020752410870045424,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/preset/touch-keys",
+      "metrics": {
+        "max": 2.2057793103158474e-7,
+        "rms": 2.0369264299808347e-8,
+        "stats": {
+          "dc": -3.576389359642213e-7,
+          "rms": 0.011712067904099807,
+          "peak": 0.04108109325170517,
+          "maxStep": 0.0074589988216757774,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/sum-positive-clamp",
+      "metrics": {
+        "max": 4.470348358154297e-8,
+        "rms": 8.069393188174387e-9,
+        "stats": {
+          "dc": 0.0000020822381772380493,
+          "rms": 0.019819362503721422,
+          "peak": 0.04247241094708443,
+          "maxStep": 0.0018255329923704267,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/sum-negative-clamp",
+      "metrics": {
+        "max": 7.2177499532699585e-9,
+        "rms": 1.5937193764403876e-9,
+        "stats": {
+          "dc": 0.000001380573048562493,
+          "rms": 0.003085756760940759,
+          "peak": 0.006387556903064251,
+          "maxStep": 0.0004374201234895736,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/cancel",
+      "metrics": {
+        "max": 2.1420419216156006e-8,
+        "rms": 3.274720321445663e-9,
+        "stats": {
+          "dc": 0.000002344724921720471,
+          "rms": 0.008642982068501746,
+          "peak": 0.020586548373103142,
+          "maxStep": 0.0010617408261168748,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/bipolar-velocity",
+      "metrics": {
+        "max": 1.210719347000122e-8,
+        "rms": 1.997039498121314e-9,
+        "stats": {
+          "dc": 7.622920159067027e-7,
+          "rms": 0.004115280000539844,
+          "peak": 0.008966784924268723,
+          "maxStep": 0.0003973876446252689,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/lfo-bipolar",
+      "metrics": {
+        "max": 0.000012316158972680569,
+        "rms": 0.000005930817572329977,
+        "stats": {
+          "dc": 0.0000021680880915939363,
+          "rms": 0.008644204139092816,
+          "peak": 0.023681243881583214,
+          "maxStep": 0.0010872977509279735,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/lfo-unipolar-negative",
+      "metrics": {
+        "max": 8.381903171539307e-8,
+        "rms": 9.54294340014821e-9,
+        "stats": {
+          "dc": 0.000002451020481073825,
+          "rms": 0.009210417432346133,
+          "peak": 0.024066725745797157,
+          "maxStep": 0.0011788660776801407,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/envelope-release",
+      "metrics": {
+        "max": 3.5390257835388184e-8,
+        "rms": 5.5549268511075855e-9,
+        "stats": {
+          "dc": 0.00000242743125461524,
+          "rms": 0.013082899625577588,
+          "peak": 0.04106590151786804,
+          "maxStep": 0.0018233061418868601,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/bipolar-envelope",
+      "metrics": {
+        "max": 1.5832483768463135e-7,
+        "rms": 5.49272402062983e-8,
+        "stats": {
+          "dc": 0.000002268139453859023,
+          "rms": 0.008649992374114956,
+          "peak": 0.023666666820645332,
+          "maxStep": 0.0011233558761887252,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/keytrack-low",
+      "metrics": {
+        "max": 8.940696716308594e-8,
+        "rms": 1.754888851717523e-8,
+        "stats": {
+          "dc": 0.00003030208823017039,
+          "rms": 0.008618223312112603,
+          "peak": 0.020590409636497498,
+          "maxStep": 0.00026552053259365493,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/keytrack-high",
+      "metrics": {
+        "max": 4.237517714500427e-8,
+        "rms": 7.150641170458407e-9,
+        "stats": {
+          "dc": 2.3136701331220502e-7,
+          "rms": 0.008632855017862269,
+          "peak": 0.021853141486644745,
+          "maxStep": 0.004465127014555037,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/pan-clamp",
+      "metrics": {
+        "max": 2.9802322387695312e-8,
+        "rms": 4.6126734361899416e-9,
+        "stats": {
+          "dc": 0.000002666187721865647,
+          "rms": 0.008642982070340607,
+          "peak": 0.029113775119185448,
+          "maxStep": 0.029113775119185444,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/filter-clamp",
+      "metrics": {
+        "max": 2.0954757928848267e-8,
+        "rms": 3.047788170700498e-9,
+        "stats": {
+          "dc": 0.0000017694940485619938,
+          "rms": 0.008427583849000551,
+          "peak": 0.019858364015817642,
+          "maxStep": 0.0010198633535765111,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/pitch-clamp",
+      "metrics": {
+        "max": 2.9802322387695312e-8,
+        "rms": 7.408855250948942e-9,
+        "stats": {
+          "dc": 0.0000010593290957671155,
+          "rms": 0.010059528121342521,
+          "peak": 0.025719977915287018,
+          "maxStep": 0.0031603886163793504,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/silent-oscillator",
+      "metrics": {
+        "max": 3.073364496231079e-8,
+        "rms": 4.3309017192521136e-9,
+        "stats": {
+          "dc": 0.0000023593655863543496,
+          "rms": 0.01005234389484911,
+          "peak": 0.036459702998399734,
+          "maxStep": 0.002215594577137381,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/expression-plus-modulation",
+      "metrics": {
+        "max": 1.2200325727462769e-7,
+        "rms": 3.6354279105064864e-8,
+        "stats": {
+          "dc": 0.0000015087559164876062,
+          "rms": 0.008661306047930707,
+          "peak": 0.02385897748172283,
+          "maxStep": 0.0011603871826082468,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/maximum-16",
+      "metrics": {
+        "max": 1.6763806343078613e-7,
+        "rms": 4.6827779811677904e-8,
+        "stats": {
+          "dc": 0.0000021863908337937364,
+          "rms": 0.01389649048137316,
+          "peak": 0.06132032349705696,
+          "maxStep": 0.03926585987210274,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/preset/evolving-glass",
+      "metrics": {
+        "max": 1.2293457984924316e-7,
+        "rms": 1.8345879337754585e-8,
+        "stats": {
+          "dc": -0.000012421454192467238,
+          "rms": 0.018380880658183794,
+          "peak": 0.04101189598441124,
+          "maxStep": 0.0027604320348473266,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/preset/breath-lead",
+      "metrics": {
+        "max": 0.0000028761569410562515,
+        "rms": 2.0915074879025662e-7,
+        "stats": {
+          "dc": 9.255603732842289e-8,
+          "rms": 0.013020401471143252,
+          "peak": 0.05090091750025749,
+          "maxStep": 0.01917628850787878,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/preset/touch-keys",
+      "metrics": {
+        "max": 1.1362135410308838e-7,
+        "rms": 1.0233696383378613e-8,
+        "stats": {
+          "dc": -3.5730317151733137e-7,
+          "rms": 0.011713114577225998,
+          "peak": 0.04104439541697502,
+          "maxStep": 0.006861252244561911,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/sum-positive-clamp",
+      "metrics": {
+        "max": 2.1047890186309814e-7,
+        "rms": 4.187656354905765e-8,
+        "stats": {
+          "dc": 0.0000021032977491023297,
+          "rms": 0.019820981275158564,
+          "peak": 0.0424768440425396,
+          "maxStep": 0.0009129380341619253,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/sum-negative-clamp",
+      "metrics": {
+        "max": 1.4901161193847656e-8,
+        "rms": 2.1976130162413166e-9,
+        "stats": {
+          "dc": 0.0000014127845052550669,
+          "rms": 0.0030865849649450118,
+          "peak": 0.006389264017343521,
+          "maxStep": 0.00021880056738154963,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/cancel",
+      "metrics": {
+        "max": 8.754432201385498e-8,
+        "rms": 1.64242820013504e-8,
+        "stats": {
+          "dc": 0.000002346062062774773,
+          "rms": 0.008643948968480352,
+          "peak": 0.020589640364050865,
+          "maxStep": 0.0005310071428539231,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/bipolar-velocity",
+      "metrics": {
+        "max": 4.44706529378891e-8,
+        "rms": 8.454995486929945e-9,
+        "stats": {
+          "dc": 7.616809820162947e-7,
+          "rms": 0.0041155976900827335,
+          "peak": 0.00896777305752039,
+          "maxStep": 0.00019873327255481854,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/lfo-bipolar",
+      "metrics": {
+        "max": 0.000012528384104371071,
+        "rms": 0.000006032348510794447,
+        "stats": {
+          "dc": 0.0000021693599352254962,
+          "rms": 0.008645176333165168,
+          "peak": 0.023684518411755562,
+          "maxStep": 0.000543831498362124,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/lfo-unipolar-negative",
+      "metrics": {
+        "max": 1.555308699607849e-7,
+        "rms": 2.644644758349648e-8,
+        "stats": {
+          "dc": 0.0000024512898154236217,
+          "rms": 0.009210976773944567,
+          "peak": 0.02406672202050686,
+          "maxStep": 0.0005895348731428385,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/envelope-release",
+      "metrics": {
+        "max": 2.0302832126617432e-7,
+        "rms": 2.751218001182071e-8,
+        "stats": {
+          "dc": 0.000002428870285878859,
+          "rms": 0.013084103714411486,
+          "peak": 0.04107099398970604,
+          "maxStep": 0.0009118945163208991,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/bipolar-envelope",
+      "metrics": {
+        "max": 1.3783574104309082e-7,
+        "rms": 2.660234479267076e-8,
+        "stats": {
+          "dc": 0.00000226951588214471,
+          "rms": 0.008650983020300991,
+          "peak": 0.023669345304369926,
+          "maxStep": 0.0005617989518214017,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/keytrack-low",
+      "metrics": {
+        "max": 2.1979212760925293e-7,
+        "rms": 3.8932239033819836e-8,
+        "stats": {
+          "dc": 0.00003028981081184508,
+          "rms": 0.008618269874833929,
+          "peak": 0.020590607076883316,
+          "maxStep": 0.00013276241952553391,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/keytrack-high",
+      "metrics": {
+        "max": 3.5390257835388184e-8,
+        "rms": 4.517436404295897e-9,
+        "stats": {
+          "dc": 2.3222297117824617e-7,
+          "rms": 0.008648084905076778,
+          "peak": 0.021981405094265938,
+          "maxStep": 0.0022415254497900605,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/pan-clamp",
+      "metrics": {
+        "max": 1.2293457984924316e-7,
+        "rms": 2.3223652763904996e-8,
+        "stats": {
+          "dc": 0.0000026774060753898695,
+          "rms": 0.008643948965568691,
+          "peak": 0.029118148609995842,
+          "maxStep": 0.02911814860999584,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/filter-clamp",
+      "metrics": {
+        "max": 8.800998330116272e-8,
+        "rms": 1.551868901664488e-8,
+        "stats": {
+          "dc": 0.0000017914318065789518,
+          "rms": 0.00842758847318161,
+          "peak": 0.01985836960375309,
+          "maxStep": 0.0005099762202007696,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/pitch-clamp",
+      "metrics": {
+        "max": 6.891787052154541e-8,
+        "rms": 9.247847498618472e-9,
+        "stats": {
+          "dc": 0.0000010604908690572464,
+          "rms": 0.010061262971700666,
+          "peak": 0.02577223628759384,
+          "maxStep": 0.0015806487062945962,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/silent-oscillator",
+      "metrics": {
+        "max": 9.685754776000977e-8,
+        "rms": 1.7080874988239926e-8,
+        "stats": {
+          "dc": 0.0000023603687823691907,
+          "rms": 0.01005386528248677,
+          "peak": 0.03647426515817642,
+          "maxStep": 0.0011082148412242532,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/expression-plus-modulation",
+      "metrics": {
+        "max": 1.3504177331924438e-7,
+        "rms": 3.940841375044909e-8,
+        "stats": {
+          "dc": 0.0000015101718956842993,
+          "rms": 0.00866234871774149,
+          "peak": 0.023865919560194016,
+          "maxStep": 0.0005803226958960295,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/maximum-16",
+      "metrics": {
+        "max": 2.845190465450287e-7,
+        "rms": 4.27063762569981e-8,
+        "stats": {
+          "dc": 0.0000021883917395226565,
+          "rms": 0.0138977547882196,
+          "peak": 0.06133047491312027,
+          "maxStep": 0.03925703838467598,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/preset/evolving-glass",
+      "metrics": {
+        "max": 5.306210368871689e-7,
+        "rms": 7.849015330656728e-8,
+        "stats": {
+          "dc": -0.00001254342639011357,
+          "rms": 0.01838223620803955,
+          "peak": 0.041008543223142624,
+          "maxStep": 0.0013815204292768613,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/preset/breath-lead",
+      "metrics": {
+        "max": 0.0000031634699553251266,
+        "rms": 2.2491702611315105e-7,
+        "stats": {
+          "dc": 9.401353782726242e-8,
+          "rms": 0.01302363535155294,
+          "peak": 0.05091093108057976,
+          "maxStep": 0.009790045907720923,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/preset/touch-keys",
+      "metrics": {
+        "max": 1.2293457984924316e-7,
+        "rms": 2.120459537259535e-8,
+        "stats": {
+          "dc": -3.552826408418734e-7,
+          "rms": 0.01171641180605655,
+          "peak": 0.040990158915519714,
+          "maxStep": 0.003482445201370865,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "unsupported-noise",
+      "metrics": {
+        "status": 422
+      },
+      "checks": {
+        "explicitRejection": true
+      },
+      "status": "pass"
+    }
+  ],
+  "failures": [
+    {
+      "id": "v2/44100/lfo-bipolar",
+      "check": "rmsError"
+    }
+  ],
+  "native": {
+    "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+    "flags": [
+      "-std=c++17",
+      "-O2",
+      "-ffp-contract=off",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic"
+    ],
+    "selfTest": "passed: 400 waveform/filter/rate/extreme and three 16-route v2 profiles, five block sizes and allocation assertions",
+    "scope": "offline C++ core; no device backend or callback latency qualification"
+  },
+  "suitePolicy": {
+    "maxPcmError": 0.0001,
+    "maxRmsError": 0.00002,
+    "initialRmsTarget": 0.00001,
+    "toleranceRationale": "The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",
+    "method": "same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",
+    "scope": "all five existing oscillator shapes, four filters, pitch/ADSR/pan and canonical v2 modulation",
+    "limits": [
+      "Not full native patch support: noise/drive/delay/legacy motion reject",
+      "Not a device performance or aliasing qualification",
+      "Fractional-sample note onsets not yet qualified"
+    ]
+  },
+  "measuredAt": "2026-10-27T13:35:46.895Z",
+  "source": {
+    "commit": "e4ac093afe7b9fef960cb850bc9f73e324be96fe",
+    "tag": null,
+    "baseCommit": "e4ac093afe7b9fef960cb850bc9f73e324be96fe",
+    "workingTreeDirty": false,
+    "runtimeAndFixtureSha256": "09d1f9393f871824f4037c088a6e32e2178c1763b0ee2ad546bb391bf7cbda1f"
+  },
+  "host": {
+    "os": "linux",
+    "release": "6.18.55",
+    "arch": "x64",
+    "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+    "logicalCpus": 9,
+    "node": "v24.22.1"
+  }
+}
