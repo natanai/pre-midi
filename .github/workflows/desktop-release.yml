@@ -2,7 +2,7 @@ name: Desktop releases
 on:
   pull_request:
     branches: [main]
-    paths: ['desktop/**', 'native/**', 'desktopUI.js', 'scripts/*desktop*', '.github/workflows/desktop-release.yml', 'package*.json', 'tests/song-check.html']
+    paths: ['desktop/**', 'native/**', 'desktopUI.js', 'scripts/*desktop*', 'scripts/test-windows-portable.ps1', '.github/workflows/desktop-release.yml', 'package*.json', 'tests/song-check.html']
   push:
     branches: [main]
     tags: ['v*']
@@ -131,6 +131,8 @@ jobs:
           $proc = Start-Process $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
           if ($proc.ExitCode -ne 0) { throw "Installer failed: $($proc.ExitCode)" }
           $env:PREMIDI_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'premidi-smoke.json'
+          $env:PREMIDI_SMOKE_STORAGE_TOKEN = 'installed-profile'
+          $env:PREMIDI_SMOKE_EXPECT_FRESH = '1'
           $app = Start-Process (Join-Path $installDir 'pre-midi.exe') -PassThru
           if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Installed application smoke timed out' }
           if ($app.ExitCode -ne 0) { throw "Smoke failed: $($app.ExitCode)" }
@@ -139,25 +141,17 @@ jobs:
           $proc = Start-Process $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
           if ($proc.ExitCode -ne 0) { throw 'Reinstall failed' }
           $env:PREMIDI_SMOKE_EXPECT_RESTORE = '1'
+          Remove-Item Env:PREMIDI_SMOKE_EXPECT_FRESH
           $app = Start-Process (Join-Path $installDir 'pre-midi.exe') -PassThru
           if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Reinstall smoke timed out' }
           if ($app.ExitCode -ne 0) { throw 'Reinstall data preservation failed' }
           Get-Content $env:PREMIDI_SMOKE_OUTPUT
       - name: Collect required artifacts and checksums
         run: python scripts/package-desktop.py ${{ matrix.target }}
-      - name: Windows portable ZIP launch and profile persistence
+      - name: Windows portable isolation, relocation, copy and failure recovery
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          $zip = Get-ChildItem release/*-portable.zip
-          $portableDir = Join-Path $env:RUNNER_TEMP 'premidi-portable'
-          Expand-Archive $zip.FullName $portableDir
-          $env:PREMIDI_SMOKE_EXPECT_RESTORE = '1'
-          $env:PREMIDI_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'premidi-portable-smoke.json'
-          $app = Start-Process (Join-Path $portableDir 'pre-midi.exe') -PassThru
-          if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Portable launch timed out' }
-          if ($app.ExitCode -ne 0) { throw 'Portable launch/persistence failed' }
-          Get-Content $env:PREMIDI_SMOKE_OUTPUT
+        run: ./scripts/test-windows-portable.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.target }}

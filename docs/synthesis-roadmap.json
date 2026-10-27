@@ -941,23 +941,29 @@
         "framework": "tauri",
         "audio": "web-audio",
         "version_source": "package.json",
-        "preview_version": "0.14.1-preview.2",
-        "qualification": "Initial preview passed all four platform CI builds/WebView checks. Preview 2 bounds dependency/network setup and reuses release-profile test dependencies; physical hardware and signed version-to-version update qualification remain open.",
+        "preview_version": "0.14.1-preview.3",
+        "qualification": "Preview 2 published after all four platform CI builds/WebView checks. Preview 3 isolates Windows portable profiles under the executable folder; physical hardware and signed version-to-version update qualification remain open.",
         "evidence": {
-          "platform_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635962",
+          "platform_ci": "https://github.com/natanai/pre-midi/actions/runs/40580528484",
           "browser_and_dsp_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635994",
-          "release_workflow": "https://github.com/natanai/pre-midi/actions/workflows/desktop-release.yml"
+          "release_workflow": "https://github.com/natanai/pre-midi/actions/workflows/desktop-release.yml",
+          "published_preview_2": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.2"
         },
         "subtasks": [
           {
             "id": "host",
             "status": "done",
-            "result": "Existing studio and pinned assets embedded in Tauri; native save dialog and packaged version in Settings; stable profile paths outside installation files."
+            "result": "Existing studio and pinned assets embedded in Tauri; native save dialog and packaged version in Settings. Installer profiles remain in user storage; Windows portable profiles and save defaults stay under the executable folder."
           },
           {
             "id": "packaging",
             "status": "done",
             "result": "Windows x64 NSIS and portable ZIP; separate Intel/Apple Silicon macOS DMGs; Linux x64 AppImage and DEB. All platform artifacts required before publication."
+          },
+          {
+            "id": "portable-folder-storage",
+            "status": "in_progress",
+            "result": "Windows portable marker selects data/webview, projects and exports beside the executable, never the working directory or an AppData fallback. Existing preview.1/.2 data stays untouched with documented offline migration; CI checks relocation, copying and installer isolation."
           },
           {
             "id": "update-infrastructure",
@@ -971,7 +977,7 @@
           {
             "id": "release-qualification",
             "status": "in_progress",
-            "result": "Windows Server 2022 installation, same-version reinstall and extracted portable ZIP preserve local markers/WAV bytes. All platform WebView tests render audio, round-trip Beat/Song and exercise embedded C++ PCM. This is not physical Windows 11 or successful version-to-version update evidence.",
+            "result": "Preview 2 Windows Server 2022 installation, same-version reinstall and portable ZIP checks passed, with four-platform WebView render/roundtrip/native PCM evidence. Preview 3 adds Windows portable isolation, relocation, copied-profile independence and failure-without-fallback checks. This is not physical Windows 11 or a signed version-to-version update.",
             "remaining": [
               "Real microphone permissions/capture and listening on each supported OS",
               "Physical Windows 11 offline/install/upgrade checks",

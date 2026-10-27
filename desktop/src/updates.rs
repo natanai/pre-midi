@@ -1,5 +1,5 @@
 use std::{sync::Mutex,time::Duration};
-use tauri::State;
+use tauri::{Manager,State};
 use tauri_plugin_updater::{Update,UpdaterExt};
 use serde::{Deserialize,Serialize};
 use semver::Version;
@@ -35,8 +35,8 @@ pub async fn check_updates(app:tauri::AppHandle,state:State<'_,Pending>,channel:
  let limit=if KEY.is_empty(){"Automatic installation is unavailable: this preview has no trusted update signing key. Install a later preview manually from GitHub Releases."}
   else if manifest.is_none(){"This release has no signed update package for automatic installation."}
   else if cfg!(target_os="linux") && std::env::var_os("APPIMAGE").is_none(){"Use your package manager to install Linux DEB updates. Automatic updates are available in the AppImage edition."}
-  else if cfg!(target_os="windows") && std::env::current_exe().ok().is_some_and(|p|p.with_file_name("portable.txt").exists()){
-   "Portable edition: install the Windows installer to enable automatic updates, or extract the new ZIP into a separate folder."}
+  else if app.state::<crate::storage::Storage>().portable_root.is_some(){
+   "Portable edition: close pre-midi, replace pre-midi.exe and the release files from the new ZIP, and keep your data, projects and exports folders. Open pre-midi again manually."}
   else {""};
  let result=UpdateInfo{version:version.to_string(),notes:release.body.unwrap_or_default(),installable:limit.is_empty(),limitation:limit.into()};
  if !limit.is_empty(){return Ok(Some(result));}
