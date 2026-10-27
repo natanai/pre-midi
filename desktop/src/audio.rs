@@ -78,7 +78,7 @@ pub async fn native_audio(app:tauri::AppHandle,request:Request)->Result<Value,St
 }
 fn handle(slot:&mut Option<Host>,request:Request)->Result<Value,String>{
  if matches!(&request,Request::Shutdown){slot.take();return Ok(json!({"closed":true}));}
- if slot.is_none()&&matches!(&request,Request::Control{..}){return Ok(json!({"state":0}));}
+ if slot.is_none()&&matches!(&request,Request::Control{..}|Request::Status){return Ok(json!({"state":0,"sampleRate":0,"deviceLost":false}));}
  if slot.is_none(){*slot=Some(Host::new()?);}
  let host=slot.as_ref().unwrap();
  match request {

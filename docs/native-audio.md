@@ -8,6 +8,8 @@ miniaudio 0.11.25 is pinned by immutable commit and SHA-256 in scripts/fetch-min
 
 Production selects WASAPI (Windows), CoreAudio (macOS), PulseAudio/ALSA (Linux), never a null/silent fallback. Device open failures are errors. The explicit test host flag selects miniaudio's null backend; desktop smoke additionally requires PREMIDI_SMOKE_OUTPUT. Its results always identify a test backend and cannot qualify hardware.
 
+Windows Rust and C++ builds statically link the Visual C++ runtime, and CI inspects the PE dependencies to reject MSVCP/VCRUNTIME/CONCRT DLL requirements in the portable executable. WebView2 and Windows system components remain OS dependencies. C++ exception unwinding is enabled for control-side validation; Windows min/max macros are excluded at the native boundary.
+
 Tauri's native_audio command sends requests through an eight-message bounded queue to one dedicated audio control thread. C API initialization, configuration, preparation and destruction stay on that thread, preserving backend/COM affinity. Blocking IPC workers wait for replies; the audio callback never touches the Rust queue. Shared native JS encoding carries the existing pre-midi-synth-voice v1/v2/v3 contract in a bounded little-endian execution packet; this is not a new project/music format. Native packet validation independently checks counts, finite values, rates, routes, wave IDs and time bounds.
 
 ## Real-time ownership

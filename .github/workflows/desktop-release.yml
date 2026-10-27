@@ -107,6 +107,18 @@ jobs:
       - name: Rust update policy tests
         working-directory: desktop
         run: cargo test --release --locked --target ${{ matrix.target }}
+      - name: Verify Windows portable runtime dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsRoot = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $dumpbin = Get-ChildItem "$vsRoot\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          if (!$dumpbin) { throw 'Could not inspect Windows runtime dependencies' }
+          $imports = & $dumpbin.FullName /DEPENDENTS desktop/target/${{ matrix.target }}/release/pre-midi.exe
+          $imports
+          if ($LASTEXITCODE -ne 0) { throw 'Windows dependency inspection failed' }
+          if ($imports -match '(?i)(MSVCP|VCRUNTIME|CONCRT)[0-9_]*\.dll') { throw 'Portable executable requires an external Visual C++ runtime' }
       - name: WebView smoke on Linux
         if: runner.os == 'Linux'
         run: |
