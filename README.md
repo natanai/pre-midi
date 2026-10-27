@@ -1,339 +1,47 @@
 # pre-midi
 
-A local-first, standalone music studio for [pre-programmed](https://github.com/natanai/pre-programmed).
+A local-first Beat maker and Song arranger for the [pre-programmed](https://github.com/natanai/pre-programmed) game engine.
 
-**Open the studio:** https://natanai.github.io/pre-midi/ — served by GitHub Pages, no account or backend.
+[Open the web studio](https://natanai.github.io/pre-midi/) · [Native format and roadmap](docs/song-rollout.md)
 
-## Editing
+## Use
 
-The existing editor is a **Beat** editor. A Beat contains Instruments and reusable one-measure Chunks. Song mode will arrange Beat Clips on Song Tracks without flattening their synthesis instructions. See [Song rollout and terminology](docs/song-rollout.md).
-- **Instruments** own a piano-roll sound or a rack of independent sounds, plus shared chunks, a timeline lane, and master volume. Every sound keeps its complete editable synth or sampler patch.
-- **Timeline** shows the complete composition, one lane per instrument. Click any bar to choose that instrument's chunk, leave it empty, or create and assign a new chunk immediately.
-- **Chunks** are reusable one-bar groups of notes. Selecting one opens its notes; reuse the same chunk in multiple bars without making copies.
-- **Note strength** can be Soft, Medium or Firm when placing notes; Shift-click an existing note to cycle its strength. On guitars, this chooses an actual recorded playing style, rather than only changing loudness.
-- **Notes** are placed in the piano roll. Drag the visible right-edge handle to lengthen or shorten a note in sixteenth-note steps. Alt+Left/Right on a note also changes its length. The “New note length” control only determines the default for notes you place next.
-- **Play** stays active when you edit notes, choose chunks, change instrument settings, or undo/redo. The audio scheduler reads the live score.
-- **Live editing is silent:** while the loop plays, clicking to add a note does not audition it separately. When stopped, note placement previews the pitch.
-- **Piano-roll playhead:** a thin marker moves across the selected chunk's notes in sync with the audio clock, and appears only when that chunk is actually scheduled on its instrument lane.
-- **Undo/redo**, browser autosave, native .premidi import/export, and offline WAV export are included.
+The **Beat** editor is the default. A Beat contains Instruments and reusable one-measure Chunks, with a maximum of 16 measures. An Instrument can be a pitched piano roll or a Rack of individually triggered Sounds. All synth parameters, note expressions, sample mappings, Chunk offsets and repetitions remain editable.
 
-## Offsets, overlapping phrases and polymeter
+Choose **↑ Song** to arrange Beats on a longer timeline. Beat Clips can move, overlap on separate Tracks, repeat, and be trimmed without flattening their source. Selecting a Beat Clip or its lane name opens that Beat below. Use **+ Beat** to create a new Beat or add an existing `.premidi`.
 
-Every timeline bar still has a direct, reusable **chunk** assignment. Clicking a
-filled bar also opens three timing settings for **that placement only**:
+Song's **● voice** opens a recording dialog. Pick the Song start bar, optionally count in one or two bars, then select **play + record**. Vocal recordings appear on Tracks *above* all Beat Tracks. They remain external audio assets, not embedded in the instruction file.
 
-- **Offset in bar (steps)**: from 0–15 sixteenth-note steps. Choose 8 to begin
-  on beat three while other instruments continue from the bar's first beat.
-- **Phrase length (steps)**: how much of the chunk is used for each
-  placement (1–16). A genuine three-beat phrase uses 12. Later notes in that
-  chunk are left unchanged but not played by this placement.
-- **Repetitions**: how many times this chunk starts playing (1–32).
-- **Repeat every (steps)**: the distance between starts (1–64). Choose 12 for
-  a three-beat phrase against the shared four-beat bar grid, or 20 for five
-  beats. Each repetition uses the same editable chunk and sound.
+**Play** runs the Song only while the Song timeline is expanded. When collapsed, it plays the selected Beat. **Export** chooses Beat or Song, then `.premidi` (default) or WAV. The **Open .premidi** action replaces the active project; **Add .premidi** inside Song adds a Beat.
 
-There is one timeline row per instrument. The **colored chunks themselves**
-are clickable and positioned at their actual starts, including repetitions
-and extensions into the next bar. The empty `+` positions still let you add
-chunks. Clicking any visible occurrence edits its original placement.
-The four timing numbers support vertical pointer dragging, as well as normal
-click-to-type and arrow-key adjustment. A later chunk can overlap an earlier
-phrase, including on the same instrument; long notes can ring over a repeat.
+## Native project files
 
-The studio's single event resolver drives live transport, the piano playhead,
-and offline WAV rendering. The saved score format is **v7**: older v5/v6
-compositions automatically migrate, preserving their original bar-aligned
-timing. v7 files with offset/repetition instructions require a v7-capable
-reader; compatibility with older pre-programmed engine exports remains
-marked *game parity pending*. No audio bytes are stored inside .premidi.
+- **Beat:** version 7 of the machine-readable `.premidi` format. Older supported Beat documents migrate through the versioned parser.
+- **Song:** version 8, referencing Beats, Beat Clips, Vocal Clips and Recordings by stable identities.
+- **Audio:** audio bytes stay outside `.premidi`. Projects containing recordings or imported samples export as a ZIP with a `.premidi` manifest and an `assets/` directory. Reimport the ZIP to restore all audio.
+- **Browser storage:** local autosave through IndexedDB, with an ordinary browser-storage fallback for smaller projects. Export projects to keep portable backups. There is no account or server-side project storage.
+- **Current web constraints:** Beats have 1–16 measures; short sampler assets have their own smaller limit; Song vocal takes are currently limited to 5 minutes / 48 MB each, with a 64 MB portable ZIP limit. Standalone hosts will need streaming rather than retaining full recordings in memory.
 
-## Example instrument presets
+The goal is **one native music format** for the studio and pre-programmed, including game-driven changes to Beat layers and eventually Sound parameters. **Full engine parity is not implemented yet:** pre-programmed still has an older v2 music reader. Track the migration in [pre-programmed issue #235](https://github.com/natanai/pre-programmed/issues/235).
 
-**Browse sounds → Examples** contains built-in presets for every instrument
-in every example Beat, with the exact instrument name and authored sound,
-including tuned patches, recorded sample zones and volume. They are built
-from the same source definitions as the examples rather than copied by hand.
+## Development
 
-A multi-sound rack is available as a complete editable rack preset; each
-individual rack sound is also selectable by its original name. These
-presets require no manual saving to the browser's personal sound library
-and contain no notes or arrangement data.
+The web editor runs directly in modern browsers via GitHub Pages, with no application runtime dependencies and no backend. The same musical core is intended for desktop and mobile applications.
 
-## Adaptive sequencer and sound racks
+- `npm run check` — JavaScript syntax checks and Node regression tests.
+- `node tests/song.browser.mjs` — desktop/mobile Song browser interaction, playback, and recording checks (requires Chrome).
+- `node tests/layout.browser.mjs` — responsive layout, examples, racks, conversion and sound tests (requires Chrome).
+- `node scripts/fetch-samples.mjs` — fetch exact pinned CC0 samples and verify their hashes into the ignored `samples/` directory.
+- `node scripts/prepare-pages.mjs` — stage **only** the runtime dependency graph, styles, notices and required verified samples in ignored `dist/` for publishing. GitHub Pages does not publish tests, plans or scripts.
 
-| Current editor | Select a note sound | Select a hit sound |
-|---|---|---|
-| Piano roll | Replace its sound; keep music | Create a new one-row rack |
-| Sound rack | Create a new piano-roll instrument | Append a row to this rack |
+The source files have no generated bundles committed to Git. Browser audio is built on the Web Audio API and microphone recording on browser MediaRecorder.
 
-**Browse sounds** and the **+ Sound** button beneath the last rack row use
-these same rules. **+ Add instrument** always creates a separate instrument.
-Recorded and imported audio follow the same routing; imports ask whether the
-audio should play as a note or trigger as a hit.
+## Contracts and credits
 
-Click a row's name to select its full Sound inspector, with independent level,
-pan, synthesis/sampling, movement and reference pitch. A checkmark and border
-identify the selected row. Normal step clicks add/remove hits; Shift-click
-changes strength. Edit note effects also provides a touch-accessible hit-strength
-control and individual bend overrides. Selecting a row keeps the current lane,
-chunk and scroll position.
+- [Canonical terminology](docs/terminology.json) — Sound, Rack, Instrument, Chunk, Beat, Song, Track, Clip, Recording, Asset.
+- [Song rollout and integration gates](docs/song-rollout.md).
+- [Sound-conversion method](docs/synth-conversion.md).
+- [Sample provenance and checksums](docs/sample-sources.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
+- [Studio interface rules for contributors and agents](AGENTS.md).
 
-The instrument list and individual rack rows have adjacent **⋯** action menus.
-Instrument actions offer Rename and a contextual **Delete instrument** or
-**Delete rack**. Each sound row offers Rename, Replace, Duplicate, Move up/down,
-**Move to piano roll**, and **Remove sound**; if it is the rack's last sound,
-that action becomes **Delete rack**. Moving a sound to piano roll extracts it
-as a separate instrument, preserving its hit pattern and chunk/timeline
-assignments while keeping other rack sounds. A one-sound rack is replaced by
-the new pitched instrument. The current piano roll supports reference notes
-C2–C7. Deleting the final instrument or rack leaves a fresh empty piano-roll
-instrument rather than disabling deletion. Removing a sound with hits asks
-before deleting those events from all chunks.
-**Replace this sound** changes only that row's source. **Save rack preset** saves
-the complete ordered rack; **Save this sound preset** saves only the selected
-row. Both retain companion recordings across reloads. Rack volume controls
-all rows; Sound level controls the selected row. Rows share one chunk library
-and timeline lane. See the [implementation contract and verification record](docs/adaptive-sequencer-plan.md).
-
-## Singing notes, bends and wave modulation
-
-The **Expressive** sound category adds six original sustained synthesizers
-and three recorded guitar interpretations, including **Steel Guitar Upward Glide**,
-**Steel Guitar Vibrato**, **Nylon Guitar Glide**, **Theremin Synth**,
-**Distorted Lead**, **Sine Glide**, **Modulated Siren**, **Pulsed Formant**
-and **Modulated Lead**. These are editable, real instrument patches, not audio
-demonstrations or additional runtime systems.
-
-In the piano roll, **normal clicks add or remove notes**. Shift-click an
-existing note to change its strength, and drag its bright right edge to resize
-it. Editing a note's sound is a deliberate *mode*, not the usual way to
-compose: choose **Edit note effects** to focus on individual notes. The
-instrument and timeline controls visibly recede while that mode is active;
-click a note to reveal its pitch contour, then choose **Done** to return to
-normal note entry.
-
-Instrument-wide **Movement** is now the default. Every instrument has editable
-glide, vibrato, pulse, and an optional default bend (Straight, Scoop, Rise,
-Fall, Dip, Wail or Wave). The synth also supports a moving tone filter.
-Per-note mode can override the instrument's bend for any specific held note.
-The rest of that instrument's notes continue to inherit its default. Bend
-and movement remain first-class composition data, rendered by the same live
-and WAV engine.
-
-Instrument controls use compact keyboard/touch-accessible **dials**, with the
-most important Movement controls open by default; deeper oscillator,
-envelope, effect, and sample-map settings remain progressively disclosed.
-A dual **Sound Shape / Pitch Movement** visualization changes as the dials
-are moved, before a parameter is committed. For synthesizers its sound trace
-is illustrative rather than a full oscilloscope, while sampled sounds use a
-decoded recorded waveform when available. The purple pitch trace shows the
-instrument-wide expressive motion.
-
-**New compositions start without any notes**, and without a repeated
-four-bar demo arrangement. The first empty editable chunk is ready for
-notes immediately. Replacing a piano-roll sound also updates its instrument name. Steel Strum uses a
-wider chord brush and shorter, brighter articulation; its preview now plays
-a real chord, rather than an indistinguishable single pluck.
-
-## Composer-first workspace and optional examples
-
-The **timeline and sequencer are the principal workspace**. On wide screens,
-Sound sits beside them as a separately scrollable, sticky inspector. Use
-**Sound** in the Notes heading to hide or reopen it for more piano-roll space.
-On tablets and phones, the same Sound panel opens as a compact bottom sheet.
-Choose **Expand** to reveal all dials and sample controls, **Compact** to
-return to its smaller form, or **×** to close. Playback, selected chunk,
-timeline and piano-roll scroll position remain intact through these layout
-changes. No second copy of the sound editor is introduced.
-
-The inspector's oscillator/envelope/movement panels now size to their own
-contents, avoiding the formerly large blank grid cells that pushed Notes
-away from composing.
-
-**New always starts blank.** **Examples** loads one of five editable compositions:
-Drum Rack and Bass; Guitar Velocity and Polymeter; Sustained Notes and Offsets;
-Synth Step Patterns; Sampled Guitar Pitch Movement. These compositions use
-the same instruments, chunks, rack rows, timeline and audio controls as a new composition.
-Loading a composition asks before replacing the browser draft; save any
-existing draft first if you wish to preserve it.
-
-**Guitar Velocity and Polymeter — example:** Six independently editable
-instruments over 16 bars at 112 BPM. A monophonic recorded steel-guitar melody
-uses three genuine sampled velocity layers; its patterns change across sections.
-Several 12-step phrases repeat against 16-step bars with offset entrances.
-A four-chord synth-pad progression, syncopated bass, two counter-melodies and
-an eight-sound percussion rack provide harmonic and rhythmic contrast.
-The opening is anchored by a two-bar triangle-key motif over E minor,
-with kick and a restrained hi-hat. The guitar answers in bars 3–4 using
-C-major-seventh and D-major chord tones; the brighter synth lead waits until
-the main rhythm section is established. The 12-step sampled guitar repeats
-begin in bar 5. Later sections add the full drum arrangement, reduce
-percussion before the ending, and close with a different cadence.
-All of this uses ordinary v7 `placements`, reusable chunks, sample zones and
-synth patches. The score contains references to separately packaged CC0 audio;
-there are no new schema fields. Native playback in pre-programmed still requires
-a v7-capable reader instead of its existing v2 implementation.
-
-**Drum Rack and Bass — example:** The exported author revision from
-2026-10-25 has 16 bars, nine independently editable drum-rack sounds, sustained
-sub-bass, a second bass part, chord pad, string pad, lead, keys and modulated siren.
-The lead's first bar is assigned; its first chunk has two C5 notes at steps
-0 and 8, and its second chunk has three notes at steps 0, 12 and 8.
-The rack combines four synthesized hits and five recorded hits.
-
-The measurable compositional changes from the previous demo are:
-
-| Structural measure | Previous | Revised |
-| --- | --- | --- |
-| Arranged bars | 8 | 16 |
-| Percussion editing | Three separate piano-roll instruments | One true nine-sound rack |
-| Deep-bass longest note | 3 sixteenth steps | 16 sixteenth steps |
-| Per-bar drum patterns | Separate repetitive beat/fill lanes | Ten rack patterns spanning intro, drop, breakdown and chase |
-| Sampled drum layers | None | Recorded kick, tape snare, clap and two hats |
-| Arrangement contrast | Mostly repeated groove | Deliberate drop, near-empty break and return |
-
-Tests verify these structures, native event identities, dynamics differences,
-sample references, v6 validity and export-friendly size. They cannot
-substitute for **listening**: perceived impact, bass audibility and the musical
-feel still require ear testing across headphones and mobile speakers.
-
-Example recordings travel as companion audio assets with the composition when
-exported; the .premidi score stays small and machine-readable. No example
-gets a special playback or persistence engine.
-
-## Record your own instruments
-
-**Record sound** is a main toolbar action and an option in the instrument library.
-Choose a duration: **1.5 seconds** by default for a short note, **0.75 seconds**
-for a hit, or **3–4 seconds** for a longer ringing sound. Choose **A note**
-(one guitar string, voice, whistle) or **A hit** (clap, tap, drum, noise).
-Start, grant microphone access, and follow the 3–2–1 countdown. The studio
-records just that short window and stops automatically.
-
-Listen back before using the sound; retry as often as needed. For a clear
-single-pitched recording the studio suggests its original note; correct the
-guess if needed. A hit requires no detected note. **Use this recording**
-uses the same sound-selection rules as the library: hits join the current rack
-or start one, and notes open a piano roll. Add instrument explicitly starts a
-separate instrument.
-
-The recording is a **mono 44.1 kHz, 16-bit PCM WAV**. Short capture windows
-limit file sizes. Automatic pitch estimation is fallible, especially for
-chords, noisy sounds or unusual harmonics.
-
-## Harmonic synthesis and conversion
-
-Choose **Harmonic Keys** or **Harmonic Reed** in the sound library, or change
-either oscillator's Wave to **Harmonic**. The oscillator has 32 independent
-harmonic-strength dials. Its first eight are immediately available; expand
-**Harmonics 9–32** for the rest. Fundamental, All harmonics, and Odd harmonics
-give editable starting shapes. Existing filters, envelopes, movement, effects,
-note bends and the sound visualizer work with these oscillators.
-
-In **Record sound**, record a note or hit, or choose **Upload WAV**. Uploads
-can be up to 20 MB / 30 seconds; select an excerpt up to four seconds long.
-Check the detected note, then choose **Convert to synth**. The studio analyzes
-the sound and compares candidate patches rendered through its actual native
-synth. Listen to the original and converted previews, then choose
-**Use synth instrument**. This creates a separate, automatically named piano-roll
-instrument or hit rack with its harmonic, envelope, filter, noise and movement
-controls populated. The name and every parameter remain editable; saved presets,
-undo, autosave, live playback and WAV export use the same patch.
-
-Conversion produces an approximation, with isolated notes and simple tones as
-the intended inputs. A short recording cannot uniquely reveal an instrument's
-behavior across all pitches and note lengths. Complex acoustic sounds, chords
-and speech may differ substantially. The generated patch needs no source WAV;
-a composition using only synths exports as a small `.premidi`. **Use this recording**
-still retains the actual audio as a separate asset. The [conversion contract](docs/synth-conversion.md)
-documents its algorithm, limits and verification.
-
-## Separate music data and audio assets
-
-- Synth-only compositions export one small, human-readable **.premidi**.
-- Sampled compositions export a **ZIP** with the .premidi file plus an
-  **assets/** folder containing ordinary WAV, OGG, or MP3 files.
-- The .premidi manifest holds relative paths and editable instrument
-  parameters—not Base64 audio data.
-- Import the ZIP to reload both the project and its recorded sounds.
-- A bare .premidi containing audio references needs its accompanying
-  asset files; pre-midi will ask for the complete ZIP rather than silently
-  play a missing sound.
-
-Pre-programmed does not yet implement the new v6 manifest; the bundle is
-prepared for its future game-asset importer, not immediate compatibility.
-Recordings made here stay raw WAV files. Existing open-source OGG recordings
-remain OGG to avoid unnecessary conversion.
-## Development approach
-
-Pre-midi is now the primary development surface for the music studio. We are refining its user experience, native synthesizer and composition model **without updating pre-programmed after every studio iteration**. The experimental v6 instrument format **is not yet compatible with pre-programmed's v2 Media importer**. We are intentionally developing the studio first and will synchronize the engine at a planned parity milestone.
-
-The [development direction](docs/development-direction.md) records that boundary, the modular instrument/synthesizer architecture, and how we will bring pre-programmed back into full parity when the studio is mature.
-
-## Instruments, recordings and samples
-
-**Add instrument** opens one combined library. It includes 25 original
-procedural synthesizer recipes *and* 16 sampled instrument choices using 122
-verified CC0 recordings: piano, several acoustic guitars, recorder, whistle,
-kick, snare, clap, closed/open hi-hat and bongo. Preview one, then Add; use
-**Browse sounds** for the contextual behavior described below.
-
-For synthesized instruments, the existing sound editor provides two
-oscillators, noise, resonant filters, full ADSR, vibrato, stereo pan, distortion
-and feedback delay. The *same sound inspector* renders sampled instruments'
-volume, envelope, transpose, stereo pan, pitch-follow mode, and audio source.
-Import your own WAV, OGG or MP3 (up to 1 MB per sample), or replace a sample
-directly through the Sound panel.
-
-**Acoustic guitar** now uses 18 strategically recorded pitches across all six strings,
-from E2 to B5, with up to three *distinct recorded dynamic takes* per pitch. Choose
-Nylon Fingerstyle, Nylon Picked, Steel Acoustic or Steel Strum. Picked and steel
-recordings switch actual soft/firm attacks based on each note's Strength.
-The Strum control brushes chord notes from bass to treble or in reverse, and
-recorded notes naturally ring out instead of stopping abruptly. More extensive
-sample mapping is available under a collapsible editor.
-
-Piano still uses two sampled root-note zones; other recordings generally use
-one. The acoustic guitars are now multisampled, though they are not a full
-sample-by-sample 375-take instrument or SFZ/SoundFont player.
-
-All recordings in the supplied library are CC0 1.0 and reproducibly fetched
-into the GitHub Pages artifact with pinned Git checksums. Their specific
-sources are listed in [recording credits](docs/sample-sources.md).
-The native .premidi manifest references separate sound assets; the portable ZIP contains the corresponding files. An author's own imported
-samples must have suitable usage and distribution rights.
-
-Use **Save preset** to reuse custom sounds from this browser. Personal preset
-libraries are browser-local, but audio used in a composition travels alongside the .premidi file in the exported ZIP.
-
-## Native format and current limits
-
-The experimental **.premidi v6** score separates instrument layout from each
-sound's complete source patch. `layout: "pitched"` uses musical notes;
-`layout: "rack"` uses events with stable `soundId` references. Audio remains
-outside the score in validated relative asset paths. Limits are 1 MB of score
-instructions, 1 MB per recording, and 64 MB per portable ZIP. There are at most
-12 instruments, 64 sounds per rack, 32 chunks per instrument, and 2,048 rack
-events (256 pitched notes) per chunk.
-
-Native v5 files and browser drafts migrate on opening. Pitched music keeps its
-notes, expression, chunks, patches and timeline. Safe single-zone hits become
-racks; conflicting simultaneous events and multiple recorded pitch zones retain
-their original piano roll. Migration preserves the previous sample-release
-behavior. New hits play complete recorded tails by default; **Play full
-recording** in the sampler controls can change that independently of pitch
-following. A safe one-sound instrument can switch between a sound row and the
-piano roll through the Sound inspector without clearing music.
-
-**Pre-programmed still understands v2.** Integration remains a separate milestone.
-No broad conversion layer for older provisional exported schemas is added.
-
-Still to come: freehand bend-curve drawing, multi-bar held notes, SoundFont/SFZ import, additional acoustic articulations,
-deeper modulation/effect routing, automation, FLAC, General MIDI, variable
-timeline lengths and advanced mixing. Current timeline limits are 4/4, 16 bars,
-12 instruments and up to 32 one-bar chunks per instrument.
-
-### Run locally and verify
-Serve the folder via a static web server and open its index page. Node.js 22+ can run `npm run check`, then `node scripts/fetch-samples.mjs` to download and verify recorded library samples for local static hosting. The GitHub Pages workflow does this automatically. No npm dependencies or server backend.
-
-Run `node tests/layout.browser.mjs` with Chrome installed (`CHROME_BIN` may specify its path) for desktop/mobile interaction, microphone capture, live audio and WAV checks.
+The design remains Beat-first, uncluttered and lowercase in the UI. Preserve external audio assets and existing file compatibility in every format change.

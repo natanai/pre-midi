@@ -22,7 +22,7 @@ jobs:
           node --check studio.js
           node --check audio.js
           node --check schema.js
-          npm test
+          npm run check
       - name: Browser Song arrangement smoke check
         run: node tests/song.browser.mjs
       - name: Fetch pinned CC0 recordings
@@ -34,5 +34,5 @@ jobs:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: ./dist
       - uses: actions/deploy-pages@v4

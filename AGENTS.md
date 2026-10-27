@@ -15,3 +15,21 @@ This is the native music studio for pre-programmed. The music, its controls, and
 - **Transport position is bar:beat**, not part of looping. Show it as a separately labeled readout and keep its accessible value synchronized on start, stop, and position changes.
 
 This is a design constraint, not license to remove essential warnings, error messages, accessibility names, confirmations, or recording guidance.
+
+## Repository boundaries
+
+- One vocabulary for active code, UI, persisted schema and pre-programmed: `docs/terminology.json`. Current native versions: v7 Beat, v8 Song. Old files migrate explicitly; do not break readers with textual renames.
+- The source model is Sound → Instrument/Rack → Chunk → Beat → Song Track/Clip. A Song reuses editable Beat identities; a Recording references external audio Assets. Never embed recording bytes in `.premidi`.
+- Vocal Tracks are always above Beat Tracks, with the selected Beat editor below. Expanded Song means Song transport, collapsed Song means selected Beat transport.
+- pre-midi owns studio editing and the native music instructions. pre-programmed owns game State, effects, conditions, Media persistence and dynamic music control. The old game v2 reader remains a compatibility gap, not proof of parity.
+- Preserve web, future standalone and game-host portability; browser-specific storage/microphone APIs cannot define musical semantics.
+
+## Visual system
+
+Black or near-black surfaces, grayscale chrome, thin rules, monospace typography and square controls. Use saturated color for data (selected musical signals, recording state), not decoration. Selected notes and instruments require an outline as well as color; focus and accessibility remain visible. Desktop and mobile share the same editing behaviors.
+
+## Cleanup and publishing
+
+Do not delete audio code, examples, compatibility tests, verified sample provenance or ongoing roadmap work merely because they are not visible in the UI. Remove stale plans only after their surviving requirements are carried into the canonical documents and tests. The published `dist/` is generated from the live JS dependency graph and pinned samples, and must exclude tests/docs/scripts. Never commit generated `dist/` or downloaded `samples/`.
+
+After implementation, run checks, reconcile concurrent work on main, publish to GitHub Pages and verify the deployment for testing. The canonical roadmap is `docs/song-rollout.md`; don't create a second competing plan.

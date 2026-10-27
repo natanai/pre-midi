@@ -1,96 +1,60 @@
 # Beat → Song rollout
 
-Status: **Stage 5 initial vocal recording in progress**. Song arranging and Beat-only playback remain available.
+Status: **Stage 5 (vocal recording) implemented, reliability work ongoing**. Stage 6 (pre-programmed native parity) has not shipped.
 
-## North star
+This is the canonical technical roadmap. [Terminology](terminology.json) is authoritative for data, UI and code; [pre-programmed issue #235](https://github.com/natanai/pre-programmed/issues/235) tracks the game-side migration.
 
-The current 1–16-bar editor is the **Beat maker**. Its reusable one-bar patterns are **Chunks**, belonging to **Instruments**. A subtle upward `Song` control will reveal a higher-level arrangement without replacing or resetting the editor. Vocal Tracks always render above Beat Tracks; the selected Beat's editor remains below the Song timeline.
+## Implemented
 
-`docs/terminology.json` is the machine-readable domain glossary. The definitions apply to UI copy, variable names, APIs, file format, and game-engine integration. Historical names must be confined to explicit migrations and tests; do not introduce new `score` or `composition` aliases for Beat objects.
+1. **Beat-first architecture:** 1–16-bar Beat editor with Sound, Rack, Instrument and reusable one-bar Chunk definitions. Canonical Beat naming in active code. Native Beat schema v7 and supported older migrations.
+2. **Native Song model:** schema v8 with referenced Beats, Song Tracks, Beat Clips and Recordings. Beat Clips repeat, crop and overlap without flattening Sounds or Chunks. Song and Beat BPM are separate editing contexts.
+3. **Song interface:** subtle ↑ Song affordance; multiple Beat Tracks; add/import Beats; drag, resize, reorder and select Clips; vocal lanes always precede Beat lanes, with the Beat editor beneath.
+4. **Transport and export:** expanded view plays Song; collapsed view plays selected Beat. Song playhead can seek from a selected bar. Export Beat or Song as native `.premidi` or WAV. Audio assets travel beside native JSON in portable ZIPs, not inside it.
+5. **Voice foundation:** ● voice dialog, explicit play + record, start bar, optional count-in, visible statuses and recording permission handling. External MediaRecorder assets, waveform, basic level/delete, multiple vocal takes and local draft persistence. Web limits remain 5 minutes / 48 MB per take / 64 MB per ZIP.
 
-## Rollout stages and gates
+## Immediate acceptance work: Stage 5 reliability
 
-### 1. Terminology / compatibility foundation
-- Inventory all uses of `composition`, `score`, `song`, `track`, `phrase`, `chunk`, and `beat` in both repositories.
-- Replace Beat-object names in live source and UI; preserve musical timing names such as `beatsPerBar`.
-- Enforce the glossary with automated source/UI checks. Track legacy usages until zero in active code, and keep compatibility migrations separately.
-- Golden-file tests for v5, v6, v7 imports and unchanged export semantics.
-- **Gate:** existing Beat editor and imports/exports remain functional; terminology drift fails CI.
+- Verify real microphones on iOS, Android and desktop; measure and compensate capture/playback latency at selected Song positions.
+- Prove repeated takes, permission denial, count-in cancellation, app/background interruptions and crash-safe recording persistence.
+- Verify ZIP export/reimport, playable vocal audio after browser reload, and WAV playback parity, including mixed Beat and vocal assets.
+- Add focused timing fixtures for seeking into an existing vocal recording and replay after export.
+- Keep recorded bytes external and preserve old v8 Songs that omit `recordings`.
 
-### 2. Native Song model (no new UI required)
-- Define `kind: "beat"|"song"` through an explicit new-format version, retaining old-reader rejection instead of silent misinterpretation.
-- A Song owns a Beat library and ordered Song Tracks; Beat Clips reference Beats by ID. Vocal Clips reference external audio Assets.
-- Beat Clip `startStep` and `lengthSteps` use the Song's shared grid. Extending repeats the underlying Beat; shortening crops its playback, never modifies its notes or time-stretches it.
-- Independent Beat copies get new identities; editing one linked Beat updates its Clips.
-- Define Song tempo policy (initial version: Song tempo drives every embedded Beat; retain original Beat BPM metadata on import).
-- **Gate:** deterministic schema/validation, no dangling references, malformed projects rejected, structured round trips and legacy migration tested.
+**Gate:** a multi-take Song reliably reloads and exports with the same audible timing.
 
-### 3. Song arranging and Beat editor
-- Small upward `Song` affordance expands a timeline *above* the existing editor; no modal conversion or flattening.
-- Multiple Beat Tracks; drag to move Clips, resize right edge to repeat/crop, and click to select/edit the referenced Beat below.
-- New Beat and `Open .premidi` add editable Beats; a Beat editor can be collapsed back to Beat-first view.
-- Keyboard and touch operation required for moving/resizing Clips; pointer gestures need an accessible alternative.
-- **Gate:** save, reload and edit multiple layered Beats, including offsets and repeated instances, on desktop and mobile.
+## Stage 6: Native pre-programmed parity
 
-### 4. Single transport / persistence / WAV
-- One clock schedules all active Beat Clip instructions from the Song timeline; synth values are resolved natively, not through bounced Beat audio.
-- Playback, seeking, resumption, stop, loop, and offline WAV export have the same schedule and respect existing tails.
-- Browser autosave and external portable ZIP contain the exact same Song, Beat library and referenced assets.
-- **Gate:** deterministic rendered-vs-played event tests, no clip drift or missing assets, resilient save/reopen behavior.
+- Inventory the existing pre-programmed **v2** reader, Media storage and legacy project imports. Never silently reinterpret older data.
+- Share or parity-test the versioned v7 Beat and v8 Song validation, synthesis, sampling, note expression, offsets/repetitions and asset path semantics.
+- Integrate its game asset storage with the `.premidi` manifest and separately managed audio bytes.
+- Add runtime control identities for Songs, Tracks, Clips, Beats and Sound parameters. Gameplay uses pre-programmed's own conditions/effects, **not** a parallel script language in `.premidi`.
+- Add cross-repo reference fixtures and live/rendered-event comparisons to stop parity drift.
 
-### 5. Minimal microphone recording
-- One Record button captures the microphone while the Song transport plays; stopped takes are aligned to the Song timeline.
-- Takes render as waveform Vocal Clips in Vocal Tracks **above every Beat Track**. Initially support listen, delete, record again, and basic level only.
-- Add long-form asset handling without inheriting the short-sample 1 MB / four-second constraints. Never embed audio bytes inside `.premidi`; export assets with stable relative paths.
-- Headphones and microphone/device permissions must fail safely; do not silently lose an unsaved take.
-- **Gate:** multiple takes survive reopening and exported ZIP reimport, synchronized with Beat playback.
+**Gate:** pre-programmed can natively play a studio-authored Song and game logic can affect its layers without a bounced WAV.
 
-### 6. pre-programmed runtime and multi-platform
-- Document exact format version and runtime contract with `natanai/pre-programmed`; add parity fixtures and native scheduling tests.
-- Expose programmatic Beat/Track control and eventually parameter automation to the game engine.
-- Keep storage, microphone, platform file pickers and large-file streaming behind environment-specific adapters; engine/domain logic remains portable.
-- **Gate:** identical musical instructions interpreted across web, standalone, and game-host playback (test each supported host).
+## Stage 7: Portable application hosts
 
-## Deferred deliberately
-Vocal synth effects, pitch/formant editing, live dial/keyframe automation, advanced mixer buses, multi-tempo arrangements, and a redesigned Beat editor are outside the first Song release.
+- Share platform-independent project/schema/scheduler/audio logic; isolate permissions, recording, file pickers and asset storage in host adapters.
+- Desktop and mobile builds work offline, use proper local files, support large streamed audio and can exchange the same project bundle with the web edition.
+- Never compromise the browser edition or require an account/backend.
 
-## Safety rules for agents
-Do not rename serialized v7 fields without an explicit versioned migration and fixture tests. Do not blend Song Clips into Beat Chunks, introduce a second playback definition, place Vocal Tracks below or between Beat Tracks, or put WAV/OGG bytes into the native JSON. Do not add flavor text or unnecessary explanatory UI labels.
+**Gate:** native project playback and round-trip work on web and each supported standalone host.
 
-Game-engine parity tracking: [pre-programmed #235](https://github.com/natanai/pre-programmed/issues/235). Its current vendor reader is v2; do not claim native v7/v8 playback parity until tested.
+## Stage 8: Non-destructive automation and vocal shaping
 
-## Stage log
-- Stage 1: glossary, Beat naming across active engine/UI/transport, and vocabulary regression checks implemented; existing Beat file format remains v7.
-- Stage 2 underway: `songModel.js` introduces pure Song, Track, and Beat Clip operations and repeat/layered event resolution, with domain tests. Independent Song import/export helpers now round-trip instruction-only .premidi and ZIPs containing shared audio Assets. The existing Beat UI has **not** yet been switched to Song-aware loading, and Song playback/recording UI is still pending.
-- Stage 3 first usable arranger: compact upward Song affordance, editable Song timeline, repeated/resizable/positionable Beat Clips, multiple Beat Tracks, adding/importing Beats, selecting a Beat for editing underneath, and keyboard/touch clip interactions.
-- Song playback uses the native event scheduler; WAV rendering and export use the existing native sound engine without flattening Beat instructions.
-- Autosave and native Song ZIP/.premidi export are wired through the same browser draft path. Reopening a Song selects its first Beat.
-- Pending: real-browser manual gesture tests, detailed input/undo smoke passes, vocal recording, and verified pre-programmed parity.
-- Remaining: full identifier/API migration, cross-repo vocabulary inventory, compatibility fixture coverage.
+- Capture dial movements as time-stamped parameter automation, interpolate on active voices and replay deterministically.
+- Distinguish Beat definitions from Song Clip-specific overrides; provide editable curves and reversible overdubs.
+- Reuse meaningful audio processors for voice without implying oscillator controls modify raw recordings; consider pitch/time/formant work as a later advanced stage.
+- Expose the same automation semantics to pre-programmed.
 
-## Song UI refinements (October 25, 2026)
-- The Song ruler and Track lanes span the full viewport, share the same bar divisions, and extend automatically when the user scrolls near the visible end. Empty Song space is not a fixed length.
-- The `+ Beat` control sits below Song Tracks at the left; its two explicit options are `New Beat` and `Add .premidi`. The global `Open .premidi` always replaces the current project, rather than behaving differently inside Song mode.
-- Single-Beat Track labels display the Beat's authored name and open the underlying Beat editor when clicked. Multi-Beat Tracks retain their generic Track label.
-- Browser smoke checks cover timeline width, Beat creation choices, selecting Beat by name, and the existing playback/save/reload path.
+**Gate:** authored and game-driven music parameter changes use one native interpretation.
 
-## Song navigation / export refinements
-- The `+ Beat` row is inside the horizontally scrollable Song timeline and above its scrollbar. A compact visible-bar readout and earlier/later navigation controls explain the scroll direction; all Song lanes remain part of one timeline grid.
-- The main toolbar uses a single **Export** dialog: select Beat or Song (Song available if created), then `.premidi` (default) or WAV. Beat export always uses the currently selected Beat, Song export uses the complete Song; companion audio Assets remain separately packaged as needed.
-- Playback follows visibility: expanded Song runs the Song transport; collapsed Song runs the selected Beat. Expanding/collapsing stops the previous scope cleanly; Beat BPM and Song BPM controls follow the same distinction.
+## Non-negotiable constraints
 
-## Vocal milestone — first recording pass
-
-- Song `● Record` records through the microphone while the native Song clock plays from the beginning; pressing Stop saves the take. The existing Sound-level recorder remains unchanged.
-- Every take gets its own Vocal Track before all Beat Tracks. Its waveform is optional derived metadata; compressed audio stays a separate Asset referenced by the Song's `recordings` array and Vocal Clip.
-- V8 Song metadata uses `recordings: [{id,name,mime,path,durationSeconds,trimSeconds,waveform?}]` and Vocal Clips `{id,recordingId,startStep,lengthSteps,gain}`. Existing v8 Songs without a `recordings` array remain readable.
-- MediaRecorder captures WebM/Opus, MP4/AAC or OGG/Opus when the browser supports it. This pass limits a take to five minutes and 48 MB compressed audio because the browser ZIP exporter still has a 64 MB package cap; later native apps can use streaming and higher limits. Microphone permissions are requested only after Record.
-- Recorded audio is decoded for playback and Song WAV export, with no flattening in the native .premidi file. Playback scheduling uses the Song timeline's shared audio context.
-- During recording, Stop or collapsing Song finishes the take; destructive project replacement is blocked until recording finishes.
-- Pending improvements: device-dependent latency calibration, streaming long recordings without decoding the entire asset into memory, and native pre-programmed compatibility. Vocal synth effects and automation remain deferred.
-
-## Voice capture UX — October 26, 2026
-- Red `● voice` control in Song mode opens a dedicated dialog rather than immediately requesting microphone access. Its primary action explicitly says `▶ ● play + record` and becomes `■ stop + save` while recording.
-- Song ruler now accepts clicks and keyboard arrows to set the bar where Song playback and recording begin. The recording dialog shows an editable start bar, constrained to the existing arrangement.
-- Optional none, one-bar or two-bar count-in produces light metronome clicks and a visible beat countdown before transport and microphone capture begin. Cancellation and microphone errors are reported inside the dialog.
-- The native scheduler accepts `startStep`; recordings are placed at that step. Vocal playback started mid-clip resumes using the correct offset. Beat-only playback remains unchanged when Song mode is closed.
+- The Beat maker stays the primary interface. The Song view expands above it and may be hidden at any time.
+- Vocabulary follows `terminology.json`; a Track exists within a Song, an Instrument lane exists within a Beat, a Chunk is not a Clip.
+- Vocal Tracks render **above** Beat Tracks, with the selected Beat editor **below** them.
+- Projects preserve editable synthesis and linked Beat identities; never flatten them simply to arrange or export.
+- Audio is referenced via external Assets; binary recording bytes never enter `.premidi` JSON.
+- Keep versioned import compatibility and automated tests as first-class engineering requirements.
+- Preserve the minimalist UI, accessibility and cross-device interaction requirements in `AGENTS.md`.
