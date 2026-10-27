@@ -40,7 +40,7 @@ export const SYNTH_PARAMETERS=Object.freeze([
   parameter(`oscillators.${i}.detune`,"cents",-100,100,0),
   ...Array.from({length:32},(_,n)=>parameter(`oscillators.${i}.harmonics.${n}`,"linear_gain",0,1,n===0?1:0))]),
  {id:"filter.type",unit:"enum",values:["lowpass","highpass","bandpass","notch"],default:"lowpass",interpolation:"step"},
- parameter("filter.cutoff","hz",50,14000,8000,"exponential"),parameter("filter.resonance","Q",.1,16,.7),
+ parameter("filter.cutoff","hz",50,14000,8000,"exponential"),{...parameter("filter.resonance","filter_resonance",.1,16,.7),interpretation:{lowpass:"db",highpass:"db",bandpass:"linear_q",notch:"linear_q"}},
  parameter("filter.sweep","octaves",-5,5,0),parameter("filter.sweepTime","seconds",.01,3,.2),
  parameter("noise","linear_gain",0,1,0),parameter("noiseDecay","seconds",0,4,0),parameter("pan","pan",-1,1,0),
  parameter("effects.drive","normalized",0,1,0),parameter("effects.delayMix","normalized",0,1,0),

@@ -3,3 +3,4 @@ dist/
 benchmarks/audio-quality.latest.json
 benchmarks/voice-lifecycle.latest.json
 benchmarks/musical-parity.latest.json
+benchmarks/native-parity.latest.json
