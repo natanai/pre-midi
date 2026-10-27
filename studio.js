@@ -1505,7 +1505,6 @@ $("chunk-name").addEventListener("change", event => modify(() => chunkFor(instru
 $("sound-name").addEventListener("change",event=>modify(()=>{sound().name=event.target.value.trim()||"Sound";}));
 $("sound-reference").addEventListener("change",event=>modify(()=>{sound().referencePitch=Number(event.target.value);}));
 $("replace-row-sound").addEventListener("click",()=>openLibrary("replace-row"));
-$("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,beat,{soundId:sound().id}).catch(error=>message(error.message,true));});
 function moveRackSound(instrumentId,soundId,offset){
  const inst=beat.instruments.find(item=>item.id===instrumentId);
  if(!inst)return;

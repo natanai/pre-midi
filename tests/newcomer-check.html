@@ -29,6 +29,8 @@ frame.addEventListener("load",async()=>{
   assert("one control per parameter",["Cutoff","Attack","Release"].every(name=>doc.querySelectorAll('[role="slider"][aria-label="'+name+'"]').length===1));
   const before=(await score()).instruments.at(-1),beforeHeard=heard;
   get("hear-sound").click();await wait(()=>heard>beforeHeard,"hear current sound");
+  assert("one preview per hear action",heard-beforeHeard===2);
+  assert("one hear action for the selected sound",doc.querySelectorAll("#hear-sound").length===1);
   for(const [name,key,count] of [["Cutoff","ArrowUp",8],["Attack","ArrowUp",5],["Release","ArrowUp",5],["Volume","ArrowDown",10]])
    for(let i=0;i<count;i++)knob(name).dispatchEvent(new win.KeyboardEvent("keydown",{key,bubbles:true}));
   const after=(await score()).instruments.at(-1);
