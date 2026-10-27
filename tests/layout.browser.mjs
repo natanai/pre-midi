@@ -6,6 +6,7 @@ import {resolve,extname} from "node:path";
 import {spawn} from "node:child_process";
 import {strict as assert} from "node:assert";
 const root=resolve(new URL("..",import.meta.url).pathname),pending=new Map();
+const appRoot=resolve(root,process.env.PREMIDI_APP_ROOT||".");
 const server=createServer(async(req,res)=>{
  try{
   const url=new URL(req.url,"http://localhost"),pathname=decodeURIComponent(url.pathname);
@@ -13,8 +14,9 @@ const server=createServer(async(req,res)=>{
    pending.get(pathname)({status:url.searchParams.get("status"),details:url.searchParams.get("details")});
    res.end("OK");return;
   }
-  const file=resolve(root,"."+pathname);
-  if(!file.startsWith(root+"/"))throw Error("Invalid path");
+  const servedRoot=pathname.startsWith("/tests/")?root:appRoot;
+  const file=resolve(servedRoot,"."+pathname);
+  if(!file.startsWith(servedRoot+"/"))throw Error("Invalid path");
   const content=await readFile(file);
   res.writeHead(200,{"Content-Type":({".js":"text/javascript",".css":"text/css",".html":"text/html",".ogg":"audio/ogg",".wav":"audio/wav"})[extname(file)]||"application/octet-stream"});
   res.end(content);

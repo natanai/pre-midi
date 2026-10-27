@@ -31,7 +31,7 @@ function noiseBuffer(ctx) {
  return buffer;
 }
 export const stepEvents = eventsAtStep;
-function soundNote(ctx,destination,instrument,event,start,duration,beat) {
+export function scheduleNote(ctx,destination,instrument,event,start,duration,beat) {
  if(instrument.sounds){
   const resolved=resolveEvent(instrument,event);
   if(!resolved)return;
@@ -138,7 +138,7 @@ function renderBar(ctx,out,beat,bar,start) {
  const unit=secondsPerStep(beat);
  for(let step=0;step<16;step++){
   for(const event of stepEvents(beat,bar*16+step)){
-   soundNote(ctx,out,event.instrument,event.note,
+   scheduleNote(ctx,out,event.instrument,event.note,
     start+step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
     event.note.duration*unit,beat);
   }
@@ -159,7 +159,7 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
   const zone=instrument.patch?.type==="sample"?sampleForNote(instrument.patch,pitch,expression?.velocity??.8):null;
   await decodeSamples(context,beat,bufferCache(context),new Set(zone?[zone.assetId]:[]));
  }
- soundNote(context,context.destination,instrument,
+ scheduleNote(context,context.destination,instrument,
   {pitch,velocity:expression?.velocity??.8,bend:expression?.bend},
   context.currentTime+.01,hitDuration??expression?.duration??.24,beat);
 }
@@ -177,7 +177,7 @@ export async function auditionChord(instrument,pitches,beat,velocity=.85) {
  await decodeSamples(context,beat,bufferCache(context),needs);
  const now=context.currentTime+.04,duration=.8;
  for(const note of notes){
-  soundNote(context,context.destination,instrument,note,
+  scheduleNote(context,context.destination,instrument,note,
    now+strumOffset(instrument,note,notes),duration,beat);
  }
 }
@@ -219,7 +219,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    }))
     scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers,{elapsedSteps:step-event.clip.startStep});
    for(const event of events)
-    soundNote(ctx,out,event.instrument,event.note,
+    scheduleNote(ctx,out,event.instrument,event.note,
      nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),
      event.note.duration*unit,event.beat||current);
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
@@ -264,7 +264,7 @@ export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,s
  if(!Number.isFinite(pitch)||pitch<0||pitch>127||!Number.isFinite(duration)||duration<=0||duration>4||
   !Number.isFinite(seconds)||seconds<=0||seconds>8)throw Error("Invalid synth preview duration or pitch.");
  const ctx=new OfflineAudioContext(1,Math.ceil(seconds*sampleRate),sampleRate);
- soundNote(ctx,ctx.destination,{patch,volume:1},{pitch,velocity:1},0,duration,null);
+ scheduleNote(ctx,ctx.destination,{patch,volume:1},{pitch,velocity:1},0,duration,null);
  return ctx.startRendering();
 }
 export async function wav(beat) {
@@ -320,7 +320,7 @@ async function wavSong(song){
   for(const event of recordingEventsAtStep(song,step))
    scheduleVocal(ctx,out,event,start,unit,vocals);
   for(const event of eventsAtSongStep(song,step))
-   soundNote(ctx,out,event.instrument,event.note,
+   scheduleNote(ctx,out,event.instrument,event.note,
     start+eventOffset(event.instrument,event.note,event.chunk.notes),
     event.note.duration*unit,event.beat);
  }
