@@ -15,7 +15,7 @@ Tauri is the chosen desktop framework, at Nat's request. The studio remains the 
 | C++ integration | cc compiles a bounded C ABI fixture into the Rust process; expand the same boundary later | Node-API addon or isolated native process |
 | Maintenance | Rust toolchain and system WebView dependencies; smaller application runtime | Chromium/Node runtime updates, larger downloads and an additional IPC boundary |
 
-Tauri meets the requested host architecture. Engine differences are a qualification obligation, not evidence of sound parity. References: [WebView versions](https://v2.tauri.app/reference/webview-versions/), [Tauri updater](https://v2.tauri.app/plugin/updater/), [Electron security](https://www.electronjs.org/docs/latest/tutorial/security).
+Tauri meets the requested host architecture. Engine differences are a qualification obligation, not evidence of sound parity. The macOS preview requires 15.4 or newer because the bundled recorded instruments use Ogg/Vorbis; [WebKit added this container support on macOS 15.4](https://webkit.org/blog/16574/webkit-features-in-safari-18-4/). The native smoke test decodes a bundled Ogg sample as well as rendering synth PCM. References: [WebView versions](https://v2.tauri.app/reference/webview-versions/), [Tauri updater](https://v2.tauri.app/plugin/updater/), [Electron security](https://www.electronjs.org/docs/latest/tutorial/security).
 
 ## Audio boundary
 

@@ -41,7 +41,7 @@
     },
     "macOS": {
       "infoPlist": "Info.plist",
-      "minimumSystemVersion": "13.3"
+      "minimumSystemVersion": "15.4"
     },
     "icon": [
       "icons/icon.png",
