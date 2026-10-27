@@ -1,0 +1,561 @@
+{
+  "schemaVersion": 1,
+  "backend": "web-audio-musical-parity",
+  "referenceCommit": "b5f8896f2fe70b5c25c7abb17e71fa997325c872",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36"
+  },
+  "summary": {
+    "cases": 22,
+    "failed": 0,
+    "status": "pass"
+  },
+  "results": [
+    {
+      "id": "soft-keys/44100",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "resonant-bass/44100",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "detuned-lead/44100",
+      "metrics": {
+        "max": 9.201467037200928e-7,
+        "rms": 7.472938141868185e-9,
+        "worstAtSeconds": 0.7124489795918367,
+        "referenceAtWorst": -0.0015310291200876236,
+        "currentAtWorst": -0.0015319492667913437,
+        "legacyRepeat": {
+          "max": 0.000002564862370491028,
+          "rms": 2.597716554750627e-8
+        },
+        "currentRepeat": {
+          "max": 7.450580596923828e-9,
+          "rms": 2.3222314480634306e-9
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "harmonic-keys/44100",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "expressive-glide/44100",
+      "metrics": {
+        "max": 1.1920928955078125e-7,
+        "rms": 1.2674342949338758e-8,
+        "worstAtSeconds": 0.7573696145124716,
+        "referenceAtWorst": -0.011007633060216904,
+        "currentAtWorst": -0.011007752269506454,
+        "legacyRepeat": {
+          "max": 2.9802322387695312e-8,
+          "rms": 5.594390491641647e-10
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "noise-percussion/44100",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "soft-keys/48000",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "resonant-bass/48000",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "detuned-lead/48000",
+      "metrics": {
+        "max": 0.000003822147846221924,
+        "rms": 4.2279217179895184e-8,
+        "worstAtSeconds": 0.6546875,
+        "referenceAtWorst": 0.016695216298103333,
+        "currentAtWorst": 0.01669139415025711,
+        "legacyRepeat": {
+          "max": 0.0000011026859283447266,
+          "rms": 4.953367609668426e-9
+        },
+        "currentRepeat": {
+          "max": 7.450580596923828e-9,
+          "rms": 2.3333322015179076e-9
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "harmonic-keys/48000",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "expressive-glide/48000",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 3.5390257835388184e-7,
+          "rms": 3.7546851074951657e-8
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "noise-percussion/48000",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "soft-keys/96000",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "resonant-bass/96000",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "detuned-lead/96000",
+      "metrics": {
+        "max": 0.0000035353004932403564,
+        "rms": 3.940187369150038e-8,
+        "worstAtSeconds": 0.6526875,
+        "referenceAtWorst": 0.022568725049495697,
+        "currentAtWorst": 0.022565189749002457,
+        "legacyRepeat": {
+          "max": 1.3969838619232178e-7,
+          "rms": 1.0703567350659836e-9
+        },
+        "currentRepeat": {
+          "max": 7.450580596923828e-9,
+          "rms": 2.3719858596305062e-9
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "harmonic-keys/96000",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "expressive-glide/96000",
+      "metrics": {
+        "max": 2.868473529815674e-7,
+        "rms": 2.952891524891822e-8,
+        "worstAtSeconds": 0.7345729166666667,
+        "referenceAtWorst": -0.04718939960002899,
+        "currentAtWorst": -0.04718911275267601,
+        "legacyRepeat": {
+          "max": 2.868473529815674e-7,
+          "rms": 7.3061163220935624e-9
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "noise-percussion/96000",
+      "metrics": {
+        "max": 0,
+        "rms": 0,
+        "worstAtSeconds": 0,
+        "referenceAtWorst": 0,
+        "currentAtWorst": 0,
+        "legacyRepeat": {
+          "max": 0,
+          "rms": 0
+        },
+        "currentRepeat": {
+          "max": 0,
+          "rms": 0
+        }
+      },
+      "checks": {
+        "compatible": true,
+        "repeatable": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "editing/brightness",
+      "metrics": {
+        "bright": -1.9647100153461112,
+        "dark": -12.378057834719012
+      },
+      "checks": {
+        "moreHighHarmonics": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "editing/softness",
+      "metrics": {
+        "normal": 0.1350379084883508,
+        "soft": 0.0337594771220877
+      },
+      "checks": {
+        "quieter": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "editing/attack",
+      "metrics": {
+        "fast": 0.13518179360857083,
+        "slow": 0.014112262829409396
+      },
+      "checks": {
+        "slower": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "editing/release",
+      "metrics": {
+        "short": 0,
+        "long": 0.09025785465185251
+      },
+      "checks": {
+        "longer": true
+      },
+      "status": "pass"
+    }
+  ],
+  "failures": [],
+  "measuredAt": "2026-10-27T04:56:18.640Z",
+  "source": {
+    "commit": "61f9aa9d967c9972330736807bc1e44cf7cda500",
+    "tag": null,
+    "baseCommit": "61f9aa9d967c9972330736807bc1e44cf7cda500",
+    "workingTreeDirty": false,
+    "runtimeAndFixtureSha256": "a64d94482c1a9dcabd01e94cc57272864fa3b9295de463ba0f34c0d87da3ef12"
+  },
+  "host": {
+    "os": "linux",
+    "release": "6.18.55",
+    "arch": "x64",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logicalCpus": 9,
+    "node": "v24.22.1"
+  },
+  "policy": {
+    "version": 1,
+    "method": {
+      "pcm": "Float32 before WAV quantization; signal peak is sample peak, not reconstructed true peak",
+      "spectrum": "16384-point four-term Blackman-Harris FFT; sum power within +/-5 bins of each expected in-band harmonic; residual excludes bins 0..5",
+      "offHarmonicDb": "10 log10(residual / harmonic energy). Alias proxy only for stationary periodic fixtures without modulation or noise; not a universal alias meter. Aliases landing inside harmonic masks are unobservable.",
+      "tuning": "Interpolated rising zero crossings on a steady sine; cents = 1200 log2(measured/expected)",
+      "envelope": "Constant unity input through actual scheduled gain vs independently evaluated piecewise linear reference at every sample",
+      "clicks": "Maximum step in envelope error residual; zero-decay sustain step is intentional legacy behavior",
+      "cost": "Offline wall milliseconds including context setup; median of 5 measured runs after warm-up; informational only, no real-time CPU claim",
+      "repeatability": "Maximum and RMS PCM difference between equivalent independently constructed offline graphs in the same browser process"
+    },
+    "gates": {
+      "envelopeMaxError": 0.00003,
+      "envelopeResidualStep": 0.00003,
+      "tuningCents": 0.3,
+      "sineOffHarmonicDb": -65,
+      "steadyDc": 0.002,
+      "determinismMaxError": 1e-7,
+      "releasedRms": 0.000002,
+      "stereoLeakRms": 1e-7,
+      "overlapMaxError": 2e-7,
+      "driveMinimumImprovementDb": 6,
+      "driveRouteOffHarmonicDb": -25
+    },
+    "deferred": [
+      {
+        "metric": "bright oscillator absolute alias floor",
+        "reason": "record baseline first; harmonic residual has masking blind spots and browser band-limiting differs"
+      },
+      {
+        "metric": "drive absolute alias floor",
+        "reason": "relative 4x-vs-none gate applies to specified high sine fixture only; compare native reconstruction filters when SYN-007 exists"
+      },
+      {
+        "metric": "CPU ceiling",
+        "reason": "virtualized offline timings cannot establish desktop/mobile callback deadlines or underruns"
+      },
+      {
+        "metric": "native parity",
+        "reason": "no native DSP backend yet"
+      },
+      {
+        "metric": "live device acoustic parity",
+        "reason": "live/offline share scheduler; hardware loopback capture is still required"
+      }
+    ],
+    "references": [
+      {
+        "url": "https://www.w3.org/TR/webaudio/",
+        "sections": [
+          "AudioParam",
+          "WaveShaperNode",
+          "OfflineAudioContext"
+        ],
+        "use": "automation ordering, oversampling latency and offline rendering contracts"
+      },
+      {
+        "url": "https://holometer.fnal.gov/GH_FFT.pdf",
+        "authors": "Heinzel, Ruediger, Schilling (2002)",
+        "use": "window leakage, spectral resolution and power-ratio methodology"
+      }
+    ],
+    "gateRationale": {
+      "envelope": "3e-5 absolute gain error allows floating-point and sub-sample scheduling variation; measured maximum at baseline is below 1e-6; no perceptual click-free claim for the intentional zero-decay step",
+      "tuning": "0.3 cents is a conservative numerical tuning regression budget, not a hearing threshold",
+      "signalLevels": "DC/peak/RMS and silence thresholds detect basic waveform/path regressions; they are not mastering or true-peak qualification",
+      "drive": "6 dB relative alias-proxy improvement is a conservative regression budget below the observed 21-50 dB on the specified fixtures; -25 dB on the production route fixtures guards gross loss of oversampling",
+      "referenceIdentity": "Stored steady spectra use 5% plus 1e-4 absolute amplitude tolerance and 10% plus 2e-4 absolute harmonic power-ratio tolerance; timings are excluded from comparisons"
+    }
+  }
+}

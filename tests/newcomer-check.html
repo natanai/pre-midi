@@ -46,6 +46,11 @@ frame.addEventListener("load",async()=>{
   const restored=(await score()).instruments.at(-1);
   const {presetId:oldId,...oldTone}=after.sounds[0].patch,{presetId:newId,...newTone}=restored.sounds[0].patch;
   assert("variation preserves softness and patch",restored.volume===after.volume&&JSON.stringify(newTone)===JSON.stringify(oldTone)&&newId===saved.dataset.presetId);
+  knob("Volume").dispatchEvent(new win.KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+  get("change-sound").click();
+  const replacement=[...doc.querySelectorAll(".preset-card")].find(card=>card.querySelector("strong").textContent==="Newcomer variation");
+  replacement.querySelector(".preset-choose").click();await wait(()=>!get("instrument-dialog").open,"replace with saved variation");
+  assert("browse also restores saved softness",(await score()).instruments.at(-1).volume===after.volume);
   assert("no extra horizontal clipping",doc.documentElement.scrollWidth<=frame.clientWidth+3);
   status="PASS";
  }catch(error){checks.error=String(error.stack||error);}

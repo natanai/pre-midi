@@ -1220,7 +1220,7 @@ function applySoundSelection(patch,name,trigger,assets,context,rackSounds=null,s
    const entry=operation==="replace-row"?row:target.sounds[0];
    entry.patch=patch;entry.name=name.slice(0,60);
    if(settings){entry.referencePitch=settings.referencePitch??entry.referencePitch;entry.gain=settings.gain??entry.gain;}
-   if(operation==="replace-pitched")target.name=name.slice(0,60);
+   if(operation==="replace-pitched"){target.name=name.slice(0,60);if(settings?.volume!==undefined)target.volume=settings.volume;}
    selectedSounds.set(target.id,entry.id);selectedInstrumentId=target.id;
   }
   selectedNoteId=null;
