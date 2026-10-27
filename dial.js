@@ -61,55 +61,148 @@ export function helpForLabel(label){
   ? Number(key.slice(1))<=16?"for the finer edges":Number(key.slice(1))<=24?"the skinny stuff above the buzz":"tiny splinters way up top"
   : "");
 }
-// Help belongs to the text alone; not the interactive knob or select.
-const helpDocuments=new WeakSet();
-function installHelpDismissal(){
- if(typeof document==="undefined"||helpDocuments.has(document))return;
- helpDocuments.add(document);
- document.addEventListener("pointerdown",event=>{
-  if(event.target.closest?.(".control-help,.unit-help"))return;
-  document.querySelectorAll(".control-help.help-open,.unit-help.help-open")
-   .forEach(item=>item.classList.remove("help-open"));
+// One floating help layer per document. Tooltips must escape scrolling sound panels.
+// Only label and unit text may trigger it; the interactive dial never does.
+export function placeHelp(anchor, bubble, viewport, gap=8){
+ const edge=8, leftEdge=viewport.left??0, topEdge=viewport.top??0;
+ const rightEdge=leftEdge+viewport.width, bottomEdge=topEdge+viewport.height;
+ const left=Math.max(leftEdge+edge,Math.min(
+  anchor.left+anchor.width/2-bubble.width/2,rightEdge-edge-bubble.width));
+ const above=anchor.top-gap-bubble.height, below=anchor.bottom+gap;
+ const spaceAbove=anchor.top-(topEdge+edge), spaceBelow=bottomEdge-edge-anchor.bottom;
+ const top=above>=topEdge+edge?above:
+  below+bubble.height<=bottomEdge-edge?below:
+  spaceBelow>=spaceAbove?below:above;
+ return {
+  left:Math.max(leftEdge+edge,Math.min(left,rightEdge-edge-bubble.width)),
+  top:Math.max(topEdge+edge,Math.min(top,bottomEdge-edge-bubble.height))
+ };
+}
+const helpDocuments=new WeakMap();
+function installHelp(doc=document){
+ if(helpDocuments.has(doc))return helpDocuments.get(doc);
+ const win=doc.defaultView;
+ const tooltip=doc.createElement("div");
+ tooltip.className="floating-help";
+ tooltip.id="studio-floating-help";
+ tooltip.setAttribute("role","tooltip");
+ tooltip.hidden=true;
+ doc.body.append(tooltip);
+ const state={tooltip,target:null,pinned:false};
+ const nodeFor=target=>target?.closest?.(".control-help,.unit-help");
+ const viewport=()=>{
+  const visual=win.visualViewport;
+  return {
+   left:visual?.offsetLeft??0,top:visual?.offsetTop??0,
+   width:visual?.width??win.innerWidth,height:visual?.height??win.innerHeight
+  };
+ };
+ function hide(){
+  if(state.target?.getAttribute("aria-describedby")===tooltip.id)
+   state.target.removeAttribute("aria-describedby");
+  state.target=null;state.pinned=false;tooltip.hidden=true;
+ }
+ function position(){
+  if(!state.target?.isConnected){hide();return;}
+  const rect=state.target.getBoundingClientRect();
+  const screen=viewport();
+  if(rect.bottom<screen.top||rect.top>screen.top+screen.height||
+     rect.right<screen.left||rect.left>screen.left+screen.width){hide();return;}
+  const geometry=placeHelp(rect,tooltip.getBoundingClientRect(),screen);
+  tooltip.style.left=geometry.left+"px";
+  tooltip.style.top=geometry.top+"px";
+ }
+ function show(target,pinned=false){
+  const help=target?.dataset.help;
+  if(!help)return;
+  if(state.target!==target&&state.target?.getAttribute("aria-describedby")===tooltip.id)
+   state.target.removeAttribute("aria-describedby");
+  state.target=target;state.pinned=pinned;
+  tooltip.textContent=help;
+  tooltip.hidden=false;
+  target.setAttribute("aria-describedby",tooltip.id);
+  position();
+ }
+ // pointerover/out bubble reliably even when labels are rebuilt by the editor.
+ doc.addEventListener("pointerover",event=>{
+  if(event.pointerType==="touch")return;
+  const target=nodeFor(event.target);
+  if(target?.dataset.help&&(!state.pinned||state.target===target))
+   show(target,state.pinned&&state.target===target);
  });
+ doc.addEventListener("pointerout",event=>{
+  const target=nodeFor(event.target);
+  if(target===state.target&&!state.pinned&&!target.contains(event.relatedTarget))hide();
+ });
+ doc.addEventListener("focusin",event=>{
+  const target=nodeFor(event.target);
+  if(target?.dataset.help&&!state.pinned)show(target);
+ });
+ doc.addEventListener("focusout",event=>{
+  const target=nodeFor(event.target);
+  if(target===state.target&&!state.pinned&&!target.contains(event.relatedTarget))hide();
+ });
+ doc.addEventListener("click",event=>{
+  const target=nodeFor(event.target);
+  if(!target?.dataset.help)return;
+  if(target.closest("label"))event.preventDefault();
+  if(state.target===target&&state.pinned)hide();
+  else show(target,true);
+ });
+ doc.addEventListener("pointerdown",event=>{
+  if(state.pinned&&!nodeFor(event.target))hide();
+ },true);
+ doc.addEventListener("keydown",event=>{
+  if(event.key==="Escape"){hide();return;}
+  if(!["Enter"," "].includes(event.key))return;
+  const target=nodeFor(doc.activeElement);
+  if(!target?.dataset.help)return;
+  event.preventDefault();
+  if(state.target===target&&state.pinned)hide();
+  else show(target,true);
+ });
+ doc.addEventListener("scroll",()=>{
+  if(!state.target)return;
+  if(state.pinned)position();else hide();
+ },true);
+ win.addEventListener("resize",()=>{if(state.target)position();});
+ win.visualViewport?.addEventListener("resize",()=>{if(state.target)position();});
+ win.visualViewport?.addEventListener("scroll",()=>{if(state.target)position();});
+ helpDocuments.set(doc,state);
+ return state;
 }
 export function explainLabel(node,label,override){
- installHelpDismissal();
  const help=override??helpForLabel(label);
  if(!help)return;
+ installHelp(node.ownerDocument);
  node.classList.add("control-help");
  node.dataset.help=help;
- node.addEventListener("click",event=>{
-  if(node.closest("label"))event.preventDefault();
-  const expanded=node.classList.contains("help-open");
-  document.querySelectorAll(".control-help.help-open").forEach(item=>item.classList.remove("help-open"));
-  if(!expanded)node.classList.add("help-open");
- });
+ node.tabIndex=0;
+ node.setAttribute("aria-description",help);
+}
+function makeUnit(output,abbreviation){
+ const unit=output.ownerDocument.createElement("span");
+ unit.className="unit-help";
+ unit.textContent=abbreviation;
+ unit.dataset.help=unitHelp[abbreviation];
+ unit.tabIndex=0;
+ unit.setAttribute("aria-label",abbreviation+" means "+unitHelp[abbreviation]);
+ return unit;
 }
 export function explainUnit(output,rendered){
- installHelpDismissal();
+ installHelp(output.ownerDocument);
  const text=String(rendered).toLowerCase();
  const match=/^(.*?)(\s*)(khz|hz|ms|ct|st|%|l|r|c)$/.exec(text);
  if(!match){
   const pan=/^(l|r) (\d+)$/.exec(text);
-  if(pan){
-   const unit=document.createElement("span");unit.className="unit-help";
-   unit.textContent=pan[1];unit.dataset.help=unitHelp[pan[1]];
-   unit.addEventListener("click",()=>unit.classList.toggle("help-open"));
-   output.replaceChildren(unit,document.createTextNode(" "+pan[2]));
-  }else output.textContent=text;
+  if(pan)output.replaceChildren(makeUnit(output,pan[1]),
+   output.ownerDocument.createTextNode(" "+pan[2]));
+  else output.textContent=text;
   return;
  }
  const [,prefix,space,abbreviation]=match;
- const unit=document.createElement("span");
- unit.className="unit-help";
- unit.textContent=abbreviation;
- unit.dataset.help=unitHelp[abbreviation];
- unit.addEventListener("click",()=>{
-  const expanded=unit.classList.contains("help-open");
-  document.querySelectorAll(".unit-help.help-open").forEach(item=>item.classList.remove("help-open"));
-  if(!expanded)unit.classList.add("help-open");
- });
- output.replaceChildren(document.createTextNode(prefix+space),unit);
+ output.replaceChildren(output.ownerDocument.createTextNode(prefix+space),
+  makeUnit(output,abbreviation));
 }
 
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
