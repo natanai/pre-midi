@@ -56,5 +56,7 @@ test("labels and units, not the knobs, own hover triggers",()=>{
  assert.match(js,/doc\.addEventListener\("keydown"/);
  assert.match(js,/event\.key==="Escape"/);
  assert.match(js,/doc\.addEventListener\("scroll"/);
+ assert.equal((js.match(/if\(target&&target===state\.target/g)||[]).length,2,
+  "pointer and focus exits must ignore non-help elements");
  assert.doesNotMatch(js,/knob\.addEventListener\("pointerover"/);
 });
