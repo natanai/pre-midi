@@ -1,15 +1,84 @@
 {
- "version":1,
- "task":"SYN-010",
- "status":"initial_cutoff_slice",
- "persistence":{"instrumentField":"automation","blockVersion":1,"patchVersionsUnchanged":[1,2],"legacyBeatVersions":[7,9],"legacySongVersions":[8,10],"automatedBeatVersion":11,"automatedSongVersion":12,"executionPlanVersion":3,"policy":"No silent downgrade. Old readers reject the new versions. Removing a lane does not downgrade a project. pre-programmed needs explicit parser/rendering parity before it can play the new formats."},
- "target":{"id":"filter.cutoff","unit":"hz","min":50,"max":14000,"initialScope":"One two-point lane on a piano-roll synth instrument; unsupported instrument types reject instead of silently ignoring the lane"},
- "points":{"identity":"Two stable IDs, increasing integer sixteenth-note steps on the Beat clock","range":"0 through bars*16 inclusive","interpolation":"Exponential in Hz, linear in octaves; exact endpoints","outsideRange":"Hold first value before begin; hold last after end","smoothing":"No extra smoothing or hidden UI timer; the explicit exponential segment is the transition","ordering":"Increasing musical position; simultaneous authored points reject. Compiled boundary events use stable order and distinct boundary/point namespaces."},
- "precedence":["Patch base cutoff if there is no lane","Beat-clock timeline cutoff replaces the base when a lane exists","Per-note legacy tone, legacy sweep and canonical modulation apply after the timeline base","Final host filter frequency is bounded to Nyquist"],
- "legacySweep":"On automated voices, a separate detune control multiplies the timeline base by the authored per-note sweep. Native still explicitly rejects sweep and legacy LFO/tone until their own parity work is complete.",
- "clock":{"unit":"60 / actual transport BPM / 4 seconds per step","chunk":"The lane spans the Beat clock and never restarts at Chunk boundaries","song":"Each referenced Beat iteration uses its own local step; Song BPM determines seconds. Clip/Beat end values hold through release tails.","loop":"New cycle voices restart the lane; older release tails keep their terminal cutoff","seek":"New notes evaluate the lane at the actual seek position, including a seek into the middle of the segment. Existing onset-based transport does not chase/reconstruct voices that began before the seek.","edits":"Scheduled voices retain their immutable plan. Edits are heard on newly scheduled notes or the next playback pass; no live automation recording or mid-note plan replacement is claimed."},
- "rendering":{"browser":"Compiled absolute-time AudioParam exponential ramps in the existing filter graph","native":"Bounded six-point curve in the same C++ Voice, evaluated at sample time before modulation; no audio-thread allocation, JSON or I/O","offline":"Beat/Song WAV uses the same render events and compiled voice plans; no normalization/limiting behavior was added","callback":"Offline and allocation/block assertions do not establish device latency, underruns or callback deadlines"},
- "interface":{"entry":"move over time next to the existing Cutoff control","editing":"Two begin/end rows with bar, beat and Hz values; remove and undo use the canonical project mutation path","presets":"Timeline automation is stored in the Beat, not a sound preset","incompatibleChanges":"Remove cutoff movement before changing an automated instrument to a rack or recording"},
- "qualification":["tests/automation.test.js","tests/automation-check.html","npm run benchmark:automation -- --require-clean"],
- "remaining":["Additional targets and points","Recorded automation","Held-note chase after seek","Live replacement of already scheduled voice plans","Song/game override recording and precedence","Reference hardware/device and human musical/newcomer evaluation"]
+  "version": 1,
+  "task": "SYN-010",
+  "status": "initial_cutoff_slice",
+  "persistence": {
+    "instrumentField": "automation",
+    "blockVersion": 1,
+    "patchVersionsUnchanged": [
+      1,
+      2
+    ],
+    "legacyBeatVersions": [
+      7,
+      9
+    ],
+    "legacySongVersions": [
+      8,
+      10
+    ],
+    "automatedBeatVersion": 11,
+    "automatedSongVersion": 12,
+    "executionPlanVersion": 3,
+    "policy": "No silent downgrade. Old readers reject the new versions. Removing a lane does not downgrade a project. pre-programmed needs explicit parser/rendering parity before it can play the new formats."
+  },
+  "target": {
+    "id": "filter.cutoff",
+    "unit": "hz",
+    "min": 50,
+    "max": 14000,
+    "initialScope": "One two-point lane on a piano-roll synth instrument; unsupported instrument types reject instead of silently ignoring the lane"
+  },
+  "points": {
+    "identity": "Two stable IDs, increasing integer sixteenth-note steps on the Beat clock",
+    "range": "0 through bars*16 inclusive",
+    "interpolation": "Exponential in Hz, linear in octaves; exact endpoints",
+    "outsideRange": "Hold first value before begin; hold last after end",
+    "smoothing": "No extra smoothing or hidden UI timer; the explicit exponential segment is the transition",
+    "ordering": "Increasing musical position; simultaneous authored points reject. Compiled boundary events use stable order and distinct boundary/point namespaces."
+  },
+  "precedence": [
+    "Patch base cutoff if there is no lane",
+    "Beat-clock timeline cutoff replaces the base when a lane exists",
+    "Per-note legacy tone, legacy sweep and canonical modulation apply after the timeline base",
+    "Final host filter frequency is bounded to Nyquist"
+  ],
+  "legacySweep": "On automated voices, a separate detune control multiplies the timeline base by the authored per-note sweep. Native still explicitly rejects sweep and legacy LFO/tone until their own parity work is complete.",
+  "clock": {
+    "unit": "60 / actual transport BPM / 4 seconds per step",
+    "chunk": "The lane spans the Beat clock and never restarts at Chunk boundaries",
+    "song": "Each referenced Beat iteration uses its own local step; Song BPM determines seconds. Clip/Beat end values hold through release tails.",
+    "loop": "New cycle voices restart the lane; older release tails keep their terminal cutoff",
+    "seek": "New notes evaluate the lane at the actual seek position, including a seek into the middle of the segment. Existing onset-based transport does not chase/reconstruct voices that began before the seek.",
+    "edits": "Scheduled voices retain their immutable plan. Edits are heard on newly scheduled notes or the next playback pass; no live automation recording or mid-note plan replacement is claimed."
+  },
+  "rendering": {
+    "browser": "Compiled absolute-time AudioParam exponential ramps in the existing filter graph",
+    "native": "Bounded six-point curve in the same C++ Voice, evaluated at sample time before modulation; no audio-thread allocation, JSON or I/O",
+    "offline": "Beat/Song WAV uses the same render events and compiled voice plans; no normalization/limiting behavior was added",
+    "callback": "Offline and allocation/block assertions do not establish device latency, underruns or callback deadlines"
+  },
+  "interface": {
+    "entry": "move over time next to the existing Cutoff control",
+    "editing": "Two begin/end rows with bar, beat and Hz values; remove and undo use the canonical project mutation path",
+    "presets": "Timeline automation is stored in the Beat, not a sound preset",
+    "incompatibleChanges": "Remove cutoff movement before changing an automated instrument to a rack or recording"
+  },
+  "qualification": [
+    "tests/automation.test.js",
+    "tests/automation-check.html",
+    "npm run benchmark:automation -- --require-clean"
+  ],
+  "remaining": [
+    "Additional targets and points",
+    "Recorded automation",
+    "Held-note chase after seek",
+    "Live replacement of already scheduled voice plans",
+    "Song/game override recording and precedence",
+    "Reference hardware/device and human musical/newcomer evaluation"
+  ],
+  "qualificationNotes": {
+    "stress": "Maximum-route capture timeout begins after the suspended preparation phase; preparation cost remains separately recorded and unqualified for interactive startup",
+    "restoredAssets": "Recorded-preset selection waits for binary asset restoration; a valid newer synchronous cached draft is not replaced by an older asynchronous draft"
+  }
 }

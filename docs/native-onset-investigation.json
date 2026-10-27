@@ -36,7 +36,7 @@
       "native/modulation.hpp",
       "native/voice.hpp"
     ],
-    "behavior": "Start only pitch-controlled v2 carriers on a preceding render boundary. Rotate Fourier coefficients by the negative silent pre-roll phase, using the original recipe normalization. Mute the carrier gain until note-on, so filter state remains at rest. Control graphs keep authored timing. The native core stays quantum-independent.",
+    "behavior": "For v2/v3 carriers at nonaligned onsets, silently pre-roll on a preceding render boundary. Rotate Fourier coefficients by the negative pre-roll phase using fixed original normalization. Mute source gains until note-on so filter state stays at rest. This also handles fractional-sample static carriers exposed by automation tests. Native timing stays quantum-independent.",
     "compatibility": "Patch/project/execution versions v1/v2 are unchanged; legacy browser voices are not moved. No samples are baked, no fixture is removed and no PCM gate is widened.",
     "resourceScope": "FFT/normalization work and bounded phase caches are control-thread preparation. Interactive preparation and hardware qualification remain open."
   },
