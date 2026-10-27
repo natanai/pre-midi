@@ -131,6 +131,28 @@
       ],
       "automated_workflow": "tests/newcomer-check.html",
       "human_qualification": "Observed newcomer comprehension and musical listening signoff remain explicit release requirements; successful clicks are not evidence of intuitive understanding"
+    },
+    "latest_qualification": {
+      "source_commit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+      "source_working_tree": "clean",
+      "reports": {
+        "web-audio-reference": "benchmarks/web-audio-reference.json",
+        "musical-parity-reference": "benchmarks/musical-parity-reference.json",
+        "voice-lifecycle-reference": "benchmarks/voice-lifecycle-reference.json",
+        "native-parity-reference": "benchmarks/native-parity-reference.json",
+        "modulation-reference": "benchmarks/modulation-reference.json"
+      },
+      "passed": {
+        "node_tests": 166,
+        "acoustic_cases": 111,
+        "unchanged_acoustic_reference_comparisons": 60,
+        "musical_compatibility_cases": 22,
+        "voice_lifecycle_cases": 17,
+        "native_browser_cases": 19,
+        "audible_modulation_cases": 11
+      },
+      "browser": "Shipped desktop/mobile workflow, preset save/reload, Beat v9/Song v10 export/import, layout, microphone and existing Song transport/WAV download checks",
+      "scope": "Automated offline/rendering-graph and browser interaction qualification; no output-device or human-comprehension signoff"
     }
   },
   "phases": [
@@ -364,7 +386,8 @@
           "Session completion and bus deadlines derive from shortened voice lifetimes instead of historical maxima",
           "Diagnostics separate admissions, rejections, steals and actual fade-phase retiring voices",
           "Regression fixtures include protected vocal pools, transactional rollback, dense long-release arrangements and retained real echoes"
-        ]
+        ],
+        "report": "benchmarks/voice-lifecycle-reference.json"
       }
     },
     {
@@ -475,7 +498,8 @@
           "native oversampling parity",
           "desktop/mobile suspend-resume and device changes"
         ],
-        "no_completion_claim": "Offline synthesis and block allocation assertions do not establish device performance"
+        "no_completion_claim": "Offline synthesis and block allocation assertions do not establish device performance",
+        "report": "benchmarks/native-parity-reference.json"
       }
     },
     {
@@ -538,7 +562,8 @@
           "native modulation implementation and cross-host parity",
           "maximum-route-count device CPU qualification",
           "human musical listening review"
-        ]
+        ],
+        "report": "benchmarks/modulation-reference.json"
       }
     },
     {

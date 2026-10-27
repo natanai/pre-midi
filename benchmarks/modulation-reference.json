@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "backend": "web-audio-general-modulation",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36"
+  },
+  "policy": {
+    "version": 1,
+    "method": {
+      "pcm": "Float32 before WAV quantization; signal peak is sample peak, not reconstructed true peak",
+      "spectrum": "16384-point four-term Blackman-Harris FFT; sum power within +/-5 bins of each expected in-band harmonic; residual excludes bins 0..5",
+      "offHarmonicDb": "10 log10(residual / harmonic energy). Alias proxy only for stationary periodic fixtures without modulation or noise; not a universal alias meter. Aliases landing inside harmonic masks are unobservable.",
+      "tuning": "Interpolated rising zero crossings on a steady sine; cents = 1200 log2(measured/expected)",
+      "envelope": "Constant unity input through actual scheduled gain vs independently evaluated piecewise linear reference at every sample",
+      "clicks": "Maximum step in envelope error residual; zero-decay sustain step is intentional legacy behavior",
+      "cost": "Offline wall milliseconds including context setup; median of 5 measured runs after warm-up; informational only, no real-time CPU claim",
+      "repeatability": "Maximum and RMS PCM difference between equivalent independently constructed offline graphs in the same browser process"
+    },
+    "gates": {
+      "envelopeMaxError": 0.00003,
+      "envelopeResidualStep": 0.00003,
+      "tuningCents": 0.3,
+      "sineOffHarmonicDb": -65,
+      "steadyDc": 0.002,
+      "determinismMaxError": 1e-7,
+      "releasedRms": 0.000002,
+      "stereoLeakRms": 1e-7,
+      "overlapMaxError": 2e-7,
+      "driveMinimumImprovementDb": 6,
+      "driveRouteOffHarmonicDb": -25
+    },
+    "deferred": [
+      {
+        "metric": "bright oscillator absolute alias floor",
+        "reason": "record baseline first; harmonic residual has masking blind spots and browser band-limiting differs"
+      },
+      {
+        "metric": "drive absolute alias floor",
+        "reason": "relative 4x-vs-none gate applies to specified high sine fixture only; compare native reconstruction filters when SYN-007 exists"
+      },
+      {
+        "metric": "CPU ceiling",
+        "reason": "virtualized offline timings cannot establish desktop/mobile callback deadlines or underruns"
+      },
+      {
+        "metric": "native parity",
+        "reason": "no native DSP backend yet"
+      },
+      {
+        "metric": "live device acoustic parity",
+        "reason": "live/offline share scheduler; hardware loopback capture is still required"
+      }
+    ],
+    "references": [
+      {
+        "url": "https://www.w3.org/TR/webaudio/",
+        "sections": [
+          "AudioParam",
+          "WaveShaperNode",
+          "OfflineAudioContext"
+        ],
+        "use": "automation ordering, oversampling latency and offline rendering contracts"
+      },
+      {
+        "url": "https://holometer.fnal.gov/GH_FFT.pdf",
+        "authors": "Heinzel, Ruediger, Schilling (2002)",
+        "use": "window leakage, spectral resolution and power-ratio methodology"
+      }
+    ],
+    "gateRationale": {
+      "envelope": "3e-5 absolute gain error allows floating-point and sub-sample scheduling variation; measured maximum at baseline is below 1e-6; no perceptual click-free claim for the intentional zero-decay step",
+      "tuning": "0.3 cents is a conservative numerical tuning regression budget, not a hearing threshold",
+      "signalLevels": "DC/peak/RMS and silence thresholds detect basic waveform/path regressions; they are not mastering or true-peak qualification",
+      "drive": "6 dB relative alias-proxy improvement is a conservative regression budget below the observed 21-50 dB on the specified fixtures; -25 dB on the production route fixtures guards gross loss of oversampling",
+      "referenceIdentity": "Stored steady spectra use 5% plus 1e-4 absolute amplitude tolerance and 10% plus 2e-4 absolute harmonic power-ratio tolerance; timings are excluded from comparisons"
+    }
+  },
+  "summary": {
+    "cases": 11,
+    "failed": 0,
+    "status": "pass"
+  },
+  "results": [
+    {
+      "id": "evolving/44100",
+      "metrics": {
+        "early": 310.75420993200817,
+        "late": 475.13019991435976,
+        "error": {
+          "max": 0,
+          "rms": 0
+        },
+        "change": {
+          "max": 0.07878094911575317,
+          "rms": 0.016518679330053267
+        }
+      },
+      "checks": {
+        "finite": true,
+        "evolves": true,
+        "audibleDifference": true,
+        "deterministic": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "velocity-timbre/44100",
+      "metrics": {
+        "softCentroid": 266.80495754692106,
+        "hardCentroid": 643.8701125565685
+      },
+      "checks": {
+        "differentTone": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "lead-pitch/44100",
+      "metrics": {
+        "max": 0.11078163981437683,
+        "rms": 0.01956332563275785
+      },
+      "checks": {
+        "audibleMovement": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "evolving/48000",
+      "metrics": {
+        "early": 309.59575260949015,
+        "late": 475.0972078018594,
+        "error": {
+          "max": 0,
+          "rms": 0
+        },
+        "change": {
+          "max": 0.07878860086202621,
+          "rms": 0.01651739601984815
+        }
+      },
+      "checks": {
+        "finite": true,
+        "evolves": true,
+        "audibleDifference": true,
+        "deterministic": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "velocity-timbre/48000",
+      "metrics": {
+        "softCentroid": 266.80594619803713,
+        "hardCentroid": 645.2745365028334
+      },
+      "checks": {
+        "differentTone": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "lead-pitch/48000",
+      "metrics": {
+        "max": 0.11098899692296982,
+        "rms": 0.019572217241904073
+      },
+      "checks": {
+        "audibleMovement": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "evolving/96000",
+      "metrics": {
+        "early": 302.99162378346756,
+        "late": 474.2690741148293,
+        "error": {
+          "max": 0,
+          "rms": 0
+        },
+        "change": {
+          "max": 0.078574039041996,
+          "rms": 0.016512241268713326
+        }
+      },
+      "checks": {
+        "finite": true,
+        "evolves": true,
+        "audibleDifference": true,
+        "deterministic": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "velocity-timbre/96000",
+      "metrics": {
+        "softCentroid": 266.8105429075974,
+        "hardCentroid": 651.7953631350417
+      },
+      "checks": {
+        "differentTone": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "lead-pitch/96000",
+      "metrics": {
+        "max": 0.11047578975558281,
+        "rms": 0.019603490024559123
+      },
+      "checks": {
+        "audibleMovement": true,
+        "finite": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "smoothing/one-pole-step",
+      "metrics": {
+        "max": 2.9798210676723613e-8,
+        "rms": 1.654921604288673e-8
+      },
+      "checks": {
+        "exponential": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "zero-level-route",
+      "metrics": {
+        "dc": 0.0000027952914634883685,
+        "rms": 0.028752231718137924,
+        "peak": 0.05728130415081978,
+        "maxStep": 0.0019616351928561926,
+        "nonFinite": 0,
+        "clipped": 0
+      },
+      "checks": {
+        "audible": true,
+        "finite": true
+      },
+      "status": "pass"
+    }
+  ],
+  "failures": [],
+  "suitePolicy": {
+    "method": "Measure spectral centroid change on sustained sounds; normalize timbre comparison through spectral power ratios rather than raw loudness; compare repeated actual renders and routed-vs-static lead PCM",
+    "maxRepeatError": 1e-7,
+    "listening": "Human musical polish and comprehension review pending",
+    "limits": [
+      "No native v2 modulation rendering yet",
+      "No recorded automation or device underrun qualification"
+    ]
+  },
+  "measuredAt": "2026-10-27T05:56:16.874Z",
+  "source": {
+    "commit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "tag": null,
+    "baseCommit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "workingTreeDirty": false,
+    "runtimeAndFixtureSha256": "29206feb986158878bc70080cd80be16ce93e296e1ffed54948752b4a6b0db23"
+  },
+  "host": {
+    "os": "linux",
+    "release": "6.18.55",
+    "arch": "x64",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logicalCpus": 9,
+    "node": "v24.22.1"
+  }
+}

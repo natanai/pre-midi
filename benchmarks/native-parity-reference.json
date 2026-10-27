@@ -1,0 +1,625 @@
+{
+  "schemaVersion": 1,
+  "backend": "native-cpp-vs-web-audio",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36"
+  },
+  "policy": {
+    "version": 1,
+    "method": {
+      "pcm": "Float32 before WAV quantization; signal peak is sample peak, not reconstructed true peak",
+      "spectrum": "16384-point four-term Blackman-Harris FFT; sum power within +/-5 bins of each expected in-band harmonic; residual excludes bins 0..5",
+      "offHarmonicDb": "10 log10(residual / harmonic energy). Alias proxy only for stationary periodic fixtures without modulation or noise; not a universal alias meter. Aliases landing inside harmonic masks are unobservable.",
+      "tuning": "Interpolated rising zero crossings on a steady sine; cents = 1200 log2(measured/expected)",
+      "envelope": "Constant unity input through actual scheduled gain vs independently evaluated piecewise linear reference at every sample",
+      "clicks": "Maximum step in envelope error residual; zero-decay sustain step is intentional legacy behavior",
+      "cost": "Offline wall milliseconds including context setup; median of 5 measured runs after warm-up; informational only, no real-time CPU claim",
+      "repeatability": "Maximum and RMS PCM difference between equivalent independently constructed offline graphs in the same browser process"
+    },
+    "gates": {
+      "envelopeMaxError": 0.00003,
+      "envelopeResidualStep": 0.00003,
+      "tuningCents": 0.3,
+      "sineOffHarmonicDb": -65,
+      "steadyDc": 0.002,
+      "determinismMaxError": 1e-7,
+      "releasedRms": 0.000002,
+      "stereoLeakRms": 1e-7,
+      "overlapMaxError": 2e-7,
+      "driveMinimumImprovementDb": 6,
+      "driveRouteOffHarmonicDb": -25
+    },
+    "deferred": [
+      {
+        "metric": "bright oscillator absolute alias floor",
+        "reason": "record baseline first; harmonic residual has masking blind spots and browser band-limiting differs"
+      },
+      {
+        "metric": "drive absolute alias floor",
+        "reason": "relative 4x-vs-none gate applies to specified high sine fixture only; compare native reconstruction filters when SYN-007 exists"
+      },
+      {
+        "metric": "CPU ceiling",
+        "reason": "virtualized offline timings cannot establish desktop/mobile callback deadlines or underruns"
+      },
+      {
+        "metric": "native parity",
+        "reason": "no native DSP backend yet"
+      },
+      {
+        "metric": "live device acoustic parity",
+        "reason": "live/offline share scheduler; hardware loopback capture is still required"
+      }
+    ],
+    "references": [
+      {
+        "url": "https://www.w3.org/TR/webaudio/",
+        "sections": [
+          "AudioParam",
+          "WaveShaperNode",
+          "OfflineAudioContext"
+        ],
+        "use": "automation ordering, oversampling latency and offline rendering contracts"
+      },
+      {
+        "url": "https://holometer.fnal.gov/GH_FFT.pdf",
+        "authors": "Heinzel, Ruediger, Schilling (2002)",
+        "use": "window leakage, spectral resolution and power-ratio methodology"
+      }
+    ],
+    "gateRationale": {
+      "envelope": "3e-5 absolute gain error allows floating-point and sub-sample scheduling variation; measured maximum at baseline is below 1e-6; no perceptual click-free claim for the intentional zero-decay step",
+      "tuning": "0.3 cents is a conservative numerical tuning regression budget, not a hearing threshold",
+      "signalLevels": "DC/peak/RMS and silence thresholds detect basic waveform/path regressions; they are not mastering or true-peak qualification",
+      "drive": "6 dB relative alias-proxy improvement is a conservative regression budget below the observed 21-50 dB on the specified fixtures; -25 dB on the production route fixtures guards gross loss of oversampling",
+      "referenceIdentity": "Stored steady spectra use 5% plus 1e-4 absolute amplitude tolerance and 10% plus 2e-4 absolute harmonic power-ratio tolerance; timings are excluded from comparisons"
+    }
+  },
+  "summary": {
+    "cases": 19,
+    "failed": 0,
+    "status": "pass"
+  },
+  "results": [
+    {
+      "id": "44100/45/0.05",
+      "metrics": {
+        "max": 1.7302591004408896e-7,
+        "rms": 3.838732368673823e-8,
+        "stats": {
+          "dc": 2.2750270573753187e-8,
+          "rms": 0.011617383286561716,
+          "peak": 0.05338675156235695,
+          "maxStep": 0.05338675156235695,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000014680215012693537,
+        "browserCents": -0.0000876673041457065,
+        "levelError": 3.674908954920397e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/45/0.35",
+      "metrics": {
+        "max": 0.000001560896635055542,
+        "rms": 4.725989700538927e-7,
+        "stats": {
+          "dc": -6.044890725351065e-9,
+          "rms": 0.05698898206300484,
+          "peak": 0.21501632034778595,
+          "maxStep": 0.21501632034778595,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000004149160532979861,
+        "browserCents": -0.000059360262122827784,
+        "levelError": 4.398803841176857e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/69/0.05",
+      "metrics": {
+        "max": 2.814922481775284e-7,
+        "rms": 9.905037805106945e-8,
+        "stats": {
+          "dc": 1.1466714062898407e-10,
+          "rms": 0.011621662969167432,
+          "peak": 0.03807510435581207,
+          "maxStep": 0.0023935065837576985,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00007865281501720632,
+        "browserCents": -0.00013302629156921553,
+        "levelError": 4.3178404629529155e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/69/0.35",
+      "metrics": {
+        "max": 0.000003423541784286499,
+        "rms": 0.0000013617545289199973,
+        "stats": {
+          "dc": 6.842450512420695e-11,
+          "rms": 0.0570026621049062,
+          "peak": 0.15256015956401825,
+          "maxStep": 0.00957448361441493,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00002342846984675003,
+        "browserCents": -0.0000797903188895389,
+        "levelError": 4.990354156575449e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/93/0.05",
+      "metrics": {
+        "max": 0.0000017968413885682821,
+        "rms": 6.658842116997851e-7,
+        "stats": {
+          "dc": -2.1495736853412536e-9,
+          "rms": 0.013638317917496999,
+          "peak": 0.06331867724657059,
+          "maxStep": 0.06331867724657059,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000158362655085385,
+        "browserCents": -0.00021389921816984816,
+        "levelError": 4.087866622981551e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "44100/93/0.35",
+      "metrics": {
+        "max": 0.00002260110341012478,
+        "rms": 0.00000908654323841379,
+        "stats": {
+          "dc": -1.3054965941318275e-9,
+          "rms": 0.06689351324381713,
+          "peak": 0.25342991948127747,
+          "maxStep": 0.25342991948127747,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00004761329709075659,
+        "browserCents": -0.00010382175647159371,
+        "levelError": 4.702294005287655e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/45/0.05",
+      "metrics": {
+        "max": 1.8486753106117249e-7,
+        "rms": 5.398495725075908e-8,
+        "stats": {
+          "dc": 2.4912975517629796e-8,
+          "rms": 0.01161741604516482,
+          "peak": 0.05338673293590546,
+          "maxStep": 0.05338673293590546,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00006689797557530433,
+        "browserCents": -0.0001425717616530595,
+        "levelError": 4.596802127831978e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/45/0.35",
+      "metrics": {
+        "max": 0.0000017024576663970947,
+        "rms": 6.304046696534673e-7,
+        "stats": {
+          "dc": -6.5404069575387355e-9,
+          "rms": 0.056989142713716134,
+          "peak": 0.2150183767080307,
+          "maxStep": 0.2150183767080307,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000018906071954978398,
+        "browserCents": -0.00008595370261611248,
+        "levelError": 1.978441686034671e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/69/0.05",
+      "metrics": {
+        "max": 3.343448042869568e-7,
+        "rms": 1.1245033518459491e-7,
+        "stats": {
+          "dc": 8.40597419498542e-11,
+          "rms": 0.011622187197468952,
+          "peak": 0.03807429224252701,
+          "maxStep": 0.0021993149421177804,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00005203804884857654,
+        "browserCents": -0.00012317499858866899,
+        "levelError": 4.988533564009856e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/69/0.35",
+      "metrics": {
+        "max": 0.0000040833838284015656,
+        "rms": 0.0000015928214981018602,
+        "stats": {
+          "dc": 4.6515789581135265e-11,
+          "rms": 0.057005233310703556,
+          "peak": 0.15256446599960327,
+          "maxStep": 0.008797615533694625,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000015501104337512855,
+        "browserCents": -0.00008414273319117017,
+        "levelError": 2.389488678034013e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/93/0.05",
+      "metrics": {
+        "max": 0.0000021783635020256042,
+        "rms": 8.210258650496303e-7,
+        "stats": {
+          "dc": -2.152602756215973e-9,
+          "rms": 0.013643136471625641,
+          "peak": 0.06326942890882492,
+          "maxStep": 0.06326942890882492,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00010341012549522241,
+        "browserCents": -0.00017074215588203955,
+        "levelError": 4.638822921343433e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "48000/93/0.35",
+      "metrics": {
+        "max": 0.000027071568183600903,
+        "rms": 0.000010978615601661822,
+        "stats": {
+          "dc": -1.2808217781727959e-9,
+          "rms": 0.06691714732901247,
+          "peak": 0.25339460372924805,
+          "maxStep": 0.25339460372924805,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00003109263193536414,
+        "browserCents": -0.00009889335133041087,
+        "levelError": 2.0426096680736805e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/45/0.05",
+      "metrics": {
+        "max": 1.7974525690078735e-7,
+        "rms": 3.867184538708848e-8,
+        "stats": {
+          "dc": 3.313117459458457e-8,
+          "rms": 0.011617568209071042,
+          "peak": 0.05338679999113083,
+          "maxStep": 0.05338679999113083,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000009563635854045953,
+        "browserCents": -0.00012210362552448443,
+        "levelError": 9.680794654798319e-8
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/45/0.35",
+      "metrics": {
+        "max": 0.000001596752554178238,
+        "rms": 5.148996890557734e-7,
+        "stats": {
+          "dc": -8.51843396403819e-9,
+          "rms": 0.056989888825754,
+          "peak": 0.215021014213562,
+          "maxStep": 0.215021014213562,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.0000027024982464767412,
+        "browserCents": -0.00008265830878032356,
+        "levelError": 1.160258555898963e-9
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/69/0.05",
+      "metrics": {
+        "max": 3.922468749806285e-7,
+        "rms": 1.278949877019329e-7,
+        "stats": {
+          "dc": 9.226412187007155e-11,
+          "rms": 0.011624620250068963,
+          "peak": 0.038089409470558167,
+          "maxStep": 0.0011000245431205258,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00001918262331961522,
+        "browserCents": -0.00009444274991380175,
+        "levelError": 1.3988917091367625e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/69/0.35",
+      "metrics": {
+        "max": 0.00000436464324593544,
+        "rms": 0.0000016729252580999751,
+        "stats": {
+          "dc": 6.067800006443751e-11,
+          "rms": 0.05701716671972799,
+          "peak": 0.15262024104595184,
+          "maxStep": 0.004400107107358053,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000005714619138027087,
+        "browserCents": -0.00007613122978750728,
+        "levelError": 4.034332801161611e-8
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/93/0.05",
+      "metrics": {
+        "max": 0.0000021689338609576225,
+        "rms": 8.195558313279618e-7,
+        "stats": {
+          "dc": -2.1220874061201047e-9,
+          "rms": 0.01366246519645389,
+          "peak": 0.06336488574743271,
+          "maxStep": 0.06336488574743271,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.00004763980262678951,
+        "browserCents": -0.00011485013529041129,
+        "levelError": 1.0712009101965236e-7
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "96000/93/0.35",
+      "metrics": {
+        "max": 0.00002710893750190735,
+        "rms": 0.000010980598618824843,
+        "stats": {
+          "dc": -1.2774401125503932e-9,
+          "rms": 0.06701195121644692,
+          "peak": 0.25371354818344116,
+          "maxStep": 0.25371354818344116,
+          "nonFinite": 0,
+          "clipped": 0
+        },
+        "nativeCents": -0.000014323837398996545,
+        "browserCents": -0.0000820775303465652,
+        "levelError": 1.5461830482621508e-8
+      },
+      "checks": {
+        "finite": true,
+        "audible": true,
+        "maxError": true,
+        "rmsError": true,
+        "tuning": true,
+        "level": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "unsupported-wave",
+      "metrics": {
+        "status": 422
+      },
+      "checks": {
+        "explicitRejection": true
+      },
+      "status": "pass"
+    }
+  ],
+  "failures": [],
+  "native": {
+    "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+    "flags": [
+      "-std=c++17",
+      "-O2",
+      "-ffp-contract=off",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic"
+    ],
+    "selfTest": "passed: allocation and block-size assertions",
+    "scope": "offline C++ core; no device backend or callback latency qualification"
+  },
+  "suitePolicy": {
+    "maxPcmError": 0.0001,
+    "maxRmsError": 0.00002,
+    "initialRmsTarget": 0.00001,
+    "toleranceRationale": "The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",
+    "method": "same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",
+    "scope": "sine oscillators, pitch, static lowpass, ADSR and pan",
+    "limits": [
+      "Not full native patch support",
+      "Not a device performance or aliasing qualification",
+      "Fractional-sample note onsets not yet qualified"
+    ]
+  },
+  "measuredAt": "2026-10-27T05:56:16.779Z",
+  "source": {
+    "commit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "tag": null,
+    "baseCommit": "5326635b6bcfc128089c098a918d02a0754e26a7",
+    "workingTreeDirty": false,
+    "runtimeAndFixtureSha256": "1eba1611fecf69f536bdb4bae5b760c8e0661eca8b9f8ec6545f7c834b8a91c8"
+  },
+  "host": {
+    "os": "linux",
+    "release": "6.18.55",
+    "arch": "x64",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logicalCpus": 9,
+    "node": "v24.22.1"
+  }
+}
