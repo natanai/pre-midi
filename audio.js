@@ -1,18 +1,20 @@
 import {resolveEvent} from "./soundModel.js";
-import {eventsAtStep,phraseInstances} from "./arrangement.js";
+import {eventsAtStep} from "./arrangement.js";
 import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
 import {decodeSongRecordings,recordingEventsAtStep,scheduleVocal} from "./songAudio.js";
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
-import { movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
+import { schedulePitchPlan, scheduleMovementLfo } from "./expression.js";
 import {setOscillatorWave} from "./harmonics.js";
 import {validatePatch} from "./synth.js";
 import {configureDriveShaper} from "./audioEffects.js";
-import {scheduleAmplitudeEnvelope} from "./envelope.js";
+import {applyAmplitudePlan} from "./envelope.js";
+import {planSynthVoice,noteFrequency} from "./src/dsp/synth-voice.js";
+import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the resolved sound patch stored in the beat.
 export const secondsPerStep = doc => 60/doc.bpm/4;
-export const frequency = pitch => 440*2**((pitch-69)/12);
+export const frequency = noteFrequency;
 const noiseBuffers=new WeakMap();
 const sampleCaches=new WeakMap();
 const bufferCache=ctx=>{if(!sampleCaches.has(ctx))sampleCaches.set(ctx,new Map());return sampleCaches.get(ctx);};
@@ -31,7 +33,7 @@ function noiseBuffer(ctx) {
  return buffer;
 }
 export const stepEvents = eventsAtStep;
-export function scheduleNote(ctx,destination,instrument,event,start,duration,beat) {
+export function scheduleNote(ctx,destination,instrument,event,start,duration,beat,session=null) {
  if(instrument.sounds){
   const resolved=resolveEvent(instrument,event);
   if(!resolved)return;
@@ -40,25 +42,23 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
   instrument=resolved.voice;event=resolved.note;
  }
  if(instrument.patch.type==="sample"){
-  scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx));
-  return;
+  return scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx),session);
  }
- const patch=instrument.patch,off=start+Math.max(.015,duration),env=patch.envelope;
- const motion=movement(patch);
- const end=off+env.release+.012,cleanupAt=end+(patch.effects.delayMix>0?2.4:.15);
- const sources=[],nodes=[];
+ return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration),session);
+}
+export function scheduleSynthPlan(ctx,destination,plan,session=null){
+ if(plan.contract!=="pre-midi-synth-voice"||plan.version!==1)throw Error("Unsupported synth voice plan");
+ const {patch,off,end,start,duration}=plan,motion=plan.movement;
+ const sources=[],nodes=[],owner={sources,nodes};
  const add=node=>{nodes.push(node);return node;};
  const mix=add(ctx.createGain());
- const sourceLevel=patch.oscillators.reduce((sum,osc)=>sum+osc.level,0)+patch.noise;
- const norm=sourceLevel>0?1/Math.max(1,sourceLevel):0;
- const peak=Math.max(.000001,Math.min(.31,instrument.volume*event.velocity*.27)*norm);
- for(const slot of patch.oscillators){
+ for(const slot of plan.oscillators){
   if(!slot.level)continue;
   const oscillator=ctx.createOscillator();
   const gain=add(ctx.createGain());
   setOscillatorWave(ctx,oscillator,slot);
-  oscillator.frequency.setValueAtTime(Math.min(18000,frequency(event.pitch)*2**slot.octave),start);
-  schedulePitch(ctx,oscillator.detune,{...event,bend:event.bend??patch.bend},motion,start,duration,slot.detune);
+  oscillator.frequency.setValueAtTime(slot.frequency,start);
+  schedulePitchPlan(ctx,oscillator.detune,slot.pitch,owner);
   gain.gain.value=slot.level;
   oscillator.connect(gain);gain.connect(mix);
   oscillator.start(start);oscillator.stop(end);
@@ -76,16 +76,12 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
  const filter=add(ctx.createBiquadFilter());
  filter.type=patch.filter.type;
  const sweep=patch.filter.sweep??0;
-  if(sweep!==0){
-   const first=Math.max(50,Math.min(14000,patch.filter.cutoff*2**sweep));
-   filter.frequency.setValueAtTime(first,start);
-   filter.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,
-    start+Math.min(duration,patch.filter.sweepTime??.2));
-  }else filter.frequency.setValueAtTime(patch.filter.cutoff,start);
+ filter.frequency.setValueAtTime(plan.filter.startCutoff,start);
+ if(sweep!==0)filter.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,plan.filter.sweepEnd);
  filter.Q.setValueAtTime(patch.filter.resonance,start);
  mix.connect(filter);
  if(motion.tone>0)scheduleMovementLfo(ctx,filter.frequency,start,duration,
-  motion.toneRate,patch.filter.cutoff*motion.tone*.8);
+  motion.toneRate,patch.filter.cutoff*motion.tone*.8,owner);
  let signal=filter;
  if(patch.effects.drive>0){
   const shaper=add(ctx.createWaveShaper());
@@ -95,56 +91,45 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
   signal.connect(shaper);shaper.connect(compensation);signal=compensation;
  }
  const amp=add(ctx.createGain());
- scheduleAmplitudeEnvelope(amp.gain,{start,off,peak,envelope:env});
+ applyAmplitudePlan(amp.gain,plan.amplitude);
  signal.connect(amp);
  const pan=add(ctx.createStereoPanner());
  pan.pan.value=patch.pan;
 const pulse=add(ctx.createGain());
  pulse.gain.setValueAtTime(1,start);
  if(motion.tremolo>0)scheduleMovementLfo(ctx,pulse.gain,start,duration,
-  motion.tremoloRate,motion.tremolo*.45);
- amp.connect(pulse);pulse.connect(pan);
+  motion.tremoloRate,motion.tremolo*.45,owner);
+ const gate=add(ctx.createGain());
+ amp.connect(pulse);pulse.connect(gate);gate.connect(pan);
  const fx=patch.effects,mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
  dry.gain.value=1-mixAmount*.4;
  pan.connect(dry);dry.connect(destination);
- if(mixAmount>0) {
-  const send=add(ctx.createGain()),delay=add(ctx.createDelay(1.2)),
-   feedback=add(ctx.createGain()),wet=add(ctx.createGain());
-  send.gain.value=mixAmount*.55;
-  delay.delayTime.value=fx.delayTime;
-  feedback.gain.value=fx.delayFeedback;
-  wet.gain.value=.8;
-  pan.connect(send);send.connect(delay);
-  delay.connect(feedback);feedback.connect(delay);
-  delay.connect(wet);wet.connect(destination);
+ if(mixAmount>0){
+  if(session)pan.connect(session.delay(fx,plan.graphEnd));
+  else{
+   const send=add(ctx.createGain()),delay=add(ctx.createDelay(1.2)),feedback=add(ctx.createGain()),wet=add(ctx.createGain());
+   send.gain.value=mixAmount*.55;delay.delayTime.value=fx.delayTime;feedback.gain.value=fx.delayFeedback;wet.gain.value=.8;
+   pan.connect(send);send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination);
+  }
  }
- // Keep echo tails audible before detaching the voice. Offline contexts dispose
- // their graph after rendering; timers are needed only for ongoing live sessions.
- if(typeof OfflineAudioContext==="undefined" || !(ctx instanceof OfflineAudioContext)) {
-  const ms=Math.max(0,(cleanupAt-ctx.currentTime)*1000);
-  setTimeout(()=>{
-   for(const source of sources){try{source.disconnect();}catch{}}
-   for(const node of nodes){try{node.disconnect();}catch{}}
-  },ms+30);
- }
+ const voice=ownVoice(ctx,{sources,nodes,gate,start,release:off,end:session?plan.graphEnd:plan.audibleEnd});
+ return session?session.adopt(voice):voice;
 }
 function eventOffset(instrument,note,notes){
  if(instrument.layout==="rack")return 0;
  const voice=instrument.sounds?resolveEvent(instrument,note)?.voice:instrument;
  return voice?strumOffset(voice,note,notes):0;
 }
-function renderBar(ctx,out,beat,bar,start) {
- const unit=secondsPerStep(beat);
- for(let step=0;step<16;step++){
-  for(const event of stepEvents(beat,bar*16+step)){
-   scheduleNote(ctx,out,event.instrument,event.note,
-    start+step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
-    event.note.duration*unit,beat);
-  }
- }
+let context,previewSession,previewTimer;
+function previews(){
+ if(!previewSession||previewSession.closed)previewSession=new VoiceSession(context,context.destination,{maxVoices:8});
+ if(!previewTimer)previewTimer=setInterval(()=>{
+  previewSession.sweep();
+  if(context.currentTime>=previewSession.end){previewSession.stop();clearInterval(previewTimer);previewTimer=null;previewSession=null;}
+ },50);
+ return previewSession;
 }
-let context;
 export async function audition(instrument,pitch,beat=null,expression=null) {
  let hitDuration=null;
  if(instrument.sounds){
@@ -161,7 +146,7 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
  }
  scheduleNote(context,context.destination,instrument,
   {pitch,velocity:expression?.velocity??.8,bend:expression?.bend},
-  context.currentTime+.01,hitDuration??expression?.duration??.24,beat);
+  context.currentTime+.01,hitDuration??expression?.duration??.24,beat,previews());
 }
 // Preview a real acoustic chord through the exact same sample voice and
 // strumOffset implementation used by timeline playback and WAV export.
@@ -178,7 +163,7 @@ export async function auditionChord(instrument,pitches,beat,velocity=.85) {
  const now=context.currentTime+.04,duration=.8;
  for(const note of notes){
   scheduleNote(context,context.destination,instrument,note,
-   now+strumOffset(instrument,note,notes),duration,beat);
+   now+strumOffset(instrument,note,notes),duration,beat,previews());
  }
 }
 export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0}={}) {
@@ -192,10 +177,10 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  const start=Number.isSafeInteger(startStep)&&startStep>=0?startStep:0;
  let scheduled=start,nextTime=ctx.currentTime+.07,shown=-1,stopped=false,timer,activeStep=null;
  onStart({context:ctx,startTime:nextTime});
- const queue=[];
+ const queue=[],session=new VoiceSession(ctx,out);
  function stop() {
   if(stopped)return;
-  stopped=true;clearInterval(timer);
+  stopped=true;clearInterval(timer);session.stop();
   const now=ctx.currentTime;
   out.gain.cancelScheduledValues(now);
   out.gain.setValueAtTime(Math.max(0,out.gain.value),now);
@@ -205,6 +190,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  }
  function tick() {
   if(stopped)return;
+  session.sweep();
   let guarded=0;
   while(nextTime<ctx.currentTime+.095 && guarded++<24) {
    const current=read(),cycle=current.kind==="song"?songDurationSteps(current):current.bars*16;
@@ -217,11 +203,11 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    if(current.kind==="song")for(const event of recordingEventsAtStep(current,step,{
     includeOverlapping:scheduled===start
    }))
-    scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers,{elapsedSteps:step-event.clip.startStep});
+    scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers,{elapsedSteps:step-event.clip.startStep,session});
    for(const event of events)
     scheduleNote(ctx,out,event.instrument,event.note,
      nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),
-     event.note.duration*unit,event.beat||current);
+     event.note.duration*unit,event.beat||current,session);
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
   }
@@ -235,9 +221,9 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    onProgress(activeStep.barIndex,Math.min(16,activeStep.step+Math.min(1,elapsed/activeStep.unit)));
   }
   const current=read();
-  if(!loops()&&scheduled>=(current.kind==="song"?songDurationSteps(current):current.bars*16)&&ctx.currentTime>nextTime+1.1)stop();
+  if(!loops()&&scheduled>=(current.kind==="song"?songDurationSteps(current):current.bars*16)&&ctx.currentTime>=Math.max(nextTime,session.end))stop();
  }
- timer=setInterval(tick,25);tick();return {stop};
+ timer=setInterval(tick,25);tick();return {stop,get diagnostics(){return {voices:session.voices.size,buses:session.buses.size,steals:session.steals,limit:session.allocator.limit};}};
 }
 function pcmWav(buffer) {
  const ch=Math.min(2,buffer.numberOfChannels),size=buffer.length*ch*2;
@@ -267,62 +253,54 @@ export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,s
  scheduleNote(ctx,ctx.destination,{patch,volume:1},{pitch,velocity:1},0,duration,null);
  return ctx.startRendering();
 }
-export async function wav(beat) {
- if(beat.kind==="song")return wavSong(beat);
- // Decode once, before choosing the render length: full one-shot tails can
- // extend beyond the old fixed 4.5-second pad. AudioBuffers are reusable.
- const decoder=new OfflineAudioContext(2,1,44100),decoded=new Map();
- await decodeSamples(decoder,beat,decoded);
- let seconds=beat.bars*16*secondsPerStep(beat)+4.5;
- const unit=secondsPerStep(beat);
- for(const instrument of beat.instruments)for(const phrase of phraseInstances(beat,instrument)){
-  for(const event of phrase.chunk.notes){
-   if(event.start>=phrase.length)continue;
-   // A placement may begin partway into its source bar, or repeat past it.
-   const onset=phrase.start+event.start;
-   if(onset>=beat.bars*16)continue;
-   const resolved=resolveEvent(instrument,event);if(!resolved)continue;
-   const patch=resolved.voice.patch;
-   let tail;
-   if(patch.type==="sample"){
-    const zone=sampleForNote(patch,resolved.note.pitch,event.velocity),buffer=zone&&decoded.get(zone.assetId);
-    const rate=zone?(patch.followPitch?2**((resolved.note.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12)):1;
-    const length=buffer?buffer.duration/rate:0;
-    tail=patch.oneShot?length:Math.min(length,event.duration*unit+patch.release);
-   }else{
-    const gate=instrument.layout==="rack"?Math.max(.015,patch.envelope.attack+patch.envelope.decay):event.duration*unit;
-    tail=gate+patch.envelope.release+(patch.effects.delayMix>0?2.4:.15)+.012;
-   }
-   seconds=Math.max(seconds,onset*unit+eventOffset(instrument,event,phrase.chunk.notes)+tail+.02);
+// Materialize and stably order offline onsets, including strums crossing steps.
+// This also bounds the allocator's ledger while rendering long arrangements.
+export function renderEvents(document){
+ const unit=secondsPerStep(document),song=document.kind==="song";
+ const length=song?songDurationSteps(document):document.bars*16,events=[];
+ for(let step=0;step<length;step++){
+  if(song)for(const event of recordingEventsAtStep(document,step))
+   events.push({kind:"vocal",at:step*unit,event});
+  for(const event of (song?eventsAtSongStep(document,step):stepEvents(document,step)))
+   events.push({kind:"note",at:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
+    instrument:event.instrument,note:event.note,duration:event.note.duration*unit,beat:event.beat||document});
+ }
+ return events.sort((a,b)=>a.at-b.at);
+}
+export function renderEndSeconds(document,events,decoded){
+ const length=document.kind==="song"?songDurationSteps(document):document.bars*16;
+ let end=length*secondsPerStep(document)+.02;
+ for(const event of events){
+  if(event.kind!=="note")continue;
+  const resolved=resolveEvent(event.instrument,event.note);if(!resolved)continue;
+  const {patch}=resolved.voice;
+  if(patch.type==="sample"){
+   const zone=sampleForNote(patch,resolved.note.pitch,event.note.velocity),buffer=zone&&decoded.get(zone.assetId);
+   const rate=zone?(patch.followPitch?2**((resolved.note.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12)):1;
+   const length=buffer?buffer.duration/rate:0;
+   const life=patch.oneShot?length:Math.min(length,Math.max(.015,event.duration+patch.release));
+   end=Math.max(end,event.at+life+.03);
+  }else{
+   const duration=event.instrument.layout==="rack"?Math.max(.015,patch.envelope.attack+patch.envelope.decay):event.duration;
+   end=Math.max(end,planSynthVoice(resolved.voice,resolved.note,event.at,duration).audibleEnd+.02);
   }
  }
- const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);
- sampleCaches.set(ctx,decoded);
- const out=ctx.createGain();out.gain.value=.85;out.connect(ctx.destination);
- for(let bar=0;bar<beat.bars;bar++)renderBar(ctx,out,beat,bar,bar*16*unit);
- return pcmWav(await ctx.startRendering());
+ return end;
 }
-
-// Song WAV uses the same native event resolver and voice scheduler as playback.
-async function wavSong(song){
- const length=songDurationSteps(song);
- const unit=secondsPerStep(song);
- const seconds=length*unit+8;
- if(seconds>600)throw Error("Song WAV exceeds the current 10-minute render limit.");
+export async function wav(document){
+ const beats=document.kind==="song"?document.beats:[document];
  const decoder=new OfflineAudioContext(2,1,44100),decoded=new Map();
- for(const beat of song.beats)await decodeSamples(decoder,beat,decoded);
+ for(const beat of beats)await decodeSamples(decoder,beat,decoded);
+ const events=renderEvents(document),seconds=renderEndSeconds(document,events,decoded);
+ if(seconds>600)throw Error("WAV including effect tails exceeds the current 10-minute render limit.");
  const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);
  sampleCaches.set(ctx,decoded);
- const vocals=await decodeSongRecordings(ctx,song);
- const out=ctx.createGain();out.gain.value=.85;out.connect(ctx.destination);
- for(let step=0;step<length;step++){
-  const start=step*unit;
-  for(const event of recordingEventsAtStep(song,step))
-   scheduleVocal(ctx,out,event,start,unit,vocals);
-  for(const event of eventsAtSongStep(song,step))
-   scheduleNote(ctx,out,event.instrument,event.note,
-    start+eventOffset(event.instrument,event.note,event.chunk.notes),
-    event.note.duration*unit,event.beat);
+ const vocals=await decodeSongRecordings(ctx,document),out=ctx.createGain();
+ out.gain.value=.85;out.connect(ctx.destination);
+ const session=new VoiceSession(ctx,out,{chronological:true});
+ for(const event of events){
+  if(event.kind==="vocal")scheduleVocal(ctx,out,event.event,event.at,secondsPerStep(document),vocals,{session});
+  else scheduleNote(ctx,out,event.instrument,event.note,event.at,event.duration,event.beat,session);
  }
  return pcmWav(await ctx.startRendering());
 }

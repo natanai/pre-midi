@@ -37,12 +37,17 @@ test("Song Clip manipulation is live and keyboard accessible",()=>{
  assert.match(studio,/currentDocument\(\)/);
  assert.match(studio,/parseDocument\(raw\)/);
 });
-test("native Song events feed the shared playback and WAV paths",()=>{
- const audio=read("audio.js");
- assert.match(audio,/eventsAtSongStep\(current,step\)/);
- assert.match(audio,/eventsAtSongStep\(song,step\)/);
- assert.match(audio,/event\.beat\|\|current/);
- assert.match(audio,/wavSong\(beat\)/);
+test("native Song render events preserve layered Beat identities and offsets",async()=>{
+ const {create}=await import("../schema.js"),{createSong,addSongTrack,addBeatClip}=await import("../songModel.js");
+ const {renderEvents}=await import("../audio.js");
+ const beat=create(),inst=beat.instruments[0];
+ inst.chunks[0].notes.push({id:"held",pitch:69,start:2,duration:4,velocity:.8});
+ const song=createSong(beat),lane=addSongTrack(song,"beat");
+ addBeatClip(song,lane.id,beat.id,1,16);
+ const events=renderEvents(song);
+ assert.equal(events.length,2);
+ assert.deepEqual(events.map(x=>x.at),[2,3].map(x=>x*60/song.bpm/4));
+ assert.ok(events.every(x=>x.beat.id===beat.id&&x.note.id==="held"&&x.duration===60/song.bpm));
 });
 test("Song edits and Beat edits are covered by one undo history",()=>{
  const studio=read("studio.js");

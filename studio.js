@@ -1331,13 +1331,14 @@ async function savePreset(wholeRack=false){
  const samples=beat.samples.filter(asset=>needs.has(asset.id));
  const item={id:"user-"+id(),name,category:"Mine",description:wholeRack?"Rack · "+sounds.length+" sounds":"Saved sound",samples};
  if(wholeRack){item.sounds=sounds;item.layout="rack";item.volume=inst.volume;}
- else {item.patch=entry.patch?patchCopy(entry.patch):null;item.trigger=entry.trigger;item.referencePitch=entry.referencePitch;item.gain=entry.gain;}
+ else {item.volume=inst.volume;item.patch=entry.patch?patchCopy(entry.patch):null;item.trigger=entry.trigger;item.referencePitch=entry.referencePitch;item.gain=entry.gain;}
  try{
   await savePresetAssets(samples);
   localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));savedSounds.push(item);
   message("Saved "+name+" in your browser's sound library.");
  }catch(error){message("Could not save preset: "+error.message+". Export your beat to keep it.",true);}
 }
+$("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,beat,{soundId:sound().id,duration:.6}).catch(error=>message("Could not preview sound: "+error.message,true));});
 $("save-sound").addEventListener("click",()=>{void savePreset(instrument().layout==="rack");});
 $("save-row-sound").addEventListener("click",()=>{void savePreset(false);});
 function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...EXAMPLE_SOUND_PRESETS,...savedSounds];}

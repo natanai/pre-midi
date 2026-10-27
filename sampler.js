@@ -1,3 +1,4 @@
+import {ownVoice} from "./src/hosts/web/voice-session.js";
 import {resolveEvent} from "./soundModel.js";
 import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
 import {putAsset,getAsset,MAX_ASSET_BYTES} from "./assetRegistry.js";
@@ -144,12 +145,13 @@ function sampleNormalization(buffer){
  peakLevels.set(buffer,scale);
  return scale;
 }
-export function scheduleSample(context,out,inst,event,start,duration,beat,cache) {
+export function scheduleSample(context,out,inst,event,start,duration,beat,cache,session=null) {
  const patch=inst.patch,zone=sampleForNote(patch,event.pitch,event.velocity);
  const buffer=zone&&cache.get(zone.assetId);
  if(!buffer)return; // Can only happen while freshly imported samples decode during playback.
  const playbackRate=patch.followPitch?2**((event.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12);
- const src=context.createBufferSource(),amp=context.createGain(),pan=context.createStereoPanner();
+ const src=context.createBufferSource(),amp=context.createGain(),pan=context.createStereoPanner(),gate=context.createGain();
+ const owner={sources:[src],nodes:[amp,pan,gate]};
  const recordedGain=patch.preserveDynamics?3.5:sampleNormalization(buffer);
  const gain=Math.min(2,inst.volume*patch.gain*event.velocity*.7*recordedGain);
  src.buffer=buffer;src.playbackRate.value=playbackRate;
@@ -158,7 +160,7 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache)
  const length=buffer.duration/playbackRate;
  const life=patch.oneShot?length:Math.min(length,Math.max(.015,duration+patch.release));
  // The whole recording keeps pitch modulation, not only the short grid note.
- schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,life));
+ schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,life),0,owner);
  const at=start+Math.min(patch.attack,life*.5);
  amp.gain.setValueAtTime(0,start);
  amp.gain.linearRampToValueAtTime(gain,at+0.001);
@@ -169,7 +171,7 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache)
  amp.gain.linearRampToValueAtTime(0,start+life);
  const pulse=context.createGain();
  pulse.gain.setValueAtTime(1,start);
- scheduleMovementLfo(context,pulse.gain,start,life,motion.tremoloRate,motion.tremolo*.45);
+ scheduleMovementLfo(context,pulse.gain,start,life,motion.tremoloRate,motion.tremolo*.45,owner);
  // Unedited legacy samples preserve the original signal path.
  let signal=src;const toneNodes=[];
  if(patch.filter){
@@ -185,7 +187,9 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache)
   signal.connect(shaper);shaper.connect(compensation);signal=compensation;
   toneNodes.push(shaper,compensation);
  }
- signal.connect(amp);amp.connect(pulse);pulse.connect(pan);pan.connect(out);
+ signal.connect(amp);amp.connect(pulse);pulse.connect(gate);gate.connect(pan);pan.connect(out);
+ owner.nodes.push(pulse,...toneNodes);
  src.start(start);src.stop(start+life+.01);
- src.onended=()=>{src.disconnect();for(const node of toneNodes)node.disconnect();amp.disconnect();pulse.disconnect();pan.disconnect();};
+ const voice=ownVoice(context,{...owner,gate,start,release:Math.max(start,Math.min(start+life,releaseStart)),end:start+life+.01});
+ return session?session.adopt(voice):voice;
 }

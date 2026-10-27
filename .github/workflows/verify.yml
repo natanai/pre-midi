@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -19,13 +21,17 @@ jobs:
       - name: Stage minimal Pages build
         run: node scripts/prepare-pages.mjs
       - name: Measure actual offline audio against versioned reference fixtures
-        run: npm run benchmark:audio
+        run: npm run benchmark:audio -- --require-clean
+      - name: Verify musical compatibility with the previous renderer
+        run: npm run benchmark:musical -- --require-clean
+      - name: Qualify voice lifecycle and real-time browser graph
+        run: npm run benchmark:voices -- --require-clean
       - name: Upload audio qualification report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: audio-quality
-          path: benchmarks/audio-quality.latest.json
+          path: benchmarks/*.latest.json
           if-no-files-found: error
       - name: Check shipped desktop and mobile studio in Chrome
         run: PREMIDI_APP_ROOT=dist node tests/layout.browser.mjs
