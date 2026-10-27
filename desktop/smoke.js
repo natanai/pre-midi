@@ -23,6 +23,12 @@
   const {create,id}=await load('schema.js'),{makePatch}=await load('synth.js');
   const {exportProject,importProject}=await load('packageIO.js');
   const {wav,play}=await load('audio.js');
+  const sampler=await load('sampler.js');
+  const bundled=await sampler.loadLibrarySample('piano-c3');
+  const sampleBytes=getAsset(bundled.id);
+  const decoder=new OfflineAudioContext(1,16,44100);
+  const decoded=await decoder.decodeAudioData(sampleBytes.buffer.slice(sampleBytes.byteOffset,sampleBytes.byteOffset+sampleBytes.byteLength));
+  assert(decoded.length>0&&decoded.numberOfChannels>0,'bundled Ogg recording decodes offline');
   const beat=create();beat.bars=1;const inst=beat.instruments[0];inst.timeline=[inst.chunks[0].id];inst.placements=[null];
   inst.sounds[0].patch=makePatch('glass-keys');inst.chunks[0].notes.push({id:id(),pitch:60,start:0,duration:4,velocity:.8});
   const exported=exportProject(beat),reopened=await importProject(new File([exported.blob],exported.name));

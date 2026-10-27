@@ -44,3 +44,22 @@ test('complete unsigned preview has checksums and explicitly disables automatic 
   const sums=await readFile(join(dir,'SHA256SUMS.txt'),'utf8');assert.equal(sums.trim().split('\n').length,7);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test('signed manifest selects the AppImage even when a DEB also has a signature',async()=>{
+ const {dir,artifacts}=await setup();
+ try{
+  for(const artifact of artifacts){
+   if(artifact.platform==='windows'&&artifact.kind==='installer')artifact.signature='windows-signature';
+   if(artifact.platform==='linux')artifact.signature=artifact.kind==='portable'?'appimage-signature':'deb-signature';
+  }
+  for(const arch of ['x86_64','aarch64']){
+   const name='mac-'+arch+'.app.tar.gz',bytes=Buffer.from(name);
+   await writeFile(join(dir,name),bytes);
+   artifacts.push({name,platform:'darwin',arch,kind:'updater',size:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex'),signature:'mac-signature'});
+  }
+  await writeFile(join(dir,'artifacts-test.json'),JSON.stringify(artifacts));run(dir);
+  const manifest=JSON.parse(await readFile(join(dir,'desktop-updates.json'),'utf8'));
+  assert.equal(manifest.platforms['linux-x86_64-appimage'].signature,'appimage-signature');
+  assert.equal(Object.keys(manifest.platforms).length,4);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
