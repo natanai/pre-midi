@@ -124,6 +124,7 @@ jobs:
         run: |
           PREMIDI_SMOKE_OUTPUT="$RUNNER_TEMP/premidi-smoke.json" WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 timeout 120 xvfb-run -a desktop/target/${{ matrix.target }}/release/pre-midi
           cat "$RUNNER_TEMP/premidi-smoke.json"
+          python -c 'import json,os; assert json.load(open(os.environ["RUNNER_TEMP"]+"/premidi-smoke.json"))["passed"]'
       - name: WebView smoke on macOS
         if: runner.os == 'macOS'
         run: |
@@ -154,6 +155,7 @@ jobs:
           if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Installed application smoke timed out' }
           if ($app.ExitCode -ne 0) { throw "Smoke failed: $($app.ExitCode)" }
           Get-Content $env:PREMIDI_SMOKE_OUTPUT
+          if (!(Get-Content $env:PREMIDI_SMOKE_OUTPUT -Raw | ConvertFrom-Json).passed) { throw 'Previous preview smoke failed' }
           Remove-Item $env:PREMIDI_SMOKE_OUTPUT
           $env:PREMIDI_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'premidi-unexpected-reopen.json'
           $proc = Start-Process $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
@@ -168,6 +170,7 @@ jobs:
           if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Reinstall smoke timed out' }
           if ($app.ExitCode -ne 0) { throw 'Reinstall data preservation failed' }
           Get-Content $env:PREMIDI_SMOKE_OUTPUT
+          if (!(Get-Content $env:PREMIDI_SMOKE_OUTPUT -Raw | ConvertFrom-Json).passed) { throw 'Upgraded preview smoke failed' }
           $proc = Start-Process $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
           if ($proc.ExitCode -ne 0) { throw 'Current preview reinstall failed' }
           $env:PREMIDI_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'premidi-reinstalled-smoke.json'
@@ -175,6 +178,7 @@ jobs:
           if (!$app.WaitForExit(120000)) { $app.Kill(); throw 'Current reinstall timed out' }
           if ($app.ExitCode -ne 0) { throw 'Current reinstall lost saved data' }
           Get-Content $env:PREMIDI_SMOKE_OUTPUT
+          if (!(Get-Content $env:PREMIDI_SMOKE_OUTPUT -Raw | ConvertFrom-Json).passed) { throw 'Reinstalled preview smoke failed' }
       - name: Collect required artifacts and checksums
         run: python scripts/package-desktop.py ${{ matrix.target }}
       - name: Windows portable isolation, relocation, copy and failure recovery

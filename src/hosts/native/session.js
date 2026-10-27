@@ -4,6 +4,8 @@ import {planSynthVoice} from '../../dsp/synth-voice.js';
 
 export const nativeEnabled=()=>!!globalThis.__TAURI__?.core?.invoke&&(localStorage.getItem('premidi-audio-backend')||'native')==='native';
 export const nativeRequest=request=>globalThis.__TAURI__.core.invoke('native_audio',{request});
+let transportEpoch=0;
+export async function cancelNativeTransport(){transportEpoch++;return nativeRequest({action:'control',command:1,looping:false,owner:null});}
 export function unsupportedNativeFeatures(patch){
  if(patch?.type!=='synth')return ['sample/recording playback'];
  return [patch.noise!==0&&'noise',patch.effects.drive!==0&&'effects.drive',patch.effects.delayMix!==0&&'effects.delayMix',
@@ -50,6 +52,7 @@ export async function auditionNative(instrument,notes,{duration=.24}={}){
  return nativeRequest({action:'play',data:Array.from(encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true});
 }
 export async function playNative(document,events,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0}={}){
+ const epoch=++transportEpoch;
  // Validate every audible instruction before publishing any of the session.
  // No catch here may route an unsupported project to the browser backend.
  const plans=nativePlans(events),unit=60/document.bpm/4;
@@ -58,16 +61,22 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
  if(!steps)throw Error('Add a Beat clip before playing this Song');
  if(!Number.isFinite(cycle)||cycle>600)throw Error('Native preview supports music up to 10 minutes');
  const info=await ensureNativeOutput(),data=Array.from(encodeNativeSession(plans,info.sampleRate));
+ if(epoch!==transportEpoch)throw Error('Native playback request cancelled');
+ let {owner}=await nativeRequest({action:'begin'});
+ if(epoch!==transportEpoch)throw Error('Native playback request cancelled');
  const loops=()=>typeof loop==='function'?loop():loop;
- await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,startStep*unit),cycle-unit),looping:!!loops(),preview:false});
- let stopped=false,paused=false,polling=false,timer,lastLoop=!!loops();
+ await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,startStep*unit),cycle-unit),looping:!!loops(),preview:false,owner});
+ if(epoch!==transportEpoch){await nativeRequest({action:'control',command:1,looping:false,owner});throw Error('Native playback request cancelled');}
+ let stopped=false,paused=false,polling=false,seeks=0,seekGeneration=0,timer,lastLoop=!!loops();
  const finish=()=>{if(stopped)return;stopped=true;clearInterval(timer);onStop();};
  const reportError=message=>{globalThis.dispatchEvent?.(new CustomEvent('premidi-native-error',{detail:message}));finish();};
  async function tick(){
-  if(stopped||polling)return;polling=true;
+  if(stopped||polling||seeks)return;polling=true;
   try{
-   if(!!loops()!==lastLoop){lastLoop=!!loops();await nativeRequest({action:'control',command:0,looping:lastLoop});}
+   if(!!loops()!==lastLoop){lastLoop=!!loops();await nativeRequest({action:'control',command:0,looping:lastLoop,owner});}
    const status=await nativeRequest({action:'status'});
+   if(stopped||seeks)return;
+   if(status.owner!==owner){finish();return;}
    if(status.deviceLost){reportError('Native audio output changed or disconnected. Select the output again in Settings.');return;}
    if(status.fault){reportError('Native playback stopped: callback capacity exceeded ('+status.fault+'). Reduce note density.');return;}
    if(status.state===3||status.state===0){finish();return;}
@@ -79,10 +88,16 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
  timer=setInterval(()=>void tick(),40);
  return {
   backend:'native-cpp',get paused(){return paused;},
-  async pause(){await nativeRequest({action:'control',command:2,looping:!!loops()});paused=true;},
-  async resume(){await nativeRequest({action:'control',command:3,looping:!!loops()});paused=false;},
-  async seek(step){await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,step*unit),cycle-unit),looping:!!loops(),preview:false});paused=false;},
-  async stop(){if(stopped)return;finish();await nativeRequest({action:'control',command:1,looping:false});},
+  async pause(){await nativeRequest({action:'control',command:2,looping:!!loops(),owner});paused=true;},
+  async resume(){await nativeRequest({action:'control',command:3,looping:!!loops(),owner});paused=false;},
+  async seek(step){
+   const generation=++seekGeneration;seeks++;
+   try{
+    const claim=await nativeRequest({action:'begin'});if(stopped||generation!==seekGeneration)return;owner=claim.owner;
+    await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,step*unit),cycle-unit),looping:!!loops(),preview:false,owner});paused=false;
+   }finally{seeks--;}
+  },
+  async stop(){if(stopped)return;finish();await nativeRequest({action:'control',command:1,looping:false,owner});},
   get diagnostics(){return {backend:'native-cpp',snapshot:true};}
  };
 }

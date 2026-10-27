@@ -31,7 +31,7 @@
    assert(normalized(info.dataPath)===root+'/data/webview','portable WebView profile is inside the executable folder');
    assert(normalized(info.projectsPath)===root+'/projects'&&normalized(info.exportsPath)===root+'/exports','portable save defaults are inside the executable folder');
   }
-  const {create,id}=await load('schema.js'),{makePatch}=await load('synth.js');
+  const {create,id,upgradeBeatFeatures}=await load('schema.js'),{makePatch}=await load('synth.js');
   const {exportProject,importProject}=await load('packageIO.js');
   const {wav,play}=await load('audio.js');
   const sampler=await load('sampler.js');
@@ -42,6 +42,7 @@
   assert(decoded.length>0&&decoded.numberOfChannels>0,'bundled Ogg recording decodes offline');
   const beat=create();beat.bars=1;const inst=beat.instruments[0];inst.timeline=[inst.chunks[0].id];inst.placements=[null];
   inst.sounds[0].patch=makePatch('touch-keys');inst.chunks[0].notes.push({id:id(),pitch:60,start:0,duration:4,velocity:.8});
+  upgradeBeatFeatures(beat);
   const exported=exportProject(beat),reopened=await importProject(new File([exported.blob],exported.name));
   assert(reopened.instruments[0].chunks[0].notes.length===1,'Beat export and reopen');
   const audio=await wav(beat),data=await audio.arrayBuffer();

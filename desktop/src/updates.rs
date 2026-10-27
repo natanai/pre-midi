@@ -65,7 +65,8 @@ pub async fn download_update(state:State<'_,Pending>)->Result<(),String>{
 pub async fn install_update(app:tauri::AppHandle,state:State<'_,Pending>)->Result<(),String>{
  let (update,bytes)=state.0.lock().map_err(|e|e.to_string())?.take().ok_or("No verified update is ready")?;
  let bytes=bytes.ok_or("Download and verify the update first")?;
- update.install(bytes).map_err(|e|e.to_string())?;
+ crate::audio::shutdown(&app);
+ if let Err(error)=update.install(bytes){crate::audio::cancel_shutdown(&app);return Err(error.to_string());}
  // Windows exits inside Tauri after launching NSIS. macOS/AppImage stage a
  // replacement using the framework's backup/restore flow; never relaunch.
  app.exit(0);Ok(())

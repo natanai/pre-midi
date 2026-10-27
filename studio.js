@@ -4,7 +4,7 @@ import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, auditionChord, wav, primeSamples, nativeEnabled } from "./audio.js";
+import { play, audition, auditionChord, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
@@ -222,6 +222,7 @@ async function finalizeVocalTake(){
 }
 function stop() {
  playbackGeneration++;
+ if(window.__TAURI__)void cancelNativeTransport().catch(error=>console.warn('Native stop:',error));
  if(vocalTake&&!playback)void finalizeVocalTake();
  if (playback) playback.stop();
  playback = null;
@@ -238,6 +239,7 @@ function commitChange(before){
  history.push(before);
  if(history.length>100)history.shift();
  future=[];store();render();
+ if(playback?.backend==='native-cpp')message('restart playback to hear edits');
  return true;
 }
 function modify(change){
@@ -1104,7 +1106,7 @@ async function startTransport({onStart=null,recording=false,startStep=null}={}){
   setPlaybackButton(true,playingSong);
  } catch (error) {
   if(vocalTake)void finalizeVocalTake();
-  message("Playback error: " + error.message, true);
+  if(generation===playbackGeneration)message("Playback error: " + error.message, true);
  }
  finally { pendingPlay = false; }
 }
@@ -1113,7 +1115,8 @@ window.addEventListener('premidi-audio-mode',()=>stop());
 window.addEventListener('premidi-native-error',event=>message(String(event.detail),true));
 window.addEventListener('premidi-native-pause',async()=>{
  if(!playback?.pause)return;
- try{if(playback.paused)await playback.resume();else await playback.pause();setPlaybackButton(true);}
+ const current=playback;
+ try{if(current.paused)await current.resume();else await current.pause();if(playback===current)setPlaybackButton(true);}
  catch(error){message('Native audio: '+String(error),true);}
 });
 // Voice capture opens a separate dialog; permissions come after explicit Play + Record.

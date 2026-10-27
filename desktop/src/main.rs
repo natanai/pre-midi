@@ -55,7 +55,8 @@ async fn native_fixture()->Result<Vec<f32>,String>{
 fn smoke_result(app:tauri::AppHandle,result:serde_json::Value)->Result<(),String>{
  let output=std::env::var("PREMIDI_SMOKE_OUTPUT").map_err(|_|"Smoke mode is disabled")?;
  std::fs::write(output,serde_json::to_vec_pretty(&result).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
- close_app(&app,if result["passed"]==true{0}else{1})
+ if result["passed"]!=true{audio::shutdown(&app);app.exit(1);return Ok(());}
+ close_app(&app,0)
 }
 fn main(){
  tauri::Builder::default()

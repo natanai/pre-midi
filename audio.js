@@ -15,7 +15,7 @@ import {planSynthVoice,noteFrequency} from "./src/dsp/synth-voice.js";
 import {attachModulation} from "./src/hosts/web/modulation.js";
 import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
 import {nativeEnabled,auditionNative,playNative} from "./src/hosts/native/session.js";
-export {nativeEnabled};
+export {nativeEnabled,cancelNativeTransport} from './src/hosts/native/session.js';
 // Canonical plans are shared by native desktop playback and the web adapter.
 // Offline WAV export retains the web adapter in this native device milestone.
 // Everything audible comes from the resolved sound patch stored in the beat.
