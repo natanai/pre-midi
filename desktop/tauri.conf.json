@@ -17,7 +17,8 @@
         "label": "main",
         "title": "pre-midi",
         "width": 1440,
-        "height": 940
+        "height": 940,
+        "create": false
       }
     ],
     "security": {
@@ -26,7 +27,13 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis",
+      "dmg",
+      "app",
+      "appimage",
+      "deb"
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser"
@@ -36,7 +43,18 @@
       "infoPlist": "Info.plist"
     },
     "icon": [
-      "icons/icon.png"
+      "icons/icon.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "requireSignedVersion": true,
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

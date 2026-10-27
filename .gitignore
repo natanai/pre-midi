@@ -15,3 +15,6 @@ benchmarks/onsets.latest.json
 benchmarks/automation.latest.json
 
 desktop/target/
+
+desktop/ci-config.json
+desktop/gen/

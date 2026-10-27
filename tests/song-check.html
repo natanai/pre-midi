@@ -20,8 +20,9 @@
    frame.onerror=()=>reject(Error("Studio iframe failed to load"));
   });
   const win=frame.contentWindow,doc=frame.contentDocument,get=id=>frame.contentDocument.getElementById(id);
-  const wavDownloads=[],createUrl=win.URL.createObjectURL.bind(win.URL);
+  const projectDownloads=[],wavDownloads=[],createUrl=win.URL.createObjectURL.bind(win.URL);
   win.URL.createObjectURL=blob=>{
+   if(blob.type!=="audio/wav")projectDownloads.push(blob);
    if(blob.type==="audio/wav"){
     wavDownloads.push(blob);
     // An unrelated asynchronous save can replace transient export status text.
@@ -121,11 +122,13 @@
   assert(get("export-form").querySelector('input[name="export-format"]:checked').value==="premidi","premidi is default format");
   assert(get("export-form").querySelector('input[name="export-scope"]:checked').value==="song","expanded Song selects Song export");
   get("export-form").querySelector('input[name="export-scope"][value="beat"]').click();
+  const beatProjectCount=projectDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>get("status").textContent.includes("Exported beat"),"Beat premidi exported");
+  await wait(()=>projectDownloads.length>beatProjectCount,"Beat premidi exported");
   get("export").click();
+  const songProjectCount=projectDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-  await wait(()=>get("status").textContent.includes("Exported song"),"Song premidi exported");
+  await wait(()=>projectDownloads.length>songProjectCount,"Song premidi exported");
   get("export").click();
   get("export-form").querySelector('input[name="export-format"][value="wav"]').click();
   const songDownload=wavDownloads.length;

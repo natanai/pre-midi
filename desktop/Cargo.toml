@@ -1,13 +1,21 @@
 [package]
 name = "pre-midi-desktop"
-version = "0.1.0"
+version = "0.14.1-preview.1"
 edition = "2021"
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "=2.7.4", features = [] }
+cc = "1"
 
 [dependencies]
-tauri = { version = "2", features = [] }
-tauri-plugin-dialog = "2"
-tauri-plugin-updater = "2"
+tauri = { version = "=2.12.5", features = [] }
+tauri-plugin-dialog = "=2.8.3"
+tauri-plugin-updater = "=2.14.0"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+semver = "1"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+
+[[bin]]
+name = "pre-midi"
+path = "src/main.rs"
