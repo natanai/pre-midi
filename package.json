@@ -1,6 +1,6 @@
 {
   "name": "pre-midi",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "benchmark:native": "node scripts/audio-benchmark.mjs --suite native",
     "native:render": "node native/bridge.mjs",
     "benchmark:modulation": "node scripts/audio-benchmark.mjs --suite modulation",
-    "benchmark:onsets": "node scripts/audio-benchmark.mjs --suite onsets"
+    "benchmark:onsets": "node scripts/audio-benchmark.mjs --suite onsets",
+    "benchmark:automation": "node scripts/audio-benchmark.mjs --suite automation"
   }
 }

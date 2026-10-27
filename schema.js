@@ -3,9 +3,12 @@
 export const FORMAT = "pre-midi";
 export const VERSION = 7;
 export const MODULATION_BEAT_VERSION=9;
-export const BEAT_VERSIONS=[VERSION,MODULATION_BEAT_VERSION];
+export const AUTOMATION_BEAT_VERSION=11;
+import {validateCutoffAutomation} from "./src/dsp/automation.js";
+export const requiresAutomationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>inst?.automation!==undefined);
+export const BEAT_VERSIONS=[VERSION,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION];
 export const requiresModulationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>Array.isArray(inst?.sounds)&&inst.sounds.some(sound=>sound?.patch?.version===2||sound?.patch?.modulation!==undefined));
-export function upgradeBeatFeatures(doc){if(requiresModulationFormat(doc))doc.version=MODULATION_BEAT_VERSION;return doc;}
+export function upgradeBeatFeatures(doc){if(requiresAutomationFormat(doc))doc.version=AUTOMATION_BEAT_VERSION;else if(requiresModulationFormat(doc)&&doc.version<MODULATION_BEAT_VERSION)doc.version=MODULATION_BEAT_VERSION;return doc;}
 import {placementFor,STEPS_PER_BAR} from "./arrangement.js";
 import {MAX_SOUNDS,MAX_EVENTS,canConvertToRack,convertToRack} from "./soundModel.js";
 import { makePatch, validatePatch } from "./synth.js";
@@ -41,9 +44,10 @@ const text=(x,max)=>typeof x==="string"&&!!x.trim()&&x.length<=max;
 const within=(x,low,high)=>typeof x==="number"&&Number.isFinite(x)&&x>=low&&x<=high;
 export function validate(doc) {
  const errors=[];
+ if(doc?.version!==AUTOMATION_BEAT_VERSION&&requiresAutomationFormat(doc))errors.push("Timeline automation requires Beat v11.");
  if(doc?.version===VERSION&&requiresModulationFormat(doc))errors.push("Modulated sounds require Beat v9.");
  if(!object(doc)||doc.format!==FORMAT||!BEAT_VERSIONS.includes(doc.version))
-  return ["Unsupported .premidi file. Supported Beat formats are pre-midi v7 and v9."];
+  return ["Unsupported .premidi file. Supported Beat formats are pre-midi v7, v9 and v11."];
  if(!text(doc.id,128)||!text(doc.title,100))errors.push("Beat needs an ID and title.");
  if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
  if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
@@ -65,6 +69,7 @@ export function validate(doc) {
   }
   if(ids.has(instrument.id))errors.push("Instrument IDs must be distinct.");
   ids.add(instrument.id);
+  errors.push(...validateCutoffAutomation(instrument.automation,instrument,doc.bars));
   if(!within(instrument.volume,0,1)) errors.push("Invalid instrument volume.");
   if(!["pitched","rack"].includes(instrument.layout)||instrument.patch!==undefined)
    errors.push("Invalid instrument layout.");

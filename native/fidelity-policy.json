@@ -61,7 +61,7 @@
       48000,
       96000
     ],
-    "nativeSelfTest": "400 waveform/filter/rate/extreme profiles plus three 16-route v2 profiles across five block sizes"
+    "nativeSelfTest": "400 waveform/filter/rate/extreme profiles plus three v2 and three v3 maximum-route profiles, each at five block sizes"
   },
   "unsupported": [
     "noise",
@@ -103,5 +103,12 @@
     "worker": "ASan/UBSan self-test passed with ASAN_OPTIONS=detect_leaks=0",
     "limitation": "LeakSanitizer cannot inspect /proc/task under this worker sandbox; no leak-sanitizer pass is claimed"
   },
-  "onsetInvestigation": "docs/native-onset-investigation.json"
+  "onsetInvestigation": "docs/native-onset-investigation.json",
+  "automation": {
+    "executionPlanVersion": 3,
+    "target": "filter.cutoff",
+    "curve": "Up to six compiled absolute-time exponential points, before per-note cutoff modulation",
+    "persistence": "docs/automation-contract.json",
+    "scope": "Only patches already supported by the native profile; legacy sweep/tone/noise/drive/delay remain rejected"
+  }
 }

@@ -128,7 +128,7 @@ frame.addEventListener("load",async()=>{
   check("saved rack has reachable recorded sample controls",!!d.querySelector(".rack-name"));
   $("new").click();await waitFor(()=>$("status").textContent==="Saved locally","latest draft save before reload");
   const reloaded=new Promise(resolve=>frame.addEventListener("load",resolve,{once:true}));w.location.reload();await reloaded;
-  d=frame.contentDocument;await delay(150);captureExports();w.confirm=()=>true;
+  d=frame.contentDocument;captureExports();w.confirm=()=>true;
   await choose($("add-instrument"),"My complete rack");
   const afterReload=await score();
   check("rack preset survives reload with companion WAV available",afterReload.samples.length===1&&afterReload.instruments[1].sounds.length===4);
