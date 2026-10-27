@@ -2,7 +2,7 @@ import {resolveEvent} from "./soundModel.js";
 import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
 import {putAsset,getAsset,MAX_ASSET_BYTES} from "./assetRegistry.js";
 import { validateMovement, validateBend, movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
-import {driveCurve,validateSampleTone} from "./audioEffects.js";
+import {configureDriveShaper,validateSampleTone} from "./audioEffects.js";
 // The only durable sample asset representation is the beat's samples array.
 // Browser library URLs are staging inputs; .premidi files hold relative audio paths.
 export const MAX_SAMPLE_BYTES=MAX_ASSET_BYTES;
@@ -180,7 +180,7 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache)
  }
  if((patch.drive??0)>0){
   const shaper=context.createWaveShaper(),compensation=context.createGain();
-  shaper.curve=driveCurve(patch.drive);shaper.oversample="none";
+  configureDriveShaper(shaper,patch.drive);
   compensation.gain.value=1/(1+patch.drive*1.1);
   signal.connect(shaper);shaper.connect(compensation);signal=compensation;
   toneNodes.push(shaper,compensation);

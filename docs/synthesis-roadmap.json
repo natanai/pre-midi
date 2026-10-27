@@ -1,0 +1,607 @@
+{
+  "schema_version": 1,
+  "program_id": "pre-midi-professional-synthesis",
+  "title": "Professional native-first synthesis and DSP",
+  "updated_on": "2026-10-26",
+  "status": "active",
+  "scope": "Synthesizer sound generation, DSP fidelity, quality qualification and cross-host rendering; complements docs/song-rollout.md instead of replacing its Song-specific stages.",
+  "mission": "Deliver professionally viable editable instruments that sound correct in native desktop/mobile production and natively in pre-programmed, while retaining a compatible web studio wherever technically feasible.",
+  "sources_of_truth": {
+    "terminology": "docs/terminology.json",
+    "song_roadmap": "docs/song-rollout.md",
+    "sound_schema": "synth.js",
+    "beat_schema": "schema.js",
+    "current_audio": "audio.js",
+    "game_integration": "https://github.com/natanai/pre-programmed/issues/235"
+  },
+  "platform_policy": {
+    "priority_order": [
+      "desktop_native",
+      "mobile_native",
+      "pre_programmed_native",
+      "web"
+    ],
+    "primary_targets": [
+      "desktop_native",
+      "mobile_native"
+    ],
+    "web": "maintain_when_feasible; never constrain native audio quality to Web Audio or web packaging limits",
+    "professional_quality_gate": "native reference implementations must pass acoustic and CPU benchmarks even if web support requires an explicit degraded mode",
+    "portability": "portable patch/automation/event semantics with host-specific DSP implementations verified by reference fixtures",
+    "real_time": "avoid allocation, blocking I/O, locks and GC-sensitive work in audio callback",
+    "backwards_compatibility": "version schema when interpretation changes; maintain documented migrations and legacy reads",
+    "data_storage": "store audio bytes as external assets; keep .premidi files declarative and inspectable"
+  },
+  "architectural_decisions": [
+    {
+      "id": "ARCH-001",
+      "decision": "Separate platform-neutral synth graph and parameter/event semantics from the current Web Audio voice implementation.",
+      "status": "proposed"
+    },
+    {
+      "id": "ARCH-002",
+      "decision": "Prototype suitable portable DSP engines/frameworks for native desktop/mobile before committing to C++, Rust, JUCE, WebAssembly or another specific toolchain.",
+      "status": "proposed"
+    },
+    {
+      "id": "ARCH-003",
+      "decision": "Use shared test fixtures and reference audio analysis to establish host parity; bit-identical floating-point samples are not assumed across implementations.",
+      "status": "proposed"
+    },
+    {
+      "id": "ARCH-004",
+      "decision": "Introduce a new versioned synth patch schema only when its meaning changes; do not break existing v7 Beat/v8 Song imports.",
+      "status": "accepted"
+    },
+    {
+      "id": "ARCH-005",
+      "decision": "Web compatibility is best effort without silent sound substitutions; capabilities and unsupported features must be detectable.",
+      "status": "accepted"
+    }
+  ],
+  "baseline": {
+    "synth_oscillators": 2,
+    "oscillator_types": [
+      "sine",
+      "triangle",
+      "square",
+      "sawtooth",
+      "harmonic_32"
+    ],
+    "filter_stages": 1,
+    "filter_types": [
+      "lowpass",
+      "highpass",
+      "bandpass",
+      "notch"
+    ],
+    "current_effects": [
+      "waveshaping_drive",
+      "delay"
+    ],
+    "current_hosts": [
+      "web_audio"
+    ],
+    "limitations": [
+      "no_general_modulation_matrix",
+      "no_polyphony_budget",
+      "no_native_host",
+      "no_general_wavetable_morphing",
+      "no_granular_engine",
+      "limited_fx_routing",
+      "no_audio_quality_benchmarks"
+    ],
+    "audit_files": [
+      "synth.js",
+      "audio.js",
+      "sampler.js",
+      "audioEffects.js",
+      "soundAnalysis.js",
+      "synthMatch.js",
+      "expression.js",
+      "tests/audio-check.html"
+    ]
+  },
+  "verification_policy": {
+    "must_pass": [
+      "npm run check",
+      "browser regression checks on compatible PRs",
+      "focused DSP measurement gates"
+    ],
+    "thresholds": "document test inputs, reference hardware and tolerances before claiming an objective performance metric",
+    "non_goals": [
+      "claim state-of-the-art quality on feature count alone",
+      "silently replace native sounds with samples",
+      "sacrifice native DSP to preserve browser support"
+    ]
+  },
+  "phases": [
+    {
+      "id": "quality",
+      "order": 1,
+      "title": "Sound-quality foundation",
+      "gate_task_ids": [
+        "SYN-003",
+        "SYN-004",
+        "SYN-005"
+      ]
+    },
+    {
+      "id": "architecture",
+      "order": 2,
+      "title": "Host-independent DSP and native audio",
+      "gate_task_ids": [
+        "SYN-006",
+        "SYN-007"
+      ]
+    },
+    {
+      "id": "modulation",
+      "order": 3,
+      "title": "Expressive modulation and automation",
+      "gate_task_ids": [
+        "SYN-009",
+        "SYN-010"
+      ]
+    },
+    {
+      "id": "synthesis",
+      "order": 4,
+      "title": "Expanded sound-generation methods",
+      "gate_task_ids": [
+        "SYN-011",
+        "SYN-012",
+        "SYN-013",
+        "SYN-014"
+      ]
+    },
+    {
+      "id": "effects",
+      "order": 5,
+      "title": "Professional signal processing",
+      "gate_task_ids": [
+        "SYN-015"
+      ]
+    },
+    {
+      "id": "professional",
+      "order": 6,
+      "title": "Performance and reconstruction tools",
+      "gate_task_ids": [
+        "SYN-016",
+        "SYN-017"
+      ]
+    },
+    {
+      "id": "delivery",
+      "order": 7,
+      "title": "Native applications, game integration and qualification",
+      "gate_task_ids": [
+        "SYN-018",
+        "SYN-019",
+        "SYN-020",
+        "SYN-021"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "SYN-001",
+      "phase": "quality",
+      "priority": "P0",
+      "status": "in_progress",
+      "title": "Correct note-off and envelope state",
+      "depends_on": [],
+      "deliverables": [
+        "envelope.js",
+        "audio.js",
+        "tests/audioQuality.test.js"
+      ],
+      "acceptance": [
+        "An early release begins from the actual attack/decay level, with no jump to sustain.",
+        "Long notes retain intended ADSR durations.",
+        "Synth preview and offline rendering use the same envelope contract."
+      ]
+    },
+    {
+      "id": "SYN-002",
+      "phase": "quality",
+      "priority": "P0",
+      "status": "in_progress",
+      "title": "Oversampled nonlinear drive",
+      "depends_on": [],
+      "deliverables": [
+        "audioEffects.js",
+        "audio.js",
+        "sampler.js",
+        "tests/audioQuality.test.js"
+      ],
+      "acceptance": [
+        "Distortion on synth and sampler uses 4x oversampled WaveShaper where supported.",
+        "Spectrum benchmarks quantify aliasing at representative pitches and drive settings.",
+        "Native DSP backend reproduces equivalent anti-aliasing behavior."
+      ]
+    },
+    {
+      "id": "SYN-003",
+      "phase": "quality",
+      "priority": "P0",
+      "status": "planned",
+      "title": "Measured audio quality regression harness",
+      "depends_on": [
+        "SYN-001",
+        "SYN-002"
+      ],
+      "deliverables": [
+        "tests/audio-quality/",
+        "scripts/audio-benchmark.mjs"
+      ],
+      "acceptance": [
+        "Automated tests measure alias-to-signal energy, DC offset, peaks, attack/release discontinuities and RMS.",
+        "Reference renders and threshold metadata are versioned; regressions fail CI.",
+        "Test results distinguish browser/device variance from DSP defects."
+      ]
+    },
+    {
+      "id": "SYN-004",
+      "phase": "quality",
+      "priority": "P0",
+      "status": "planned",
+      "title": "Polyphony and shared voice lifecycle",
+      "depends_on": [
+        "SYN-003"
+      ],
+      "deliverables": [
+        "src/dsp/voice-manager",
+        "tests/voice-lifecycle"
+      ],
+      "acceptance": [
+        "Voice budget and stealing policy are explicit and deterministic.",
+        "32 sustained voices are glitch-free on a specified desktop reference configuration.",
+        "Stop/seek/loop cannot leak oscillators or drop shared delay tails."
+      ]
+    },
+    {
+      "id": "SYN-005",
+      "phase": "quality",
+      "priority": "P1",
+      "status": "planned",
+      "title": "Master headroom, monitoring and export fidelity",
+      "depends_on": [
+        "SYN-003"
+      ],
+      "deliverables": [
+        "audio.js",
+        "tests/render-format"
+      ],
+      "acceptance": [
+        "Peak/RMS and true-peak measurement report clipping rather than concealing it.",
+        "16-/24-bit PCM and 32-bit float output paths are specified, with dithering where appropriate.",
+        "Export sample-rate conversion meets a measured fidelity target."
+      ]
+    },
+    {
+      "id": "SYN-006",
+      "phase": "architecture",
+      "priority": "P0",
+      "status": "planned",
+      "title": "Host-neutral synth graph and versioned DSP contracts",
+      "depends_on": [
+        "SYN-001",
+        "SYN-002"
+      ],
+      "deliverables": [
+        "src/dsp/",
+        "docs/dsp-contract.schema.json"
+      ],
+      "acceptance": [
+        "Patch interpretation requires no DOM, microphone, IndexedDB or window object.",
+        "Parameter identifiers and units are stable and versioned, with explicit migration.",
+        "The same canonical events and patch semantics feed standalone, game and optional web renderers."
+      ]
+    },
+    {
+      "id": "SYN-007",
+      "phase": "architecture",
+      "priority": "P0",
+      "status": "planned",
+      "title": "Real-time native DSP host design",
+      "depends_on": [
+        "SYN-006"
+      ],
+      "deliverables": [
+        "native/",
+        "tests/host-parity"
+      ],
+      "acceptance": [
+        "Choose and document a maintained native DSP toolchain and mobile/desktop audio-device adapters based on prototypes.",
+        "Audio callback performs no unbounded allocation, I/O, locks or UI work.",
+        "Device sample-rate, buffer-size, underrun and suspend/resume behavior is tested."
+      ]
+    },
+    {
+      "id": "SYN-008",
+      "phase": "architecture",
+      "priority": "P1",
+      "status": "planned",
+      "title": "Web host compatibility adapter",
+      "depends_on": [
+        "SYN-006"
+      ],
+      "deliverables": [
+        "src/hosts/web/",
+        "tests/web-compatibility"
+      ],
+      "acceptance": [
+        "Web support may fall back only through declared and user-visible compatibility modes.",
+        "Web limitations cannot reduce native synthesis capability or corrupt native patches.",
+        "Unsupported capabilities do not silently render as a different instrument."
+      ]
+    },
+    {
+      "id": "SYN-009",
+      "phase": "modulation",
+      "priority": "P0",
+      "status": "planned",
+      "title": "General modulation matrix",
+      "depends_on": [
+        "SYN-006"
+      ],
+      "deliverables": [
+        "src/dsp/modulation/",
+        "tests/modulation"
+      ],
+      "acceptance": [
+        "Velocity, key tracking, envelopes and LFOs can target multiple supported synthesis parameters.",
+        "Bipolar/unipolar ranges, depth, polarity and modulation rate are explicit.",
+        "Modulation is deterministic under offline rendering and gameplay control."
+      ]
+    },
+    {
+      "id": "SYN-010",
+      "phase": "modulation",
+      "priority": "P0",
+      "status": "planned",
+      "title": "Sample-accurate automation and smoothing",
+      "depends_on": [
+        "SYN-006",
+        "SYN-009"
+      ],
+      "deliverables": [
+        "src/dsp/automation/",
+        "tests/automation"
+      ],
+      "acceptance": [
+        "Parameter changes during sustained notes are smooth and free of zipper noise.",
+        "Beat definition, Song override and game state commands have an explicit precedence contract.",
+        "Recorded movements survive native project round-trip."
+      ]
+    },
+    {
+      "id": "SYN-011",
+      "phase": "synthesis",
+      "priority": "P1",
+      "status": "planned",
+      "title": "Morphing wavetable and phase modulation",
+      "depends_on": [
+        "SYN-006",
+        "SYN-009"
+      ],
+      "deliverables": [
+        "src/dsp/oscillators/",
+        "tests/wavetable"
+      ],
+      "acceptance": [
+        "Interpolation is continuous; band-limiting avoids obvious aliasing.",
+        "Frequency/phase modulation is available with independently routable depths.",
+        "Original harmonic patches retain sound identity via migrations."
+      ]
+    },
+    {
+      "id": "SYN-012",
+      "phase": "synthesis",
+      "priority": "P1",
+      "status": "planned",
+      "title": "Expanded filters and routing",
+      "depends_on": [
+        "SYN-006",
+        "SYN-009"
+      ],
+      "deliverables": [
+        "src/dsp/filters/",
+        "tests/filters"
+      ],
+      "acceptance": [
+        "Multiple filter stages may run serially or in parallel.",
+        "Ladder, comb and formant options are benchmarked for resonance and stability.",
+        "Extreme modulation does not generate NaNs, runaway gain or unstable feedback."
+      ]
+    },
+    {
+      "id": "SYN-013",
+      "phase": "synthesis",
+      "priority": "P1",
+      "status": "planned",
+      "title": "Granular, spectral and transient models",
+      "depends_on": [
+        "SYN-006",
+        "SYN-011"
+      ],
+      "deliverables": [
+        "src/dsp/granular/",
+        "src/dsp/spectral/"
+      ],
+      "acceptance": [
+        "Grain scheduling and time-varying partials are project-portable.",
+        "Attacks, sustained harmonics and noise can evolve independently.",
+        "Native playback does not require retaining entire long recordings in memory."
+      ]
+    },
+    {
+      "id": "SYN-014",
+      "phase": "synthesis",
+      "priority": "P1",
+      "status": "planned",
+      "title": "Production-ready multisampling and time stretch",
+      "depends_on": [
+        "SYN-006",
+        "SYN-007"
+      ],
+      "deliverables": [
+        "src/dsp/sampling/",
+        "tests/sampling"
+      ],
+      "acceptance": [
+        "Sustain loops and crossfades are supported.",
+        "Independent pitch and time adjustment has measurable quality limits.",
+        "External asset paths remain portable, verified and separate from .premidi JSON."
+      ]
+    },
+    {
+      "id": "SYN-015",
+      "phase": "effects",
+      "priority": "P1",
+      "status": "planned",
+      "title": "Routable professional effects",
+      "depends_on": [
+        "SYN-006",
+        "SYN-009"
+      ],
+      "deliverables": [
+        "src/dsp/effects/",
+        "tests/effects"
+      ],
+      "acceptance": [
+        "Chorus, reverb, EQ, compressors and upgraded delay have predictable tails.",
+        "Per-voice and shared-bus effects are distinct to bound CPU cost.",
+        "Effect routing is versioned, bypassable, automatable and recallable."
+      ]
+    },
+    {
+      "id": "SYN-016",
+      "phase": "professional",
+      "priority": "P1",
+      "status": "planned",
+      "title": "MIDI, MPE and expressive performance",
+      "depends_on": [
+        "SYN-009",
+        "SYN-010"
+      ],
+      "deliverables": [
+        "src/inputs/midi/",
+        "tests/expression"
+      ],
+      "acceptance": [
+        "Velocity can shape timbre, not only gain.",
+        "MIDI note input, sustain and pitch-bend behavior are verified.",
+        "Where supported, independent per-note expression is preserved in native files."
+      ]
+    },
+    {
+      "id": "SYN-017",
+      "phase": "professional",
+      "priority": "P1",
+      "status": "planned",
+      "title": "Objective synth conversion and comparison",
+      "depends_on": [
+        "SYN-011",
+        "SYN-013",
+        "SYN-014"
+      ],
+      "deliverables": [
+        "soundAnalysis.js",
+        "synthMatch.js",
+        "tests/conversion"
+      ],
+      "acceptance": [
+        "Fit time-varying harmonics and transients, not only averaged spectra.",
+        "Report perceptual/audio error and disclose irreducible mismatch.",
+        "Test several pitch ranges, velocities, attacks and noisy sources."
+      ]
+    },
+    {
+      "id": "SYN-018",
+      "phase": "delivery",
+      "priority": "P0",
+      "status": "planned",
+      "title": "Native desktop reference application",
+      "depends_on": [
+        "SYN-007",
+        "SYN-004",
+        "SYN-010"
+      ],
+      "deliverables": [
+        "desktop/",
+        "tests/desktop"
+      ],
+      "acceptance": [
+        "Standalone desktop works without browser/network runtime.",
+        "Offline render and device playback match canonical DSP fixtures.",
+        "Can save and reopen .premidi plus external audio assets."
+      ]
+    },
+    {
+      "id": "SYN-019",
+      "phase": "delivery",
+      "priority": "P1",
+      "status": "planned",
+      "title": "Native mobile host and lifecycle",
+      "depends_on": [
+        "SYN-007",
+        "SYN-018"
+      ],
+      "deliverables": [
+        "mobile/",
+        "tests/mobile"
+      ],
+      "acceptance": [
+        "Suspend/resume and device-rate changes preserve voice state or terminate safely.",
+        "Audio remains responsive under representative mobile CPU and thermal constraints.",
+        "Touch editing uses same native project semantics."
+      ]
+    },
+    {
+      "id": "SYN-020",
+      "phase": "delivery",
+      "priority": "P0",
+      "status": "planned",
+      "title": "pre-programmed playback and control parity",
+      "depends_on": [
+        "SYN-006",
+        "SYN-010"
+      ],
+      "deliverables": [
+        "cross-repo/fixtures/",
+        "pre-programmed integration"
+      ],
+      "acceptance": [
+        "The game engine loads versioned native patch and Song definitions.",
+        "Game state modulates documented parameters without a second music script language.",
+        "Matched reference renders prove interpretation parity and preserve legacy files."
+      ]
+    },
+    {
+      "id": "SYN-021",
+      "phase": "delivery",
+      "priority": "P0",
+      "status": "planned",
+      "title": "Professional release qualification",
+      "depends_on": [
+        "SYN-003",
+        "SYN-004",
+        "SYN-005",
+        "SYN-018",
+        "SYN-020"
+      ],
+      "deliverables": [
+        "benchmarks/",
+        "release/qualification.json"
+      ],
+      "acceptance": [
+        "Document low-latency performance on reference desktop and mobile devices.",
+        "Prove project round-trip, crash recovery, stable rendering and tested polyphony.",
+        "Publish measured limitations and regressions without claiming fidelity from mere feature existence."
+      ]
+    }
+  ]
+}

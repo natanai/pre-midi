@@ -7,7 +7,8 @@ import { strumOffset } from "./guitarTiming.js";
 import { movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
 import {setOscillatorWave} from "./harmonics.js";
 import {validatePatch} from "./synth.js";
-import {driveCurve} from "./audioEffects.js";
+import {configureDriveShaper} from "./audioEffects.js";
+import {scheduleAmplitudeEnvelope} from "./envelope.js";
 // One synthesis engine for live transport, pitch preview and offline WAV output.
 // Everything audible comes from the resolved sound patch stored in the beat.
 export const secondsPerStep = doc => 60/doc.bpm/4;
@@ -88,24 +89,13 @@ function soundNote(ctx,destination,instrument,event,start,duration,beat) {
  let signal=filter;
  if(patch.effects.drive>0){
   const shaper=add(ctx.createWaveShaper());
-  shaper.curve=driveCurve(patch.effects.drive);
-  shaper.oversample="none";
+  configureDriveShaper(shaper,patch.effects.drive);
   const compensation=add(ctx.createGain());
   compensation.gain.value=1/(1+patch.effects.drive*1.1);
   signal.connect(shaper);shaper.connect(compensation);signal=compensation;
  }
  const amp=add(ctx.createGain());
- const attack=Math.min(env.attack,Math.max(.003,(off-start)*.8));
- const attackEnd=start+Math.max(.002,attack);
- const decayEnd=Math.min(off,attackEnd+env.decay);
- amp.gain.setValueAtTime(0,start);
- amp.gain.linearRampToValueAtTime(peak,attackEnd);
- const sustain=peak*env.sustain;
- if(decayEnd>attackEnd)amp.gain.linearRampToValueAtTime(sustain,decayEnd);
- else if(off>attackEnd)amp.gain.setValueAtTime(peak,off);
- const atOff=decayEnd<=attackEnd?peak:sustain;
- amp.gain.setValueAtTime(atOff,off);
- amp.gain.linearRampToValueAtTime(.000001,end);
+ scheduleAmplitudeEnvelope(amp.gain,{start,off,peak,envelope:env});
  signal.connect(amp);
  const pan=add(ctx.createStereoPanner());
  pan.pan.value=patch.pan;

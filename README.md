@@ -1,6 +1,6 @@
 # pre-midi
 
-A local-first Beat maker and Song arranger for the [pre-programmed](https://github.com/natanai/pre-programmed) game engine.
+A local-first Beat maker and Song arranger for the [pre-programmed](https://github.com/natanai/pre-programmed) game engine. Native desktop and mobile are the primary long-term deployment targets; the current browser studio remains supported without defining the ceiling for audio quality.
 
 [Open the web studio](https://natanai.github.io/pre-midi/) · [Native format and roadmap](docs/song-rollout.md)
 
@@ -40,6 +40,7 @@ The source files have no generated bundles committed to Git. Browser audio is bu
 
 - [Canonical terminology](docs/terminology.json) — Sound, Rack, Instrument, Chunk, Beat, Song, Track, Clip, Recording, Asset.
 - [Song rollout and integration gates](docs/song-rollout.md).
+- [Machine-readable native-first synthesis roadmap](docs/synthesis-roadmap.json).
 - [Sound-conversion method](docs/synth-conversion.md).
 - [Sample provenance and checksums](docs/sample-sources.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 - [Studio interface rules for contributors and agents](AGENTS.md).
