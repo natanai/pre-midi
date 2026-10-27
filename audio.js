@@ -106,15 +106,15 @@ const pulse=add(ctx.createGain());
  dry.gain.value=1-mixAmount*.4;
  pan.connect(dry);dry.connect(destination);
  if(mixAmount>0){
-  if(session)pan.connect(session.delay(fx,plan.graphEnd));
-  else{
+  if(!session){
    const send=add(ctx.createGain()),delay=add(ctx.createDelay(1.2)),feedback=add(ctx.createGain()),wet=add(ctx.createGain());
    send.gain.value=mixAmount*.55;delay.delayTime.value=fx.delayTime;feedback.gain.value=fx.delayFeedback;wet.gain.value=.8;
    pan.connect(send);send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination);
   }
  }
  const voice=ownVoice(ctx,{sources,nodes,gate,start,release:off,end:session?plan.graphEnd:plan.audibleEnd});
- return session?session.adopt(voice):voice;
+ if(session){session.adopt(voice);if(voice.admitted&&mixAmount>0)pan.connect(session.delay(fx,voice));}
+ return voice;
 }
 function eventOffset(instrument,note,notes){
  if(instrument.layout==="rack")return 0;
@@ -223,7 +223,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
   const current=read();
   if(!loops()&&scheduled>=(current.kind==="song"?songDurationSteps(current):current.bars*16)&&ctx.currentTime>=Math.max(nextTime,session.end))stop();
  }
- timer=setInterval(tick,25);tick();return {stop,get diagnostics(){return {voices:session.voices.size,buses:session.buses.size,steals:session.steals,limit:session.allocator.limit};}};
+ timer=setInterval(tick,25);tick();return {stop,get diagnostics(){return session.diagnostics;}};
 }
 function pcmWav(buffer) {
  const ch=Math.min(2,buffer.numberOfChannels),size=buffer.length*ch*2;

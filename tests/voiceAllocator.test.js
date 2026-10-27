@@ -49,3 +49,20 @@ test("tail duration follows feedback rather than a fixed timeout",()=>{
  assert.equal(delayTailSeconds({delayMix:1,delayTime:1,delayFeedback:0}),1.02);
  assert.throws(()=>new VoiceAllocator(0));
 });
+
+test("incoming low-priority voice cannot evict a full pool of higher-priority vocals",()=>{
+ const pool=new VoiceAllocator(2);
+ pool.admit({start:0,release:5,end:5,priority:1});pool.admit({start:0,release:5,end:5,priority:1});
+ const before=structuredClone(pool.records),incoming=pool.admit({start:1,release:2,end:3,priority:0});
+ assert.equal(incoming.status,"rejected");assert.equal(incoming.id,null);assert.deepEqual(incoming.steals,[]);
+ assert.deepEqual(pool.records,before);assert.equal(pool.rejected,1);assert.equal(pool.stolen,0);assert.equal(pool.admitted,2);
+});
+test("future priority conflict rolls back earlier candidate steals atomically",()=>{
+ const pool=new VoiceAllocator(1);
+ pool.admit({start:0,release:.5,end:1,priority:0});pool.admit({start:2,release:4,end:5,priority:1});
+ const before=structuredClone(pool.records);
+ assert.equal(pool.admit({start:.2,release:4,end:6,priority:0}).status,"rejected");
+ assert.deepEqual(pool.records,before);assert.equal(pool.stolen,0);
+ const high=pool.admit({start:.2,release:4,end:6,priority:2});
+ assert.equal(high.status,"admitted");assert.equal(high.steals.length,2);
+});

@@ -1,5 +1,6 @@
 import {scheduleNote,scheduleSynthPlan,play,audition} from "../../audio.js";
 import {planSynthVoice} from "../../src/dsp/synth-voice.js";
+import {delayTailSeconds} from "../../src/dsp/effect-tail.js";
 import {VoiceSession} from "../../src/hosts/web/voice-session.js";
 import {scheduleSample} from "../../sampler.js";
 import {scheduleVocal} from "../../songAudio.js";
@@ -65,6 +66,36 @@ export async function runVoiceBenchmark(){
    {pitch:69,velocity:1},0,1,null,new Map([["audio",buffer]]),session);
   session.stop(.2);const data=(await ctx.startRendering()).getChannelData(0),tail=signalStats(data.subarray(.25*48000)).rms;
   add("stop/"+type,{tail,disposed:voice.disposed},{silence:tail<.000002,disposed:voice.disposed});
+ }
+ // Priority protection must also reject/dispose an incoming already-built graph.
+ {
+  const ctx=context(1.2),session=new VoiceSession(ctx,ctx.destination,{maxVoices:1});
+  const buffer=ctx.createBuffer(1,48000,48000);buffer.getChannelData(0).fill(.1);
+  scheduleVocal(ctx,ctx.destination,{recording:{id:"protected",trimSeconds:0,durationSeconds:1},clip:{lengthSteps:8,gain:1}},0,.125,new Map([["protected",buffer]]),{session});
+  const patch=cleanPatch();patch.effects.delayMix=.8;patch.envelope.release=4;
+  const rejected=scheduleNote(ctx,ctx.destination,{patch,volume:.5},{pitch:69,velocity:1},.1,.2,null,session);
+  const diagnostics=session.diagnostics,end=session.end,data=(await ctx.startRendering()).getChannelData(0);
+  add("priority/reject-lower-synth",{diagnostics,end,rms:signalStats(data.subarray(9600,19200)).rms},
+   {rejected:!rejected.admitted&&rejected.disposed,protected:diagnostics.rejected===1&&diagnostics.stolen===0,noRejectedBus:diagnostics.buses===0,noStaleEnd:end<1.1,audible:signalStats(data.subarray(9600,19200)).rms>.01});
+ }
+ for(const delay of [false,true]){
+  const ctx=context(2),session=new VoiceSession(ctx,ctx.destination,{maxVoices:1}),patch=cleanPatch();patch.envelope.release=4;
+  if(delay)patch.effects={drive:0,delayMix:.8,delayTime:.1,delayFeedback:.3};
+  const old=scheduleNote(ctx,ctx.destination,{patch,volume:.3},{pitch:69,velocity:1},0,.2,null,session);
+  const short=cleanPatch();short.envelope.release=.01;
+  scheduleNote(ctx,ctx.destination,{patch:short,volume:.1},{pitch:72,velocity:1},.1,.05,null,session);
+  const end=session.end,data=(await ctx.startRendering()).getChannelData(0);
+  add("completion/stolen-long-release/"+delay,{end,oldEnd:old.end,tailRms:signalStats(data.subarray(48000)).rms},
+   {shortened:Math.abs(end-Math.max(.322,delay?.105+delayTailSeconds(patch.effects):0))<1e-9,fadePreserved:Math.abs(old.end-.105)<1e-9,silentAfterBound:signalStats(data.subarray(48000)).rms<.000002,
+    ...(delay?{realEcho:signalStats(data.subarray(11040,13440)).rms>.0001}:{})});
+ }
+ {
+  const ctx=context(2),session=new VoiceSession(ctx,ctx.destination,{maxVoices:4}),long=cleanPatch(),short=cleanPatch();long.envelope.release=4;short.envelope.release=.01;
+  for(let i=0;i<128;i++)scheduleNote(ctx,ctx.destination,{patch:long,volume:.01},{pitch:60+i%12,velocity:.5},i*.005,.1,null,session);
+  for(let i=0;i<4;i++)scheduleNote(ctx,ctx.destination,{patch:short,volume:.01},{pitch:60+i,velocity:.5},.7+i*.005,.05,null,session);
+  const end=session.end,diagnostics=session.diagnostics,data=(await ctx.startRendering()).getChannelData(0);
+  add("completion/dense-long-releases",{end,diagnostics,after:signalStats(data.subarray(48000))},
+   {bound:end<1,stolen:diagnostics.stolen===128,finite:signalStats(data).nonFinite===0,silent:signalStats(data.subarray(48000)).rms<.000002});
  }
  // 32 sustained expressive voices run on the real-time graph and are captured
  // inside AudioWorklet. Device-driver underruns are not observable here.

@@ -60,7 +60,20 @@
     "stealFadeSeconds": 0.005,
     "physicalOverlap": "Retiring sources can overlap replacements for the 5 ms fade; the logical voice budget excludes that bounded-duration transition",
     "stop": "Stops owned oscillators, LFOs, noise, sample and vocal sources, cancels future starts, fades wet buses and disconnects after an audio-time deadline",
-    "sustain": "Current authored gate/release only; MIDI sustain pedal is unimplemented and remains in SYN-016"
+    "sustain": "Current authored gate/release only; MIDI sustain pedal is unimplemented and remains in SYN-016",
+    "admission": "Atomic interval reservation: reject the complete incoming voice if any overlap would require stealing a higher-priority voice; no partial candidate steals are committed on rejection. Equal-priority stealing remains release-first/oldest/stable.",
+    "completion": "Computed from current live/retiring voice ends and per-voice shared-bus tail contributions; cancelled-before-start voices contribute no tail. Completed source contributions remain until their real echo deadline.",
+    "diagnostics": [
+      "admitted",
+      "rejected",
+      "stolen",
+      "active",
+      "queued",
+      "retiring",
+      "voices",
+      "buses",
+      "limit"
+    ]
   },
   "compatibility": {
     "unchangedPersistence": [
