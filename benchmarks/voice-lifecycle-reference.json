@@ -16,7 +16,7 @@
       "id": "shared-delay/glass-keys",
       "metrics": {
         "max": 1.1175870895385742e-8,
-        "rms": 8.425197271832927e-10
+        "rms": 8.940051264940739e-10
       },
       "checks": {
         "compatible": true
@@ -27,7 +27,7 @@
       "id": "shared-delay/neon-lead",
       "metrics": {
         "max": 1.1175870895385742e-8,
-        "rms": 8.420598315076166e-10
+        "rms": 8.740722523464055e-10
       },
       "checks": {
         "compatible": true
@@ -37,8 +37,8 @@
     {
       "id": "shared-delay/glass-portamento",
       "metrics": {
-        "max": 2.2351741790771484e-8,
-        "rms": 1.2956461000066437e-9
+        "max": 1.4901161193847656e-8,
+        "rms": 1.1387046600796561e-9
       },
       "checks": {
         "compatible": true
@@ -49,7 +49,7 @@
       "id": "shared-delay/harmonic-keys",
       "metrics": {
         "max": 1.4901161193847656e-8,
-        "rms": 1.0984466060404242e-9
+        "rms": 1.0558658729854843e-9
       },
       "checks": {
         "compatible": true
@@ -59,8 +59,8 @@
     {
       "id": "contract/serialized-voice-replay",
       "metrics": {
-        "max": 0,
-        "rms": 0
+        "max": 3.725290298461914e-9,
+        "rms": 6.577225163252177e-10
       },
       "checks": {
         "identical": true
@@ -227,18 +227,18 @@
     {
       "id": "realtime/32-expressive-voices",
       "metrics": {
-        "setupMs": 45,
+        "setupMs": 36.69999999925494,
         "sampleRate": 48000,
         "baseLatency": 0.010020833333333333,
         "outputLatency": 0.032,
-        "dc": -0.000012162661532177783,
-        "rms": 0.006715088964959066,
-        "peak": 0.02180907130241394,
-        "maxStep": 0.00181831163354218,
+        "dc": -0.000012399348561795402,
+        "rms": 0.006715698931859872,
+        "peak": 0.02180938608944416,
+        "maxStep": 0.0018340832903049886,
         "nonFinite": 0,
         "clipped": 0,
         "silentBlocks": 0,
-        "minBlockRms": 0.00236698668814179,
+        "minBlockRms": 0.0023391339513032846,
         "remaining": 0,
         "qualification": "browser render-graph capture only; output device latency, driver underruns and native callback deadlines remain unqualified"
       },
@@ -255,13 +255,13 @@
     {
       "id": "realtime/32-voices-16-routes",
       "metrics": {
-        "setupMs": 6510.800000000279,
-        "cleanupMs": 20.300000000279397,
+        "setupMs": 3450.2999999998137,
+        "cleanupMs": 52.200000000186265,
         "preparation": "Audio clock suspended during graph preparation; setupMs is startup cost, not callback CPU",
-        "dc": -0.0000017772896052411132,
-        "rms": 0.002753313414915888,
-        "peak": 0.012784432619810104,
-        "maxStep": 0.0004074154421687126,
+        "dc": -0.0000016374719191366202,
+        "rms": 0.0027491095087648454,
+        "peak": 0.012749713845551014,
+        "maxStep": 0.0004126005806028843,
         "nonFinite": 0,
         "clipped": 0,
         "silentBlocks": 0,
@@ -295,13 +295,13 @@
     {
       "id": "realtime/64-voices-16-routes",
       "metrics": {
-        "setupMs": 9992.600000000093,
-        "cleanupMs": 57.299999999813735,
+        "setupMs": 6324.399999999441,
+        "cleanupMs": 44.80000000074506,
         "preparation": "Audio clock suspended during graph preparation; setupMs is startup cost, not callback CPU",
-        "dc": 0.0000026701354501312835,
-        "rms": 0.005413820941547654,
-        "peak": 0.024397309869527817,
-        "maxStep": 0.0008086934685707092,
+        "dc": 0.0000027279314453683884,
+        "rms": 0.005412016582753614,
+        "peak": 0.024393606930971146,
+        "maxStep": 0.0008116494864225388,
         "nonFinite": 0,
         "clipped": 0,
         "silentBlocks": 0,
@@ -314,7 +314,7 @@
           "rejected": 0,
           "steals": 0,
           "stolen": 0,
-          "active": 0,
+          "active": 64,
           "queued": 0,
           "retiring": 0
         },
@@ -391,13 +391,13 @@
     }
   ],
   "suitePolicy": null,
-  "measuredAt": "2026-10-27T13:32:27.895Z",
+  "measuredAt": "2026-10-27T14:08:38.953Z",
   "source": {
-    "commit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
+    "commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
     "tag": null,
-    "baseCommit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
+    "baseCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "0e1b887523c5312c1b27d2520eb751ed9c43cc9e77abb9f2f68cecf8756ad2c9"
+    "runtimeAndFixtureSha256": "212d5177fe6791bc40f4021827821608b36c4c5b0bd3aa7d7c2f84d61b647cca"
   },
   "host": {
     "os": "linux",

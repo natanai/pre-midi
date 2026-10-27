@@ -76,7 +76,7 @@
     }
   },
   "summary": {
-    "cases": 64,
+    "cases": 214,
     "failed": 0,
     "status": "pass"
   },
@@ -3088,6 +3088,3306 @@
       "status": "pass"
     },
     {
+      "id": "v2/44100/sum-positive-clamp",
+      "metrics": {
+        "max": 6.984919309616089e-8,
+        "rms": 1.4872147510901413e-8,
+        "stats": {
+          "dc": 0.0000020779241675397854,
+          "rms": 0.01981895881779864,
+          "peak": 0.042471323162317276,
+          "maxStep": 0.001986882707569748,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/sum-negative-clamp",
+      "metrics": {
+        "max": 1.4202669262886047e-8,
+        "rms": 3.6386787262308515e-9,
+        "stats": {
+          "dc": 0.000001374906848078453,
+          "rms": 0.0030855531743653195,
+          "peak": 0.006387136876583099,
+          "maxStep": 0.00047605503641534597,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/cancel",
+      "metrics": {
+        "max": 4.470348358154297e-8,
+        "rms": 7.060159843293271e-9,
+        "stats": {
+          "dc": 0.000002344100687880888,
+          "rms": 0.008642744053094358,
+          "peak": 0.020585786551237106,
+          "maxStep": 0.0011555628152564168,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/bipolar-velocity",
+      "metrics": {
+        "max": 1.4435499906539917e-8,
+        "rms": 3.0998893104913657e-9,
+        "stats": {
+          "dc": 7.622326809256454e-7,
+          "rms": 0.00411519912819142,
+          "peak": 0.008966540917754173,
+          "maxStep": 0.0004325095796957612,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/lfo-bipolar",
+      "metrics": {
+        "max": 1.0244548320770264e-7,
+        "rms": 2.856463156834995e-8,
+        "stats": {
+          "dc": 0.0000021674880188846234,
+          "rms": 0.00864396478535069,
+          "peak": 0.023676110431551933,
+          "maxStep": 0.0011832115123979747,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/lfo-unipolar-negative",
+      "metrics": {
+        "max": 6.938353180885315e-8,
+        "rms": 1.0085394698323221e-8,
+        "stats": {
+          "dc": 0.000002450559440239297,
+          "rms": 0.009210277640454212,
+          "peak": 0.024060357362031937,
+          "maxStep": 0.0012830666964873672,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/envelope-release",
+      "metrics": {
+        "max": 5.681067705154419e-8,
+        "rms": 1.0126261089925833e-8,
+        "stats": {
+          "dc": 0.00000242677317031107,
+          "rms": 0.013082601858857434,
+          "peak": 0.041057080030441284,
+          "maxStep": 0.001984158850973472,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/bipolar-envelope",
+      "metrics": {
+        "max": 1.8812716007232666e-7,
+        "rms": 7.281447793234669e-8,
+        "stats": {
+          "dc": 0.000002267567214579669,
+          "rms": 0.008649748707948064,
+          "peak": 0.02366648241877556,
+          "maxStep": 0.0012223854719195515,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/keytrack-low",
+      "metrics": {
+        "max": 8.568167686462402e-8,
+        "rms": 1.3912407178157303e-8,
+        "stats": {
+          "dc": 0.00003030391176405426,
+          "rms": 0.00861821086636554,
+          "peak": 0.02059035748243332,
+          "maxStep": 0.00028900085817440413,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/keytrack-high",
+      "metrics": {
+        "max": 5.960464477539063e-8,
+        "rms": 1.3846573906388387e-8,
+        "stats": {
+          "dc": 2.307297865013092e-7,
+          "rms": 0.008629140507905123,
+          "peak": 0.021924147382378578,
+          "maxStep": 0.004849842400290072,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/pan-clamp",
+      "metrics": {
+        "max": 6.146728992462158e-8,
+        "rms": 9.967370480171364e-9,
+        "stats": {
+          "dc": 0.0000026639110056170817,
+          "rms": 0.008642744052884859,
+          "peak": 0.029112698510289192,
+          "maxStep": 0.02911269851028919,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/filter-clamp",
+      "metrics": {
+        "max": 4.470348358154297e-8,
+        "rms": 6.783363173251787e-9,
+        "stats": {
+          "dc": 0.000001765269250775937,
+          "rms": 0.008427582669921694,
+          "peak": 0.019858364015817642,
+          "maxStep": 0.0011100316187366843,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/pitch-clamp",
+      "metrics": {
+        "max": 5.4016709327697754e-8,
+        "rms": 1.0205292954554763e-8,
+        "stats": {
+          "dc": 0.000001058970098740708,
+          "rms": 0.010059096910934139,
+          "peak": 0.02571028098464012,
+          "maxStep": 0.0034395288676023483,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/silent-oscillator",
+      "metrics": {
+        "max": 7.310882210731506e-8,
+        "rms": 9.325124352763102e-9,
+        "stats": {
+          "dc": 0.000002358762925444482,
+          "rms": 0.010051968670704493,
+          "peak": 0.036465514451265335,
+          "maxStep": 0.0024107947247102857,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/expression-plus-modulation",
+      "metrics": {
+        "max": 7.916241884231567e-8,
+        "rms": 1.742705340824546e-8,
+        "stats": {
+          "dc": 0.0000015082925777589645,
+          "rms": 0.008661049677999825,
+          "peak": 0.023858364671468735,
+          "maxStep": 0.0012627397663891315,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/maximum-16",
+      "metrics": {
+        "max": 1.7881393432617188e-7,
+        "rms": 4.062846163864994e-8,
+        "stats": {
+          "dc": 0.0000021854387535166775,
+          "rms": 0.01389617912500732,
+          "peak": 0.06131785362958908,
+          "maxStep": 0.03926863893866539,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/preset/evolving-glass",
+      "metrics": {
+        "max": 1.1478550732135773e-7,
+        "rms": 2.2242048054735766e-8,
+        "stats": {
+          "dc": -0.00001239973906838359,
+          "rms": 0.01838055301840381,
+          "peak": 0.04101357236504555,
+          "maxStep": 0.0030037446413189173,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/preset/breath-lead",
+      "metrics": {
+        "max": 0.0000010007061064243317,
+        "rms": 5.939198396016082e-8,
+        "stats": {
+          "dc": 9.16368445268619e-8,
+          "rms": 0.013018639483559009,
+          "peak": 0.051169782876968384,
+          "maxStep": 0.020752410870045424,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/preset/touch-keys",
+      "metrics": {
+        "max": 2.2057793103158474e-7,
+        "rms": 2.0369264299808347e-8,
+        "stats": {
+          "dc": -3.576389359642213e-7,
+          "rms": 0.011712067904099807,
+          "peak": 0.04108109325170517,
+          "maxStep": 0.0074589988216757774,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sine/416",
+      "metrics": {
+        "max": 2.126907929778099e-7,
+        "rms": 4.5096257949398806e-8,
+        "stats": {
+          "dc": 0.0000016299633678911922,
+          "rms": 0.019324761332923646,
+          "peak": 0.0458323173224926,
+          "maxStep": 0.0030084700556471944,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sine/441",
+      "metrics": {
+        "max": 6.891787052154541e-8,
+        "rms": 1.3821944814578309e-8,
+        "stats": {
+          "dc": -0.0000046987268226341885,
+          "rms": 0.019314272171257193,
+          "peak": 0.04582124203443527,
+          "maxStep": 0.0007520738581661135,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sine/480",
+      "metrics": {
+        "max": 2.1024607121944427e-7,
+        "rms": 4.541053935952245e-8,
+        "stats": {
+          "dc": 0.0000016299633678911922,
+          "rms": 0.019324761332923646,
+          "peak": 0.0458323173224926,
+          "maxStep": 0.0030084700556471944,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sine/416.25",
+      "metrics": {
+        "max": 2.1205050870776176e-7,
+        "rms": 4.181092235760537e-8,
+        "stats": {
+          "dc": 0.0000016303304051577344,
+          "rms": 0.01932476181723816,
+          "peak": 0.045832354575395584,
+          "maxStep": 0.0030084812315180898,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sine/441.5",
+      "metrics": {
+        "max": 2.2910535335540771e-7,
+        "rms": 4.851366436504004e-8,
+        "stats": {
+          "dc": 0.0000016310851825170215,
+          "rms": 0.019324763457200928,
+          "peak": 0.04583224654197693,
+          "maxStep": 0.003008182276971638,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sine/480.75",
+      "metrics": {
+        "max": 2.1856976673007011e-7,
+        "rms": 4.9036397506847364e-8,
+        "stats": {
+          "dc": 0.0000016303245565399488,
+          "rms": 0.01932476178387212,
+          "peak": 0.045832354575395584,
+          "maxStep": 0.0030085250036790967,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/triangle/416",
+      "metrics": {
+        "max": 2.2724270820617676e-7,
+        "rms": 4.121622190021302e-8,
+        "stats": {
+          "dc": 0.000001335225131580476,
+          "rms": 0.01578259142995687,
+          "peak": 0.045439090579748154,
+          "maxStep": 0.0025919824838638306,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/triangle/441",
+      "metrics": {
+        "max": 6.183981895446777e-7,
+        "rms": 2.2178047782183847e-8,
+        "stats": {
+          "dc": -0.0000035857084060310277,
+          "rms": 0.015772406786183548,
+          "peak": 0.04573102295398712,
+          "maxStep": 0.000647466629743576,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/triangle/480",
+      "metrics": {
+        "max": 2.3469328880310059e-7,
+        "rms": 4.1662115757447255e-8,
+        "stats": {
+          "dc": 0.000001335225131580476,
+          "rms": 0.01578259142995687,
+          "peak": 0.045439090579748154,
+          "maxStep": 0.0025919824838638306,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/triangle/416.25",
+      "metrics": {
+        "max": 1.825392246246338e-7,
+        "rms": 3.7414299880272955e-8,
+        "stats": {
+          "dc": 0.0000013355152735366782,
+          "rms": 0.015782592154560345,
+          "peak": 0.04544005170464516,
+          "maxStep": 0.0025925375521183014,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/triangle/441.5",
+      "metrics": {
+        "max": 2.3469328880310059e-7,
+        "rms": 4.43211705410483e-8,
+        "stats": {
+          "dc": 0.000001336194822408322,
+          "rms": 0.015782593643741377,
+          "peak": 0.04544017091393471,
+          "maxStep": 0.0025922097265720367,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/triangle/480.75",
+      "metrics": {
+        "max": 2.1606683731079102e-7,
+        "rms": 4.3958988355116405e-8,
+        "stats": {
+          "dc": 0.0000013354943640108126,
+          "rms": 0.0157825919180767,
+          "peak": 0.04543725773692131,
+          "maxStep": 0.0025922246277332306,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/square/416",
+      "metrics": {
+        "max": 0.000006468035280704498,
+        "rms": 3.380158938335695e-7,
+        "stats": {
+          "dc": 0.000001713325985856324,
+          "rms": 0.023123384691293717,
+          "peak": 0.05537279322743416,
+          "maxStep": 0.05503292381763458,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/square/441",
+      "metrics": {
+        "max": 0.00006439629942178726,
+        "rms": 0.0000023195551019374315,
+        "stats": {
+          "dc": -0.000006330188652893245,
+          "rms": 0.02316133426223027,
+          "peak": 0.05526631325483322,
+          "maxStep": 0.05464870482683182,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/square/480",
+      "metrics": {
+        "max": 0.000006904825568199158,
+        "rms": 3.3671956598893e-7,
+        "stats": {
+          "dc": 0.000001713325985856324,
+          "rms": 0.023123384691293717,
+          "peak": 0.05537279322743416,
+          "maxStep": 0.05503292381763458,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/square/416.25",
+      "metrics": {
+        "max": 0.000004435889422893524,
+        "rms": 2.1203565300278686e-7,
+        "stats": {
+          "dc": 0.0000017151242050819076,
+          "rms": 0.02312337953276376,
+          "peak": 0.05530459061264992,
+          "maxStep": 0.055054547265172005,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/square/441.5",
+      "metrics": {
+        "max": 0.000005140900611877441,
+        "rms": 2.8540375656534644e-7,
+        "stats": {
+          "dc": 0.0000017154215498043643,
+          "rms": 0.023123382363181493,
+          "peak": 0.05533616617321968,
+          "maxStep": 0.05510649271309376,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/square/480.75",
+      "metrics": {
+        "max": 0.00000483635812997818,
+        "rms": 2.7356657045122253e-7,
+        "stats": {
+          "dc": 0.0000017150840690669537,
+          "rms": 0.02312337969354303,
+          "peak": 0.055368535220623016,
+          "maxStep": 0.05507796257734299,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sawtooth/416",
+      "metrics": {
+        "max": 0.000005368143320083618,
+        "rms": 2.34914152969157e-7,
+        "stats": {
+          "dc": 7.983140664018842e-7,
+          "rms": 0.01333990793062095,
+          "peak": 0.05426257103681564,
+          "maxStep": 0.05440828017890453,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sawtooth/441",
+      "metrics": {
+        "max": 0.00006409920752048492,
+        "rms": 0.0000016796486563783074,
+        "stats": {
+          "dc": -0.000004634349918649017,
+          "rms": 0.013401926094879415,
+          "peak": 0.05497344583272934,
+          "maxStep": 0.05425347946584225,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sawtooth/480",
+      "metrics": {
+        "max": 0.00000696815550327301,
+        "rms": 2.5227279918191526e-7,
+        "stats": {
+          "dc": 7.983140664018842e-7,
+          "rms": 0.01333990793062095,
+          "peak": 0.05426257103681564,
+          "maxStep": 0.05440828017890453,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sawtooth/416.25",
+      "metrics": {
+        "max": 0.000004307366907596588,
+        "rms": 1.4898066451204216e-7,
+        "stats": {
+          "dc": 7.9933165346256e-7,
+          "rms": 0.013339898517088764,
+          "peak": 0.05424468591809273,
+          "maxStep": 0.05441973730921745,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sawtooth/441.5",
+      "metrics": {
+        "max": 0.000005129724740982056,
+        "rms": 1.9805341738447989e-7,
+        "stats": {
+          "dc": 8.007501364931609e-7,
+          "rms": 0.013339902501495717,
+          "peak": 0.054188333451747894,
+          "maxStep": 0.05443296581506729,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/sawtooth/480.75",
+      "metrics": {
+        "max": 0.000004737637937068939,
+        "rms": 1.9322344774406113e-7,
+        "stats": {
+          "dc": 8.000970582341889e-7,
+          "rms": 0.013339900359789271,
+          "peak": 0.05423388630151749,
+          "maxStep": 0.054436780512332916,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/harmonic/416",
+      "metrics": {
+        "max": 0.0000010346993803977966,
+        "rms": 7.965551374702468e-8,
+        "stats": {
+          "dc": 0.000001010568278237827,
+          "rms": 0.014280767969023365,
+          "peak": 0.04604610800743103,
+          "maxStep": 0.014403957407921553,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/harmonic/441",
+      "metrics": {
+        "max": 3.91155481338501e-7,
+        "rms": 3.264145805216675e-8,
+        "stats": {
+          "dc": -0.0000018764334514146354,
+          "rms": 0.014236954650564428,
+          "peak": 0.045832373201847076,
+          "maxStep": 0.003594049601815641,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/harmonic/480",
+      "metrics": {
+        "max": 9.755603969097137e-7,
+        "rms": 7.955494156306891e-8,
+        "stats": {
+          "dc": 0.000001010568278237827,
+          "rms": 0.014280767969023365,
+          "peak": 0.04604610800743103,
+          "maxStep": 0.014403957407921553,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/harmonic/416.25",
+      "metrics": {
+        "max": 9.739305824041367e-7,
+        "rms": 7.12312196904103e-8,
+        "stats": {
+          "dc": 0.0000010109124051698914,
+          "rms": 0.01428076785508089,
+          "peak": 0.046045828610658646,
+          "maxStep": 0.014399456791579723,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/harmonic/441.5",
+      "metrics": {
+        "max": 0.0000010939547792077065,
+        "rms": 8.424215136049319e-8,
+        "stats": {
+          "dc": 0.0000010112531925958885,
+          "rms": 0.014280768513208137,
+          "peak": 0.046042393893003464,
+          "maxStep": 0.014399333856999874,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/harmonic/480.75",
+      "metrics": {
+        "max": 0.0000010349322110414505,
+        "rms": 8.32474231016613e-8,
+        "stats": {
+          "dc": 0.0000010108442873643986,
+          "rms": 0.014280768006581684,
+          "peak": 0.046045683324337006,
+          "maxStep": 0.014398477505892515,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/44100/offset/expression",
+      "metrics": {
+        "max": 5.960464477539063e-8,
+        "rms": 1.5525650192142264e-8,
+        "stats": {
+          "dc": 0.0000015082925827085956,
+          "rms": 0.008661049678106655,
+          "peak": 0.023858364671468735,
+          "maxStep": 0.0012627397663891315,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/sum-positive-clamp",
+      "metrics": {
+        "max": 4.470348358154297e-8,
+        "rms": 8.069393188174387e-9,
+        "stats": {
+          "dc": 0.0000020822381772380493,
+          "rms": 0.019819362503721422,
+          "peak": 0.04247241094708443,
+          "maxStep": 0.0018255329923704267,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/sum-negative-clamp",
+      "metrics": {
+        "max": 7.2177499532699585e-9,
+        "rms": 1.5937193764403876e-9,
+        "stats": {
+          "dc": 0.000001380573048562493,
+          "rms": 0.003085756760940759,
+          "peak": 0.006387556903064251,
+          "maxStep": 0.0004374201234895736,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/cancel",
+      "metrics": {
+        "max": 2.1420419216156006e-8,
+        "rms": 3.274720321445663e-9,
+        "stats": {
+          "dc": 0.000002344724921720471,
+          "rms": 0.008642982068501746,
+          "peak": 0.020586548373103142,
+          "maxStep": 0.0010617408261168748,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/bipolar-velocity",
+      "metrics": {
+        "max": 1.210719347000122e-8,
+        "rms": 1.997039498121314e-9,
+        "stats": {
+          "dc": 7.622920159067027e-7,
+          "rms": 0.004115280000539844,
+          "peak": 0.008966784924268723,
+          "maxStep": 0.0003973876446252689,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/lfo-bipolar",
+      "metrics": {
+        "max": 6.007030606269836e-8,
+        "rms": 2.082017508043933e-8,
+        "stats": {
+          "dc": 0.0000021680880915939363,
+          "rms": 0.008644204139092816,
+          "peak": 0.023681243881583214,
+          "maxStep": 0.0010872977509279735,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/lfo-unipolar-negative",
+      "metrics": {
+        "max": 8.381903171539307e-8,
+        "rms": 9.54294340014821e-9,
+        "stats": {
+          "dc": 0.000002451020481073825,
+          "rms": 0.009210417432346133,
+          "peak": 0.024066725745797157,
+          "maxStep": 0.0011788660776801407,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/envelope-release",
+      "metrics": {
+        "max": 3.5390257835388184e-8,
+        "rms": 5.5549268511075855e-9,
+        "stats": {
+          "dc": 0.00000242743125461524,
+          "rms": 0.013082899625577588,
+          "peak": 0.04106590151786804,
+          "maxStep": 0.0018233061418868601,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/bipolar-envelope",
+      "metrics": {
+        "max": 1.5832483768463135e-7,
+        "rms": 5.49272402062983e-8,
+        "stats": {
+          "dc": 0.000002268139453859023,
+          "rms": 0.008649992374114956,
+          "peak": 0.023666666820645332,
+          "maxStep": 0.0011233558761887252,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/keytrack-low",
+      "metrics": {
+        "max": 8.940696716308594e-8,
+        "rms": 1.754888851717523e-8,
+        "stats": {
+          "dc": 0.00003030208823017039,
+          "rms": 0.008618223312112603,
+          "peak": 0.020590409636497498,
+          "maxStep": 0.00026552053259365493,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/keytrack-high",
+      "metrics": {
+        "max": 4.237517714500427e-8,
+        "rms": 7.150641170458407e-9,
+        "stats": {
+          "dc": 2.3136701331220502e-7,
+          "rms": 0.008632855017862269,
+          "peak": 0.021853141486644745,
+          "maxStep": 0.004465127014555037,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/pan-clamp",
+      "metrics": {
+        "max": 2.9802322387695312e-8,
+        "rms": 4.6126734361899416e-9,
+        "stats": {
+          "dc": 0.000002666187721865647,
+          "rms": 0.008642982070340607,
+          "peak": 0.029113775119185448,
+          "maxStep": 0.029113775119185444,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/filter-clamp",
+      "metrics": {
+        "max": 2.0954757928848267e-8,
+        "rms": 3.047788170700498e-9,
+        "stats": {
+          "dc": 0.0000017694940485619938,
+          "rms": 0.008427583849000551,
+          "peak": 0.019858364015817642,
+          "maxStep": 0.0010198633535765111,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/pitch-clamp",
+      "metrics": {
+        "max": 2.9802322387695312e-8,
+        "rms": 7.408855250948942e-9,
+        "stats": {
+          "dc": 0.0000010593290957671155,
+          "rms": 0.010059528121342521,
+          "peak": 0.025719977915287018,
+          "maxStep": 0.0031603886163793504,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/silent-oscillator",
+      "metrics": {
+        "max": 3.073364496231079e-8,
+        "rms": 4.3309017192521136e-9,
+        "stats": {
+          "dc": 0.0000023593655863543496,
+          "rms": 0.01005234389484911,
+          "peak": 0.036459702998399734,
+          "maxStep": 0.002215594577137381,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/expression-plus-modulation",
+      "metrics": {
+        "max": 1.2200325727462769e-7,
+        "rms": 3.6354279105064864e-8,
+        "stats": {
+          "dc": 0.0000015087559164876062,
+          "rms": 0.008661306047930707,
+          "peak": 0.02385897748172283,
+          "maxStep": 0.0011603871826082468,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/maximum-16",
+      "metrics": {
+        "max": 1.601874828338623e-7,
+        "rms": 4.6839422982907265e-8,
+        "stats": {
+          "dc": 0.0000021863908337937364,
+          "rms": 0.01389649048137316,
+          "peak": 0.06132032349705696,
+          "maxStep": 0.03926585987210274,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/preset/evolving-glass",
+      "metrics": {
+        "max": 1.2293457984924316e-7,
+        "rms": 1.8345879337754585e-8,
+        "stats": {
+          "dc": -0.000012421454192467238,
+          "rms": 0.018380880658183794,
+          "peak": 0.04101189598441124,
+          "maxStep": 0.0027604320348473266,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/preset/breath-lead",
+      "metrics": {
+        "max": 0.0000028761569410562515,
+        "rms": 2.0915074879025662e-7,
+        "stats": {
+          "dc": 9.255603732842289e-8,
+          "rms": 0.013020401471143252,
+          "peak": 0.05090091750025749,
+          "maxStep": 0.01917628850787878,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/preset/touch-keys",
+      "metrics": {
+        "max": 1.1362135410308838e-7,
+        "rms": 1.0233696383378613e-8,
+        "stats": {
+          "dc": -3.5730317151733137e-7,
+          "rms": 0.011713114577225998,
+          "peak": 0.04104439541697502,
+          "maxStep": 0.006861252244561911,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sine/416",
+      "metrics": {
+        "max": 5.513429641723633e-7,
+        "rms": 1.3674356434613096e-7,
+        "stats": {
+          "dc": 0.000001633055062411966,
+          "rms": 0.019325650582846805,
+          "peak": 0.04583462327718735,
+          "maxStep": 0.002764205331914127,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sine/441",
+      "metrics": {
+        "max": 1.5366822481155396e-7,
+        "rms": 3.53968680973015e-8,
+        "stats": {
+          "dc": -0.000004674237416122232,
+          "rms": 0.019314323110062544,
+          "peak": 0.045821383595466614,
+          "maxStep": 0.0006915973499417305,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sine/480",
+      "metrics": {
+        "max": 5.967449396848679e-7,
+        "rms": 1.5160648749793076e-7,
+        "stats": {
+          "dc": 0.000001633055026032178,
+          "rms": 0.019325650583026863,
+          "peak": 0.04583462327718735,
+          "maxStep": 0.002764205331914127,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sine/416.25",
+      "metrics": {
+        "max": 5.777692422270775e-7,
+        "rms": 1.4391664019376153e-7,
+        "stats": {
+          "dc": 0.0000016325621380534109,
+          "rms": 0.019325649180320256,
+          "peak": 0.04583458602428436,
+          "maxStep": 0.0027642478235065937,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sine/441.5",
+      "metrics": {
+        "max": 5.473848432302475e-7,
+        "rms": 1.3618468991734423e-7,
+        "stats": {
+          "dc": 0.0000016323751230622875,
+          "rms": 0.01932564870794583,
+          "peak": 0.04583457112312317,
+          "maxStep": 0.0027642217464745045,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sine/480.75",
+      "metrics": {
+        "max": 5.95086021348834e-7,
+        "rms": 1.507881818393832e-7,
+        "stats": {
+          "dc": 0.0000016325630874422163,
+          "rms": 0.019325649153596938,
+          "peak": 0.04583461955189705,
+          "maxStep": 0.002764275064691901,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/triangle/416",
+      "metrics": {
+        "max": 5.252659320831299e-7,
+        "rms": 1.2361263197978865e-7,
+        "stats": {
+          "dc": 0.000001337612338777674,
+          "rms": 0.01578346260391035,
+          "peak": 0.0454699732363224,
+          "maxStep": 0.002434760332107544,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/triangle/441",
+      "metrics": {
+        "max": 1.564621925354004e-7,
+        "rms": 3.24584312126688e-8,
+        "stats": {
+          "dc": -0.000003566438864495951,
+          "rms": 0.015772457834570715,
+          "peak": 0.045736491680145264,
+          "maxStep": 0.0006078146398067474,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/triangle/480",
+      "metrics": {
+        "max": 5.587935447692871e-7,
+        "rms": 1.3643473147419294e-7,
+        "stats": {
+          "dc": 0.0000013376123286721773,
+          "rms": 0.015783462604076075,
+          "peak": 0.0454699732363224,
+          "maxStep": 0.002434760332107544,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/triangle/416.25",
+      "metrics": {
+        "max": 5.364418029785156e-7,
+        "rms": 1.2973572146383674e-7,
+        "stats": {
+          "dc": 0.0000013371718247056574,
+          "rms": 0.01578346133373217,
+          "peak": 0.0454702228307724,
+          "maxStep": 0.002435252070426941,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/triangle/441.5",
+      "metrics": {
+        "max": 4.917383193969727e-7,
+        "rms": 1.2255646428419172e-7,
+        "stats": {
+          "dc": 0.0000013369288313490897,
+          "rms": 0.015783460815996495,
+          "peak": 0.04547170177102089,
+          "maxStep": 0.0024345703423023224,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/triangle/480.75",
+      "metrics": {
+        "max": 5.736947059631348e-7,
+        "rms": 1.3629307797845459e-7,
+        "stats": {
+          "dc": 0.0000013371249502047503,
+          "rms": 0.015783461065296184,
+          "peak": 0.045471563935279846,
+          "maxStep": 0.0024343207478523254,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/square/416",
+      "metrics": {
+        "max": 0.000013730954378843307,
+        "rms": 7.909792079069566e-7,
+        "stats": {
+          "dc": 0.0000017183270246914606,
+          "rms": 0.023138087851457517,
+          "peak": 0.05607976019382477,
+          "maxStep": 0.05307728052139282,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/square/441",
+      "metrics": {
+        "max": 0.000019050203263759613,
+        "rms": 5.756246347105638e-7,
+        "stats": {
+          "dc": -0.000006315250741412829,
+          "rms": 0.023165027484858318,
+          "peak": 0.056074272841215134,
+          "maxStep": 0.05310576315969229,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/square/480",
+      "metrics": {
+        "max": 0.000014870893210172653,
+        "rms": 8.592011971849934e-7,
+        "stats": {
+          "dc": 0.0000017183271055354342,
+          "rms": 0.023138087851837814,
+          "peak": 0.05607976019382477,
+          "maxStep": 0.05307728052139282,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/square/416.25",
+      "metrics": {
+        "max": 0.000012959353625774384,
+        "rms": 7.341021769186694e-7,
+        "stats": {
+          "dc": 0.0000017201437412657572,
+          "rms": 0.02313808901674143,
+          "peak": 0.05607744678854942,
+          "maxStep": 0.053101301193237305,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/square/441.5",
+      "metrics": {
+        "max": 0.000012002885341644287,
+        "rms": 6.844827266814568e-7,
+        "stats": {
+          "dc": 0.0000017172566227755993,
+          "rms": 0.02313809064452272,
+          "peak": 0.05606795847415924,
+          "maxStep": 0.053095719777047634,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/square/480.75",
+      "metrics": {
+        "max": 0.000015538185834884644,
+        "rms": 7.95821948853611e-7,
+        "stats": {
+          "dc": 0.0000017181725396566696,
+          "rms": 0.023138089240278815,
+          "peak": 0.056076109409332275,
+          "maxStep": 0.0530509427189827,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sawtooth/416",
+      "metrics": {
+        "max": 0.000013692770153284073,
+        "rms": 5.639025393548971e-7,
+        "stats": {
+          "dc": 7.990013389773317e-7,
+          "rms": 0.013352175093169806,
+          "peak": 0.05488785728812218,
+          "maxStep": 0.052419958636164665,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sawtooth/441",
+      "metrics": {
+        "max": 0.000018971040844917297,
+        "rms": 4.0924965915346005e-7,
+        "stats": {
+          "dc": -0.000004644217381249385,
+          "rms": 0.013405118580672063,
+          "peak": 0.05577541142702103,
+          "maxStep": 0.05291666369885206,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sawtooth/480",
+      "metrics": {
+        "max": 0.000014823395758867264,
+        "rms": 6.105706870009214e-7,
+        "stats": {
+          "dc": 7.990012975447952e-7,
+          "rms": 0.013352175093275171,
+          "peak": 0.05488785728812218,
+          "maxStep": 0.052419958636164665,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sawtooth/416.25",
+      "metrics": {
+        "max": 0.000011689960956573486,
+        "rms": 5.11983675430045e-7,
+        "stats": {
+          "dc": 8.005939016063379e-7,
+          "rms": 0.013352177096747,
+          "peak": 0.05487815663218498,
+          "maxStep": 0.052456334233284,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sawtooth/441.5",
+      "metrics": {
+        "max": 0.000011393800377845764,
+        "rms": 4.832375846355485e-7,
+        "stats": {
+          "dc": 7.997835756335839e-7,
+          "rms": 0.013352180312548204,
+          "peak": 0.05490505322813988,
+          "maxStep": 0.05246408935636282,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/sawtooth/480.75",
+      "metrics": {
+        "max": 0.000015515368431806564,
+        "rms": 5.636709712508642e-7,
+        "stats": {
+          "dc": 8.012115725329623e-7,
+          "rms": 0.013352175381547472,
+          "peak": 0.05490981414914131,
+          "maxStep": 0.0524214543402195,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/harmonic/416",
+      "metrics": {
+        "max": 0.0000026568304747343063,
+        "rms": 2.350666451356173e-7,
+        "stats": {
+          "dc": 0.000001014052697522405,
+          "rms": 0.01428422246881959,
+          "peak": 0.04608645290136337,
+          "maxStep": 0.013259735889732838,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/harmonic/441",
+      "metrics": {
+        "max": 6.882473826408386e-7,
+        "rms": 6.090916084571211e-8,
+        "stats": {
+          "dc": -0.0000018584312496485367,
+          "rms": 0.014237158361377216,
+          "peak": 0.045834414660930634,
+          "maxStep": 0.00330233306158334,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/harmonic/480",
+      "metrics": {
+        "max": 0.0000028978101909160614,
+        "rms": 2.6029570394969493e-7,
+        "stats": {
+          "dc": 0.000001014052612636233,
+          "rms": 0.01428422246890939,
+          "peak": 0.04608645290136337,
+          "maxStep": 0.013259735889732838,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/harmonic/416.25",
+      "metrics": {
+        "max": 0.00000278279185295105,
+        "rms": 2.45088273213308e-7,
+        "stats": {
+          "dc": 0.00000101381318753352,
+          "rms": 0.014284221357896943,
+          "peak": 0.046084195375442505,
+          "maxStep": 0.013261090498417616,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/harmonic/441.5",
+      "metrics": {
+        "max": 0.000002613058313727379,
+        "rms": 2.3260389544264258e-7,
+        "stats": {
+          "dc": 0.000001013756650331587,
+          "rms": 0.01428422131647687,
+          "peak": 0.046082351356744766,
+          "maxStep": 0.013258612714707851,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/harmonic/480.75",
+      "metrics": {
+        "max": 0.0000029008369892835617,
+        "rms": 2.583148446193023e-7,
+        "stats": {
+          "dc": 0.000001013627018876438,
+          "rms": 0.01428422159430559,
+          "peak": 0.04608557000756264,
+          "maxStep": 0.013259034603834152,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/48000/offset/expression",
+      "metrics": {
+        "max": 1.126900315284729e-7,
+        "rms": 3.528978818415059e-8,
+        "stats": {
+          "dc": 0.0000015087558922344142,
+          "rms": 0.00866130604797844,
+          "peak": 0.02385897748172283,
+          "maxStep": 0.0011603871826082468,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/sum-positive-clamp",
+      "metrics": {
+        "max": 2.1047890186309814e-7,
+        "rms": 4.187656354905765e-8,
+        "stats": {
+          "dc": 0.0000021032977491023297,
+          "rms": 0.019820981275158564,
+          "peak": 0.0424768440425396,
+          "maxStep": 0.0009129380341619253,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/sum-negative-clamp",
+      "metrics": {
+        "max": 1.4901161193847656e-8,
+        "rms": 2.1976130162413166e-9,
+        "stats": {
+          "dc": 0.0000014127845052550669,
+          "rms": 0.0030865849649450118,
+          "peak": 0.006389264017343521,
+          "maxStep": 0.00021880056738154963,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/cancel",
+      "metrics": {
+        "max": 8.754432201385498e-8,
+        "rms": 1.64242820013504e-8,
+        "stats": {
+          "dc": 0.000002346062062774773,
+          "rms": 0.008643948968480352,
+          "peak": 0.020589640364050865,
+          "maxStep": 0.0005310071428539231,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/bipolar-velocity",
+      "metrics": {
+        "max": 4.44706529378891e-8,
+        "rms": 8.454995486929945e-9,
+        "stats": {
+          "dc": 7.616809820162947e-7,
+          "rms": 0.0041155976900827335,
+          "peak": 0.00896777305752039,
+          "maxStep": 0.00019873327255481854,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/lfo-bipolar",
+      "metrics": {
+        "max": 7.869675755500793e-8,
+        "rms": 2.7308205230630602e-8,
+        "stats": {
+          "dc": 0.0000021693599352254962,
+          "rms": 0.008645176333165168,
+          "peak": 0.023684518411755562,
+          "maxStep": 0.000543831498362124,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/lfo-unipolar-negative",
+      "metrics": {
+        "max": 1.555308699607849e-7,
+        "rms": 2.644644758349648e-8,
+        "stats": {
+          "dc": 0.0000024512898154236217,
+          "rms": 0.009210976773944567,
+          "peak": 0.02406672202050686,
+          "maxStep": 0.0005895348731428385,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/envelope-release",
+      "metrics": {
+        "max": 2.0302832126617432e-7,
+        "rms": 2.751218001182071e-8,
+        "stats": {
+          "dc": 0.000002428870285878859,
+          "rms": 0.013084103714411486,
+          "peak": 0.04107099398970604,
+          "maxStep": 0.0009118945163208991,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/bipolar-envelope",
+      "metrics": {
+        "max": 1.3783574104309082e-7,
+        "rms": 2.660234479267076e-8,
+        "stats": {
+          "dc": 0.00000226951588214471,
+          "rms": 0.008650983020300991,
+          "peak": 0.023669345304369926,
+          "maxStep": 0.0005617989518214017,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/keytrack-low",
+      "metrics": {
+        "max": 2.1979212760925293e-7,
+        "rms": 3.8932239033819836e-8,
+        "stats": {
+          "dc": 0.00003028981081184508,
+          "rms": 0.008618269874833929,
+          "peak": 0.020590607076883316,
+          "maxStep": 0.00013276241952553391,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/keytrack-high",
+      "metrics": {
+        "max": 3.5390257835388184e-8,
+        "rms": 4.517436404295897e-9,
+        "stats": {
+          "dc": 2.3222297117824617e-7,
+          "rms": 0.008648084905076778,
+          "peak": 0.021981405094265938,
+          "maxStep": 0.0022415254497900605,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/pan-clamp",
+      "metrics": {
+        "max": 1.2293457984924316e-7,
+        "rms": 2.3223652763904996e-8,
+        "stats": {
+          "dc": 0.0000026774060753898695,
+          "rms": 0.008643948965568691,
+          "peak": 0.029118148609995842,
+          "maxStep": 0.02911814860999584,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/filter-clamp",
+      "metrics": {
+        "max": 8.800998330116272e-8,
+        "rms": 1.551868901664488e-8,
+        "stats": {
+          "dc": 0.0000017914318065789518,
+          "rms": 0.00842758847318161,
+          "peak": 0.01985836960375309,
+          "maxStep": 0.0005099762202007696,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/pitch-clamp",
+      "metrics": {
+        "max": 6.891787052154541e-8,
+        "rms": 9.247847498618472e-9,
+        "stats": {
+          "dc": 0.0000010604908690572464,
+          "rms": 0.010061262971700666,
+          "peak": 0.02577223628759384,
+          "maxStep": 0.0015806487062945962,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/silent-oscillator",
+      "metrics": {
+        "max": 9.685754776000977e-8,
+        "rms": 1.7080874988239926e-8,
+        "stats": {
+          "dc": 0.0000023603687823691907,
+          "rms": 0.01005386528248677,
+          "peak": 0.03647426515817642,
+          "maxStep": 0.0011082148412242532,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/expression-plus-modulation",
+      "metrics": {
+        "max": 1.3504177331924438e-7,
+        "rms": 3.940841375044909e-8,
+        "stats": {
+          "dc": 0.0000015101718956842993,
+          "rms": 0.00866234871774149,
+          "peak": 0.023865919560194016,
+          "maxStep": 0.0005803226958960295,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/maximum-16",
+      "metrics": {
+        "max": 2.794622560031712e-7,
+        "rms": 4.2612432060976516e-8,
+        "stats": {
+          "dc": 0.0000021883917395226565,
+          "rms": 0.0138977547882196,
+          "peak": 0.06133047491312027,
+          "maxStep": 0.03925703838467598,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/preset/evolving-glass",
+      "metrics": {
+        "max": 5.306210368871689e-7,
+        "rms": 7.849015330656728e-8,
+        "stats": {
+          "dc": -0.00001254342639011357,
+          "rms": 0.01838223620803955,
+          "peak": 0.041008543223142624,
+          "maxStep": 0.0013815204292768613,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/preset/breath-lead",
+      "metrics": {
+        "max": 0.0000031634699553251266,
+        "rms": 2.2491702611315105e-7,
+        "stats": {
+          "dc": 9.401353782726242e-8,
+          "rms": 0.01302363535155294,
+          "peak": 0.05091093108057976,
+          "maxStep": 0.009790045907720923,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/preset/touch-keys",
+      "metrics": {
+        "max": 1.2293457984924316e-7,
+        "rms": 2.120459537259535e-8,
+        "stats": {
+          "dc": -3.552826408418734e-7,
+          "rms": 0.01171641180605655,
+          "peak": 0.040990158915519714,
+          "maxStep": 0.003482445201370865,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sine/416",
+      "metrics": {
+        "max": 6.458722054958344e-7,
+        "rms": 1.6631272720656458e-7,
+        "stats": {
+          "dc": 0.0000016412251145033183,
+          "rms": 0.019329771404452252,
+          "peak": 0.045845143496990204,
+          "maxStep": 0.0013826326467096806,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sine/441",
+      "metrics": {
+        "max": 1.6088597476482391e-7,
+        "rms": 4.071367751904919e-8,
+        "stats": {
+          "dc": -0.000004579677176388254,
+          "rms": 0.019314566286787342,
+          "peak": 0.04582205414772034,
+          "maxStep": 0.00034611206501722336,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sine/480",
+      "metrics": {
+        "max": 6.406917236745358e-7,
+        "rms": 1.6576667101957136e-7,
+        "stats": {
+          "dc": 0.0000016412184554889267,
+          "rms": 0.01932977140444734,
+          "peak": 0.045845143496990204,
+          "maxStep": 0.0013826326467096806,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sine/416.25",
+      "metrics": {
+        "max": 6.488407962024212e-7,
+        "rms": 1.6961244184725506e-7,
+        "stats": {
+          "dc": 0.0000016411054409172586,
+          "rms": 0.01932977106202087,
+          "peak": 0.0458451509475708,
+          "maxStep": 0.0013825992646161467,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sine/441.5",
+      "metrics": {
+        "max": 6.480840966105461e-7,
+        "rms": 1.6852154158538278e-7,
+        "stats": {
+          "dc": 0.0000016410703311330213,
+          "rms": 0.01932977091882948,
+          "peak": 0.045845139771699905,
+          "maxStep": 0.0013825069036101922,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sine/480.75",
+      "metrics": {
+        "max": 6.295740604400635e-7,
+        "rms": 1.6408390010770358e-7,
+        "stats": {
+          "dc": 0.000001641094483996057,
+          "rms": 0.019329771082217603,
+          "peak": 0.045845143496990204,
+          "maxStep": 0.0013825947244185954,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/triangle/416",
+      "metrics": {
+        "max": 5.774199962615967e-7,
+        "rms": 1.50042292674552e-7,
+        "stats": {
+          "dc": 0.000001343220893762305,
+          "rms": 0.015785130196488577,
+          "peak": 0.045638442039489746,
+          "maxStep": 0.001238696277141571,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/triangle/441",
+      "metrics": {
+        "max": 1.4901161193847656e-7,
+        "rms": 3.677827996322687e-8,
+        "stats": {
+          "dc": -0.0000034913747428937305,
+          "rms": 0.015770359125178525,
+          "peak": 0.04577665030956268,
+          "maxStep": 0.00030842050909996033,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/triangle/480",
+      "metrics": {
+        "max": 5.736947059631348e-7,
+        "rms": 1.4952720881541262e-7,
+        "stats": {
+          "dc": 0.000001343216423395787,
+          "rms": 0.01578513019647605,
+          "peak": 0.045638442039489746,
+          "maxStep": 0.001238696277141571,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/triangle/416.25",
+      "metrics": {
+        "max": 5.811452865600586e-7,
+        "rms": 1.5256747407044166e-7,
+        "stats": {
+          "dc": 0.0000013431116590215015,
+          "rms": 0.015785129878009778,
+          "peak": 0.0456383042037487,
+          "maxStep": 0.0012386403977870941,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/triangle/441.5",
+      "metrics": {
+        "max": 5.774199962615967e-7,
+        "rms": 1.519274308661041e-7,
+        "stats": {
+          "dc": 0.0000013430920238949823,
+          "rms": 0.015785129754187107,
+          "peak": 0.04563850536942482,
+          "maxStep": 0.001238252967596054,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/triangle/480.75",
+      "metrics": {
+        "max": 5.62518835067749e-7,
+        "rms": 1.4781167438414835e-7,
+        "stats": {
+          "dc": 0.0000013431210508236165,
+          "rms": 0.01578512989040983,
+          "peak": 0.04563850536942482,
+          "maxStep": 0.0012384764850139618,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/square/416",
+      "metrics": {
+        "max": 0.00001765415072441101,
+        "rms": 8.956308995263552e-7,
+        "stats": {
+          "dc": 0.0000017324377280966856,
+          "rms": 0.02319292572833055,
+          "peak": 0.05533633008599281,
+          "maxStep": 0.035858663730323315,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/square/441",
+      "metrics": {
+        "max": 0.000018258579075336456,
+        "rms": 4.343646766255661e-7,
+        "stats": {
+          "dc": -0.000006194001208885616,
+          "rms": 0.023178985263536383,
+          "peak": 0.05529903620481491,
+          "maxStep": 0.03583307471126318,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/square/480",
+      "metrics": {
+        "max": 0.000017484650015830994,
+        "rms": 8.910103880833812e-7,
+        "stats": {
+          "dc": 0.0000017324272273478907,
+          "rms": 0.02319292572821048,
+          "peak": 0.05533633008599281,
+          "maxStep": 0.035858663730323315,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/square/416.25",
+      "metrics": {
+        "max": 0.0000176955945789814,
+        "rms": 9.15238112972712e-7,
+        "stats": {
+          "dc": 0.0000017326535361667138,
+          "rms": 0.023192925287225503,
+          "peak": 0.05532703548669815,
+          "maxStep": 0.035846928134560585,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/square/441.5",
+      "metrics": {
+        "max": 0.00001772632822394371,
+        "rms": 9.026025673605416e-7,
+        "stats": {
+          "dc": 0.0000017328092451826249,
+          "rms": 0.023192925178270242,
+          "peak": 0.055334482342004776,
+          "maxStep": 0.035858238115906715,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/square/480.75",
+      "metrics": {
+        "max": 0.00001704879105091095,
+        "rms": 8.816784817868064e-7,
+        "stats": {
+          "dc": 0.0000017327036538252165,
+          "rms": 0.023192925340292714,
+          "peak": 0.05533154308795929,
+          "maxStep": 0.03585447836667299,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sawtooth/416",
+      "metrics": {
+        "max": 0.000017482787370681763,
+        "rms": 6.309039038758464e-7,
+        "stats": {
+          "dc": 8.031554649567727e-7,
+          "rms": 0.01339452073733849,
+          "peak": 0.054312605410814285,
+          "maxStep": 0.03549597132951021,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sawtooth/441",
+      "metrics": {
+        "max": 0.000018219463527202606,
+        "rms": 3.1285460320072825e-7,
+        "stats": {
+          "dc": -0.000004585256452315228,
+          "rms": 0.013413084987362737,
+          "peak": 0.055034928023815155,
+          "maxStep": 0.03574466332793236,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sawtooth/480",
+      "metrics": {
+        "max": 0.00001731421798467636,
+        "rms": 6.2758186321587e-7,
+        "stats": {
+          "dc": 8.03146913698138e-7,
+          "rms": 0.013394520737324691,
+          "peak": 0.054312605410814285,
+          "maxStep": 0.03549597132951021,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sawtooth/416.25",
+      "metrics": {
+        "max": 0.00001721177250146866,
+        "rms": 6.427397074971818e-7,
+        "stats": {
+          "dc": 8.032033925094627e-7,
+          "rms": 0.013394520356485952,
+          "peak": 0.0543474480509758,
+          "maxStep": 0.03549107909202576,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sawtooth/441.5",
+      "metrics": {
+        "max": 0.000017340993508696556,
+        "rms": 6.354493388303891e-7,
+        "stats": {
+          "dc": 8.03366237620073e-7,
+          "rms": 0.01339452058323105,
+          "peak": 0.05434999614953995,
+          "maxStep": 0.03549493197351694,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/sawtooth/480.75",
+      "metrics": {
+        "max": 0.000016884878277778625,
+        "rms": 6.205593427805541e-7,
+        "stats": {
+          "dc": 8.033179656529221e-7,
+          "rms": 0.013394520535861307,
+          "peak": 0.05434286221861839,
+          "maxStep": 0.03549378179013729,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/harmonic/416",
+      "metrics": {
+        "max": 0.0000030731025617569685,
+        "rms": 2.8520373350546795e-7,
+        "stats": {
+          "dc": 0.0000010247462981893997,
+          "rms": 0.01430006138757202,
+          "peak": 0.04626341536641121,
+          "maxStep": 0.006687564076855779,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/harmonic/441",
+      "metrics": {
+        "max": 7.48317688703537e-7,
+        "rms": 6.981749825253586e-8,
+        "stats": {
+          "dc": -0.000001788711532904506,
+          "rms": 0.014238077918913909,
+          "peak": 0.04584486410021782,
+          "maxStep": 0.001652186329010874,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/harmonic/480",
+      "metrics": {
+        "max": 0.0000030760420486330986,
+        "rms": 2.8404268553361524e-7,
+        "stats": {
+          "dc": 0.0000010247436926057361,
+          "rms": 0.014300061387451,
+          "peak": 0.04626341536641121,
+          "maxStep": 0.006687564076855779,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/harmonic/416.25",
+      "metrics": {
+        "max": 0.0000031320960260927677,
+        "rms": 2.9078122243024943e-7,
+        "stats": {
+          "dc": 0.000001024721868339034,
+          "rms": 0.014300061186318552,
+          "peak": 0.0462646521627903,
+          "maxStep": 0.006686976412311196,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/harmonic/441.5",
+      "metrics": {
+        "max": 0.000003116670995950699,
+        "rms": 2.8818871182605525e-7,
+        "stats": {
+          "dc": 0.000001024680329203507,
+          "rms": 0.014300061160744315,
+          "peak": 0.04626375809311867,
+          "maxStep": 0.006685546133667231,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/harmonic/480.75",
+      "metrics": {
+        "max": 0.000003025634214282036,
+        "rms": 2.8076865087098176e-7,
+        "stats": {
+          "dc": 0.0000010246909325060355,
+          "rms": 0.014300061237259168,
+          "peak": 0.04626258462667465,
+          "maxStep": 0.006687254179269075,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
+      "id": "v2/96000/offset/expression",
+      "metrics": {
+        "max": 1.3783574104309082e-7,
+        "rms": 3.849877158314404e-8,
+        "stats": {
+          "dc": 0.0000015101758032753793,
+          "rms": 0.008662348717151835,
+          "peak": 0.023865919560194016,
+          "maxStep": 0.0005803226958960295,
+          "nonFinite": 0,
+          "clipped": 0
+        }
+      },
+      "checks": {
+        "finite": true,
+        "maxError": true,
+        "rmsError": true,
+        "headroom": true
+      },
+      "status": "pass"
+    },
+    {
       "id": "unsupported-noise",
       "metrics": {
         "status": 422
@@ -3110,7 +6410,7 @@
       "-Werror",
       "-pedantic"
     ],
-    "selfTest": "passed: 400 waveform/filter/rate/extreme profiles, five block sizes and allocation assertions",
+    "selfTest": "passed: 400 waveform/filter/rate/extreme and three 16-route v2 profiles, five block sizes and allocation assertions",
     "scope": "offline C++ core; no device backend or callback latency qualification"
   },
   "suitePolicy": {
@@ -3119,20 +6419,20 @@
     "initialRmsTarget": 0.00001,
     "toleranceRationale": "The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",
     "method": "same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",
-    "scope": "all five existing oscillator shapes, four static filters, pitch, ADSR and pan",
+    "scope": "all five existing oscillator shapes, four filters, pitch/ADSR/pan and canonical v2 modulation",
     "limits": [
-      "Not full native patch support",
+      "Not full native patch support: noise/drive/delay/legacy motion reject",
       "Not a device performance or aliasing qualification",
       "Fractional-sample note onsets not yet qualified"
     ]
   },
-  "measuredAt": "2026-10-27T13:32:21.148Z",
+  "measuredAt": "2026-10-27T14:08:50.401Z",
   "source": {
-    "commit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
+    "commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
     "tag": null,
-    "baseCommit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
+    "baseCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "11d27f14e17cc5365a5321dd36cef657adbbadf5218084f662a827e9936f3a70"
+    "runtimeAndFixtureSha256": "1ecf1e14c70e5903a1137a867a87ada37e549ec80a40aea39a75c4af4d93a9e3"
   },
   "host": {
     "os": "linux",

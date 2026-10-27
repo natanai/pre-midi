@@ -139,26 +139,29 @@
         "musical-parity-reference": "benchmarks/musical-parity-reference.json",
         "voice-lifecycle-reference": "benchmarks/voice-lifecycle-reference.json",
         "native-parity-reference": "benchmarks/native-parity-reference.json",
-        "modulation-reference": "benchmarks/modulation-reference.json"
+        "modulation-reference": "benchmarks/modulation-reference.json",
+        "onset-reference": "benchmarks/onset-reference.json"
       },
       "passed": {
-        "node_tests": 169,
+        "node_tests": 171,
         "acoustic_cases": 111,
         "unchanged_acoustic_reference_comparisons": 60,
         "musical_compatibility_cases": 22,
         "voice_lifecycle_cases": 19,
-        "native_browser_cases": 64,
-        "audible_modulation_cases": 62
+        "native_browser_cases": 214,
+        "audible_modulation_cases": 62,
+        "isolated_onset_cases": 186
       },
       "browser": "Shipped desktop/mobile workflow, preset save/reload, Beat v9/Song v10 export/import, layout, microphone and existing Song transport/WAV download checks",
       "scope": "Automated offline, browser control-trace, suspended-preparation AudioWorklet graph and interaction checks only. Maximum-route startup remains slow; no device or human signoff.",
       "source_policy": "Each report declares its own exact clean source commit; source commits are ancestors of the delivered code",
       "source_commits": {
-        "web-audio-reference": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
-        "musical-parity-reference": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
-        "voice-lifecycle-reference": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
-        "native-parity-reference": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
-        "modulation-reference": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948"
+        "web-audio-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+        "musical-parity-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+        "voice-lifecycle-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+        "native-parity-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+        "modulation-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+        "onset-reference": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9"
       }
     }
   },
@@ -535,12 +538,17 @@
           "status": "blocked; no simulated/offline result is a hardware measurement"
         },
         "native_modulation_candidate": {
-          "status": "implemented_pending_clean_source_CI",
+          "status": "offline_profile_qualified",
           "implementation": "native/modulation.hpp",
           "policy": "native/fidelity-policy.json",
           "investigation": "docs/native-onset-investigation.json",
           "evidence": "214 native/browser cases and 186 isolated onset cases; original PCM gates unchanged",
-          "remaining": "hardware host/performance, unsupported noise/drive/delay/sweep/legacy motion and wider platform qualification"
+          "remaining": "hardware host/performance, unsupported noise/drive/delay/sweep/legacy motion and wider platform qualification",
+          "source_commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
+          "qualification": [
+            "benchmarks/native-parity-reference.json",
+            "benchmarks/onset-reference.json"
+          ]
         }
       }
     },

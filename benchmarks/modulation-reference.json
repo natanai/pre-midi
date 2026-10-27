@@ -289,7 +289,7 @@
           {
             "target": "oscillators.0.level",
             "max": 1.1920928955078125e-7,
-            "rms": 4.207909787140478e-9,
+            "rms": 3.6984435554326263e-9,
             "tolerance": 0.000005
           },
           {
@@ -1024,13 +1024,13 @@
           {
             "target": "oscillators.0.level",
             "max": 0.000002175569534301758,
-            "rms": 5.958062357978983e-7,
+            "rms": 5.945477128268453e-7,
             "tolerance": 0.000005
           },
           {
             "target": "oscillators.1.detune",
             "max": 0.00019073486328125,
-            "rms": 0.0000830124969170045,
+            "rms": 0.00008298396304394856,
             "tolerance": 0.02
           },
           {
@@ -1048,7 +1048,7 @@
           {
             "target": "pan",
             "max": 1.7881393432617188e-7,
-            "rms": 5.589024838358748e-8,
+            "rms": 5.5855516282929014e-8,
             "tolerance": 0.000005
           }
         ],
@@ -1073,7 +1073,7 @@
           {
             "target": "oscillators.0.level",
             "max": 1.1920928955078125e-7,
-            "rms": 3.802108489571726e-9,
+            "rms": 3.720112686093957e-9,
             "tolerance": 0.000005
           },
           {
@@ -1808,13 +1808,13 @@
           {
             "target": "oscillators.0.level",
             "max": 0.0000011622905731201172,
-            "rms": 3.385286144211293e-7,
+            "rms": 3.3874291863701046e-7,
             "tolerance": 0.000005
           },
           {
             "target": "oscillators.1.detune",
             "max": 0.00019025802612304688,
-            "rms": 0.00008213276603761552,
+            "rms": 0.00008208144249355237,
             "tolerance": 0.02
           },
           {
@@ -1832,7 +1832,7 @@
           {
             "target": "pan",
             "max": 1.4901161193847656e-7,
-            "rms": 5.5192767881925985e-8,
+            "rms": 5.590444049949991e-8,
             "tolerance": 0.000005
           }
         ],
@@ -1906,7 +1906,7 @@
           {
             "target": "oscillators.0.level",
             "max": 8.940696716308594e-8,
-            "rms": 2.0846422756189423e-9,
+            "rms": 2.0473240522664393e-9,
             "tolerance": 0.000005
           },
           {
@@ -2591,8 +2591,8 @@
           },
           {
             "target": "oscillators.0.level",
-            "max": 7.152557373046875e-7,
-            "rms": 1.907349273786425e-7,
+            "max": 7.450580596923828e-7,
+            "rms": 1.9231999860985357e-7,
             "tolerance": 0.000005
           },
           {
@@ -2639,13 +2639,13 @@
       "No recorded automation or device underrun qualification"
     ]
   },
-  "measuredAt": "2026-10-27T13:32:19.045Z",
+  "measuredAt": "2026-10-27T14:08:31.267Z",
   "source": {
-    "commit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
+    "commit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
     "tag": null,
-    "baseCommit": "e7ef7f491f783cef4c77a5caed60a4ba5c3ea948",
+    "baseCommit": "4b5912d6df09e5c6a2a06c229f12c8d56ce7a5d9",
     "workingTreeDirty": false,
-    "runtimeAndFixtureSha256": "0f9653fd4e6683b7a091dc13a414263ee7f17564c2e66a98c584c84eed188b92"
+    "runtimeAndFixtureSha256": "eace6e8e36b9eea3e43432cd9117a6a749c3d50e1a65df246e23f3ff3040a584"
   },
   "host": {
     "os": "linux",
