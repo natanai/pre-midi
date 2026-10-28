@@ -56,8 +56,8 @@ int main(int argc,char** argv){
 #endif
   require(u32()==0x344e4d50,"Unsupported prepared transport version");
   const auto rate=u32(),frames=u32();require(rate>=8000&&rate<=192000&&frames>0&&frames<=rate*12,"Invalid render size");
-  premidi::Plan plan;plan.version=u32();require(plan.version==1||plan.version==2||plan.version==3,"Unsupported execution contract");plan.start=f64();plan.duration=f64();plan.sourceEnd=f64();plan.graphEnd=f64();plan.pan=f64();plan.cutoff=f64();plan.q=f64();plan.filterType=u32();require(plan.filterType<=3,"Invalid filter type");
-  require(plan.start>=0&&plan.duration>0&&plan.sourceEnd>plan.start&&plan.graphEnd>=plan.sourceEnd&&std::abs(plan.pan)<=1&&plan.cutoff>=50&&plan.cutoff<=14000&&plan.q>=.1&&plan.q<=16,"Invalid prepared voice");
+  premidi::Plan plan;plan.version=u32();require(plan.version==1||plan.version==2||plan.version==3||plan.version==4,"Unsupported execution contract");plan.start=f64();plan.duration=f64();plan.sourceEnd=f64();plan.graphEnd=f64();plan.pan=f64();plan.cutoff=f64();plan.q=f64();plan.filterType=u32();if(plan.version>=4){plan.sweepStart=f64();plan.sweepEnd=f64();}require(plan.filterType<=3,"Invalid filter type");
+  require(plan.start>=0&&plan.duration>0&&plan.sourceEnd>plan.start&&plan.graphEnd>=plan.sourceEnd&&std::abs(plan.pan)<=1&&plan.cutoff>=50&&plan.cutoff<=14000&&plan.q>=.1&&plan.q<=16&&(plan.version<4||(plan.sweepStart>=50&&plan.sweepStart<=14000&&plan.sweepEnd>plan.start&&plan.sweepEnd<=plan.graphEnd)),"Invalid prepared voice");
   for(auto& osc:plan.oscillators){osc.frequency=f64();osc.level=f64();osc.detune=f64();osc.wave=u32();require(osc.wave<=4,"Invalid waveform");for(auto& h:osc.harmonics){h=f64();require(h>=0&&h<=1,"Invalid harmonic recipe");}osc.count=u32();require(osc.count<=600&&osc.frequency>0&&osc.frequency<=18000&&osc.level>=0&&osc.level<=1&&std::abs(osc.detune)<=100,"Invalid oscillator");for(std::uint32_t i=0;i<osc.count;i++){osc.curve[i]=f64();require(std::abs(osc.curve[i])<=2500,"Pitch curve out of range");}}
   plan.off=f64();plan.pitch=f64();plan.velocity=f64();plan.routeCount=u32();require(plan.off>plan.start&&plan.off<=plan.sourceEnd&&plan.pitch>=0&&plan.pitch<=127&&plan.velocity>=0&&plan.velocity<=1&&plan.routeCount<=16&&(plan.version>=2||plan.routeCount==0),"Invalid modulation bounds");
   for(unsigned i=0;i<plan.routeCount;i++){
@@ -65,7 +65,7 @@ int main(int argc,char** argv){
    const double limit=r.target==4?8:r.target==5?2:r.target%2?1:2400;
    require(r.target<6&&r.kind<4&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.05&&r.rate<=20&&r.root>=0&&r.root<=127&&r.span>=1&&r.span<=127&&r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4,"Invalid prepared modulation route");
   }
-  plan.automationCount=u32();require(plan.automationCount<=6&&(plan.version==3?plan.automationCount>=2:plan.automationCount==0),"Invalid automation count");
+  plan.automationCount=u32();require(plan.automationCount<=6&&(plan.version>=3?plan.automationCount>=2:plan.automationCount==0),"Invalid automation count");
   double previousAutomation=-1;
   for(unsigned i=0;i<plan.automationCount;i++){auto& event=plan.automation[i];event.time=f64();event.value=f64();require(event.time>previousAutomation&&event.time>=plan.start&&event.time<=plan.graphEnd&&event.value>=50&&event.value<=14000,"Invalid automation event");previousAutomation=event.time;}
   plan.eventCount=u32();require(plan.eventCount>=4&&plan.eventCount<=6,"Invalid envelope count");
