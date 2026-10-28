@@ -2,7 +2,15 @@
 
 A local-first Beat maker and Song arranger for the [pre-programmed](https://github.com/natanai/pre-programmed) game engine. Native desktop and mobile are the primary long-term deployment targets; the current browser studio remains supported without defining the ceiling for audio quality.
 
-[Open the web studio](https://natanai.github.io/pre-midi/) · [Native format and roadmap](docs/song-rollout.md)
+[Open the web studio](https://natanai.github.io/pre-midi/) · [Windows portable preview](https://github.com/natanai/pre-midi/releases) · [Native audio status](docs/native-audio.md) · [Synthesis roadmap](docs/synthesis-roadmap.json)
+
+## Windows portable preview
+
+During rapid prototyping, **Windows 11 x64 portable ZIP is the only preview distribution**. Extract the entire ZIP to a writable folder and run `pre-midi.exe`. Keep `data/`, `projects/` and `exports/` with that folder; close the app before moving or backing it up. To upgrade, back up the folder and replace only the executable and release files, **not** your data folders. See [desktop host and upgrade details](docs/desktop-host.md). macOS and Linux native architecture is maintained for the eventual full release, but their preview packages are deferred.
+
+Desktop **Play** and **Hear sound** use the C++ synthesizer in a miniaudio device callback for supported synth plans. The browser continues to use Web Audio. Native playback currently excludes noise, delay, drive, legacy movement, sample-rack and recorded/vocal playback; select Web Audio explicitly in desktop Settings for projects needing those features. Native playback snapshots the project at Play, so restart playback after edits. Recording and WAV export still use Web Audio. The Windows hardware latency, driver underrun and device-recovery behavior has not yet been physically qualified. See [native audio scope](docs/native-audio.md) and [release notes](docs/desktop-release-notes.md).
+
+The portable edition can **check** for newer releases but currently uses manual, folder-preserving ZIP replacement rather than automatic installation.
 
 ## Use
 
@@ -16,8 +24,8 @@ Song's **● voice** opens a recording dialog. Pick the Song start bar, optional
 
 ## Native project files
 
-- **Beat:** version 7 of the machine-readable `.premidi` format. Older supported Beat documents migrate through the versioned parser.
-- **Song:** version 8, referencing Beats, Beat Clips, Vocal Clips and Recordings by stable identities.
+- **Beat:** legacy version 7 remains supported; modulation and automation use newer versioned Beat documents (v9 and v11 respectively). Older supported Beat documents migrate through the versioned parser.
+- **Song:** legacy version 8 remains supported; modulation and automation use newer versioned Song documents (v10 and v12 respectively), referencing Beats, Beat Clips, Vocal Clips and Recordings by stable identities.
 - **Audio:** audio bytes stay outside `.premidi`. Projects containing recordings or imported samples export as a ZIP with a `.premidi` manifest and an `assets/` directory. Reimport the ZIP to restore all audio.
 - **Browser storage:** local autosave through IndexedDB, with an ordinary browser-storage fallback for smaller projects. Export projects to keep portable backups. There is no account or server-side project storage.
 - **Current web constraints:** Beats have 1–16 measures; short sampler assets have their own smaller limit; Song vocal takes are currently limited to 5 minutes / 48 MB each, with a 64 MB portable ZIP limit. Standalone hosts will need streaming rather than retaining full recordings in memory.
@@ -26,7 +34,7 @@ The goal is **one native music format** for the studio and pre-programmed, inclu
 
 ## Development
 
-The web editor runs directly in modern browsers via GitHub Pages, with no application runtime dependencies and no backend. The same musical core is intended for desktop and mobile applications.
+The web editor runs directly in modern browsers via GitHub Pages, with no application runtime dependencies and no backend. The Windows portable desktop host uses Tauri and the shared musical core; native macOS/Linux packaging is deferred during rapid prototyping.
 
 - `npm run check` — JavaScript syntax checks and Node regression tests.
 - `node tests/song.browser.mjs` — desktop/mobile Song browser interaction, playback, and recording checks (requires Chrome).
