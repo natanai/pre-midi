@@ -51,6 +51,7 @@ class Session {
   }
   free->plan=note.plan;const double shift=cycle*cycleSeconds;
   auto& p=free->plan;p.start+=shift;p.off+=shift;p.sourceEnd+=shift;p.graphEnd+=shift;
+  if(p.version>=4)p.sweepEnd+=shift;
   for(unsigned i=0;i<p.eventCount;i++)p.events[i].time+=shift;
   for(unsigned i=0;i<p.automationCount;i++)p.automation[i].time+=shift;
   free->banks=note.banks;free->start=at;free->off=frameAt(p.off);free->end=frameAt(p.graphEnd);free->order=++serial;
