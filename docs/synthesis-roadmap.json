@@ -2,7 +2,7 @@
   "schema_version": 1,
   "program_id": "pre-midi-professional-synthesis",
   "title": "Professional native-first synthesis and DSP",
-  "updated_on": "2026-10-27",
+  "updated_on": "2026-10-28",
   "status": "active",
   "scope": "Synthesizer sound generation, DSP fidelity, quality qualification and cross-host rendering; complements docs/song-rollout.md instead of replacing its Song-specific stages.",
   "mission": "Deliver professionally viable editable instruments that sound correct in native desktop/mobile production and natively in pre-programmed, while retaining a compatible web studio wherever technically feasible.",
@@ -36,7 +36,17 @@
     "portability": "portable patch/automation/event semantics with host-specific DSP implementations verified by reference fixtures",
     "real_time": "avoid allocation, blocking I/O, locks and GC-sensitive work in audio callback",
     "backwards_compatibility": "version schema when interpretation changes; maintain documented migrations and legacy reads",
-    "data_storage": "store audio bytes as external assets; keep .premidi files declarative and inspectable"
+    "data_storage": "store audio bytes as external assets; keep .premidi files declarative and inspectable",
+    "current_preview": "Windows 11 x64 portable folder ZIP only; retain macOS/Linux architecture but defer their preview distributions",
+    "active_prototyping_target": "windows_11_x64_portable_folder",
+    "preview_distribution": [
+      "windows_x64_portable_zip"
+    ],
+    "deferred_distribution": [
+      "windows_installer",
+      "macos",
+      "linux"
+    ]
   },
   "architectural_decisions": [
     {
@@ -48,13 +58,14 @@
     {
       "id": "ARCH-002",
       "decision": "Prototype suitable portable DSP engines/frameworks for native desktop/mobile before committing to C++, Rust, JUCE, WebAssembly or another specific toolchain.",
-      "status": "proposed"
+      "status": "accepted",
+      "implemented_scope": "C++17 native Voice and miniaudio device host integrated with Tauri; Windows WASAPI is active preview backend; macOS/Linux host code retained"
     },
     {
       "id": "ARCH-003",
       "decision": "Use shared test fixtures and reference audio analysis to establish host parity; bit-identical floating-point samples are not assumed across implementations.",
       "status": "accepted",
-      "implemented_scope": "host-neutral PCM metrics and tolerant acoustic fingerprints; current measured backend is Chromium offline Web Audio only"
+      "implemented_scope": "Versioned browser/native PCM reference comparisons and miniaudio null-backend callback tests; Windows physical audio still unqualified"
     },
     {
       "id": "ARCH-004",
@@ -88,11 +99,15 @@
       "delay"
     ],
     "current_hosts": [
-      "web_audio"
+      "web_audio",
+      "tauri_cpp_miniaudio_realtime_supported_synth_plans"
     ],
     "limitations": [
-      "no_general_modulation_matrix",
-      "no_native_host",
+      "native_samples_and_vocals_unsupported",
+      "native_noise_drive_delay_legacy_movement_unsupported",
+      "native_playback_uses_snapshot",
+      "no_verified_windows_physical_device_latency_or_underrun_data",
+      "no_native_pre_programmed_reader_parity",
       "no_general_wavetable_morphing",
       "no_granular_engine",
       "limited_fx_routing"
@@ -283,7 +298,7 @@
         "report": "benchmarks/web-audio-reference.json",
         "contract": "docs/dsp-contract.schema.json",
         "method": "18 constant-input rendered ADSR cases against an independent analytical oracle; overlapping and retriggered production voices at three sample rates",
-        "max_sample_error_gate": 3e-05,
+        "max_sample_error_gate": 0.00003,
         "shared_runtime": "live transport, audition, conversion preview and WAV export all use scheduleNote -> scheduleAmplitudeEnvelope -> planAmplitudeEnvelope",
         "compatibility": "preserves 2 ms attack floor, zero-decay sustain step and 0.000001 release floor; unchanged stored patch v1 and Beat v7/Song v8",
         "scope": "current ADSR scheduling contract; physical live-device loopback and native DSP equivalence are later host qualification"
@@ -732,7 +747,7 @@
           ],
           "pcm_limits": {
             "max_absolute": 0.0001,
-            "rms": 2e-05
+            "rms": 0.00002
           },
           "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
           "raw_reports": "benchmarks/automation-reference.json"
@@ -1181,5 +1196,57 @@
     "SYN-007",
     "SYN-010",
     "SYN-005"
+  ],
+  "current_development_priorities": [
+    {
+      "order": 1,
+      "id": "NATIVE-PARITY",
+      "goal": "Native sample rack playback plus noise, drive, delay and legacy movement",
+      "acceptance": [
+        "A representative recorded-sample Beat and synth Beat play through C++ without implicit fallback",
+        "Browser/native PCM and musical parity checks cover newly supported DSP features",
+        "All unsupported plans continue to produce explicit errors"
+      ]
+    },
+    {
+      "order": 2,
+      "id": "LIVE-EDIT",
+      "goal": "Incremental native session updates and accurate Song/vocal playback and recording",
+      "acceptance": [
+        "Editing while transport runs is audible without stop/restart",
+        "Song clip and vocal timing survives seek, loop and export",
+        "Recordings and external assets survive portable-folder relocation"
+      ]
+    },
+    {
+      "order": 3,
+      "id": "WIN-HARDWARE",
+      "goal": "Physical Windows 11 audio qualification",
+      "acceptance": [
+        "Document real WASAPI device, sample rate, buffer and CPU",
+        "Measure p95 callback duration, driver underruns and loopback latency",
+        "Exercise disconnect, sleep/resume, rapid stop/play and device changes"
+      ]
+    },
+    {
+      "order": 4,
+      "id": "PRO-SYNTH",
+      "goal": "Modulation, oscillators, filters, FX and MIDI performance comparable to professional synthesizers",
+      "acceptance": [
+        "Implement and measure a user-prioritized sound-design feature set",
+        "Retain accessible direct controls and canonical parameter IDs",
+        "Include musical listening and CPU regression gates"
+      ]
+    },
+    {
+      "order": 5,
+      "id": "GAME-RELEASE",
+      "goal": "pre-programmed parity, Windows portable update safety and eventual cross-platform release",
+      "acceptance": [
+        "Game engine reads and controls versioned .premidi without rendered WAV",
+        "Portable upgrade preserves data/projects/exports with recovery tests",
+        "Only Windows portable ZIP published as preview; cross-platform builds qualify before full release"
+      ]
+    }
   ]
 }
