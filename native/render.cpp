@@ -65,7 +65,7 @@ int main(int argc,char** argv){
    const double limit=r.target==4?8:r.target==5?2:r.target%2?1:2400;
    require(r.target<6&&r.kind<4&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.05&&r.rate<=20&&r.root>=0&&r.root<=127&&r.span>=1&&r.span<=127&&r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4,"Invalid prepared modulation route");
   }
-  plan.automationCount=u32();require(plan.automationCount<=6&&(plan.version>=3?plan.automationCount>=2:plan.automationCount==0),"Invalid automation count");
+  plan.automationCount=u32();require(plan.automationCount<=6&&(plan.version==3?plan.automationCount>=2:plan.version==4?(plan.automationCount==0||plan.automationCount>=2):plan.automationCount==0),"Invalid automation count");
   double previousAutomation=-1;
   for(unsigned i=0;i<plan.automationCount;i++){auto& event=plan.automation[i];event.time=f64();event.value=f64();require(event.time>previousAutomation&&event.time>=plan.start&&event.time<=plan.graphEnd&&event.value>=50&&event.value<=14000,"Invalid automation event");previousAutomation=event.time;}
   plan.eventCount=u32();require(plan.eventCount>=4&&plan.eventCount<=6,"Invalid envelope count");
