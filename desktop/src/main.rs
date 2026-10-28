@@ -110,6 +110,6 @@ fn main(){
   }
  })
  .invoke_handler(tauri::generate_handler![desktop_info,save_file,finish_close,native_fixture,smoke_result,
-  audio::native_audio,updates::check_updates,updates::download_update,updates::install_update])
+  audio::native_audio,updates::check_updates,updates::open_release_url,updates::download_update,updates::install_update])
  .run(tauri::generate_context!()).expect("Could not launch pre-midi");
 }

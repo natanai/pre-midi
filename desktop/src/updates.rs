@@ -13,7 +13,7 @@ struct Asset{name:String,browser_download_url:String}
 #[derive(Deserialize)]
 struct Release{tag_name:String,draft:bool,prerelease:bool,body:Option<String>,assets:Vec<Asset>}
 #[derive(Serialize)]
-pub struct UpdateInfo{version:String,notes:String,installable:bool,limitation:String}
+pub struct UpdateInfo{version:String,notes:String,installable:bool,limitation:String,release_url:String,portable_url:Option<String>}
 fn valid_release(release:&Release,channel:&str,current:&Version)->Option<Version>{
  let version=Version::parse(release.tag_name.strip_prefix('v')?).ok()?;
  if release.draft || version<=*current || (channel=="stable" && (release.prerelease || !version.pre.is_empty())) ||
@@ -38,7 +38,14 @@ pub async fn check_updates(app:tauri::AppHandle,state:State<'_,Pending>,channel:
   else if manifest.is_none(){"This release has no signed update package for automatic installation."}
   else if cfg!(target_os="linux") && std::env::var_os("APPIMAGE").is_none(){"Use your package manager to install Linux DEB updates. Automatic updates are available in the AppImage edition."}
   else {""};
- let result=UpdateInfo{version:version.to_string(),notes:release.body.unwrap_or_default(),installable:limit.is_empty(),limitation:limit.into()};
+ let release_url=format!("https://github.com/{REPO}/releases/tag/{}",release.tag_name);
+ let portable_name=format!("pre-midi-{}-windows-x86_64-portable.zip",version);
+ let portable_url=release.assets.iter().find(|asset|asset.name==portable_name)
+  .and_then(|asset|{
+   let expected=format!("https://github.com/{REPO}/releases/download/{}/{}",release.tag_name,portable_name);
+   (asset.browser_download_url==expected).then_some(expected)
+  });
+ let result=UpdateInfo{version:version.to_string(),notes:release.body.unwrap_or_default(),installable:limit.is_empty(),limitation:limit.into(),release_url,portable_url};
  if !limit.is_empty(){return Ok(Some(result));}
  let expected=format!("https://github.com/{REPO}/releases/download/{}/desktop-updates.json",release.tag_name);
  if manifest.unwrap().browser_download_url!=expected{return Err("Unexpected update manifest source".into());}
@@ -78,5 +85,44 @@ pub async fn install_update(app:tauri::AppHandle,state:State<'_,Pending>)->Resul
   let current=Version::parse("0.14.1-preview.1").unwrap();
   assert!(valid_release(&r,"preview",&current).is_some());assert!(valid_release(&r,"stable",&current).is_none());
   r.tag_name="v0.14.0".into();assert!(valid_release(&r,"preview",&current).is_none());
+ }
+}
+
+/// Open only the official release page or the validated portable ZIP link.
+/// Never accept arbitrary URLs or execute downloaded files.
+#[tauri::command]
+fn valid_release_url(url:&str)->bool{
+ let prefix=format!("https://github.com/{REPO}/releases/");
+ if !url.starts_with(&prefix) || url.contains(['?', '#', '\\']) || url.chars().any(char::is_whitespace){return false;}
+ let suffix=&url[prefix.len()..];
+ if let Some(tag)=suffix.strip_prefix("tag/"){return tag.strip_prefix('v').and_then(|v|Version::parse(v).ok()).is_some();}
+ if let Some(download)=suffix.strip_prefix("download/"){
+  let Some((tag,filename))=download.split_once('/') else{return false};
+  return tag.strip_prefix('v').and_then(|v|Version::parse(v).ok()).is_some() &&
+   filename==format!("pre-midi-{}-windows-x86_64-portable.zip",&tag[1..]);
+ }
+ false
+}
+#[tauri::command]
+pub fn open_release_url(url:String)->Result<(),String>{
+ if !valid_release_url(&url){return Err("Not an official pre-midi release URL".into());}
+ #[cfg(target_os="windows")]
+ let result=std::process::Command::new("explorer.exe").arg(&url).spawn();
+ #[cfg(target_os="macos")]
+ let result=std::process::Command::new("open").arg(&url).spawn();
+ #[cfg(target_os="linux")]
+ let result=std::process::Command::new("xdg-open").arg(&url).spawn();
+ result.map(|_|()).map_err(|e|format!("Could not open the default browser: {e}"))
+}
+
+#[cfg(test)]mod release_link_tests{
+ use super::valid_release_url;
+ #[test]fn only_official_release_assets_open(){
+  assert!(valid_release_url("https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.6"));
+  assert!(valid_release_url("https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.6/pre-midi-0.14.1-preview.6-windows-x86_64-portable.zip"));
+  assert!(!valid_release_url("https://github.com/attacker/pre-midi/releases/tag/v0.14.1-preview.6"));
+  assert!(!valid_release_url("https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.6/evil.exe"));
+  assert!(!valid_release_url("https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.6?x=1"));
+  assert!(!valid_release_url("https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.6/extra"));
  }
 }

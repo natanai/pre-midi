@@ -27,7 +27,7 @@ export function installDesktopUI({flush}) {
    const update=await invoke('check_updates',{channel});
    if(!update){await prompt("You're up to date",'pre-midi '+version.textContent.replace('pre-midi ','')+' · '+channel);return;}
    const detail=update.notes+(update.limitation?'\n\n'+update.limitation:'');
-   if(!update.installable){await prompt('pre-midi '+update.version+' is available',detail);return;}
+   if(!update.installable){const url=update.portable_url||update.release_url;const action=update.portable_url?'open portable ZIP download':'open release page';if(await prompt('pre-midi '+update.version+' is available',detail,[action,'later'])===0)await invoke('open_release_url',{url});return;}
    if(await prompt('pre-midi '+update.version+' is available',detail,['download update','cancel'])!==0)return;
    check.textContent='downloading…';await invoke('download_update');
    if(await prompt('update verified','pre-midi will close to install the update. When installation finishes, open pre-midi again to continue.',['close and install','later'])!==0)return;
