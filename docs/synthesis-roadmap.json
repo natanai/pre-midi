@@ -22,14 +22,14 @@
   },
   "platform_policy": {
     "priority_order": [
-      "windows_portable_native",
-      "pre_programmed_native",
-      "macos_linux_full_release",
+      "desktop_native",
       "mobile_native",
-      "web_compatibility"
+      "pre_programmed_native",
+      "web"
     ],
     "primary_targets": [
-      "windows_portable_native"
+      "desktop_native",
+      "mobile_native"
     ],
     "web": "maintain_when_feasible; never constrain native audio quality to Web Audio or web packaging limits",
     "professional_quality_gate": "native reference implementations must pass acoustic and CPU benchmarks even if web support requires an explicit degraded mode",
@@ -37,7 +37,16 @@
     "real_time": "avoid allocation, blocking I/O, locks and GC-sensitive work in audio callback",
     "backwards_compatibility": "version schema when interpretation changes; maintain documented migrations and legacy reads",
     "data_storage": "store audio bytes as external assets; keep .premidi files declarative and inspectable",
-    "current_preview": "Windows 11 x64 portable folder ZIP only; retain macOS/Linux architecture but defer their preview distributions"
+    "current_preview": "Windows 11 x64 portable folder ZIP only; retain macOS/Linux architecture but defer their preview distributions",
+    "active_prototyping_target": "windows_11_x64_portable_folder",
+    "preview_distribution": [
+      "windows_x64_portable_zip"
+    ],
+    "deferred_distribution": [
+      "windows_installer",
+      "macos",
+      "linux"
+    ]
   },
   "architectural_decisions": [
     {
