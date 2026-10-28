@@ -102,6 +102,11 @@
      </div>
      <label class="note-velocity-control">Strength <select id="velocity" aria-label="New note strength"><option value="0.25">Soft</option><option value="0.55">Medium</option><option value="0.9" selected>Firm</option></select></label>
      <label class="note-length-control">New notes <select id="length" aria-label="Initial note length"><option value="1">1/16</option><option value="2">1/8</option><option value="4">1/4</option><option value="8">1/2</option><option value="16">1 bar</option></select></label>
+     <div class="scale-controls" role="group" aria-label="Piano roll scale guide">
+      <label>key <select id="scale-root" aria-label="Scale root note"></select></label>
+      <label>scale <select id="scale-mode" aria-label="Scale type"></select></label>
+      <label class="scale-lock-control" title="only add notes from this scale"><input id="scale-lock" type="checkbox">limit notes</label>
+     </div>
     </div>
     <div class="piano-scroll"><div id="piano"></div></div>
     <div id="note-expression" class="note-expression" aria-label="Selected note pitch expression" hidden></div>

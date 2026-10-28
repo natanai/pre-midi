@@ -6,6 +6,7 @@ import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSo
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
+import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScale } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
@@ -75,6 +76,52 @@ let voiceCountAbort=null,voiceToken=0;
 let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
+
+// Scale controls are non-destructive editor preferences, scoped to a Beat and
+// instrument. Canonical notes and .premidi exports stay unchanged.
+const SCALE_PREFS = "premidi-scale-guide-v1";
+const scaleGuides = new Map();
+try {
+ const stored=JSON.parse(localStorage.getItem(SCALE_PREFS)||"{}");
+ if(stored && typeof stored==="object" && !Array.isArray(stored)){
+  for(const [key,value] of Object.entries(stored).slice(-128))
+   scaleGuides.set(key,normalizeScaleGuide(value));
+ }
+}catch{}
+function scaleGuideFor(inst=instrument()){
+ return scaleGuides.get(beat.id+":"+inst.id) || normalizeScaleGuide(null);
+}
+function updateScaleGuide(change) {
+ const inst=instrument(),key=beat.id+":"+inst.id;
+ const guide=normalizeScaleGuide({...scaleGuideFor(inst),...change});
+ scaleGuides.delete(key);
+ scaleGuides.set(key,guide);
+ while(scaleGuides.size>128)scaleGuides.delete(scaleGuides.keys().next().value);
+ try {localStorage.setItem(SCALE_PREFS,JSON.stringify(Object.fromEntries(scaleGuides)));}catch{}
+ renderNotes();
+}
+function initializeScaleControls() {
+ const root=$("scale-root"),mode=$("scale-mode");
+ SCALE_ROOTS.forEach((name,index)=>{
+  const option=element("option",name);option.value=String(index);root.append(option);
+ });
+ SCALE_MODES.forEach(({id,name})=>{
+  const option=element("option",name);option.value=id;mode.append(option);
+ });
+ root.addEventListener("change",event=>updateScaleGuide({root:Number(event.target.value)}));
+ mode.addEventListener("change",event=>updateScaleGuide({mode:event.target.value}));
+ $("scale-lock").addEventListener("change",event=>updateScaleGuide({lock:event.target.checked}));
+}
+function renderScaleControls(inst) {
+ const rack=inst.layout==="rack";
+ document.querySelector(".scale-controls").hidden=rack;
+ if(rack)return;
+ const guide=scaleGuideFor(inst);
+ $("scale-root").value=String(guide.root);
+ $("scale-mode").value=guide.mode;
+ $("scale-lock").checked=guide.lock;
+ $("scale-lock").disabled=guide.mode==="chromatic";
+}
 
 // Audio assets are immutable blobs. Undo stores only mutable beat structure
 // plus a shallow list of shared samples, not 100 copies of multi-MB recordings.
@@ -657,15 +704,23 @@ function renderNotes() {
  root.classList.toggle("sound-rack",inst.layout==="rack");
  root.setAttribute("aria-label",inst.layout==="rack"?"Sound rack":"Piano roll");
  document.querySelector(".note-length-control").hidden=inst.layout==="rack";
+ renderScaleControls(inst);
  if(inst.layout==="rack"){renderRack(root,inst,chunk);return;}
  const scroll = root.parentElement, top = scroll.scrollTop, left = scroll.scrollLeft;
  root.replaceChildren();
  root.style.setProperty("--track-accent", signal(inst));
+ const scaleGuide=scaleGuideFor(inst);
+ const scaleActive=scaleGuide.mode!=="chromatic";
+ const scaleName=SCALE_MODES.find(mode=>mode.id===scaleGuide.mode)?.name||"chromatic";
 
  for (let pitch = 83; pitch >= 36; pitch--) {
   const sharp = [1,3,6,8,10].includes(pitch % 12);
   const row = element("div", undefined, "piano-row" + (sharp ? " sharp" : ""));
-  row.append(element("span", noteLabel(pitch), "note-name"));
+  const inScale=isPitchInScale(pitch,scaleGuide);
+  if(scaleActive)row.classList.add(inScale?"in-scale":"out-of-scale");
+  const label=element("span",noteLabel(pitch),"note-name");
+  if(scaleActive)label.title=(inScale?"in ":"outside ")+SCALE_ROOTS[scaleGuide.root]+" "+scaleName;
+  row.append(label);
   const cells = [];
   function previewRow() {
    for (let pos = 0; pos < 16; pos++) {
@@ -676,8 +731,13 @@ function renderNotes() {
     cell.classList.toggle("end", !!present && present.start + present.duration - 1 === pos);
     cell.classList.toggle("selected", editingNoteEffects && !!present && present.id===selectedNoteId);
     cell.classList.toggle("bent", !!present && present.bend?.shape && present.bend.shape!=="straight");
+    // A locked scale blocks only new out-of-scale notes; old notes remain
+    // selectable, removable, resizable and audible.
+    cell.disabled=scaleGuide.lock&&!inScale&&!present;
     cell.setAttribute("aria-label", noteLabel(pitch) + ", step " + (pos + 1)
-     + (present ? ", note length " + present.duration + " steps; " + (editingNoteEffects?"click to edit note effects":"click to remove") : ", click to add note"));
+     + (scaleActive?(inScale?", in scale":", outside scale"):"")
+     + (present ? ", note length " + present.duration + " steps; " + (editingNoteEffects?"click to edit note effects":"click to remove") :
+      cell.disabled?", adding notes restricted":", click to add note"));
     cell.title = present ? (editingNoteEffects?"Click to shape note · Shift-click strength":"Click to remove · Shift-click strength") + " · drag end to resize" : "Add " + noteLabel(pitch);
    }
   }
@@ -705,6 +765,7 @@ function renderNotes() {
      modify(()=>{editedChunk.notes=editedChunk.notes.filter(n=>n.id!==existing.id);});
      return;
     }
+    if(scaleGuide.lock&&!inScale)return;
     const created={id:id(),pitch,start:step,
      duration:Math.min(Number($("length").value),16-step),velocity:Number($("velocity").value)};
     selectedNoteId=editingNoteEffects?created.id:null;
@@ -1627,6 +1688,7 @@ songUI=installSongUI({
  onAddBeat:()=>{const next=create();next.bpm=song.bpm;addSongBeat(next);},
  onImportBeat:()=>$("song-import-file").click()
 });
+initializeScaleControls();
 render();
 if(cached)message("Local draft restored");
 assetsReady=loadDraft().then(raw=>{

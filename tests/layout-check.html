@@ -84,6 +84,34 @@ async function checkLayout(frame){
  checks.noteAddedByClick=doc.querySelectorAll("#piano .note.filled").length>0;
  firstNote()?.click();
  checks.noteRemovedByClick=doc.querySelectorAll("#piano .note.filled").length===0;
+ // Exercise the actual piano-roll toolbar, including access to previously
+ // written out-of-scale notes when limiting future note entry.
+ const scaleRoot=get("scale-root"),scaleMode=get("scale-mode"),scaleLock=get("scale-lock");
+ const setScale=(control,value)=>{
+  control.value=value;
+  control.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
+ };
+ const sharpNote=()=>[...doc.querySelectorAll("#piano .note")].find(el=>
+  el.getAttribute("aria-label")?.includes("C♯4, step 1"));
+ checks.scaleChoicesPresent=scaleRoot.options.length===12&&scaleMode.options.length>=15;
+ setScale(scaleRoot,"0");
+ setScale(scaleMode,"major");
+ checks.scaleHighlightsPitches=!!doc.querySelector("#piano .piano-row.in-scale")&&
+  !!doc.querySelector("#piano .piano-row.out-of-scale")&&
+  firstNote()?.closest(".piano-row")?.classList.contains("in-scale")&&
+  sharpNote()?.closest(".piano-row")?.classList.contains("out-of-scale");
+ sharpNote()?.click();
+ checks.scalePermitsOutOfScaleWithoutLock=!!sharpNote()?.classList.contains("filled");
+ scaleLock.checked=true;
+ scaleLock.dispatchEvent(new frame.contentWindow.Event("change",{bubbles:true}));
+ checks.scalePreservesOldNotes=!!sharpNote()&&!sharpNote().disabled;
+ sharpNote()?.click();
+ checks.scaleAllowsOutOfScaleRemoval=doc.querySelectorAll("#piano .note.filled").length===0;
+ checks.scaleBlocksNewOutOfScale=!!sharpNote()?.disabled;
+ sharpNote()?.click();
+ checks.scaleBlockedNotesStayAbsent=doc.querySelectorAll("#piano .note.filled").length===0;
+ setScale(scaleMode,"chromatic");
+ checks.scaleChromaticUnlocksNotes=!scaleLock.checked&&scaleLock.disabled&&!!sharpNote()&&!sharpNote().disabled;
  get("note-mode").click();
  checks.noteModeVisible=get("note-mode").getAttribute("aria-pressed")==="true" &&
   doc.querySelector(".work").classList.contains("editing-note-effects");
