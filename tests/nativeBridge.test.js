@@ -21,8 +21,8 @@ test("native filter sweep uses a versioned packet with explicit start and end",(
  const patch=cleanPatch();patch.filter.cutoff=800;patch.filter.sweep=2;patch.filter.sweepTime=.15;
  const bytes=prepareNativePlan(plan(patch),48000,24000);
  assert.equal(bytes.readUInt32LE(12),4);
- assert.ok(Math.abs(bytes.readDoubleLE(80)-3200)<.001);
- assert.ok(Math.abs(bytes.readDoubleLE(88)-.15)<.001);
+ assert.ok(Math.abs(bytes.readDoubleLE(76)-3200)<.001);
+ assert.ok(Math.abs(bytes.readDoubleLE(84)-.15)<.001);
 });
 test("all existing waveform and filter identifiers reach the native profile",()=>{
  for(const wave of ["sine","triangle","square","sawtooth","harmonic"])for(const type of ["lowpass","highpass","bandpass","notch"]){
