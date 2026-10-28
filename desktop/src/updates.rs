@@ -91,12 +91,21 @@ pub async fn install_update(app:tauri::AppHandle,state:State<'_,Pending>)->Resul
 /// Open only the official release page or the validated portable ZIP link.
 /// Never accept arbitrary URLs or execute downloaded files.
 #[tauri::command]
-pub fn open_release_url(url:String)->Result<(),String>{
+fn valid_release_url(url:&str)->bool{
  let prefix=format!("https://github.com/{REPO}/releases/");
- if !url.starts_with(&prefix) || url.contains(['?', '#', '\\']) || url.chars().any(char::is_whitespace) ||
-  !(url[prefix.len()..].starts_with("tag/v") || url[prefix.len()..].starts_with("download/v")){
-  return Err("Not an official pre-midi release URL".into());
+ if !url.starts_with(&prefix) || url.contains(['?', '#', '\\']) || url.chars().any(char::is_whitespace){return false;}
+ let suffix=&url[prefix.len()..];
+ if let Some(tag)=suffix.strip_prefix("tag/"){return tag.strip_prefix('v').and_then(|v|Version::parse(v).ok()).is_some();}
+ if let Some(download)=suffix.strip_prefix("download/"){
+  let Some((tag,filename))=download.split_once('/') else{return false};
+  return tag.strip_prefix('v').and_then(|v|Version::parse(v).ok()).is_some() &&
+   filename==format!("pre-midi-{}-windows-x86_64-portable.zip",&tag[1..]);
  }
+ false
+}
+#[tauri::command]
+pub fn open_release_url(url:String)->Result<(),String>{
+ if !valid_release_url(&url){return Err("Not an official pre-midi release URL".into());}
  #[cfg(target_os="windows")]
  let result=std::process::Command::new("explorer.exe").arg(&url).spawn();
  #[cfg(target_os="macos")]
@@ -104,4 +113,16 @@ pub fn open_release_url(url:String)->Result<(),String>{
  #[cfg(target_os="linux")]
  let result=std::process::Command::new("xdg-open").arg(&url).spawn();
  result.map(|_|()).map_err(|e|format!("Could not open the default browser: {e}"))
+}
+
+#[cfg(test)]mod release_link_tests{
+ use super::valid_release_url;
+ #[test]fn only_official_release_assets_open(){
+  assert!(valid_release_url("https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.6"));
+  assert!(valid_release_url("https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.6/pre-midi-0.14.1-preview.6-windows-x86_64-portable.zip"));
+  assert!(!valid_release_url("https://github.com/attacker/pre-midi/releases/tag/v0.14.1-preview.6"));
+  assert!(!valid_release_url("https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.6/evil.exe"));
+  assert!(!valid_release_url("https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.6?x=1"));
+  assert!(!valid_release_url("https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.6/extra"));
+ }
 }
