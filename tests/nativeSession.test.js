@@ -36,7 +36,7 @@ test('native filter sweep can be prepared for the device without changing the pa
  const doc=beat(),patch=doc.instruments[0].sounds[0].patch;patch.filter.sweep=1.5;patch.filter.sweepTime=.12;
  const before=structuredClone(patch),plans=nativePlans(renderEvents(doc));
  const packet=encodeNativeSession(plans,48000);
- assert.equal(new DataView(packet.buffer).getUint32(20,true),4);
+ assert.equal(new DataView(packet.buffer).getUint32(24,true),4);
  assert.deepEqual(patch,before);
 });
 test('native session packet enforces its preparation bound',()=>{
