@@ -9,7 +9,7 @@ export async function cancelNativeTransport(){transportEpoch++;return nativeRequ
 export function unsupportedNativeFeatures(patch){
  if(patch?.type!=='synth')return ['sample/recording playback'];
  return [patch.noise!==0&&'noise',patch.effects.drive!==0&&'effects.drive',patch.effects.delayMix!==0&&'effects.delayMix',
-  (patch.filter.sweep??0)!==0&&'filter.sweep',...(patch.movement?['depth','tone','tremolo'].filter(key=>patch.movement[key]!==0).map(key=>'movement.'+key):[])].filter(Boolean);
+...(patch.movement?['depth','tone','tremolo'].filter(key=>patch.movement[key]!==0).map(key=>'movement.'+key):[])].filter(Boolean);
 }
 export function encodeNativeSession(plans,rate){
  if(plans.length>4096)throw Error('Native preview supports at most 4096 note onsets per cycle');
