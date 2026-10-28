@@ -63,6 +63,19 @@ try{
   const pcm=floatArray(renderer.render(shifted,rate,Math.round(total*rate)));for(let i=0;i<expected.length;i++)expected[i]+=pcm[i]*.85;
  }
  compare('loop-retains-release-tails',(await render([loopVoice],{cycle:loopSeconds,loop:true,seconds:total})).pcm,expected);
+ // Each loop iteration must restart the same cutoff sweep, not inherit the
+ // previous cycle's absolute sweep endpoint.
+ const sweptPatch=sine();sweptPatch.filter={type:'lowpass',cutoff:900,resonance:1.1,sweep:2,sweepTime:.06};
+ const swept=plan(sweptPatch,69,0,.09,.03),sweptExpected=new Array(Math.round(total*rate)*2).fill(0);
+ for(let cycle=0;cycle<4;cycle++){
+  const shifted=structuredClone(swept),shift=cycle*loopSeconds;
+  for(const key of ['start','off','end','graphEnd'])shifted[key]+=shift;
+  shifted.amplitude.events.forEach(event=>event.time+=shift);
+  shifted.filter.sweepEnd+=shift;
+  const pcm=floatArray(renderer.render(shifted,rate,Math.round(total*rate)));
+  for(let i=0;i<sweptExpected.length;i++)sweptExpected[i]+=pcm[i]*.85;
+ }
+ compare('loop-restarts-native-filter-sweep',(await render([swept],{cycle:loopSeconds,loop:true,seconds:total})).pcm,sweptExpected);
  const paused=await render([plan(sine(),69,0,.5)],{cycle:1,pause:true});if(paused.report.state===2)throw Error('Resume failed');
  const malformed=join(temp,'bad.pms');await writeFile(malformed,new Uint8Array([1,2,3]));let rejected=false;
  try{run(['--render',malformed,rate,1,0,0,100,128,join(temp,'bad.pcm'),'none']);}catch{rejected=true;}if(!rejected)throw Error('Malformed native instructions accepted');
