@@ -36,8 +36,9 @@ int main(int argc,char** argv){
      }
     }
    }
-   for(const unsigned rate:{44100u,48000u,96000u})for(const unsigned version:{2u,3u}){
+   for(const unsigned rate:{44100u,48000u,96000u})for(const unsigned version:{2u,3u,4u}){
     premidi::Plan plan;plan.version=version;plan.routeCount=16;plan.start=.002;plan.off=.015;plan.sourceEnd=.04;plan.graphEnd=.05;plan.oscillators[0].level=.5;plan.oscillators[1].wave=1;plan.oscillators[1].level=0;
+    if(version==4){plan.sweepStart=3600;plan.sweepEnd=.025;}
     if(version==3){plan.automationCount=3;plan.automation[0]={0,.002,1200};plan.automation[1]={0,.02,7200};plan.automation[2]={0,.05,600};}
     plan.eventCount=2;plan.events[0]={0,.002,.1};plan.events[1]={1,.04,0};
     for(unsigned i=0;i<16;i++){auto& r=plan.routes[i];r.target=i%6;r.kind=i%4;r.bipolar=i%2;r.depth=r.target%2?.5:10;r.smoothing=i%2?.01:0;r.envelope={.01,.01,.4,.01};if(r.target==4)r.depth=.5;}
@@ -49,7 +50,7 @@ int main(int argc,char** argv){
      require(before==allocations&&first==second,"v2 allocation or block invariance failed");for(float v:second)require(std::isfinite(v)&&std::abs(v)<16,"Unstable v2 PCM");
     }
    }
-   std::cerr<<"PASS: 400 waveform/filter/rate/extreme and 6 maximum-route v2/v3 profiles, 5 block sizes, finite bounded PCM and no C++ allocations in process\n";return 0;
+   std::cerr<<"PASS: 400 waveform/filter/rate/extreme and 9 maximum-route v2/v3/v4 profiles, 5 block sizes, finite bounded PCM and no C++ allocations in process\n";return 0;
   }
 #ifdef _WIN32
   _setmode(_fileno(stdin),_O_BINARY);_setmode(_fileno(stdout),_O_BINARY);
