@@ -175,6 +175,25 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .note-length-control {margin-left:auto}
 .note-length-control select {min-width:76px}
 
+/* Scale guidance stays in the note toolbar, separate from sound synthesis. */
+.scale-controls {
+ display:flex;align-items:flex-end;flex-wrap:wrap;gap:7px 10px;
+ margin-left:auto;min-width:0;
+}
+.scale-controls > label {min-width:0}
+.scale-controls select {height:34px;min-height:34px;min-width:0}
+#scale-root {width:85px}
+#scale-mode {width:166px;max-width:100%}
+.scale-controls .scale-lock-control {
+ display:inline-flex;flex-direction:row;align-items:center;gap:6px;
+ height:34px;min-height:34px;white-space:nowrap;cursor:pointer;
+}
+.scale-lock-control input {margin:0;accent-color:var(--signal-cyan)}
+.scale-controls[hidden] {display:none}
+@media(max-width:820px) {
+ .scale-controls {margin-left:0}
+}
+
 .instrument-card {
   --track-accent:var(--signal-cyan);
   display:grid;gap:4px;width:100%;min-height:68px;
@@ -289,6 +308,10 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
   background:#181818;color:var(--text);font-size:11px;
 }
 .piano-row.sharp .note-name {background:#090909;color:var(--muted)}
+.piano-row.in-scale .note-name {border-left:2px solid var(--signal-cyan);color:var(--bright)}
+.piano-row.out-of-scale .note-name {color:#666}
+.piano-row.out-of-scale .note:not(.filled):not(.tail) {background:#050505}
+.piano-row.out-of-scale .note:disabled {opacity:.52;cursor:not-allowed}
 .note {
   padding:0;min-width:0;border:0;border-right:1px solid #292929;
   border-bottom:1px solid #1b1b1b;background:#101010;
