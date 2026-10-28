@@ -2,12 +2,12 @@
 
 Status: **Stage 5 (vocal recording) implemented, reliability work ongoing**. Stage 6 (pre-programmed native parity) has not shipped.
 
-This is the canonical technical roadmap. [Terminology](terminology.json) is authoritative for data, UI and code; [pre-programmed issue #235](https://github.com/natanai/pre-programmed/issues/235) tracks the game-side migration.
+This is the Song-specific historical rollout and integration plan; the active synthesis and native-host task register is [docs/synthesis-roadmap.json](synthesis-roadmap.json). [Terminology](terminology.json) is authoritative for data, UI and code; [pre-programmed issue #235](https://github.com/natanai/pre-programmed/issues/235) tracks the game-side migration.
 
 ## Implemented
 
-1. **Beat-first architecture:** 1–16-bar Beat editor with Sound, Rack, Instrument and reusable one-bar Chunk definitions. Canonical Beat naming in active code. Native Beat schema v7 and supported older migrations.
-2. **Native Song model:** schema v8 with referenced Beats, Song Tracks, Beat Clips and Recordings. Beat Clips repeat, crop and overlap without flattening Sounds or Chunks. Song and Beat BPM are separate editing contexts.
+1. **Beat-first architecture:** 1–16-bar Beat editor with Sound, Rack, Instrument and reusable one-bar Chunk definitions. Canonical Beat naming in active code. Legacy Beat schema v7 and supported older migrations; newer v9 modulation and v11 automation Beats are versioned separately.
+2. **Native Song model:** legacy schema v8 (newer v10 modulation and v12 automation Songs are versioned separately) with referenced Beats, Song Tracks, Beat Clips and Recordings. Beat Clips repeat, crop and overlap without flattening Sounds or Chunks. Song and Beat BPM are separate editing contexts.
 3. **Song interface:** subtle ↑ Song affordance; multiple Beat Tracks; add/import Beats; drag, resize, reorder and select Clips; vocal lanes always precede Beat lanes, with the Beat editor beneath.
 4. **Transport and export:** expanded view plays Song; collapsed view plays selected Beat. Song playhead can seek from a selected bar. Export Beat or Song as native `.premidi` or WAV. Audio assets travel beside native JSON in portable ZIPs, not inside it.
 5. **Voice foundation:** ● voice dialog, explicit play + record, start bar, optional count-in, visible statuses and recording permission handling. External MediaRecorder assets, waveform, basic level/delete, multiple vocal takes and local draft persistence. Web limits remain 5 minutes / 48 MB per take / 64 MB per ZIP.
@@ -25,7 +25,7 @@ This is the canonical technical roadmap. [Terminology](terminology.json) is auth
 ## Stage 6: Native pre-programmed parity
 
 - Inventory the existing pre-programmed **v2** reader, Media storage and legacy project imports. Never silently reinterpret older data.
-- Share or parity-test the versioned v7 Beat and v8 Song validation, synthesis, sampling, note expression, offsets/repetitions and asset path semantics.
+- Share or parity-test the versioned legacy v7 Beat/v8 Song and newer v9/v11 Beat/v10/v12 Song validation, synthesis, sampling, note expression, offsets/repetitions and asset path semantics.
 - Integrate its game asset storage with the `.premidi` manifest and separately managed audio bytes.
 - Add runtime control identities for Songs, Tracks, Clips, Beats and Sound parameters. Gameplay uses pre-programmed's own conditions/effects, **not** a parallel script language in `.premidi`.
 - Add cross-repo reference fixtures and live/rendered-event comparisons to stop parity drift.
