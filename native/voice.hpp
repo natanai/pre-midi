@@ -12,7 +12,7 @@ constexpr double pi=3.14159265358979323846;
 struct Event {std::uint32_t kind;double time,value;};
 struct Oscillator {double frequency=440,level=0,detune=0;std::uint32_t wave=0,count=0;std::array<double,32> harmonics{};std::array<double,600> curve{};};
 struct Plan {
- double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7;
+ double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0;
  std::uint32_t version=1,routeCount=0,automationCount=0;std::array<Event,6> automation{};double off=1,pitch=60,velocity=1;std::array<Route,16> routes{};
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
  std::uint32_t eventCount=0;std::array<Event,6> events{};
@@ -44,10 +44,19 @@ class Voice {
   return static_cast<float>(osc.curve[index]+(osc.curve[next]-osc.curve[index])*(position-index));
  }
  double cutoffAt(double time) const noexcept {
-  if(!plan.automationCount)return plan.cutoff;
-  const auto& points=plan.automation;if(time<=points[0].time)return points[0].value;
-  for(unsigned i=1;i<plan.automationCount;i++)if(time<points[i].time){const auto& a=points[i-1];const auto& b=points[i];return static_cast<float>(a.value*std::pow(b.value/a.value,(time-a.time)/(b.time-a.time)));}
-  return points[plan.automationCount-1].value;
+  double base=plan.cutoff;
+  if(plan.automationCount){
+   const auto& points=plan.automation;
+   if(time<=points[0].time)base=points[0].value;
+   else {base=points[plan.automationCount-1].value;
+    for(unsigned i=1;i<plan.automationCount;i++)if(time<points[i].time){const auto& a=points[i-1];const auto& b=points[i];base=a.value*std::pow(b.value/a.value,(time-a.time)/(b.time-a.time));break;}
+   }
+  }
+  if(plan.version>=4&&plan.sweepEnd>plan.start){
+   const double progress=std::clamp((time-plan.start)/(plan.sweepEnd-plan.start),0.,1.);
+   base*=std::pow(plan.sweepStart/plan.cutoff,1.-progress);
+  }
+  return base;
  }
 public:
 #ifdef PREMIDI_PROBE
@@ -56,7 +65,7 @@ public:
  Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr},std::uint64_t initialFrame=0,const VoicePreparation* prepared=nullptr) noexcept:plan(input),rate(sampleRate),frame(initialFrame),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity,prepared?&prepared->alpha:nullptr),banks(waveBanks){
   if(prepared){filter=prepared->filter;movingCutoff=prepared->movingCutoff;left=prepared->left;right=prepared->right;initialFrequency=prepared->initialFrequency;return;}
   for(unsigned i=0;i<plan.routeCount;i++)if(plan.routes[i].target==4)movingCutoff=true;
-  if(plan.automationCount)movingCutoff=true;
+  if(plan.automationCount||plan.version>=4)movingCutoff=true;
   filter.configure(plan.filterType,cutoffAt(plan.start),plan.q,rate);
   left=std::cos((plan.pan+1)*pi/4);right=std::sin((plan.pan+1)*pi/4);
   for(unsigned j=0;j<2;j++){const auto& osc=plan.oscillators[j];initialFrequency[j]=osc.frequency*std::pow(2.,(osc.count?osc.curve[0]:osc.detune)/1200.);}

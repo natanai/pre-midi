@@ -16,9 +16,9 @@ public:
 inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
  PacketReader in(data,size);require(in.u32()==0x344e4d50,"Unknown prepared voice transport");
  require(in.u32()==rate,"Voice/device sample rate mismatch");const auto frames=in.u32();require(frames>0&&frames<=rate*12,"Invalid prepared frame bound");
- Plan p;p.version=in.u32();require(p.version>=1&&p.version<=3,"Unknown synth voice version");
- p.start=in.f64();p.duration=in.f64();p.sourceEnd=in.f64();p.graphEnd=in.f64();p.pan=in.f64();p.cutoff=in.f64();p.q=in.f64();p.filterType=in.u32();
- require(p.start>=0&&p.start<=601&&p.duration>0&&p.sourceEnd>p.start&&p.graphEnd>=p.sourceEnd&&p.graphEnd-p.start<=30&&p.filterType<4&&std::abs(p.pan)<=1&&p.cutoff>=50&&p.cutoff<=14000&&p.q>=.1&&p.q<=16,"Invalid native voice bounds (maximum voice lifetime 30 seconds)");
+ Plan p;p.version=in.u32();require(p.version>=1&&p.version<=4,"Unknown synth voice version");
+ p.start=in.f64();p.duration=in.f64();p.sourceEnd=in.f64();p.graphEnd=in.f64();p.pan=in.f64();p.cutoff=in.f64();p.q=in.f64();p.filterType=in.u32();if(p.version>=4){p.sweepStart=in.f64();p.sweepEnd=in.f64();}
+ require(p.start>=0&&p.start<=601&&p.duration>0&&p.sourceEnd>p.start&&p.graphEnd>=p.sourceEnd&&p.graphEnd-p.start<=30&&p.filterType<4&&std::abs(p.pan)<=1&&p.cutoff>=50&&p.cutoff<=14000&&p.q>=.1&&p.q<=16&&(p.version<4||(p.sweepStart>=50&&p.sweepStart<=14000&&p.sweepEnd>p.start&&p.sweepEnd<=p.graphEnd)),"Invalid native voice bounds (maximum voice lifetime 30 seconds)");
  for(auto& o:p.oscillators){
   o.frequency=in.f64();o.level=in.f64();o.detune=in.f64();o.wave=in.u32();require(o.wave<=4&&o.frequency>0&&o.frequency<=18000&&o.level>=0&&o.level<=1&&std::abs(o.detune)<=100,"Invalid native oscillator");
   for(auto& h:o.harmonics){h=in.f64();require(h>=0&&h<=1,"Invalid harmonic recipe");}
@@ -33,7 +33,7 @@ inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
   const double limit=r.target==4?8:r.target==5?2:r.target%2?1:2400;
   require(r.target<6&&r.kind<4&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.05&&r.rate<=20&&r.root>=0&&r.root<=127&&r.span>=1&&r.span<=127&&r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4,"Invalid native modulation route");
  }
- p.automationCount=in.u32();require(p.automationCount<=6&&(p.version==3?p.automationCount>=2:p.automationCount==0),"Invalid native automation count");
+ p.automationCount=in.u32();require(p.automationCount<=6&&(p.version==3?p.automationCount>=2:p.version==4?(p.automationCount==0||p.automationCount>=2):p.automationCount==0),"Invalid native automation count");
  for(unsigned index=0;index<2;index++){
   const auto& o=p.oscillators[index];double highest=o.detune,offset=0;
   for(unsigned i=0;i<o.count;i++)highest=std::max(highest,o.curve[i]);

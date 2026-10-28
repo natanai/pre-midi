@@ -10,7 +10,7 @@ Production selects WASAPI (Windows), CoreAudio (macOS), PulseAudio/ALSA (Linux),
 
 Windows Rust and C++ builds statically link the Visual C++ runtime, and CI inspects the PE dependencies to reject MSVCP/VCRUNTIME/CONCRT DLL requirements in the portable executable. WebView2 and Windows system components remain OS dependencies. C++ exception unwinding is enabled for control-side validation; Windows min/max macros are excluded at the native boundary.
 
-Tauri's native_audio command sends requests through an eight-message bounded queue to one dedicated audio control thread. C API initialization, configuration, preparation and destruction stay on that thread, preserving backend/COM affinity. Blocking IPC workers wait for replies; the audio callback never touches the Rust queue. Shared native JS encoding carries the existing pre-midi-synth-voice v1/v2/v3 contract in a bounded little-endian execution packet; this is not a new project/music format. Native packet validation independently checks counts, finite values, rates, routes, wave IDs and time bounds.
+Tauri's native_audio command sends requests through an eight-message bounded queue to one dedicated audio control thread. C API initialization, configuration, preparation and destruction stay on that thread, preserving backend/COM affinity. Blocking IPC workers wait for replies; the audio callback never touches the Rust queue. Shared native JS encoding carries the existing pre-midi-synth-voice v1/v2/v3 contract plus the backward-compatible v4 filter-sweep execution packet in a bounded little-endian transport; this is not a new project/music format. Native packet validation independently checks counts, finite values, rates, routes, wave IDs and time bounds.
 
 ## Real-time ownership
 
@@ -32,7 +32,7 @@ Device changes stop the current session. Stop/reroute/interruption notifications
 
 Two oscillator slots (sine, triangle, square, sawtooth and 32 harmonics), existing band-limited banks, static filters, canonical envelope/note-off, prepared bend/glide curves, equal-power pan, all four v2 modulation sources/six target IDs, smoothing, and v3 filter.cutoff automation. Beat/Song onsets and strums come from audio.js's shared renderEvents resolver; instrument/sound gain uses the same resolveEvent and planSynthVoice functions as the web host.
 
-Native noise, filter sweeps, drive/oversampling, delay/effect tails, legacy movement LFOs, samples and recording/vocal playback are explicit errors. No native microphone input or Song capture alignment is claimed. WAV export and recording retain Web Audio. Expanding these capabilities requires independent browser/native comparisons before enabling them; no synthesis substitution or arbitrary rendering downgrade is allowed.
+Native noise, drive/oversampling, delay/effect tails, legacy movement LFOs, samples and recording/vocal playback remain explicit errors. Filter sweeps use a versioned v4 execution packet; this is not a new saved Beat/Song format. Sweeps can be combined with canonical cutoff automation, but require browser/native acoustic qualification before release. No native microphone input or Song capture alignment is claimed. WAV export and recording retain Web Audio. Expanding these capabilities requires independent browser/native comparisons before enabling them; no synthesis substitution or arbitrary rendering downgrade is allowed.
 
 ## Qualification
 
