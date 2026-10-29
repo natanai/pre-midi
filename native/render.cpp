@@ -50,6 +50,19 @@ int main(int argc,char** argv){
      require(before==allocations&&first==second,"v2 allocation or block invariance failed");for(float v:second)require(std::isfinite(v)&&std::abs(v)<16,"Unstable v2 PCM");
     }
    }
+   for(const unsigned rate:{44100u,48000u,96000u})for(const double decay:{0.,.04,.3}){
+    premidi::Plan plan;plan.version=5;plan.noise=.8;plan.noiseDecay=decay;plan.sweepStart=8000;plan.sweepEnd=.1;plan.oscillators[0].level=0;plan.oscillators[1].level=0;
+    plan.start=0;plan.off=.05;plan.sourceEnd=.08;plan.graphEnd=.1;plan.eventCount=2;plan.events[0]={0,0,.5};plan.events[1]={1,.08,0};
+    std::array<float,8192> first{},second{};premidi::Voice reference(plan,rate);auto before=allocations;reference.process(first.data(),4096);
+    require(allocations==before,"Noise render allocated");
+    for(const std::size_t block:{1,17,64,128,511}){
+     premidi::Voice voice(plan,rate);before=allocations;
+     for(std::size_t at=0;at<4096;at+=block)voice.process(second.data()+2*at,std::min<std::size_t>(block,4096-at));
+     require(allocations==before&&first==second,"Noise block-size invariance failed");
+     for(float v:second)require(std::isfinite(v)&&std::abs(v)<16,"Unstable noise PCM");
+    }
+    require(std::any_of(first.begin(),first.end(),[](float v){return std::abs(v)>1e-5f;}),"Noise voice silent");
+   }
    std::cerr<<"PASS: 400 waveform/filter/rate/extreme and 9 maximum-route v2/v3/v4 profiles, 5 block sizes, finite bounded PCM and no C++ allocations in process\n";return 0;
   }
 #ifdef _WIN32
