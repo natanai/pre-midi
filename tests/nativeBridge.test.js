@@ -11,7 +11,7 @@ test("native control adapter encodes the canonical plan with explicit bounded tr
  assert.throws(()=>prepareNativePlan(plan(cleanPatch()),48000,Infinity));
 });
 test("native prototype rejects unsupported features instead of silently changing the sound",()=>{
- for(const mutate of [p=>p.noise=.1,p=>p.effects.drive=.1,p=>p.effects.delayMix=.1,p=>p.movement.depth=4]){
+ for(const mutate of [p=>p.effects.drive=.1,p=>p.effects.delayMix=.1,p=>p.movement.depth=4]){
   const patch=cleanPatch();mutate(patch);assert.throws(()=>prepareNativePlan(plan(patch),48000,24000),/Unsupported native profile/);
  }
  assert.throws(()=>prepareNativePlan({...plan(cleanPatch()),version:99},48000,24000),/contract v1/);
@@ -32,4 +32,14 @@ test("all existing waveform and filter identifiers reach the native profile",()=
 
 test("native v2 accepts the musical modulation presets and rejects malformed routes",()=>{
  for(const name of ["evolving-glass","breath-lead","touch-keys"]){const p=plan(makePatch(name));assert.equal(p.version,2);assert.ok(prepareNativePlan(p,48000,24000).length>0);p.modulation.routes[0].unit="unknown";assert.throws(()=>prepareNativePlan(p,48000,24000),/Invalid modulation/);}
+});
+
+test("native noise voice uses version 5 with deterministic noise level and decay",()=>{
+ const patch=cleanPatch();patch.noise=.65;patch.noiseDecay=.2;
+ const packet=prepareNativePlan(plan(patch),48000,24000);
+ assert.equal(packet.readUInt32LE(12),5);
+ assert.equal(packet.readDoubleLE(92),.65);
+ assert.equal(packet.readDoubleLE(100),.2);
+ const quiet=cleanPatch();quiet.noise=0;
+ assert.notEqual(prepareNativePlan(plan(quiet),48000,24000).readUInt32LE(12),5);
 });
