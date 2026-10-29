@@ -102,6 +102,8 @@ export function describeRecording(samples){
 }
 export async function monoFromAudioBlob(blob,AudioContextType=globalThis.AudioContext){
  if(!blob?.size)throw Error("The microphone did not capture any audio.");
+ const {nativeEnabled}=await import('./src/hosts/native/session.js');
+ if(nativeEnabled()){const {decodeNativeAudio}=await import('./src/hosts/native/capture.js');return (await decodeNativeAudio(await blob.arrayBuffer(),{maxSeconds:30.05})).getChannelData(0);}
  const context=new AudioContextType();
  try{
   const audio=await context.decodeAudioData(await blob.arrayBuffer());

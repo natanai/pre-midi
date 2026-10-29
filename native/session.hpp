@@ -29,6 +29,7 @@ class Session {
  std::array<std::size_t,2> next{};std::array<std::uint64_t,2> cycles{0,1};
  std::uint64_t cursor=0,serial=0,stopCycle=0;bool wasLoop=false;
  unsigned fadeLeft=0,fadeIn=0,afterFade=playing,error=0;
+ std::uint64_t leadCursor=0,leadTotal=0;double leadBeatFrames=0;
  std::uint64_t frameAt(double seconds)const noexcept{return static_cast<std::uint64_t>(std::ceil(seconds*rate-1e-9));}
  void expire(std::uint64_t at)noexcept{
   for(auto& s:voices)if(s.voice&&s.end<=at)s.voice.reset();
@@ -91,6 +92,8 @@ public:
  std::vector<PreparedNote> notes;
  unsigned state=playing;std::uint64_t admitted=0,stolen=0;
  std::atomic<std::uint64_t> position{0},active{0},fault{0},stateView{playing};
+ std::atomic<std::uint64_t> leadRemaining{0};
+ unsigned lastLeadFrames=0,lastMusicFrames=0;
  // Prepared handoff clock; read only by the callback after publication.
  Session* alignSource=nullptr;std::uint64_t alignOldFrame=0;
  std::atomic<unsigned> handoff{0};
@@ -159,6 +162,10 @@ public:
   while(cursor<target&&state==playing){unsigned budget=maxOnsets;process(scratch.data(),static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,target-cursor)),loop,budget);}
   return cursor==target&&!error;
  }
+ void countIn(double bpm,unsigned bars){
+  require(std::isfinite(bpm)&&bpm>=20&&bpm<=400&&bars<=2,"Invalid native count-in");
+  leadBeatFrames=rate*60./bpm;leadTotal=static_cast<std::uint64_t>(std::ceil(leadBeatFrames*bars*4-1e-9));leadCursor=0;leadRemaining.store(leadTotal);
+ }
  // Control-side reconstruction for a live edit of an already looping score.
  // Retain enough preceding cycles for held notes, releases and delay history,
  // without inventing cycles that the transport has not played yet.
@@ -169,11 +176,25 @@ public:
  }
  void process(float* output,unsigned frames,bool loop,unsigned& onsetBudget)noexcept{
   std::fill(output,output+2*frames,0.f);
+  lastLeadFrames=lastMusicFrames=0;
   if(loop&&!wasLoop){for(unsigned s=0;s<2;s++)if(next[s]>=notes.size()){next[s]=0;cycles[s]+=2;}}
   if(!loop&&wasLoop)stopCycle=static_cast<std::uint64_t>(cursor/(cycleSeconds*rate));
   wasLoop=loop;
   unsigned done=0;
   while(done<frames&&state==playing&&!error){
+   if(leadCursor<leadTotal){
+    unsigned count=static_cast<unsigned>(std::min<std::uint64_t>(std::min(renderBlock,frames-done),leadTotal-leadCursor));if(fadeLeft)count=std::min(count,fadeLeft);
+    for(unsigned i=0;i<count;i++){
+     const double frame=static_cast<double>(leadCursor+i),beat=std::floor(frame/leadBeatFrames),time=(frame-beat*leadBeatFrames)/rate;
+     double envelope=0;if(time<.008)envelope=.0001*std::pow(800.,time/.008);else if(time<.08)envelope=.08*std::pow(.0001/.08,(time-.008)/.072);else if(time<.085)envelope=.0001;
+     float value=static_cast<float>(std::sin(6.283185307179586*(static_cast<unsigned>(beat)%4?660:880)*time)*envelope);
+     if(fadeIn){value*=1-static_cast<float>(fadeIn)/fadeFrames;--fadeIn;}if(fadeLeft){value*=static_cast<float>(fadeLeft)/fadeFrames;--fadeLeft;}
+     output[2*(done+i)]=output[2*(done+i)+1]=value;
+    }
+    done+=count;leadCursor+=count;lastLeadFrames=done;
+    if(!fadeLeft&&(afterFade==stopped||afterFade==paused)){state=afterFade;afterFade=playing;if(state==stopped){cursor=0;leadCursor=leadTotal;}}
+    continue;
+   }
    expire(cursor);
    for(;;){const auto a=upcoming(0,loop),b=upcoming(1,loop);const unsigned stream=a<=b?0:1;const auto at=std::min(a,b);if(at>cursor)break;
     if(!onsetBudget){error=2;break;}--onsetBudget;spawn(notes[next[stream]],cycles[stream],cursor);advance(stream,loop);if(error)break;
@@ -197,13 +218,13 @@ public:
     if(fadeLeft){gain*=static_cast<float>(fadeLeft)/fadeFrames;--fadeLeft;}
     output[2*(done+i)]*=gain;output[2*(done+i)+1]*=gain;
    }
-   cursor+=count;done+=count;
+   cursor+=count;done+=count;lastMusicFrames+=count;
    if(!fadeLeft&&(afterFade==stopped||afterFade==paused)&&afterFade!=playing){state=afterFade;afterFade=playing;if(state==stopped){cursor=0;for(auto& s:voices)s.voice.reset();for(auto& s:retiring)s.voice.reset();}}
    bool any=false;for(const auto& s:voices)any|=s.voice.has_value();for(const auto& s:retiring)any|=s.voice.has_value();
    if(!loop&&!any&&nextAt==UINT64_MAX&&cursor>=std::max(tailEnd,frameAt((stopCycle+1)*cycleSeconds)))state=finished;
   }
   if(error){state=failed;std::fill(output,output+2*frames,0.f);fault.store(error);}
-  std::uint64_t live=0;for(const auto& s:voices)live+=s.voice.has_value();position.store(cursor);active.store(live);stateView.store(state);
+  std::uint64_t live=0;for(const auto& s:voices)live+=s.voice.has_value();position.store(cursor);active.store(live);stateView.store(state);leadRemaining.store(leadTotal-leadCursor);
  }
 };
 }

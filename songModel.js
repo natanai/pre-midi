@@ -6,7 +6,14 @@ import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
 export const SONG_VERSION=8;
 export const MODULATION_SONG_VERSION=10;
 export const AUTOMATION_SONG_VERSION=12;
-export function upgradeSongFeatures(song){song.beats.forEach(upgradeBeatFeatures);if(song.beats.some(beat=>beat.version===AUTOMATION_BEAT_VERSION))song.version=AUTOMATION_SONG_VERSION;else if(song.beats.some(beat=>beat.version===MODULATION_BEAT_VERSION)&&song.version<MODULATION_SONG_VERSION)song.version=MODULATION_SONG_VERSION;return song;}
+export const PCM_SONG_VERSION=14;
+export function upgradeSongFeatures(song){
+ song.beats.forEach(upgradeBeatFeatures);
+ if(song.recordings?.some(recording=>recording.mime==='audio/wav'))song.version=PCM_SONG_VERSION;
+ else if(song.beats.some(beat=>beat.version===AUTOMATION_BEAT_VERSION)&&song.version<AUTOMATION_SONG_VERSION)song.version=AUTOMATION_SONG_VERSION;
+ else if(song.beats.some(beat=>beat.version===MODULATION_BEAT_VERSION)&&song.version<MODULATION_SONG_VERSION)song.version=MODULATION_SONG_VERSION;
+ return song;
+}
 const isObject=value=>value!==null&&typeof value==="object"&&!Array.isArray(value);
 const positive=value=>Number.isSafeInteger(value)&&value>0;
 const nonnegative=value=>Number.isSafeInteger(value)&&value>=0;
@@ -87,13 +94,14 @@ export function addVocalTake(song,recording,{startStep=0}={}){
  };
  song.recordings.push({...recording});
  track.clips.push(clip);
+ upgradeSongFeatures(song);
  return {track,clip};
 }
 export function validateRecording(entry){
  if(!isObject(entry)||!/^[a-zA-Z0-9_-]{1,128}$/.test(entry.id||""))return "Recording requires a safe ID.";
  if(typeof entry.name!=="string"||!entry.name.trim()||entry.name.length>100)return "Recording needs a name.";
- if(!["audio/webm","audio/mp4","audio/ogg"].includes(entry.mime))return "Unsupported Recording format.";
- const ext={"audio/webm":"webm","audio/mp4":"mp4","audio/ogg":"ogg"}[entry.mime];
+ if(!["audio/webm","audio/mp4","audio/ogg","audio/wav"].includes(entry.mime))return "Unsupported Recording format.";
+ const ext={"audio/webm":"webm","audio/mp4":"mp4","audio/ogg":"ogg","audio/wav":"wav"}[entry.mime];
  if(entry.path!=="assets/"+entry.id+"."+ext)return "Recording must use its canonical asset path.";
  if(typeof entry.durationSeconds!=="number"||!Number.isFinite(entry.durationSeconds)||
     entry.durationSeconds<=.05||entry.durationSeconds>MAX_VOCAL_SECONDS+.5)
@@ -130,7 +138,7 @@ export function eventsAtSongStep(song,step){
 }
 export function validateSong(song){
  const errors=[];
- if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION].includes(song.version))
+ if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION].includes(song.version))
   return ["Unsupported Song format."];
  if(typeof song.id!=="string"||!song.id.trim()||typeof song.title!=="string"||!song.title.trim())
   errors.push("Song identity or title is missing.");
@@ -145,6 +153,7 @@ export function validateSong(song){
  const knownRecordings=new Set();
  for(const recording of recordings){
   const error=validateRecording(recording);
+  if(recording?.mime==='audio/wav'&&song.version<PCM_SONG_VERSION)errors.push('PCM Recordings require Song v14.');
   if(error)errors.push(error);
   else knownRecordings.add(recording.id);
  }
@@ -152,7 +161,7 @@ export function validateSong(song){
  for(const beat of song.beats){
   const issues=validateBeat(beat);
   if(issues.length)errors.push("Invalid Beat "+(beat?.id||"unknown")+": "+issues[0]);
-  if(song.version!==AUTOMATION_SONG_VERSION&&beat?.version===AUTOMATION_BEAT_VERSION)errors.push("Automated Beats require Song v12.");
+  if(song.version<AUTOMATION_SONG_VERSION&&beat?.version===AUTOMATION_BEAT_VERSION)errors.push("Automated Beats require Song v12.");
   if(song.version===SONG_VERSION&&beat?.version===MODULATION_BEAT_VERSION)errors.push("Modulated Beats require Song v10.");
   if(!BEAT_VERSIONS.includes(beat?.version))errors.push("Embedded Beat must use the current Beat format.");
  }

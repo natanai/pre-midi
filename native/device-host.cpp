@@ -11,6 +11,7 @@
 #include "vendor/miniaudio/miniaudio.h"
 #include "device-host.h"
 #include "session.hpp"
+#include "capture.hpp"
 #include <chrono>
 #include <thread>
 #include <string>
@@ -77,6 +78,7 @@ public:
 class DeviceHost {
  ma_context context{};ma_device device{};bool contextReady=false,deviceReady=false;
  SampleStore samples;std::uint64_t sampleBytes=0;
+ Capture capture;std::atomic<Session*> captureTarget{nullptr};bool duplex=false;unsigned captureRate=0;
  std::vector<ma_device_info> devices;
  std::string error;
  std::atomic<unsigned> intentionalStop{0},lost{0};
@@ -85,7 +87,7 @@ class DeviceHost {
   auto& host=*static_cast<DeviceHost*>(event->pDevice->pUserData);
   if(!host.intentionalStop.load()&&(event->type==ma_device_notification_type_stopped||event->type==ma_device_notification_type_rerouted||event->type==ma_device_notification_type_interruption_began||event->type==ma_device_notification_type_interruption_ended))host.lost.store(1);
  }
- static void callback(ma_device* device,void* output,const void*,ma_uint32 count)noexcept{
+ static void callback(ma_device* device,void* output,const void* input,ma_uint32 count)noexcept{
 #ifdef PREMIDI_AUDIO_TEST
   CallbackProbe probe;
 #endif
@@ -98,6 +100,7 @@ class DeviceHost {
   for(unsigned offset=0;offset<count;){
    const auto n=std::min(renderBlock,count-offset);std::array<float,2*renderBlock> a{},b{};
    host.transport.process(a.data(),n,transportBudget);host.preview.process(b.data(),n,previewBudget);
+   if(host.duplex){auto* active=host.transport.current();host.capture.process(input?static_cast<const float*>(input)+offset:nullptr,n,host.frames.load()+offset,active&&active==host.captureTarget.load(),active?active->lastLeadFrames:0,active?active->lastMusicFrames:0,active&&active->stateView.load()==paused);}
    for(unsigned i=0;i<2*n;i++){
     float value=a[i]+b[i];if(!std::isfinite(value))value=0;
     const float amplitude=std::abs(value);clipping+=amplitude>1;peakValue=std::max(peakValue,static_cast<std::uint64_t>(std::min(amplitude,1000.f)*1000000.f));
@@ -140,7 +143,7 @@ public:
    }
   }
   if(deviceReady){ma_device_uninit(&device);deviceReady=false;}
-  transport.clear();preview.clear();samples.clear();sampleBytes=0;intentionalStop.store(0);
+  transport.clear();preview.clear();samples.clear();sampleBytes=0;captureTarget.store(nullptr);capture.discard();duplex=false;captureRate=0;intentionalStop.store(0);
  }
  int enumerate(){
   ma_device_info* list=nullptr;ma_uint32 count=0;
@@ -166,8 +169,42 @@ public:
   if(ma_device_start(&device)!=MA_SUCCESS){close();throw std::runtime_error("Could not start native audio output");}
  }
  void ensure(){require(!lost.load(),"Native output disconnected or changed. Refresh outputs in Settings and select the device again.");if(!deviceReady)open(UINT32_MAX,0,0);}
- void play(const std::uint8_t* data,std::size_t length,double cycle,double seek,bool loop,bool audition){
+ void switchDuplex(bool enabled){
+  ensure();if(duplex==enabled)return;
+  const auto sampleRate=device.sampleRate,period=device.playback.internalPeriodSizeInFrames;const auto outputId=device.playback.id;
+  auto* a=transport.current();auto* b=preview.current();const bool resumeA=a&&a->stateView.load()==playing,resumeB=b&&b->stateView.load()==playing;
+  if(resumeA)transport.command(2);
+  if(resumeB)preview.command(2);
+  for(unsigned i=0;i<100;i++){if((!resumeA||a->stateView.load()!=playing)&&(!resumeB||b->stateView.load()!=playing))break;std::this_thread::sleep_for(std::chrono::milliseconds(2));}
+  intentionalStop.store(1);ma_device_uninit(&device);deviceReady=false;
+  auto initialize=[&](bool mode){
+   auto config=ma_device_config_init(mode?ma_device_type_duplex:ma_device_type_playback);config.playback.format=ma_format_f32;config.playback.channels=2;config.playback.pDeviceID=&outputId;
+   config.capture.format=ma_format_f32;config.capture.channels=1;config.sampleRate=sampleRate;config.periodSizeInFrames=period;config.periods=3;config.performanceProfile=ma_performance_profile_low_latency;
+   config.dataCallback=callback;config.notificationCallback=notify;config.pUserData=this;
+   if(ma_device_init(&context,&config,&device)!=MA_SUCCESS)return false;
+   deviceReady=true;duplex=mode;
+   if(device.sampleRate!=sampleRate||ma_device_start(&device)!=MA_SUCCESS){ma_device_uninit(&device);deviceReady=false;return false;}return true;
+  };
+  const bool success=initialize(enabled);if(!success){if(!initialize(false))lost.store(1);}
+  intentionalStop.store(0);if(resumeA)transport.command(3);if(resumeB)preview.command(3);
+  require(success,enabled?"Could not open the native microphone. Check Windows microphone privacy settings and the default input device.":"Could not restore the native playback device");
+ }
+ void prepareCapture(double seconds,double offset,bool sync){
+  ensure();capture.prepare(device.sampleRate,seconds,offset,sync);captureRate=device.sampleRate;captureTarget.store(nullptr);switchDuplex(true);capture.arm();
+ }
+ void startCapture(double lead){ensure();require(duplex,"Prepare the native microphone first");capture.start(device.sampleRate,lead);}
+ void finishCapture(bool cancel){
+  capture.stop();if(deviceReady&&!lost.load())for(unsigned i=0;i<400&&capture.phase.load()!=3;i++)std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  if(deviceReady){try{switchDuplex(false);}catch(...){intentionalStop.store(1);if(deviceReady){ma_device_uninit(&device);deviceReady=false;}duplex=false;intentionalStop.store(0);lost.store(1);}}
+  capture.joined();if(cancel)capture.discard();captureTarget.store(nullptr);
+ }
+ std::uint64_t captureSize()const noexcept{return capture.size();}
+ void copyCapture(float* output,std::uint64_t count){require(!duplex&&output&&count==capture.size(),"Native capture has not stopped safely");std::copy(capture.data(),capture.data()+count,output);}
+ void previewControl(unsigned command){require(command>=1&&command<=3,"Invalid native preview command");preview.command(command);}
+ void play(const std::uint8_t* data,std::size_t length,double cycle,double seek,bool loop,bool audition,double bpm=120,unsigned bars=0,bool recording=false){
   ensure();auto session=std::make_unique<Session>(data,length,device.sampleRate,cycle,seek,samples);
+  if(bars)session->countIn(bpm,bars);
+  if(recording){require(!audition&&duplex&&capture.phase.load()==1,"Prepare a native Song take before playback");capture.duration(device.sampleRate,cycle-seek);captureTarget.store(session.get());}
   auto* published=session.get();auto& lane=audition?preview:transport;lane.looping.store(loop?1:0);lane.publish(std::move(session));
   for(unsigned attempt=0;attempt<150;attempt++){
    if(lane.current()==published)return;
@@ -237,6 +274,7 @@ public:
   require(command<=4,"Unknown native transport command");transport.looping.store(loop?1:0);
   if(command)transport.command(command==4?1:command);
   if(command==4)preview.command(1);
+  if((command==1||command==4)&&captureTarget.load())capture.stop();
   if(command&&deviceReady&&!lost.load())for(unsigned attempt=0;attempt<100;attempt++){
    const auto a=transport.current(),b=preview.current();const auto wanted=command==2?paused:command==3?playing:stopped;
    const bool mainDone=!a||a->stateView.load()==wanted||a->stateView.load()==finished||a->stateView.load()==failed;
@@ -248,7 +286,11 @@ public:
  void status(premidi_audio_status& s){
   s={};s.callbacks=callbacks.load();s.frames=frames.load();s.total_ns=totalNs.load();s.max_ns=maxNs.load();s.deadline_misses=misses.load();s.oversized=oversized.load();s.clipped=clipped.load();s.peak_million=peak.load();s.device_lost=lost.load();s.test_backend=testBackend?1:0;
   if(deviceReady){s.sample_rate=device.sampleRate;s.hardware_rate=device.playback.internalSampleRate;s.period_frames=device.playback.internalPeriodSizeInFrames;s.period_count=device.playback.internalPeriods;}
+  else if(captureRate)s.sample_rate=captureRate;
   if(auto* active=transport.current()){s.position=active->position.load();s.active=active->active.load();s.state=active->stateView.load();s.fault=active->fault.load();}
+  if(auto* active=transport.current())s.lead_remaining=active->leadRemaining.load();
+  if(auto* active=preview.current()){s.preview_position=active->position.load();s.preview_state=active->stateView.load();}
+  s.capture_phase=capture.phase.load();s.capture_frames=capture.frames.load();s.capture_missing=capture.missing.load();s.capture_clipped=capture.clipped.load();s.capture_peak_million=capture.peakMillion.load();s.capture_lead=capture.leadRemaining.load();s.capture_start=capture.startFrame.load();
  }
  template<class F> int checked(F&& f){try{error.clear();f();return 0;}catch(const std::exception& e){error=e.what();return -1;}}
  const char* lastError()const{return error.c_str();}
@@ -270,4 +312,18 @@ int premidi_audio_add_sample(void* host,const float* pcm,uint64_t frames,uint32_
 int premidi_audio_add_sample_rate(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info,uint32_t target_rate){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.addSample(pcm,frames,rate,channels,*info,target_rate);});}
 int premidi_audio_update(void* host,const uint8_t* data,size_t length,double cycle,int loop,double ratio){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.update(data,length,cycle,loop!=0,ratio);});}
 int premidi_audio_render(void* host,const uint8_t* data,size_t length,double cycle,uint32_t rate,uint64_t frames,uint8_t* output,size_t output_bytes,uint32_t format,double gain){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.render(data,length,cycle,rate,frames,output,output_bytes,format,gain);});}
+int premidi_audio_play_take(void* host,const uint8_t* data,size_t length,double cycle,double seek,int loop,int preview,double bpm,uint32_t bars,int record){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.play(data,length,cycle,seek,loop!=0,preview!=0,bpm,bars,record!=0);});}
+int premidi_audio_capture_prepare(void* host,double seconds,double offset_ms,int sync){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.prepareCapture(seconds,offset_ms,sync!=0);});}
+int premidi_audio_capture_start(void* host,double lead){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.startCapture(lead);});}
+int premidi_audio_capture_finish(void* host,int cancel){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.finishCapture(cancel!=0);});}
+uint64_t premidi_audio_capture_size(void* host){return static_cast<premidi::DeviceHost*>(host)->captureSize();}
+int premidi_audio_capture_copy(void* host,float* output,uint64_t frames){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.copyCapture(output,frames);});}
+int premidi_audio_preview_control(void* host,uint32_t command){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.previewControl(command);});}
+int premidi_audio_resample(const float* input,uint64_t frames,uint32_t rate,uint32_t channels,uint32_t target,float* output,uint64_t output_frames,uint32_t output_channels){try{
+ premidi::require(input&&output&&(output_channels==1||output_channels==channels),"Invalid native conversion buffer");
+ premidi::SampleData sample(input,frames,rate,channels,target);premidi::require(sample.frames==output_frames,"Invalid native conversion dimensions");
+ if(output_channels==channels)std::copy(sample.pcm.begin(),sample.pcm.end(),output);
+ else for(std::uint64_t frame=0;frame<sample.frames;frame++){double value=0;for(unsigned ch=0;ch<channels;ch++)value+=sample.pcm[frame*channels+ch];output[frame]=static_cast<float>(value/channels);}
+ return 0;
+}catch(...){return -1;}}
 }

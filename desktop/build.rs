@@ -1,7 +1,7 @@
 fn main() {
  println!("cargo:rerun-if-env-changed=TAURI_UPDATER_PUBLIC_KEY");
  println!("cargo:rerun-if-changed=../native/desktop-fixture.cpp");
- for name in ["voice.hpp", "drive.hpp", "delay.hpp", "sample.hpp", "waves.hpp", "filter.hpp", "modulation.hpp", "session.hpp", "plan-packet.hpp", "device-host.cpp", "device-host.h", "vendor/miniaudio/miniaudio.h"] {
+ for name in ["voice.hpp", "drive.hpp", "delay.hpp", "sample.hpp", "capture.hpp", "waves.hpp", "filter.hpp", "modulation.hpp", "session.hpp", "plan-packet.hpp", "device-host.cpp", "device-host.h", "vendor/miniaudio/miniaudio.h"] {
   println!("cargo:rerun-if-changed=../native/{name}");
  }
  let target=std::env::var("CARGO_CFG_TARGET_OS").unwrap();
