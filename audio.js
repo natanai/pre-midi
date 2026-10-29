@@ -11,7 +11,7 @@ import { schedulePitchPlan, scheduleMovementLfo } from "./expression.js";
 import {validatePatch} from "./synth.js";
 import {configureDriveShaper} from "./audioEffects.js";
 import {applyAmplitudePlan} from "./envelope.js";
-import {planSynthVoice,noteFrequency} from "./src/dsp/synth-voice.js";
+import {planSynthVoice,noteFrequency,extendedSynthExecution} from "./src/dsp/synth-voice.js";
 import {attachModulation} from "./src/hosts/web/modulation.js";
 import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
 import {nativeEnabled,auditionNative,playNative,renderNative,nativeRequest,prepareNativeAssets,nativeRequiredAssets,nativePlans} from "./src/hosts/native/session.js";
@@ -69,9 +69,13 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
   const gain=add(ctx.createGain());
   // Initialize before scheduling: a start inside a render quantum must not
   // consume the OscillatorNode default 440 Hz from its pre-onset parameter span.
-  if(start>0)oscillator.frequency.value=slot.frequency;
-  oscillator.frequency.setValueAtTime(slot.frequency,start);
-  schedulePitchPlan(ctx,oscillator.detune,slot.pitch,owner);
+  if(extendedSynthExecution(plan,ctx.sampleRate)){
+   // Keep frequency audio-rate through detune automation. The detune-only
+   // browser path clamps its multiplier rather than the computed frequency.
+   const value=Math.min(ctx.sampleRate/2,Math.fround(slot.frequency));oscillator.frequency.value=value;
+   oscillator.frequency.setValueCurveAtTime(new Float32Array([value,value]),sourceStart,Math.max(.001,end-sourceStart));
+  }else{if(start>0)oscillator.frequency.value=slot.frequency;oscillator.frequency.setValueAtTime(slot.frequency,start);}
+  schedulePitchPlan(ctx,oscillator.detune,slot.pitch,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
   gain.gain.value=slot.level;
   if(warmed&&!plan.modulation?.routes.some(route=>route.target===`oscillators.${index}.level`)){gain.gain.value=0;gain.gain.setValueAtTime(slot.level,start);}
   destinations.set(`oscillators.${index}.level`,gain.gain);destinations.set(`oscillators.${index}.detune`,oscillator.detune);
@@ -103,7 +107,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  filter.Q.setValueAtTime(patch.filter.resonance,start);
  mix.connect(filter);
  if(motion.tone>0)scheduleMovementLfo(ctx,filter.frequency,start,duration,
-  motion.toneRate,patch.filter.cutoff*motion.tone*.8,owner);
+  motion.toneRate,patch.filter.cutoff*motion.tone*.8,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  let signal=filter;
  if(patch.effects.drive>0){
   const shaper=add(ctx.createWaveShaper());
@@ -120,7 +124,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
 const pulse=add(ctx.createGain());
  pulse.gain.setValueAtTime(1,start);
  if(motion.tremolo>0)scheduleMovementLfo(ctx,pulse.gain,start,duration,
-  motion.tremoloRate,motion.tremolo*.45,owner);
+  motion.tremoloRate,motion.tremolo*.45,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const gate=add(ctx.createGain());
  amp.connect(pulse);pulse.connect(gate);gate.connect(pan);
  const fx=patch.effects,mixAmount=fx.delayMix;
@@ -134,7 +138,7 @@ const pulse=add(ctx.createGain());
    pan.connect(send);send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination);
   }
  }
- attachModulation(ctx,plan,destinations,owner);
+ attachModulation(ctx,plan,destinations,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const voice=ownVoice(ctx,{sources,nodes,gate,start,release:off,end:session?plan.graphEnd:plan.audibleEnd});
  if(session){session.adopt(voice);if(voice.admitted&&mixAmount>0)pan.connect(session.delay(fx,voice));}
  return voice;

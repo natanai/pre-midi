@@ -15,7 +15,7 @@ export async function buildNativeRenderer({probe=false}={}){
   if(probe)args.splice(1,0,"-DPREMIDI_PROBE");
   execFileSync(compiler,args,{stdio:"pipe"});const selfTest=execFileSync(binary,["--selftest"],{encoding:"utf8",stdio:["ignore","pipe","pipe"]});
   return {binary,compiler:execFileSync(compiler,["--version"],{encoding:"utf8"}).split("\n")[0],flags:args.slice(0,args.indexOf(join(root,"render.cpp"))),selfTest:selfTest.trim(),
-   render(plan,sampleRate,frames,inspect=false){if(inspect&&!probe)throw Error("Native probe build required");const result=spawnSync(binary,inspect&&probe?["--probe"]:[],{input:prepareNativePlan(plan,sampleRate,frames),maxBuffer:32*1024*1024});if(result.status!==0)throw Error(result.stderr?.toString()||"Native render failed");if(result.stdout.length!==frames*(inspect&&probe?20:8))throw Error("Native PCM length mismatch");return result.stdout;},
+   render(plan,sampleRate,frames,inspect=false){if(inspect&&!probe)throw Error("Native probe build required");const result=spawnSync(binary,inspect&&probe?["--probe",String(inspect.seek||0)]:[],{input:prepareNativePlan(plan,sampleRate,frames),maxBuffer:32*1024*1024});if(result.status!==0)throw Error(result.stderr?.toString()||"Native render failed");if(result.stdout.length!==frames*(inspect&&probe?20:8))throw Error("Native PCM length mismatch");return result.stdout;},
    dispose:()=>rm(directory,{recursive:true,force:true})};
  }catch(error){await rm(directory,{recursive:true,force:true});throw error;}
 }

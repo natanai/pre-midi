@@ -12,14 +12,14 @@ struct PreparedNote {Plan plan;std::array<const WaveBank*,2> banks{};VoicePrepar
 struct Slot {
  std::optional<Voice> voice;Plan plan;std::array<const WaveBank*,2> banks{};
  int delay=-1;
- const DriveRecipe* drive=nullptr;
+ const DriveRecipe* drive=nullptr;const SineLfoTable* lfo=nullptr;
  std::uint64_t start=0,off=0,end=0,order=0,fadeEnd=0;
 };
 // A session owns immutable instructions and banks. Its fixed-size mixer state
 // belongs exclusively to the callback after publication. Destruction is control work.
 class Session {
  struct Bank {unsigned shape;std::array<double,32> harmonics;std::unique_ptr<WaveBank> value;};
- std::vector<Bank> banks;
+ std::vector<Bank> banks;std::unique_ptr<SineLfoTable> lfoBank;
  SampleStore ownedSamples;
  struct DriveEntry {double amount;std::unique_ptr<DriveRecipe> recipe;};std::vector<DriveEntry> drives;
  struct Bus {double mix,time,feedback,tail;Delay delay;std::array<float,2*renderBlock> input{};};
@@ -59,7 +59,7 @@ class Session {
    }
    stolen++;
   }
-  free->plan=note.plan;free->delay=note.delay;free->drive=note.prepared.drive;const double shift=cycle*cycleSeconds;
+  free->plan=note.plan;free->delay=note.delay;free->drive=note.prepared.drive;free->lfo=note.prepared.lfoBank;const double shift=cycle*cycleSeconds;
   auto& p=free->plan;p.start+=shift;p.off+=shift;p.sourceEnd+=shift;p.graphEnd+=shift;
   if(p.version>=4)p.sweepEnd+=shift;
   for(unsigned i=0;i<p.eventCount;i++)p.events[i].time+=shift;
@@ -83,7 +83,7 @@ class Session {
  }
  void reconstruct(Slot& s,std::uint64_t target){
   if(!s.voice)return;
-  s.voice.emplace(s.plan,rate,s.banks,s.start,nullptr,s.drive);
+  s.voice.emplace(s.plan,rate,s.banks,s.start,nullptr,s.drive,s.lfo);
   std::array<float,2*renderBlock> scratch{};
   for(auto at=s.start;at<target;){const auto count=static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,target-at));s.voice->process(scratch.data(),count);at+=count;}
  }
@@ -124,7 +124,8 @@ public:
     for(const auto& entry:drives)if(entry.amount==note.plan.drive){drive=entry.recipe.get();break;}
     if(!drive){require(drives.size()<128,"Native session exceeds 128 drive recipes");drives.push_back({note.plan.drive,std::make_unique<DriveRecipe>(note.plan.drive)});drive=drives.back().recipe.get();}
    }
-   note.prepared=Voice(note.plan,rate,note.banks,0,nullptr,drive).preparation();notes.push_back(note);
+   if(note.plan.version==9&&!lfoBank)lfoBank=std::make_unique<SineLfoTable>(rate);
+   note.prepared=Voice(note.plan,rate,note.banks,0,nullptr,drive,note.plan.version==9?lfoBank.get():nullptr).preparation();notes.push_back(note);
    if(note.plan.delayMix>0){
     const auto& p=note.plan;std::size_t index=0;
     for(;index<buses.size();index++)if(buses[index].mix==p.delayMix&&buses[index].time==p.delayTime&&buses[index].feedback==p.delayFeedback)break;

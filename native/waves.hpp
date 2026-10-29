@@ -54,4 +54,17 @@ public:
  double advance(double phase,double frequency) const noexcept {return std::fmod(phase+static_cast<float>(frequency*static_cast<float>(size/rate)),static_cast<double>(size));}
  std::size_t bytes() const noexcept{return tables.size()*sizeof(float);}
 };
+// Control-prepared canonical sine buffer. Streaming lookup matches the portable
+// looping buffer used for extended browser execution; no FFT roundoff or
+// render-quantum phase accumulator can build up cents bias on a long note.
+class SineLfoTable {
+ std::array<float,4096> values{};double rate;
+public:
+ explicit SineLfoTable(double sr):rate(sr){for(unsigned i=0;i<values.size();i++)values[i]=static_cast<float>(std::sin(2*wavePi*i/values.size()));}
+ double increment(double frequency)const noexcept{return static_cast<float>(frequency*values.size()/rate);}
+ double initial(double elapsed,double frequency)const noexcept{return elapsed*rate*increment(frequency);}
+ float lfo(double position,double)const noexcept{const auto a=static_cast<std::size_t>(position),b=(a+1)%values.size();return static_cast<float>(values[a]+(values[b]-values[a])*(position-a));}
+ double advance(double phase,double frequency)const noexcept{return std::fmod(phase+increment(frequency),static_cast<double>(values.size()));}
+};
+
 }

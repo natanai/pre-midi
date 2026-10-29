@@ -35,3 +35,13 @@ export function planSynthVoice(instrument,event,start,duration,{automation,timel
  return result;
 }
 export {SYNTH_PARAMETERS} from "./parameters.js";
+// A common policy for pitch that crosses the representable device band.
+export function pitchReachesNyquist(plan,rate){
+ return plan.oscillators.some((osc,index)=>{
+  const possible=(plan.modulation?.routes??[]).filter(route=>route.target===`oscillators.${index}.detune`).reduce((sum,route)=>sum+Math.abs(route.depth),0);
+  return osc.frequency*2**((Math.max(osc.detune,...(osc.pitch.values??[]))+Math.min(2400,possible)+(plan.movement.depth??0))/1200)>=rate/2;
+ });
+}
+
+export const extendedSynthExecution=(plan,rate)=>plan.graphEnd-plan.start>30||pitchReachesNyquist(plan,rate)||plan.oscillators.some((_,index)=>
+ (plan.modulation?.routes??[]).filter(route=>route.target===`oscillators.${index}.detune`).reduce((sum,route)=>sum+Math.abs(route.depth),0)>=1200);

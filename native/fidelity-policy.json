@@ -155,5 +155,13 @@
       "Compile sample k-rate pitch curves to explicit canonical linear segments",
       "Stop the session at an exact natural tail frame independent of device block size"
     ]
+  },
+  "extended_synth": {
+    "executionPacketVersion": 9,
+    "lifetime": "601-second held voice / 605-second graph, legacy versions retain 30-second graph bound",
+    "pitch": "clamp intrinsic source frequency and final detuned frequency to device Nyquist; browser uses explicit constant audio-rate frequency curve",
+    "lfo": "control-prepared 4096-point Float32 sine buffer with linear interpolation and Float32 playback increment; independent host implementations, no callback allocation",
+    "validation": "unknown versions, reserved synth v8, nonfinite/overlong duration and truncated v9 fail; old version limits remain strict",
+    "qualification": "tests/audio-quality/native-edges.js; unchanged max 1e-4 / RMS 2e-5, long-note seek and mixed-version block invariance"
   }
 }

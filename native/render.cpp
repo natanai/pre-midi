@@ -37,16 +37,16 @@ int main(int argc,char** argv){
      }
     }
    }
-   for(const unsigned rate:{44100u,48000u,96000u})for(const unsigned version:{2u,3u,4u}){
+   for(const unsigned rate:{44100u,48000u,96000u})for(const unsigned version:{2u,3u,4u,9u}){
     premidi::Plan plan;plan.version=version;plan.routeCount=16;plan.start=.002;plan.off=.015;plan.sourceEnd=.04;plan.graphEnd=.05;plan.oscillators[0].level=.5;plan.oscillators[1].wave=1;plan.oscillators[1].level=0;
     if(version==4){plan.sweepStart=3600;plan.sweepEnd=.025;}
     if(version==3){plan.automationCount=3;plan.automation[0]={0,.002,1200};plan.automation[1]={0,.02,7200};plan.automation[2]={0,.05,600};}
     plan.eventCount=2;plan.events[0]={0,.002,.1};plan.events[1]={1,.04,0};
     for(unsigned i=0;i<16;i++){auto& r=plan.routes[i];r.target=i%6;r.kind=i%4;r.bipolar=i%2;r.depth=r.target%2?.5:10;r.smoothing=i%2?.01:0;r.envelope={.01,.01,.4,.01};if(r.target==4)r.depth=.5;}
-    premidi::WaveBank sine(0,plan.oscillators[0].harmonics,rate),triangle(1,plan.oscillators[1].harmonics,rate);
-    std::array<float,8192> first{},second{};premidi::Voice reference(plan,rate,{&sine,&triangle});auto before=allocations;reference.process(first.data(),4096);require(before==allocations,"v2 reference allocated");
+    premidi::WaveBank sine(0,plan.oscillators[0].harmonics,rate),triangle(1,plan.oscillators[1].harmonics,rate);premidi::SineLfoTable lfo(rate);
+    std::array<float,8192> first{},second{};premidi::Voice reference(plan,rate,{&sine,&triangle},0,nullptr,nullptr,version==9?&lfo:nullptr);auto before=allocations;reference.process(first.data(),4096);require(before==allocations,"v2 reference allocated");
     for(const std::size_t block:{1,17,64,128,511}){
-     premidi::Voice voice(plan,rate,{&sine,&triangle});before=allocations;
+     premidi::Voice voice(plan,rate,{&sine,&triangle},0,nullptr,nullptr,version==9?&lfo:nullptr);before=allocations;
      for(std::size_t at=0;at<4096;at+=block)voice.process(second.data()+2*at,std::min<std::size_t>(block,4096-at));
      require(before==allocations&&first==second,"v2 allocation or block invariance failed");for(float v:second)require(std::isfinite(v)&&std::abs(v)<16,"Unstable v2 PCM");
     }
@@ -87,15 +87,17 @@ int main(int argc,char** argv){
   std::array<std::unique_ptr<premidi::WaveBank>,2> ownedBanks;std::array<const premidi::WaveBank*,2> banks{};
   for(std::size_t i=0;i<2;i++)if(plan.oscillators[i].wave||plan.version>=2){ownedBanks[i]=std::make_unique<premidi::WaveBank>(plan.oscillators[i].wave,plan.oscillators[i].harmonics,rate);banks[i]=ownedBanks[i].get();}
   std::optional<premidi::DriveRecipe> drive;if(plan.drive>0)drive.emplace(plan.drive);
-  premidi::Voice voice(plan,rate,banks,0,nullptr,drive?&*drive:nullptr);std::size_t channels=2;
+  std::unique_ptr<premidi::SineLfoTable> lfo;if(plan.version==9)lfo=std::make_unique<premidi::SineLfoTable>(rate);
+  premidi::Voice voice(plan,rate,banks,0,nullptr,drive?&*drive:nullptr,lfo.get());std::size_t channels=2;
 #ifdef PREMIDI_PROBE
-  const bool probeMode=argc==2&&std::strcmp(argv[1],"--probe")==0;if(probeMode)channels=5;
+  const bool probeMode=(argc==2||argc==3)&&std::strcmp(argv[1],"--probe")==0;if(probeMode)channels=5;
 #endif
   std::vector<float> output(static_cast<std::size_t>(frames)*channels);
   premidi::Delay delay(plan.delayMix,plan.delayTime,plan.delayFeedback,rate);
   const auto before=allocations;
 #ifdef PREMIDI_PROBE
   if(probeMode){
+   const double seek=argc==3?std::stod(argv[2]):0;require(std::isfinite(seek)&&seek>=0&&seek<=600,"Invalid probe seek");for(std::uint64_t i=0;i<static_cast<std::uint64_t>(std::ceil(seek*rate-1e-9));i++){float pcm[2];voice.process(pcm,1);}
    for(unsigned i=0;i<frames;i++){float pcm[2];voice.process(pcm,1);const auto& p=voice.probe;output[5*i]=p.wave0;output[5*i+1]=p.cents0;output[5*i+2]=p.frequency0;output[5*i+3]=pcm[0];output[5*i+4]=pcm[1];}
   }else
 #endif

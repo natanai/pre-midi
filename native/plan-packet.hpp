@@ -28,17 +28,17 @@ inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
  }
  require(magic==0x344e4d50,"Unknown prepared voice transport");
  require(in.u32()==rate,"Voice/device sample rate mismatch");const auto frames=in.u32();require(frames>0&&frames<=rate*12,"Invalid prepared frame bound");
- Plan p;p.version=in.u32();require(p.version>=1&&p.version<=7,"Unknown synth voice version");
+ Plan p;p.version=in.u32();require(((p.version>=1&&p.version<=7)||p.version==9),"Unknown synth voice version");
  p.start=in.f64();p.duration=in.f64();p.sourceEnd=in.f64();p.graphEnd=in.f64();p.pan=in.f64();p.cutoff=in.f64();p.q=in.f64();p.filterType=in.u32();if(p.version>=4){p.sweepStart=in.f64();p.sweepEnd=in.f64();if(p.version>=5){p.noise=in.f64();p.noiseDecay=in.f64();}}
  if(p.version>=6){p.delayMix=in.f64();p.delayTime=in.f64();p.delayFeedback=in.f64();require(p.delayMix>=0&&p.delayMix<=1&&p.delayTime>=.04999999&&p.delayTime<=1&&p.delayFeedback>=0&&p.delayFeedback<=.80000002,"Invalid native delay");}
  if(p.version>=7){p.drive=in.f64();p.vibratoRate=in.f64();p.vibratoDepth=in.f64();p.vibratoDelay=in.f64();p.tone=in.f64();p.toneRate=in.f64();p.tremolo=in.f64();p.tremoloRate=in.f64();require(p.drive>=0&&p.drive<=1&&p.vibratoRate>=.1&&p.vibratoRate<=20&&p.vibratoDepth>=0&&p.vibratoDepth<=100&&p.vibratoDelay>=0&&p.vibratoDelay<=3&&p.tone>=0&&p.tone<=1&&p.toneRate>=.1&&p.toneRate<=20&&p.tremolo>=0&&p.tremolo<=1&&p.tremoloRate>=.1&&p.tremoloRate<=20,"Invalid native drive/movement");}
- require(p.start>=0&&p.start<=601&&p.duration>0&&p.sourceEnd>p.start&&p.graphEnd>=p.sourceEnd&&p.graphEnd-p.start<=30&&p.filterType<4&&std::abs(p.pan)<=1&&p.cutoff>=50&&p.cutoff<=14000&&p.q>=.1&&p.q<=16&&(p.version<4||(p.sweepStart>=50&&p.sweepStart<=14000&&p.sweepEnd>p.start&&p.sweepEnd<=p.graphEnd))&&(p.version<5||(p.noise>=0&&p.noise<=1&&p.noiseDecay>=0&&p.noiseDecay<=5)),"Invalid native voice bounds (maximum voice lifetime 30 seconds)");
+ require(p.start>=0&&p.start<=601&&p.duration>0&&p.sourceEnd>p.start&&p.graphEnd>=p.sourceEnd&&p.duration<=601&&p.graphEnd-p.start<=(p.version==9?605:30)&&p.filterType<4&&std::abs(p.pan)<=1&&p.cutoff>=50&&p.cutoff<=14000&&p.q>=.1&&p.q<=16&&(p.version<4||(p.sweepStart>=50&&p.sweepStart<=14000&&p.sweepEnd>p.start&&p.sweepEnd<=p.graphEnd))&&(p.version<5||(p.noise>=0&&p.noise<=1&&p.noiseDecay>=0&&p.noiseDecay<=5)),"Invalid native voice lifetime or parameter bounds");
  for(auto& o:p.oscillators){
   o.frequency=in.f64();o.level=in.f64();o.detune=in.f64();o.wave=in.u32();require(o.wave<=4&&o.frequency>0&&o.frequency<=18000&&o.level>=0&&o.level<=1&&std::abs(o.detune)<=100,"Invalid native oscillator");
   for(auto& h:o.harmonics){h=in.f64();require(h>=0&&h<=1,"Invalid harmonic recipe");}
   o.count=in.u32();require(o.count<=600,"Native pitch curve exceeds 600 points");
   double highest=o.detune;for(unsigned i=0;i<o.count;i++){o.curve[i]=in.f64();require(std::abs(o.curve[i])<=2500,"Native pitch curve out of range");highest=std::max(highest,o.curve[i]);}
-  require(o.frequency*std::pow(2.,highest/1200.)<rate/2.,"Native pitch reaches Nyquist");
+  require(p.version==9||o.frequency*std::pow(2.,highest/1200.)<rate/2.,"Native pitch reaches Nyquist");
  }
  p.off=in.f64();p.pitch=in.f64();p.velocity=in.f64();p.routeCount=in.u32();
  require(p.off>p.start&&p.off<=p.sourceEnd&&p.pitch>=0&&p.pitch<=127&&p.velocity>=0&&p.velocity<=1&&p.routeCount<=16&&(p.version>=2||p.routeCount==0),"Invalid native modulation bounds");
@@ -52,7 +52,7 @@ inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
   const auto& o=p.oscillators[index];double highest=o.detune,offset=0;
   for(unsigned i=0;i<o.count;i++)highest=std::max(highest,o.curve[i]);
   for(unsigned i=0;i<p.routeCount;i++)if(p.routes[i].target==index*2)offset+=std::abs(p.routes[i].depth);
-  require(o.frequency*std::pow(2.,(highest+std::min(2400.,offset))/1200.)<rate/2.,"Native modulated pitch reaches Nyquist");
+  require(p.version==9||o.frequency*std::pow(2.,(highest+std::min(2400.,offset))/1200.)<rate/2.,"Native modulated pitch reaches Nyquist");
  }
  double previous=-1;for(unsigned i=0;i<p.automationCount;i++){auto& e=p.automation[i];e.time=in.f64();e.value=in.f64();require(e.time>previous&&e.time>=p.start&&e.time<=p.graphEnd&&e.value>=50&&e.value<=14000,"Invalid native automation point");previous=e.time;}
  p.eventCount=in.u32();require(p.eventCount>=4&&p.eventCount<=6,"Invalid native envelope count");previous=-1;

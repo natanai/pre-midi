@@ -20,12 +20,12 @@ for(let i=0;i<args.length;i++){
 }
 if(!["quality","voices","musical","native","modulation","onsets","automation"].includes(suite))throw Error("Unknown audio suite");
 const workingTreeDirty=execFileSync("git",["status","--porcelain"],{cwd:root,encoding:"utf8"}).trim().length>0;
-if(requireClean&&process.env.PREMIDI_NATIVE_LIBRARY_QUICK)throw Error("Clean qualification requires the full native library matrix");
+if(requireClean&&(process.env.PREMIDI_NATIVE_LIBRARY_QUICK||process.env.PREMIDI_NATIVE_EDGES_ONLY))throw Error("Clean qualification requires the full native library matrix");
 if(requireClean&&workingTreeDirty)throw Error("Reference qualification requires a clean committed working tree");
 const output=resolve(root,out||"benchmarks/"+(suite==="voices"?"voice-lifecycle":suite==="musical"?"musical-parity":suite==="native"?"native-parity":suite==="modulation"?"modulation":suite==="onsets"?"onsets":suite==="automation"?"automation":"audio-quality")+".latest.json");
 const page=suite==="voices"?"voice-render.html":suite==="musical"?"parity-render.html":suite==="native"?"native-render.html":suite==="modulation"?"modulation-render.html":suite==="onsets"?"onset-render.html":suite==="automation"?"automation-render.html":"render.html";
 let referenceRoot=null;
-const nativeRenderer=["native","onsets","automation"].includes(suite)?await buildNativeRenderer({probe:suite==="onsets"}):null;
+const nativeRenderer=["native","onsets","automation"].includes(suite)?await buildNativeRenderer({probe:suite==="onsets"||(suite==="native"&&!!process.env.PREMIDI_NATIVE_EDGES_ONLY)}):null;
 const sessionRenderer=suite==="native"?await buildNativeSessionRenderer():null;
 if(suite==="musical"){
  const manifest=JSON.parse(await readFile(resolve(root,"tests/audio-quality/musical-fixtures.json"),"utf8"));
@@ -68,7 +68,7 @@ await new Promise(done=>server.listen(0,"127.0.0.1",done));
 const chrome=process.env.CHROME_BIN||"google-chrome";
 const child=spawn(chrome,["--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage","--no-first-run",
  "--autoplay-policy=no-user-gesture-required","--disable-background-timer-throttling","--disable-renderer-backgrounding",
- "--user-data-dir="+profile,"http://127.0.0.1:"+server.address().port+"/tests/audio-quality/"+page+(process.env.PREMIDI_NATIVE_LIBRARY_QUICK?"?libraryQuick=1":"")],{stdio:"ignore"});
+ "--user-data-dir="+profile,"http://127.0.0.1:"+server.address().port+"/tests/audio-quality/"+page+(process.env.PREMIDI_NATIVE_EDGES_ONLY?"?edgesOnly=1":process.env.PREMIDI_NATIVE_LIBRARY_QUICK?"?libraryQuick=1":"")],{stdio:"ignore"});
 let timer;
 try{
  const report=await Promise.race([result,
@@ -81,7 +81,7 @@ try{
   report.summary.failed=report.failures.length;
   report.summary.status=report.failures.length?"fail":"pass";
  }
- const files=[...await runtimeModules(new URL("../",import.meta.url)),"tests/audio-quality/metrics.js","tests/audio-quality/fixtures.js","tests/audio-quality/suite.js","tests/audio-quality/policy.json","tests/audio-quality/reference.json",...(suite==="voices"?["tests/audio-quality/voice-suite.js","tests/audio-quality/capture-worklet.js","tests/audio-quality/modulation-fixtures.js"]:suite==="musical"?["tests/audio-quality/musical-fixtures.json","tests/audio-quality/parity-render.html"]:["native","onsets","automation"].includes(suite)?["tests/audio-quality/onset-render.html","tests/audio-quality/automation-render.html","tests/audio-quality/native-library.js","native/sample.hpp","native/session-render.cpp","native/session-bridge.mjs","native/decoder/Cargo.toml","native/decoder/Cargo.lock","native/decoder/src/lib.rs","native/decoder/src/mp4.rs","native/decoder/src/webm.rs","native/voice.hpp","native/drive.hpp","native/delay.hpp","native/plan-packet.hpp","native/session.hpp","native/waves.hpp","native/filter.hpp","native/modulation.hpp","native/fidelity-policy.json","native/render.cpp","native/bridge.mjs","tests/audio-quality/native-render.html","tests/audio-quality/modulation-fixtures.js"]:suite==="modulation"?["tests/audio-quality/modulation-render.html","tests/audio-quality/modulation-oracle.js","tests/audio-quality/modulation-fixtures.js"]:[])].sort();
+ const files=[...await runtimeModules(new URL("../",import.meta.url)),"tests/audio-quality/metrics.js","tests/audio-quality/fixtures.js","tests/audio-quality/suite.js","tests/audio-quality/policy.json","tests/audio-quality/reference.json",...(suite==="voices"?["tests/audio-quality/voice-suite.js","tests/audio-quality/capture-worklet.js","tests/audio-quality/modulation-fixtures.js"]:suite==="musical"?["tests/audio-quality/musical-fixtures.json","tests/audio-quality/parity-render.html"]:["native","onsets","automation"].includes(suite)?["tests/audio-quality/onset-render.html","tests/audio-quality/automation-render.html","tests/audio-quality/native-library.js","tests/audio-quality/native-edges.js","native/sample.hpp","native/session-render.cpp","native/session-bridge.mjs","native/decoder/Cargo.toml","native/decoder/Cargo.lock","native/decoder/src/lib.rs","native/decoder/src/mp4.rs","native/decoder/src/webm.rs","native/voice.hpp","native/drive.hpp","native/delay.hpp","native/plan-packet.hpp","native/session.hpp","native/waves.hpp","native/filter.hpp","native/modulation.hpp","native/fidelity-policy.json","native/render.cpp","native/bridge.mjs","tests/audio-quality/native-render.html","tests/audio-quality/modulation-fixtures.js"]:suite==="modulation"?["tests/audio-quality/modulation-render.html","tests/audio-quality/modulation-oracle.js","tests/audio-quality/modulation-fixtures.js"]:[])].sort();
  const hash=createHash("sha256");for(const file of files){hash.update(file+"\0");hash.update(await readFile(resolve(root,file)));}
  let tag=null;try{tag=execFileSync("git",["describe","--tags","--exact-match"],{cwd:root,encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim();}catch{}
  let commit=null;try{commit=execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8"}).trim();}catch{}
