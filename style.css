@@ -646,18 +646,18 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .sample-shaping>.synth-fields {display:flex}
 .sound-section .controls {align-items:center}
 #note-mode {border:1px solid var(--line);padding:6px 9px;color:var(--text);
- white-space:normal;max-width:190px;text-align:center}
+ white-space:nowrap;flex:none;text-align:center}
 #note-mode[aria-pressed="true"] {color:var(--bright);border-color:var(--signal-mauve);
  background:color-mix(in srgb,var(--signal-mauve) 17%,#000)}
 .notes-section.editing-note-effects {box-shadow:inset 3px 0 0 var(--signal-mauve)}
 .notes-section.editing-note-effects .notes-heading {background:#151018}
 .work.editing-note-effects .instrument-pane,
-.work.editing-note-effects .mainwork>section:not(.notes-section),
+.work.editing-note-effects .mainwork > .timeline-section,
 .work.editing-note-effects .notes-toolbar {
  opacity:.35;filter:grayscale(.8);pointer-events:none;
 }
 .work.editing-note-effects .notes-toolbar :is(input,select,button) {pointer-events:none}
-.notes-section .note-expression {background:#110c16}
+.note-effects-section .note-expression {background:#110c16}
 .note-expression .expression-title {flex-wrap:wrap}
 .note-expression .expression-hear {color:var(--signal-mauve);border:1px solid var(--line);padding:7px 9px}
 @media(max-width:570px) {
@@ -668,6 +668,33 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .dial-field {flex-basis:90px;min-width:81px}
  .synth-fields:has(.dial-field) {gap:10px 5px}
  .sound-identity-controls {align-items:center}
+}
+
+/* Note effects shares the inspector slot with Sound, never the bottom of Notes. */
+.note-effects-section {display:none;min-width:0;background:var(--void)}
+.work.editing-note-effects .note-effects-section {display:block}
+.work.editing-note-effects .sound-section,
+.work.editing-note-effects #sound-toggle {display:none}
+.note-effects-heading {min-height:45px}
+.note-effects-heading button {padding:5px 9px;border:1px solid var(--line);min-height:30px}
+.note-effects-empty {margin:14px;color:var(--muted);font-size:11px}
+.note-effects-section .note-expression {
+ display:flex;flex-direction:column;align-items:stretch;gap:16px;
+ padding:16px 14px;border-top:0;
+}
+.note-effects-section .note-expression[hidden] {display:none}
+.note-effects-section .expression-title {flex:0 0 auto;gap:10px;justify-content:flex-start}
+.note-effects-section .expression-note {flex-basis:100%;white-space:normal}
+.note-effects-section .expression-controls {
+ display:flex;flex:0 0 auto;flex-wrap:wrap;align-items:flex-start;gap:14px 10px;
+}
+.note-effects-section .expression-controls > label:first-child {flex:1 1 100%}
+.note-effects-section .expression-controls > label:first-child select {width:100%}
+.note-effects-section .expression-controls .dial-field {flex:0 1 108px}
+.note-effects-section .expression-visual {width:100%;max-width:none;flex:0 0 auto}
+@media(max-width:1099px) {
+ .work.editing-note-effects .note-effects-section {margin:0 8px 12px;border:1px solid var(--line)}
+ .note-effects-heading {position:static}
 }
 
 .dial-field[hidden] {display:none}
@@ -738,6 +765,16 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   grid-area:sound;position:relative;top:auto;align-self:stretch;min-height:0;
   max-height:none;overflow-y:auto;scrollbar-gutter:stable;
   border-left:1px solid var(--line);overscroll-behavior:contain;
+ }
+ .note-effects-section {
+  grid-area:sound;min-height:0;overflow-y:auto;scrollbar-gutter:stable;
+  border-left:1px solid var(--line);overscroll-behavior:contain;
+ }
+ .note-effects-section .heading {position:sticky;top:0;z-index:2}
+ /* Selecting note effects opens its inspector even if Sound was collapsed. */
+ .work.inspector-closed.editing-note-effects .mainwork {
+  grid-template-areas:"timeline sound" "notes sound";
+  grid-template-columns:minmax(0,1fr) clamp(340px,27vw,510px);
  }
  .work.inspector-closed .mainwork {grid-template-areas:"timeline" "notes";grid-template-columns:minmax(0,1fr)}
  .work.inspector-closed .sound-section {display:none}
