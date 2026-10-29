@@ -1221,12 +1221,16 @@
           "v6 malformed packet bounds and v5+ automation parser correction"
         ],
         "remaining": [
-          "drive and 4x oversampling",
-          "legacy vibrato/tone/tremolo",
           "samples and recorded/vocal playback",
           "live edits and native capture",
-          "full shipped-library matrix",
+          "full sample/example library matrix",
           "physical Windows WASAPI qualification"
+        ],
+        "synthesis_phase": "v7 implements drive with native 4x oversampling and legacy vibrato/tone/tremolo; all 28 factory synth presets pass native preparation and independent browser comparison at integer/fractional starts and 44.1/48/96 kHz",
+        "synthesis_verification": [
+          "412 acoustic cases pass unchanged thresholds",
+          "82 native mixer comparisons and 12 miniaudio null-backend lifecycle cases",
+          "fixed histories and shared recipes; callback allocation and block invariance assertions"
         ]
       }
     },

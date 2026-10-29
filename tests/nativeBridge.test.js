@@ -10,10 +10,11 @@ test("native control adapter encodes the canonical plan with explicit bounded tr
  assert.equal(packet.readUInt32LE(0),0x344e4d50);assert.equal(packet.readUInt32LE(4),48000);assert.equal(packet.readUInt32LE(8),24000);
  assert.throws(()=>prepareNativePlan(plan(cleanPatch()),48000,Infinity));
 });
-test("native prototype rejects unsupported features instead of silently changing the sound",()=>{
- for(const mutate of [p=>p.effects.drive=.1,p=>p.movement.depth=4]){
-  const patch=cleanPatch();mutate(patch);assert.throws(()=>prepareNativePlan(plan(patch),48000,24000),/Unsupported native profile/);
+test("native synth adapter accepts drive and legacy movement while retaining validation",()=>{
+ for(const mutate of [p=>p.effects.drive=.1,p=>p.movement.depth=4,p=>p.movement.tone=.4,p=>p.movement.tremolo=.5]){
+  const patch=cleanPatch();mutate(patch);assert.equal(prepareNativePlan(plan(patch),48000,24000).readUInt32LE(12),7);
  }
+ const invalid=cleanPatch();invalid.effects.drive=2;assert.throws(()=>prepareNativePlan(plan(invalid),48000,24000),/Invalid effects/);
  assert.throws(()=>prepareNativePlan({...plan(cleanPatch()),version:99},48000,24000),/contract v1/);
 });
 

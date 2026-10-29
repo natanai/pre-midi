@@ -74,7 +74,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
   oscillator.frequency.setValueAtTime(slot.frequency,start);
   schedulePitchPlan(ctx,oscillator.detune,slot.pitch,owner);
   gain.gain.value=slot.level;
-  if(warmed&&!plan.modulation.routes.some(route=>route.target===`oscillators.${index}.level`)){gain.gain.value=0;gain.gain.setValueAtTime(slot.level,start);}
+  if(warmed&&!plan.modulation?.routes.some(route=>route.target===`oscillators.${index}.level`)){gain.gain.value=0;gain.gain.setValueAtTime(slot.level,start);}
   destinations.set(`oscillators.${index}.level`,gain.gain);destinations.set(`oscillators.${index}.detune`,oscillator.detune);
   oscillator.connect(gain);gain.connect(mix);
   oscillator.start(sourceStart);oscillator.stop(end);

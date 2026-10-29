@@ -75,12 +75,12 @@ Expand-Archive $previousZip $upgrade
 Invoke-StudioSmoke (Join-Path $upgrade 'pre-midi.exe') 'portable-previous' 'portable-upgrade' -Fresh
 $replacement = Join-Path $env:RUNNER_TEMP 'premidi portable replacement'
 Expand-Archive $zip.FullName $replacement
-foreach ($name in @('pre-midi.exe', 'portable.txt', 'README.txt')) {
+foreach ($name in @('pre-midi.exe', 'portable.txt', 'README.txt', 'THIRD-PARTY-NOTICES.txt')) {
   Copy-Item (Join-Path $replacement $name) (Join-Path $upgrade $name) -Force
 }
 if (Get-Process -Name 'pre-midi' -ErrorAction SilentlyContinue) { throw 'Portable replacement unexpectedly launched the app' }
 Invoke-StudioSmoke (Join-Path $upgrade 'pre-midi.exe') 'portable-upgraded' 'portable-upgrade' -Restore
-foreach ($name in @('pre-midi.exe', 'portable.txt', 'README.txt')) {
+foreach ($name in @('pre-midi.exe', 'portable.txt', 'README.txt', 'THIRD-PARTY-NOTICES.txt')) {
   Copy-Item (Join-Path $replacement $name) (Join-Path $upgrade $name) -Force
 }
 Invoke-StudioSmoke (Join-Path $upgrade 'pre-midi.exe') 'portable-replaced-again' 'portable-upgrade' -Restore

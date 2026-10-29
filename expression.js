@@ -11,7 +11,7 @@ export function schedulePitchPlan(ctx,param,plan,owner=null){
  }else param.setValueAtTime(base,start);
  if(m.depth>0){
   const oscillator=ctx.createOscillator(),gain=ctx.createGain();
-  oscillator.type="sine";oscillator.frequency.setValueAtTime(m.rate,start);
+  oscillator.type="sine";oscillator.frequency.value=m.rate;
   gain.gain.setValueAtTime(0,start);
   const enter=start+Math.min(m.delay,Math.max(0,duration-.005));
   if(enter>start)gain.gain.setValueAtTime(0,enter);
@@ -28,7 +28,7 @@ export function scheduleMovementLfo(ctx,param,start,duration,rate,depth,owner=nu
  if(depth<=0)return;
  const oscillator=ctx.createOscillator(),gain=ctx.createGain();
  oscillator.type="sine";
- oscillator.frequency.setValueAtTime(rate,start);
+ oscillator.frequency.value=rate;
  gain.gain.setValueAtTime(depth,start);
  oscillator.connect(gain);gain.connect(param);
  owner?.sources.push(oscillator);owner?.nodes.push(gain);

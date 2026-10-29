@@ -64,8 +64,6 @@
     "nativeSelfTest": "400 waveform/filter/rate/extreme profiles plus three v2 and three v3 maximum-route profiles, each at five block sizes"
   },
   "unsupported": [
-    "drive",
-    "legacy LFOs",
     "samples and recordings"
   ],
   "scope": "Offline PCM identity, bounded state and block invariance only; no hardware output or human listening findings",
@@ -116,5 +114,22 @@
     "ownership": "32 bounded shared buses per session; all ring allocation and destruction on control thread",
     "tail": "conservative -100 dBFS bound includes feedback render-quantum latency at minimum 8 kHz",
     "qualification": "12 acoustic browser/native delay fixtures, shared buses, note-end tails, loop overlap, ended-note seeks and callback block invariance"
+  },
+  "drive": {
+    "executionPacketVersion": 7,
+    "oversampling": "4x; two 2x Blackman-windowed sinc polyphase interpolation/decimation stages; same 128/256-tap definitions and 192-frame aggregate group delay as the browser reference",
+    "curve": "1024 float tanh points with existing rounded strength and linear interpolation; canonical gain compensation",
+    "preparation": "immutable recipes shared per amount; all curves and coefficients generated on the control thread",
+    "callback": "fixed streaming histories, SSE2 baseline on x64, portable scalar path; no allocation, initialization, locks or blocks",
+    "provenance": "native/THIRD-PARTY-NOTICES.txt",
+    "qualification": "all 28 factory synth presets at 0 and fractional .010123-second onsets, three sample rates; unchanged max 1e-4/RMS 2e-5 PCM gates"
+  },
+  "legacy_movement": {
+    "executionPacketVersion": 7,
+    "vibrato": "existing delayed depth ramp, oscillator cents, .02s release of vibrato",
+    "tone": "additive cutoff LFO before octave modulation, .04s source tail",
+    "tremolo": "amplitude LFO before pan and delay send, .04s source tail",
+    "browser_correction": "initialize constant LFO frequency before source start without redundant automation; use phase-correct silent carrier pre-roll for legacy voices too",
+    "noise_correction": "interpolate the seeded float noise buffer at fractional sample onsets"
   }
 }

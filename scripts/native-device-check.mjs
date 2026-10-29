@@ -29,7 +29,7 @@ try{
   rows.push({name,maxPcm:max,rmsPcm:rms,...extra});
  }
  for(const rate of [44100,48000,96000]){
-  for(const patch of [sine(),makePatch('touch-keys'),makePatch('harmonic-keys')]){
+  for(const patch of [sine(),makePatch('touch-keys'),makePatch('harmonic-keys'),makePatch('broken-siren'),makePatch('midnight-theremin')]){
    const voice=plan(patch,62,.010,.14),expected=floatArray(renderer.render(voice,rate,Math.round(rate*.4))).map(v=>v*.85);
    const one=await render([voice],{rate});compare('canonical-'+patch.presetId+'-'+rate,one.pcm,expected,{rate,allocationAssertions:one.report.allocations===0});
    const odd=await render([voice],{rate,block:511});compare('block-invariance-'+patch.presetId+'-'+rate,odd.pcm,one.pcm,{rate});
