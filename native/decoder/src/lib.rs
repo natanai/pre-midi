@@ -1,9 +1,12 @@
 //! Bounded control-thread decoding. No decoder or owned buffer enters a callback.
+mod wav;
+mod aac;
+mod opus;
 mod mp4;
 mod webm;
 use std::io::Cursor;
 use symphonia::core::{codecs::{audio::AudioDecoderOptions,registry::CodecRegistry},formats::{FormatOptions,TrackType,probe::Hint},io::MediaSourceStream};
-use symphonia_adapter_libopus::OpusDecoder;
+
 
 pub struct DecodedAudio {pub samples:Vec<f32>,pub rate:u32,pub channels:u32,pub peak:f32}
 // Some shipped PCM WAVs have a 20-byte fmt chunk with empty extension words.
@@ -29,25 +32,29 @@ fn normalize_pcm_wav(mut bytes:Vec<u8>)->Result<Vec<u8>,String>{
 pub fn decode(bytes:Vec<u8>,extension:&str)->Result<DecodedAudio,String>{
  if bytes.len()<16||bytes.len()>48_000_000{return Err("Audio asset must be 16 bytes to 48 MB".into());}
  if !["","wav","mp3","ogg","webm","mp4"].contains(&extension){return Err("Unsupported audio container".into());}
+ if let Some(audio)=wav::decode(&bytes)?{return Ok(audio);}
  let bytes=normalize_pcm_wav(bytes)?;let edits=mp4::read(&bytes)?;let webm=webm::read(&bytes)?;
  let mut hint=Hint::new();if !extension.is_empty(){hint.with_extension(extension);}
  let stream=MediaSourceStream::new(Box::new(Cursor::new(bytes)),Default::default());
  let mut format=symphonia::default::get_probe().probe(&hint,stream,FormatOptions::default(),Default::default()).map_err(|e|format!("Invalid audio container: {e}"))?;
  let track=format.default_track(TrackType::Audio).ok_or("Audio asset has no audio track")?;
  let params=track.codec_params.as_ref().and_then(|p|p.audio()).ok_or("Missing audio codec parameters")?;
- let mut registry=CodecRegistry::new();symphonia::default::register_enabled_codecs(&mut registry);registry.register_audio_decoder::<OpusDecoder>();
- let mut decoder=registry.make_audio_decoder(params,&AudioDecoderOptions::default()).map_err(|e|format!("Audio codec: {e}"))?;
+ let mut registry=CodecRegistry::new();symphonia::default::register_enabled_codecs(&mut registry);registry.register_audio_decoder::<opus::Multistream>();
+ let mut decoder=registry.make_audio_decoder(params,&AudioDecoderOptions::default()).or_else(|error|{
+  if params.codec==symphonia::core::codecs::audio::well_known::CODEC_ID_AAC {let mut extra=CodecRegistry::new();extra.register_audio_decoder::<aac::ExtendedAac>();extra.make_audio_decoder(params,&AudioDecoderOptions::default())}else{Err(error)}
+ }).map_err(|e|format!("Audio codec: {e}"))?;
+ let opus_gain=if params.codec==symphonia::core::codecs::audio::well_known::CODEC_ID_OPUS {params.extra_data.as_deref().filter(|b|b.len()>=19&&&b[..8]==b"OpusHead").map(|b|10f32.powf(i16::from_le_bytes([b[16],b[17]]) as f32/(20.*256.))).unwrap_or(1.)}else{1.};
  let track_id=track.id;let mut result=DecodedAudio{samples:Vec::new(),rate:0,channels:0,peak:0.};let mut packets=0usize;let mut audio_packets=0usize;
  while let Some(packet)=format.next_packet().map_err(|e|format!("Invalid audio packet: {e}"))?{
   packets+=1;if packets>250_000{return Err("Audio packet limit exceeded".into());}if packet.track_id!=track_id{continue;}
   let buffer=decoder.decode(&packet).map_err(|e|format!("Cannot decode audio packet: {e}"))?;
   let rate=buffer.spec().rate();let channels=buffer.spec().channels().count() as u32;
-  if !(8000..=192000).contains(&rate)||!(1..=2).contains(&channels){return Err("Audio must be mono/stereo at 8–192 kHz".into());}
+  if !(3000..=768000).contains(&rate)||!(1..=32).contains(&channels){return Err("Audio must have 1–32 channels at 3–768 kHz".into());}
   if result.rate!=0&&(result.rate!=rate||result.channels!=channels){return Err("Audio format changed within the asset".into());}
   result.rate=rate;result.channels=channels;
   let size=buffer.samples_interleaved();let begin=result.samples.len();let end=begin.checked_add(size).ok_or("Decoded audio overflow")?;
   if end>rate as usize*channels as usize*301||end>128_000_000{return Err("Decoded audio exceeds 301 seconds or 512 MB".into());}
-  result.samples.resize(end,0.);buffer.copy_to_slice_interleaved(&mut result.samples[begin..]);
+  result.samples.resize(end,0.);buffer.copy_to_slice_interleaved(&mut result.samples[begin..]);if opus_gain!=1.{for value in &mut result.samples[begin..]{*value*=opus_gain;}}
   if result.samples[begin..].iter().any(|x|!x.is_finite()||x.abs()>32.){return Err("Invalid decoded audio values".into());}
   if let Some(timing)=webm.as_ref().and_then(|w|w.tracks.get(&track_id)){
    let padding=*timing.padding.get(audio_packets).ok_or("Missing WebM packet timing")?;

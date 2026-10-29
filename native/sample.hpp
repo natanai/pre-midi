@@ -8,8 +8,9 @@
 namespace premidi {
 struct SampleData {
  unsigned rate,channels;std::uint64_t frames;std::vector<float> pcm;float normalization=1;
- SampleData(const float* input,std::uint64_t count,unsigned sourceRate,unsigned channelCount,unsigned outputRate):rate(outputRate),channels(channelCount),frames(static_cast<std::uint64_t>(std::ceil(static_cast<double>(count)*outputRate/sourceRate))){
-  if(sourceRate<8000||sourceRate>192000||rate<8000||rate>192000||channels<1||channels>2||!count||count>std::uint64_t(sourceRate)*301||frames*channels>128000000)throw std::runtime_error("Invalid native sample dimensions");
+ SampleData(const float* input,std::uint64_t count,unsigned sourceRate,unsigned channelCount,unsigned outputRate):rate(outputRate),channels(channelCount),frames(0){
+  if(sourceRate<3000||sourceRate>768000||rate<8000||rate>192000||channels<1||channels>32||!count||count>std::uint64_t(sourceRate)*301||count*channels>128000000)throw std::runtime_error("Invalid native sample dimensions");
+  frames=static_cast<std::uint64_t>(std::ceil(static_cast<double>(count)*outputRate/sourceRate));if(frames*channels>128000000)throw std::runtime_error("Native resampled asset exceeds 512 MB");
   for(std::uint64_t i=0;i<count*channels;i++)if(!std::isfinite(input[i])||std::abs(input[i])>32)throw std::runtime_error("Invalid native sample PCM");
   pcm.resize(static_cast<std::size_t>(frames)*channels);
   if(sourceRate==rate)std::copy(input,input+count*channels,pcm.begin());
