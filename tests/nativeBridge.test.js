@@ -11,7 +11,7 @@ test("native control adapter encodes the canonical plan with explicit bounded tr
  assert.throws(()=>prepareNativePlan(plan(cleanPatch()),48000,Infinity));
 });
 test("native prototype rejects unsupported features instead of silently changing the sound",()=>{
- for(const mutate of [p=>p.effects.drive=.1,p=>p.effects.delayMix=.1,p=>p.movement.depth=4]){
+ for(const mutate of [p=>p.effects.drive=.1,p=>p.movement.depth=4]){
   const patch=cleanPatch();mutate(patch);assert.throws(()=>prepareNativePlan(plan(patch),48000,24000),/Unsupported native profile/);
  }
  assert.throws(()=>prepareNativePlan({...plan(cleanPatch()),version:99},48000,24000),/contract v1/);
@@ -42,4 +42,11 @@ test("native noise voice uses version 5 with deterministic noise level and decay
  assert.equal(packet.readDoubleLE(100),.2);
  const quiet=cleanPatch();quiet.noise=0;
  assert.notEqual(prepareNativePlan(plan(quiet),48000,24000).readUInt32LE(12),5);
+});
+
+test("native delay uses v6 and carries all authored effect parameters",()=>{
+ const patch=cleanPatch();patch.effects={drive:0,delayMix:.4,delayTime:.281,delayFeedback:.6};
+ const bytes=prepareNativePlan(plan(patch),48000,24000);
+ assert.equal(bytes.readUInt32LE(12),6);
+ assert.equal(bytes.readDoubleLE(108),.4);assert.equal(bytes.readDoubleLE(116),Math.fround(.281));assert.equal(bytes.readDoubleLE(124),Math.fround(.6));
 });

@@ -60,6 +60,19 @@ try{
    add("v2/"+sampleRate+"/"+fixture.id,{max,rms,stats},{finite:stats.nonFinite===0,maxError:max<.0001,rmsError:rms<.00002,headroom:stats.peak<1});
   }
  }
+ // Independent browser delay reference, including fractional times and post-note tails.
+ for(const sampleRate of [44100,48000,96000])for(const config of [
+  {id:"sine-keys",patch:makePatch("glass-keys")},
+  ...[0,.22,.8].map(feedback=>{const patch=cleanPatch();patch.pan=-.3;patch.effects={drive:0,delayMix:.65,delayTime:.07137,delayFeedback:feedback};return {id:"feedback-"+feedback,patch};})
+ ]){
+  const plan=planSynthVoice({patch:config.patch,volume:.3},{pitch:60,velocity:.8},.01,.12),frames=Math.ceil(4*sampleRate);
+  const response=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate,frames})});if(!response.ok)throw Error(await response.text());
+  const native=new Float32Array(await response.arrayBuffer()),context=new OfflineAudioContext(2,frames,sampleRate);scheduleSynthPlan(context,context.destination,plan);const browser=await context.startRendering();
+  const errors=[0,1].map(channel=>difference(Float32Array.from({length:frames},(_,i)=>native[2*i+channel]),browser.getChannelData(channel))),stats=signalStats(native);
+  const max=Math.max(...errors.map(e=>e.max)),rms=Math.max(...errors.map(e=>e.rms));
+  const tail=signalStats(native.subarray(Math.ceil((plan.graphEnd+.02)*sampleRate)*2));
+  add("delay/"+sampleRate+"/"+config.id,{max,rms,stats,tail},{finite:stats.nonFinite===0,audible:stats.rms>.00001,maxError:max<.0001,rmsError:rms<.00002,tail:config.patch.effects.delayFeedback===0||tail.rms>.0000001});
+ }
  const unsupported=cleanPatch();unsupported.noise=.1;const plan=planSynthVoice({patch:unsupported,volume:1},{pitch:69,velocity:1},0,.2);
  const rejected=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate:48000,frames:24000})});
  add("native-noise",{status:rejected.status},{accepted:rejected.status===200});

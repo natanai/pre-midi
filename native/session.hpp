@@ -1,5 +1,6 @@
 #pragma once
 #include "plan-packet.hpp"
+#include "delay.hpp"
 #include <atomic>
 #include <memory>
 #include <optional>
@@ -7,9 +8,10 @@
 namespace premidi {
 constexpr unsigned voiceLimit=64,retireLimit=64,renderBlock=128,maxOnsets=256;
 enum Playback:unsigned{stopped=0,playing=1,paused=2,finished=3,failed=4};
-struct PreparedNote {Plan plan;std::array<const WaveBank*,2> banks{};VoicePreparation prepared;};
+struct PreparedNote {Plan plan;std::array<const WaveBank*,2> banks{};VoicePreparation prepared;int delay=-1;};
 struct Slot {
  std::optional<Voice> voice;Plan plan;std::array<const WaveBank*,2> banks{};
+ int delay=-1;
  std::uint64_t start=0,off=0,end=0,order=0,fadeEnd=0;
 };
 // A session owns immutable instructions and banks. Its fixed-size mixer state
@@ -17,6 +19,8 @@ struct Slot {
 class Session {
  struct Bank {unsigned shape;std::array<double,32> harmonics;std::unique_ptr<WaveBank> value;};
  std::vector<Bank> banks;
+ struct Bus {double mix,time,feedback,tail;Delay delay;std::array<float,2*renderBlock> input{};};
+ std::vector<Bus> buses;std::uint64_t tailEnd=0;
  std::array<Slot,voiceLimit> voices;
  std::array<Slot,retireLimit> retiring;
  std::array<std::size_t,2> next{};std::array<std::uint64_t,2> cycles{0,1};
@@ -49,21 +53,27 @@ class Session {
    }
    stolen++;
   }
-  free->plan=note.plan;const double shift=cycle*cycleSeconds;
+  free->plan=note.plan;free->delay=note.delay;const double shift=cycle*cycleSeconds;
   auto& p=free->plan;p.start+=shift;p.off+=shift;p.sourceEnd+=shift;p.graphEnd+=shift;
   if(p.version>=4)p.sweepEnd+=shift;
   for(unsigned i=0;i<p.eventCount;i++)p.events[i].time+=shift;
   for(unsigned i=0;i<p.automationCount;i++)p.automation[i].time+=shift;
   free->banks=note.banks;free->start=at;free->off=frameAt(p.off);free->end=frameAt(p.graphEnd);free->order=++serial;
   free->voice.emplace(p,rate,free->banks,at,&note.prepared);admitted++;
+  if(note.delay>=0)tailEnd=std::max(tailEnd,frameAt(p.graphEnd+buses[note.delay].tail));
  }
  void mix(float* output,unsigned frames)noexcept{
   std::array<float,2*renderBlock> scratch{};
-  for(auto& s:voices)if(s.voice){s.voice->process(scratch.data(),frames);for(unsigned i=0;i<2*frames;i++)output[i]+=scratch[i]*.85f;}
+  for(auto& bus:buses)std::fill(bus.input.begin(),bus.input.end(),0.f);
+  for(auto& s:voices)if(s.voice){s.voice->process(scratch.data(),frames);for(unsigned i=0;i<2*frames;i++){
+   output[i]+=scratch[i]*static_cast<float>(1-s.plan.delayMix*.4)*.85f;
+   if(s.delay>=0)buses[s.delay].input[i]+=scratch[i];
+  }}
   for(auto& s:retiring)if(s.voice){s.voice->process(scratch.data(),frames);for(unsigned i=0;i<frames;i++){
    const float gain=cursor+i<s.fadeEnd?static_cast<float>(s.fadeEnd-cursor-i)/fadeFrames:0;
-   output[2*i]+=scratch[2*i]*gain*.85f;output[2*i+1]+=scratch[2*i+1]*gain*.85f;
+   for(unsigned ch=0;ch<2;ch++){const float sample=scratch[2*i+ch]*gain;output[2*i+ch]+=sample*static_cast<float>(1-s.plan.delayMix*.4)*.85f;if(s.delay>=0)buses[s.delay].input[2*i+ch]+=sample;}
   }}
+  for(auto& bus:buses){std::fill(scratch.begin(),scratch.end(),0.f);bus.delay.process(bus.input.data(),scratch.data(),frames);for(unsigned i=0;i<2*frames;i++)output[i]+=scratch[i]*.85f;}
  }
  void reconstruct(Slot& s,std::uint64_t target){
   if(!s.voice)return;
@@ -89,6 +99,12 @@ public:
     note.banks[i]=found->value.get();
    }
    note.prepared=Voice(note.plan,rate,note.banks).preparation();notes.push_back(note);
+   if(note.plan.delayMix>0){
+    const auto& p=note.plan;std::size_t index=0;
+    for(;index<buses.size();index++)if(buses[index].mix==p.delayMix&&buses[index].time==p.delayTime&&buses[index].feedback==p.delayFeedback)break;
+    if(index==buses.size()){require(buses.size()<32,"Native session exceeds 32 delay buses");buses.push_back({p.delayMix,p.delayTime,p.delayFeedback,Delay::tail(p.delayMix,p.delayTime,p.delayFeedback),Delay(p.delayMix,p.delayTime,p.delayFeedback,rate),{}});}
+    notes.back().delay=static_cast<int>(index);
+   }
   }
   require(in.done(),"Trailing native session data");std::stable_sort(notes.begin(),notes.end(),[](const auto& a,const auto& b){return a.plan.start<b.plan.start;});
   // Fixed onset-work bound at the largest accepted callback. No dense project
@@ -99,9 +115,16 @@ public:
   }
   // Recreate allocation history without DSP work; then warm only surviving
   // voices on the control thread, preserving phase/filter/envelope on seek.
-  cursor=frameAt(seek);
-  while(next[0]<notes.size()&&frameAt(notes[next[0]].plan.start)<=cursor){const auto at=frameAt(notes[next[0]].plan.start);expire(at);spawn(notes[next[0]],0,at);next[0]++;require(!error,"Native retirement pool exceeded during seek");}
-  expire(cursor);for(auto& s:voices)reconstruct(s,cursor);for(auto& s:retiring)reconstruct(s,cursor);
+  const auto target=frameAt(seek);
+  if(!buses.empty()){
+   // Control-side warm-up includes ended notes: their echoes may still be live.
+   std::array<float,2*renderBlock> scratch{};
+   while(cursor<target){unsigned budget=maxOnsets;process(scratch.data(),static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,target-cursor)),false,budget);require(!error,"Native seek reconstruction failed");}
+  }else{
+   cursor=target;
+   while(next[0]<notes.size()&&frameAt(notes[next[0]].plan.start)<=cursor){const auto at=frameAt(notes[next[0]].plan.start);expire(at);spawn(notes[next[0]],0,at);next[0]++;require(!error,"Native retirement pool exceeded during seek");}
+   expire(cursor);for(auto& s:voices)reconstruct(s,cursor);for(auto& s:retiring)reconstruct(s,cursor);
+  }
   position.store(cursor);fadeIn=0;
  }
  void command(unsigned command)noexcept{
@@ -133,7 +156,7 @@ public:
    cursor+=count;done+=count;
    if(!fadeLeft&&(afterFade==stopped||afterFade==paused)&&afterFade!=playing){state=afterFade;afterFade=playing;if(state==stopped){cursor=0;for(auto& s:voices)s.voice.reset();for(auto& s:retiring)s.voice.reset();}}
    bool any=false;for(const auto& s:voices)any|=s.voice.has_value();for(const auto& s:retiring)any|=s.voice.has_value();
-   if(!loop&&!any&&nextAt==UINT64_MAX&&cursor>=frameAt((stopCycle+1)*cycleSeconds))state=finished;
+   if(!loop&&!any&&nextAt==UINT64_MAX&&cursor>=std::max(tailEnd,frameAt((stopCycle+1)*cycleSeconds)))state=finished;
   }
   if(error){state=failed;std::fill(output,output+2*frames,0.f);fault.store(error);}
   std::uint64_t live=0;for(const auto& s:voices)live+=s.voice.has_value();position.store(cursor);active.store(live);stateView.store(state);

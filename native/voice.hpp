@@ -12,7 +12,7 @@ constexpr double pi=3.14159265358979323846;
 struct Event {std::uint32_t kind;double time,value;};
 struct Oscillator {double frequency=440,level=0,detune=0;std::uint32_t wave=0,count=0;std::array<double,32> harmonics{};std::array<double,600> curve{};};
 struct Plan {
- double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0;
+ double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0,delayMix=0,delayTime=.24,delayFeedback=.26;
  std::uint32_t version=1,routeCount=0,automationCount=0;std::array<Event,6> automation{};double off=1,pitch=60,velocity=1;std::array<Route,16> routes{};
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
  std::uint32_t eventCount=0;std::array<Event,6> events{};

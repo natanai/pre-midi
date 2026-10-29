@@ -16,15 +16,15 @@ test('native transport consumes the shared canonical timing, sound gain and modu
  assert.equal(view.getUint32(12,true),0x344e4d50);
 });
 test('native unsupported features are named without modifying the authored patch',()=>{
- for(const [id,field]of [['glass-keys','effects.delayMix'],['acid-line','effects.drive'],['dusk-organ','movement.depth']]){
+ for(const [id,field]of [['acid-line','effects.drive'],['dusk-organ','movement.depth']]){
   const patch=makePatch(id),before=structuredClone(patch);assert.ok(unsupportedNativeFeatures(patch).includes(field));assert.deepEqual(patch,before);
  }
- for(const id of ['init','touch-keys','felt-electric','harmonic-keys','sub-current','rubber-bass','dust-hat'])assert.deepEqual(unsupportedNativeFeatures(makePatch(id)),[]);
+ for(const id of ['init','glass-keys','touch-keys','felt-electric','harmonic-keys','sub-current','rubber-bass','dust-hat'])assert.deepEqual(unsupportedNativeFeatures(makePatch(id)),[]);
 });
 test('an unsupported session is rejected before device playback and never falls back',async()=>{
- const doc=beat();doc.instruments[0].sounds[0].patch=makePatch('glass-keys');
+ const doc=beat();doc.instruments[0].sounds[0].patch=makePatch('acid-line');
  let calls=0;globalThis.__TAURI__={core:{invoke:()=>{calls++;throw Error('unexpected device call');}}};
- try{await assert.rejects(playNative(doc,renderEvents(doc)),/effects.delayMix/);assert.equal(calls,0);}
+ try{await assert.rejects(playNative(doc,renderEvents(doc)),/effects.drive/);assert.equal(calls,0);}
  finally{delete globalThis.__TAURI__;}
 });
 test('vocal and unresolved sound identities fail explicitly',()=>{

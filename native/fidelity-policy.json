@@ -64,11 +64,9 @@
     "nativeSelfTest": "400 waveform/filter/rate/extreme profiles plus three v2 and three v3 maximum-route profiles, each at five block sizes"
   },
   "unsupported": [
-    "noise",
     "drive",
-    "delay",
     "legacy LFOs",
-    "filter sweep"
+    "samples and recordings"
   ],
   "scope": "Offline PCM identity, bounded state and block invariance only; no hardware output or human listening findings",
   "modulation": {
@@ -110,5 +108,13 @@
     "curve": "Up to six compiled absolute-time exponential points, before per-note cutoff modulation",
     "persistence": "docs/automation-contract.json",
     "scope": "Only patches already supported by the native profile; legacy sweep/tone/noise/drive/delay remain rejected"
+  },
+  "delay": {
+    "executionPacketVersion": 6,
+    "signal": "dry = 1 - mix*.4; send = mix*.55; wet = .8; stereo fractional-sample delay with feedback",
+    "feedbackCycle": "128 additional frames per repeat, independently impulse-measured from the browser graph; native callback block size does not change musical timing",
+    "ownership": "32 bounded shared buses per session; all ring allocation and destruction on control thread",
+    "tail": "conservative -100 dBFS bound includes feedback render-quantum latency at minimum 8 kHz",
+    "qualification": "12 acoustic browser/native delay fixtures, shared buses, note-end tails, loop overlap, ended-note seeks and callback block invariance"
   }
 }

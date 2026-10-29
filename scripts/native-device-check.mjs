@@ -76,9 +76,40 @@ try{
   for(let i=0;i<sweptExpected.length;i++)sweptExpected[i]+=pcm[i]*.85;
  }
  compare('loop-restarts-native-filter-sweep',(await render([swept],{cycle:loopSeconds,loop:true,seconds:total})).pcm,sweptExpected);
+ // Shared feedback buses retain tails after voices end and across loop boundaries.
+ for(const rate of [44100,48000,96000]){
+  const patch=sine();patch.effects={drive:0,delayMix:.55,delayTime:.073137,delayFeedback:.6};
+  const one=plan(patch,64,.01,.025,.05),two=plan(patch,69,.13,.025,.05);
+  const base=await render([one,two],{rate,cycle:.25,seconds:1.2});
+  const expected=[one,two].map(p=>floatArray(renderer.render(p,rate,Math.round(rate*1.2))));
+  compare('delay-shared-bus-'+rate,base.pcm,expected[0].map((v,i)=>(v+expected[1][i])*.85));
+  for(const block of [1,17,511,8192])compare('delay-block-'+block+'-'+rate,(await render([one,two],{rate,cycle:.25,seconds:1.2,block})).pcm,base.pcm);
+  const seek=.6;
+  compare('delay-seek-ended-notes-'+rate,(await render([one,two],{rate,cycle:1,seek,seconds:.6})).pcm,base.pcm.slice(Math.ceil(seek*rate)*2));
+  const seconds=.8,cycle=.25,totalFrames=Math.round(seconds*rate),loopExpected=new Array(totalFrames*2).fill(0);
+  for(let n=0;n<4;n++){
+   const p=structuredClone(one),shift=n*cycle;for(const key of ['start','off','end','graphEnd','audibleEnd'])p[key]+=shift;
+   p.amplitude.events.forEach(e=>e.time+=shift);p.filter.sweepEnd+=shift;
+   const pcm=floatArray(renderer.render(p,rate,totalFrames));for(let i=0;i<loopExpected.length;i++)loopExpected[i]+=pcm[i]*.85;
+  }
+  compare('delay-loop-tails-'+rate,(await render([one],{rate,cycle,loop:true,seconds})).pcm,loopExpected);
+ }
  const paused=await render([plan(sine(),69,0,.5)],{cycle:1,pause:true});if(paused.report.state===2)throw Error('Resume failed');
  const malformed=join(temp,'bad.pms');await writeFile(malformed,new Uint8Array([1,2,3]));let rejected=false;
  try{run(['--render',malformed,rate,1,0,0,100,128,join(temp,'bad.pcm'),'none']);}catch{rejected=true;}if(!rejected)throw Error('Malformed native instructions accepted');
+ // Validate execution extension boundaries through the same parser as the device.
+ const valid=encodeNativeSession([plan(makePatch('glass-keys'))],rate);
+ for(const [name,mutate] of [
+  ['truncated-delay',b=>b.slice(0,12+130)],
+  ['unknown-version',b=>{new DataView(b.buffer).setUint32(24,99,true);return b;}],
+  ['nonfinite-delay',b=>{new DataView(b.buffer).setFloat64(12+108,NaN,true);return b;}],
+  ['feedback-bound',b=>{new DataView(b.buffer).setFloat64(12+124,1,true);return b;}],
+  ['negative-time',b=>{new DataView(b.buffer).setFloat64(12+116,-1,true);return b;}]
+ ]){
+  await writeFile(malformed,mutate(valid.slice()));let rejected=false;
+  try{run(['--render',malformed,rate,1,0,0,100,128,join(temp,'bad.pcm'),'none']);}catch{rejected=true;}
+  if(!rejected)throw Error('Malformed native packet accepted: '+name);
+ }
  const report={version:1,sourceCommit:process.env.GITHUB_SHA??null,os:platform(),osRelease:release(),architecture:arch(),cpu:cpus()[0]?.model,
   physicalDeviceQualification:'pending',deviceUnderruns:'not measured',physicalLatency:'not measured',comparisons:rows,deviceCallbacks:deviceRows,
   tests:['C++ new allocation assertions inside mixer and miniaudio callbacks','canonical v1/v2/v3 PCM gates unchanged','arbitrary block sizes','phase/filter-correct seek','release-first stealing','loop release overlap','pause/resume','rapid play/stop and parallel preview','malformed packet rejection'],
