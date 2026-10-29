@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {create} from '../schema.js';
-import {makePatch} from '../synth.js';
+import {makePatch,PRESETS} from '../synth.js';
 import {renderEvents} from '../audio.js';
 import {planSynthVoice} from '../src/dsp/synth-voice.js';
 import {nativePlans,encodeNativeSession,unsupportedNativeFeatures,playNative} from '../src/hosts/native/session.js';
@@ -15,16 +15,16 @@ test('native transport consumes the shared canonical timing, sound gain and modu
  assert.equal(view.getUint32(0,true),0x31534d50);assert.equal(view.getUint32(4,true),1);
  assert.equal(view.getUint32(12,true),0x344e4d50);
 });
-test('native unsupported features are named without modifying the authored patch',()=>{
- for(const [id,field]of [['acid-line','effects.drive'],['dusk-organ','movement.depth']]){
-  const patch=makePatch(id),before=structuredClone(patch);assert.ok(unsupportedNativeFeatures(patch).includes(field));assert.deepEqual(patch,before);
+test('native synth features preserve every authored patch',()=>{
+ for(const {id} of PRESETS){
+  const patch=makePatch(id),before=structuredClone(patch);assert.deepEqual(unsupportedNativeFeatures(patch),[]);assert.deepEqual(patch,before);
+  assert.ok(encodeNativeSession([planSynthVoice({patch,volume:.3},{pitch:60,velocity:.8},0,.2)],48000).length);
  }
- for(const id of ['init','glass-keys','touch-keys','felt-electric','harmonic-keys','sub-current','rubber-bass','dust-hat'])assert.deepEqual(unsupportedNativeFeatures(makePatch(id)),[]);
 });
-test('an unsupported session is rejected before device playback and never falls back',async()=>{
- const doc=beat();doc.instruments[0].sounds[0].patch=makePatch('acid-line');
+test('sample sessions reject before device playback until native sample integration',async()=>{
+ const doc=beat();doc.instruments[0].sounds[0].patch={type:'sample'};
  let calls=0;globalThis.__TAURI__={core:{invoke:()=>{calls++;throw Error('unexpected device call');}}};
- try{await assert.rejects(playNative(doc,renderEvents(doc)),/effects.drive/);assert.equal(calls,0);}
+ try{await assert.rejects(playNative(doc,renderEvents(doc)),/sample/);assert.equal(calls,0);}
  finally{delete globalThis.__TAURI__;}
 });
 test('vocal and unresolved sound identities fail explicitly',()=>{
@@ -41,8 +41,8 @@ test('native filter sweep can be prepared for the device without changing the pa
 });
 test('native session packet enforces its preparation bound',()=>{
  assert.throws(()=>encodeNativeSession(new Array(4097),48000),/4096/);
- const doc=beat(),plans=nativePlans(renderEvents(doc));plans[0].patch.effects.drive=.1;
- assert.throws(()=>encodeNativeSession(plans,48000),/Unsupported native profile/);
+ const doc=beat(),plans=nativePlans(renderEvents(doc));plans[0].patch.effects.drive=2;
+ assert.throws(()=>encodeNativeSession(plans,48000),/Invalid effects/);
 });
 test('native modulated pitch is rejected when it can exceed device Nyquist',()=>{
  const patch=makePatch('breath-lead');patch.modulation.routes.find(route=>route.target==='oscillators.0.detune').depth=2400;

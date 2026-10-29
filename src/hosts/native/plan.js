@@ -10,21 +10,20 @@ export function encodeNativePlan(plan,sampleRate,frames){
  if(plan.version===3)errors.push(...validateAutomationPlan(plan.automation));
  if(plan.version>=2)errors.push(...validateModulation(plan.modulation));
  else if(plan.modulation!==undefined)errors.push("Modulation requires contract v2");if(errors.length)throw Error(errors.join("; "));
- if(p.type!=="synth"||p.effects.drive!==0||
-  plan.movement.depth!==0||plan.movement.tone!==0||plan.movement.tremolo!==0)
-  throw Error("Unsupported native profile: no drive/legacy LFO modulation");
+ if(p.type!=="synth")throw Error("Expected a native synth profile");
  if(plan.oscillators.some(osc=>osc.frequency*2**(Math.max(osc.detune,...(osc.pitch.values??[]))/1200)>=sampleRate/2))throw Error("Unsupported native pitch above Nyquist");
  if(plan.oscillators.some((osc,index)=>{
   const possible=(plan.modulation?.routes??[]).filter(route=>route.target===`oscillators.${index}.detune`).reduce((sum,route)=>sum+Math.abs(route.depth),0);
   return osc.frequency*2**((Math.max(osc.detune,...(osc.pitch.values??[]))+Math.min(2400,possible))/1200)>=sampleRate/2;
  }))throw Error('Unsupported native modulated pitch above Nyquist');
  const parts=[],u32=n=>{if(!Number.isInteger(n)||n<0||n>0xffffffff)throw Error("Invalid native integer");const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n,true);parts.push(b);},f64=n=>{if(!Number.isFinite(n))throw Error("Nonfinite native parameter");const b=new Uint8Array(8);new DataView(b.buffer).setFloat64(0,n,true);parts.push(b);};
- const version=p.effects.delayMix!==0?6:p.noise!==0?5:(p.filter.sweep??0)!==0?4:plan.version;
+ const version=p.effects.drive!==0||plan.movement.depth!==0||plan.movement.tone!==0||plan.movement.tremolo!==0?7:p.effects.delayMix!==0?6:p.noise!==0?5:(p.filter.sweep??0)!==0?4:plan.version;
  u32(0x344e4d50);u32(sampleRate);u32(frames);u32(version);
  for(const n of [plan.start,plan.duration,plan.end,plan.graphEnd,p.pan,p.filter.cutoff,p.filter.resonance])f64(n);u32(["lowpass","highpass","bandpass","notch"].indexOf(p.filter.type));
  if(version>=4){f64(plan.filter.startCutoff);f64((p.filter.sweep??0)!==0?plan.filter.sweepEnd:plan.graphEnd);}
  if(version>=5){f64(p.noise);f64(p.noiseDecay??0);}
  if(version>=6){f64(p.effects.delayMix);f64(Math.fround(p.effects.delayTime));f64(Math.fround(p.effects.delayFeedback));}
+ if(version>=7)for(const value of [p.effects.drive,plan.movement.rate,plan.movement.depth,plan.movement.delay,plan.movement.tone,plan.movement.toneRate,plan.movement.tremolo,plan.movement.tremoloRate])f64(value);
  if(plan.oscillators.length!==2||plan.amplitude.events.length>6)throw Error("Unsupported native plan bounds");
  for(const osc of plan.oscillators){f64(Math.fround(osc.frequency));f64(Math.fround(osc.level));f64(Math.fround(osc.detune));u32(["sine","triangle","square","sawtooth","harmonic"].indexOf(osc.wave));(osc.harmonics??Array(32).fill(0)).forEach(f64);const values=osc.pitch.values??[];if(values.length>600)throw Error("Native pitch curve too long");u32(values.length);values.forEach(f64);}
  f64(plan.off);f64(plan.expression.pitch);f64(plan.expression.velocity);

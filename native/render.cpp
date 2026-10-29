@@ -8,6 +8,7 @@
 #include <new>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <iterator>
 #ifdef _WIN32
 #include <io.h>
@@ -63,7 +64,18 @@ int main(int argc,char** argv){
     }
     require(std::any_of(first.begin(),first.end(),[](float v){return std::abs(v)>1e-5f;}),"Noise voice silent");
    }
-   std::cerr<<"PASS: 400 waveform/filter/rate/extreme and 9 maximum-route v2/v3/v4 profiles, 5 block sizes, finite bounded PCM and no C++ allocations in process\n";return 0;
+   for(const unsigned rate:{8000u,44100u,48000u,96000u,192000u}){
+    premidi::Plan plan;plan.version=7;plan.drive=.8;plan.vibratoDepth=80;plan.vibratoRate=7.3;plan.tone=.5;plan.tremolo=.7;
+    plan.oscillators[0].wave=3;plan.oscillators[0].level=.8;plan.oscillators[1].level=.1;plan.eventCount=2;plan.events[0]={0,0,.2};plan.events[1]={1,.08,0};plan.sourceEnd=.08;plan.graphEnd=.12;
+    premidi::DriveRecipe recipe(plan.drive);premidi::WaveBank saw(3,plan.oscillators[0].harmonics,rate),sine(0,plan.oscillators[1].harmonics,rate);
+    std::array<float,8192> first{},second{};premidi::Voice reference(plan,rate,{&saw,&sine},0,nullptr,&recipe);auto before=allocations;reference.process(first.data(),4096);require(before==allocations,"Drive reference allocated");
+    for(const std::size_t block:{1,17,64,128,511}){
+     premidi::Voice voice(plan,rate,{&saw,&sine},0,nullptr,&recipe);before=allocations;
+     for(std::size_t at=0;at<4096;at+=block)voice.process(second.data()+2*at,std::min<std::size_t>(block,4096-at));
+     require(before==allocations&&first==second,"Drive/movement allocation or block invariance failed");for(float v:second)require(std::isfinite(v)&&std::abs(v)<16,"Unstable drive/movement PCM");
+    }
+   }
+   std::cout<<"PASS: 400 waveform/filter/rate/extreme and maximum-route modulation, noise and 4x drive/movement profiles, 5 block sizes, finite bounded PCM and no C++ allocations in process\n";return 0;
   }
 #ifdef _WIN32
   _setmode(_fileno(stdin),_O_BINARY);_setmode(_fileno(stdout),_O_BINARY);
@@ -74,7 +86,8 @@ int main(int argc,char** argv){
   const auto plan=premidi::readPlan(bytes.data(),bytes.size(),rate);
   std::array<std::unique_ptr<premidi::WaveBank>,2> ownedBanks;std::array<const premidi::WaveBank*,2> banks{};
   for(std::size_t i=0;i<2;i++)if(plan.oscillators[i].wave||plan.version>=2){ownedBanks[i]=std::make_unique<premidi::WaveBank>(plan.oscillators[i].wave,plan.oscillators[i].harmonics,rate);banks[i]=ownedBanks[i].get();}
-  premidi::Voice voice(plan,rate,banks);std::size_t channels=2;
+  std::optional<premidi::DriveRecipe> drive;if(plan.drive>0)drive.emplace(plan.drive);
+  premidi::Voice voice(plan,rate,banks,0,nullptr,drive?&*drive:nullptr);std::size_t channels=2;
 #ifdef PREMIDI_PROBE
   const bool probeMode=argc==2&&std::strcmp(argv[1],"--probe")==0;if(probeMode)channels=5;
 #endif
