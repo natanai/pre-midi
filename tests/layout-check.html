@@ -113,10 +113,27 @@ async function checkLayout(frame){
  setScale(scaleMode,"chromatic");
  checks.scaleChromaticUnlocksNotes=!scaleLock.checked&&scaleLock.disabled&&!!sharpNote()&&!sharpNote().disabled;
  get("note-mode").click();
- checks.noteModeVisible=get("note-mode").getAttribute("aria-pressed")==="true" &&
+ const noteEffects=get("note-effects-section"),noteMode=get("note-mode");
+ checks.noteModeVisible=noteMode.getAttribute("aria-pressed")==="true" &&
   doc.querySelector(".work").classList.contains("editing-note-effects");
+ checks.noteEffectsInspectorVisible=getComputedStyle(noteEffects).display!=="none" &&
+  getComputedStyle(sound).display==="none" && noteEffects.getAttribute("aria-hidden")==="false";
+ checks.noteEffectsPromptVisible=!get("note-effects-empty").hidden && get("note-expression").hidden;
+ checks.noteModeLabelNeverWraps=getComputedStyle(noteMode).whiteSpace==="nowrap" &&
+  rect(noteMode).height<45;
+ if(frame.clientWidth>=1100){
+  checks.noteEffectsReplacesSound=noteEffects.parentElement===doc.querySelector(".mainwork") &&
+   Math.abs(rect(noteEffects).left-rect(sound).left)<2 &&
+   rect(noteEffects).bottom<=rect(doc.querySelector("footer")).top+2 &&
+   Math.max(doc.documentElement.scrollHeight,doc.body.scrollHeight)<=frame.contentWindow.innerHeight+2;
+ }else{
+  checks.noteEffectsAbovePiano=noteEffects.parentElement===doc.querySelector(".notes-section") &&
+   noteEffects.nextElementSibling===roll && rect(noteEffects).bottom<=rect(roll).top+2;
+ }
  firstNote()?.click();
  checks.noteExpressionOpens=!!doc.querySelector("#note-expression:not([hidden]) select[aria-label='Held note bend shape']");
+ checks.noteEffectsSelectionReplacesPrompt=get("note-effects-empty").hidden &&
+  !get("note-expression").hidden && get("note-expression").closest(".note-effects-section")===noteEffects;
  const shape=doc.querySelector("#note-expression select[aria-label='Held note bend shape']");
  if(shape){
   shape.value="wail";
@@ -124,9 +141,11 @@ async function checkLayout(frame){
  }
  checks.noteBendApplied=!!doc.querySelector("#piano .note.bent.selected");
  checks.noteShapePreview=!!doc.querySelector("#note-expression svg polyline[points]");
- get("note-mode").click();
+ get("note-effects-done").click();
  checks.noteModeExits=get("note-mode").getAttribute("aria-pressed")==="false" &&
-  !doc.querySelector(".work").classList.contains("editing-note-effects");
+  !doc.querySelector(".work").classList.contains("editing-note-effects") &&
+  getComputedStyle(noteEffects).display==="none" &&
+  (frame.clientWidth<1100 || getComputedStyle(sound).display!=="none");
  checks.soundWaveVisible=!!doc.querySelector("#sound-visualizer svg.signal-scope-graph");
  checks.instrumentDialsVisible=!!doc.querySelector("#synth-editor .dial-knob[role='slider']");
  const pitchBefore=doc.querySelector("#sound-visualizer .signal-pitch")?.getAttribute("d");
