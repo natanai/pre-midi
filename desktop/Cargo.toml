@@ -1,6 +1,6 @@
 [package]
 name = "pre-midi-desktop"
-version = "0.14.1-preview.8"
+version = "0.14.1-preview.9"
 edition = "2021"
 
 [build-dependencies]
@@ -8,6 +8,7 @@ tauri-build = { version = "=2.7.4", features = [] }
 cc = "1"
 
 [dependencies]
+premidi-decoder = { path = "../native/decoder" }
 tauri = { version = "=2.12.5", features = [] }
 tauri-plugin-dialog = "=2.8.3"
 tauri-plugin-updater = "=2.14.0"

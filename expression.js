@@ -1,12 +1,18 @@
 import {planPitch} from "./src/dsp/expression.js";
 export {BEND_SHAPES,movementDefaults,movement,validateMovement,validateBend,bendSemitones,pitchCents} from "./src/dsp/expression.js";
-export function schedulePitch(ctx,param,note,motion,start,duration,base=0,owner=null){
- return schedulePitchPlan(ctx,param,planPitch(note,motion,start,duration,base),owner);
+export function schedulePitch(ctx,param,note,motion,start,duration,base=0,owner=null,options={}){
+ return schedulePitchPlan(ctx,param,planPitch(note,motion,start,duration,base),owner,options);
 }
-export function schedulePitchPlan(ctx,param,plan,owner=null){
+export function schedulePitchPlan(ctx,param,plan,owner=null,{controlRate='a'}={}){
  const {start,duration,base}=plan,m=plan.movement;
  if(plan.values){
-  if(duration>=.01)param.setValueCurveAtTime(new Float32Array(plan.values),start,duration);
+  if(controlRate==='k'){
+   // A curve beginning within a quantum is shifted by the browser's k-rate
+   // curve handler. Explicit linear segments preserve the canonical knot times.
+   const warm=Math.floor(start*ctx.sampleRate/128)*128/ctx.sampleRate;
+   param.value=plan.values[0];param.setValueAtTime(plan.values[0],warm);param.setValueAtTime(plan.values[0],start);
+   for(let i=1;i<plan.values.length;i++)param.linearRampToValueAtTime(plan.values[i],start+i/(plan.values.length-1)*duration);
+  }else if(duration>=.01)param.setValueCurveAtTime(new Float32Array(plan.values),start,duration);
   else param.setValueAtTime(plan.values[0],start);
  }else param.setValueAtTime(base,start);
  if(m.depth>0){

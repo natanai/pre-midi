@@ -20,6 +20,7 @@ struct Slot {
 class Session {
  struct Bank {unsigned shape;std::array<double,32> harmonics;std::unique_ptr<WaveBank> value;};
  std::vector<Bank> banks;
+ SampleStore ownedSamples;
  struct DriveEntry {double amount;std::unique_ptr<DriveRecipe> recipe;};std::vector<DriveEntry> drives;
  struct Bus {double mix,time,feedback,tail;Delay delay;std::array<float,2*renderBlock> input{};};
  std::vector<Bus> buses;std::uint64_t tailEnd=0;
@@ -45,8 +46,10 @@ class Session {
   if(!free){
    free=&voices[0];for(auto& s:voices){
     const bool released=s.off<=at,priorReleased=free->off<=at;
-    if((released&&!priorReleased)||(released==priorReleased&&(s.start<free->start||(s.start==free->start&&s.order<free->order))))free=&s;
+    const bool vocal=s.plan.kind==2,priorVocal=free->plan.kind==2;
+    if((!vocal&&priorVocal)||(vocal==priorVocal&&((released&&!priorReleased)||(released==priorReleased&&(s.start<free->start||(s.start==free->start&&s.order<free->order))))))free=&s;
    }
+   if(note.plan.kind!=2&&free->plan.kind==2)return;
    // A source stolen before its first sample is cancelled, not faded in place.
    if(free->start<at){
     Slot* tail=nullptr;for(auto& s:retiring)if(!s.voice){tail=&s;break;}
@@ -88,14 +91,24 @@ public:
  std::vector<PreparedNote> notes;
  unsigned state=playing;std::uint64_t admitted=0,stolen=0;
  std::atomic<std::uint64_t> position{0},active{0},fault{0},stateView{playing};
- Session(const std::uint8_t* data,std::size_t length,unsigned sr,double cycle,double seek):rate(sr),fadeFrames(std::max(1u,sr/200)),cycleSeconds(cycle){
+ Session(const std::uint8_t* data,std::size_t length,unsigned sr,double cycle,double seek,const SampleStore& samples={}):rate(sr),fadeFrames(std::max(1u,sr/200)),cycleSeconds(cycle){
   require(rate>=8000&&rate<=192000&&std::isfinite(cycle)&&cycle>=.05&&cycle<=600&&std::isfinite(seek)&&seek>=0&&seek<cycle,"Invalid native session timing");
-  require(length<=16*1024*1024,"Native session exceeds 16 MiB");PacketReader in(data,length);
-  require(in.u32()==0x31534d50,"Unknown native session transport");const auto count=in.u32();require(count<=4096,"Native preview supports at most 4096 note onsets per cycle");notes.reserve(count);
+  require(length<=512*1024*1024,"Native PCM bundle exceeds 512 MiB");PacketReader in(data,length);
+  const auto magic=in.u32();require(magic==0x31534d50||magic==0x32534d50,"Unknown native session transport");SampleStore available=samples;
+  if(magic==0x31534d50)require(length<=16*1024*1024,"Native session exceeds 16 MiB");
+  if(magic==0x32534d50){
+   require(samples.empty(),"Inline native PCM cannot shadow registered assets");const auto assets=in.u32();require(assets<=512,"Too many inline native assets");
+   for(unsigned i=0;i<assets;i++){
+    const auto sourceRate=in.u32(),channels=in.u32(),frames=in.u32();require(sourceRate>=8000&&sourceRate<=192000&&channels>=1&&channels<=2&&frames>0&&frames<=sourceRate*301&&std::uint64_t(frames)*channels<=in.remaining()/4,"Invalid inline native asset dimensions");
+    std::vector<float> pcm(static_cast<std::size_t>(frames)*channels);for(auto& value:pcm)value=in.f32();available.push_back(std::make_shared<SampleData>(pcm.data(),frames,sourceRate,channels,rate));
+   }
+  }
+  const auto count=in.u32();require(count<=4096,"Native preview supports at most 4096 note onsets per cycle");notes.reserve(count);
   for(unsigned n=0;n<count;n++){
    const auto size=in.u32();require(size<=16000,"Native voice packet too large");PreparedNote note;note.plan=readPlan(in.take(size),size,rate);
    require(note.plan.start<cycle*2,"Native strum offset exceeds one complete cycle");
-   for(unsigned i=0;i<2;i++)if(note.plan.oscillators[i].wave||note.plan.version>=2){
+   if(note.plan.kind){require(note.plan.asset<=available.size()&&available[note.plan.asset-1]!=nullptr,"Native sample asset handle is missing");const auto& sample=available[note.plan.asset-1];require(sample->rate==rate&&note.plan.sampleOffset*rate<sample->frames,"Native sample asset rate/offset mismatch");ownedSamples.push_back(sample);note.plan.sample=sample.get();}
+   for(unsigned i=0;i<2&&!note.plan.kind;i++)if(note.plan.oscillators[i].wave||note.plan.version>=2){
     const auto& o=note.plan.oscillators[i];Bank* found=nullptr;for(auto& b:banks)if(b.shape==o.wave&&b.harmonics==o.harmonics){found=&b;break;}
     if(!found){require(banks.size()<32,"Native preview supports at most 32 unique oscillator banks");banks.push_back({o.wave,o.harmonics,std::make_unique<WaveBank>(o.wave,o.harmonics,rate)});found=&banks.back();}
     note.banks[i]=found->value.get();
@@ -150,7 +163,15 @@ public:
     if(!onsetBudget){error=2;break;}--onsetBudget;spawn(notes[next[stream]],cycles[stream],cursor);advance(stream,loop);if(error)break;
    }
    const auto nextAt=std::min(upcoming(0,loop),upcoming(1,loop));
+   std::uint64_t naturalEnd=UINT64_MAX;
+   if(!loop&&nextAt==UINT64_MAX){
+    naturalEnd=std::max(tailEnd,frameAt((stopCycle+1)*cycleSeconds));
+    for(const auto& s:voices)if(s.voice)naturalEnd=std::max(naturalEnd,s.end);
+    for(const auto& s:retiring)if(s.voice)naturalEnd=std::max(naturalEnd,s.fadeEnd);
+    if(cursor>=naturalEnd){state=finished;break;}
+   }
    unsigned count=static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,std::min<std::uint64_t>(frames-done,nextAt>cursor?nextAt-cursor:0)));
+   count=static_cast<unsigned>(std::min<std::uint64_t>(count,naturalEnd-cursor));
    if(fadeLeft)count=std::min(count,fadeLeft);
    if(!count){if(error)break;error=3;break;}
    mix(output+2*done,count);

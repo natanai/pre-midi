@@ -100,17 +100,18 @@
     ],
     "current_hosts": [
       "web_audio",
-      "tauri_cpp_miniaudio_realtime_supported_synth_plans"
+      "tauri_cpp_miniaudio_synth_sample_vocal_playback"
     ],
     "limitations": [
-      "native_samples_and_vocals_unsupported",
-      "native_noise_drive_delay_legacy_movement_unsupported",
       "native_playback_uses_snapshot",
       "no_verified_windows_physical_device_latency_or_underrun_data",
       "no_native_pre_programmed_reader_parity",
       "no_general_wavetable_morphing",
       "no_granular_engine",
-      "limited_fx_routing"
+      "limited_fx_routing",
+      "native_microphone_capture_pending",
+      "native_multichannel_asset_qualification_pending",
+      "native_long_note_and_extreme_pitch_bounds_pending"
     ],
     "audit_files": [
       "synth.js",
@@ -1221,9 +1222,9 @@
           "v6 malformed packet bounds and v5+ automation parser correction"
         ],
         "remaining": [
-          "samples and recorded/vocal playback",
-          "live edits and native capture",
-          "full sample/example library matrix",
+          "native capture/count-in/latency compensation",
+          "live edits while playing",
+          "broader imported channel/rate and execution-edge qualification",
           "physical Windows WASAPI qualification"
         ],
         "synthesis_phase": "v7 implements drive with native 4x oversampling and legacy vibrato/tone/tremolo; all 28 factory synth presets pass native preparation and independent browser comparison at integer/fractional starts and 44.1/48/96 kHz",
@@ -1231,6 +1232,13 @@
           "412 acoustic cases pass unchanged thresholds",
           "82 native mixer comparisons and 12 miniaudio null-backend lifecycle cases",
           "fixed histories and shared recipes; callback allocation and block invariance assertions"
+        ],
+        "sample_phase": "v8 sample/vocal execution packets; native Rust decoding, control-side band-limited rate conversion and owned PCM; rack/pitched samples, recordings, filters/4x drive, pitch/bends/movement, stereo pan, overlapping clips and vocal priority",
+        "sample_verification": [
+          "565 independent acoustic/library cases: all 28 synth presets, 16 sample presets, 122 shipped assets and five complete examples; overlapping vocal Song, seek and loop",
+          "Same-rate sample DSP retains max 1e-4/RMS 2e-5; lossy codec/rate-conversion gates declared separately; every item is bit-deterministic at 128/511-frame blocks",
+          "Bounded WAV/MP3/Vorbis/Opus/WebM/MP4 decoder tests; extended PCM WAV header normalization and MP4 edit-list priming correction",
+          "Windows codec decode/owned-PCM/miniaudio null-backend tests are required by the desktop build"
         ]
       }
     },

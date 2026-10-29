@@ -63,9 +63,7 @@
     ],
     "nativeSelfTest": "400 waveform/filter/rate/extreme profiles plus three v2 and three v3 maximum-route profiles, each at five block sizes"
   },
-  "unsupported": [
-    "samples and recordings"
-  ],
+  "unsupported": [],
   "scope": "Offline PCM identity, bounded state and block invariance only; no hardware output or human listening findings",
   "modulation": {
     "contract": "Execution plan v2, modulation block v1",
@@ -131,5 +129,31 @@
     "tremolo": "amplitude LFO before pan and delay send, .04s source tail",
     "browser_correction": "initialize constant LFO frequency before source start without redundant automation; use phase-correct silent carrier pre-roll for legacy voices too",
     "noise_correction": "interpolate the seeded float noise buffer at fractional sample onsets"
+  },
+  "samples": {
+    "executionPacketVersion": 8,
+    "ownership": "Decoded assets are immutable shared owners in a session; voices hold raw pointers into session-owned PCM; all allocation/reference retirement stays on control thread",
+    "decoders": "Symphonia 0.6.1 and statically linked Opus via symphonia-adapter-libopus 0.3.0; WAV/MP3/Vorbis/Opus/WebM/MP4 tested",
+    "conversion": "64-tap Blackman-windowed sinc with 1024 phases on control side; linear sample playback and canonical 128-frame pitch control on callback",
+    "bounds": "512 assets / 1 GiB decoded cache; source mono/stereo 8\u2013192 kHz at this phase; 48 MB encoded asset; 301 seconds decoded",
+    "parity": "all 122 shipped assets, 16 sample presets, five complete examples, overlapping vocal Song, seek and loop",
+    "gates": {
+      "sameRateDsp": {
+        "maxPcm": 0.0001,
+        "rmsPcm": 2e-05
+      },
+      "lossyCodecAndRateConversion": {
+        "maxPcm": 0.03,
+        "rmsPcm": 0.002,
+        "relativeRms": 0.03
+      },
+      "callbackBlockDifference": 0
+    },
+    "corrections": [
+      "Accept shipped empty-extension PCM WAV fmt chunks without changing PCM",
+      "Honor MP4 edit lists for AAC priming and duration",
+      "Compile sample k-rate pitch curves to explicit canonical linear segments",
+      "Stop the session at an exact natural tail frame independent of device block size"
+    ]
   }
 }

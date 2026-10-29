@@ -21,14 +21,14 @@ test('native synth features preserve every authored patch',()=>{
   assert.ok(encodeNativeSession([planSynthVoice({patch,volume:.3},{pitch:60,velocity:.8},0,.2)],48000).length);
  }
 });
-test('sample sessions reject before device playback until native sample integration',async()=>{
+test('malformed sample sessions reject before device playback',async()=>{
  const doc=beat();doc.instruments[0].sounds[0].patch={type:'sample'};
  let calls=0;globalThis.__TAURI__={core:{invoke:()=>{calls++;throw Error('unexpected device call');}}};
  try{await assert.rejects(playNative(doc,renderEvents(doc)),/sample/);assert.equal(calls,0);}
  finally{delete globalThis.__TAURI__;}
 });
 test('vocal and unresolved sound identities fail explicitly',()=>{
- assert.throws(()=>nativePlans([{kind:'vocal'}]),/recording playback/);
+ assert.throws(()=>nativePlans([{kind:'vocal'}]),/missing its recording/);
  const doc=beat();doc.instruments[0].layout='rack';
  assert.throws(()=>nativePlans(renderEvents(doc)),/unresolved sound/);
 });
