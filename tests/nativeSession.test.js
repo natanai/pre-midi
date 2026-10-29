@@ -27,6 +27,28 @@ test('malformed sample sessions reject before device playback',async()=>{
  try{await assert.rejects(playNative(doc,renderEvents(doc)),/sample/);assert.equal(calls,0);}
  finally{delete globalThis.__TAURI__;}
 });
+test('native live edits serialize tempo changes, preserve pause and cancel stopped updates',async()=>{
+ const calls=[];let issued=0,current=0,release;
+ globalThis.__TAURI__={core:{invoke:async(_,{request})=>{
+  calls.push(request);
+  if(request.action==='begin')return {owner:++issued};
+  if(request.action==='play')current=request.owner;
+  if(request.action==='update'&&release)await new Promise(resolve=>{release.resolve=resolve;});
+  return {sampleRate:48000,generation:1,owner:current,state:1,positionSeconds:.3};
+ }}};
+ const doc=beat();let handle;
+ try{
+  handle=await playNative(doc,renderEvents(doc));await handle.pause();assert.equal(handle.paused,true);
+  const first=structuredClone(doc);first.bpm=60;await handle.update(first,renderEvents(first));assert.equal(handle.paused,true);
+  const second=structuredClone(doc);second.bpm=240;await handle.update(second,renderEvents(second));
+  assert.deepEqual(calls.filter(c=>c.action==='update').map(c=>c.tempo_ratio),[2,.25]);
+  release={};const pending=handle.update(doc,renderEvents(doc));
+  while(!release.resolve)await new Promise(resolve=>setImmediate(resolve));
+  const latest=handle.update(first,renderEvents(first));await handle.stop();release.resolve();await Promise.all([pending,latest]);
+  assert.equal(calls.filter(c=>c.action==='update').length,3);
+  assert.equal(calls.at(-1).action,'control');assert.equal(calls.at(-1).command,1);
+ }finally{await handle?.stop();delete globalThis.__TAURI__;}
+});
 test('vocal and unresolved sound identities fail explicitly',()=>{
  assert.throws(()=>nativePlans([{kind:'vocal'}]),/missing its recording/);
  const doc=beat();doc.instruments[0].layout='rack';

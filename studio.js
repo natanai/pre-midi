@@ -282,11 +282,16 @@ function stop() {
  songUI?.setPosition(-1);
  paintPlayhead();
 }
+let nativeEditTimer;
+function refreshNativePlayback(){
+ clearTimeout(nativeEditTimer);const current=playback;if(current?.backend!=='native-cpp')return;
+ nativeEditTimer=setTimeout(()=>{if(playback===current)void current.refresh().catch(error=>{if(playback===current)message('playback edit: '+error.message,true);});},90);
+}
 function commitChange(before){
  history.push(before);
  if(history.length>100)history.shift();
  future=[];store();render();
- if(playback?.backend==='native-cpp')message('restart playback to hear edits');
+ refreshNativePlayback();
  return true;
 }
 function modify(change){
@@ -348,6 +353,7 @@ function undo() {
  restoreDocument(history.pop());
  store();
  render();
+ refreshNativePlayback();
 }
 function redo() {
  if (!future.length) return;
@@ -356,6 +362,7 @@ function redo() {
  restoreDocument(future.pop());
  store();
  render();
+ refreshNativePlayback();
 }
 function repairSelection() {
  if (!beat.instruments.some(entry => entry.id === selectedInstrumentId)) selectedInstrumentId = beat.instruments[0].id;

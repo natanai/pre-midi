@@ -24,3 +24,5 @@ native/vendor/miniaudio/miniaudio.h
 benchmarks/native-device.latest.json
 
 native/decoder/target/
+
+/native/control-tests/target/

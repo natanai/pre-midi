@@ -40,6 +40,9 @@
   const decoder=new OfflineAudioContext(1,16,44100);
   const decoded=await decoder.decodeAudioData(sampleBytes.buffer.slice(sampleBytes.byteOffset,sampleBytes.byteOffset+sampleBytes.byteLength));
   assert(decoded.length>0&&decoded.numberOfChannels>0,'bundled Ogg recording decodes offline');
+  localStorage.setItem('premidi-audio-backend','native');
+  const WebOfflineAudioContext=window.OfflineAudioContext;
+  window.OfflineAudioContext=class{constructor(){throw Error('Native operation attempted Web Audio rendering');}};
   const beat=create();beat.bars=1;const inst=beat.instruments[0];inst.timeline=[inst.chunks[0].id];inst.placements=[null];
   inst.sounds[0].patch=makePatch('touch-keys');inst.chunks[0].notes.push({id:id(),pitch:60,start:0,duration:4,velocity:.8});
   upgradeBeatFeatures(beat);
@@ -48,7 +51,7 @@
   const audio=await wav(beat),data=await audio.arrayBuffer();
   assert(new TextDecoder().decode(new Uint8Array(data,0,4))==='RIFF'&&data.byteLength>44,'WAV export');
   const pcm=new DataView(data);let peak=0;for(let i=44;i<data.byteLength;i+=2)peak=Math.max(peak,Math.abs(pcm.getInt16(i,true)));
-  assert(peak>10,'Web Audio rendered nonzero PCM');
+  assert(peak>10,'native C++ WAV export rendered nonzero PCM without Web Audio');
   const session=await play(()=>beat,{loop:()=>true});assert(session.backend==='native-cpp','desktop Play uses the native device host');
   const audioRequest=request=>invoke('native_audio',{request});
   let device;
@@ -56,11 +59,16 @@
   assert(device.callbacks>0&&device.peak>0&&device.fault===0,'C++ synthesis produced nonzero PCM in miniaudio callbacks');
   await session.pause();const paused=await audioRequest({action:'status'});await pause(40);const still=await audioRequest({action:'status'});
   assert(paused.state===2&&still.positionSeconds===paused.positionSeconds,'native pause preserves the audio position');
+  inst.sounds[0].patch=makePatch('sine-keys');await session.refresh();
+  assert((await audioRequest({action:'status'})).state===2,'native paused edit retains the transport state');
   await session.resume();await session.seek(2);await pause(30);
   assert((await audioRequest({action:'status'})).state===1,'native resume and seek return to playback');
+  beat.bpm=180;await session.refresh();
+  assert((await audioRequest({action:'status'})).state===1,'live native tempo and patch edits preserve playback');
   const {audition}=await load('audio.js');await audition(inst,64,beat,{duration:.1});
   assert((await audioRequest({action:'status'})).state===1,'Hear sound does not stop native transport');
   await session.stop();assert((await audioRequest({action:'status'})).state===0,'native stop completes');
+  window.OfflineAudioContext=WebOfflineAudioContext;
   const {createSong,addBeat}=await load('songModel.js'),{exportSongProject,importSongProject}=await load('songIO.js');
   const song=createSong(beat);const output=exportSongProject(song);const restored=await importSongProject(new File([output.blob],output.name));
   assert(restored.kind==='song','Song export and reopen');

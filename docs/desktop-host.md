@@ -21,9 +21,9 @@ Tauri meets the requested host architecture. Engine differences are a qualificat
 
 ## Audio boundary
 
-1. **Desktop-packaged Web Audio:** remains an explicit Settings choice; microphone workflows and WAV export retain the existing studio adapters.
+1. **Desktop-packaged Web Audio:** remains an explicit Settings choice; microphone workflows retain the existing studio adapter until native capture qualification.
 2. **Embedded native DSP proof:** native/desktop-fixture.cpp calls the existing C++ Voice in the Tauri process through a bounded C ABI. native_fixture returns one fixed 48 kHz stereo fixture. It is an offline renderer, not a native output-device backend.
-3. **Native real-time synth vertical slice (preview.4):** the default desktop playback adapter sends supported canonical plans to the C++ miniaudio device host. Production uses WASAPI/CoreAudio/PulseAudio/ALSA. Device selection, pause/resume/seek/loop, voice stealing and separate native previews are implemented. Complete synthesis/effects/sample parity, live edits during playback, latency, underruns and physical hardware qualification remain SYN-018 work. SYN-019 remains mobile delivery.
+3. **Native real-time synth vertical slice (preview.4):** the default desktop playback adapter sends supported canonical plans to the C++ miniaudio device host. Production uses WASAPI/CoreAudio/PulseAudio/ALSA. Device selection, pause/resume/seek/loop, voice stealing and separate native previews are implemented. Subsequent previews implement all factory synths/effects, sample racks and vocals, live edits, native WAV export and sound analysis. Native capture/latency and physical hardware qualification remain SYN-018 work. SYN-019 remains mobile delivery.
 
 The native adapter accepts validated canonical synth-voice plans on a dedicated control thread, prepares immutable instructions/banks/coefficients, and calls Voice::process in miniaudio callbacks. See [native audio architecture and qualification](native-audio.md). Unsupported instructions reject the whole session; the user may explicitly choose Web Audio, with no automatic fallback. pre-programmed continues to share the canonical file/plan contracts; this host does not imply game-host parity.
 
