@@ -3,7 +3,7 @@ export function installAudioSettings(list,{element,prompt,menu}){
  const label=element('label','audio '),engine=element('select');engine.id='audio-backend';engine.setAttribute('aria-label','audio engine');
  for(const [value,text]of [['native','native C++'],['web','web audio']]){const option=element('option',text);option.value=value;engine.append(option);}
  engine.value=localStorage.getItem('premidi-audio-backend')||'native';
- engine.title='native playback uses a snapshot at play; restart after edits; WAV export and Song microphone recording use web audio in this preview';label.append(engine);
+ engine.title='native playback, live edits and WAV export; Song microphone recording uses web audio in this preview';label.append(engine);
  const outputLabel=element('label','output '),output=element('select');output.setAttribute('aria-label','audio output');outputLabel.append(output);
  const refresh=element('button','refresh outputs');refresh.type='button';
  const reconnect=element('button','reconnect output');reconnect.type='button';reconnect.hidden=true;

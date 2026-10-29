@@ -91,6 +91,9 @@ public:
  std::vector<PreparedNote> notes;
  unsigned state=playing;std::uint64_t admitted=0,stolen=0;
  std::atomic<std::uint64_t> position{0},active{0},fault{0},stateView{playing};
+ // Prepared handoff clock; read only by the callback after publication.
+ Session* alignSource=nullptr;std::uint64_t alignOldFrame=0;
+ std::atomic<unsigned> handoff{0};
  Session(const std::uint8_t* data,std::size_t length,unsigned sr,double cycle,double seek,const SampleStore& samples={}):rate(sr),fadeFrames(std::max(1u,sr/200)),cycleSeconds(cycle){
   require(rate>=8000&&rate<=192000&&std::isfinite(cycle)&&cycle>=.05&&cycle<=600&&std::isfinite(seek)&&seek>=0&&seek<cycle,"Invalid native session timing");
   require(length<=512*1024*1024,"Native PCM bundle exceeds 512 MiB");PacketReader in(data,length);
@@ -150,6 +153,19 @@ public:
  void command(unsigned command)noexcept{
   if(command==1||command==2){if(state==playing){fadeLeft=fadeFrames;afterFade=command==1?stopped:paused;}else if(command==1){state=stopped;cursor=0;for(auto& s:voices)s.voice.reset();for(auto& s:retiring)s.voice.reset();}}
   if(command==3&&state==paused){state=playing;fadeIn=fadeFrames;}
+ }
+ bool advanceTo(std::uint64_t target,bool loop)noexcept{
+  std::array<float,2*renderBlock> scratch{};
+  while(cursor<target&&state==playing){unsigned budget=maxOnsets;process(scratch.data(),static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,target-cursor)),loop,budget);}
+  return cursor==target&&!error;
+ }
+ // Control-side reconstruction for a live edit of an already looping score.
+ // Retain enough preceding cycles for held notes, releases and delay history,
+ // without inventing cycles that the transport has not played yet.
+ bool warmLoopPosition(double phase,std::uint64_t elapsedCycles){
+  double history=cycleSeconds;for(const auto& note:notes)history=std::max(history,note.plan.graphEnd+(note.delay>=0?buses[note.delay].tail:0));
+  const auto cyclesToWarm=std::min(elapsedCycles,static_cast<std::uint64_t>(std::ceil(history/cycleSeconds))+1);
+  return advanceTo(frameAt(cyclesToWarm*cycleSeconds+phase),true);
  }
  void process(float* output,unsigned frames,bool loop,unsigned& onsetBudget)noexcept{
   std::fill(output,output+2*frames,0.f);

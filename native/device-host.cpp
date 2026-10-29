@@ -48,8 +48,16 @@ public:
  void clear(){pending.store(nullptr);active.store(nullptr);retiring.store(nullptr);for(auto& slot:owned)slot.reset();request.store(0);remaining=0;}
  void process(float* output,unsigned frames,unsigned& budget)noexcept{
   if(!retiring.load())if(auto p=pending.load()){
-   auto old=active.load();if(old){remaining=p->fadeFrames;retiring.store(old);}
-   active.store(p);pending.store(nullptr);
+   auto old=active.load();bool ready=true;
+   if(p->alignSource){
+    const auto now=old?old->position.load():0;ready=old==p->alignSource&&now==p->alignOldFrame;
+    if(old==p->alignSource&&now<p->alignOldFrame&&p->alignOldFrame-now<frames){
+     const auto before=static_cast<unsigned>(p->alignOldFrame-now);
+     process(output,before,budget);process(output+2*before,frames-before,budget);return;
+    }
+    if(old!=p->alignSource||now>p->alignOldFrame){pending.store(nullptr);p->handoff.store(2);}
+   }
+   if(ready){if(old){remaining=p->fadeFrames;retiring.store(old);}active.store(p);pending.store(nullptr);p->handoff.store(1);}
   }
   auto a=active.load();auto r=retiring.load();
   if(a){const auto control=request.exchange(0);if(control)a->command(control);a->process(output,frames,looping.load()!=0,budget);}
@@ -168,12 +176,62 @@ public:
   }
   close();throw std::runtime_error("Native output stopped delivering callbacks; select the device again");
  }
- void addSample(const float* input,std::uint64_t frames,unsigned rate,unsigned channels,premidi_sample_info& info){
-  ensure();require(input!=nullptr&&samples.size()<512,"Native sample asset capacity exceeded");
-  const double outputFrames=std::ceil(static_cast<double>(frames)*device.sampleRate/rate);
+ void addSample(const float* input,std::uint64_t frames,unsigned rate,unsigned channels,premidi_sample_info& info,unsigned targetRate=0){
+  if(!targetRate)ensure();
+  require(input!=nullptr&&samples.size()<512,"Native sample asset capacity exceeded");
+  const auto outputRate=targetRate?targetRate:device.sampleRate;require(outputRate>=8000&&outputRate<=192000,"Invalid native asset output rate");
+  const double outputFrames=std::ceil(static_cast<double>(frames)*outputRate/rate);
   require(rate>=8000&&rate<=192000&&channels>=1&&channels<=2&&frames>0&&frames<=std::uint64_t(rate)*301&&outputFrames*channels*4+sampleBytes<=1024.*1024*1024,"Native decoded assets exceed 1 GiB");
-  auto value=std::make_shared<SampleData>(input,frames,rate,channels,device.sampleRate);samples.push_back(value);sampleBytes+=value->pcm.size()*sizeof(float);
+  auto value=std::make_shared<SampleData>(input,frames,rate,channels,outputRate);samples.push_back(value);sampleBytes+=value->pcm.size()*sizeof(float);
   info={static_cast<std::uint32_t>(samples.size()),value->rate,value->channels,value->frames,value->normalization};
+ }
+ void update(const std::uint8_t* data,std::size_t length,double cycle,bool loop,double ratio){
+  ensure();require(std::isfinite(ratio)&&ratio>=.01&&ratio<=32,"Invalid native edit tempo ratio");
+  auto* old=transport.current();if(!old||old->stateView.load()==finished||old->stateView.load()==stopped)return;
+  const bool hold=old->stateView.load()==paused;
+  require(std::isfinite(cycle)&&cycle>=.05&&cycle<=600,"Invalid native edit duration");
+  const auto started=std::chrono::steady_clock::now();
+  for(;;){
+   const auto base=old->position.load();
+   const double seek=std::fmod(std::fmod(static_cast<double>(base)/device.sampleRate,old->cycleSeconds)*ratio,cycle);
+   auto value=std::make_unique<Session>(data,length,device.sampleRate,cycle,loop?0:seek,samples);
+   if(loop)require(value->warmLoopPosition(seek,static_cast<std::uint64_t>(base/(device.sampleRate*old->cycleSeconds))),"Native loop edit reconstruction failed");
+   const auto initial=value->position.load();
+   std::uint64_t due=base;
+   if(!hold)for(;;){
+    due=old->position.load()+4*renderBlock;
+    const auto target=initial+static_cast<std::uint64_t>(std::llround((due-base)*ratio));
+    require(value->advanceTo(target,loop),"Native edit reached the end of its new arrangement");
+    if(due>=old->position.load()+2*renderBlock)break;
+    require(std::chrono::steady_clock::now()-started<std::chrono::seconds(2),"Native edit preparation exceeded the real-time catch-up budget");
+   }
+   value->alignSource=old;value->alignOldFrame=due;
+   if(hold){value->state=paused;value->stateView.store(paused);}
+   auto* published=value.get();transport.looping.store(loop?1:0);transport.publish(std::move(value));
+   for(unsigned attempt=0;attempt<150;attempt++){
+    if(published->handoff.load()==1)return;
+    if(published->handoff.load()==2)break;
+    require(!lost.load(),"Native output disconnected during an edit");std::this_thread::sleep_for(std::chrono::milliseconds(2));
+   }
+   require(std::chrono::steady_clock::now()-started<std::chrono::seconds(2),"Native edit publication missed its audio-clock boundary");
+   require(published->handoff.load()==2,"Native edit publication timed out");
+  }
+ }
+ void render(const std::uint8_t* data,std::size_t length,double cycle,unsigned rate,std::uint64_t count,std::uint8_t* output,std::size_t bytes,unsigned format,double gain){
+  require(rate>=8000&&rate<=192000&&count>0&&count<=std::uint64_t(rate)*600&&format<=1&&std::isfinite(gain)&&gain>=0&&gain<=2,"Invalid native offline render dimensions");
+  require(output&&bytes==count*2*(format?2:4),"Invalid native offline output buffer");
+  SampleStore available;available.reserve(samples.size());std::uint64_t memory=0;
+  for(const auto& source:samples){
+   if(source->rate==rate)available.push_back(source);
+   else{const auto size=static_cast<std::uint64_t>(std::ceil(static_cast<double>(source->frames)*rate/source->rate))*source->channels*4;require(memory+size<=1024ull*1024*1024,"Native offline assets exceed 1 GiB");available.push_back(std::make_shared<SampleData>(source->pcm.data(),source->frames,source->rate,source->channels,rate));memory+=size;}
+  }
+  auto session=std::make_unique<Session>(data,length,rate,cycle,0,available);std::array<float,2*renderBlock> pcm{};
+  for(std::uint64_t at=0;at<count;){const auto n=static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,count-at));unsigned budget=maxOnsets;session->process(pcm.data(),n,false,budget);require(!session->fault.load(),"Native offline rendering exceeded the voice budget");
+   for(unsigned i=0;i<2*n;i++){const float value=pcm[i]*static_cast<float>(gain/.85);require(std::isfinite(value),"Native offline rendering produced nonfinite PCM");const auto index=2*at+i;
+    if(format){const float sample=std::clamp(value,-1.f,1.f);const auto integer=static_cast<std::int16_t>(sample*(sample<0?32768.f:32767.f));output[2*index]=static_cast<std::uint8_t>(integer);output[2*index+1]=static_cast<std::uint8_t>(static_cast<std::uint16_t>(integer)>>8);}
+    else std::memcpy(output+4*index,&value,4);
+   }at+=n;
+  }
  }
  void control(unsigned command,bool loop){
   require(command<=4,"Unknown native transport command");transport.looping.store(loop?1:0);
@@ -209,4 +267,7 @@ int premidi_audio_play(void* host,const uint8_t* data,size_t length,double cycle
 int premidi_audio_control(void* host,uint32_t command,int loop){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.control(command,loop!=0);});}
 int premidi_audio_status_get(void* host,premidi_audio_status* status){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.status(*status);});}
 int premidi_audio_add_sample(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.addSample(pcm,frames,rate,channels,*info);});}
+int premidi_audio_add_sample_rate(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info,uint32_t target_rate){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.addSample(pcm,frames,rate,channels,*info,target_rate);});}
+int premidi_audio_update(void* host,const uint8_t* data,size_t length,double cycle,int loop,double ratio){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.update(data,length,cycle,loop!=0,ratio);});}
+int premidi_audio_render(void* host,const uint8_t* data,size_t length,double cycle,uint32_t rate,uint64_t frames,uint8_t* output,size_t output_bytes,uint32_t format,double gain){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.render(data,length,cycle,rate,frames,output,output_bytes,format,gain);});}
 }

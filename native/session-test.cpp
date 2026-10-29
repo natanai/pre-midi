@@ -25,19 +25,31 @@ int main(int argc,char** argv){
   premidi::require(argc>=3,"Missing test arguments");std::ifstream source(argv[2],std::ios::binary);
   premidi::require(bool(source),"Missing prepared fixture");std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(source)),{});
   const std::string mode=argv[1];
-  if(mode=="--render"){
+  if(mode=="--render"||mode=="--export"){
    premidi::require(argc==11,"render: packet rate cycle seek loop frames block output pause-test");
    const auto rate=static_cast<unsigned>(std::stoul(argv[3])),frames=static_cast<unsigned>(std::stoul(argv[7])),block=static_cast<unsigned>(std::stoul(argv[8]));
    premidi::require(block>0&&block<=8192&&frames<=rate*12,"Invalid render dimensions");
    premidi::Session session(bytes.data(),bytes.size(),rate,std::stod(argv[4]),std::stod(argv[5]));
    std::vector<float> output(2*frames);const bool loop=std::stoi(argv[6])!=0;
+   if(std::string(argv[10])=="loop-edit"){
+    auto warmed=std::make_unique<premidi::Session>(bytes.data(),bytes.size(),rate,std::stod(argv[4]),0);
+    premidi::require(warmed->warmLoopPosition(std::stod(argv[5]),3),"Loop edit reconstruction failed");
+    for(unsigned at=0;at<frames;){const auto n=std::min(block,frames-at);unsigned budget=256;callbackScope=true;warmed->process(output.data()+2*at,n,true,budget);callbackScope=false;at+=n;}
+    premidi::require(callbackAllocations.load()==0&&!warmed->fault.load(),"Loop edit violated callback bounds");
+    std::ofstream file(argv[9],std::ios::binary);file.write(reinterpret_cast<const char*>(output.data()),static_cast<std::streamsize>(output.size()*sizeof(float)));
+    std::cout<<"{\"allocations\":0,\"state\":1}\n";return 0;
+   }
    if(std::string(argv[10])=="pause"){
     unsigned budget=256;float buffer[256];session.command(2);
     while(session.state==premidi::playing){budget=256;callbackScope=true;session.process(buffer,128,loop,budget);callbackScope=false;}
     const auto before=session.position.load();budget=256;session.process(buffer,128,loop,budget);
     premidi::require(session.state==premidi::paused&&session.position.load()==before,"Pause advanced the playhead");session.command(3);
    }
-   for(unsigned at=0;at<frames;){const auto n=std::min(block,frames-at);unsigned budget=256;callbackScope=true;session.process(output.data()+2*at,n,loop,budget);callbackScope=false;at+=n;}
+   if(mode=="--export"){
+    void* host=premidi_audio_create(1);premidi::require(host!=nullptr,"Native offline host unavailable");
+    const int result=premidi_audio_render(host,bytes.data(),bytes.size(),std::stod(argv[4]),rate,frames,reinterpret_cast<std::uint8_t*>(output.data()),output.size()*4,0,.85);
+    const std::string error=premidi_audio_error(host);premidi_audio_destroy(host);premidi::require(result==0,error.c_str());
+   }else for(unsigned at=0;at<frames;){const auto n=std::min(block,frames-at);unsigned budget=256;callbackScope=true;session.process(output.data()+2*at,n,loop,budget);callbackScope=false;at+=n;}
    premidi::require(session.fault.load()==0,"Callback mixer fault");premidi::require(callbackAllocations.load()==0,"Callback mixer allocated");
    for(auto value:output)premidi::require(std::isfinite(value),"Nonfinite callback PCM");
    std::ofstream file(argv[9],std::ios::binary);file.write(reinterpret_cast<const char*>(output.data()),static_cast<std::streamsize>(output.size()*sizeof(float)));
@@ -53,7 +65,20 @@ int main(int argc,char** argv){
     premidi_audio_status initial{};check(premidi_audio_status_get(host,&initial));premidi::require(initial.callbacks>0&&initial.peak_million>0,"Device callback did not generate audio");
     check(premidi_audio_control(host,2,1));premidi_audio_status paused{};check(premidi_audio_status_get(host,&paused));
     std::this_thread::sleep_for(std::chrono::milliseconds(30));premidi_audio_status stable{};check(premidi_audio_status_get(host,&stable));premidi::require(stable.state==premidi::paused&&stable.position==paused.position,"Device pause lost position");
+    check(premidi_audio_update(host,bytes.data(),bytes.size(),.5,1,1));
+    premidi_audio_status editedPause{};check(premidi_audio_status_get(host,&editedPause));
+    premidi::require(editedPause.state==premidi::paused&&editedPause.position==paused.position,"Paused edit changed its transport clock");
     check(premidi_audio_control(host,3,1));check(premidi_audio_play(host,bytes.data(),bytes.size(),.5,0,0,1));
+    for(unsigned edit=0;edit<6;edit++){
+     premidi_audio_status beforeEdit{};check(premidi_audio_status_get(host,&beforeEdit));
+     const auto editStarted=std::chrono::steady_clock::now();
+     check(premidi_audio_update(host,bytes.data(),bytes.size(),.5,1,1));
+     premidi_audio_status afterEdit{};check(premidi_audio_status_get(host,&afterEdit));
+     premidi::require(afterEdit.state==premidi::playing,"Live edit interrupted playback");
+     const double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-editStarted).count();
+     const double drift=std::remainder((static_cast<double>(afterEdit.position)-beforeEdit.position)/rate-elapsed,.5);
+     if(std::abs(drift)>.03)throw std::runtime_error("Live edit clock drift: "+std::to_string(drift)+" s; before="+std::to_string(beforeEdit.position)+", after="+std::to_string(afterEdit.position)+", elapsed="+std::to_string(elapsed));
+    }
     for(unsigned i=0;i<8;i++){check(premidi_audio_control(host,1,0));check(premidi_audio_play(host,bytes.data(),bytes.size(),.5,0,1,0));}
     std::this_thread::sleep_for(std::chrono::milliseconds(100));premidi_audio_status final{};check(premidi_audio_status_get(host,&final));
     premidi::require(callbackAllocations.load()==0,"C++ allocation in real device callback");premidi::require(final.fault==0&&final.oversized==0,"Device callback bound failed");

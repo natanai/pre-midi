@@ -14,10 +14,9 @@ import {applyAmplitudePlan} from "./envelope.js";
 import {planSynthVoice,noteFrequency} from "./src/dsp/synth-voice.js";
 import {attachModulation} from "./src/hosts/web/modulation.js";
 import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
-import {nativeEnabled,auditionNative,playNative} from "./src/hosts/native/session.js";
+import {nativeEnabled,auditionNative,playNative,renderNative,nativeRequest,prepareNativeAssets,nativeRequiredAssets,nativePlans} from "./src/hosts/native/session.js";
 export {nativeEnabled,cancelNativeTransport} from './src/hosts/native/session.js';
 // Canonical plans are shared by native desktop playback and the web adapter.
-// Offline WAV export retains the web adapter in this native device milestone.
 // Everything audible comes from the resolved sound patch stored in the beat.
 export const secondsPerStep = doc => 60/doc.bpm/4;
 export const frequency = noteFrequency;
@@ -198,8 +197,10 @@ export async function auditionChord(instrument,pitches,beat,velocity=.85) {
 }
 export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0}={}) {
  if(nativeEnabled()){
-  const document=typeof beat==='function'?beat():beat;
-  return playNative({...document,nativeLengthSteps:document.kind==='song'?songDurationSteps(document):document.bars*16},renderEvents(document),{loop,onPosition,onProgress,onStop,onStart,startStep});
+  const read=typeof beat==='function'?beat:()=>beat,document=read();
+  const prepare=document=>({...document,nativeLengthSteps:document.kind==='song'?songDurationSteps(document):document.bars*16});
+  const handle=await playNative(prepare(document),renderEvents(document),{loop,onPosition,onProgress,onStop,onStart,startStep});
+  handle.refresh=()=>{const next=read();return handle.update(prepare(next),renderEvents(next));};return handle;
  }
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
@@ -283,6 +284,11 @@ export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,s
  if(patch.type!=="synth"||issues.length)throw Error(issues.join("\n")||"Choose a synth patch.");
  if(!Number.isFinite(pitch)||pitch<0||pitch>127||!Number.isFinite(duration)||duration<=0||duration>4||
   !Number.isFinite(seconds)||seconds<=0||seconds>8)throw Error("Invalid synth preview duration or pitch.");
+ if(nativeEnabled()){
+  const frames=Math.ceil(seconds*sampleRate),plan=planSynthVoice({patch,volume:1},{pitch,velocity:1},0,duration);
+  const bytes=await renderNative([plan],{rate:sampleRate,frames,cycle:Math.max(.05,seconds),gain:1}),stereo=new Float32Array(bytes),mono=Float32Array.from({length:frames},(_,i)=>(stereo[2*i]+stereo[2*i+1])*.5);
+  return {sampleRate,length:frames,duration:frames/sampleRate,numberOfChannels:1,getChannelData:()=>mono};
+ }
  const ctx=new OfflineAudioContext(1,Math.ceil(seconds*sampleRate),sampleRate);
  scheduleNote(ctx,ctx.destination,{patch,volume:1},{pitch,velocity:1},0,duration,null);
  return ctx.startRendering();
@@ -322,6 +328,13 @@ export function renderEndSeconds(document,events,decoded){
  return end;
 }
 export async function wav(document){
+ if(nativeEnabled()){
+  const events=renderEvents(document),info=await nativeRequest({action:'status'}),rate=44100;
+  const assets=await prepareNativeAssets(nativeRequiredAssets(events),{...info,sampleRate:rate}),seconds=renderEndSeconds(document,events,assets);
+  if(seconds>600)throw Error("WAV including effect tails exceeds the current 10-minute render limit.");
+  const plans=nativePlans(events,assets,secondsPerStep(document)),cycle=(document.kind==='song'?songDurationSteps(document):document.bars*16)*secondsPerStep(document);
+  const bytes=await renderNative(plans,{rate,frames:Math.ceil(seconds*rate),cycle,wav:true});return new Blob([bytes],{type:'audio/wav'});
+ }
  const beats=document.kind==="song"?document.beats:[document];
  const decoder=new OfflineAudioContext(2,1,44100),decoded=new Map();
  for(const beat of beats)await decodeSamples(decoder,beat,decoded);

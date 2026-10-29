@@ -18,9 +18,9 @@ let renderer;
 try{
  execFileSync(process.env.CXX||'g++',['-std=c++17','-O2','-ffp-contract=off','-Wall','-Wextra','-Werror','-pedantic','-DPREMIDI_AUDIO_TEST',join(root,'native/session-test.cpp'),join(root,'native/device-host.cpp'),'-pthread','-ldl','-lm','-o',binary],{stdio:'pipe'});
  renderer=await buildNativeRenderer();
- async function render(plans,{rate=48000,cycle=1,seek=0,loop=false,seconds=.4,block=128,pause=false,assets=null}={}){
+ async function render(plans,{rate=48000,cycle=1,seek=0,loop=false,seconds=.4,block=128,pause=false,assets=null,offline=false,loopEdit=false}={}){
   const input=join(temp,'fixture.pms'),output=join(temp,'pcm.f32');await writeFile(input,encodeNativeSession(plans,rate,assets));
-  const frames=Math.round(seconds*rate),report=JSON.parse(run(['--render',input,rate,cycle,seek,Number(loop),frames,block,output,pause?'pause':'none']));
+  const frames=Math.round(seconds*rate),report=JSON.parse(run([offline?'--export':'--render',input,rate,cycle,seek,Number(loop),frames,block,output,pause?'pause':loopEdit?'loop-edit':'none']));
   return {pcm:floatArray(await readFile(output)),report};
  }
  function compare(name,actual,expected,extra={}){
@@ -33,6 +33,7 @@ try{
   for(const patch of [sine(),makePatch('touch-keys'),makePatch('harmonic-keys'),makePatch('broken-siren'),makePatch('midnight-theremin')]){
    const voice=plan(patch,62,.010,.14),expected=floatArray(renderer.render(voice,rate,Math.round(rate*.4))).map(v=>v*.85);
    const one=await render([voice],{rate});compare('canonical-'+patch.presetId+'-'+rate,one.pcm,expected,{rate,allocationAssertions:one.report.allocations===0});
+   compare('native-offline-'+patch.presetId+'-'+rate,(await render([voice],{rate,offline:true})).pcm,expected,{rate});
    const odd=await render([voice],{rate,block:511});compare('block-invariance-'+patch.presetId+'-'+rate,odd.pcm,one.pcm,{rate});
    const seek=.08,offset=Math.ceil(seek*rate),length=Math.round(.2*rate),full=floatArray(renderer.render(voice,rate,offset+length));
    const positioned=await render([voice],{rate,seek,seconds:.2});compare('seek-'+patch.presetId+'-'+rate,positioned.pcm,full.slice(2*offset).map(v=>v*.85),{rate});
@@ -94,6 +95,8 @@ try{
    const pcm=floatArray(renderer.render(p,rate,totalFrames));for(let i=0;i<loopExpected.length;i++)loopExpected[i]+=pcm[i]*.85;
   }
   compare('delay-loop-tails-'+rate,(await render([one],{rate,cycle,loop:true,seconds})).pcm,loopExpected);
+  const history=await render([one],{rate,cycle,loop:true,seconds:1.1});
+  compare('live-edit-loop-delay-history-'+rate,(await render([one],{rate,cycle,seek:.08,loop:true,seconds:.27,loopEdit:true})).pcm,history.pcm.slice(Math.ceil((3*cycle+.08)*rate-1e-9)*2,Math.ceil((3*cycle+.35)*rate-1e-9)*2));
  }
  const paused=await render([plan(sine(),69,0,.5)],{cycle:1,pause:true});if(paused.report.state===2)throw Error('Resume failed');
  const malformed=join(temp,'bad.pms');await writeFile(malformed,new Uint8Array([1,2,3]));let rejected=false;
@@ -128,6 +131,7 @@ try{
  }
  compare('stereo-sample-independent-envelope',stereo.pcm,expected);
  compare('stereo-sample-block-one',(await render([sample],{rate:sampleRate,cycle:1,seconds:.25,block:1,assets})).pcm,stereo.pcm);
+ compare('native-offline-stereo-sample',(await render([sample],{rate:sampleRate,cycle:1,seconds:.25,assets,offline:true})).pcm,stereo.pcm);
  compare('stereo-sample-seek',(await render([sample],{rate:sampleRate,cycle:1,seek:.04,seconds:.21,assets})).pcm,stereo.pcm.slice(Math.ceil(.04*sampleRate-1e-9)*2));
  const vocal=planNativeVocal({recording:{id:'test-sample',trimSeconds:0,durationSeconds:.1},clip:{lengthSteps:1,gain:.004}},0,.125,handles),vocals=Array.from({length:64},()=>structuredClone(vocal));
  const reference=await render(vocals,{assets,seconds:.2});

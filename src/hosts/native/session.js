@@ -34,7 +34,7 @@ export function nativePlans(events,assets=new Map(),unit=.125){
   const resolved=event.instrument.sounds?resolveEvent(event.instrument,event.note):{voice:event.instrument,note:event.note};
   if(!resolved)throw Error('Native playback found an unresolved sound identity');
   const {voice,note}=resolved,unsupported=unsupportedNativeFeatures(voice.patch);
-  if(unsupported.length)throw Error(`${event.instrument.name||'Sound'}: native playback does not yet support ${unsupported.join(', ')}. Choose a supported preset (Init, Triangle Keys, Touch Keys), or explicitly select Web Audio in Settings.`);
+  if(unsupported.length)throw Error(`${event.instrument.name||'Sound'}: native playback does not yet support ${unsupported.join(', ')}.`);
   if(voice.patch.type==='sample')return planNativeSample(voice,note,event.at,event.duration,assets);
   const duration=event.instrument.layout==='rack'?Math.max(.015,voice.patch.envelope.attack+voice.patch.envelope.decay):event.duration;
   return planSynthVoice(voice,note,event.at,duration,{automation:event.instrument.automation,timeline:event.timeline});
@@ -58,7 +58,7 @@ export async function prepareNativeAssets(ids,info){
  const result=new Map();for(const id of ids){
   const bytes=getAsset(id);if(!bytes)throw Error('Missing audio asset '+id+'. Open the music ZIP containing its audio.');
   const digest=await crypto.subtle.digest('SHA-256',bytes),key=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
-  if(!assetCache.has(key))assetCache.set(key,nativeRequest({action:'asset',data:Array.from(bytes)}).then(asset=>({...asset,duration:asset.frames/asset.rate})).catch(error=>{assetCache.delete(key);throw error;}));
+  if(!assetCache.has(key))assetCache.set(key,nativeRequest({action:'asset',data:Array.from(bytes),rate:info.sampleRate}).then(asset=>({...asset,duration:asset.frames/asset.rate})).catch(error=>{assetCache.delete(key);throw error;}));
   result.set(id,await assetCache.get(key));
  }
  return result;
@@ -77,38 +77,44 @@ export async function ensureNativeOutput(){
 }
 export async function auditionNative(instrument,notes,{duration=.24}={}){
  const unsupported=unsupportedNativeFeatures(instrument.patch);
- if(unsupported.length)throw Error('Native preview does not yet support '+unsupported.join(', ')+'. Choose a supported preset or Web Audio in Settings.');
+ if(unsupported.length)throw Error('Native preview does not yet support '+unsupported.join(', ')+'.');
  const status=await ensureNativeOutput();
  const events=notes.map(note=>({kind:'note',instrument,note,at:note.at??0,duration:note.duration??duration}));
  const assets=await prepareNativeAssets(nativeRequiredAssets(events),status),plans=nativePlans(events,assets);
  const cycle=Math.max(.05,...plans.map(plan=>plan.graphEnd));
  return nativeRequest({action:'play',data:Array.from(encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true});
 }
+export async function renderNative(plans,{rate,frames,cycle,wav=false,gain=.85}){
+ const data=Array.from(encodeNativeSession(plans,rate));
+ const result=await globalThis.__TAURI__.core.invoke('native_render',{request:{data,rate,frames,cycle,wav,gain}});
+ return result instanceof ArrayBuffer?result:Uint8Array.from(result).buffer;
+}
 export async function playNative(document,events,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0}={}){
  const epoch=++transportEpoch;
  // Validate every audible instruction before publishing any of the session.
  // No catch here may route an unsupported project to the browser backend.
- const ids=nativeRequiredAssets(events),unit=60/document.bpm/4;
+ const ids=nativeRequiredAssets(events);let unit=60/document.bpm/4;
  const steps=document.kind==='song'?document.nativeLengthSteps:document.bars*16;
- const cycle=steps*unit;
+ let cycle=steps*unit;
  if(!steps)throw Error('Add a Beat clip before playing this Song');
  if(!Number.isFinite(cycle)||cycle>600)throw Error('Native preview supports music up to 10 minutes');
- const info=await ensureNativeOutput(),assets=await prepareNativeAssets(ids,info),plans=nativePlans(events,assets,unit),data=Array.from(encodeNativeSession(plans,info.sampleRate));
+ const info=await ensureNativeOutput(),assets=await prepareNativeAssets(ids,info),plans=nativePlans(events,assets,unit);let data=Array.from(encodeNativeSession(plans,info.sampleRate));
  if(epoch!==transportEpoch)throw Error('Native playback request cancelled');
  let {owner}=await nativeRequest({action:'begin'});
  if(epoch!==transportEpoch)throw Error('Native playback request cancelled');
  const loops=()=>typeof loop==='function'?loop():loop;
  await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,startStep*unit),cycle-unit),looping:!!loops(),preview:false,owner});
  if(epoch!==transportEpoch){await nativeRequest({action:'control',command:1,looping:false,owner});throw Error('Native playback request cancelled');}
- let stopped=false,paused=false,polling=false,seeks=0,seekGeneration=0,timer,lastLoop=!!loops();
+ let stopped=false,paused=false,polling=false,seeks=0,seekGeneration=0,timer,lastLoop=!!loops(),editGeneration=0,updates=0,operations=Promise.resolve();
+ const serialize=fn=>{const task=operations.then(fn);operations=task.catch(()=>{});return task;};
  const finish=()=>{if(stopped)return;stopped=true;clearInterval(timer);onStop();};
  const reportError=message=>{globalThis.dispatchEvent?.(new CustomEvent('premidi-native-error',{detail:message}));finish();};
  async function tick(){
-  if(stopped||polling||seeks)return;polling=true;
+  if(stopped||polling||seeks||updates)return;polling=true;
   try{
    if(!!loops()!==lastLoop){lastLoop=!!loops();await nativeRequest({action:'control',command:0,looping:lastLoop,owner});}
    const status=await nativeRequest({action:'status'});
-   if(stopped||seeks)return;
+   if(stopped||seeks||updates)return;
    if(status.owner!==owner){finish();return;}
    if(status.deviceLost){reportError('Native audio output changed or disconnected. Select the output again in Settings.');return;}
    if(status.fault){reportError('Native playback stopped: callback capacity exceeded ('+status.fault+'). Reduce note density.');return;}
@@ -121,16 +127,29 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
  timer=setInterval(()=>void tick(),40);
  return {
   backend:'native-cpp',get paused(){return paused;},
-  async pause(){await nativeRequest({action:'control',command:2,looping:!!loops(),owner});paused=true;},
-  async resume(){await nativeRequest({action:'control',command:3,looping:!!loops(),owner});paused=false;},
+  async pause(){return serialize(async()=>{if(stopped)return;await nativeRequest({action:'control',command:2,looping:!!loops(),owner});paused=true;});},
+  async resume(){return serialize(async()=>{if(stopped)return;await nativeRequest({action:'control',command:3,looping:!!loops(),owner});paused=false;});},
+  async update(nextDocument,nextEvents){
+   const generation=++editGeneration;updates++;
+   try{return await serialize(async()=>{
+    if(stopped||generation!==editGeneration)return;
+    const nextUnit=60/nextDocument.bpm/4,nextSteps=nextDocument.kind==='song'?nextDocument.nativeLengthSteps:nextDocument.bars*16,nextCycle=nextSteps*nextUnit;
+    if(!Number.isFinite(nextCycle)||nextCycle<.05||nextCycle>600)throw Error('Native arrangement must last between .05 seconds and 10 minutes');
+    const status=await ensureNativeOutput(),nextAssets=await prepareNativeAssets(nativeRequiredAssets(nextEvents),status);
+    const nextData=Array.from(encodeNativeSession(nativePlans(nextEvents,nextAssets,nextUnit),status.sampleRate));
+    if(stopped||generation!==editGeneration)return;
+    await nativeRequest({action:'update',data:nextData,cycle:nextCycle,looping:!!loops(),tempo_ratio:nextUnit/unit,owner});
+    data=nextData;cycle=nextCycle;unit=nextUnit;
+   });}finally{updates--;}
+  },
   async seek(step){
    const generation=++seekGeneration;seeks++;
-   try{
+   try{return await serialize(async()=>{
     const claim=await nativeRequest({action:'begin'});if(stopped||generation!==seekGeneration)return;owner=claim.owner;
     await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,step*unit),cycle-unit),looping:!!loops(),preview:false,owner});paused=false;
-   }finally{seeks--;}
+   });}finally{seeks--;}
   },
   async stop(){if(stopped)return;finish();await nativeRequest({action:'control',command:1,looping:false,owner});},
-  get diagnostics(){return {backend:'native-cpp',snapshot:true};}
+  get diagnostics(){return {backend:'native-cpp',liveEdits:true};}
  };
 }

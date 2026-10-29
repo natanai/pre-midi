@@ -1223,7 +1223,6 @@
         ],
         "remaining": [
           "native capture/count-in/latency compensation",
-          "live edits while playing",
           "broader imported channel/rate and execution-edge qualification",
           "physical Windows WASAPI qualification"
         ],
@@ -1239,6 +1238,14 @@
           "Same-rate sample DSP retains max 1e-4/RMS 2e-5; lossy codec/rate-conversion gates declared separately; every item is bit-deterministic at 128/511-frame blocks",
           "Bounded WAV/MP3/Vorbis/Opus/WebM/MP4 decoder tests; extended PCM WAV header normalization and MP4 edit-list priming correction",
           "Windows codec decode/owned-PCM/miniaudio null-backend tests are required by the desktop build"
+        ],
+        "live_edit_phase": "Owner-checked native updates prepare full voice/effect state on the control thread and publish at an exact future audio-clock frame with a 5 ms crossfade; tempo maps musical position, paused edits stay paused, and loop edits reconstruct preceding note and delay history",
+        "offline_rendering_phase": "Binary native WAV export and mono sound-analysis rendering use the same C++ Session and owned assets without AudioContext; assets are prepared at the requested export rate",
+        "live_offline_verification": [
+          "Repeated and paused native edits at 44.1/48/96 kHz, callback allocation assertions and loop-delay-history PCM comparisons",
+          "Native offline PCM compares with independently rendered canonical voices and stereo samples",
+          "Standalone Rust/native control tests exercise six codec containers, owned PCM, 44.1/48 kHz binary export and stale session ownership",
+          "Windows portable WebView smoke blocks OfflineAudioContext during native WAV/play/edit operations"
         ]
       }
     },
