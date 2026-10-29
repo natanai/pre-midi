@@ -965,7 +965,8 @@ function render() {
  repairSelection();
  syncInspector();
  $("note-mode").setAttribute("aria-pressed",String(editingNoteEffects));
- $("note-mode").textContent=editingNoteEffects?"✓ Note effects · Done":"Edit note effects";
+ $("note-mode").textContent=editingNoteEffects?"✓ done":"edit note effects";
+ $("note-mode").setAttribute("aria-label",editingNoteEffects?"finish editing note effects":"edit note effects");
  document.querySelector(".work")?.classList.toggle("editing-note-effects",editingNoteEffects);
  document.querySelector(".notes-section")?.classList.toggle("editing-note-effects",editingNoteEffects);
  $("title").value = beat.title;
@@ -980,15 +981,33 @@ function render() {
  renderTimeline();
  renderChunkEditor();
  renderSound();
+ syncNoteEffectsInspector();
  $("undo").disabled = history.length === 0;
  $("redo").disabled = future.length === 0;
 }
 
 
+function positionNoteEffectsInspector(){
+ // One real note editor, moved only when the desktop/mobile layout changes.
+ const panel=$("note-effects-section");
+ const notes=document.querySelector(".notes-section");
+ const main=document.querySelector(".mainwork");
+ if(inspectorViewport.matches){
+  if(panel.parentElement!==main)main.append(panel);
+ }else if(panel.parentElement!==notes){
+  notes.insertBefore(panel,notes.querySelector(".piano-scroll"));
+ }
+}
+function syncNoteEffectsInspector(){
+ const panel=$("note-effects-section");
+ panel.setAttribute("aria-hidden",String(!editingNoteEffects));
+ $("note-effects-empty").hidden=!editingNoteEffects||!$("note-expression").hidden;
+}
 function syncInspector(){
+ positionNoteEffectsInspector();
  const work=document.querySelector(".work");
  for(const name of ["closed","expanded"])work.classList.toggle("inspector-"+name,inspectorState===name);
- const opened=inspectorState!=="closed";
+ const opened=inspectorState!=="closed"&&!editingNoteEffects;
  $("sound-section").setAttribute("aria-hidden",String(!opened));
  $("sound-toggle").setAttribute("aria-expanded",String(opened));
  $("sound-toggle").textContent=opened?"✓ Sound":"Sound";
@@ -1044,14 +1063,14 @@ async function chooseExample(example){
 $("examples").addEventListener("click",showExamples);
 $("close-examples").addEventListener("click",()=>$("example-dialog").close());
 
-$("note-mode").addEventListener("click",()=>{
- editingNoteEffects=!editingNoteEffects;
+function setNoteEffectsMode(active){
+ editingNoteEffects=active;
  selectedNoteId=null;
  render();
- if(editingNoteEffects) {
-  $("note-mode").focus({preventScroll:true});
- }
-});
+ $("note-mode").focus({preventScroll:true});
+}
+$("note-mode").addEventListener("click",()=>setNoteEffectsMode(!editingNoteEffects));
+$("note-effects-done").addEventListener("click",()=>setNoteEffectsMode(false));
 $("new").addEventListener("click", () => {
  if(confirm("Start a new Beat? This replaces the current "+(song?"Song":"Beat")+". Save .premidi first to keep it."))resetTo(create());
 });
