@@ -1235,7 +1235,7 @@
         ],
         "sample_phase": "v8 sample/vocal execution packets; native Rust decoding, control-side band-limited rate conversion and owned PCM; rack/pitched samples, recordings, filters/4x drive, pitch/bends/movement, stereo pan, overlapping clips and vocal priority",
         "sample_verification": [
-          "562 independent acoustic/library cases: all 28 synth presets, 16 sample presets, 122 shipped assets and five complete examples; overlapping vocal Song, seek and loop",
+          "565 independent acoustic/library cases: all 28 synth presets, 16 sample presets, 122 shipped assets and five complete examples; overlapping vocal Song, seek and loop",
           "Same-rate sample DSP retains max 1e-4/RMS 2e-5; lossy codec/rate-conversion gates declared separately; every item is bit-deterministic at 128/511-frame blocks",
           "Bounded WAV/MP3/Vorbis/Opus/WebM/MP4 decoder tests; extended PCM WAV header normalization and MP4 edit-list priming correction",
           "Windows codec decode/owned-PCM/miniaudio null-backend tests are required by the desktop build"

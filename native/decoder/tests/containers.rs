@@ -8,3 +8,13 @@ fn all_studio_containers_decode_finite_audible_pcm(){
   let rms=(audio.samples.iter().map(|x|(*x as f64).powi(2)).sum::<f64>()/audio.samples.len() as f64).sqrt();assert!(rms>0.05&&rms<0.12,"{extension}: {rms}");
  }
 }
+#[test]
+fn webm_container_delay_and_end_padding_match_chromium_156(){
+ let webm=decode(include_bytes!("fixtures/tone.webm").to_vec(),"webm").unwrap();
+ let ogg=decode(include_bytes!("fixtures/opus.ogg").to_vec(),"ogg").unwrap();
+ // Same original Opus packets: 6.5 ms CodecDelay rounded to a 1 ms WebM
+ // timestamp tick leaves an additional 24-frame front trim; 648 final padding
+ // frames are never part of the audible asset.
+ assert_eq!(webm.samples.len()/2,4776);assert_eq!(ogg.samples.len()/2,4800);
+ assert_eq!(webm.samples,ogg.samples[48..]);
+}

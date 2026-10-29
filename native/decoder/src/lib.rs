@@ -1,5 +1,6 @@
 //! Bounded control-thread decoding. No decoder or owned buffer enters a callback.
 mod mp4;
+mod webm;
 use std::io::Cursor;
 use symphonia::core::{codecs::{audio::AudioDecoderOptions,registry::CodecRegistry},formats::{FormatOptions,TrackType,probe::Hint},io::MediaSourceStream};
 use symphonia_adapter_libopus::OpusDecoder;
@@ -28,7 +29,7 @@ fn normalize_pcm_wav(mut bytes:Vec<u8>)->Result<Vec<u8>,String>{
 pub fn decode(bytes:Vec<u8>,extension:&str)->Result<DecodedAudio,String>{
  if bytes.len()<16||bytes.len()>48_000_000{return Err("Audio asset must be 16 bytes to 48 MB".into());}
  if !["","wav","mp3","ogg","webm","mp4"].contains(&extension){return Err("Unsupported audio container".into());}
- let bytes=normalize_pcm_wav(bytes)?;let edits=mp4::read(&bytes)?;
+ let bytes=normalize_pcm_wav(bytes)?;let edits=mp4::read(&bytes)?;let webm=webm::read(&bytes)?;
  let mut hint=Hint::new();if !extension.is_empty(){hint.with_extension(extension);}
  let stream=MediaSourceStream::new(Box::new(Cursor::new(bytes)),Default::default());
  let mut format=symphonia::default::get_probe().probe(&hint,stream,FormatOptions::default(),Default::default()).map_err(|e|format!("Invalid audio container: {e}"))?;
@@ -36,7 +37,7 @@ pub fn decode(bytes:Vec<u8>,extension:&str)->Result<DecodedAudio,String>{
  let params=track.codec_params.as_ref().and_then(|p|p.audio()).ok_or("Missing audio codec parameters")?;
  let mut registry=CodecRegistry::new();symphonia::default::register_enabled_codecs(&mut registry);registry.register_audio_decoder::<OpusDecoder>();
  let mut decoder=registry.make_audio_decoder(params,&AudioDecoderOptions::default()).map_err(|e|format!("Audio codec: {e}"))?;
- let track_id=track.id;let mut result=DecodedAudio{samples:Vec::new(),rate:0,channels:0,peak:0.};let mut packets=0usize;
+ let track_id=track.id;let mut result=DecodedAudio{samples:Vec::new(),rate:0,channels:0,peak:0.};let mut packets=0usize;let mut audio_packets=0usize;
  while let Some(packet)=format.next_packet().map_err(|e|format!("Invalid audio packet: {e}"))?{
   packets+=1;if packets>250_000{return Err("Audio packet limit exceeded".into());}if packet.track_id!=track_id{continue;}
   let buffer=decoder.decode(&packet).map_err(|e|format!("Cannot decode audio packet: {e}"))?;
@@ -48,6 +49,15 @@ pub fn decode(bytes:Vec<u8>,extension:&str)->Result<DecodedAudio,String>{
   if end>rate as usize*channels as usize*301||end>128_000_000{return Err("Decoded audio exceeds 301 seconds or 512 MB".into());}
   result.samples.resize(end,0.);buffer.copy_to_slice_interleaved(&mut result.samples[begin..]);
   if result.samples[begin..].iter().any(|x|!x.is_finite()||x.abs()>32.){return Err("Invalid decoded audio values".into());}
+  if let Some(timing)=webm.as_ref().and_then(|w|w.tracks.get(&track_id)){
+   let padding=*timing.padding.get(audio_packets).ok_or("Missing WebM packet timing")?;
+   let front=if audio_packets==0{webm::front(timing,webm.as_ref().unwrap().scale,rate)?}else{0}+if padding<0{webm::padding_frames(padding,rate)?}else{0};
+   let back=if padding>0{webm::padding_frames(padding,rate)?}else{0};let frames=size/channels as usize;
+   if front+back>frames{return Err("WebM padding exceeds decoded packet".into());}
+   if front>0{result.samples.copy_within(begin+front*channels as usize..end,begin);}
+   result.samples.truncate(end-(front+back)*channels as usize);
+  }
+  audio_packets+=1;
  }
  if let Some(edit)=edits.iter().find(|e|e.id==track_id){mp4::apply(&mut result.samples,result.rate,result.channels,edit)?;}
  if result.samples.is_empty(){return Err("Decoded audio is empty".into());}

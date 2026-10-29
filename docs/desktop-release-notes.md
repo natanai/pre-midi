@@ -4,6 +4,6 @@ Samples retain velocity zones, pitch and bends, one-shot/keyed duration, overlap
 
 - Windows x64 portable ZIP only. Close pre-midi, back up your folder, and replace application files plus `licenses/`. Preserve `data/`, `projects/` and `exports/`, then reopen manually.
 - Settings → Check for updates retains the preview channel, installed release version and direct official ZIP link.
-- The full 562-case acoustic/library matrix passes. Original synth PCM gates are unchanged; codec/rate conversion has separate declared gates. Native mixer, allocation, seek, looping, priority and decoder tests accompany it.
+- The full 565-case acoustic/library matrix passes. Original synth PCM gates are unchanged; codec/rate conversion has separate declared gates. Native mixer, allocation, seek, looping, priority and decoder tests accompany it.
 - Native capture/count-in/latency compensation, live edits and imported channel/rate edge qualification are still in progress. This phase still takes a playback snapshot at Play. WAV export and microphone capture retain their existing web path pending the next phase.
 - Automated miniaudio tests use an explicitly selected null backend. Physical Windows WASAPI input/output, latency, driver underruns, disconnect and sleep/resume qualification remain pending.
