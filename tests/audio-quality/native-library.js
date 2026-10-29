@@ -27,9 +27,10 @@ export async function qualifyNativeLibrary(add,{quick=false}={}){
   const response=await fetch('/__native_session?'+query,{method:'POST',body:encodeNativeSession(plans,rate,assets)});if(!response.ok)throw Error(await response.text());return new Float32Array(await response.arrayBuffer());
  }
  async function qualify(id,doc,{strict=false,seek=0,loop=false,seconds=null}={}){
-  const events=renderEvents(doc),handles=new Map(),buffers=new Map(),assets=[];
+  const events=renderEvents(doc),handles=new Map(),buffers=new Map(),assets=[],decoders=[];
   for(const key of nativeRequiredAssets(events)){
    const decoded=await asset(key),native={...decoded.native,id:assets.length+1};assets.push(native);handles.set(key,native);buffers.set(key,decoded.browser);
+   if(key.startsWith('vocal-'))decoders.push({id:key,nativeFrames:native.frames,browserFrames:decoded.browser.length,native:signalStats(native.pcm),browser:signalStats(decoded.browser.getChannelData(0))});
   }
   const unit=60/doc.bpm/4,cycle=(doc.kind==='song'?songDurationSteps(doc):doc.bars*16)*unit;
   const plans=nativePlans(events,handles,unit),length=seconds??Math.max(cycle,renderEndSeconds(doc,events,buffers))+.05,frames=Math.ceil(length*rate);
@@ -55,7 +56,7 @@ export async function qualifyNativeLibrary(add,{quick=false}={}){
   const levelError=Math.abs(stats.rms/Math.max(1e-9,browserRms)-1);
   // New codec/rate-conversion gates are declared before measurement. Existing
   // synth PCM gates stay unchanged. Strict fixtures bypass rate conversion.
-  add('library/'+id,{max,rms,levelError,stats,blockError,nativePlans:plans.length,assets:assets.length,seconds:length,seek,loop},
+  add('library/'+id,{max,rms,levelError,stats,blockError,nativePlans:plans.length,assets:assets.length,seconds:length,seek,loop,...(decoders.length?{decoders}:{})},
    {prepared:true,finite:stats.nonFinite===0,audible:stats.rms>.000001,deterministic:blockError.max===0,
     maxError:max<(strict?.0001:.03),rmsError:rms<(strict?.00002:.002),level:levelError<(strict?.001:.03)});
  }
@@ -77,6 +78,9 @@ export async function qualifyNativeLibrary(add,{quick=false}={}){
  for(const [extension,mime] of [['webm','audio/webm'],['mp4','audio/mp4'],['ogg','audio/ogg']]){
   const id='vocal-'+extension;await asset(id,{path:'/native/decoder/tests/fixtures/'+(extension==='ogg'?'opus.ogg':'tone.'+extension),extension});
   addVocalTake(song,{id,name:id,mime,path:'assets/'+id+'.'+extension,durationSeconds:.1,trimSeconds:.01},{startStep:2});
+  const single=createSong(base);single.tracks[0].clips[0].lengthSteps=16;
+  addVocalTake(single,{id,name:id,mime,path:'assets/'+id+'.'+extension,durationSeconds:.1,trimSeconds:.01},{startStep:2});
+  await qualify('song/codec-'+extension,single);
  }
  await qualify('song/vocals-overlap',song);
  await qualify('song/vocal-seek',song,{seek:.28,seconds:1});
