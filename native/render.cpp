@@ -87,7 +87,8 @@ int main(int argc,char** argv){
   std::array<std::unique_ptr<premidi::WaveBank>,2> ownedBanks;std::array<const premidi::WaveBank*,2> banks{};
   for(std::size_t i=0;i<2;i++)if(plan.oscillators[i].wave||plan.version>=2){ownedBanks[i]=std::make_unique<premidi::WaveBank>(plan.oscillators[i].wave,plan.oscillators[i].harmonics,rate);banks[i]=ownedBanks[i].get();}
   std::optional<premidi::DriveRecipe> drive;if(plan.drive>0)drive.emplace(plan.drive);
-  premidi::Voice voice(plan,rate,banks,0,nullptr,drive?&*drive:nullptr);std::size_t channels=2;
+  std::unique_ptr<premidi::WaveBank> lfo;if(plan.version==9&&plan.routeCount)lfo=std::make_unique<premidi::WaveBank>(0,std::array<double,32>{},rate);
+  premidi::Voice voice(plan,rate,banks,0,nullptr,drive?&*drive:nullptr,lfo.get());std::size_t channels=2;
 #ifdef PREMIDI_PROBE
   const bool probeMode=argc==2&&std::strcmp(argv[1],"--probe")==0;if(probeMode)channels=5;
 #endif

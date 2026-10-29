@@ -52,6 +52,16 @@ public:
   return static_cast<float>(at(a)+(at(b)-at(a))*(range-a));
  }
  double advance(double phase,double frequency) const noexcept {return std::fmod(phase+static_cast<float>(frequency*static_cast<float>(size/rate)),static_cast<double>(size));}
+ std::size_t tableSize()const noexcept{return size;}
+ float lfo(double position,double frequency)const noexcept{
+  const auto center=static_cast<std::size_t>(position);const double fraction=position-center;
+  const double increment=static_cast<float>(frequency*static_cast<float>(size/rate));
+  if(increment>=.3){const auto a=center&(size-1),b=(a+1)&(size-1);return tables[a]+(tables[b]-tables[a])*(static_cast<float>(position)-center);}
+  // Local Lagrange interpolation of the immutable sine table at slow rates.
+  const int radius=increment>=.16?1:2;double result=0;
+  for(int j=-radius;j<=radius;j++){double weight=1;for(int k=-radius;k<=radius;k++)if(k!=j)weight*=(fraction-k)/(j-k);result+=weight*tables[(center+j)&(size-1)];}
+  return static_cast<float>(result);
+ }
  std::size_t bytes() const noexcept{return tables.size()*sizeof(float);}
 };
 }

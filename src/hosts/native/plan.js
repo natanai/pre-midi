@@ -1,3 +1,4 @@
+import {pitchReachesNyquist} from '../../dsp/synth-voice.js';
 // Shared canonical plan encoder. Preparation only; never called on the audio thread.
 import {validateAutomationPlan} from "../../dsp/automation.js";
 import {validateModulation,MOD_TARGETS,MOD_SOURCES} from "../../dsp/modulation.js";
@@ -11,13 +12,9 @@ export function encodeNativePlan(plan,sampleRate,frames){
  if(plan.version>=2)errors.push(...validateModulation(plan.modulation));
  else if(plan.modulation!==undefined)errors.push("Modulation requires contract v2");if(errors.length)throw Error(errors.join("; "));
  if(p.type!=="synth")throw Error("Expected a native synth profile");
- if(plan.oscillators.some(osc=>osc.frequency*2**(Math.max(osc.detune,...(osc.pitch.values??[]))/1200)>=sampleRate/2))throw Error("Unsupported native pitch above Nyquist");
- if(plan.oscillators.some((osc,index)=>{
-  const possible=(plan.modulation?.routes??[]).filter(route=>route.target===`oscillators.${index}.detune`).reduce((sum,route)=>sum+Math.abs(route.depth),0);
-  return osc.frequency*2**((Math.max(osc.detune,...(osc.pitch.values??[]))+Math.min(2400,possible))/1200)>=sampleRate/2;
- }))throw Error('Unsupported native modulated pitch above Nyquist');
+ const extended=plan.graphEnd-plan.start>30||pitchReachesNyquist(plan,sampleRate);
  const parts=[],u32=n=>{if(!Number.isInteger(n)||n<0||n>0xffffffff)throw Error("Invalid native integer");const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n,true);parts.push(b);},f64=n=>{if(!Number.isFinite(n))throw Error("Nonfinite native parameter");const b=new Uint8Array(8);new DataView(b.buffer).setFloat64(0,n,true);parts.push(b);};
- const version=p.effects.drive!==0||plan.movement.depth!==0||plan.movement.tone!==0||plan.movement.tremolo!==0?7:p.effects.delayMix!==0?6:p.noise!==0?5:(p.filter.sweep??0)!==0?4:plan.version;
+ const version=extended?9:p.effects.drive!==0||plan.movement.depth!==0||plan.movement.tone!==0||plan.movement.tremolo!==0?7:p.effects.delayMix!==0?6:p.noise!==0?5:(p.filter.sweep??0)!==0?4:plan.version;
  u32(0x344e4d50);u32(sampleRate);u32(frames);u32(version);
  for(const n of [plan.start,plan.duration,plan.end,plan.graphEnd,p.pan,p.filter.cutoff,p.filter.resonance])f64(n);u32(["lowpass","highpass","bandpass","notch"].indexOf(p.filter.type));
  if(version>=4){f64(plan.filter.startCutoff);f64((p.filter.sweep??0)!==0?plan.filter.sweepEnd:plan.graphEnd);}

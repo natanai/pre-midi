@@ -11,7 +11,7 @@ import { schedulePitchPlan, scheduleMovementLfo } from "./expression.js";
 import {validatePatch} from "./synth.js";
 import {configureDriveShaper} from "./audioEffects.js";
 import {applyAmplitudePlan} from "./envelope.js";
-import {planSynthVoice,noteFrequency} from "./src/dsp/synth-voice.js";
+import {planSynthVoice,noteFrequency,pitchReachesNyquist} from "./src/dsp/synth-voice.js";
 import {attachModulation} from "./src/hosts/web/modulation.js";
 import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
 import {nativeEnabled,auditionNative,playNative,renderNative,nativeRequest,prepareNativeAssets,nativeRequiredAssets,nativePlans} from "./src/hosts/native/session.js";
@@ -69,8 +69,12 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
   const gain=add(ctx.createGain());
   // Initialize before scheduling: a start inside a render quantum must not
   // consume the OscillatorNode default 440 Hz from its pre-onset parameter span.
-  if(start>0)oscillator.frequency.value=slot.frequency;
-  oscillator.frequency.setValueAtTime(slot.frequency,start);
+  if(pitchReachesNyquist(plan,ctx.sampleRate)){
+   // Keep frequency audio-rate through detune automation. The detune-only
+   // browser path clamps its multiplier rather than the computed frequency.
+   const value=Math.min(ctx.sampleRate/2,Math.fround(slot.frequency));oscillator.frequency.value=value;
+   oscillator.frequency.setValueCurveAtTime(new Float32Array([value,value]),sourceStart,Math.max(.001,end-sourceStart));
+  }else{if(start>0)oscillator.frequency.value=slot.frequency;oscillator.frequency.setValueAtTime(slot.frequency,start);}
   schedulePitchPlan(ctx,oscillator.detune,slot.pitch,owner);
   gain.gain.value=slot.level;
   if(warmed&&!plan.modulation?.routes.some(route=>route.target===`oscillators.${index}.level`)){gain.gain.value=0;gain.gain.setValueAtTime(slot.level,start);}
