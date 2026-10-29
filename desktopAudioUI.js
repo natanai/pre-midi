@@ -3,20 +3,22 @@ export function installAudioSettings(list,{element,prompt,menu}){
  const label=element('label','audio '),engine=element('select');engine.id='audio-backend';engine.setAttribute('aria-label','audio engine');
  for(const [value,text]of [['native','native C++'],['web','web audio']]){const option=element('option',text);option.value=value;engine.append(option);}
  engine.value=localStorage.getItem('premidi-audio-backend')||'native';
- engine.title='native playback, live edits and WAV export; Song microphone recording uses web audio in this preview';label.append(engine);
+ engine.title='native playback, live edits, microphone recording and WAV export';label.append(engine);
  const outputLabel=element('label','output '),output=element('select');output.setAttribute('aria-label','audio output');outputLabel.append(output);
  const refresh=element('button','refresh outputs');refresh.type='button';
  const reconnect=element('button','reconnect output');reconnect.type='button';reconnect.hidden=true;
  const advanced=element('details'),summary=element('summary','audio performance');advanced.append(summary);
  const rateLabel=element('label','sample rate '),rate=element('select');rate.setAttribute('aria-label','native sample rate');
  const bufferLabel=element('label','buffer '),buffer=element('select');buffer.setAttribute('aria-label','native buffer size');
+ const offsetLabel=element('label','recording offset (ms) '),offset=element('input');offset.type='number';offset.min='0';offset.max='500';offset.step='.1';offset.value=localStorage.getItem('premidi-recording-offset-ms')||'0';offset.setAttribute('aria-label','recording offset in milliseconds');offsetLabel.title='moves microphone audio earlier by your measured round-trip delay';offsetLabel.append(offset);
+ offset.onchange=()=>{const value=Number(offset.value);if(!Number.isFinite(value)||value<0||value>500){offset.value=localStorage.getItem('premidi-recording-offset-ms')||'0';return;}localStorage.setItem('premidi-recording-offset-ms',String(value));};
  for(const [value,text]of [[0,'automatic'],[44100,'44.1 khz'],[48000,'48 khz'],[96000,'96 khz']]){const option=element('option',text);option.value=value;rate.append(option);}
  for(const value of [0,128,256,512,1024]){const option=element('option',value?value+' frames':'automatic');option.value=value;buffer.append(option);}
  let saved;try{saved=JSON.parse(localStorage.getItem('premidi-native-output')||'null');}catch{}
  rate.value=String(saved?.rate??0);buffer.value=String(saved?.buffer??0);rateLabel.append(rate);bufferLabel.append(buffer);
  const performance=element('output');performance.id='native-audio-performance';performance.style.whiteSpace='pre-wrap';
  performance.title='render CPU and deadline misses describe our callback; driver underruns and physical output latency require hardware measurement';
- advanced.append(rateLabel,bufferLabel,performance);list.append(label,outputLabel,refresh,reconnect,advanced);
+ advanced.append(rateLabel,bufferLabel,offsetLabel,performance);list.append(label,outputLabel,refresh,reconnect,advanced);
  const pause=document.getElementById('native-pause');pause.onclick=()=>window.dispatchEvent(new Event('premidi-native-pause'));
  let devices=[],busy=false;
  function visibility(){const native=engine.value==='native';outputLabel.hidden=refresh.hidden=advanced.hidden=pause.hidden=!native;if(!native)reconnect.hidden=true;}

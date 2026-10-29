@@ -2,8 +2,11 @@
 import {MAX_VOCAL_SECONDS} from "./songModel.js";
 import {MAX_RECORDING_BYTES} from "./assetRegistry.js";
 import {preferredRecordingMime,normalizeRecordingMime} from "./recordingAssets.js";
+import {nativeEnabled} from './src/hosts/native/session.js';
+import {prepareNativeTake,decodeNativeAudio} from './src/hosts/native/capture.js';
 const closeStream=stream=>stream?.getTracks().forEach(track=>track.stop());
 export async function prepareSongTake(){
+ if(nativeEnabled())return prepareNativeTake();
  if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==="undefined")
   throw Error("Microphone recording is unavailable in this browser.");
  const mime=preferredRecordingMime();
@@ -74,6 +77,7 @@ export function waveformPeaks(buffer,bins=96){
  return result;
 }
 export async function waveformForTake(bytes){
+ if(nativeEnabled())return waveformPeaks(await decodeNativeAudio(bytes,{mono:false}));
  const ctx=new AudioContext();
  try{
   const buffer=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);

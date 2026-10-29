@@ -195,11 +195,11 @@ export async function auditionChord(instrument,pitches,beat,velocity=.85) {
    now+strumOffset(instrument,note,notes),duration,beat,previews());
  }
 }
-export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0}={}) {
+export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0,countIn=0,recording=null,onCountIn=()=>{}}={}) {
  if(nativeEnabled()){
   const read=typeof beat==='function'?beat:()=>beat,document=read();
   const prepare=document=>({...document,nativeLengthSteps:document.kind==='song'?songDurationSteps(document):document.bars*16});
-  const handle=await playNative(prepare(document),renderEvents(document),{loop,onPosition,onProgress,onStop,onStart,startStep});
+  const handle=await playNative(prepare(document),renderEvents(document),{loop,onPosition,onProgress,onStop,onStart,startStep,countIn,recording,onCountIn});
   handle.refresh=()=>{const next=read();return handle.update(prepare(next),renderEvents(next));};return handle;
  }
  context||=new AudioContext();

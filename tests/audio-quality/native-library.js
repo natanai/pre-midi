@@ -75,7 +75,7 @@ export async function qualifyNativeLibrary(add,{quick=false}={}){
   for(const example of EXAMPLES){const doc=await buildExample(example.id,loadLibrarySample);await qualify('example/'+example.id,doc);}
  }
  const base=sampleBeat(patchFor(syntheticId),notes),song=createSong(base);song.tracks[0].clips[0].lengthSteps=16;addBeatClip(song,addSongTrack(song).id,song.beats[0].id,4,12);
- for(const [extension,mime] of [['webm','audio/webm'],['mp4','audio/mp4'],['ogg','audio/ogg']]){
+ for(const [extension,mime] of [['webm','audio/webm'],['mp4','audio/mp4'],['ogg','audio/ogg'],['wav','audio/wav']]){
   const id='vocal-'+extension;await asset(id,{path:'/native/decoder/tests/fixtures/'+(extension==='ogg'?'opus.ogg':'tone.'+extension),extension});
   addVocalTake(song,{id,name:id,mime,path:'assets/'+id+'.'+extension,durationSeconds:.1,trimSeconds:.01},{startStep:2});
   const single=createSong(base);single.tracks[0].clips[0].lengthSteps=16;

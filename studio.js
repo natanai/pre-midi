@@ -198,15 +198,18 @@ function message(text, error = false) {
 let saveGeneration=0;
 function store() {
  const current=currentDocument(),generation=++saveGeneration;
+ $("status").dataset.saving="true";
  message("Saving locally…");
- void saveDraft(current).then(()=>{if(generation===saveGeneration)message("Saved locally");}).catch(()=>{
+ void saveDraft(current).then(()=>{if(generation===saveGeneration){$("status").dataset.saving="false";if($("status").textContent==="Saving locally…")message("Saved locally");}}).catch(()=>{
   if(generation!==saveGeneration)return;
+  $("status").dataset.saving="error";
   // For constrained private-browser modes, small synth-only scores still fit.
   try {
    const json=JSON.stringify(current);
    const assets=current.kind==="song"?current.beats.flatMap(entry=>entry.samples):current.samples;
     if(assets.length||json.length>800000)throw Error("large or sampled draft");
    localStorage.setItem(CACHE,json);
+   $("status").dataset.saving="false";
    message("Saved locally (limited browser storage)");
   }catch{message("Browser storage unavailable. Export .premidi to save your work.",true);}
  });
@@ -1151,14 +1154,14 @@ exportForm.addEventListener("submit",async event=>{
  }catch(error){message("Export failed: "+error.message,true);}
  finally{control.disabled=false;}
 });
-async function startTransport({onStart=null,recording=false,startStep=null}={}){
+async function startTransport({onStart=null,recording=false,startStep=null,countIn=0,captureOwner=null,onCountIn=()=>{}}={}){
  if (playback) { stop(); return; }
  if (pendingPlay) return;
  pendingPlay = true;
  const playingSong=!!(song&&songExpanded),generation=++playbackGeneration;
  try {
-  if(recording&&nativeEnabled())throw Error('Song microphone recording requires Web Audio in this preview. Select Web Audio in Settings.');
   const session = await play(() => playingSong?song:beat, {
+   countIn,recording:captureOwner,onCountIn,
    onStart:metadata=>onStart?.(metadata),
    startStep:playingSong?(startStep??songUI?.getStartStep()??0):0,
    loop: () => recording?false:$("loop").checked,
@@ -1232,7 +1235,6 @@ voiceDialog.addEventListener("cancel",event=>{
  }else cancelVoiceCountdown();
 });
 $("voice-start").addEventListener("click",async()=>{
- if(nativeEnabled()){voiceStatus('Song recording uses Web Audio in this preview. Choose Web Audio in Settings.',true);return;}
  if(vocalTake){stop();return;}
  if(vocalRequest){cancelVoiceCountdown();voiceStatus("Count-in cancelled.");return;}
  if(vocalFinalizing||!song||!songExpanded)return;
@@ -1251,7 +1253,7 @@ $("voice-start").addEventListener("click",async()=>{
    prepared.cancel();return;
   }
   voiceCountAbort=new AbortController();
-  if(countBars){
+  if(countBars&&!nativeEnabled()){
    await songCountIn(song.bpm,countBars,{
     signal:voiceCountAbort.signal,
     onBeat:({beat,bar,remaining})=>{
@@ -1265,7 +1267,8 @@ $("voice-start").addEventListener("click",async()=>{
   vocalStartStep=requestedStep;vocalTake=prepared;
   showVocalState(true);
   voiceStatus("Recording from bar "+(Math.floor(requestedStep/16)+1)+". Stop to save.");
-  await startTransport({recording:true,startStep:requestedStep,onStart:metadata=>{
+  await startTransport({recording:true,startStep:requestedStep,countIn:nativeEnabled()?countBars:0,captureOwner:prepared.captureOwner??null,
+   onCountIn:({remaining,beat,bar})=>{if(vocalTake===prepared)voiceStatus(remaining?'Count-in · bar '+bar+' · beat '+beat+' · '+remaining+' left':'Recording from bar '+(Math.floor(requestedStep/16)+1)+'. Stop to save.');},onStart:metadata=>{
    if(vocalTake===prepared&&songExpanded)
     prepared.begin({...metadata,onLimit:()=>stop()});
    else prepared.cancel();

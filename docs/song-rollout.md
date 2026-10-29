@@ -58,3 +58,5 @@ This is the Song-specific historical rollout and integration plan; the active sy
 - Audio is referenced via external Assets; binary recording bytes never enter `.premidi` JSON.
 - Keep versioned import compatibility and automated tests as first-class engineering requirements.
 - Preserve the minimalist UI, accessibility and cross-device interaction requirements in `AGENTS.md`.
+
+Native Windows capture now writes external WAV Recordings through explicit Song v14. Legacy v8/v10/v12 Songs retain their formats. Native callback count-in, calibrated capture offset, raw previews and portable ZIP/seek/WAV checks accompany this path; physical Windows microphone/latency qualification remains pending.

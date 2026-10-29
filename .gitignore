@@ -26,3 +26,5 @@ benchmarks/native-device.latest.json
 native/decoder/target/
 
 /native/control-tests/target/
+
+benchmarks/native-capture.latest.json

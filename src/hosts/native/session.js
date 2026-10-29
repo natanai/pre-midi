@@ -82,14 +82,15 @@ export async function auditionNative(instrument,notes,{duration=.24}={}){
  const events=notes.map(note=>({kind:'note',instrument,note,at:note.at??0,duration:note.duration??duration}));
  const assets=await prepareNativeAssets(nativeRequiredAssets(events),status),plans=nativePlans(events,assets);
  const cycle=Math.max(.05,...plans.map(plan=>plan.graphEnd));
- return nativeRequest({action:'play',data:Array.from(encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true});
+ const {owner}=await nativeRequest({action:'begin'});
+ return nativeRequest({action:'play',data:Array.from(encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true,owner});
 }
 export async function renderNative(plans,{rate,frames,cycle,wav=false,gain=.85}){
  const data=Array.from(encodeNativeSession(plans,rate));
  const result=await globalThis.__TAURI__.core.invoke('native_render',{request:{data,rate,frames,cycle,wav,gain}});
  return result instanceof ArrayBuffer?result:Uint8Array.from(result).buffer;
 }
-export async function playNative(document,events,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0}={}){
+export async function playNative(document,events,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0,countIn=0,recording=null,onCountIn=()=>{}}={}){
  const epoch=++transportEpoch;
  // Validate every audible instruction before publishing any of the session.
  // No catch here may route an unsupported project to the browser backend.
@@ -103,7 +104,7 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
  let {owner}=await nativeRequest({action:'begin'});
  if(epoch!==transportEpoch)throw Error('Native playback request cancelled');
  const loops=()=>typeof loop==='function'?loop():loop;
- await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,startStep*unit),cycle-unit),looping:!!loops(),preview:false,owner});
+ await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,startStep*unit),cycle-unit),looping:!!loops(),preview:false,owner,count_in:countIn,bpm:document.bpm,recording});
  if(epoch!==transportEpoch){await nativeRequest({action:'control',command:1,looping:false,owner});throw Error('Native playback request cancelled');}
  let stopped=false,paused=false,polling=false,seeks=0,seekGeneration=0,timer,lastLoop=!!loops(),editGeneration=0,updates=0,operations=Promise.resolve();
  const serialize=fn=>{const task=operations.then(fn);operations=task.catch(()=>{});return task;};
@@ -119,11 +120,12 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
    if(status.deviceLost){reportError('Native audio output changed or disconnected. Select the output again in Settings.');return;}
    if(status.fault){reportError('Native playback stopped: callback capacity exceeded ('+status.fault+'). Reduce note density.');return;}
    if(status.state===3||status.state===0){finish();return;}
+   if(countIn){const beatFrames=info.sampleRate*60/document.bpm,index=Math.min(countIn*4-1,Math.floor((countIn*4*beatFrames-status.countInFrames)/beatFrames));onCountIn({remaining:status.countInFrames?countIn*4-index:0,beat:index%4+1,bar:Math.floor(index/4)+1});if(status.countInFrames)return;}
    const step=(status.positionSeconds%cycle)/unit,bar=Math.floor(step/16),local=step%16;
    onPosition(bar,Math.floor(local));onProgress(bar,local);
   }catch(error){reportError(String(error));}finally{polling=false;}
  }
- onStart({backend:'native-cpp',sampleRate:info.sampleRate});
+ onStart({backend:'native-cpp',sampleRate:info.sampleRate,captureOwner:recording});
  timer=setInterval(()=>void tick(),40);
  return {
   backend:'native-cpp',get paused(){return paused;},
