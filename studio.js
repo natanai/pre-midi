@@ -199,7 +199,7 @@ let saveGeneration=0;
 function store() {
  const current=currentDocument(),generation=++saveGeneration;
  message("Saving locally…");
- void saveDraft(current).then(()=>{if(generation===saveGeneration)message("Saved locally");}).catch(()=>{
+ void saveDraft(current).then(()=>{if(generation===saveGeneration&&$("status").textContent==="Saving locally…")message("Saved locally");}).catch(()=>{
   if(generation!==saveGeneration)return;
   // For constrained private-browser modes, small synth-only scores still fit.
   try {
