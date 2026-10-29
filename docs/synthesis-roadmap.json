@@ -108,8 +108,7 @@
       "no_general_wavetable_morphing",
       "no_granular_engine",
       "limited_fx_routing",
-      "native_multichannel_asset_qualification_pending",
-      "native_extended_execution_ci_qualification_in_progress"
+      "native_multichannel_asset_qualification_pending"
     ],
     "audit_files": [
       "synth.js",
@@ -1293,7 +1292,7 @@
     }
   ],
   "native_extended_execution": {
-    "status": "implemented; full verification pending",
+    "status": "implemented; automated software qualification",
     "execution_packet": 9,
     "features": [
       "long held voices",
@@ -1301,7 +1300,7 @@
       "stable deep LFO modulation",
       "low-rate tone movement"
     ],
-    "qualification": "independent 54-case edge matrix passes; full library, mixer and CI remain merge gates",
+    "qualification": "620-case independent acoustic/library matrix, 201 functional tests, 113 PCM mixer comparisons and 12 null-device profiles pass; full CI is a merge gate",
     "physical_windows": "unqualified; no Windows WASAPI hardware available in this environment"
   }
 }
