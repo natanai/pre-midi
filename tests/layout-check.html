@@ -123,7 +123,7 @@ async function checkLayout(frame){
   rect(noteMode).height<45;
  if(frame.clientWidth>=1100){
   checks.noteEffectsReplacesSound=noteEffects.parentElement===doc.querySelector(".mainwork") &&
-   Math.abs(rect(noteEffects).left-rect(sound).left)<2 &&
+   Math.abs(rect(noteEffects).left-rect(doc.querySelector(".notes-section")).right)<2 &&
    rect(noteEffects).bottom<=rect(doc.querySelector("footer")).top+2 &&
    Math.max(doc.documentElement.scrollHeight,doc.body.scrollHeight)<=frame.contentWindow.innerHeight+2;
  }else{
