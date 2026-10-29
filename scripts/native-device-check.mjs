@@ -114,6 +114,26 @@ try{
   try{run(['--render',malformed,rate,1,0,0,100,128,join(temp,'bad.pcm'),'none']);}catch{rejected=true;}
   if(!rejected)throw Error('Malformed native packet accepted: '+name);
  }
+ // New v9 limits must not silently relax a v7/v8 packet's contract.
+ const extended=encodeNativeSession([plan(sine(),60,.010123,40)],rate);
+ for(const [name,mutate] of [
+  ['legacy-lifetime',b=>{new DataView(b.buffer).setUint32(24,7,true);return b;}],
+  ['reserved-synth-version-eight',b=>{new DataView(b.buffer).setUint32(24,8,true);return b;}],
+  ['v9-nonfinite-duration',b=>{new DataView(b.buffer).setFloat64(36,Infinity,true);return b;}],
+  ['v9-overlong-duration',b=>{new DataView(b.buffer).setFloat64(36,602,true);return b;}],
+  ['v9-truncated',b=>b.slice(0,b.length-1)]
+ ]){
+  await writeFile(malformed,mutate(extended.slice()));let rejected=false;
+  try{run(['--render',malformed,rate,45,0,0,100,128,join(temp,'bad.pcm'),'none']);}catch{rejected=true;}
+  if(!rejected)throw Error('Malformed native packet accepted: '+name);
+ }
+ // Mix v9 and legacy notes in both preparation orders, with shared effects.
+ for(const v9First of [false,true]){
+  const patch=sine();patch.effects={drive:.4,delayMix:.3,delayTime:.07137,delayFeedback:.4};
+  const long=plan(patch,127,.010123,40,.015),short=plan(patch,60,.1,.2,.015),plans=v9First?[long,short]:[short,long];
+  const baseline=await render(plans,{rate,cycle:45,seconds:.8});
+  for(const block of [1,17,511,8192])compare('mixed-v9-block-'+v9First+'-'+block,(await render(plans,{rate,cycle:45,seconds:.8,block})).pcm,baseline.pcm);
+ }
  // Sample/vocal packets retain owned PCM, stereo identity, seek and priority.
  {
  const sampleRate=48000,sourceFrames=4800,source=new Float32Array(sourceFrames*2);

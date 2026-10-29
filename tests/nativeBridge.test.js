@@ -51,3 +51,14 @@ test("native delay uses v6 and carries all authored effect parameters",()=>{
  assert.equal(bytes.readUInt32LE(12),6);
  assert.equal(bytes.readDoubleLE(108),.4);assert.equal(bytes.readDoubleLE(116),Math.fround(.281));assert.equal(bytes.readDoubleLE(124),Math.fround(.6));
 });
+
+// The extension selects its own wire version; project/voice model versions stay
+// intact, and short ordinary voices retain their previous encoding.
+test("extended synth execution uses v9 for long notes and high pitch",()=>{
+ const patch=cleanPatch();const before=structuredClone(patch);
+ const held=planSynthVoice({patch,volume:.2},{pitch:60,velocity:.8},0,40);
+ assert.equal(prepareNativePlan(held,48000,24000).readUInt32LE(12),9);
+ const high=planSynthVoice({patch,volume:.2},{pitch:127,velocity:.8},0,.2);
+ assert.equal(prepareNativePlan(high,8000,4000).readUInt32LE(12),9);
+ assert.deepEqual(patch,before);assert.equal(held.version,1);
+});

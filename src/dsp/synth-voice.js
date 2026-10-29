@@ -42,3 +42,6 @@ export function pitchReachesNyquist(plan,rate){
   return osc.frequency*2**((Math.max(osc.detune,...(osc.pitch.values??[]))+Math.min(2400,possible)+(plan.movement.depth??0))/1200)>=rate/2;
  });
 }
+
+export const extendedSynthExecution=(plan,rate)=>plan.graphEnd-plan.start>30||pitchReachesNyquist(plan,rate)||plan.oscillators.some((_,index)=>
+ (plan.modulation?.routes??[]).filter(route=>route.target===`oscillators.${index}.detune`).reduce((sum,route)=>sum+Math.abs(route.depth),0)>=1200);

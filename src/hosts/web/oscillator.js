@@ -24,3 +24,12 @@ export function prepareOscillator(context,slot,plan,index=0){
  }else setOscillatorWave(context,oscillator,slot);
  return {oscillator,sourceStart,warmed};
 }
+
+// A shared periodic buffer keeps slow modulation phase independent of the
+// browser oscillator's SIMD quantum accumulation and inverse-FFT rounding.
+const sineLfos=new WeakMap();
+export function prepareSineLfo(context,rate,start){
+ let buffer=sineLfos.get(context);if(!buffer){buffer=context.createBuffer(1,4096,context.sampleRate);const data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.sin(2*Math.PI*i/data.length);sineLfos.set(context,buffer);}
+ const source=context.createBufferSource();source.buffer=buffer;source.loop=true;source.playbackRate.value=Math.fround(rate)*4096/context.sampleRate;
+ return {source,sourceStart:start};
+}

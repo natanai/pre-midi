@@ -109,7 +109,7 @@
       "no_granular_engine",
       "limited_fx_routing",
       "native_multichannel_asset_qualification_pending",
-      "native_long_note_and_extreme_pitch_bounds_pending"
+      "native_extended_execution_ci_qualification_in_progress"
     ],
     "audit_files": [
       "synth.js",
@@ -1291,5 +1291,17 @@
         "Only Windows portable ZIP published as preview; cross-platform builds qualify before full release"
       ]
     }
-  ]
+  ],
+  "native_extended_execution": {
+    "status": "implemented; full verification pending",
+    "execution_packet": 9,
+    "features": [
+      "long held voices",
+      "device Nyquist clamp",
+      "stable deep LFO modulation",
+      "low-rate tone movement"
+    ],
+    "qualification": "independent 54-case edge matrix passes; full library, mixer and CI remain merge gates",
+    "physical_windows": "unqualified; no Windows WASAPI hardware available in this environment"
+  }
 }

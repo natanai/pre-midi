@@ -1,9 +1,10 @@
+import {prepareSineLfo} from "./src/hosts/web/oscillator.js";
 import {planPitch} from "./src/dsp/expression.js";
 export {BEND_SHAPES,movementDefaults,movement,validateMovement,validateBend,bendSemitones,pitchCents} from "./src/dsp/expression.js";
 export function schedulePitch(ctx,param,note,motion,start,duration,base=0,owner=null,options={}){
  return schedulePitchPlan(ctx,param,planPitch(note,motion,start,duration,base),owner,options);
 }
-export function schedulePitchPlan(ctx,param,plan,owner=null,{controlRate='a'}={}){
+export function schedulePitchPlan(ctx,param,plan,owner=null,{controlRate='a',precise=false}={}){
  const {start,duration,base}=plan,m=plan.movement;
  if(plan.values){
   if(controlRate==='k'){
@@ -16,9 +17,10 @@ export function schedulePitchPlan(ctx,param,plan,owner=null,{controlRate='a'}={}
   else param.setValueAtTime(plan.values[0],start);
  }else param.setValueAtTime(base,start);
  if(m.depth>0){
-  const oscillator=ctx.createOscillator(),gain=ctx.createGain();
-  oscillator.type="sine";oscillator.frequency.value=m.rate;
-  gain.gain.setValueAtTime(0,start);
+  const prepared=precise?prepareSineLfo(ctx,m.rate,start,start+duration+.025):{source:ctx.createOscillator(),sourceStart:start};
+  const oscillator=prepared.source,gain=ctx.createGain();
+  if(!precise){oscillator.type="sine";oscillator.frequency.value=m.rate;}
+  if(precise)gain.gain.value=0;gain.gain.setValueAtTime(0,start);
   const enter=start+Math.min(m.delay,Math.max(0,duration-.005));
   if(enter>start)gain.gain.setValueAtTime(0,enter);
   gain.gain.linearRampToValueAtTime(m.depth,Math.min(start+duration,enter+.13));
@@ -26,18 +28,18 @@ export function schedulePitchPlan(ctx,param,plan,owner=null,{controlRate='a'}={}
   gain.gain.linearRampToValueAtTime(0,start+duration+.02);
   oscillator.connect(gain);gain.connect(param);
   owner?.sources.push(oscillator);owner?.nodes.push(gain);
-  oscillator.start(start);oscillator.stop(start+duration+.025);
+  oscillator.start(prepared.sourceStart);oscillator.stop(start+duration+.025);
   if(!owner)oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();};
  }
 }
-export function scheduleMovementLfo(ctx,param,start,duration,rate,depth,owner=null){
+export function scheduleMovementLfo(ctx,param,start,duration,rate,depth,owner=null,{precise=false}={}){
  if(depth<=0)return;
- const oscillator=ctx.createOscillator(),gain=ctx.createGain();
- oscillator.type="sine";
- oscillator.frequency.value=rate;
- gain.gain.setValueAtTime(depth,start);
+ const prepared=precise?prepareSineLfo(ctx,rate,start,start+duration+.04):{source:ctx.createOscillator(),sourceStart:start};
+ const oscillator=prepared.source,gain=ctx.createGain();
+ if(!precise){oscillator.type="sine";oscillator.frequency.value=rate;}
+ if(precise)gain.gain.value=0;gain.gain.setValueAtTime(depth,start);
  oscillator.connect(gain);gain.connect(param);
  owner?.sources.push(oscillator);owner?.nodes.push(gain);
-  oscillator.start(start);oscillator.stop(start+duration+.04);
+  oscillator.start(prepared.sourceStart);oscillator.stop(start+duration+.04);
  if(!owner)oscillator.onended=()=>{oscillator.disconnect();gain.disconnect();};
 }

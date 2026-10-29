@@ -1,3 +1,5 @@
+import {extendedSynthExecution} from "../../dsp/synth-voice.js";
+import {prepareSineLfo} from "./oscillator.js";
 import {validateModulation,smoothingAlpha} from "../../dsp/modulation.js";
 import {scheduleAmplitudeEnvelope} from "../../../envelope.js";
 // Audio-rate control signals; no per-note, sample-sized JS arrays or UI timers.
@@ -7,11 +9,15 @@ export function attachModulation(context,plan,destinations,owner){
  const add=node=>{owner.nodes.push(node);return node;};
  const source=node=>{owner.sources.push(node);node.start(plan.start);node.stop(plan.graphEnd);return node;};
  const constant=value=>{const node=context.createConstantSource();node.offset.value=value;return source(node);};
- const targetInputs=new Map();
+ const targetInputs=new Map(),precisePitch=extendedSynthExecution(plan,context.sampleRate);
  for(const route of [...definition.routes].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
   let input,normal;
   if(route.source.kind==="lfo"){
-   const oscillator=context.createOscillator();oscillator.type="sine";oscillator.frequency.value=route.source.rate;input=source(oscillator);
+   if(precisePitch){
+    const prepared=prepareSineLfo(context,route.source.rate,plan.start,plan.graphEnd);
+    const precise=prepared.source;owner.sources.push(precise);precise.start(prepared.sourceStart);precise.stop(plan.graphEnd);
+    const gate=add(context.createGain());gate.gain.value=0;gate.gain.setValueAtTime(1,plan.start);precise.connect(gate);input=gate;
+   }else{const oscillator=context.createOscillator();oscillator.type="sine";oscillator.frequency.value=route.source.rate;input=source(oscillator);}
    normal={signed:true};
   }else if(route.source.kind==="envelope"){
    const amp=add(context.createGain());constant(1).connect(amp);

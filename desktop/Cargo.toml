@@ -1,6 +1,6 @@
 [package]
 name = "pre-midi-desktop"
-version = "0.14.1-preview.11"
+version = "0.14.1-preview.12"
 edition = "2021"
 
 [build-dependencies]
