@@ -68,6 +68,7 @@ public:
 
 class DeviceHost {
  ma_context context{};ma_device device{};bool contextReady=false,deviceReady=false;
+ SampleStore samples;std::uint64_t sampleBytes=0;
  std::vector<ma_device_info> devices;
  std::string error;
  std::atomic<unsigned> intentionalStop{0},lost{0};
@@ -131,7 +132,7 @@ public:
    }
   }
   if(deviceReady){ma_device_uninit(&device);deviceReady=false;}
-  transport.clear();preview.clear();intentionalStop.store(0);
+  transport.clear();preview.clear();samples.clear();sampleBytes=0;intentionalStop.store(0);
  }
  int enumerate(){
   ma_device_info* list=nullptr;ma_uint32 count=0;
@@ -158,7 +159,7 @@ public:
  }
  void ensure(){require(!lost.load(),"Native output disconnected or changed. Refresh outputs in Settings and select the device again.");if(!deviceReady)open(UINT32_MAX,0,0);}
  void play(const std::uint8_t* data,std::size_t length,double cycle,double seek,bool loop,bool audition){
-  ensure();auto session=std::make_unique<Session>(data,length,device.sampleRate,cycle,seek);
+  ensure();auto session=std::make_unique<Session>(data,length,device.sampleRate,cycle,seek,samples);
   auto* published=session.get();auto& lane=audition?preview:transport;lane.looping.store(loop?1:0);lane.publish(std::move(session));
   for(unsigned attempt=0;attempt<150;attempt++){
    if(lane.current()==published)return;
@@ -166,6 +167,13 @@ public:
    std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
   close();throw std::runtime_error("Native output stopped delivering callbacks; select the device again");
+ }
+ void addSample(const float* input,std::uint64_t frames,unsigned rate,unsigned channels,premidi_sample_info& info){
+  ensure();require(input!=nullptr&&samples.size()<512,"Native sample asset capacity exceeded");
+  const double outputFrames=std::ceil(static_cast<double>(frames)*device.sampleRate/rate);
+  require(rate>=8000&&rate<=192000&&channels>=1&&channels<=2&&frames>0&&frames<=std::uint64_t(rate)*301&&outputFrames*channels*4+sampleBytes<=1024.*1024*1024,"Native decoded assets exceed 1 GiB");
+  auto value=std::make_shared<SampleData>(input,frames,rate,channels,device.sampleRate);samples.push_back(value);sampleBytes+=value->pcm.size()*sizeof(float);
+  info={static_cast<std::uint32_t>(samples.size()),value->rate,value->channels,value->frames,value->normalization};
  }
  void control(unsigned command,bool loop){
   require(command<=4,"Unknown native transport command");transport.looping.store(loop?1:0);
@@ -200,4 +208,5 @@ int premidi_audio_configure(void* host,uint32_t device,uint32_t rate,uint32_t fr
 int premidi_audio_play(void* host,const uint8_t* data,size_t length,double cycle,double seek,int loop,int preview){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.play(data,length,cycle,seek,loop!=0,preview!=0);});}
 int premidi_audio_control(void* host,uint32_t command,int loop){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.control(command,loop!=0);});}
 int premidi_audio_status_get(void* host,premidi_audio_status* status){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.status(*status);});}
+int premidi_audio_add_sample(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.addSample(pcm,frames,rate,channels,*info);});}
 }

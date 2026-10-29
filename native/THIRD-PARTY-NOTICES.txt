@@ -36,3 +36,11 @@ https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platfo
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
+Native audio decoding
+
+Symphonia 0.6.1: MPL-2.0. The unchanged decoder and demuxer source is available at https://crates.io/crates/symphonia/0.6.1 and https://github.com/pdeljanov/Symphonia. The locked component packages and source checksums are listed in desktop/Cargo.lock. Its MPL licence is in licenses/Symphonia-MPL-2.0.txt.
+
+symphonia-adapter-libopus 0.3.0 is used under its MIT licence (licenses/Symphonia-Opus-MIT.txt); source: https://crates.io/crates/symphonia-adapter-libopus/0.3.0.
+
+opusic-sys 0.7.6 and its bundled libopus are statically linked. Their notices are in licenses/Opusic-sys.txt and licenses/Opus.txt. Unchanged sources: https://crates.io/crates/opusic-sys/0.7.6.

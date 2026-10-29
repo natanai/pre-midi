@@ -5,6 +5,7 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {makePatch} from '../synth.js';
 import {planSynthVoice} from '../src/dsp/synth-voice.js';
+import {planNativeSample,planNativeVocal} from '../src/hosts/native/sample-plan.js';
 import {encodeNativeSession} from '../src/hosts/native/session.js';
 import {buildNativeRenderer} from '../native/bridge.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url)),temp=await mkdtemp(join(tmpdir(),'premidi-device-'));
@@ -17,8 +18,8 @@ let renderer;
 try{
  execFileSync(process.env.CXX||'g++',['-std=c++17','-O2','-ffp-contract=off','-Wall','-Wextra','-Werror','-pedantic','-DPREMIDI_AUDIO_TEST',join(root,'native/session-test.cpp'),join(root,'native/device-host.cpp'),'-pthread','-ldl','-lm','-o',binary],{stdio:'pipe'});
  renderer=await buildNativeRenderer();
- async function render(plans,{rate=48000,cycle=1,seek=0,loop=false,seconds=.4,block=128,pause=false}={}){
-  const input=join(temp,'fixture.pms'),output=join(temp,'pcm.f32');await writeFile(input,encodeNativeSession(plans,rate));
+ async function render(plans,{rate=48000,cycle=1,seek=0,loop=false,seconds=.4,block=128,pause=false,assets=null}={}){
+  const input=join(temp,'fixture.pms'),output=join(temp,'pcm.f32');await writeFile(input,encodeNativeSession(plans,rate,assets));
   const frames=Math.round(seconds*rate),report=JSON.parse(run(['--render',input,rate,cycle,seek,Number(loop),frames,block,output,pause?'pause':'none']));
   return {pcm:floatArray(await readFile(output)),report};
  }
@@ -109,6 +110,28 @@ try{
   await writeFile(malformed,mutate(valid.slice()));let rejected=false;
   try{run(['--render',malformed,rate,1,0,0,100,128,join(temp,'bad.pcm'),'none']);}catch{rejected=true;}
   if(!rejected)throw Error('Malformed native packet accepted: '+name);
+ }
+ // Sample/vocal packets retain owned PCM, stereo identity, seek and priority.
+ {
+ const sampleRate=48000,sourceFrames=4800,source=new Float32Array(sourceFrames*2);
+ for(let frame=0;frame<sourceFrames;frame++){source[2*frame]=.25*Math.sin(2*Math.PI*440*frame/sampleRate);source[2*frame+1]=.125*Math.cos(2*Math.PI*330*frame/sampleRate);}
+ const asset={id:1,rate:sampleRate,channels:2,frames:sourceFrames,duration:.1,normalization:2.6,pcm:source},assets=[asset],handles=new Map([['test-sample',asset]]);
+ const patch={type:'sample',presetId:'test',zones:[{assetId:'test-sample',root:60}],followPitch:true,oneShot:true,transpose:0,gain:.9,attack:0,release:.025,pan:0};
+ const sample=planNativeSample({patch,volume:.2},{pitch:60,velocity:.8},.01,.05,handles),stereo=await render([sample],{rate:sampleRate,cycle:1,seconds:.25,assets});
+ const expected=new Array(Math.round(.25*sampleRate)*2).fill(0);
+ const events=sample.events.map(e=>({...e,value:Math.fround(e.value)}));
+ for(let frame=0;frame<expected.length/2;frame++){
+  const time=frame/sampleRate;let amp=events[0].value;
+  for(let i=1;i<events.length;i++){const e=events[i],p=events[i-1];if(time<e.time){if(e.kind===1&&e.time>p.time)amp=p.value+(e.value-p.value)*(time-p.time)/(e.time-p.time);break;}amp=e.value;}
+  const at=frame-Math.ceil(sample.start*sampleRate-1e-9);if(at<0||at>=sourceFrames)continue;
+  for(let ch=0;ch<2;ch++)expected[2*frame+ch]=source[2*at+ch]*Math.fround(amp)*.85;
+ }
+ compare('stereo-sample-independent-envelope',stereo.pcm,expected);
+ compare('stereo-sample-block-one',(await render([sample],{rate:sampleRate,cycle:1,seconds:.25,block:1,assets})).pcm,stereo.pcm);
+ compare('stereo-sample-seek',(await render([sample],{rate:sampleRate,cycle:1,seek:.04,seconds:.21,assets})).pcm,stereo.pcm.slice(Math.ceil(.04*sampleRate-1e-9)*2));
+ const vocal=planNativeVocal({recording:{id:'test-sample',trimSeconds:0,durationSeconds:.1},clip:{lengthSteps:1,gain:.004}},0,.125,handles),vocals=Array.from({length:64},()=>structuredClone(vocal));
+ const reference=await render(vocals,{assets,seconds:.2});
+ const contender=plan(sine(),69,.03,.05,.1);compare('vocal-priority-under-synth-pressure',(await render([...vocals,contender],{assets,seconds:.2})).pcm,reference.pcm);
  }
  const report={version:1,sourceCommit:process.env.GITHUB_SHA??null,os:platform(),osRelease:release(),architecture:arch(),cpu:cpus()[0]?.model,
   physicalDeviceQualification:'pending',deviceUnderruns:'not measured',physicalLatency:'not measured',comparisons:rows,deviceCallbacks:deviceRows,

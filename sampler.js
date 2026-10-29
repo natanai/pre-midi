@@ -161,7 +161,7 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
  const length=buffer.duration/playbackRate;
  const life=patch.oneShot?length:Math.min(length,Math.max(.015,duration+patch.release));
  // The whole recording keeps pitch modulation, not only the short grid note.
- schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,life),0,owner);
+ schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,life),0,owner,{controlRate:'k'});
  const at=start+Math.min(patch.attack,life*.5);
  amp.gain.setValueAtTime(0,start);
  amp.gain.linearRampToValueAtTime(gain,at+0.001);

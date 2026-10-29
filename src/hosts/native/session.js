@@ -1,34 +1,67 @@
 import {encodeNativePlan} from './plan.js';
 import {resolveEvent} from '../../../soundModel.js';
 import {planSynthVoice} from '../../dsp/synth-voice.js';
+import {sampleForNote} from '../../../sampler.js';
+import {getAsset} from '../../../assetRegistry.js';
+import {validatePatch} from '../../../synth.js';
+import {encodeNativeSample,planNativeSample,planNativeVocal} from './sample-plan.js';
 
 export const nativeEnabled=()=>!!globalThis.__TAURI__?.core?.invoke&&(localStorage.getItem('premidi-audio-backend')||'native')==='native';
 export const nativeRequest=request=>globalThis.__TAURI__.core.invoke('native_audio',{request});
 let transportEpoch=0;
 export async function cancelNativeTransport(){transportEpoch++;return nativeRequest({action:'control',command:1,looping:false,owner:null});}
 export function unsupportedNativeFeatures(patch){
- if(patch?.type!=='synth')return ['sample/recording playback'];
+ if(!['synth','sample'].includes(patch?.type))return ['unknown sound type'];
  return [];
 }
-export function encodeNativeSession(plans,rate){
+export function encodeNativeSession(plans,rate,assets=null){
  if(plans.length>4096)throw Error('Native preview supports at most 4096 note onsets per cycle');
- const packets=plans.map(plan=>encodeNativePlan(plan,rate,1));
+ const packets=plans.map(plan=>plan.contract==='pre-midi-sample-voice'?encodeNativeSample(plan,rate):encodeNativePlan(plan,rate,1));
  const bytes=new Uint8Array(8+packets.reduce((sum,packet)=>sum+4+packet.length,0));
  if(bytes.length>16*1024*1024)throw Error('Native session exceeds 16 MiB');
  const view=new DataView(bytes.buffer);view.setUint32(0,0x31534d50,true);view.setUint32(4,packets.length,true);let offset=8;
  for(const packet of packets){view.setUint32(offset,packet.length,true);offset+=4;bytes.set(packet,offset);offset+=packet.length;}
- return bytes;
+ if(!assets)return bytes;
+ const length=12+packets.reduce((sum,p)=>sum+4+p.length,0)+assets.reduce((sum,a)=>sum+12+a.pcm.length*4,0);
+ if(length>512*1024*1024)throw Error('Native PCM qualification bundle exceeds 512 MiB');
+ const out=new Uint8Array(length),data=new DataView(out.buffer);data.setUint32(0,0x32534d50,true);data.setUint32(4,assets.length,true);let at=8;
+ for(const asset of assets){for(const value of [asset.rate,asset.channels,asset.frames]){data.setUint32(at,value,true);at+=4;}for(const value of asset.pcm){data.setFloat32(at,value,true);at+=4;}}
+ out.set(bytes.subarray(4),at);return out;
 }
-export function nativePlans(events){
+export function nativePlans(events,assets=new Map(),unit=.125){
  return events.map(event=>{
-  if(event.kind==='vocal')throw Error('Native recording playback is not implemented. Select Web Audio in Settings to play this Song.');
+  if(event.kind==='vocal')return planNativeVocal(event.event,event.at,unit,assets);
   const resolved=event.instrument.sounds?resolveEvent(event.instrument,event.note):{voice:event.instrument,note:event.note};
   if(!resolved)throw Error('Native playback found an unresolved sound identity');
   const {voice,note}=resolved,unsupported=unsupportedNativeFeatures(voice.patch);
   if(unsupported.length)throw Error(`${event.instrument.name||'Sound'}: native playback does not yet support ${unsupported.join(', ')}. Choose a supported preset (Init, Triangle Keys, Touch Keys), or explicitly select Web Audio in Settings.`);
+  if(voice.patch.type==='sample')return planNativeSample(voice,note,event.at,event.duration,assets);
   const duration=event.instrument.layout==='rack'?Math.max(.015,voice.patch.envelope.attack+voice.patch.envelope.decay):event.duration;
   return planSynthVoice(voice,note,event.at,duration,{automation:event.instrument.automation,timeline:event.timeline});
- });
+ }).filter(Boolean);
+}
+const assetCache=new Map();let assetGeneration;
+export function nativeRequiredAssets(events){
+ const ids=new Set();for(const event of events){
+  if(event.kind==='vocal'){ids.add(event.event.recording.id);continue;}
+  const resolved=event.instrument.sounds?resolveEvent(event.instrument,event.note):{voice:event.instrument,note:event.note};
+  if(!resolved)throw Error('Native playback found an unresolved sound identity');
+  const errors=validatePatch(resolved.voice.patch);if(errors.length)throw Error(errors.join('; '));
+  if(resolved.voice.patch.type==='sample'){
+   const zone=sampleForNote(resolved.voice.patch,resolved.note.pitch,resolved.note.velocity);if(!zone)throw Error('Native sample has no matching zone');ids.add(zone.assetId);
+  }
+ }
+ return ids;
+}
+export async function prepareNativeAssets(ids,info){
+ const generation=info.generation+':'+info.sampleRate;if(assetGeneration!==generation){assetCache.clear();assetGeneration=generation;}
+ const result=new Map();for(const id of ids){
+  const bytes=getAsset(id);if(!bytes)throw Error('Missing audio asset '+id+'. Open the music ZIP containing its audio.');
+  const digest=await crypto.subtle.digest('SHA-256',bytes),key=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+  if(!assetCache.has(key))assetCache.set(key,nativeRequest({action:'asset',data:Array.from(bytes)}).then(asset=>({...asset,duration:asset.frames/asset.rate})).catch(error=>{assetCache.delete(key);throw error;}));
+  result.set(id,await assetCache.get(key));
+ }
+ return result;
 }
 export async function ensureNativeOutput(){
  let status=await nativeRequest({action:'status'});
@@ -46,7 +79,8 @@ export async function auditionNative(instrument,notes,{duration=.24}={}){
  const unsupported=unsupportedNativeFeatures(instrument.patch);
  if(unsupported.length)throw Error('Native preview does not yet support '+unsupported.join(', ')+'. Choose a supported preset or Web Audio in Settings.');
  const status=await ensureNativeOutput();
- const plans=notes.map(note=>planSynthVoice(instrument,note,note.at??0,note.duration??duration));
+ const events=notes.map(note=>({kind:'note',instrument,note,at:note.at??0,duration:note.duration??duration}));
+ const assets=await prepareNativeAssets(nativeRequiredAssets(events),status),plans=nativePlans(events,assets);
  const cycle=Math.max(.05,...plans.map(plan=>plan.graphEnd));
  return nativeRequest({action:'play',data:Array.from(encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true});
 }
@@ -54,12 +88,12 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
  const epoch=++transportEpoch;
  // Validate every audible instruction before publishing any of the session.
  // No catch here may route an unsupported project to the browser backend.
- const plans=nativePlans(events),unit=60/document.bpm/4;
+ const ids=nativeRequiredAssets(events),unit=60/document.bpm/4;
  const steps=document.kind==='song'?document.nativeLengthSteps:document.bars*16;
  const cycle=steps*unit;
  if(!steps)throw Error('Add a Beat clip before playing this Song');
  if(!Number.isFinite(cycle)||cycle>600)throw Error('Native preview supports music up to 10 minutes');
- const info=await ensureNativeOutput(),data=Array.from(encodeNativeSession(plans,info.sampleRate));
+ const info=await ensureNativeOutput(),assets=await prepareNativeAssets(ids,info),plans=nativePlans(events,assets,unit),data=Array.from(encodeNativeSession(plans,info.sampleRate));
  if(epoch!==transportEpoch)throw Error('Native playback request cancelled');
  let {owner}=await nativeRequest({action:'begin'});
  if(epoch!==transportEpoch)throw Error('Native playback request cancelled');

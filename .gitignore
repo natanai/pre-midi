@@ -22,3 +22,5 @@ desktop/gen/
 __pycache__/
 native/vendor/miniaudio/miniaudio.h
 benchmarks/native-device.latest.json
+
+native/decoder/target/

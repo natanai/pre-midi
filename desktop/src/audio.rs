@@ -1,5 +1,6 @@
 use std::{ffi::{c_char,c_void,CStr},sync::{mpsc::{sync_channel,SyncSender},Arc,atomic::{AtomicBool,Ordering}}};
-use serde::Deserialize;
+use serde::{Deserialize,Serialize};
+use std::collections::HashMap;
 use serde_json::{json,Value};
 use tauri::{Manager,State};
 
@@ -10,7 +11,11 @@ struct Status {
  position:u64,active:u64,state:u64,fault:u64,admitted:u64,stolen:u64,
  sample_rate:u32,hardware_rate:u32,period_frames:u32,period_count:u32,device_lost:u32,test_backend:u32,
 }
+#[repr(C)]
+#[derive(Default,Clone,Serialize)]
+struct SampleInfo {id:u32,rate:u32,channels:u32,frames:u64,normalization:f64}
 unsafe extern "C" {
+ fn premidi_audio_add_sample(host:*mut c_void,pcm:*const f32,frames:u64,rate:u32,channels:u32,info:*mut SampleInfo)->i32;
  fn premidi_audio_create(test:i32)->*mut c_void;
  fn premidi_audio_destroy(host:*mut c_void);
  fn premidi_audio_error(host:*mut c_void)->*const c_char;
@@ -79,6 +84,7 @@ impl Audio{
 #[serde(tag="action",rename_all="snake_case",deny_unknown_fields)]
 pub enum Request {
  Devices,Status,Begin,
+ Asset{data:Vec<u8>},
  Configure{device:Option<u32>,rate:u32,buffer:u32},
  Play{data:Vec<u8>,cycle:f64,seek:f64,looping:bool,preview:bool,#[serde(default)] owner:u64},
  Control{command:u32,looping:bool,#[serde(default)] owner:Option<u64>},
@@ -86,36 +92,47 @@ pub enum Request {
 }
 #[tauri::command]
 pub async fn native_audio(app:tauri::AppHandle,request:Request)->Result<Value,String>{
+ if let Request::Asset{data}=&request {if data.len()>48_000_000{return Err("Native audio asset exceeds 48 MB".into());}}
  if let Request::Play{data,..}=&request {if data.len()>16*1024*1024{return Err("Native session exceeds 16 MiB".into());}}
  tauri::async_runtime::spawn_blocking(move||app.state::<Audio>().call(request)).await.map_err(|e|e.to_string())?
 }
 #[derive(Default)]
-struct ControlState{host:Option<Host>,issued:u64,cancelled:u64,current:u64}
+struct ControlState{host:Option<Host>,issued:u64,cancelled:u64,current:u64,generation:u64,assets:HashMap<(u32,Vec<u8>),SampleInfo>}
 impl ControlState{
  fn begin(&mut self)->Result<Value,String>{self.issued=self.issued.checked_add(1).ok_or("Audio session ID exhausted")?;Ok(json!({"owner":self.issued}))}
  fn valid(&self,owner:u64)->bool{owner>self.cancelled&&owner<=self.issued&&owner>=self.current}
  fn status(&self)->Result<Value,String>{
   let mut value=if let Some(host)=&self.host{host.status()?}else{json!({"state":0,"sampleRate":0,"deviceLost":false})};
-  value["owner"]=json!(self.current);Ok(value)
+  value["owner"]=json!(self.current);value["generation"]=json!(self.generation);Ok(value)
  }
 }
 fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
  if matches!(&request,Request::Begin){return state.begin();}
- if matches!(&request,Request::Shutdown){state.cancelled=state.issued;state.current=0;state.host.take();return Ok(json!({"closed":true}));}
+ if matches!(&request,Request::Shutdown){state.cancelled=state.issued;state.current=0;state.assets.clear();state.host.take();return Ok(json!({"closed":true}));}
  if let Request::Control{command:1|4,owner,..}=&request{
   let cancelled=owner.unwrap_or(state.issued);if cancelled>state.issued{return Err("Unknown native session".into());}state.cancelled=state.cancelled.max(cancelled);
  }
  if let Request::Play{owner,preview:false,..}=&request{if !state.valid(*owner){return Err("Native playback request cancelled".into());}}
  if matches!(&request,Request::Control{..}|Request::Status)&&state.host.is_none(){return state.status();}
- if state.host.is_none(){state.host=Some(Host::new()?);}
+ if state.host.is_none(){state.generation+=1;state.host=Some(Host::new()?);}
  match request {
   Request::Devices=>{
    let host=state.host.as_ref().unwrap();let count=unsafe{premidi_audio_devices(host.0)};host.check(count)?;let mut devices=vec![];
    for index in 0..count as u32{let name=unsafe{CStr::from_ptr(premidi_audio_device_name(host.0,index))}.to_string_lossy().into_owned();devices.push(json!({"id":index,"name":name}));}
    Ok(json!({"devices":devices,"status":state.status()?}))
   },
+  Request::Asset{data}=>{
+   if data.len()<16||data.len()>48_000_000{return Err("Invalid native asset size".into());}
+   let host=state.host.as_ref().unwrap();let mut status=Status::default();host.check(unsafe{premidi_audio_status_get(host.0,&mut status)})?;
+   if status.sample_rate==0{return Err("Configure native output before loading audio assets".into());}
+   let key=(status.sample_rate,data);if let Some(info)=state.assets.get(&key){return Ok(serde_json::to_value(info).unwrap());}
+   let audio=std::panic::catch_unwind(||premidi_decoder::decode(key.1.clone(),""))
+    .map_err(|_|"Native audio decoder rejected malformed media".to_string())??;
+   let mut info=SampleInfo::default();host.check(unsafe{premidi_audio_add_sample(host.0,audio.samples.as_ptr(),(audio.samples.len()/audio.channels as usize) as u64,audio.rate,audio.channels,&mut info)})?;
+   state.assets.insert(key,info.clone());Ok(serde_json::to_value(info).unwrap())
+  },
   Request::Status=>state.status(),
-  Request::Configure{device,rate,buffer}=>{state.cancelled=state.issued;state.current=0;let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_configure(host.0,device.unwrap_or(u32::MAX),rate,buffer)})?;state.status()},
+  Request::Configure{device,rate,buffer}=>{state.assets.clear();state.generation+=1;state.cancelled=state.issued;state.current=0;let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_configure(host.0,device.unwrap_or(u32::MAX),rate,buffer)})?;state.status()},
   Request::Play{data,cycle,seek,looping,preview,owner}=>{
    if data.len()>16*1024*1024{return Err("Native session exceeds 16 MiB".into());}
    let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_play(host.0,data.as_ptr(),data.len(),cycle,seek,i32::from(looping),i32::from(preview))})?;
@@ -130,6 +147,23 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
 }
 #[cfg(test)]mod tests{
  use super::*;
+ #[test]fn native_codecs_own_and_play_every_studio_container(){
+  let fixtures:&[&[u8]]=&[include_bytes!("../../native/decoder/tests/fixtures/tone.wav"),include_bytes!("../../native/decoder/tests/fixtures/tone.mp3"),include_bytes!("../../native/decoder/tests/fixtures/vorbis.ogg"),include_bytes!("../../native/decoder/tests/fixtures/opus.ogg"),include_bytes!("../../native/decoder/tests/fixtures/tone.webm"),include_bytes!("../../native/decoder/tests/fixtures/tone.mp4")];
+  let pointer=unsafe{premidi_audio_create(1)};assert!(!pointer.is_null());let host=Host(pointer);
+  host.check(unsafe{premidi_audio_configure(host.0,u32::MAX,48000,128)}).unwrap();
+  for bytes in fixtures {
+   let audio=premidi_decoder::decode(bytes.to_vec(),"").unwrap();let mut info=SampleInfo::default();
+   host.check(unsafe{premidi_audio_add_sample(host.0,audio.samples.as_ptr(),(audio.samples.len()/audio.channels as usize) as u64,audio.rate,audio.channels,&mut info)}).unwrap();drop(audio);
+   let mut packet=vec![];let u32b=|out:&mut Vec<u8>,v:u32|out.extend(v.to_le_bytes());let f64b=|out:&mut Vec<u8>,v:f64|out.extend(v.to_le_bytes());
+   for v in [0x38564d50,48000,1,8,1,info.id]{u32b(&mut packet,v);}
+   for v in [0.,0.1,0.11,0.11,0.1,0.,1.,0.,14000.,0.7,0.,5.,0.,0.,0.,5.]{f64b(&mut packet,v);}
+   for v in [0,1,0,2]{u32b(&mut packet,v);}
+   u32b(&mut packet,0);f64b(&mut packet,0.);f64b(&mut packet,0.1);u32b(&mut packet,0);f64b(&mut packet,0.11);f64b(&mut packet,0.);
+   let mut session=vec![];for v in [0x31534d50,1,packet.len() as u32]{u32b(&mut session,v);}session.extend(packet);
+   host.check(unsafe{premidi_audio_play(host.0,session.as_ptr(),session.len(),0.5,0.,0,0)}).unwrap();
+   std::thread::sleep(std::time::Duration::from_millis(30));let mut status=Status::default();host.check(unsafe{premidi_audio_status_get(host.0,&mut status)}).unwrap();assert!(status.callbacks>0&&status.peak_million>0);assert_eq!(status.fault,0);
+  }
+ }
  #[test]fn cancelled_or_old_audio_handles_cannot_start_or_stop_new_sessions(){
   let mut state=ControlState::default();state.begin().unwrap();state.begin().unwrap();state.current=2;
   handle(&mut state,Request::Control{command:1,looping:false,owner:Some(1)}).unwrap();

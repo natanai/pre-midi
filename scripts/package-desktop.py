@@ -32,6 +32,7 @@ if platform=='windows':
  with zipfile.ZipFile(out/name,'w',zipfile.ZIP_DEFLATED) as z:
   z.write(build/'pre-midi.exe','pre-midi.exe')
   z.write(root/'native/THIRD-PARTY-NOTICES.txt','THIRD-PARTY-NOTICES.txt')
+  for notice in sorted((root/'native/licenses').glob('*.txt')):z.write(notice,'licenses/'+notice.name)
   z.writestr('portable.txt','pre-midi portable edition\n')
   for folder in ['data/','projects/','exports/']:z.writestr(folder,'')
   z.writestr('README.txt','''pre-midi portable - Windows 11 x64
@@ -51,7 +52,7 @@ fallback to AppData. WebView2 Runtime is an OS dependency, normally on Windows
 11; Windows may maintain its own runtime, temporary files and system records.
 
 Update: close pre-midi, back up this folder, and replace only pre-midi.exe,
-portable.txt, README.txt and THIRD-PARTY-NOTICES.txt from the newer ZIP. KEEP data/, projects/ and
+portable.txt, README.txt, THIRD-PARTY-NOTICES.txt and licenses/ from the newer ZIP. KEEP data/, projects/ and
 exports/. Do not delete your folder to upgrade. Open pre-midi again manually.
 Automatic installation is unavailable in the portable edition.
 
