@@ -12,7 +12,7 @@ constexpr double pi=3.14159265358979323846;
 struct Event {std::uint32_t kind;double time,value;};
 struct Oscillator {double frequency=440,level=0,detune=0;std::uint32_t wave=0,count=0;std::array<double,32> harmonics{};std::array<double,600> curve{};};
 struct Plan {
- double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0;
+ double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0;
  std::uint32_t version=1,routeCount=0,automationCount=0;std::array<Event,6> automation{};double off=1,pitch=60,velocity=1;std::array<Route,16> routes{};
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
  std::uint32_t eventCount=0;std::array<Event,6> events{};
@@ -22,7 +22,7 @@ struct VoicePreparation {Biquad filter;std::array<double,16> alpha{};std::array<
 // caller-owned output span: no heap allocation, locks, file/device I/O or UI.
 class Voice {
  Plan plan;double rate;std::uint64_t frame=0;std::array<double,2> phases{};
- Biquad filter;Modulation modulation;bool sourceStarted=false,movingCutoff=false;double left,right;std::array<const WaveBank*,2> banks;std::array<double,2> initialFrequency{};
+ Biquad filter;Modulation modulation;bool sourceStarted=false,movingCutoff=false;std::uint32_t noiseSeed=0x7f41a08b,noiseIndex=0;double left,right;std::array<const WaveBank*,2> banks;std::array<double,2> initialFrequency{};
  float envelope(double t) const noexcept {
   if(t<plan.events[0].time)return 0;
   double value=plan.events[0].value;
@@ -93,6 +93,14 @@ public:
 #endif
      mix+=wave*std::clamp(static_cast<float>(osc.level)+offsets[2*j+1],0.f,1.f);
      phases[j]=banked?banks[j]->advance(phases[j],frequency):std::fmod(phases[j]+2*pi*frequency/rate,2*pi);
+    }
+    if(plan.version>=5&&plan.noise>0){
+     noiseSeed=noiseSeed*1664525u+1013904223u;
+     const double value=(static_cast<double>(noiseSeed)/4294967296.*2.-1.)*.85;
+     const double elapsed=std::max(0.,t-plan.start);
+     const double gain=plan.noiseDecay>0?std::exp(-elapsed/std::max(.002,plan.noiseDecay/5.)):1.;
+     mix+=static_cast<float>(value*plan.noise*gain);
+     if(++noiseIndex>=static_cast<std::uint32_t>(std::ceil(rate*2.))){noiseIndex=0;noiseSeed=0x7f41a08b;}
     }
    }
    if(movingCutoff)filter.configure(plan.filterType,cutoffAt(t)*std::pow(2.,std::clamp(offsets[4],-8.f,8.f)),plan.q,rate);

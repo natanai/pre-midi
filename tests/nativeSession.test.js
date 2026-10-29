@@ -16,10 +16,10 @@ test('native transport consumes the shared canonical timing, sound gain and modu
  assert.equal(view.getUint32(12,true),0x344e4d50);
 });
 test('native unsupported features are named without modifying the authored patch',()=>{
- for(const [id,field]of [['glass-keys','effects.delayMix'],['acid-line','effects.drive'],['dust-hat','noise'],['dusk-organ','movement.depth']]){
+ for(const [id,field]of [['glass-keys','effects.delayMix'],['acid-line','effects.drive'],['dusk-organ','movement.depth']]){
   const patch=makePatch(id),before=structuredClone(patch);assert.ok(unsupportedNativeFeatures(patch).includes(field));assert.deepEqual(patch,before);
  }
- for(const id of ['init','touch-keys','felt-electric','harmonic-keys','sub-current','rubber-bass'])assert.deepEqual(unsupportedNativeFeatures(makePatch(id)),[]);
+ for(const id of ['init','touch-keys','felt-electric','harmonic-keys','sub-current','rubber-bass','dust-hat'])assert.deepEqual(unsupportedNativeFeatures(makePatch(id)),[]);
 });
 test('an unsupported session is rejected before device playback and never falls back',async()=>{
  const doc=beat();doc.instruments[0].sounds[0].patch=makePatch('glass-keys');
@@ -41,7 +41,7 @@ test('native filter sweep can be prepared for the device without changing the pa
 });
 test('native session packet enforces its preparation bound',()=>{
  assert.throws(()=>encodeNativeSession(new Array(4097),48000),/4096/);
- const doc=beat(),plans=nativePlans(renderEvents(doc));plans[0].patch.noise=.1;
+ const doc=beat(),plans=nativePlans(renderEvents(doc));plans[0].patch.effects.drive=.1;
  assert.throws(()=>encodeNativeSession(plans,48000),/Unsupported native profile/);
 });
 test('native modulated pitch is rejected when it can exceed device Nyquist',()=>{

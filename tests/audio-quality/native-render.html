@@ -62,9 +62,12 @@ try{
  }
  const unsupported=cleanPatch();unsupported.noise=.1;const plan=planSynthVoice({patch:unsupported,volume:1},{pitch:69,velocity:1},0,.2);
  const rejected=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan,sampleRate:48000,frames:24000})});
- add("unsupported-noise",{status:rejected.status},{explicitRejection:rejected.status===422});
+ add("native-noise",{status:rejected.status},{accepted:rejected.status===200});
+ const drivePatch=cleanPatch();drivePatch.effects.drive=.1;const drivePlan=planSynthVoice({patch:drivePatch,volume:1},{pitch:69,velocity:1},0,.2);
+ const driveResponse=await fetch("/__native_render",{method:"POST",body:JSON.stringify({plan:drivePlan,sampleRate:48000,frames:24000})});
+ add("unsupported-drive",{status:driveResponse.status},{explicitRejection:driveResponse.status===422});
  report={schemaVersion:1,backend:"native-cpp-vs-web-audio",environment:{userAgent:navigator.userAgent},
-  policy:{maxPcmError:.0001,maxRmsError:.00002,initialRmsTarget:.00001,toleranceRationale:"The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",method:"same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",scope:"all five existing oscillator shapes, four filters, pitch/ADSR/pan and canonical v2 modulation",limits:["Not full native patch support: noise/drive/delay/legacy motion reject","Not a device performance or aliasing qualification","Fractional-sample note onsets not yet qualified"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
+  policy:{maxPcmError:.0001,maxRmsError:.00002,initialRmsTarget:.00001,toleranceRationale:"The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",method:"same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",scope:"all five existing oscillator shapes, four filters, pitch/ADSR/pan and canonical v2 modulation",limits:["Not full native patch support: drive/delay/legacy motion reject","Not a device performance or aliasing qualification","Fractional-sample note onsets not yet qualified"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};
 }catch(error){report={error:String(error.stack||error)};}
 document.getElementById("status").textContent=JSON.stringify(report.summary||report);
 await fetch("/__audio_benchmark",{method:"POST",body:JSON.stringify(report)});

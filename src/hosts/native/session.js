@@ -8,7 +8,7 @@ let transportEpoch=0;
 export async function cancelNativeTransport(){transportEpoch++;return nativeRequest({action:'control',command:1,looping:false,owner:null});}
 export function unsupportedNativeFeatures(patch){
  if(patch?.type!=='synth')return ['sample/recording playback'];
- return [patch.noise!==0&&'noise',patch.effects.drive!==0&&'effects.drive',patch.effects.delayMix!==0&&'effects.delayMix',
+ return [patch.effects.drive!==0&&'effects.drive',patch.effects.delayMix!==0&&'effects.delayMix',
 ...(patch.movement?['depth','tone','tremolo'].filter(key=>patch.movement[key]!==0).map(key=>'movement.'+key):[])].filter(Boolean);
 }
 export function encodeNativeSession(plans,rate){

@@ -50,6 +50,19 @@ int main(int argc,char** argv){
      require(before==allocations&&first==second,"v2 allocation or block invariance failed");for(float v:second)require(std::isfinite(v)&&std::abs(v)<16,"Unstable v2 PCM");
     }
    }
+   for(const unsigned rate:{44100u,48000u,96000u})for(const double decay:{0.,.04,.3}){
+    premidi::Plan plan;plan.version=5;plan.noise=.8;plan.noiseDecay=decay;plan.sweepStart=8000;plan.sweepEnd=.1;plan.oscillators[0].level=0;plan.oscillators[1].level=0;
+    plan.start=0;plan.off=.05;plan.sourceEnd=.08;plan.graphEnd=.1;plan.eventCount=2;plan.events[0]={0,0,.5};plan.events[1]={1,.08,0};
+    std::array<float,8192> first{},second{};premidi::WaveBank bank(0,plan.oscillators[0].harmonics,rate);premidi::Voice reference(plan,rate,{&bank,&bank});auto before=allocations;reference.process(first.data(),4096);
+    require(allocations==before,"Noise render allocated");
+    for(const std::size_t block:{1,17,64,128,511}){
+     premidi::Voice voice(plan,rate,{&bank,&bank});before=allocations;
+     for(std::size_t at=0;at<4096;at+=block)voice.process(second.data()+2*at,std::min<std::size_t>(block,4096-at));
+     require(allocations==before&&first==second,"Noise block-size invariance failed");
+     for(float v:second)require(std::isfinite(v)&&std::abs(v)<16,"Unstable noise PCM");
+    }
+    require(std::any_of(first.begin(),first.end(),[](float v){return std::abs(v)>1e-5f;}),"Noise voice silent");
+   }
    std::cerr<<"PASS: 400 waveform/filter/rate/extreme and 9 maximum-route v2/v3/v4 profiles, 5 block sizes, finite bounded PCM and no C++ allocations in process\n";return 0;
   }
 #ifdef _WIN32
@@ -57,8 +70,8 @@ int main(int argc,char** argv){
 #endif
   require(u32()==0x344e4d50,"Unsupported prepared transport version");
   const auto rate=u32(),frames=u32();require(rate>=8000&&rate<=192000&&frames>0&&frames<=rate*12,"Invalid render size");
-  premidi::Plan plan;plan.version=u32();require(plan.version==1||plan.version==2||plan.version==3||plan.version==4,"Unsupported execution contract");plan.start=f64();plan.duration=f64();plan.sourceEnd=f64();plan.graphEnd=f64();plan.pan=f64();plan.cutoff=f64();plan.q=f64();plan.filterType=u32();if(plan.version>=4){plan.sweepStart=f64();plan.sweepEnd=f64();}require(plan.filterType<=3,"Invalid filter type");
-  require(plan.start>=0&&plan.duration>0&&plan.sourceEnd>plan.start&&plan.graphEnd>=plan.sourceEnd&&std::abs(plan.pan)<=1&&plan.cutoff>=50&&plan.cutoff<=14000&&plan.q>=.1&&plan.q<=16&&(plan.version<4||(plan.sweepStart>=50&&plan.sweepStart<=14000&&plan.sweepEnd>plan.start&&plan.sweepEnd<=plan.graphEnd)),"Invalid prepared voice");
+  premidi::Plan plan;plan.version=u32();require(plan.version==1||plan.version==2||plan.version==3||plan.version==4||plan.version==5,"Unsupported execution contract");plan.start=f64();plan.duration=f64();plan.sourceEnd=f64();plan.graphEnd=f64();plan.pan=f64();plan.cutoff=f64();plan.q=f64();plan.filterType=u32();if(plan.version>=4){plan.sweepStart=f64();plan.sweepEnd=f64();if(plan.version>=5){plan.noise=f64();plan.noiseDecay=f64();}}require(plan.filterType<=3,"Invalid filter type");
+  require(plan.start>=0&&plan.duration>0&&plan.sourceEnd>plan.start&&plan.graphEnd>=plan.sourceEnd&&std::abs(plan.pan)<=1&&plan.cutoff>=50&&plan.cutoff<=14000&&plan.q>=.1&&plan.q<=16&&(plan.version<4||(plan.sweepStart>=50&&plan.sweepStart<=14000&&plan.sweepEnd>plan.start&&plan.sweepEnd<=plan.graphEnd))&&(plan.version<5||(plan.noise>=0&&plan.noise<=1&&plan.noiseDecay>=0&&plan.noiseDecay<=5)),"Invalid prepared voice");
   for(auto& osc:plan.oscillators){osc.frequency=f64();osc.level=f64();osc.detune=f64();osc.wave=u32();require(osc.wave<=4,"Invalid waveform");for(auto& h:osc.harmonics){h=f64();require(h>=0&&h<=1,"Invalid harmonic recipe");}osc.count=u32();require(osc.count<=600&&osc.frequency>0&&osc.frequency<=18000&&osc.level>=0&&osc.level<=1&&std::abs(osc.detune)<=100,"Invalid oscillator");for(std::uint32_t i=0;i<osc.count;i++){osc.curve[i]=f64();require(std::abs(osc.curve[i])<=2500,"Pitch curve out of range");}}
   plan.off=f64();plan.pitch=f64();plan.velocity=f64();plan.routeCount=u32();require(plan.off>plan.start&&plan.off<=plan.sourceEnd&&plan.pitch>=0&&plan.pitch<=127&&plan.velocity>=0&&plan.velocity<=1&&plan.routeCount<=16&&(plan.version>=2||plan.routeCount==0),"Invalid modulation bounds");
   for(unsigned i=0;i<plan.routeCount;i++){
