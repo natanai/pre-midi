@@ -6,5 +6,7 @@ export function delayTailSeconds(effects,floor=TAIL_FLOOR){
  if(!(mix>0))return 0;
  const level=mix*.55*.8;
  const repeats=feedback>0?Math.max(0,Math.ceil(Math.log(floor/level)/Math.log(feedback))):0;
- return (1+repeats)*time+.02;
+ // A feedback cycle adds a 128-frame render quantum in the browser reference.
+ // Bound it at the minimum supported 8 kHz rate so callers need no host clock.
+ return (1+repeats)*time+repeats*.016+.02;
 }

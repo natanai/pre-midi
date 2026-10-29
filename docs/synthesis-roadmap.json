@@ -298,7 +298,7 @@
         "report": "benchmarks/web-audio-reference.json",
         "contract": "docs/dsp-contract.schema.json",
         "method": "18 constant-input rendered ADSR cases against an independent analytical oracle; overlapping and retriggered production voices at three sample rates",
-        "max_sample_error_gate": 0.00003,
+        "max_sample_error_gate": 3e-05,
         "shared_runtime": "live transport, audition, conversion preview and WAV export all use scheduleNote -> scheduleAmplitudeEnvelope -> planAmplitudeEnvelope",
         "compatibility": "preserves 2 ms attack floor, zero-decay sustain step and 0.000001 release floor; unchanged stored patch v1 and Beat v7/Song v8",
         "scope": "current ADSR scheduling contract; physical live-device loopback and native DSP equivalence are later host qualification"
@@ -747,7 +747,7 @@
           ],
           "pcm_limits": {
             "max_absolute": 0.0001,
-            "rms": 0.00002
+            "rms": 2e-05
           },
           "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
           "raw_reports": "benchmarks/automation-reference.json"
@@ -1206,7 +1206,29 @@
         "A representative recorded-sample Beat and synth Beat play through C++ without implicit fallback",
         "Browser/native PCM and musical parity checks cover newly supported DSP features",
         "All unsupported plans continue to produce explicit errors"
-      ]
+      ],
+      "progress": {
+        "merged_before_this_phase": [
+          "oscillators and filters",
+          "canonical modulation and cutoff automation",
+          "filter sweeps",
+          "noise and noise decay"
+        ],
+        "delay_implementation": "v6 packet; shared stereo feedback buses, dry/send/wet gains, fractional times and 128-frame feedback-cycle timing matched to browser; tails survive note endings and loops; control-side seek reconstructs ended-note echoes",
+        "verification": [
+          "227 browser/native acoustic cases passed including 12 new delay cases at 44.1/48/96 kHz using unchanged max 1e-4 and RMS 2e-5 gates",
+          "64 mixer comparisons and 12 miniaudio null-backend lifecycle cases; allocation assertions, arbitrary callback sizes, seeks into delay tails and loop overlap",
+          "v6 malformed packet bounds and v5+ automation parser correction"
+        ],
+        "remaining": [
+          "drive and 4x oversampling",
+          "legacy vibrato/tone/tremolo",
+          "samples and recorded/vocal playback",
+          "live edits and native capture",
+          "full shipped-library matrix",
+          "physical Windows WASAPI qualification"
+        ]
+      }
     },
     {
       "order": 2,
