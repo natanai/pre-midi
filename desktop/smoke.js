@@ -43,6 +43,10 @@
   localStorage.setItem('premidi-audio-backend','native');
   const WebOfflineAudioContext=window.OfflineAudioContext;
   window.OfflineAudioContext=class{constructor(){throw Error('Native operation attempted Web Audio rendering');}};
+  const WebMediaRecorder=window.MediaRecorder,webGetUserMedia=navigator.mediaDevices.getUserMedia,webMediaPlay=HTMLMediaElement.prototype.play;
+  window.MediaRecorder=class{constructor(){throw Error('Native operation attempted browser recording');}};
+  navigator.mediaDevices.getUserMedia=()=>{throw Error('Native operation attempted browser microphone capture');};
+  HTMLMediaElement.prototype.play=()=>{throw Error('Native operation attempted HTML media playback');};
   const beat=create();beat.bars=1;const inst=beat.instruments[0];inst.timeline=[inst.chunks[0].id];inst.placements=[null];
   inst.sounds[0].patch=makePatch('touch-keys');inst.chunks[0].notes.push({id:id(),pitch:60,start:0,duration:4,velocity:.8});
   upgradeBeatFeatures(beat);
@@ -68,7 +72,30 @@
   const {audition}=await load('audio.js');await audition(inst,64,beat,{duration:.1});
   assert((await audioRequest({action:'status'})).state===1,'Hear sound does not stop native transport');
   await session.stop();assert((await audioRequest({action:'status'})).state===0,'native stop completes');
-  window.OfflineAudioContext=WebOfflineAudioContext;
+  const {prepareSongTake}=await load('songRecorder.js'),take=await prepareSongTake();
+  const recordedSession=await play(()=>beat,{recording:take.captureOwner,countIn:1,onStart:metadata=>take.begin(metadata)});
+  for(let i=0;i<300;i++){if((await audioRequest({action:'status'})).capture.phase===3)break;await pause(20);}
+  const recorded=await take.finish();await recordedSession.stop();
+  assert(recorded.mime==='audio/wav'&&recorded.bytes.length>44,'native microphone writes lossless WAV without MediaRecorder');
+  assert(Math.abs(recorded.durationSeconds-60/beat.bpm*4)<1/44100,'native take starts exactly after count-in and retains the arrangement duration');
+  const {makeRecordingAsset}=await load('recordingAssets.js'),{addVocalTake,validateSong}=await load('songModel.js');
+  const recordedSong=(await load('songModel.js')).createSong(beat);
+  const vocalAsset=makeRecordingAsset('native-smoke-vocal','native take',recorded.mime,recorded.bytes,recorded);addVocalTake(recordedSong,vocalAsset);
+  assert(recordedSong.version===14&&!validateSong(recordedSong).length,'lossless vocal take uses explicit Song v14');
+  const songFiles=await load('songIO.js'),recordedExport=songFiles.exportSongProject(recordedSong);
+  const reopenedTake=await songFiles.importSongProject(new File([recordedExport.blob],recordedExport.name));
+  const vocalSession=await play(()=>reopenedTake);await vocalSession.seek(2);await vocalSession.stop();
+  const vocalWav=await wav(reopenedTake);assert(vocalWav.size>44,'native vocal survives portable ZIP, seek and native WAV export');
+  document.getElementById('record-sound').click();document.getElementById('mic-length').value='0.75';document.getElementById('mic-capture').click();
+  for(let i=0;i<250&&document.getElementById('mic-use').hidden;i++)await pause(40);
+  assert(!document.getElementById('mic-use').hidden,'native short microphone recorder completes');
+  assert(!document.getElementById('mic-playback').src,'native short recording avoids HTML media playback');
+  const rawPlayer=document.querySelector('#mic-preview .native-audio-player button'),oldPreview=(await audioRequest({action:'status'})).previewOwner;rawPlayer.click();
+  for(let i=0;i<100;i++){const status=await audioRequest({action:'status'});if(status.previewOwner>oldPreview&&status.previewState===1)break;await pause(20);}
+  assert((await audioRequest({action:'status'})).previewOwner>oldPreview,'raw recording preview uses the native preview lane');
+  rawPlayer.click();await pause(30);assert((await audioRequest({action:'status'})).previewState===2,'raw native preview pauses');
+  document.getElementById('mic-close').click();
+  window.OfflineAudioContext=WebOfflineAudioContext;window.MediaRecorder=WebMediaRecorder;navigator.mediaDevices.getUserMedia=webGetUserMedia;HTMLMediaElement.prototype.play=webMediaPlay;
   const {createSong,addBeat}=await load('songModel.js'),{exportSongProject,importSongProject}=await load('songIO.js');
   const song=createSong(beat);const output=exportSongProject(song);const restored=await importSongProject(new File([output.blob],output.name));
   assert(restored.kind==='song','Song export and reopen');

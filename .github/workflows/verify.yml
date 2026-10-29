@@ -24,6 +24,8 @@ jobs:
         run: cargo test --manifest-path native/control-tests/Cargo.toml --locked
       - name: Qualify native mixer and miniaudio callback lifecycle
         run: node scripts/native-device-check.mjs
+      - name: Qualify native count-in and capture timing
+        run: node scripts/native-capture-check.mjs
       - name: Stage minimal Pages build
         run: node scripts/prepare-pages.mjs
       - name: Check Song recording, transport and actual WAV downloads

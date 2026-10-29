@@ -1,8 +1,7 @@
-pre-midi 0.14.1-preview.10 adds native live editing, WAV export and sound analysis to the Windows portable studio. Notes, patches, tempo and arrangement edits reach playback without restarting. Paused edits stay paused, and loops retain preceding note releases and delay history.
+pre-midi 0.14.1-preview.11 adds native microphone recording, count-in and recording previews to the Windows portable studio. Both the short Sound recorder and Song vocal recorder now use the native audio device. Count-in and capture share the playback callback clock. Settings provides a calibrated recording offset; zero remains the unmeasured default.
 
-WAV export now renders the same native synth, sample and vocal engine at 44.1 kHz, including effect tails. Sound analysis uses native rendering too. No AudioContext is required for these paths. The full 565-case factory/asset/example matrix remains in qualification, with native callback, control ownership and binary export regression tests.
+Vocal takes save lossless external WAV assets with explicit Song v14. Older v8/v10/v12 Songs remain readable. Native capture, raw/synth previews, waveform analysis, imports and WAV export do not require browser audio. Existing portable data and update behavior are preserved.
 
-- Windows x64 portable ZIP only. Close pre-midi and replace application files plus `licenses/`. Preserve `data/`, `projects/` and `exports/`.
-- Settings → Check for updates keeps the installed release version, preview channel and direct official portable ZIP link.
-- Microphone capture/count-in/latency compensation and wider imported channel/rate qualification remain in progress.
-- Physical Windows WASAPI hardware, driver underruns, loopback latency, disconnect and sleep/resume qualification remain pending. Null-backend CI does not qualify hardware.
+- Windows x64 portable folder ZIP only. Close the app and replace application files plus `licenses/`; preserve `data/`, `projects/` and `exports/`.
+- Automated checks cover timing, buffer-size invariance, ownership, callback allocation and packaged native recording workflows. Null-backend recordings are software tests, not real microphone evidence.
+- Physical Windows WASAPI input/output, calibrated latency, sustained dropouts and device recovery remain unqualified. Broader imported channel/rate and execution-edge qualification continues.

@@ -100,16 +100,14 @@
     ],
     "current_hosts": [
       "web_audio",
-      "tauri_cpp_miniaudio_synth_sample_vocal_playback"
+      "tauri_cpp_miniaudio_playback_capture"
     ],
     "limitations": [
-      "native_playback_uses_snapshot",
       "no_verified_windows_physical_device_latency_or_underrun_data",
       "no_native_pre_programmed_reader_parity",
       "no_general_wavetable_morphing",
       "no_granular_engine",
       "limited_fx_routing",
-      "native_microphone_capture_pending",
       "native_multichannel_asset_qualification_pending",
       "native_long_note_and_extreme_pitch_bounds_pending"
     ],
@@ -1018,10 +1016,9 @@
             "status": "in_progress",
             "result": "Pinned miniaudio device layer hosts canonical C++ voices through bounded callbacks; separate transport/preview lanes, pause/resume/seek/loop, device selection and disconnect gating are implemented. Production hardware qualification remains pending.",
             "remaining": [
-              "Physical Windows 11/macOS/Linux output and listening",
-              "Sustained CPU/underrun/latency, device switch and sleep/resume qualification",
-              "Live edits beyond Play snapshots",
-              "Noise/sweeps/drive/delay/legacy movement/sample and recording parity"
+              "Physical Windows 11 output/input and listening",
+              "Sustained CPU/driver-underrun/latency, device switch and sleep/resume qualification",
+              "Broader imported channel/rate and execution-edge qualification"
             ]
           }
         ],
@@ -1040,20 +1037,15 @@
             "oscillators/harmonics, ADSR/note-off, prepared pitch curves",
             "six authoritative modulation targets and cutoff automation",
             "instrument gain/pan, 64-voice release-first stealing with 5 ms retirement",
-            "shared Beat/Song event timing; loop release overlap; phase/filter-preserving seek"
+            "shared Beat/Song event timing; loop release overlap; phase/filter-preserving seek",
+            "noise/decay, filter sweeps, shared delay and tails, 4x drive, legacy movement",
+            "native sample racks and vocal assets with owned decoded PCM",
+            "live edits and native binary offline rendering",
+            "native microphone capture/count-in, calibrated offset and explicit Song v14 PCM takes"
           ],
-          "unsupported": [
-            "noise",
-            "filter sweeps",
-            "drive/oversampling",
-            "delay/effect tails",
-            "legacy vibrato/tone/tremolo",
-            "sample and vocal playback",
-            "native microphone input/recording alignment",
-            "live document editing during the Play snapshot"
-          ],
+          "unsupported": [],
           "local_evidence": {
-            "comparisons": 42,
+            "comparisons": 105,
             "rates_hz": [
               44100,
               48000,
@@ -1069,7 +1061,11 @@
             "device_backend": "null",
             "physical_hardware": "pending"
           },
-          "performance_policy": "Callback render deadline overruns are recorded separately from unmeasured hardware driver underruns and physical latency; software timing does not qualify hardware."
+          "performance_policy": "Callback render deadline overruns are recorded separately from unmeasured hardware driver underruns and physical latency; software timing does not qualify hardware.",
+          "qualification_pending": [
+            "physical WASAPI microphone/output and recovery",
+            "broader source channel/rate and execution-edge qualification"
+          ]
         },
         "distribution_policy": {
           "current_previews": [
@@ -1222,7 +1218,6 @@
           "v6 malformed packet bounds and v5+ automation parser correction"
         ],
         "remaining": [
-          "native capture/count-in/latency compensation",
           "broader imported channel/rate and execution-edge qualification",
           "physical Windows WASAPI qualification"
         ],
@@ -1246,7 +1241,14 @@
           "Native offline PCM compares with independently rendered canonical voices and stereo samples",
           "Standalone Rust/native control tests exercise six codec containers, owned PCM, 44.1/48 kHz binary export and stale session ownership",
           "Windows portable WebView smoke blocks OfflineAudioContext during native WAV/play/edit operations"
-        ]
+        ],
+        "capture_phase": "Native duplex microphone capture uses preallocated mono buffers, exact callback-frame count-in and take start, calibrated offset/tail, fixed capture durations and safe join before PCM copies; native previews and imports do not invoke browser audio",
+        "capture_verification": [
+          "28 deterministic timing/offset/pause/allocation cases at 8/44.1/48/96/192 kHz and five block sizes",
+          "Five Rust/native control tests include actual miniaudio null-backend capture, owner cancellation and WAV conversion at 44.1/48/96 kHz",
+          "Windows portable smoke blocks browser audio/capture/media playback during native recording, raw preview, Song v14 ZIP/seek and WAV checks"
+        ],
+        "capture_limits": "Physical input/output delay must be measured on Windows; recording offset defaults to zero and is never presented as measured latency"
       }
     },
     {

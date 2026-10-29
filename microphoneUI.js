@@ -1,18 +1,23 @@
 import {RECORDER_DURATIONS,RECORDING_RATE,pitchLabel,estimatePitch,encodeMonoWav,describeRecording,
  pcmFromRecordedBlob,monoFromAudioBlob,recordingExcerpt} from "./recording.js";
 import {convertToSynth} from "./synthMatch.js";
+import {nativeEnabled,nativeRequest} from './src/hosts/native/session.js';
+import {prepareNativeTake} from './src/hosts/native/capture.js';
+import {nativeSourcePlayer} from './src/hosts/native/source-player.js';
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 export function installMicrophoneRecorder({get,onUse,onSynth}){
  const $=get,dialog=$("microphone-dialog");
- let stream=null,media=null,capture=null,source=null,converted=null,active=false,generation=0,conversion=null;
+ let stream=null,media=null,capture=null,source=null,converted=null,active=false,generation=0,conversion=null,nativeTake=null;
  const urls=new Map();
  const kind=()=>dialog.querySelector('input[name="mic-kind"]:checked')?.value||"note";
  const status=(label,small="",count="●")=>{
   $("mic-status").textContent=label;$("mic-subtitle").textContent=small;$("mic-count").textContent=count;
  };
+ const nativePlayers=new Map(['mic-playback','mic-synth-playback'].map(id=>[id,nativeSourcePlayer($(id),{onError:error=>status('playback error',error.message||String(error),'!')})]));
  function audio(id,blob=null){
   const player=$(id);player.pause();player.removeAttribute("src");player.load();
   if(urls.has(id)){URL.revokeObjectURL(urls.get(id));urls.delete(id);}
+  if(nativePlayers.get(id).set(blob))return;
   if(blob){const url=URL.createObjectURL(blob);urls.set(id,url);player.src=url;}
  }
  function clearConversion(){
@@ -28,6 +33,7 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
  }
  function dispose(){
   generation++;clearConversion();
+  void nativeTake?.cancel();nativeTake=null;
   if(media&&media.state!=="inactive"){try{media.stop();}catch{}}
   media=null;
   if(stream){for(const track of stream.getTracks())track.stop();stream=null;}
@@ -76,6 +82,7 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
  }
  async function start(){
   if(active)return;
+  if(nativeEnabled())return startNative();
   if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==="undefined"){
    status("Microphone recording unavailable","Upload a WAV to use a sound or convert it to synth.","!");return;
   }
@@ -118,6 +125,26 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
    if(token===generation){stream=null;media=null;dialog.classList.remove("mic-recording");busy(false);}
   }
  }
+ async function startNative(){
+  reset();busy(true);const token=generation,duration=Number($('mic-length').value);let take;
+  if(!RECORDER_DURATIONS.includes(duration)){reset();return;}
+  try{
+   status('opening microphone');take=await prepareNativeTake({seconds:duration,synchronized:false});
+   if(token!==generation||!dialog.open){await take.cancel();return;}nativeTake=take;await take.start(2.85);
+   while(token===generation&&dialog.open){
+    const info=await nativeRequest({action:'status'});if(info.deviceLost)throw Error('native microphone or output disconnected');
+    if(info.captureOwner!==take.captureOwner)throw Error('native microphone take was cancelled');
+    if(info.capture.phase===3)break;
+    if(info.capture.phase===1)status('countdown','',String(Math.max(1,Math.ceil(info.capture.leadFrames/info.sampleRate))));
+    else{status('recording');dialog.classList.add('mic-recording');}
+    await delay(60);
+   }
+   if(token!==generation||!dialog.open)return;
+   const recorded=await take.finish();nativeTake=null;status('processing recording');
+   const values=await pcmFromRecordedBlob(new Blob([recorded.bytes],{type:'audio/wav'}));if(token===generation&&dialog.open)reportTake(values);
+  }catch(error){if(token===generation)status('recording unavailable',error.message||String(error),'!');}
+  finally{await take?.cancel();if(nativeTake===take)nativeTake=null;if(token===generation){dialog.classList.remove('mic-recording');busy(false);}}
+ }
  async function loadFile(blob,name="Uploaded sound"){
   reset();busy(true);const token=generation;
   try{
@@ -136,7 +163,7 @@ export function installMicrophoneRecorder({get,onUse,onSynth}){
  }
  async function convert(){
   if(!capture||active)return;
-  clearConversion();busy(true);$("mic-playback").pause();
+  clearConversion();busy(true);$("mic-playback").pause();void nativePlayers.get('mic-playback').stop();
   const token=generation,controller=new AbortController();conversion=controller;
   try{
    const result=await convertToSynth(capture.values,RECORDING_RATE,{kind:kind(),
