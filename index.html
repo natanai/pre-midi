@@ -88,7 +88,7 @@
    <section class="notes-section" aria-label="Chunk note editor">
     <div class="heading notes-heading">
      <div class="chunk-heading"><h2>Notes</h2><span id="editing-identity" class="editing-identity"></span></div>
-     <div class="history-actions"><button id="sound-toggle" type="button" aria-expanded="true" aria-controls="sound-section">Sound</button><button id="note-mode" type="button" aria-pressed="false">Edit note effects</button><button id="undo" type="button">Undo</button><button id="redo" type="button">Redo</button></div>
+     <div class="history-actions"><button id="sound-toggle" type="button" aria-expanded="true" aria-controls="sound-section">Sound</button><button id="note-mode" type="button" aria-pressed="false" aria-controls="note-effects-section">Edit note effects</button><button id="undo" type="button">Undo</button><button id="redo" type="button">Redo</button></div>
     </div>
     <div class="notes-toolbar">
      <div class="chunk-fields">
@@ -109,7 +109,6 @@
      </div>
     </div>
     <div class="piano-scroll"><div id="piano"></div></div>
-    <div id="note-expression" class="note-expression" aria-label="Selected note pitch expression" hidden></div>
    </section>
    <section id="sound-section" class="sound-section" aria-label="Instrument sound">
     <div class="heading sound-section-heading">
@@ -143,6 +142,11 @@
     </div>
     <div id="sound-visualizer" class="sound-visualizer" aria-label="Instrument sound visualization"></div>
     <div id="synth-editor" class="synth-editor" aria-label="Instrument sound controls"></div>
+   </section>
+   <section id="note-effects-section" class="note-effects-section" aria-labelledby="note-effects-title" aria-hidden="true">
+    <div class="heading note-effects-heading"><h2 id="note-effects-title">note effects</h2><button id="note-effects-done" type="button">done</button></div>
+    <p id="note-effects-empty" class="note-effects-empty">select a note to edit</p>
+    <div id="note-expression" class="note-expression" aria-label="Selected note pitch expression" hidden></div>
    </section>
   </div>
  </div>
