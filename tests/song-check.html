@@ -26,7 +26,6 @@
    view.URL.createObjectURL=blob=>{
     if(blob.type==="audio/wav"){
      wavDownloads.push(blob);
-     queueMicrotask(()=>get("status").textContent="Saved locally");
     }else projectDownloads.push(blob);
     return createUrl(blob);
    };
@@ -156,7 +155,7 @@
   await wait(()=>get("play").getAttribute("aria-label")==="stop song","single transport starts Song");
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="play song"&&get("play").textContent.includes("■")===false,"single transport stops Song");
-  await wait(()=>get("status").textContent.includes("Saved locally"),"Song saved locally",7000);
+  await wait(()=>get("status").dataset.saving==="false","Song saved locally",7000);
   await new Promise(resolve=>{frame.onload=resolve;frame.src="/index.html";});
   captureDownloads(frame.contentWindow);
   await wait(()=>frame.contentDocument.querySelectorAll(".song-track-row").length===3,"Song restored from local draft",7000);
@@ -195,7 +194,7 @@
   const vocalProjectCount=projectDownloads.length;
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
   await wait(()=>projectDownloads.length>vocalProjectCount,"vocal ZIP exported",9000);
-  await wait(()=>get("status").textContent.includes("Saved locally"),"recorded Song saved locally",7000);
+  await wait(()=>get("status").dataset.saving==="false","recorded Song saved locally",7000);
   await new Promise(resolve=>{frame.onload=resolve;frame.src="/index.html";});
   captureDownloads(frame.contentWindow);
   await wait(()=>frame.contentDocument.querySelectorAll(".song-vocal-clip").length===1,

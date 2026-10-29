@@ -198,15 +198,18 @@ function message(text, error = false) {
 let saveGeneration=0;
 function store() {
  const current=currentDocument(),generation=++saveGeneration;
+ $("status").dataset.saving="true";
  message("Saving locally…");
- void saveDraft(current).then(()=>{if(generation===saveGeneration&&$("status").textContent==="Saving locally…")message("Saved locally");}).catch(()=>{
+ void saveDraft(current).then(()=>{if(generation===saveGeneration){$("status").dataset.saving="false";if($("status").textContent==="Saving locally…")message("Saved locally");}}).catch(()=>{
   if(generation!==saveGeneration)return;
+  $("status").dataset.saving="error";
   // For constrained private-browser modes, small synth-only scores still fit.
   try {
    const json=JSON.stringify(current);
    const assets=current.kind==="song"?current.beats.flatMap(entry=>entry.samples):current.samples;
     if(assets.length||json.length>800000)throw Error("large or sampled draft");
    localStorage.setItem(CACHE,json);
+   $("status").dataset.saving="false";
    message("Saved locally (limited browser storage)");
   }catch{message("Browser storage unavailable. Export .premidi to save your work.",true);}
  });
