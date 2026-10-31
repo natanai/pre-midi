@@ -16,7 +16,9 @@ export async function qualifyNativeImports(add){
   for(const mode of ['plain','effects','vocal']){
    const patch={type:'sample',presetId:'qualification',zones:[{assetId:'source',root:60}],followPitch:true,oneShot:false,transpose:0,gain:.7,attack:.003,release:.025,pan:0};
    if(mode==='effects'){patch.filter={type:'lowpass',cutoff:2300,resonance:1.1};patch.drive=.6;patch.pan=-.4;patch.movement={glide:-2,glideTime:.05,rate:5.3,depth:30,delay:.02,tremolo:.4,tremoloRate:3.7};}
-   const instrument={patch,volume:.3},note={pitch:60,velocity:.7},start=.010123,duration=.08;
+   // HE-AAC's original fixture has a silent leading 50 ms; a short keyed note
+   // tests only its priming silence rather than the actual decoded signal.
+   const instrument={patch,volume:.3},note={pitch:60,velocity:.7},start=.010123,duration=name==='he-aac.mp4'?.30:.08;
    const vocal={recording:{id:'source',trimSeconds:0,durationSeconds:asset.duration},clip:{lengthSteps:2,gain:.2}};
    const plans=mode==='vocal'?[planNativeVocal(vocal,start,.125,handles)]:[planNativeSample(instrument,note,start,duration,handles)];
    const render=async block=>{const query=new URLSearchParams({rate,frames,cycle:1,seek:0,loop:false,block});const r=await fetch('/__native_session?'+query,{method:'POST',body:encodeNativeSession(plans,rate,[asset])});if(!r.ok)throw Error(name+': '+await r.text());return new Float32Array(await r.arrayBuffer());};
