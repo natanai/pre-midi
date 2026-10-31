@@ -759,6 +759,7 @@ function renderNotes() {
   const row=element("div",undefined,"piano-row"+(sharp?" sharp":""));
   const label=element("span",showPianoKeys?(pitchClass===0?noteLabel(pitch):""):noteLabel(pitch),"note-name");
   label.setAttribute("aria-label",noteLabel(pitch));
+  label.title=noteLabel(pitch);
   if(showPianoKeys&&!sharp){
    // White keys span the space to adjacent white-key centers; black keys
    // sit above the join, like a physical piano keyboard.
