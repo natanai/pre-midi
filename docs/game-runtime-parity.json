@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-10-31",
+  "purpose": "Track exact current pre-midi and pre-programmed music compatibility, serialized instruction size and game runtime cost separately. Audit only; does not authorize a game player rewrite.",
+  "sources": {
+    "studio": {
+      "repo": "natanai/pre-midi",
+      "main_commit_at_audit": "517c7f89912358c84c62c885f5c8585ef42ba8a4",
+      "files": [
+        "schema.js",
+        "songModel.js",
+        "packageIO.js",
+        "songIO.js",
+        "synth.js",
+        "src/dsp/modulation.js",
+        "src/dsp/automation.js",
+        "docs/song-rollout.md"
+      ]
+    },
+    "game": {
+      "repo": "natanai/pre-programmed",
+      "main_commit_at_audit": "4c87be661234586317fd8a4c28d35fde0fd208b1",
+      "files": [
+        "src/features/media/vendor/premidi-schema.js",
+        "src/features/media/vendor/premidi-audio.js",
+        "src/features/media/author/premidiWorkspaces.tsx",
+        "src/features/media/synth.ts",
+        "src/features/media/ui/synthPlayback.ts",
+        "tests/premidiPortable.test.ts"
+      ]
+    },
+    "tracking": "https://github.com/natanai/pre-programmed/issues/235"
+  },
+  "instruction_format": {
+    "studio_beat_versions": [
+      7,
+      9,
+      11
+    ],
+    "studio_song_versions": [
+      8,
+      10,
+      12,
+      14
+    ],
+    "game_reader_accepted_versions": [
+      2
+    ],
+    "compatibility": "incompatible",
+    "cause": "The game uses an unported legacy v2 parser/scheduler with waveform-per-instrument fields; studio Beats require Sound/Rack patches, Chunk placements and samples, and Songs add Tracks, Clips and Recordings.",
+    "studio_limits_bytes": {
+      "beat": 1000000,
+      "song": 8000000
+    },
+    "game_legacy_limit_bytes": 1000000,
+    "audio_embedded_in_premidi": false,
+    "file_format": "Plain UTF-8 JSON instructions; sample/recording metadata names a separate relative Asset. Portable asset-bearing projects use companion ZIP files.",
+    "studio_audio_package_limit_bytes": 64000000
+  },
+  "capability_matrix": [
+    {
+      "id": "legacy_v2",
+      "studio": "not a current native format",
+      "game": "read_write_play",
+      "bridge": "legacy reader remains for existing game saves; no silent rewrite"
+    },
+    {
+      "id": "beat_v7",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "version dispatch/validator plus native Beat event scheduler"
+    },
+    {
+      "id": "beat_v9_modulation",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "v2 patch modulation sources, routing and native/web synth voice"
+    },
+    {
+      "id": "beat_v11_automation",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "sample-timed cutoff automation with seek and loop parity"
+    },
+    {
+      "id": "song_v8",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "referenced Beats, Beat Clips/Tracks, overlap and repetitions"
+    },
+    {
+      "id": "song_v10_v12_v14",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "modulation, automation and WAV vocal metadata variants"
+    },
+    {
+      "id": "instrument_sound_patches",
+      "studio": "two oscillators, harmonic recipes, filter, effects",
+      "game": "legacy single-waveform music reader",
+      "bridge": "small playback-only synth core, not studio authoring controls"
+    },
+    {
+      "id": "sample_racks",
+      "studio": "external Asset zones, recorded samples and hit racks",
+      "game": "unsupported in premidi reader",
+      "bridge": "game Media Asset resolver and bounded sample voice renderer"
+    },
+    {
+      "id": "chunk_offset_polymeter",
+      "studio": "placements with offsets/repeats and overlapping events",
+      "game": "v2 fixed bar timeline only",
+      "bridge": "one canonical Beat timing/event function"
+    },
+    {
+      "id": "song_tracks_clips",
+      "studio": "Beat and vocal Clips, layered Songs",
+      "game": "unsupported",
+      "bridge": "song clock and clip reference dispatch"
+    },
+    {
+      "id": "gameplay_controls",
+      "studio": "static authored music instructions and instrument parameters",
+      "game": "general game state/effect system; no modern music layer contract",
+      "bridge": "game-owned play/stop/seek/layer/parameter commands without embedding scripting into .premidi"
+    },
+    {
+      "id": "game_own_sfx_synth",
+      "studio": "not applicable",
+      "game": "separate 4-voice 16-step procedural SynthSound editor",
+      "bridge": "preserve independent SFX feature; do not count it as .premidi parity"
+    }
+  ],
+  "size_accounting": {
+    "measurement_script": "scripts/measure-game-footprint.mjs",
+    "test": "tests/gameFootprint.test.js",
+    "measurements_pending_ci": true,
+    "instruction_bytes": "generated from actual studio models and example export-shaped JSON",
+    "gzip_bytes": "informational only; not the current .premidi storage format",
+    "external_audio_asset_bytes": "not measured by instruction harness; report separately from ZIP payload",
+    "game_browser_bundle_delta_bytes": null,
+    "game_desktop_bundle_delta_bytes": null,
+    "reusable_audio_runtime_delta_bytes": null,
+    "codec_library_delta_bytes": null,
+    "portable_studio_zip_size_bytes": 14409418,
+    "warning": "Source-code line counts, compressed JSON size and the pre-midi portable ZIP do not establish added pre-programmed runtime size. Measure a real game build before claiming a budget."
+  },
+  "runtime_boundary": {
+    "essential_for_game": [
+      "versioned score parsing/validation",
+      "stable Beat/Song identifiers",
+      "Chunk/Clip scheduling and loop/seek",
+      "parameter-only synthesizer playback",
+      "sample-voice playback only if referenced",
+      "Media Asset resolution",
+      "game-event controls for tracks/layers/parameters",
+      "bounded polyphony/CPU and regression tests"
+    ],
+    "game_dependent_optional": [
+      "audio asset codec decoders needed by selected external Assets",
+      "advanced modulation or effects used by a particular score",
+      "native audio device host if game runtime selects C++ engine"
+    ],
+    "studio_only": [
+      "piano roll and synth editor UI",
+      "microphone recording and input permission handling",
+      "audio analysis and WAV-to-synth conversion",
+      "instrument preset browsing",
+      "portable studio update system",
+      "standalone export/render interface",
+      "full import support for every source file codec and extreme rate"
+    ],
+    "enforcement": "Resolve runtime features from validated score semantics, not from presence of studio UI; reject unsupported features with explicit version/capability errors rather than silently changing sound.",
+    "asset_contract": "Reference external audio by safe relative path/ID; avoid embedded bytes, duplicate references, or implicit browser caches. Test project export/import independently.",
+    "legacy_data": "Keep v2 documents and existing .ppgame files accessible via explicit legacy dispatch/migration."
+  },
+  "next_gates": [
+    {
+      "id": "G1",
+      "name": "Measured studio document size",
+      "acceptance": "Automated report of v7/v9/v11 Beats, v8/v10/v12/v14 Songs and all shipped examples, raw UTF-8 bytes; external assets clearly separated",
+      "status": "in_progress"
+    },
+    {
+      "id": "G2",
+      "name": "Game executable/browser baseline",
+      "acceptance": "Record clean production JS chunks, game portable ZIP, and before/after size for a playback-only feature branch",
+      "status": "not_started"
+    },
+    {
+      "id": "G3",
+      "name": "Cross-repo version fixtures",
+      "acceptance": "Current game v2 remains readable and modern studio documents fail explicitly until a compatible parser is merged",
+      "status": "not_started"
+    },
+    {
+      "id": "G4",
+      "name": "Playback event parity",
+      "acceptance": "Production Beat and Song events including offsets/polymeter, samples/vocals, modulation/automation and loop/seek match native and game playback",
+      "status": "not_started"
+    },
+    {
+      "id": "G5",
+      "name": "In-game dynamic controls",
+      "acceptance": "Game effects can operate on declared Beat/Song Track/Clip IDs without flattening audio or embedding a second scripting language",
+      "status": "not_started"
+    }
+  ]
+}
