@@ -763,8 +763,8 @@ function renderNotes() {
    // White keys span the space to adjacent white-key centers; black keys
    // sit above the join, like a physical piano keyboard.
    const gaps={0:[1,2],2:[2,2],4:[2,1],5:[1,2],7:[2,2],9:[2,2],11:[2,1]}[pitchClass];
-   label.style.setProperty("--key-before",String(gaps[0]));
-   label.style.setProperty("--key-after",String(gaps[1]));
+   label.style.setProperty("--key-top",((1-gaps[0])*11.5)+"px");
+   label.style.setProperty("--key-height",((gaps[0]+gaps[1])*11.5)+"px");
   }
   row.append(label);
   keys.push({pitch,row,label});
