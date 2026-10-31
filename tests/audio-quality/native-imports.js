@@ -24,10 +24,7 @@ export async function qualifyNativeImports(add){
    if(mode==='vocal')scheduleVocal(context,master,vocal,start,.125,buffers);else scheduleSample(context,master,instrument,note,start,duration,null,buffers);
    const browser=await context.startRendering(),errors=[0,1].map(ch=>difference(Float32Array.from({length:frames},(_,i)=>native[2*i+ch]),browser.getChannelData(ch))),stats=signalStats(native),blockError=difference(native,odd),max=Math.max(...errors.map(x=>x.max)),rms=Math.max(...errors.map(x=>x.rms));
    const decoded={nativeFrames:asset.frames,browserFrames:buffer.length,nativeRms:signalStats(asset.pcm).rms,browserRms:signalStats(buffer.getChannelData(0)).rms};
-   if(false){
-    const n=asset.frames,b=buffer.length,channel=Math.min(2,asset.channels-1);let best={rms:Infinity,lag:0};
-    for(let lag=-2048;lag<=2048;lag++){let sum=0,count=0;for(let i=2304;i<Math.min(n,b)-2304;i+=8){const delta=asset.pcm[i*asset.channels+channel]-buffer.getChannelData(channel)[i+lag];sum+=delta*delta;count++;}const rms=Math.sqrt(sum/Math.max(1,count));if(rms<best.rms)best={rms,lag};}decoded.best=best;
-   }
+
    const strict=name.startsWith('channels-')&&extension==='wav';
    add('imports/'+name+'/'+mode,{max,rms,stats,blockError,decoded,sourceChannels:buffer.numberOfChannels,nativeChannels:asset.channels},{prepared:true,finite:stats.nonFinite===0,audible:stats.rms>.000001,channels:asset.channels===buffer.numberOfChannels,deterministic:blockError.max===0,maxError:max<(strict?.0001:.03),rmsError:rms<(strict?.00002:.002)});
   }
