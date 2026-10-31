@@ -17,7 +17,6 @@ struct SampleData {
   else{
    // Control-side band-limited rate conversion; note playback remains the
    // canonical linear AudioBufferSource interpolation at the device rate.
-   constexpr unsigned phases=1024;constexpr double pi=3.14159265358979323846;
    constexpr unsigned phases=1024,taps=64;constexpr double pi=3.14159265358979323846;
    const double cutoff=.94*std::min(1.,static_cast<double>(rate)/sourceRate);
    std::vector<float> kernels(phases*taps);
