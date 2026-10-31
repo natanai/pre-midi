@@ -184,11 +184,11 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .scale-controls select {height:34px;min-height:34px;min-width:0}
 #scale-root {width:85px}
 #scale-mode {width:166px;max-width:100%}
-.scale-controls .scale-lock-control {
+.scale-controls :is(.scale-lock-control,.keyboard-control) {
  display:inline-flex;flex-direction:row;align-items:center;gap:6px;
  height:34px;min-height:34px;white-space:nowrap;cursor:pointer;
 }
-.scale-lock-control input {margin:0;accent-color:var(--signal-cyan)}
+.scale-controls :is(.scale-lock-control,.keyboard-control) input {margin:0;accent-color:var(--signal-cyan)}
 .scale-controls[hidden] {display:none}
 @media(max-width:820px) {
  .scale-controls {margin-left:0}
@@ -310,8 +310,40 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .piano-row.sharp .note-name {background:#090909;color:var(--muted)}
 .piano-row.in-scale .note-name {border-left:2px solid var(--signal-cyan);color:var(--bright)}
 .piano-row.out-of-scale .note-name {color:#666}
-.piano-row.out-of-scale .note:not(.filled):not(.tail) {background:#050505}
-.piano-row.out-of-scale .note:disabled {opacity:.52;cursor:not-allowed}
+.note.out-of-scale:not(.filled):not(.tail) {background:#050505}
+.piano-row .note.out-of-scale:disabled {opacity:.52;cursor:not-allowed}
+/* Optional physical keyboard: white keys fill the distance between adjacent
+   white-key centers, with black keys sitting in front of their joins. Note
+   cells keep their original chromatic alignment and clickable dimensions. */
+#piano.piano-keyboard .note-name {
+ position:relative;z-index:1;display:flex;align-items:center;justify-content:flex-end;
+ overflow:visible;border:0;padding:0 5px;background:transparent;
+ color:#202020;font-size:10px;font-weight:700;
+}
+#piano.piano-keyboard .note-name::before {
+ content:"";position:absolute;z-index:-1;pointer-events:none;
+ top:var(--key-top,0px);
+ height:var(--key-height,23px);
+ left:0;right:0;
+ box-sizing:border-box;background:#d3d3d3;
+ border-right:1px solid #666;border-bottom:1px solid #777;
+}
+#piano.piano-keyboard .piano-row.sharp .note-name {z-index:3;color:#e5e5e5}
+#piano.piano-keyboard .piano-row.sharp .note-name::before {
+ top:1px;height:21px;left:0;right:auto;width:44px;
+ background:#0c0c0c;border:1px solid #060606;border-radius:0 2px 2px 0;
+ box-shadow:2px 1px 2px #0008;
+}
+#piano.piano-keyboard .piano-row.in-scale .note-name {border-left:0;color:#15272b}
+#piano.piano-keyboard .piano-row.in-scale .note-name::before {
+ background:#dbeaec;box-shadow:inset 3px 0 0 var(--signal-cyan);
+}
+#piano.piano-keyboard .piano-row.sharp.in-scale .note-name::before {
+ background:#17373b;box-shadow:inset 3px 0 0 var(--signal-cyan),2px 1px 2px #0008;
+}
+#piano.piano-keyboard .piano-row.out-of-scale .note-name {color:#555}
+#piano.piano-keyboard .piano-row.out-of-scale:not(.sharp) .note-name::before {background:#aaa}
+#piano.piano-keyboard .piano-row.sharp.out-of-scale .note-name::before {background:#050505}
 .note {
   padding:0;min-width:0;border:0;border-right:1px solid #292929;
   border-bottom:1px solid #1b1b1b;background:#101010;
