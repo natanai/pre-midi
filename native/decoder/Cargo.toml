@@ -5,3 +5,4 @@ edition = "2021"
 [dependencies]
 symphonia = { version = "=0.6.1", features = ["aac", "isomp4", "mp3"] }
 symphonia-adapter-libopus = "=0.3.0"
+opusic-sys = "=0.7.6"

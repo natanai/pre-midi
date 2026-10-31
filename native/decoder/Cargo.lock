@@ -103,6 +103,7 @@ dependencies = [
 name = "premidi-decoder"
 version = "0.1.0"
 dependencies = [
+ "opusic-sys",
  "symphonia",
  "symphonia-adapter-libopus",
 ]
