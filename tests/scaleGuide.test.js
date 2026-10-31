@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScale} from "../scaleGuide.js";
+import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScale,isPitchInScaleAtStep,scaleDirectionAtStep} from "../scaleGuide.js";
 
 test("all twelve tonics and named modes have valid, distinct pitch-class sets",()=>{
  assert.equal(SCALE_ROOTS.length,12);
- assert.equal(SCALE_MODES.length,17);
+ assert.equal(SCALE_MODES.length,18);
  assert.equal(new Set(SCALE_MODES.map(mode=>mode.id)).size,SCALE_MODES.length);
  for(const mode of SCALE_MODES){
   assert.equal(mode.steps[0],0,mode.id+" must include its tonic");
@@ -29,7 +29,8 @@ test("harmonic and melodic minor are distinct from natural minor",()=>{
  assert.equal(isPitchInScale(71,{root:0,mode:"natural-minor"}),false);
  assert.equal(isPitchInScale(71,{root:0,mode:"harmonic-minor"}),true);
  assert.equal(isPitchInScale(69,{root:0,mode:"melodic-minor"}),true);
- assert.equal(isPitchInScale(68,{root:0,mode:"melodic-minor"}),false);
+ assert.equal(isPitchInScale(68,{root:0,mode:"melodic-minor"}),true); // descending form
+ assert.equal(isPitchInScale(68,{root:0,mode:"melodic-minor-jazz"}),false);
 });
 test("chromatic is nonrestrictive and invalid stored preferences fail safely",()=>{
  assert.deepEqual(normalizeScaleGuide(null),{root:0,mode:"chromatic",lock:false});
@@ -47,4 +48,33 @@ test("piano-roll scales are editor guidance; they never mutate note events",()=>
  assert.equal(isPitchInScale(notes[0].pitch,guide),true);
  assert.equal(isPitchInScale(notes[1].pitch,guide),false);
  assert.deepEqual(notes,original);
+});
+
+test("classical melodic minor follows earlier melodic direction in musical time",()=>{
+ const guide={root:9,mode:"melodic-minor",lock:true}; // A melodic minor
+ const notes=[{pitch:69,start:0,duration:2},{pitch:72,start:4,duration:2}];
+ assert.equal(isPitchInScaleAtStep(78,guide,notes,1),true); // ascending F sharp
+ assert.equal(isPitchInScaleAtStep(77,guide,notes,1),false); // not ascending F natural
+ assert.equal(isPitchInScaleAtStep(65,guide,notes,1),true); // descending F natural
+ assert.equal(isPitchInScaleAtStep(66,guide,notes,1),false); // not descending F sharp
+ assert.equal(isPitchInScaleAtStep(67,guide,notes,5),true); // G natural below C5
+ assert.equal(isPitchInScaleAtStep(68,guide,notes,5),false); // G sharp below C5
+ assert.equal(scaleDirectionAtStep(78,notes,1),"ascending");
+ assert.equal(scaleDirectionAtStep(65,notes,1),"descending");
+ assert.equal(scaleDirectionAtStep(65,notes,0),"either");
+ assert.equal(isPitchInScaleAtStep(77,guide,[],0),true);
+ assert.equal(isPitchInScaleAtStep(78,guide,[],0),true);
+ assert.equal(isPitchInScaleAtStep(66,{root:9,mode:"melodic-minor-jazz"},notes,1),true);
+});
+test("directional scale context is unambiguous only when the prior onset agrees",()=>{
+ const guide={root:9,mode:"melodic-minor"};
+ const chord=[{start:0,pitch:60},{start:0,pitch:84}];
+ assert.equal(scaleDirectionAtStep(77,chord,1),"either");
+ assert.equal(isPitchInScaleAtStep(77,guide,chord,1),true);
+ assert.equal(isPitchInScaleAtStep(78,guide,chord,1),true);
+ const phrase=[{start:0,pitch:84},{start:3,pitch:69},{start:9,pitch:60}];
+ assert.equal(scaleDirectionAtStep(78,phrase,4),"ascending");
+ assert.equal(scaleDirectionAtStep(78,phrase,0),"either");
+ assert.equal(scaleDirectionAtStep(78,phrase,9),"ascending"); // onset at 9 is simultaneous, not earlier
+ assert.equal(scaleDirectionAtStep(78,phrase,10),"ascending");
 });

@@ -6,7 +6,7 @@ import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSo
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
 import { resizeNote } from "./noteEditing.js";
-import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScale } from "./scaleGuide.js";
+import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
@@ -81,6 +81,10 @@ const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
 // instrument. Canonical notes and .premidi exports stay unchanged.
 const SCALE_PREFS = "premidi-scale-guide-v1";
 const scaleGuides = new Map();
+const PIANO_KEYS_PREF = "premidi-piano-keys-v1";
+let showPianoKeys = true;
+try {showPianoKeys=localStorage.getItem(PIANO_KEYS_PREF)!=="off";}catch{}
+let scaleFocusStep=0;
 try {
  const stored=JSON.parse(localStorage.getItem(SCALE_PREFS)||"{}");
  if(stored && typeof stored==="object" && !Array.isArray(stored)){
@@ -111,6 +115,11 @@ function initializeScaleControls() {
  root.addEventListener("change",event=>updateScaleGuide({root:Number(event.target.value)}));
  mode.addEventListener("change",event=>updateScaleGuide({mode:event.target.value}));
  $("scale-lock").addEventListener("change",event=>updateScaleGuide({lock:event.target.checked}));
+ $("piano-keys").addEventListener("change",event=>{
+  showPianoKeys=event.target.checked;
+  try {localStorage.setItem(PIANO_KEYS_PREF,showPianoKeys?"on":"off");}catch{}
+  renderNotes();
+ });
 }
 function renderScaleControls(inst) {
  const rack=inst.layout==="rack";
@@ -121,6 +130,7 @@ function renderScaleControls(inst) {
  $("scale-mode").value=guide.mode;
  $("scale-lock").checked=guide.lock;
  $("scale-lock").disabled=guide.mode==="chromatic";
+ $("piano-keys").checked=showPianoKeys;
 }
 
 // Audio assets are immutable blobs. Undo stores only mutable beat structure
@@ -712,6 +722,7 @@ function renderRack(root,inst,chunk){
 function renderNotes() {
  const root = $("piano"), inst = instrument(), chunk = chunkFor(inst);
  root.classList.toggle("sound-rack",inst.layout==="rack");
+ root.classList.toggle("piano-keyboard",inst.layout!=="rack"&&showPianoKeys);
  root.setAttribute("aria-label",inst.layout==="rack"?"Sound rack":"Piano roll");
  document.querySelector(".note-length-control").hidden=inst.layout==="rack";
  renderScaleControls(inst);
@@ -721,16 +732,43 @@ function renderNotes() {
  root.style.setProperty("--track-accent", signal(inst));
  const scaleGuide=scaleGuideFor(inst);
  const scaleActive=scaleGuide.mode!=="chromatic";
- const scaleName=SCALE_MODES.find(mode=>mode.id===scaleGuide.mode)?.name||"chromatic";
+ const scaleMode=SCALE_MODES.find(mode=>mode.id===scaleGuide.mode);
+ const scaleName=scaleMode?.name||"chromatic";
+ const directionalScale=!!scaleMode?.descendingSteps;
+ const keys=[];
+ function paintKeys(step){
+  if(!scaleActive)return;
+  for(const {pitch,row,label} of keys){
+   const valid=isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step);
+   row.classList.toggle("in-scale",valid);
+   row.classList.toggle("out-of-scale",!valid);
+   const direction=directionalScale?scaleDirectionAtStep(pitch,chunk.notes,step):"";
+   label.title=noteLabel(pitch)+" · "+(valid?"in ":"outside ")+SCALE_ROOTS[scaleGuide.root]+" "+scaleName+
+    (direction?" · "+(direction==="either"?"either direction":direction):"");
+  }
+ }
+ function focusScaleStep(step){
+  if(scaleFocusStep===step)return;
+  scaleFocusStep=step;
+  paintKeys(step);
+ }
 
  for (let pitch = 83; pitch >= 36; pitch--) {
-  const sharp = [1,3,6,8,10].includes(pitch % 12);
-  const row = element("div", undefined, "piano-row" + (sharp ? " sharp" : ""));
-  const inScale=isPitchInScale(pitch,scaleGuide);
-  if(scaleActive)row.classList.add(inScale?"in-scale":"out-of-scale");
-  const label=element("span",noteLabel(pitch),"note-name");
-  if(scaleActive)label.title=(inScale?"in ":"outside ")+SCALE_ROOTS[scaleGuide.root]+" "+scaleName;
+  const pitchClass=pitch%12;
+  const sharp=[1,3,6,8,10].includes(pitchClass);
+  const row=element("div",undefined,"piano-row"+(sharp?" sharp":""));
+  const label=element("span",showPianoKeys?(pitchClass===0?noteLabel(pitch):""):noteLabel(pitch),"note-name");
+  label.setAttribute("aria-label",noteLabel(pitch));
+  label.title=noteLabel(pitch);
+  if(showPianoKeys&&!sharp){
+   // White keys span the space to adjacent white-key centers; black keys
+   // sit above the join, like a physical piano keyboard.
+   const gaps={0:[1,2],2:[2,2],4:[2,1],5:[1,2],7:[2,2],9:[2,2],11:[2,1]}[pitchClass];
+   label.style.setProperty("--key-top",((1-gaps[0])*11.5)+"px");
+   label.style.setProperty("--key-height",((gaps[0]+gaps[1])*11.5)+"px");
+  }
   row.append(label);
+  keys.push({pitch,row,label});
   const cells = [];
   function previewRow() {
    for (let pos = 0; pos < 16; pos++) {
@@ -741,11 +779,16 @@ function renderNotes() {
     cell.classList.toggle("end", !!present && present.start + present.duration - 1 === pos);
     cell.classList.toggle("selected", editingNoteEffects && !!present && present.id===selectedNoteId);
     cell.classList.toggle("bent", !!present && present.bend?.shape && present.bend.shape!=="straight");
+    // Direction is evaluated at this *time column*, not per pitch row.
+    const inScale=isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,pos);
+    const direction=directionalScale?scaleDirectionAtStep(pitch,chunk.notes,pos):"";
+    cell.classList.toggle("out-of-scale",scaleActive&&!inScale);
     // A locked scale blocks only new out-of-scale notes; old notes remain
     // selectable, removable, resizable and audible.
     cell.disabled=scaleGuide.lock&&!inScale&&!present;
     cell.setAttribute("aria-label", noteLabel(pitch) + ", step " + (pos + 1)
      + (scaleActive?(inScale?", in scale":", outside scale"):"")
+     + (direction?", "+(direction==="either"?"either direction":direction):"")
      + (present ? ", note length " + present.duration + " steps; " + (editingNoteEffects?"click to edit note effects":"click to remove") :
       cell.disabled?", adding notes restricted":", click to add note"));
     cell.title = present ? (editingNoteEffects?"Click to shape note · Shift-click strength":"Click to remove · Shift-click strength") + " · drag end to resize" : "Add " + noteLabel(pitch);
@@ -775,7 +818,7 @@ function renderNotes() {
      modify(()=>{editedChunk.notes=editedChunk.notes.filter(n=>n.id!==existing.id);});
      return;
     }
-    if(scaleGuide.lock&&!inScale)return;
+    if(scaleGuide.lock&&!isPitchInScaleAtStep(pitch,scaleGuide,editedChunk.notes,step))return;
     const created={id:id(),pitch,start:step,
      duration:Math.min(Number($("length").value),16-step),velocity:Number($("velocity").value)};
     selectedNoteId=editingNoteEffects?created.id:null;
@@ -783,6 +826,8 @@ function renderNotes() {
      void audition(targetInst,pitch,beat).catch(()=>{});
    }, "note" + (step % 4 === 0 ? " beat" : ""));
    cells.push(cell);
+   cell.addEventListener("pointerenter",()=>focusScaleStep(step));
+   cell.addEventListener("focus",()=>focusScaleStep(step));
 
    // Resize is an edge gesture, never a separate editor or a save pathway.
    cell.addEventListener("pointerdown", event => {
@@ -858,6 +903,7 @@ function renderNotes() {
  playhead.setAttribute("aria-hidden", "true");
  playhead.hidden = true;
  root.append(playhead);
+ paintKeys(scaleFocusStep);
  paintPianoPlayhead();
  scroll.scrollTop = top;
  scroll.scrollLeft = left;
