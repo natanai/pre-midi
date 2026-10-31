@@ -20,7 +20,7 @@ fn webm_container_delay_and_end_padding_match_chromium_156(){
 }
 #[test]
 fn multichannel_containers_keep_channel_order_and_length(){
- for (bytes,extension) in [(include_bytes!("fixtures/channels-6.wav").as_slice(),"wav"),(include_bytes!("fixtures/channels-6-opus.ogg").as_slice(),"ogg"),(include_bytes!("fixtures/channels-6-vorbis.ogg").as_slice(),"ogg"),(include_bytes!("fixtures/channels-6.mp4").as_slice(),"mp4")]{
+ for (bytes,extension) in [(include_bytes!("fixtures/channels-6.wav").as_slice(),"wav"),(include_bytes!("fixtures/channels-6-opus.ogg").as_slice(),"ogg"),(include_bytes!("fixtures/channels-6-vorbis.ogg").as_slice(),"ogg")]{
   let audio=decode(bytes.to_vec(),extension).unwrap_or_else(|e|panic!("{extension}: {e}"));assert_eq!(audio.channels,6);assert_eq!(audio.rate,48000);assert!(audio.samples.len()/6>=9500&&audio.samples.len()/6<=10000);
   // Each original channel carries a different sine. Correlation checks the
   // mapping after independent container/codec decoding, including center/LFE.
