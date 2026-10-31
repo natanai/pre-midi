@@ -44,3 +44,7 @@ Symphonia 0.6.1: MPL-2.0. The unchanged decoder and demuxer source is available 
 symphonia-adapter-libopus 0.3.0 is used under its MIT licence (licenses/Symphonia-Opus-MIT.txt); source: https://crates.io/crates/symphonia-adapter-libopus/0.3.0.
 
 opusic-sys 0.7.6 and its bundled libopus are statically linked. Their notices are in licenses/Opusic-sys.txt and licenses/Opus.txt. Unchanged sources: https://crates.io/crates/opusic-sys/0.7.6.
+
+Extended AAC decoding
+
+fdk-aac-sys 0.5.0 statically links the unchanged Fraunhofer FDK AAC sources bundled by that crate. Its full notice is in licenses/FDK-AAC.txt. Corresponding pinned source package: https://crates.io/crates/fdk-aac-sys/0.5.0. Native integration uses the decoder only, on the audio control worker; callback mixing does not decode media. The original Rust adapter is in native/decoder/src/aac.rs.

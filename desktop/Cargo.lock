@@ -873,6 +873,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fdk-aac-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24516d2611506d5cb1833555adc75f6baf9fe2706b9c13e6fc33a6b22c51ca83"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2570,6 +2579,8 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 name = "premidi-decoder"
 version = "0.1.0"
 dependencies = [
+ "fdk-aac-sys",
+ "opusic-sys",
  "symphonia",
  "symphonia-adapter-libopus",
 ]

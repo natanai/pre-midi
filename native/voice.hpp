@@ -21,6 +21,7 @@ struct Plan {
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
  std::uint32_t eventCount=0;std::array<Event,6> events{};
 };
+struct SampleChannelState {Biquad filter;Drive drive;SampleChannelState()noexcept=default;SampleChannelState(const Biquad& input,const DriveRecipe* recipe)noexcept:filter(input),drive(recipe){}};
 struct VoicePreparation {Biquad filter;std::array<double,16> alpha{};std::array<double,2> initialFrequency{};double left=0,right=0;bool movingCutoff=false;const DriveRecipe* drive=nullptr;const SineLfoTable* lfoBank=nullptr;};
 // Prepared on the control thread. process() only touches fixed-size state and a
 // caller-owned output span: no heap allocation, locks, file/device I/O or UI.
@@ -30,6 +31,9 @@ class Voice {
  std::array<double,3> legacyPhases{};bool legacyStarted=false;
  float noiseA=0,noiseB=0;double noiseFraction=0;bool noiseStarted=false;
  Biquad filter,filterRight;Modulation modulation;Drive drive,driveRight;const DriveRecipe* recipe;const SineLfoTable* lfoBank;bool sourceStarted=false,movingCutoff=false;std::uint32_t noiseSeed=0x7f41a08b,noiseIndex=0;double left,right;std::array<const WaveBank*,2> banks;std::array<double,2> initialFrequency{};
+ SampleChannelState* extraChannels=nullptr;
+ unsigned extraCount()const noexcept{return plan.kind&&plan.sample?(plan.sample->channels==4?2:plan.sample->channels==6?4:0):0;}
+ void resetChannels()noexcept{if(extraChannels)for(unsigned i=0;i<extraCount();i++)extraChannels[i]=SampleChannelState(filter,recipe);}
  double samplePosition=0,sampleStep=1;std::uint64_t sampleQuantum=UINT64_MAX;
  float envelope(double t) const noexcept {
   if(t<plan.events[0].time)return 0;
@@ -76,23 +80,25 @@ public:
 #ifdef PREMIDI_PROBE
  struct Probe {float wave0=0,cents0=0,frequency0=0;};Probe probe{};
 #endif
- Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr},std::uint64_t initialFrame=0,const VoicePreparation* prepared=nullptr,const DriveRecipe* driveRecipe=nullptr,const SineLfoTable* lfo=nullptr) noexcept:plan(input),rate(sampleRate),frame(initialFrame),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity,prepared?&prepared->alpha:nullptr,prepared?prepared->lfoBank:lfo),drive(prepared?prepared->drive:driveRecipe),driveRight(prepared?prepared->drive:driveRecipe),recipe(prepared?prepared->drive:driveRecipe),lfoBank(prepared?prepared->lfoBank:lfo),banks(waveBanks){
+ Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr},std::uint64_t initialFrame=0,const VoicePreparation* prepared=nullptr,const DriveRecipe* driveRecipe=nullptr,const SineLfoTable* lfo=nullptr,SampleChannelState* additional=nullptr) noexcept:plan(input),rate(sampleRate),frame(initialFrame),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity,prepared?&prepared->alpha:nullptr,prepared?prepared->lfoBank:lfo),drive(prepared?prepared->drive:driveRecipe),driveRight(prepared?prepared->drive:driveRecipe),recipe(prepared?prepared->drive:driveRecipe),lfoBank(prepared?prepared->lfoBank:lfo),banks(waveBanks),extraChannels(additional){
   firstFrame=static_cast<std::uint64_t>(std::ceil(plan.start*rate-1e-9));lastSourceFrame=static_cast<std::uint64_t>(std::ceil(plan.sourceEnd*rate-1e-9));lastGraphFrame=static_cast<std::uint64_t>(std::ceil(plan.graphEnd*rate-1e-9));
-  if(prepared){filter=filterRight=prepared->filter;movingCutoff=prepared->movingCutoff;left=prepared->left;right=prepared->right;initialFrequency=prepared->initialFrequency;return;}
+  if(prepared){filter=filterRight=prepared->filter;movingCutoff=prepared->movingCutoff;left=prepared->left;right=prepared->right;initialFrequency=prepared->initialFrequency;resetChannels();return;}
   for(unsigned i=0;i<plan.routeCount;i++)if(plan.routes[i].target==4)movingCutoff=true;
   if(plan.automationCount||plan.version>=4||plan.tone>0)movingCutoff=true;
   filter.configure(plan.filterType,cutoffAt(plan.start),plan.q,rate);
   filterRight=filter;
   left=std::cos((plan.pan+1)*pi/4);right=std::sin((plan.pan+1)*pi/4);
   for(unsigned j=0;j<2;j++){const auto& osc=plan.oscillators[j];initialFrequency[j]=osc.frequency*std::pow(2.,(osc.count?osc.curve[0]:osc.detune)/1200.);if(plan.version==9)initialFrequency[j]=std::min(rate/2,static_cast<double>(static_cast<float>(std::min(rate/2,osc.frequency))*std::exp2(static_cast<float>(static_cast<float>(osc.count?osc.curve[0]:osc.detune)*(1.f/1200)))));}
+  resetChannels();
  }
+ void relocateChannels(SampleChannelState* additional)noexcept{extraChannels=additional;}
  VoicePreparation preparation()const noexcept{return {filter,modulation.preparedAlpha(),initialFrequency,left,right,movingCutoff,recipe,lfoBank};}
  void process(float* interleavedStereo,std::size_t frames) noexcept {
   for(std::size_t i=0;i<frames;i++,frame++){
 #ifdef PREMIDI_PROBE
    probe={};
 #endif
-   const double t=static_cast<double>(frame)/rate,elapsed=t-plan.start;float mix=0,mixRight=0;const auto offsets=modulation.next(t);
+   const double t=static_cast<double>(frame)/rate,elapsed=t-plan.start;float mix=0,mixRight=0;std::array<float,4> additional{};const auto offsets=modulation.next(t);
    std::array<float,3> lfo{};
    if(t>=plan.start&&(plan.vibratoDepth>0||plan.tone>0||plan.tremolo>0)){
     const std::array<double,3> speeds{plan.vibratoRate,plan.toneRate,plan.tremoloRate};
@@ -117,7 +123,7 @@ public:
       sampleStep=std::clamp(static_cast<float>(plan.playbackRate)*std::pow(2.,detune/1200.)*plan.sample->rate/rate,0.,1024.);
      }
      if(beginning)samplePosition=plan.sampleOffset*plan.sample->rate+std::max(0.,t-plan.start)*rate*sampleStep;
-     mix=plan.sample->at(samplePosition,0);mixRight=plan.sample->at(samplePosition,plan.sample->channels-1);samplePosition+=sampleStep;
+     mix=plan.sample->at(samplePosition,0);mixRight=plan.sample->at(samplePosition,std::min(1u,plan.sample->channels-1));for(unsigned ch=0;ch<extraCount();ch++)additional[ch]=plan.sample->at(samplePosition,ch+2);samplePosition+=sampleStep;
     }else for(std::size_t j=0;j<2;j++){
      const auto& osc=plan.oscillators[j];
      const float normalized=std::clamp(offsets[2*j]*(1.f/2400),-1.f,1.f);
@@ -141,14 +147,19 @@ public:
     }
    }
    const float tone=elapsed>=0&&frame<static_cast<std::uint64_t>(std::ceil((plan.start+plan.duration+.04)*rate-1e-9))?lfo[1]*static_cast<float>(plan.cutoff*plan.tone*.8):0;
-   if(movingCutoff)filter.configure(plan.filterType,(std::min(rate/2,cutoffAt(t))+tone)*std::pow(2.,std::clamp(offsets[4],-8.f,8.f)),plan.q,rate);
+   if(movingCutoff){const double cutoff=(std::min(rate/2,cutoffAt(t))+tone)*std::pow(2.,std::clamp(offsets[4],-8.f,8.f));filter.configure(plan.filterType,cutoff,plan.q,rate);filterRight.configure(plan.filterType,cutoff,plan.q,rate);if(extraChannels)for(unsigned ch=0;ch<extraCount();ch++)extraChannels[ch].filter.configure(plan.filterType,cutoff,plan.q,rate);}
    if(plan.routeCount){const double pan=std::clamp(static_cast<float>(plan.pan)+std::clamp(offsets[5],-2.f,2.f),-1.f,1.f);left=std::cos((pan+1)*pi/4);right=std::sin((pan+1)*pi/4);}
    const float filtered=drive.process(plan.bypassFilter?mix:filter.process(mix));
-   const bool stereo=plan.kind&&plan.sample&&plan.sample->channels==2;
+   const bool stereo=plan.kind&&plan.sample&&plan.sample->channels>=2;
    const float filteredRight=stereo?driveRight.process(plan.bypassFilter?mixRight:filterRight.process(mixRight)):filtered;
    const float pulse=1+(elapsed>=0&&frame<static_cast<std::uint64_t>(std::ceil((plan.start+plan.duration+.04)*rate-1e-9))?lfo[2]*static_cast<float>(plan.tremolo*.45):0);
-   const float sample=frame>=lastGraphFrame?0:static_cast<float>(filtered)*envelope(t)*pulse;
-   const float other=frame>=lastGraphFrame?0:filteredRight*envelope(t)*pulse;
+   float sample=frame>=lastGraphFrame?0:static_cast<float>(filtered)*envelope(t)*pulse;
+   float other=frame>=lastGraphFrame?0:filteredRight*envelope(t)*pulse;
+   if(extraCount()&&extraChannels){
+    for(unsigned ch=0;ch<extraCount();ch++){auto& state=extraChannels[ch];additional[ch]=frame>=lastGraphFrame?0:state.drive.process(plan.bypassFilter?additional[ch]:state.filter.process(additional[ch]))*envelope(t)*pulse;}
+    if(plan.sample->channels==4){sample=.5f*(sample+additional[0]);other=.5f*(other+additional[1]);}
+    else{const float factor=static_cast<float>(std::sqrt(.5));sample+=factor*(additional[0]+additional[2]);other+=factor*(additional[0]+additional[3]);}
+   }
    if(stereo||plan.kind==2){
     if(plan.pan<=0){const double angle=(plan.pan+1)*pi/2;interleavedStereo[2*i]=static_cast<float>(sample+other*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other*std::sin(angle));}
     else{const double angle=plan.pan*pi/2;interleavedStereo[2*i]=static_cast<float>(sample*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other+sample*std::sin(angle));}
