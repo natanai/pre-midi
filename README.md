@@ -8,9 +8,9 @@ A local-first Beat maker and Song arranger for the [pre-programmed](https://gith
 
 During rapid prototyping, **Windows 11 x64 portable ZIP is the only preview distribution**. Extract the entire ZIP to a writable folder and run `pre-midi.exe`. Keep `data/`, `projects/` and `exports/` with that folder; close the app before moving or backing it up. To upgrade, back up the folder and replace only the executable and release files, **not** your data folders. See [desktop host and upgrade details](docs/desktop-host.md). macOS and Linux native architecture is maintained for the eventual full release, but their preview packages are deferred.
 
-Desktop **Play** and **Hear sound** use the C++ synthesizer in a miniaudio device callback for supported synth plans. The browser continues to use Web Audio. Native playback currently excludes noise, delay, drive, legacy movement, sample-rack and recorded/vocal playback; select Web Audio explicitly in desktop Settings for projects needing those features. Native playback snapshots the project at Play, so restart playback after edits. Recording and WAV export still use Web Audio. The Windows hardware latency, driver underrun and device-recovery behavior has not yet been physically qualified. See [native audio scope](docs/native-audio.md) and [release notes](docs/desktop-release-notes.md).
+Desktop **Play** and **Hear sound** use the native C++17/miniaudio engine by default. Existing factory synth/sample presets, Song vocals, live edits, WAV export and native microphone recording are implemented, with an explicit Web Audio alternative in Settings. Bounded native multichannel PCM/float WAV and Opus importing is supported; advanced AAC/HE-AAC and extreme-rate importing remain experimental. Physical Windows 11 audio-device latency, dropouts, and recovery are not yet qualified. See [native audio scope](docs/native-audio.md) and [release notes](docs/desktop-release-notes.md).
 
-The portable edition can **check** for newer releases but currently uses manual, folder-preserving ZIP replacement rather than automatic installation.
+The portable edition can check for newer releases, but updates require manual folder-preserving ZIP replacement; no automatic portable installer is used.
 
 ## Use
 

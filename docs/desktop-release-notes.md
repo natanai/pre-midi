@@ -1,7 +1,7 @@
-pre-midi 0.14.1-preview.12 extends native synthesis to long held notes and pitch at the device frequency limit. Glides, bends and deep modulation retain their authored movement with an explicit Nyquist clamp. Stable sine LFO execution prevents accumulated phase drift during long, deeply modulated notes. Low-rate tone movement and fractional vibrato starts are also corrected.
+pre-midi 0.14.1-preview.13 qualifies bounded multichannel native audio importing without expanding the .premidi music format. PCM/float WAV inputs support 1–32 channels at 8–192 kHz, and multistream Opus supports up to 8 channels. The native mixer preserves each channel's filtering and 4x drive before stereo playback. New browser/native fixtures cover 4/6/8/32-channel WAV plus 6-channel Opus in plain, processed and vocal playback.
 
-This preview includes native microphone capture, synchronized count-in, WAV vocals, sample racks, recording previews and the full example library from the preceding native phases. Existing portable data and Settings update behavior are preserved.
+The existing native synth library, sample racks, vocals, live editing, WAV export, microphone capture and count-in remain supported. A full native acoustic/library comparison, Rust/device tests and Windows portable upgrade/relocation checks passed for this release's preceding PR #63. The .premidi Beat/Song schemas are unchanged, and audio bytes remain separate Assets.
 
-- Windows x64 portable folder ZIP only. Close the app and replace application files plus `licenses/`; preserve `data/`, `projects/` and `exports/`.
-- Automated qualification covers native preparation, independent acoustic references, block-size invariance, malformed packets, callback allocation and packaged recording workflows.
-- Physical Windows WASAPI input/output, measured latency, sustained dropouts and device recovery remain unqualified. Broader imported channel/rate qualification continues.
+- Windows 11 x64 portable folder ZIP only. Close pre-midi, back up your folder, replace pre-midi.exe, portable.txt, README.txt, THIRD-PARTY-NOTICES.txt and licenses/; preserve data/, projects/ and exports/.
+- AAC/HE-AAC multichannel priming, Vorbis end-duration differences and extreme 384–768 kHz import remain experimental in draft PR #62; they are NOT released in this preview.
+- Physical Windows WASAPI microphone/output, measured round-trip latency, sustained dropouts and recovery still require hardware testing. Native .premidi player compatibility in pre-programmed remains a separate gate.
