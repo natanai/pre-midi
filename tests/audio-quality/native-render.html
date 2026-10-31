@@ -1,5 +1,6 @@
 <!doctype html><meta charset="utf-8"><title>Native DSP parity</title><pre id="status">running</pre>
 <script type="module">
+import {qualifyNativeImports} from './native-imports.js';
 import {qualifyNativeEdges} from './native-edges.js';
 import {qualifyNativeLibrary} from "./native-library.js";
 import {modulationFixtures} from "./modulation-fixtures.js";
@@ -93,6 +94,7 @@ try{
  }
  }
  await qualifyNativeEdges(add);
+ await qualifyNativeImports(add);
  if(!edgesOnly)await qualifyNativeLibrary(add,{quick});
  report={schemaVersion:1,backend:"native-cpp-vs-web-audio",environment:{userAgent:navigator.userAgent},
   policy:{maxPcmError:.0001,maxRmsError:.00002,initialRmsTarget:.00001,toleranceRationale:"The initial 1e-5 RMS target missed two 1760 Hz cases at about 1.1e-5. Retain raw differences, use an explicit 2e-5 RMS gate plus max error, independent tuning and relative-level gates; no browser reference is altered.",method:"same canonical v1 plan rendered independently by C++ and Web Audio; compare interleaved stereo PCM",scope:edgesOnly?"long-note and high-pitch diagnostic":quick?"focused sample/vocal diagnostic":"all factory synth/sample presets, all shipped audio assets, complete examples and overlapping vocal Song/seek/loop",completeLibrary:!quick&&!edgesOnly,limits:["Physical Windows WASAPI input/output and hardware latency remain unqualified","Broader imported channel/rate qualification continues"]},summary:{cases:results.length,failed:failures.length,status:failures.length?"fail":"pass"},results,failures};

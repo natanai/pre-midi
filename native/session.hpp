@@ -11,7 +11,7 @@ enum Playback:unsigned{stopped=0,playing=1,paused=2,finished=3,failed=4};
 struct PreparedNote {Plan plan;std::array<const WaveBank*,2> banks{};VoicePreparation prepared;int delay=-1;};
 struct Slot {
  std::optional<Voice> voice;Plan plan;std::array<const WaveBank*,2> banks{};
- int delay=-1;
+ int delay=-1;SampleChannelState* channels=nullptr;
  const DriveRecipe* drive=nullptr;const SineLfoTable* lfo=nullptr;
  std::uint64_t start=0,off=0,end=0,order=0,fadeEnd=0;
 };
@@ -20,7 +20,7 @@ struct Slot {
 class Session {
  struct Bank {unsigned shape;std::array<double,32> harmonics;std::unique_ptr<WaveBank> value;};
  std::vector<Bank> banks;std::unique_ptr<SineLfoTable> lfoBank;
- SampleStore ownedSamples;
+ SampleStore ownedSamples;std::unique_ptr<SampleChannelState[]> channelState;unsigned channelWidth=0;
  struct DriveEntry {double amount;std::unique_ptr<DriveRecipe> recipe;};std::vector<DriveEntry> drives;
  struct Bus {double mix,time,feedback,tail;Delay delay;std::array<float,2*renderBlock> input{};};
  std::vector<Bus> buses;std::uint64_t tailEnd=0;
@@ -55,7 +55,7 @@ class Session {
    if(free->start<at){
     Slot* tail=nullptr;for(auto& s:retiring)if(!s.voice){tail=&s;break;}
     if(!tail){error=1;return;}
-    *tail=*free;tail->fadeEnd=std::min(tail->end,at+fadeFrames);
+    auto* storage=tail->channels;*tail=*free;tail->channels=storage;if(channelWidth){std::copy(free->channels,free->channels+channelWidth,storage);tail->voice->relocateChannels(storage);}tail->fadeEnd=std::min(tail->end,at+fadeFrames);
    }
    stolen++;
   }
@@ -65,7 +65,7 @@ class Session {
   for(unsigned i=0;i<p.eventCount;i++)p.events[i].time+=shift;
   for(unsigned i=0;i<p.automationCount;i++)p.automation[i].time+=shift;
   free->banks=note.banks;free->start=at;free->off=frameAt(p.off);free->end=frameAt(p.graphEnd);free->order=++serial;
-  free->voice.emplace(p,rate,free->banks,at,&note.prepared);admitted++;
+  free->voice.emplace(p,rate,free->banks,at,&note.prepared,nullptr,nullptr,free->channels);admitted++;
   if(note.delay>=0)tailEnd=std::max(tailEnd,frameAt(p.graphEnd+buses[note.delay].tail));
  }
  void mix(float* output,unsigned frames)noexcept{
@@ -83,7 +83,7 @@ class Session {
  }
  void reconstruct(Slot& s,std::uint64_t target){
   if(!s.voice)return;
-  s.voice.emplace(s.plan,rate,s.banks,s.start,nullptr,s.drive,s.lfo);
+  s.voice.emplace(s.plan,rate,s.banks,s.start,nullptr,s.drive,s.lfo,s.channels);
   std::array<float,2*renderBlock> scratch{};
   for(auto at=s.start;at<target;){const auto count=static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,target-at));s.voice->process(scratch.data(),count);at+=count;}
  }
@@ -105,7 +105,7 @@ public:
   if(magic==0x32534d50){
    require(samples.empty(),"Inline native PCM cannot shadow registered assets");const auto assets=in.u32();require(assets<=512,"Too many inline native assets");
    for(unsigned i=0;i<assets;i++){
-    const auto sourceRate=in.u32(),channels=in.u32(),frames=in.u32();require(sourceRate>=8000&&sourceRate<=192000&&channels>=1&&channels<=2&&frames>0&&frames<=sourceRate*301&&std::uint64_t(frames)*channels<=in.remaining()/4,"Invalid inline native asset dimensions");
+    const auto sourceRate=in.u32(),channels=in.u32(),frames=in.u32();require(sourceRate>=3000&&sourceRate<=768000&&channels>=1&&channels<=32&&frames>0&&frames<=sourceRate*301&&std::uint64_t(frames)*channels<=in.remaining()/4,"Invalid inline native asset dimensions");
     std::vector<float> pcm(static_cast<std::size_t>(frames)*channels);for(auto& value:pcm)value=in.f32();available.push_back(std::make_shared<SampleData>(pcm.data(),frames,sourceRate,channels,rate));
    }
   }
@@ -113,7 +113,7 @@ public:
   for(unsigned n=0;n<count;n++){
    const auto size=in.u32();require(size<=16000,"Native voice packet too large");PreparedNote note;note.plan=readPlan(in.take(size),size,rate);
    require(note.plan.start<cycle*2,"Native strum offset exceeds one complete cycle");
-   if(note.plan.kind){require(note.plan.asset<=available.size()&&available[note.plan.asset-1]!=nullptr,"Native sample asset handle is missing");const auto& sample=available[note.plan.asset-1];require(sample->rate==rate&&note.plan.sampleOffset*rate<sample->frames,"Native sample asset rate/offset mismatch");ownedSamples.push_back(sample);note.plan.sample=sample.get();}
+   if(note.plan.kind){require(note.plan.asset<=available.size()&&available[note.plan.asset-1]!=nullptr,"Native sample asset handle is missing");const auto& sample=available[note.plan.asset-1];require(sample->rate==rate&&note.plan.sampleOffset*rate<sample->frames,"Native sample asset rate/offset mismatch");ownedSamples.push_back(sample);note.plan.sample=sample.get();channelWidth=std::max(channelWidth,sample->channels==4?2u:sample->channels==6?4u:0u);}
    for(unsigned i=0;i<2&&!note.plan.kind;i++)if(note.plan.oscillators[i].wave||note.plan.version>=2){
     const auto& o=note.plan.oscillators[i];Bank* found=nullptr;for(auto& b:banks)if(b.shape==o.wave&&b.harmonics==o.harmonics){found=&b;break;}
     if(!found){require(banks.size()<32,"Native preview supports at most 32 unique oscillator banks");banks.push_back({o.wave,o.harmonics,std::make_unique<WaveBank>(o.wave,o.harmonics,rate)});found=&banks.back();}
@@ -133,6 +133,7 @@ public:
     notes.back().delay=static_cast<int>(index);
    }
   }
+  if(channelWidth){channelState=std::make_unique<SampleChannelState[]>((voiceLimit+retireLimit)*channelWidth);unsigned slot=0;for(auto& voice:voices)voice.channels=channelState.get()+slot++*channelWidth;for(auto& voice:retiring)voice.channels=channelState.get()+slot++*channelWidth;}
   require(in.done(),"Trailing native session data");std::stable_sort(notes.begin(),notes.end(),[](const auto& a,const auto& b){return a.plan.start<b.plan.start;});
   // Fixed onset-work bound at the largest accepted callback. No dense project
   // can force an unbounded catch-up loop on the audio thread.
