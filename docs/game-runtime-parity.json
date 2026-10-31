@@ -1,0 +1,433 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-10-31",
+  "purpose": "Track exact current pre-midi and pre-programmed music compatibility, serialized instruction size and game runtime cost separately. Audit only; does not authorize a game player rewrite.",
+  "sources": {
+    "studio": {
+      "repo": "natanai/pre-midi",
+      "main_commit_at_audit": "517c7f89912358c84c62c885f5c8585ef42ba8a4",
+      "files": [
+        "schema.js",
+        "songModel.js",
+        "packageIO.js",
+        "songIO.js",
+        "synth.js",
+        "src/dsp/modulation.js",
+        "src/dsp/automation.js",
+        "docs/song-rollout.md"
+      ]
+    },
+    "game": {
+      "repo": "natanai/pre-programmed",
+      "main_commit_at_audit": "4c87be661234586317fd8a4c28d35fde0fd208b1",
+      "files": [
+        "src/features/media/vendor/premidi-schema.js",
+        "src/features/media/vendor/premidi-audio.js",
+        "src/features/media/author/premidiWorkspaces.tsx",
+        "src/features/media/synth.ts",
+        "src/features/media/ui/synthPlayback.ts",
+        "tests/premidiPortable.test.ts"
+      ]
+    },
+    "tracking": "https://github.com/natanai/pre-programmed/issues/235"
+  },
+  "instruction_format": {
+    "studio_beat_versions": [
+      7,
+      9,
+      11
+    ],
+    "studio_song_versions": [
+      8,
+      10,
+      12,
+      14
+    ],
+    "game_reader_accepted_versions": [
+      2
+    ],
+    "compatibility": "incompatible",
+    "cause": "The game uses an unported legacy v2 parser/scheduler with waveform-per-instrument fields; studio Beats require Sound/Rack patches, Chunk placements and samples, and Songs add Tracks, Clips and Recordings.",
+    "studio_limits_bytes": {
+      "beat": 1000000,
+      "song": 8000000
+    },
+    "game_legacy_limit_bytes": 1000000,
+    "audio_embedded_in_premidi": false,
+    "file_format": "Plain UTF-8 JSON instructions; sample/recording metadata names a separate relative Asset. Portable asset-bearing projects use companion ZIP files.",
+    "studio_audio_package_limit_bytes": 64000000
+  },
+  "capability_matrix": [
+    {
+      "id": "legacy_v2",
+      "studio": "not a current native format",
+      "game": "read_write_play",
+      "bridge": "legacy reader remains for existing game saves; no silent rewrite"
+    },
+    {
+      "id": "beat_v7",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "version dispatch/validator plus native Beat event scheduler"
+    },
+    {
+      "id": "beat_v9_modulation",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "v2 patch modulation sources, routing and native/web synth voice"
+    },
+    {
+      "id": "beat_v11_automation",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "sample-timed cutoff automation with seek and loop parity"
+    },
+    {
+      "id": "song_v8",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "referenced Beats, Beat Clips/Tracks, overlap and repetitions"
+    },
+    {
+      "id": "song_v10_v12_v14",
+      "studio": "read_write_play",
+      "game": "unsupported",
+      "bridge": "modulation, automation and WAV vocal metadata variants"
+    },
+    {
+      "id": "instrument_sound_patches",
+      "studio": "two oscillators, harmonic recipes, filter, effects",
+      "game": "legacy single-waveform music reader",
+      "bridge": "small playback-only synth core, not studio authoring controls"
+    },
+    {
+      "id": "sample_racks",
+      "studio": "external Asset zones, recorded samples and hit racks",
+      "game": "unsupported in premidi reader",
+      "bridge": "game Media Asset resolver and bounded sample voice renderer"
+    },
+    {
+      "id": "chunk_offset_polymeter",
+      "studio": "placements with offsets/repeats and overlapping events",
+      "game": "v2 fixed bar timeline only",
+      "bridge": "one canonical Beat timing/event function"
+    },
+    {
+      "id": "song_tracks_clips",
+      "studio": "Beat and vocal Clips, layered Songs",
+      "game": "unsupported",
+      "bridge": "song clock and clip reference dispatch"
+    },
+    {
+      "id": "gameplay_controls",
+      "studio": "static authored music instructions and instrument parameters",
+      "game": "general game state/effect system; no modern music layer contract",
+      "bridge": "game-owned play/stop/seek/layer/parameter commands without embedding scripting into .premidi"
+    },
+    {
+      "id": "game_own_sfx_synth",
+      "studio": "not applicable",
+      "game": "separate 4-voice 16-step procedural SynthSound editor",
+      "bridge": "preserve independent SFX feature; do not count it as .premidi parity"
+    }
+  ],
+  "size_accounting": {
+    "measurement_script": "scripts/measure-game-footprint.mjs",
+    "test": "tests/gameFootprint.test.js",
+    "measurements_pending_ci": false,
+    "instruction_bytes": "generated from actual studio models and example export-shaped JSON",
+    "gzip_bytes": "informational only; not the current .premidi storage format",
+    "external_audio_asset_bytes": "not measured by instruction harness; report separately from ZIP payload",
+    "game_browser_bundle_delta_bytes": null,
+    "game_desktop_bundle_delta_bytes": null,
+    "reusable_audio_runtime_delta_bytes": null,
+    "codec_library_delta_bytes": null,
+    "portable_studio_zip_size_bytes": 14409418,
+    "warning": "Source-code line counts, compressed JSON size and the pre-midi portable ZIP do not establish added pre-programmed runtime size. Measure a real game build before claiming a budget.",
+    "measured_at": "2026-10-31",
+    "measured_using": "GitHub Actions successful verify job in PR #64: 41234759332 (native/browser + JS test suite)",
+    "instruction_measurement_method": "UTF-8 bytes of JSON.stringify(instruction-only .premidi export documents); gzip level 9 is informative only",
+    "instruction_cases": [
+      {
+        "case": "init-beat-v7",
+        "kind": "beat",
+        "version": 7,
+        "bytes": 1235,
+        "gzip_bytes_informational": 656,
+        "instruments": 1,
+        "sounds": 1,
+        "note_or_hit_events": 0,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 0,
+        "vocal_clips": 0
+      },
+      {
+        "case": "one-phrase-beat-v7",
+        "kind": "beat",
+        "version": 7,
+        "bytes": 1529,
+        "gzip_bytes_informational": 731,
+        "instruments": 1,
+        "sounds": 1,
+        "note_or_hit_events": 4,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 0,
+        "vocal_clips": 0
+      },
+      {
+        "case": "modulated-beat-v9",
+        "kind": "beat",
+        "version": 9,
+        "bytes": 1727,
+        "gzip_bytes_informational": 798,
+        "instruments": 1,
+        "sounds": 1,
+        "note_or_hit_events": 0,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 0,
+        "vocal_clips": 0
+      },
+      {
+        "case": "automated-beat-v11",
+        "kind": "beat",
+        "version": 11,
+        "bytes": 1413,
+        "gzip_bytes_informational": 737,
+        "instruments": 1,
+        "sounds": 1,
+        "note_or_hit_events": 0,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 0,
+        "vocal_clips": 0
+      },
+      {
+        "case": "studio-example/neon-after-hours",
+        "kind": "beat",
+        "version": 7,
+        "bytes": 56114,
+        "gzip_bytes_informational": 11778,
+        "instruments": 8,
+        "sounds": 16,
+        "note_or_hit_events": 278,
+        "external_asset_references": 5,
+        "external_asset_bytes": null,
+        "beat_clips": 0,
+        "vocal_clips": 0
+      },
+      {
+        "case": "studio-example/porchlight",
+        "kind": "beat",
+        "version": 7,
+        "bytes": 48809,
+        "gzip_bytes_informational": 10863,
+        "instruments": 6,
+        "sounds": 13,
+        "note_or_hit_events": 229,
+        "external_asset_references": 19,
+        "external_asset_bytes": null,
+        "beat_clips": 0,
+        "vocal_clips": 0
+      },
+      {
+        "case": "studio-example/floating-signals",
+        "kind": "beat",
+        "version": 7,
+        "bytes": 9908,
+        "gzip_bytes_informational": 2445,
+        "instruments": 4,
+        "sounds": 4,
+        "note_or_hit_events": 31,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 0,
+        "vocal_clips": 0
+      },
+      {
+        "case": "studio-example/broken-circuit",
+        "kind": "beat",
+        "version": 7,
+        "bytes": 12498,
+        "gzip_bytes_informational": 2966,
+        "instruments": 6,
+        "sounds": 6,
+        "note_or_hit_events": 45,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 0,
+        "vocal_clips": 0
+      },
+      {
+        "case": "studio-example/swaying-wire",
+        "kind": "beat",
+        "version": 7,
+        "bytes": 8835,
+        "gzip_bytes_informational": 2504,
+        "instruments": 4,
+        "sounds": 4,
+        "note_or_hit_events": 23,
+        "external_asset_references": 4,
+        "external_asset_bytes": null,
+        "beat_clips": 0,
+        "vocal_clips": 0
+      },
+      {
+        "case": "single-beat-song-v8",
+        "kind": "song",
+        "version": 8,
+        "bytes": 1904,
+        "gzip_bytes_informational": 884,
+        "instruments": 1,
+        "sounds": 1,
+        "note_or_hit_events": 4,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 1,
+        "vocal_clips": 0
+      },
+      {
+        "case": "modulated-song-v10",
+        "kind": "song",
+        "version": 10,
+        "bytes": 2103,
+        "gzip_bytes_informational": 953,
+        "instruments": 1,
+        "sounds": 1,
+        "note_or_hit_events": 0,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 1,
+        "vocal_clips": 0
+      },
+      {
+        "case": "automated-song-v12",
+        "kind": "song",
+        "version": 12,
+        "bytes": 1789,
+        "gzip_bytes_informational": 890,
+        "instruments": 1,
+        "sounds": 1,
+        "note_or_hit_events": 0,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 1,
+        "vocal_clips": 0
+      },
+      {
+        "case": "layered-reused-beat-song-v8",
+        "kind": "song",
+        "version": 8,
+        "bytes": 23122,
+        "gzip_bytes_informational": 5095,
+        "instruments": 10,
+        "sounds": 10,
+        "note_or_hit_events": 76,
+        "external_asset_references": 0,
+        "external_asset_bytes": null,
+        "beat_clips": 3,
+        "vocal_clips": 0
+      },
+      {
+        "case": "external-vocal-song-v14",
+        "kind": "song",
+        "version": 14,
+        "bytes": 2253,
+        "gzip_bytes_informational": 1029,
+        "instruments": 1,
+        "sounds": 1,
+        "note_or_hit_events": 4,
+        "external_asset_references": 1,
+        "external_asset_bytes": null,
+        "beat_clips": 1,
+        "vocal_clips": 1
+      }
+    ],
+    "game_browser_reference": {
+      "repo": "natanai/pre-programmed",
+      "deployment_commit": "c463bdee9c1de836798435e5f6ad15a604b83504",
+      "workflow_run": 41223895093,
+      "measured_at": "2026-10-31",
+      "vite_minified_js_kb": 740.76,
+      "vite_js_gzip_kb": 209.2,
+      "vite_css_kb": 134.39,
+      "vite_css_gzip_kb": 21.69,
+      "qualification": "Successful public deployment build, NOT the same commit as game main during this audit and NOT a measured pre-midi integration delta"
+    },
+    "game_windows_reference": {
+      "tag": "v0.1.15",
+      "published": "2026-10-25",
+      "zip_bytes": 213526871,
+      "qualification": "Older complete Electron Windows release, not the current main commit nor attributable audio runtime bytes"
+    }
+  },
+  "runtime_boundary": {
+    "essential_for_game": [
+      "versioned score parsing/validation",
+      "stable Beat/Song identifiers",
+      "Chunk/Clip scheduling and loop/seek",
+      "parameter-only synthesizer playback",
+      "sample-voice playback only if referenced",
+      "Media Asset resolution",
+      "game-event controls for tracks/layers/parameters",
+      "bounded polyphony/CPU and regression tests"
+    ],
+    "game_dependent_optional": [
+      "audio asset codec decoders needed by selected external Assets",
+      "advanced modulation or effects used by a particular score",
+      "native audio device host if game runtime selects C++ engine"
+    ],
+    "studio_only": [
+      "piano roll and synth editor UI",
+      "microphone recording and input permission handling",
+      "audio analysis and WAV-to-synth conversion",
+      "instrument preset browsing",
+      "portable studio update system",
+      "standalone export/render interface",
+      "full import support for every source file codec and extreme rate"
+    ],
+    "enforcement": "Resolve runtime features from validated score semantics, not from presence of studio UI; reject unsupported features with explicit version/capability errors rather than silently changing sound.",
+    "asset_contract": "Reference external audio by safe relative path/ID; avoid embedded bytes, duplicate references, or implicit browser caches. Test project export/import independently.",
+    "legacy_data": "Keep v2 documents and existing .ppgame files accessible via explicit legacy dispatch/migration.",
+    "platform_choice": {
+      "game_web_and_desktop": "pre-programmed currently ships browser/Electron Web Audio UI with a separate v2 music renderer; its desktop host is Electron",
+      "studio_web_and_desktop": "pre-midi ships browser Web Audio plus a Tauri C++ native Windows host",
+      "initial_parity_candidate": "share a portable score/plan contract and browser-compatible playback implementation; leave the C++ host optional until compiled size, CPU and device latency benefits are independently measured",
+      "do_not_assume": "A 14.4 MB pre-midi portable ZIP is neither the game runtime cost nor an argument for loading Tauri or native import decoders into the Electron game."
+    }
+  },
+  "next_gates": [
+    {
+      "id": "G1",
+      "name": "Measured studio document size",
+      "acceptance": "Automated report of v7/v9/v11 Beats, v8/v10/v12/v14 Songs and all shipped examples, raw UTF-8 bytes; external assets clearly separated",
+      "status": "done"
+    },
+    {
+      "id": "G2",
+      "name": "Game executable/browser baseline",
+      "acceptance": "Record clean production JS chunks, game portable ZIP, and before/after size for a playback-only feature branch",
+      "status": "baseline_only"
+    },
+    {
+      "id": "G3",
+      "name": "Cross-repo version fixtures",
+      "acceptance": "Current game v2 remains readable and modern studio documents fail explicitly until a compatible parser is merged",
+      "status": "not_started"
+    },
+    {
+      "id": "G4",
+      "name": "Playback event parity",
+      "acceptance": "Production Beat and Song events including offsets/polymeter, samples/vocals, modulation/automation and loop/seek match native and game playback",
+      "status": "not_started"
+    },
+    {
+      "id": "G5",
+      "name": "In-game dynamic controls",
+      "acceptance": "Game effects can operate on declared Beat/Song Track/Clip IDs without flattening audio or embedding a second scripting language",
+      "status": "not_started"
+    }
+  ]
+}
