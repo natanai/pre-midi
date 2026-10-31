@@ -22,7 +22,7 @@ pub fn decode(bytes:&[u8])->Result<Option<DecodedAudio>,String>{
   tag=u16le(&fmt[24..]);
  }
  if tag!=1&&tag!=3{return Ok(None);}
- if !(3000..=768000).contains(&rate)||!(1..=32).contains(&channels)||!(tag==1&&[8,16,24,32].contains(&bits)||tag==3&&[32,64].contains(&bits))||block!=channels as usize*(bits/8){return Err("Invalid WAV PCM dimensions".into());}
+ if !(8000..=192000).contains(&rate)||!(1..=32).contains(&channels)||!(tag==1&&[8,16,24,32].contains(&bits)||tag==3&&[32,64].contains(&bits))||block!=channels as usize*(bits/8){return Err("Invalid WAV PCM dimensions".into());}
  let data=data.ok_or("WAV data chunk is missing")?;let frames=data.len()/block;if frames==0||frames>rate as usize*301||frames*channels as usize>128_000_000{return Err("WAV exceeds decoded duration/memory budget".into());}
  let width=bits/8;let mut result=DecodedAudio{samples:Vec::with_capacity(frames*channels as usize),rate,channels,peak:0.};
  for frame in 0..frames{for channel in 0..channels as usize{
