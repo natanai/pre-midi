@@ -1,5 +1,6 @@
 //! Bounded control-thread decoding. No decoder or owned buffer enters a callback.
 mod wav;
+mod ogg;
 mod aac;
 mod opus;
 mod mp4;
@@ -33,14 +34,19 @@ pub fn decode(bytes:Vec<u8>,extension:&str)->Result<DecodedAudio,String>{
  if bytes.len()<16||bytes.len()>48_000_000{return Err("Audio asset must be 16 bytes to 48 MB".into());}
  if !["","wav","mp3","ogg","webm","mp4"].contains(&extension){return Err("Unsupported audio container".into());}
  if let Some(audio)=wav::decode(&bytes)?{return Ok(audio);}
- let bytes=normalize_pcm_wav(bytes)?;let edits=mp4::read(&bytes)?;let webm=webm::read(&bytes)?;
+ let bytes=normalize_pcm_wav(bytes)?;let edits=mp4::read(&bytes)?;let webm=webm::read(&bytes)?;let vorbis_frames=ogg::vorbis_frames(&bytes)?;
  let mut hint=Hint::new();if !extension.is_empty(){hint.with_extension(extension);}
  let stream=MediaSourceStream::new(Box::new(Cursor::new(bytes)),Default::default());
  let mut format=symphonia::default::get_probe().probe(&hint,stream,FormatOptions::default(),Default::default()).map_err(|e|format!("Invalid audio container: {e}"))?;
  let track=format.default_track(TrackType::Audio).ok_or("Audio asset has no audio track")?;
  let params=track.codec_params.as_ref().and_then(|p|p.audio()).ok_or("Missing audio codec parameters")?;
  let mut registry=CodecRegistry::new();symphonia::default::register_enabled_codecs(&mut registry);registry.register_audio_decoder::<opus::Multistream>();
- let mut decoder=registry.make_audio_decoder(params,&AudioDecoderOptions::default()).or_else(|error|{
+ let multichannel_aac=params.codec==symphonia::core::codecs::audio::well_known::CODEC_ID_AAC && params.channels.as_ref().map(|c|c.count()).unwrap_or(0)>2;
+ let mut decoder=if multichannel_aac {
+  let mut extended=CodecRegistry::new();extended.register_audio_decoder::<aac::ExtendedAac>();
+  extended.make_audio_decoder(params,&AudioDecoderOptions::default())
+ }else{registry.make_audio_decoder(params,&AudioDecoderOptions::default())}
+ .or_else(|error|{
   if params.codec==symphonia::core::codecs::audio::well_known::CODEC_ID_AAC {let mut extra=CodecRegistry::new();extra.register_audio_decoder::<aac::ExtendedAac>();extra.make_audio_decoder(params,&AudioDecoderOptions::default())}else{Err(error)}
  }).map_err(|e|format!("Audio codec: {e}"))?;
  let opus_gain=if params.codec==symphonia::core::codecs::audio::well_known::CODEC_ID_OPUS {params.extra_data.as_deref().filter(|b|b.len()>=19&&&b[..8]==b"OpusHead").map(|b|10f32.powf(i16::from_le_bytes([b[16],b[17]]) as f32/(20.*256.))).unwrap_or(1.)}else{1.};
@@ -67,6 +73,10 @@ pub fn decode(bytes:Vec<u8>,extension:&str)->Result<DecodedAudio,String>{
   audio_packets+=1;
  }
  if let Some(edit)=edits.iter().find(|e|e.id==track_id){mp4::apply(&mut result.samples,result.rate,result.channels,edit)?;}
+ if let Some(end)=vorbis_frames {
+  let decoded=result.samples.len()/result.channels as usize;
+  if end<decoded{result.samples.truncate(end*result.channels as usize);}
+ }
  if result.samples.is_empty(){return Err("Decoded audio is empty".into());}
  // Match existing studio normalization: inspect every fourth sample per channel.
  for frame in (0..result.samples.len()/result.channels as usize).step_by(4){for ch in 0..result.channels as usize{result.peak=result.peak.max(result.samples[frame*result.channels as usize+ch].abs());}}
