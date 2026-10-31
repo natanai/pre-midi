@@ -217,9 +217,9 @@ public:
   if(!targetRate)ensure();
   require(input!=nullptr&&samples.size()<512,"Native sample asset capacity exceeded");
   const auto outputRate=targetRate?targetRate:device.sampleRate;require(outputRate>=8000&&outputRate<=192000,"Invalid native asset output rate");
-  require(rate>=3000&&rate<=768000&&channels>=1&&channels<=32&&frames>0&&frames<=std::uint64_t(rate)*301,"Invalid native source dimensions");
+  require(rate>=8000&&rate<=192000&&channels>=1&&channels<=32&&frames>0&&frames<=std::uint64_t(rate)*301,"Invalid native source dimensions");
   const double outputFrames=std::ceil(static_cast<double>(frames)*outputRate/rate);
-  require(rate>=3000&&rate<=768000&&channels>=1&&channels<=32&&frames>0&&frames<=std::uint64_t(rate)*301&&outputFrames*channels*4+sampleBytes<=1024.*1024*1024,"Native decoded assets exceed 1 GiB");
+  require(rate>=8000&&rate<=192000&&channels>=1&&channels<=32&&frames>0&&frames<=std::uint64_t(rate)*301&&outputFrames*channels*4+sampleBytes<=1024.*1024*1024,"Native decoded assets exceed 1 GiB");
   auto value=std::make_shared<SampleData>(input,frames,rate,channels,outputRate);samples.push_back(value);sampleBytes+=value->pcm.size()*sizeof(float);
   info={static_cast<std::uint32_t>(samples.size()),value->rate,value->channels,value->frames,value->normalization};
  }
