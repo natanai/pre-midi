@@ -172,7 +172,13 @@
     ],
     "enforcement": "Resolve runtime features from validated score semantics, not from presence of studio UI; reject unsupported features with explicit version/capability errors rather than silently changing sound.",
     "asset_contract": "Reference external audio by safe relative path/ID; avoid embedded bytes, duplicate references, or implicit browser caches. Test project export/import independently.",
-    "legacy_data": "Keep v2 documents and existing .ppgame files accessible via explicit legacy dispatch/migration."
+    "legacy_data": "Keep v2 documents and existing .ppgame files accessible via explicit legacy dispatch/migration.",
+    "platform_choice": {
+      "game_web_and_desktop": "pre-programmed currently ships browser/Electron Web Audio UI with a separate v2 music renderer; its desktop host is Electron",
+      "studio_web_and_desktop": "pre-midi ships browser Web Audio plus a Tauri C++ native Windows host",
+      "initial_parity_candidate": "share a portable score/plan contract and browser-compatible playback implementation; leave the C++ host optional until compiled size, CPU and device latency benefits are independently measured",
+      "do_not_assume": "A 14.4 MB pre-midi portable ZIP is neither the game runtime cost nor an argument for loading Tauri or native import decoders into the Electron game."
+    }
   },
   "next_gates": [
     {
