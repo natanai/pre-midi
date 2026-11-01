@@ -174,3 +174,11 @@ test("primary instrument controls replace redundant lower fields",()=>{
  assert.ok(!sampler.includes('["cutoff","Cutoff",50,14000,1,"hz",true]'));
  assert.ok(!sampler.includes('["attack","Attack",0,2,.005,"seconds"]'));
 });
+
+test("Notes pencil suppresses generic heading brackets rather than stacking them into the toolbar",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
+ assert.match(html,/id="note-mode"[^>]*>✎<\/button>/);
+ assert.match(css,/\.heading button::before \{content:"\["/);
+ assert.match(css,/#note-mode::before,#note-mode::after \{content:none\}/);
+});
