@@ -14,6 +14,7 @@ import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
 import { renderPatchEditor } from "./instrumentUI.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
+import { DRUM_RACKS } from "./drumRacks.js";
 import { loadLibrarySample, makeSampleAsset, MAX_BEAT_BYTES, sampleForNote } from "./sampler.js";
 import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
@@ -1707,7 +1708,7 @@ async function savePreset(wholeRack=false){
 $("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,beat,{soundId:sound().id,duration:.6}).catch(error=>message("Could not preview sound: "+error.message,true));});
 $("save-sound").addEventListener("click",()=>{void savePreset(instrument().layout==="rack");});
 $("save-row-sound").addEventListener("click",()=>{void savePreset(false);});
-function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...EXAMPLE_SOUND_PRESETS,...savedSounds];}
+function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...EXAMPLE_SOUND_PRESETS,...savedSounds,...DRUM_RACKS];}
 function openLibrary(mode) {
  closePicker();
  if(mode==="add"&&beat.instruments.length>=12)return;
@@ -1749,7 +1750,7 @@ async function chooseSound(preset) {
    message("Remove cutoff movement before replacing this instrument with a recording.",true);return;
   }
  const ok=applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,
-   ["Mine","Examples"].includes(preset.category)?preset:null);
+   preset.sounds || ["Mine","Examples"].includes(preset.category)?preset:null);
   if(ok) {
    dialog.close();
    // A new sample can be introduced while the transport is running.
@@ -1800,7 +1801,20 @@ function renderLibrary() {
   const personal=button("＋ Import audio file",()=>$("sample-file").click(),"library-import");
   list.append(record,personal);
  }
- for(const preset of allSounds().filter(p=>(libraryMode!=="replace-row"||!p.sounds)&&(libraryCategory==="All"||p.category===libraryCategory))) {
+ const matching=allSounds().filter(p=>
+  (libraryMode==="add" || !p.sounds) &&
+  (libraryCategory==="All" || p.category===libraryCategory ||
+   (libraryCategory==="Drums" && p.category==="Mine" && !!p.sounds)));
+ // Keep individual drum sounds available; complete racks live beneath them.
+ const grouped=libraryCategory==="Drums"
+  ?[...matching.filter(p=>!p.sounds),...matching.filter(p=>p.sounds)]
+  :matching;
+ let rackHeading=false;
+ for(const preset of grouped) {
+  if(libraryCategory==="Drums" && preset.sounds && !rackHeading){
+   list.append(element("h3","preset racks","library-rack-heading"));
+   rackHeading=true;
+  }
   const card=element("div",undefined,"preset-card");
   card.dataset.presetId=preset.id;
   card.dataset.presetId=preset.id;
