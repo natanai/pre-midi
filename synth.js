@@ -50,40 +50,18 @@ const presets = [
  ["square-circuit","Square Lead","Lead","Two square oscillators with a short release.",{oscillators:[{wave:"square",level:.86,octave:0,detune:0},{wave:"square",level:.18,octave:1,detune:0}],filter:{cutoff:5300},envelope:{attack:.002,decay:.08,sustain:.67,release:.075}}],
  ["glass-keys","Sine Keys","Keys","Sine and triangle oscillators with short attack and delay.",{oscillators:[{wave:"sine",level:.83,octave:0,detune:0},{wave:"triangle",level:.38,octave:1,detune:3}],filter:{cutoff:10500},envelope:{attack:.004,decay:.58,sustain:.17,release:.82},effects:{delayMix:.16,delayTime:.28,delayFeedback:.22}}],
  ["felt-electric","Triangle Keys","Keys","Triangle and sine oscillators with low-pass filtering.",{oscillators:[{wave:"triangle",level:.94,octave:0,detune:0},{wave:"sine",level:.31,octave:1,detune:0}],filter:{cutoff:2050,resonance:.8},envelope:{attack:.013,decay:.47,sustain:.33,release:.44}}],
- // Original key timbres: acoustic-like hammer envelopes, tine/reed partials,
- // and restrained analog/digital colors. No third-party samples or song data.
- ["soft-hammer","Soft Hammer Piano","Keys","Gentle struck partials with a short felt-like attack and natural decay.",{
-  oscillators:[{wave:"harmonic",harmonics:harmonicRecipe().map((_,i)=>[1,.48,.22,.11,.07,.035,.02,.013][i]??0),level:.9,octave:0,detune:0},{wave:"sine",level:.23,octave:-1,detune:0}],
-  noise:.012,noiseDecay:.045,filter:{cutoff:4100,resonance:.65},
-  envelope:{attack:.009,decay:1.15,sustain:.12,release:.85}}],
+ // Distinct key starting sounds: tine/reed partials, analog polyphony and
+ // drawbar harmonics. Filter, delay and envelope variations belong in the editor.
  ["reed-electric","Reed Electric Piano","Keys","Warm buzzy attack followed by a softer electric-piano tail.",{
   oscillators:[{wave:"harmonic",harmonics:harmonicRecipe().map((_,i)=>[1,.66,.39,.25,.17,.1,.06,.03][i]??0),level:.74,octave:0,detune:0},{wave:"triangle",level:.34,octave:0,detune:2}],
   filter:{cutoff:3100,resonance:1.1},envelope:{attack:.005,decay:.69,sustain:.24,release:.66},effects:{drive:.055}}],
- ["muted-electric","Muted Electric Piano","Keys","Round low-key tone with soft highs and a short, dry decay.",{
-  oscillators:[{wave:"triangle",level:.92,octave:0,detune:0},{wave:"sine",level:.25,octave:1,detune:0}],
-  filter:{cutoff:1320,resonance:.6},envelope:{attack:.014,decay:.45,sustain:.18,release:.34}}],
- ["chorus-electric","Chorus Electric Piano","Keys","Slowly beating detuned keys with gentle pulsing and a long tail.",{
-  oscillators:[{wave:"triangle",level:.8,octave:0,detune:-7},{wave:"triangle",level:.7,octave:0,detune:7}],
-  filter:{cutoff:4200,resonance:.8},envelope:{attack:.012,decay:.78,sustain:.44,release:1.05},
-  movement:{rate:.36,depth:4,tremolo:.16,tremoloRate:3.2},effects:{delayMix:.09,delayTime:.32,delayFeedback:.19}}],
  ["shimmer-tines","Shimmer Tines","Keys","Bright glassy tine partials above a rounded fundamental.",{
   oscillators:[{wave:"harmonic",harmonics:harmonicRecipe().map((_,i)=>[1,.15,.53,.06,.22,.035,.12,.02,.07][i]??0),level:.81,octave:0,detune:0},{wave:"sine",level:.3,octave:1,detune:5}],
   filter:{cutoff:7500},envelope:{attack:.003,decay:1.15,sustain:.08,release:1.25},effects:{delayMix:.11,delayTime:.35,delayFeedback:.2}}],
- ["tape-soft-keys","Tape Soft Keys","Keys","Dark rounded chords with subtle pitch movement and a gradual fade.",{
-  oscillators:[{wave:"harmonic",harmonics:harmonicRecipe().map((_,i)=>[1,.42,.18,.09,.04,.018][i]??0),level:.76,octave:0,detune:-3},{wave:"triangle",level:.37,octave:0,detune:4}],
-  filter:{cutoff:1850,resonance:.7},envelope:{attack:.055,decay:.8,sustain:.49,release:1.28},
-  movement:{rate:.43,depth:5,tremolo:.045,tremoloRate:.73},effects:{drive:.035}}],
  ["vintage-poly-keys","Vintage Poly Keys","Keys","Soft-edged analog polyphonic keys with a slowly moving tone.",{
   oscillators:[{wave:"sawtooth",level:.53,octave:0,detune:-8},{wave:"square",level:.38,octave:0,detune:8}],
   filter:{cutoff:2250,resonance:1.1},envelope:{attack:.05,decay:.46,sustain:.7,release:.92},
   movement:{rate:.48,depth:6,tremolo:.05,tremoloRate:.8},effects:{delayMix:.12,delayTime:.39,delayFeedback:.24}}],
- ["night-drive-keys","Night Drive Keys","Keys","Bright analog chord tones with gentle detune and delayed repeats.",{
-  oscillators:[{wave:"sawtooth",level:.49,octave:0,detune:-5},{wave:"triangle",level:.7,octave:1,detune:6}],
-  filter:{cutoff:3750,resonance:.9},envelope:{attack:.017,decay:.36,sustain:.63,release:.82},
-  movement:{rate:4.9,depth:4,delay:.45},effects:{delayMix:.19,delayTime:.34,delayFeedback:.3}}],
- ["digital-chime","Digital Chime Keys","Keys","Clear metallic upper partials with a slow fading bell tail.",{
-  oscillators:[{wave:"harmonic",harmonics:harmonicRecipe().map((_,i)=>[1,.09,.47,.04,.27,.015,.13,.02,.08,.015][i]??0),level:.78,octave:0,detune:0},{wave:"sine",level:.31,octave:1,detune:13}],
-  filter:{cutoff:9500},envelope:{attack:.003,decay:1.3,sustain:.035,release:1.65},effects:{delayMix:.13,delayTime:.4,delayFeedback:.26}}],
  ["warm-drawbars","Warm Drawbar Organ","Keys","Layered rounded organ harmonics with a steady sustain.",{
   oscillators:[{wave:"harmonic",harmonics:harmonicRecipe().map((_,i)=>[.9,.47,.31,.11,.19,.07,.05,.03][i]??0),level:.92,octave:0,detune:0},{wave:"sine",level:.19,octave:1,detune:0}],
   filter:{cutoff:3800},envelope:{attack:.022,decay:.12,sustain:.94,release:.3},movement:{rate:5.2,depth:3}}],
