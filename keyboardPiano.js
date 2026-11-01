@@ -147,7 +147,7 @@ export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrume
     item.released=true;item.stop?.();
     refresh();
   };
-  const releaseAll=()=>{for(const code of [...held.keys()])release(code);leftShift=false;};
+  const releaseAll=(clearShift=true)=>{for(const code of [...held.keys()])release(code);if(clearShift)leftShift=false;};
   const setActive=next=>{
     if(next===active)return;
     releaseAll();active=next;
@@ -161,7 +161,7 @@ export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrume
   };
   const shift=(delta,rightOnly)=>{
     if(!canShift(whole,right,delta,rightOnly)){status.title="piano roll pitch limit reached";return;}
-    releaseAll();
+    releaseAll(false);
     if(rightOnly)right+=delta;else whole+=delta;
     updateStatus();
     const center=Math.round((pitchAt(0,whole,right)+pitchAt(PIANO_NOTES.length-1,whole,right))/2);
