@@ -952,7 +952,7 @@ function renderNotes() {
      cell.removeEventListener("pointerup",end);
      cell.removeEventListener("pointercancel",end);
      if(cell.hasPointerCapture(pointerId))cell.releasePointerCapture(pointerId);
-     const cancelled=endEvent.type==="pointercancel",oldPitch=note.pitch;
+     const cancelled=endEvent.type!=="pointerup",oldPitch=note.pitch;
      if(cancelled){
       if(mode==="paint"){
        chunk.notes=chunk.notes.filter(item=>item.id!==note.id);
