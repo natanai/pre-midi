@@ -78,7 +78,7 @@ const mono=(p,type)=>{
   const sustainY=88-65*clamp(env.sustain);
   const releaseX=248+clamp(env.release/(type==="sample"?3:4))*95;
   line("M18 92 H348 M248 15 V96",true);
-  line(pathFrom([[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]]]));
+  line(pathFrom([[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]]));
   const prefix=type==="sample"?[]:["envelope"];
   dot([...prefix,"attack"],attackX,23,0,type==="sample"?2:3,"x-attack","attack");
   if(type==="envelope"){
