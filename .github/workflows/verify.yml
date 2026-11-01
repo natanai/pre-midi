@@ -16,6 +16,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm run check
+      - name: Report sound catalog overlap
+        run: node scripts/sound-catalog-audit.mjs
       - name: Fetch pinned CC0 recordings
         run: node scripts/fetch-samples.mjs
       - name: Stage minimal Pages build
