@@ -64,10 +64,17 @@ async function run(){
   get("export").click();get("export-confirm").click();
   const after=parse(await saved.text());
   assert(after.instruments[1].sounds[0].patch.oscillators[0].harmonics[1]>value,"Generated harmonic dials are not editable");
+  // Oscillator two is now optional; explicitly add it before editing its wave.
+  const addOscillator=doc.querySelector(".oscillator-add");
+  if(addOscillator)addOscillator.click();
   const second=doc.querySelector('[aria-label="Wave (oscillators.1.wave)"]');
+  assert(second,"Second oscillator was not available after adding it");
   second.value="harmonic";second.dispatchEvent(new w.Event("change",{bubbles:true}));
   get("export").click();get("export-confirm").click();assert(parse(await saved.text()).instruments[1].sounds[0].patch.oscillators[1].harmonics.length===32,"Second oscillator cannot use harmonics");
-  w.prompt=()=>"Saved converted sound";get("save-sound").click();
+  get("save-sound").click();
+  assert(get("save-preset-dialog").open,"Save preset dialog did not open");
+  get("save-preset-name").value="Saved converted sound";
+  get("save-preset-form").dispatchEvent(new w.Event("submit",{bubbles:true,cancelable:true}));
   await wait(()=>(w.localStorage.getItem("premidi-user-sounds-v2")||"").includes("Saved converted sound"));
   get("record-sound").click();
   uploadReference();
