@@ -166,13 +166,15 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    class:path.secondary?"visual-graph-secondary":"visual-graph-line",fill:path.fill}));
   for(const [x,y,t] of labels)graphic.append(svgNode("text",{x,y,class:"visual-graph-label"},t));
   for(const handle of handles){
-   const point=svgNode("circle",{cx:handle.x,cy:handle.y,r:5,
-    class:"visual-graph-handle",tabindex:"0",role:"slider",
+   const hit=svgNode("circle",{cx:handle.x,cy:handle.y,r:14,
+    class:"visual-graph-hit",fill:"transparent",tabindex:"0",role:"slider",
     "aria-label":handle.label+" illustration",
     "aria-valuemin":handle.min,"aria-valuemax":handle.max,
     "aria-valuenow":at(current,handle.path)??0,
     "data-sound-path":JSON.stringify(handle.path)});
-   graphic.append(point);
+   const dot=svgNode("circle",{cx:handle.x,cy:handle.y,r:5,
+    class:"visual-graph-handle","pointer-events":"none"});
+   graphic.append(hit,dot);
   }
   graphic._handles=handles;
  }
