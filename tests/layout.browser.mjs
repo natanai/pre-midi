@@ -57,6 +57,7 @@ try{
  }
  await reportedTest("rack-audio-check","/__rack_audio_result");
  await reportedTest("audio-check","/__audio_result");
+ await reportedTest("scope-check","/__scope_result");
  await reportedTest("arrangement-audio-check","/__arrangement_audio_result");
  await reportedTest("example-audio-check","/__example_audio_result");
  await reportedTest("synth-check","/__synth_result",1440,900);
