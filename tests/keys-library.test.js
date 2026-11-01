@@ -6,30 +6,50 @@ import {sampleForNote} from "../sampler.js";
 import {planSynthVoice} from "../src/dsp/synth-voice.js";
 import {planNativeSample} from "../src/hosts/native/sample-plan.js";
 
-const newSynthKeys=[
- "soft-hammer","reed-electric","muted-electric","chorus-electric",
- "shimmer-tines","tape-soft-keys","vintage-poly-keys","night-drive-keys",
- "digital-chime","warm-drawbars"
+const distinctiveSynthKeys=[
+ "reed-electric","shimmer-tines","vintage-poly-keys","warm-drawbars"
 ];
-const newSampleKeys=["close-piano","felt-room-piano","tape-piano"];
+const redundantSynthVariants=[
+ "soft-hammer","muted-electric","chorus-electric",
+ "tape-soft-keys","night-drive-keys","digital-chime"
+];
+const redundantRecordedPianos=["close-piano","felt-room-piano","tape-piano"];
 
-test("factory key IDs remain unique and appear in the Keys library",()=>{
- const all=[...PRESETS,...SAMPLE_LIBRARY],ids=all.map(p=>p.id);
- assert.equal(new Set(ids).size,ids.length);
- for(const id of [...newSynthKeys,...newSampleKeys]){
-  const entry=all.find(item=>item.id===id);
-  assert.ok(entry,id);
-  assert.equal(entry.category,"Keys");
-  assert.equal(entry.trigger,"pitched");
- }
+test("keys are distinct starting points, not multiple tunings of the same piano recording",()=>{
+ const all=[...PRESETS,...SAMPLE_LIBRARY];
+ assert.equal(new Set(all.map(p=>p.id)).size,all.length);
+ const piano=samplePreset("real-piano");
+ assert.ok(piano);
+ assert.equal(piano.category,"Keys");
+ assert.deepEqual(piano.assets,["piano-c3","piano-c4"]);
+ assert.equal(piano.trigger,"pitched");
+ for(const id of redundantRecordedPianos)assert.equal(samplePreset(id),undefined,id);
+ for(const id of redundantSynthVariants)assert.equal(getPreset(id),undefined,id);
+ // A second piano with the same recording zones is just an editable variation.
+ const keyedSamples=SAMPLE_LIBRARY.filter(p=>p.category==="Keys");
+ const sourceSignatures=keyedSamples.map(p=>[...p.assets].sort().join("|"));
+ assert.equal(new Set(sourceSignatures).size,keyedSamples.length);
 });
 
-test("all new key synths validate and generate native voice plans at contrasting pitches",()=>{
- for(const id of newSynthKeys){
-  assert.ok(getPreset(id),id);
+test("remaining added key timbres have different oscillator recipes",()=>{
+ const signatures=new Set();
+ for(const preset of PRESETS.filter(p=>p.category==="Keys")){
+  const signature=JSON.stringify(preset.patch.oscillators.map(osc=>({
+   wave:osc.wave,octave:osc.octave,
+   harmonics:osc.harmonics?.map(n=>Math.round(n*100)),
+   // A silent layer does not establish another distinctive sound source.
+   active:osc.level>.05
+  })));
+  assert.ok(!signatures.has(signature),preset.name+" duplicates an oscillator recipe");
+  signatures.add(signature);
+ }
+ for(const id of distinctiveSynthKeys)assert.ok(getPreset(id),id);
+});
+
+test("curated synth keys validate and generate native voice plans across the register",()=>{
+ for(const id of distinctiveSynthKeys){
   const patch=makePatch(id);
   assert.deepEqual(validatePatch(patch),[],id);
-  assert.equal(patch.type,"synth");
   for(const pitch of [48,60,84]){
    const voice=planSynthVoice({patch,volume:.78},{pitch,velocity:.76},0,.75);
    assert.equal(voice.contract,"pre-midi-synth-voice");
@@ -39,29 +59,40 @@ test("all new key synths validate and generate native voice plans at contrasting
  }
 });
 
-test("synth key patches are copied independently when selected",()=>{
- const first=makePatch("soft-hammer"),second=makePatch("soft-hammer");
+test("curated presets remain editable independently",()=>{
+ const first=makePatch("shimmer-tines"),second=makePatch("shimmer-tines");
  first.oscillators[0].harmonics[0]=0;
  first.filter.cutoff=100;
  assert.notEqual(first.oscillators[0].harmonics[0],second.oscillators[0].harmonics[0]);
  assert.notEqual(first.filter.cutoff,second.filter.cutoff);
 });
 
-test("recorded piano variants reuse pinned assets and preserve tone settings",()=>{
- const original=samplePreset("real-piano");
- for(const id of newSampleKeys){
-  const preset=samplePreset(id),patch=makeSamplerPatch(preset);
-  assert.deepEqual(preset.assets,original.assets,id);
+test("single piano preset retains both recordings and native tone editing",()=>{
+ const preset=samplePreset("real-piano"),patch=makeSamplerPatch(preset);
+ assert.deepEqual(validatePatch(patch),[]);
+ for(const zone of patch.zones)assert.ok(SAMPLE_ASSETS.some(a=>a.id===zone.assetId));
+ assert.equal(sampleForNote(patch,60)?.assetId,"piano-c4");
+ patch.filter={type:"lowpass",cutoff:2400,resonance:.7};
+ patch.drive=.08;patch.attack=.02;patch.release=1.1;
+ assert.deepEqual(validatePatch(patch),[]);
+ const plan=planNativeSample({patch,volume:.8},{pitch:60,velocity:.8},0,.6,
+  new Map([["piano-c4",{id:1,duration:3,normalization:1}]]));
+ assert.equal(plan.contract,"pre-midi-sample-voice");
+ assert.equal(plan.filter.cutoff,2400);
+ assert.equal(plan.drive,.08);
+});
+
+test("old self-contained piano patches stay valid after library cleanup",()=>{
+ for(const id of redundantRecordedPianos){
+  // A saved .premidi stores the sound instructions, not a lookup-only preset.
+  const patch=makeSamplerPatch({
+   ...samplePreset("real-piano"),id,
+   attack:.024,release:1.15,
+   filter:{type:"lowpass",cutoff:3100,resonance:.65},
+   drive:.075
+  });
+  assert.equal(patch.presetId,id);
   assert.deepEqual(validatePatch(patch),[],id);
-  assert.equal(patch.filter.type,"lowpass");
-  assert.equal(patch.filter.cutoff,preset.filter.cutoff);
-  assert.equal(patch.drive,preset.drive);
-  for(const zone of patch.zones)assert.ok(SAMPLE_ASSETS.some(a=>a.id===zone.assetId));
   assert.equal(sampleForNote(patch,60)?.assetId,"piano-c4");
-  const plan=planNativeSample({patch,volume:.8},{pitch:60,velocity:.8},0,.6,
-   new Map([[ "piano-c4",{id:1,duration:3,normalization:1} ]]));
-  assert.equal(plan.contract,"pre-midi-sample-voice");
-  assert.equal(plan.filter.cutoff,preset.filter.cutoff);
-  assert.equal(plan.drive,preset.drive??0);
  }
 });
