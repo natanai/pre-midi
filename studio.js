@@ -765,6 +765,10 @@ function renderNotes() {
  // Delegating avoids hundreds of listeners on the note grid, works for
  // out-of-scale (disabled) cells, and survives each editor redraw.
  root.onpointermove=event=>{
+  if(draggedNoteId){
+   const active=chunk.notes.find(note=>note.id===draggedNoteId);
+   if(active){hoverPianoPitch(active.pitch);return;}
+  }
   const row=event.target.closest?.(".piano-row");
   if(row&&root.contains(row))hoverPianoPitch(Number(row.dataset.pitch));
   else hoverPianoPitch(null);
@@ -969,6 +973,8 @@ function renderNotes() {
     cell.addEventListener("pointermove",move);
     cell.addEventListener("pointerup",end);
     cell.addEventListener("pointercancel",end);
+    // Lost capture (tab switch, interrupted touch) must not leave unsaved edits.
+    cell.addEventListener("lostpointercapture",end,{once:true});
    });
    // Backspace/Delete removes a selected note without hijacking text inputs.
    cell.addEventListener("keydown",event=>{
