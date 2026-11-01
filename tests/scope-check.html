@@ -77,6 +77,24 @@ async function pair(label,from,to,beat=null,pitch=60){
  assert(before.buffer.numberOfChannels===2&&after.buffer.numberOfChannels===2,label+": missing stereo");
  const difference=different(before,after);
  assert(difference>1e-6,label+" did not change the rendered audio ("+difference+")");
+ // The scope's actual plotted data must change, not merely the backing PCM.
+ const plottedA=scopeAudioBins(before.buffer),plottedB=scopeAudioBins(after.buffer);
+ let visibleDelta=0;
+ for(let c=0;c<2;c++)for(let i=0;i<300;i++){
+  visibleDelta+=Math.abs(plottedA[c][i].low-plottedB[c][i].low);
+  visibleDelta+=Math.abs(plottedA[c][i].high-plottedB[c][i].high);
+ }
+ const sampleWindow=output=>{
+  const l=output.buffer.getChannelData(0),r=output.buffer.getChannelData(1);
+  const start=Math.round(.3*output.buffer.sampleRate);
+  return Array.from({length:170},(_,i)=>{
+   const at=start+Math.round(i/169*.02*output.buffer.sampleRate);
+   return (l[at]+r[at])*.5;
+  });
+ };
+ const waveA=sampleWindow(before),waveB=sampleWindow(after);
+ for(let i=0;i<waveA.length;i++)visibleDelta+=Math.abs(waveA[i]-waveB[i]);
+ assert(visibleDelta>1e-6,label+" changed audio but not plotted waveform data");
  return difference;
 }
 async function run(){
@@ -86,6 +104,13 @@ async function run(){
   parent[name]?.(from);edit(to);
   measured.push([name,await pair(name,from,to)]);
  }
+ const automation={version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
+  points:[{id:"begin",step:0,value:250},{id:"end",step:32,value:7000}]};
+ const [staticAudio,movingAudio]=await Promise.all([
+  renderScopeAudio(base,{bpm:120,bars:8},.78,60),
+  renderScopeAudio(base,{bpm:120,bars:8},.78,60,automation)]);
+ assert(different(staticAudio,movingAudio)>1e-6,"cutoff automation did not affect rendered preview");
+ measured.push(["cutoff automation",different(staticAudio,movingAudio)]);
  // Use an actual decoded audio asset for sampler qualification.
  const id="scope-audio-fixture";
  const samples=Float32Array.from({length:RECORDING_RATE*2},(_,i)=>{
