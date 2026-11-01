@@ -41,6 +41,7 @@ test("instrument creation is a full-width action, not a cramped header control",
  assert.match(css,/\.add-instrument-action\s*\{[^}]*white-space:normal/);
 });
 test("note and sound controls have distinct, wrapping groups", () => {
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  const notes=html.slice(html.indexOf('<section class="notes-section"'),html.indexOf('</section>',html.indexOf('<section class="notes-section"')));
