@@ -723,6 +723,16 @@ function renderRack(root,inst,chunk){
   label.append(input,element("output",Math.round(note.velocity*100)+"%"));$("note-expression").prepend(label);
  }
 }
+// Feedback belongs to the studio keyboard, never to saved notes or audio.
+function tapPianoKey(pitch) {
+ const key=$("piano").querySelector('.piano-key[data-pitch="'+pitch+'"]');
+ if(!key)return;
+ key.classList.remove("pressed");
+ // Let another click on the same pitch restart the small tactile animation.
+ void key.offsetWidth;
+ key.classList.add("pressed");
+ setTimeout(()=>key.classList.remove("pressed"),220);
+}
 function renderNotes() {
  const root = $("piano"), inst = instrument(), chunk = chunkFor(inst);
  root.classList.toggle("sound-rack",inst.layout==="rack");
@@ -741,6 +751,30 @@ function renderNotes() {
  const directionalScale=!!scaleMode?.descendingSteps;
  const keys=[];
  const keyByPitch=new Map();
+ let hoveredPitch=null;
+ function hoverPianoPitch(pitch){
+  if(pitch===hoveredPitch)return;
+  keyByPitch.get(hoveredPitch)?.classList.remove("hovered");
+  keys.find(entry=>entry.pitch===hoveredPitch)?.row.classList.remove("hovered");
+  hoveredPitch=pitch;
+  keyByPitch.get(pitch)?.classList.add("hovered");
+  keys.find(entry=>entry.pitch===pitch)?.row.classList.add("hovered");
+ }
+ // Delegating avoids hundreds of listeners on the note grid, works for
+ // out-of-scale (disabled) cells, and survives each editor redraw.
+ root.onpointermove=event=>{
+  const row=event.target.closest?.(".piano-row");
+  if(row&&root.contains(row))hoverPianoPitch(Number(row.dataset.pitch));
+  else hoverPianoPitch(null);
+ };
+ root.onpointerleave=()=>hoverPianoPitch(null);
+ root.onfocusin=event=>{
+  const row=event.target.closest?.(".piano-row");
+  if(row&&root.contains(row))hoverPianoPitch(Number(row.dataset.pitch));
+ };
+ root.onfocusout=event=>{
+  if(!root.contains(event.relatedTarget))hoverPianoPitch(null);
+ };
  function paintKeys(step){
   if(!scaleActive)return;
   for(const {pitch,row,label} of keys){
@@ -767,6 +801,7 @@ function renderNotes() {
   const pitchClass=pitch%12;
   const sharp=[1,3,6,8,10].includes(pitchClass);
   const row=element("div",undefined,"piano-row"+(sharp?" sharp":""));
+  row.dataset.pitch=String(pitch);
   // The note column remains a fixed-width grid gutter. In keyboard mode,
   // actual piano keys render in one independent layer above all rows.
   const label=element("span",showPianoKeys?"":noteLabel(pitch),"note-name");
@@ -827,8 +862,11 @@ function renderNotes() {
     const created={id:id(),pitch,start:step,
      duration:Math.min(Number($("length").value),16-step),velocity:Number($("velocity").value)};
     selectedNoteId=editingNoteEffects?created.id:null;
-    if(modify(()=>{editedChunk.notes.push(created);})&&!playback&&!pendingPlay)
-     void audition(targetInst,pitch,beat).catch(()=>{});
+    if(modify(()=>{editedChunk.notes.push(created);})){
+     tapPianoKey(pitch);
+     if(!playback&&!pendingPlay)
+      void audition(targetInst,pitch,beat).catch(()=>{});
+    }
    }, "note" + (step % 4 === 0 ? " beat" : ""));
    cells.push(cell);
    cell.addEventListener("pointerenter",()=>focusScaleStep(step));
@@ -915,6 +953,7 @@ function renderNotes() {
     const key=element("div",undefined,"piano-key "+kind);
     key.style.top=top+"px";
     key.style.height=height+"px";
+    key.dataset.pitch=String(pitch);
     if(kind==="white"&&pitch%12===0)
      key.append(element("span",noteLabel(pitch),"piano-key-caption"));
     keyboard.append(key);
