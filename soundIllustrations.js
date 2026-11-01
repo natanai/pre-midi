@@ -153,7 +153,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  const expand=document.createElement("button");expand.type="button";
  expand.className="visual-panel-expand";expand.textContent="⤢";
  expand.setAttribute("aria-label","expand "+kind+" illustration");
- expand.addEventListener("click",()=>setZoom(wrapper,id,!wrapper.classList.contains("zoomed")));
+ expand.addEventListener("click",()=>{const next=!wrapper.classList.contains("zoomed");if(next)details.open=true;setZoom(wrapper,id,next);});
  area.append(graphic,expand);
  wrapper.append(area,details);
  let active=null,latestPatch=patch;
