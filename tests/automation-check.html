@@ -17,7 +17,7 @@ frame.addEventListener('load',async()=>{
   d.querySelector('.cutoff-automation > button').click();check('movement can be removed',!d.querySelector('.cutoff-automation'));get('undo').click();check('undo restores it',!!d.querySelector('.cutoff-automation'));
   get('new').click();await upload(beat,'automation.premidi');d.querySelector('#instrument-list .instrument-entry:last-child .instrument-card').click();check('import preserves the lane',JSON.stringify((await exported()).instruments.at(-1).automation)===JSON.stringify(inst.automation));
   get('song-expand').click();const song=await exported();check('explicit Song v12 export',song.version===12&&parseSong(JSON.stringify(song)).version===12);get('new').click();await upload(song,'automation-song.premidi');check('Song import retains movement',JSON.stringify((await exported()).beats[0].instruments.at(-1).automation)===JSON.stringify(inst.automation));
-  check('single base cutoff control',d.querySelectorAll('[aria-label="Cutoff"]').length===1);check('no horizontal clipping',d.documentElement.scrollWidth<=frame.clientWidth+3);status='PASS';
+  check('single primary brightness control',d.querySelectorAll('[aria-label="brightness"]').length===1);check('no horizontal clipping',d.documentElement.scrollWidth<=frame.clientWidth+3);status='PASS';
  }catch(error){checks.error=String(error.stack||error);}
  document.getElementById('result').textContent=JSON.stringify(checks);await fetch('/__automation_result?status='+status+'&details='+encodeURIComponent(JSON.stringify(checks)));
 },{once:true});frame.src='../index.html';
