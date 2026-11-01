@@ -28,6 +28,14 @@ async function checkLayout(frame){
   notesControlsFit:controls.every(el=>{const b=rect(el);return b.left>=tools.left-2&&b.right<=tools.right+2;}),
   noPageHorizontalClipping:doc.documentElement.scrollWidth<=frame.clientWidth+3
  };
+ // All header actions inherit the generic [ ] pseudo-elements by default.
+ // The pencil is a square grid button; those text nodes stack vertically and
+ // protrude into the row below unless suppressed.
+ const pencil=get("note-mode");
+ checks.noteEditPencilNoStrayBrackets=["::before","::after"].every(part=>
+  frame.contentWindow.getComputedStyle(pencil,part).content==="none");
+ checks.noteEditPencilInsideHeading=rect(pencil).top>=noteHead.top-1 &&
+  rect(pencil).bottom<=noteHead.bottom+1;
  // Inspector is the same real Sound editor in a different responsive position.
  const sound=get("sound-section"),toggle=get("sound-toggle"),roll=doc.querySelector(".piano-scroll");
  const notesBefore=rect(doc.querySelector(".notes-section"));
