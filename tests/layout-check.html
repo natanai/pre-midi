@@ -93,7 +93,12 @@ async function checkLayout(frame){
  });
  checks.twoAxisPoints=!!sound.querySelector('.visual-sound-panel[data-visual-kind="delay"] .visual-graph-point[aria-label="delay time / mix"]')&&
   !!sound.querySelector('.visual-sound-panel[data-visual-kind="filter"] .visual-graph-point[aria-label="cutoff / resonance"]');
- checks.collapsedIllustrationsStayHidden=!!sound.querySelector('.visual-sound-panel[data-visual-kind="delay"] details:not([open]) .visual-panel-area');
+ const delayDetails=sound.querySelector('.visual-sound-panel[data-visual-kind="delay"] details');
+  const delayOpen=delayDetails?.open;
+  if(delayDetails)delayDetails.open=false;
+  const delayArea=delayDetails?.querySelector(".visual-panel-area");
+  checks.collapsedIllustrationsStayHidden=!!delayArea&&delayArea.getClientRects().length===0;
+  if(delayDetails)delayDetails.open=delayOpen;
  if(frame.clientWidth>=1100) {
   const viewportHeight=frame.contentWindow.innerHeight;
   const footer=doc.querySelector("footer");
@@ -263,11 +268,15 @@ async function checkLayout(frame){
  // Real audio rendering is asynchronous; compare complete original and
  // edited PCM-driven pitch traces rather than the temporary empty graph.
  const shape=()=>doc.querySelector("#sound-visualizer .signal-pitch")?.getAttribute("d");
+ const dialNamed=name=>doc.querySelector("#synth-editor .dial-knob[aria-label='"+name+"']");
+ const pushDial=name=>dialNamed(name)?.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+ // Glide from has no audible pitch movement until Glide time is nonzero.
+ for(let i=0;i<12;i++)pushDial("Glide time");
  for(let i=0;i<240&&!shape();i++)await new Promise(done=>setTimeout(done,25));
  const pitchBefore=shape();
- const knob=doc.querySelector("#synth-editor .dial-knob[aria-label='Glide from']");
- knob?.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+ for(let i=0;i<16;i++)pushDial("Glide from");
  for(let i=0;i<240&&shape()===pitchBefore;i++)await new Promise(done=>setTimeout(done,25));
+ diagnostics.pitchResponse={hadInitialTrace:!!pitchBefore,hasFinalTrace:!!shape(),changed:pitchBefore!==shape(),glideTime:!!dialNamed("Glide time"),glideFrom:!!dialNamed("Glide from")};
  checks.waveRespondsToDial=!!pitchBefore&&!!shape()&&pitchBefore!==shape();
  trace("note-editor-done");
  // Test the preset browser from a fresh Beat after completing the separate
