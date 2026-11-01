@@ -112,35 +112,39 @@ export const diagram=(patch,type)=>{
    axis(["movement","depth"],0,100,"linearY",{from:62,to:27,step:1})
   ],"vibrato rate / depth");
   tag(15,14,"pitch");tag(287,14,"rate →");
- }else if(type==="effects"){
-  const e=p.effects,drive=e.drive||0,mix=e.delayMix||0;
-  const feedback=e.delayFeedback||0,time=clamp((e.delayTime-.05)/.95);
-  const spacing=22+time*25,origin=194;
-  line("M16 98 H164 M16 20 V98 M185 98 H348",true);
-  line(pathRange(180,t=>{
+ }else if(type==="distortion"){
+  const drive=p.effects.drive||0;
+  line("M18 96 H344 M180 17 V97",true);
+  line(pathRange(300,t=>{
    const input=2*t-1,output=Math.tanh(input*(1+drive*8))/Math.tanh(1+drive*8);
-   return [16+t*144,60-output*33];
+   return [24+t*312,58-output*37];
   }));
-  // One dry hit, then repeats at intervals set by delay time.
-  const levels=[1,mix,mix*feedback,mix*feedback*feedback];
-  for(let i=0;i<levels.length;i++){
-   const x=origin+(i===0?0:i*spacing),height=64*levels[i];
-   line("M"+x.toFixed(2)+" 98 V"+(98-height).toFixed(2),i>0);
-   if(i>0)tag(x-5,Math.max(17,95-height-5),String(i));
+  handle(306,88-60*drive,[
+   axis(["effects","drive"],0,1,"linearY",{from:88,to:28,step:.01})
+  ],"drive");
+  tag(18,14,"output ↑");tag(294,108,"input →");
+ }else if(type==="delay"){
+  const e=p.effects,mix=e.delayMix||0,feedback=e.delayFeedback||0;
+  const space=24+clamp((e.delayTime-.05)/.95)*66,origin=52;
+  line("M16 100 H348",true);
+  // The original note, then discrete echoes with spacing and amplitude
+  // derived from the authored time, mix and feedback settings.
+  for(let i=0;i<4;i++){
+   const x=origin+i*space;
+   const level=i===0?1:mix*feedback**(i-1);
+   line("M"+x.toFixed(2)+" 100 V"+(100-72*level).toFixed(2),i>0);
+   if(i>0)tag(x+4,Math.max(18,94-72*level),String(i));
   }
-  handle(142,76-51*drive,[
-   axis(["effects","drive"],0,1,"linearY",{from:76,to:25,step:.01})
-  ],"distortion");
-  handle(origin+spacing,98-64*mix,[
-   axis(["effects","delayTime"],.05,1,"linearX",{from:origin+22,to:origin+47,step:.01}),
-   axis(["effects","delayMix"],0,1,"linearY",{from:98,to:34,step:.01})
+  handle(origin+space,100-72*mix,[
+   axis(["effects","delayTime"],.05,1,"linearX",
+    {from:origin+24,to:origin+90,step:.01}),
+   axis(["effects","delayMix"],0,1,"linearY",{from:100,to:28,step:.01})
   ],"delay time / mix");
-  if(mix>.05)handle(origin+2*spacing,98-64*mix*feedback,[
+  if(mix>.05)handle(origin+2*space,100-72*mix*feedback,[
    axis(["effects","delayFeedback"],0,.8,"linearY",
-    {from:98,to:98-64*mix*.8,step:.01})
+    {from:100,to:100-72*mix*.8,step:.01})
   ],"feedback");
-  tag(18,14,"distortion");tag(186,14,"delay");
-  tag(182,110,"dry");
+  tag(18,13,"mix ↑");tag(287,13,"time →");tag(30,112,"dry");
  }else if(type==="modulation"){
   const routes=p.modulation?.routes??[];
   tag(17,14,"source");tag(295,14,"target");
