@@ -59,7 +59,15 @@ async function checkLayout(frame){
   !sound.querySelector(".sound-actions").contains(preview)&&
   rect(preview).top>=rect(volume).bottom-2&&
   Math.abs((rect(preview).left+rect(preview).width/2)-(rect(volume).left+rect(volume).width/2))<14;
- checks.soundPreviewOneAction=sound.querySelectorAll("#hear-sound").length===1&&
+ const save=get("save-sound");
+ checks.savePresetBelowPlay=save.parentElement===preview.parentElement&&
+  !sound.querySelector(".sound-actions").contains(save)&&
+  rect(save).top>=rect(preview).bottom-2&&
+  Math.abs((rect(save).left+rect(save).width/2)-
+   (rect(preview).left+rect(preview).width/2))<14;
+ checks.savePresetAccessible=save.getAttribute("aria-label").startsWith("Save ")&&
+  !!get("save-preset-dialog");
+  checks.soundPreviewOneAction=sound.querySelectorAll("#hear-sound").length===1&&
   preview.getAttribute("aria-label")==="Hear current sound";
   checks.volumeBesideWaveform=Math.abs(rect(waveform).top-rect(volume).top)<50&&
   rect(waveform).right<=rect(volume).left+12&&rect(waveform).width>140;
