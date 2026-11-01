@@ -12,8 +12,9 @@ test("the UI uses instruments, timeline and chunks without deprecated wording", 
  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
  assert.match(html, /<h2>Instruments<\/h2>/);
  assert.match(html, /<h2>Timeline<\/h2>/);
- assert.match(html, /Chunk <select/);
- assert.match(html, /New notes <select/);
+ assert.match(html, /class="chunk-name-field">chunk <input id="chunk-name"/);
+ assert.match(html, /<select id="chunk" aria-label="Choose chunk to edit"/);
+ assert.match(html, /new notes <select/);
  assert.doesNotMatch(html, /<h2>Tracks<\/h2>|Pattern|Arrangement/);
 });
 test("note end grip, pointer resizing, and live scheduler are connected", () => {

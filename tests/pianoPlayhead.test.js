@@ -74,3 +74,18 @@ test("note editing auditions only when transport is not playing",() => {
  assert.match(source,/pianoProgress = null;/);
  assert.match(source,/playhead\.setAttribute\("aria-hidden", "true"\)/);
 });
+
+test("piano keys audition the active sound without creating notes",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const source=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
+ assert.match(html,/id="piano-keys"[^>]+aria-pressed="true"/);
+ assert.match(source,/element\("button",undefined,"piano-key "\+kind\)/);
+ assert.match(source,/key\.addEventListener\("click",\(\)=>\{\s*tapPianoKey\(pitch\);/);
+ assert.match(source,/void audition\(inst,pitch,beat\)/);
+ assert.match(source,/document\.querySelector\("\.piano-tools"\)\.hidden=rack/);
+ assert.match(css,/#piano \.piano-keys-overlay \{[^}]*pointer-events:auto/);
+ assert.match(css,/#piano \.piano-key:focus-visible/);
+ assert.match(source,/onAddBeat:.*inheritScale:true/);
+ assert.match(source,/setBeatScaleGuide\(added,inheritedGuide\)/);
+});

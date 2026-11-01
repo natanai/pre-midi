@@ -38,6 +38,16 @@ export function normalizeScaleGuide(input) {
  return {root,mode,lock:mode!=="chromatic" && input?.lock===true};
 }
 
+// A scale belongs to the editable Beat, not one of its instruments.
+// Read older per-instrument browser preferences without modifying notes or
+// adding metadata to compact .premidi music instructions.
+export function scaleGuideForBeat(preferences,beat) {
+ const current=preferences.get(beat.id);
+ if(current)return normalizeScaleGuide(current);
+ const previous=beat.instruments.map(inst=>preferences.get(beat.id+":"+inst.id)).filter(Boolean);
+ return normalizeScaleGuide(previous.find(guide=>guide.mode!=="chromatic")??previous[0]);
+}
+
 // Melodic direction comes from musical time, not the order of mouse clicks.
 // The most recent earlier onset supplies the context. A chord at that onset
 // must agree on direction; ties and mixed directions allow either form.
