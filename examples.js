@@ -2,7 +2,7 @@
 // note systems. No parallel playback engine, example-only patch or save path.
 import {create,makeInstrument,makeChunk,makeSound,id,validate,clone} from "./schema.js";
 import {NEON_AFTER_HOURS} from "./exampleNeon.js";
-import {makePatch} from "./synth.js";
+import {makePatch,getPreset} from "./synth.js";
 import {samplePreset,makeSamplerPatch} from "./samples.js";
 import {sampleForNote} from "./sampler.js";
 const N=(pitch,start,duration=2,velocity=.8,bend)=>[pitch,start,duration,velocity,bend];
@@ -356,9 +356,15 @@ function retainPlayedSamples(instrument){
  }
  return assetIds;
 }
-const presetForSound=(sourceId,name,sound,volume,description)=>({
- id:sourceId,name,category:"Examples",description,
- // Presets carry the exact authored sound values, not the factory defaults.
+// Complete example beats remain separate; their editable sound recipes belong
+// in the normal catalog categories rather than a competing Examples category.
+export const exampleSoundCategory=(definition,trigger="pitched")=>
+ trigger==="hit"?"Drums":
+ (samplePreset(definition.preset)?.category||getPreset(definition.preset)?.category||"Recorded");
+const presetForSound=(sourceId,name,sound,volume,description,category)=>({
+ id:sourceId,name,category,description,
+ // Keep the exact authored patch and original factory identity; category only
+ // affects where the sound is found, not how a saved project plays.
  patch:clone(sound.patch),trigger:sound.trigger,
  referencePitch:sound.referencePitch,gain:sound.gain,volume
 });
@@ -370,15 +376,16 @@ export const EXAMPLE_SOUND_PRESETS=EXAMPLES.flatMap(example=>
   const description=example.name+" · "+(inst.layout==="rack"?
    inst.sounds.length+"-sound rack":"instrument");
   const whole=inst.layout==="rack"?{
-   id,name:inst.name,category:"Examples",description,
+   id,name:inst.name,category:"Drums",description,
    layout:"rack",sounds:clone(inst.sounds),volume:inst.volume
-  }:presetForSound(id,inst.name,inst.sounds[0],inst.volume,description);
-  // Rack components are also available individually, with their original
-  // names, velocity, reference pitches, and processed patches.
+  }:presetForSound(id,inst.name,inst.sounds[0],inst.volume,description,
+    exampleSoundCategory(definition,inst.sounds[0].trigger));
+  // Rack components remain available individually in Drums, alongside the
+  // complete rack; no second list of copied audio patches is maintained.
   return inst.layout==="rack"?
    [whole,...inst.sounds.map((sound,rowIndex)=>
     presetForSound(id+"-"+definition.rack[rowIndex].key,sound.name,sound,inst.volume,
-     example.name+" · "+inst.name+" · individual sound"))]:[whole];
+     example.name+" · "+inst.name+" · individual sound","Drums"))]:[whole];
  })
 );
 
