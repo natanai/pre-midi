@@ -149,6 +149,16 @@ async function checkLayout(frame){
   checks.mobileCloses=doc.querySelector(".work").classList.contains("inspector-closed");
  }
  if(frame.clientWidth<1100)toggle.click();
+ // Geometry checks must run with the responsive inspector visible.
+ checks.soundPreviewUnderVolume=preview.parentElement===volume.parentElement&&
+  !sound.querySelector(".sound-actions").contains(preview)&&
+  rect(preview).top>=rect(volume).bottom-2&&
+  Math.abs((rect(preview).left+rect(preview).width/2)-(rect(volume).left+rect(volume).width/2))<14;
+ checks.savePresetBelowPlay=save.parentElement===preview.parentElement&&
+  rect(save).top>=rect(preview).bottom-2&&
+  Math.abs((rect(save).left+rect(save).width/2)-(rect(preview).left+rect(preview).width/2))<14;
+ checks.volumeBesideWaveform=Math.abs(rect(waveform).top-rect(volume).top)<50&&
+  rect(waveform).right<=rect(volume).left+12&&rect(waveform).width>140;
  const firstVisual=sound.querySelector('.visual-sound-panel[data-visual-kind="filter"]');
  const expander=firstVisual?.querySelector(".visual-panel-expand");
  expander?.click();
