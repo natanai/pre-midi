@@ -784,6 +784,9 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  display:grid;place-items:center;flex:none;width:30px;height:30px;min-height:30px;
  border:1px solid var(--line);padding:0;font-size:18px;line-height:1;color:var(--text)
 }
+/* Generic .heading buttons receive [ ] pseudo-elements. A grid button
+   would stack those characters above and below its actual pencil glyph. */
+#note-mode::before,#note-mode::after {content:none}
 #note-mode:hover:not(:disabled) {background:var(--stripe);text-decoration:none}
 #note-mode[aria-pressed="true"] {
  color:var(--bright);border-color:var(--signal-mauve);
