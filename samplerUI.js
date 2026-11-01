@@ -27,7 +27,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  filterSelect.addEventListener("change",()=>onChange(["filter"],{...tone.filter,type:filterSelect.value}));
  filterLabel.append(filterTitle,filterSelect);toneFields.append(filterLabel);
  for(const [key,label,min,max,step,display,log] of [
-  ["cutoff","Cutoff",50,14000,1,"hz",true],["resonance","Resonance",.1,16,.1,"number",false]
+  ["resonance","Resonance",.1,16,.1,"number",false]
  ])toneFields.append(createDial({label,min,max,step,display,log,
   help:key==="cutoff"?(tone.filter.type==="lowpass"?"turn it down to muffle the high stuff":
    tone.filter.type==="highpass"?"turn it up to shave off the bass":
@@ -83,8 +83,6 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  const fields=document.createElement("div");fields.className="synth-fields dial-grid";
  const configs=[
   ["gain","Level",0,2,.01,"percent"],
-  ["attack","Attack",0,2,.005,"seconds"],
-  ["release","Release",.01,3,.01,"seconds"],
   ["transpose","Transpose",-24,24,1,"semitones"],
   ["pan","Pan",-1,1,.01,"pan"],
   ["strumMs","Strum",-25,25,1,"number"]
