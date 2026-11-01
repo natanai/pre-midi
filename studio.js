@@ -1154,7 +1154,7 @@ function renderSound() {
  const hear=$("hear-sound");
  hear.textContent="hear sound";
  hear.title=inst.layout==="rack"?"hear rack sounds one at a time":"hear current sound";
- hear.setAttribute("aria-label",hear.title);
+ hear.setAttribute("aria-label",inst.layout==="rack"?"Hear rack sounds one at a time":"Hear current sound");
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
@@ -1792,7 +1792,7 @@ $("hear-sound").addEventListener("click",()=>{
   hear.setAttribute("aria-label","hear "+entry.name+" ("+(choice.index+1)+" of "+choice.total+")");
  }else{
   hear.textContent="hear sound";hear.title="hear current sound";
-  hear.setAttribute("aria-label","hear current sound");
+  hear.setAttribute("aria-label","Hear current sound");
  }
  void audition(inst,entry.referencePitch,beat,{soundId:entry.id,duration:.6})
   .catch(error=>message("Could not preview sound: "+error.message,true));
