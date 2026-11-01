@@ -1406,6 +1406,8 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .visual-graph-label {fill:var(--muted);font-size:10px;pointer-events:none}
 .visual-graph-handle {fill:#050505;stroke:var(--visual-color,var(--track-accent,#08e4ec));
  stroke-width:2;cursor:grab;touch-action:none;vector-effect:non-scaling-stroke}
+.visual-graph-hit {cursor:grab;touch-action:none;stroke:none;outline:none}
+.visual-graph-hit:hover+.visual-graph-handle,.visual-graph-hit:focus-visible+.visual-graph-handle,
 .visual-graph-handle:hover,.visual-graph-handle:focus-visible {
  fill:var(--visual-color,var(--track-accent,#08e4ec));stroke:#fff;stroke-width:2.5;
  outline:none
