@@ -26,11 +26,11 @@ const groups=[
   {path:["oscillators",1,"octave"],label:"Octave",options:[-2,-1,0,1,2]},
   {path:["oscillators",1,"detune"],label:"Detune",min:-100,max:100,step:1,display:"cents"}
  ]},
- {name:"Envelope",open:false,fields:[
+ {name:"Envelope",open:true,fields:[
   {path:["envelope","decay"],label:"Decay",min:0,max:3,step:.01,display:"seconds"},
   {path:["envelope","sustain"],label:"Sustain",min:0,max:1,step:.01,display:"percent"}
  ]},
- {name:"Filter & noise",open:false,fields:[
+ {name:"Filter & noise",open:true,fields:[
   {path:["filter","type"],label:"Filter",options:FILTERS},
   {path:["filter","resonance"],label:"Resonance",min:.1,max:16,step:.1,display:"number"},
   {path:["filter","sweep"],label:"Filter sweep",min:-5,max:5,step:.1,display:"number",defaultValue:0},
