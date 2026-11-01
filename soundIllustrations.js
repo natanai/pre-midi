@@ -106,8 +106,10 @@ export const diagram=(patch,type)=>{
    const stopX=18+clamp(Math.log(f.cutoff/50)/Math.log(280))*324;
    const timeY=26+clamp(sweepTime/3)*54;
    // The line represents the cutoff's actual start/end and sweep duration.
-   line(pathFrom([[startX,26],[startX+(stopX-startX)*.5,timeY*.65+14],[stopX,timeY]]),true);
-   if(sweep!==0)tag(clamp(startX+5,24,295),23,"sweep");
+   if(sweep!==0){
+    line(pathFrom([[startX,26],[startX+(stopX-startX)*.5,timeY*.65+14],[stopX,timeY]]),true);
+    tag(clamp(startX+5,24,295),23,"sweep");
+   }
    // Noise is unpitched, so show a decaying irregular signal.
    const noise=clamp(p.noise??0),decay=clamp((p.noiseDecay??0)/4);
    if(noise>0){
@@ -177,10 +179,10 @@ export const diagram=(patch,type)=>{
   line("M294 109 H"+(294+22*(1+pan)).toFixed(2),true);
   tag(20,79,"level");tag(20,96,"tone");tag(260,110,"l / r");
  }else if(type==="distortion"){
-  const drive=p.effects.drive||0;
+  const drive=p.effects.drive||0,transfer=driveCurve(drive);
   line("M18 96 H344 M180 17 V97",true);
   line(pathRange(300,t=>{
-   const input=2*t-1,output=Math.tanh(input*(1+drive*8))/Math.tanh(1+drive*8);
+   const output=transfer[Math.round(t*(transfer.length-1))];
    return [24+t*312,58-output*37];
   }));
   handle(306,88-60*drive,[
@@ -221,13 +223,15 @@ export const diagram=(patch,type)=>{
    line(pathRange(130,t=>{
     const seconds=1.25*t;
     const value=routeValueAt(route,{elapsed:seconds,gate:1,velocity:.7,pitch:65});
-    return [67+223*t,center-9*clamp(value/limit,-1,1)];
+    const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
+    return [67+223*t,center-9*Math.tanh(value/visualScale)];
    }));
    const source=route.source.kind==="lfo"?"lfo":route.source.kind==="keytrack"?"keys":
     route.source.kind==="velocity"?"touch":"env";
    const target=MOD_TARGETS.find(item=>item.id===route.target);
    tag(18,center+3,source);tag(294,center+3,target?.name.replace("oscillator ","osc ")||"target");
   });
+  if(routes.length>4)tag(18,111,"+"+(routes.length-4)+" routes");
 
  }
  return {paths,handles,labels,color};
