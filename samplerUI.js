@@ -1,5 +1,6 @@
 import {movement,movementDefaults,BEND_SHAPES} from "./expression.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
+import {assignSoundEdit} from "./soundEditPath.js";
 import {createDial,explainLabel,helpForLabel} from "./dial.js";
 import {sampleTone,SAMPLE_FILTERS,DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
 // Sample controls and synth controls share the same dial and visualization
@@ -168,12 +169,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   onPreview(path,value);
   if(!path?.length)return;
   const next=structuredClone(patch);
-  const updates=Array.isArray(path[0])?path.map((key,i)=>[key,value[i]]):[[path,value]];
-  for(const [keys,newValue] of updates){
-   let target=next;
-   for(const key of keys.slice(0,-1))target=target[key]??={};
-   target[keys.at(-1)]=newValue;
-  }
+  assignSoundEdit(next,path,value);
   for(const visual of visuals)visual.draw(next);
  };
  for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"]]){
