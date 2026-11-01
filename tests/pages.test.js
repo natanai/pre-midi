@@ -63,6 +63,7 @@ test("Pages stages nested DSP modules and both stylesheets without development f
  try{
   await mkdir(new URL("src/dsp/",root),{recursive:true});
   await mkdir(new URL("samples/",root));
+  await mkdir(new URL("phone/",root));
   const files={"studio.js":'import {value} from "./src/dsp/value.js";',
    "src/dsp/value.js":'export const value=1;',"style.css":"body{}","studioAlignment.css":".row{}",
    "phone/index.html":'<head><link rel="stylesheet" href="./phone.css"></head>',"phone/phone.css":"body{}",
