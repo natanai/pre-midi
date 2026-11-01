@@ -15,6 +15,7 @@ import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth
 import { renderPatchEditor,PRIMARY_SYNTH_FIELDS } from "./instrumentUI.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
 import { DRUM_RACKS } from "./drumRacks.js";
+import { nextRackPreview } from "./rackPreview.js";
 import { loadLibrarySample, makeSampleAsset, MAX_BEAT_BYTES, sampleForNote } from "./sampler.js";
 import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
@@ -61,6 +62,7 @@ function validRackPreset(item){
  return validate(trial).length===0;
 }
 let libraryMode="add",libraryCategory="All",libraryContext=null;
+const rackPreviewPositions=new Map(),rackPreviewRequests=new Map();
 const inspectorViewport=window.matchMedia("(min-width:1100px)");
 let inspectorState=inspectorViewport.matches?"expanded":"closed";
 let loadingExample=false;
@@ -1149,6 +1151,10 @@ function renderChunkEditor() {
 }
 function renderSound() {
  const inst=instrument(),entry=sound(inst),patch=entry.patch;
+ const hear=$("hear-sound");
+ hear.textContent="hear sound";
+ hear.title=inst.layout==="rack"?"hear rack sounds one at a time":"hear current sound";
+ hear.setAttribute("aria-label",hear.title);
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
@@ -1774,7 +1780,23 @@ presetForm.addEventListener("submit",async event=>{
  try{if(await savePreset(name,presetRack))presetDialog.close();}
  finally{presetSaving=false;$("save-preset-confirm").disabled=false;}
 });
-$("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,beat,{soundId:sound().id,duration:.6}).catch(error=>message("Could not preview sound: "+error.message,true));});
+$("hear-sound").addEventListener("click",()=>{
+ const inst=instrument();
+ const choice=inst.layout==="rack"
+  ?nextRackPreview(rackPreviewPositions,"instrument:"+inst.id,inst.sounds):null;
+ const entry=choice?.sound||sound(inst);
+ const hear=$("hear-sound");
+ if(choice){
+  hear.textContent="hear sound · "+(choice.index+1)+"/"+choice.total;
+  hear.title="hear "+entry.name;
+  hear.setAttribute("aria-label","hear "+entry.name+" ("+(choice.index+1)+" of "+choice.total+")");
+ }else{
+  hear.textContent="hear sound";hear.title="hear current sound";
+  hear.setAttribute("aria-label","hear current sound");
+ }
+ void audition(inst,entry.referencePitch,beat,{soundId:entry.id,duration:.6})
+  .catch(error=>message("Could not preview sound: "+error.message,true));
+});
 $("save-sound").addEventListener("click",()=>openPresetSave(instrument().layout==="rack"));
 $("save-row-sound").addEventListener("click",()=>openPresetSave(false));
 function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...EXAMPLE_SOUND_PRESETS,...savedSounds,...DRUM_RACKS];}
@@ -1783,7 +1805,7 @@ function openLibrary(mode) {
  if(mode==="add"&&beat.instruments.length>=12)return;
  libraryMode=mode;libraryContext=currentContext(mode);
  libraryCategory="All";
- $("library-description").textContent=mode==="add"?"new instrument":mode==="replace-row"?"replaces selected sound":"notes use keys · hits use racks";
+ $("library-description").textContent=mode==="add"?"new instrument":mode==="replace-row"?"replace this rack sound":"choose a sound or add a rack";
  renderLibrary();
  const dialog=$("instrument-dialog");
  if(!dialog.open)dialog.showModal();
@@ -1812,14 +1834,15 @@ async function chooseSound(preset) {
   const assets=await resolveSamples(preset);
   const patch=preset.sounds?patchCopy(preset.sounds[0].patch):getPreset(preset.id)?makePatch(preset.id):preset.patch?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
-  if(preset.category!=="Examples")patch.presetId=preset.id;
+  // Example-derived patches and saved variations carry their authored base ID.
+  if(!preset.patch && !preset.sounds)patch.presetId=preset.id;
   const trigger=presetTrigger(preset);
   const selected=beat.instruments.find(item=>item.id===context.instrumentId);
   if(context.mode!=="add"&&selected?.automation&&patch.type!=="synth"&&trigger==="pitched"&&!preset.sounds){
    message("Remove cutoff movement before replacing this instrument with a recording.",true);return;
   }
  const ok=applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,
-   preset.sounds || ["Mine","Examples"].includes(preset.category)?preset:null);
+   (preset.sounds||preset.patch||preset.category==="Mine")?preset:null);
   if(ok) {
    dialog.close();
    // A new sample can be introduced while the transport is running.
@@ -1828,14 +1851,28 @@ async function chooseSound(preset) {
   }
  }catch(error){message("Couldn't load "+preset.name+": "+error.message,true);}
 }
-async function auditionPreset(preset) {
+async function auditionPreset(preset,previewControl=null) {
  try {
   if(preset.sounds){
-   const samples=await resolveSamples(preset);
-   await Promise.all(preset.sounds.map(entry=>audition({...makeInstrument(1,1,entry),volume:preset.volume??.7},
-    entry.referencePitch,{samples})));return;
+   const key="preset:"+preset.id;
+   const choice=nextRackPreview(rackPreviewPositions,key,preset.sounds);
+   const entry=choice.sound,request=(rackPreviewRequests.get(key)??0)+1;
+   rackPreviewRequests.set(key,request);
+   if(previewControl){
+    previewControl.textContent="▶ "+(choice.index+1)+"/"+choice.total;
+    previewControl.title="Preview "+entry.name+" ("+(choice.index+1)+" of "+choice.total+")";
+    previewControl.setAttribute("aria-label",previewControl.title);
+   }
+   // Load only the sampled row being auditioned, not an entire 11-row kit
+   // for every click. A later click supersedes a still-loading preview.
+   const samples=await resolveSamples({patch:entry.patch,samples:preset.samples});
+   if(rackPreviewRequests.get(key)!==request)return;
+   const inst=makeInstrument(1,1,entry);
+   inst.layout="rack";inst.volume=preset.volume??.7;
+   await audition(inst,entry.referencePitch,{samples},{soundId:entry.id,duration:.6});
+   return;
   }
-  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):getPreset(preset.id)?makePatch(preset.id):preset.patch?patchCopy(preset.patch):
+  const patch=getPreset(preset.id)?makePatch(preset.id):preset.patch?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   const pitch=preset.referencePitch??(presetTrigger(preset)==="hit"?patch.zones?.[0]?.root??60:preset.category==="Bass"?48:preset.category==="Guitars"?57:69);
   const inst=makeInstrument(1,1,makeSound(preset.name,patch,presetTrigger(preset)));inst.volume=preset.volume??.8;
@@ -1855,10 +1892,11 @@ async function auditionPreset(preset) {
   else await audition(inst,pitch,{samples:assets});
  }catch(error){message("Preview failed: "+error.message,true);}
 }
+
 function renderLibrary() {
  const filters=$("library-filters"),list=$("library-sounds");
  filters.replaceChildren();list.replaceChildren();
- const categories=["All","Guitars","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion","Examples",...(savedSounds.length?["Mine"]:[])];
+ const categories=["All","Guitars","Recorded","Drums","Textures","Bass","Lead","Keys","Pads","Winds","Percussion",...(savedSounds.length?["Mine"]:[])];
  for(const category of categories) {
   const control=button(category,()=>{libraryCategory=category;renderLibrary();},
    "library-filter"+(libraryCategory===category?" selected":""));
@@ -1870,36 +1908,44 @@ function renderLibrary() {
   const personal=button("＋ Import audio file",()=>$("sample-file").click(),"library-import");
   list.append(record,personal);
  }
+ // Both entry points share a catalog. Only the explicitly row-scoped
+ // Replace sound action excludes full racks.
  const matching=allSounds().filter(p=>
-  (libraryMode==="add" || !p.sounds) &&
+  (libraryMode!=="replace-row" || !p.sounds) &&
   (libraryCategory==="All" || p.category===libraryCategory ||
    (libraryCategory==="Drums" && p.category==="Mine" && !!p.sounds)));
- // Keep individual drum sounds available; complete racks live beneath them.
- const grouped=libraryCategory==="Drums"
-  ?[...matching.filter(p=>!p.sounds),...matching.filter(p=>p.sounds)]
-  :matching;
+ // A single sound appears before whole racks so rack choices are predictable.
+ const grouped=[...matching.filter(p=>!p.sounds),...matching.filter(p=>p.sounds)];
  let rackHeading=false;
  for(const preset of grouped) {
-  if(libraryCategory==="Drums" && preset.sounds && !rackHeading){
+  if(preset.sounds && !rackHeading){
    list.append(element("h3","preset racks","library-rack-heading"));
    rackHeading=true;
   }
   const card=element("div",undefined,"preset-card");
   card.dataset.presetId=preset.id;
-  card.dataset.presetId=preset.id;
   const info=element("div",undefined,"preset-information");
   info.append(element("strong",preset.name),element("span",preset.description));
   const actions=element("div",undefined,"preset-actions");
-  const preview=button("▶",()=>{void auditionPreset(preset);},"preset-preview");
-  preview.title="Preview "+preset.name;
-  preview.setAttribute("aria-label","Preview "+preset.name);
-  const use=button(libraryMode==="add"?"Add":"Use",()=>{void chooseSound(preset);},"preset-choose");
-  use.setAttribute("aria-label",(libraryMode==="add"?"Add ":"Use ")+preset.name);
+  const preview=button("▶",()=>{void auditionPreset(preset,preview);},"preset-preview");
+  preview.title=preset.sounds?"Preview rack sounds one at a time":"Preview "+preset.name;
+  preview.setAttribute("aria-label",preview.title);
+  const target=beat.instruments.find(entry=>entry.id===libraryContext?.instrumentId);
+  const willCreate=libraryMode==="add" || !!preset.sounds ||
+   (libraryMode!=="replace-row" && target &&
+    selectionOperation(target.layout,presetTrigger(preset),false).startsWith("create-"));
+  const label=libraryMode==="replace-row"?"replace":preset.sounds?"add rack":
+   willCreate?"add instrument":target?.layout==="rack"?"add sound":"use";
+  const use=button(label,()=>{void chooseSound(preset);},"preset-choose");
+  use.setAttribute("aria-label",label+" "+preset.name);
+  use.disabled=!!willCreate && beat.instruments.length>=12;
+  if(use.disabled)use.title="maximum 12 instruments";
   actions.append(preview,use);
   card.append(info,actions);
   list.append(card);
  }
 }
+
 function removeInstrument(instrumentId){
  const target=beat.instruments.find(entry=>entry.id===instrumentId);
  if(!target)return;
