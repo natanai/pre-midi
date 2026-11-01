@@ -26,11 +26,11 @@ const groups=[
   {path:["oscillators",1,"octave"],label:"Octave",options:[-2,-1,0,1,2]},
   {path:["oscillators",1,"detune"],label:"Detune",min:-100,max:100,step:1,display:"cents"}
  ]},
- {name:"Envelope",open:true,fields:[
+ {name:"Envelope",open:false,fields:[
   {path:["envelope","decay"],label:"Decay",min:0,max:3,step:.01,display:"seconds"},
   {path:["envelope","sustain"],label:"Sustain",min:0,max:1,step:.01,display:"percent"}
  ]},
- {name:"Filter & noise",open:true,fields:[
+ {name:"Filter & noise",open:false,fields:[
   {path:["filter","type"],label:"Filter",options:FILTERS},
   {path:["filter","resonance"],label:"Resonance",min:.1,max:16,step:.1,display:"number"},
   {path:["filter","sweep"],label:"Filter sweep",min:-5,max:5,step:.1,display:"number",defaultValue:0},
@@ -38,7 +38,7 @@ const groups=[
   {path:["noise"],label:"Noise",min:0,max:1,step:.01,display:"percent"},
   {path:["noiseDecay"],label:"Noise decay",min:0,max:4,step:.01,display:"seconds",defaultValue:0}
  ]},
- {name:"Movement",open:false,fields:[
+ {name:"Pitch & movement",open:false,fields:[
   {path:["bend","shape"],label:"Bend shape",options:BEND_SHAPES.map(([id])=>id)},
   {path:["bend","amount"],label:"Bend amount",min:0,max:12,step:.25,display:"semitones"},
   {path:["bend","rate"],label:"Wave speed",min:.1,max:12,step:.1,display:"hz"},
@@ -53,8 +53,10 @@ const groups=[
   {path:["movement","toneRate"],label:"Tone speed",min:.1,max:20,step:.1,display:"hz"},
   {path:["pan"],label:"Pan",min:-1,max:1,step:.01,display:"pan"}
  ]},
- {name:"Effects",open:false,fields:[
-  {path:["effects","drive"],label:"Distortion",min:0,max:1,step:.01,display:"percent"},
+ {name:"Distortion",open:false,fields:[
+  {path:["effects","drive"],label:"Distortion",min:0,max:1,step:.01,display:"percent"}
+ ]},
+ {name:"Delay",open:false,fields:[
   {path:["effects","delayMix"],label:"Delay",min:0,max:1,step:.01,display:"percent"},
   {path:["effects","delayTime"],label:"Delay time",min:.05,max:1,step:.01,display:"seconds"},
   {path:["effects","delayFeedback"],label:"Feedback",min:0,max:.8,step:.01,display:"percent"}
@@ -131,9 +133,13 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{}) {
  const preview=(path,value)=>{
   onPreview(path,value);
   if(!path.length)return;
-  const current=structuredClone(patch);let owner=current;
-  for(const key of path.slice(0,-1))owner=owner[key]??={};
-  owner[path.at(-1)]=value;
+  const current=structuredClone(patch);
+  const updates=Array.isArray(path[0])?path.map((key,i)=>[key,value[i]]):[[path,value]];
+  for(const [keys,newValue] of updates){
+   let owner=current;
+   for(const key of keys.slice(0,-1))owner=owner[key]??={};
+   owner[keys.at(-1)]=newValue;
+  }
   for(const panel of panels)panel.draw(current);
  };
  for(const group of groups){
@@ -177,7 +183,8 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{}) {
   }
   const kind=group.name.startsWith("Oscillator")?"oscillator"+(index+1):
    group.name==="Envelope"?"envelope":group.name==="Filter & noise"?"filter":
-   group.name==="Movement"?"movement":"effects";
+   group.name==="Pitch & movement"?"movement":
+   group.name==="Distortion"?"distortion":"delay";
   const panel=illustrateSoundPanel(details,kind,patch,onChange,preview,0);
   panels.push(panel);grid.append(panel.element);
  }

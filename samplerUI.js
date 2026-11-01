@@ -38,8 +38,8 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  toneFields.append(createDial({label:"Distortion",min:0,max:1,step:.01,display:"percent"},tone.drive,
   value=>onChange(["drive"],value),value=>onPreview(["drive"],value)));
  toneGroup.append(toneTitle,toneFields);root.append(toneGroup);
- const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=true;
- const movementTitle=document.createElement("summary");movementTitle.textContent="Movement";
+ const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=false;
+ const movementTitle=document.createElement("summary");movementTitle.textContent="Pitch & movement";
  const movementFields=document.createElement("div");movementFields.className="synth-fields dial-grid";
  const m=movement(patch);
  const movements=[
@@ -79,7 +79,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   value=>onChange(["bend"],{...bend,[key]:value}),
   value=>onPreview(["bend",key],value)));
  movementGroup.append(movementTitle,movementFields);root.append(movementGroup);
- const details=document.createElement("details");details.className="synth-group sample-shaping";details.open=true;
+ const details=document.createElement("details");details.className="synth-group sample-shaping";details.open=false;
  const summary=document.createElement("summary");summary.textContent="Sample & articulation";
  const fields=document.createElement("div");fields.className="synth-fields dial-grid";
  const configs=[
@@ -145,9 +145,13 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  const preview=(path,value)=>{
   onPreview(path,value);
   if(!path?.length)return;
-  const next=structuredClone(patch);let target=next;
-  for(const key of path.slice(0,-1))target=target[key]??={};
-  target[path.at(-1)]=value;
+  const next=structuredClone(patch);
+  const updates=Array.isArray(path[0])?path.map((key,i)=>[key,value[i]]):[[path,value]];
+  for(const [keys,newValue] of updates){
+   let target=next;
+   for(const key of keys.slice(0,-1))target=target[key]??={};
+   target[keys.at(-1)]=newValue;
+  }
   for(const visual of visuals)visual.draw(next);
  };
  for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"]]){

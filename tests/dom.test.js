@@ -69,8 +69,9 @@ test("instrument presets have one owner and the full synth editor is reachable",
  assert.match(editor,/Oscillator 1/);
  assert.match(editor,/Envelope/);
  assert.match(editor,/Filter & noise/);
- assert.match(editor,/Movement/);
- assert.match(editor,/Effects/);
+ assert.match(editor,/Pitch & movement/);
+ assert.match(editor,/Distortion/);
+ assert.match(editor,/Delay/);
  assert.doesNotMatch(html,/id="waveform"/);
 });
 
@@ -163,7 +164,7 @@ test("primary instrument controls replace redundant lower fields",()=>{
  assert.match(html,/class="sound-primary-controls"/);
  for(const id of ["instrument-volume-dial","primary-brightness-dial","primary-attack-dial","primary-release-dial"])
   assert.ok(html.includes('id="'+id+'"'),id);
- assert.ok(html.indexOf('id="synth-editor"')<html.indexOf('id="sound-visualizer"'));
+ assert.ok(html.indexOf('id="sound-visualizer"')<html.indexOf('id="synth-editor"'));
  assert.match(html,/class="sound-entity-menu"/);
  assert.match(html,/id="remove-instrument"/);
  assert.ok(!html.includes('class="sound-control-group sound-identity-controls"'));

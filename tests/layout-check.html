@@ -51,8 +51,18 @@ async function checkLayout(frame){
  checks.soundInspectorAvailable=!!sound.querySelector("#synth-editor")&&!!sound.querySelector("#sound-visualizer");
  checks.visualIllustrations=!!sound.querySelector('.visual-sound-panel[data-visual-kind="filter"]')&&
   sound.querySelectorAll(".visual-sound-panel .visual-panel-graph").length>=7;
- checks.measuredWaveformBelowControls=get("synth-editor").nextElementSibling===get("sound-visualizer");
+ checks.measuredWaveformAboveControls=!!get("sound-visualizer").closest(".sound-overview")&&get("sound-visualizer").compareDocumentPosition(get("synth-editor"))&Node.DOCUMENT_POSITION_FOLLOWING?true:false;
  checks.noDeveloperFacingWaveformCopy=!get("sound-visualizer").textContent.includes("actual audio");
+ checks.waveformCaptionsLegible=!!get("sound-visualizer").querySelector(".signal-chart-time")&&
+  getComputedStyle(get("sound-visualizer").querySelector(".signal-chart-time")).fontSize==="11px";
+ const dots=[...sound.querySelectorAll(".visual-graph-point")];
+ checks.roundGrabPoints=dots.length>0&&dots.every(dot=>{
+  const size=rect(dot),style=getComputedStyle(dot,"::after");
+  return Math.abs(size.width-size.height)<1&&style.borderRadius==="50%";
+ });
+ checks.twoAxisPoints=!!sound.querySelector('.visual-sound-panel[data-visual-kind="delay"] .visual-graph-point[aria-label="delay time / mix"]')&&
+  !!sound.querySelector('.visual-sound-panel[data-visual-kind="filter"] .visual-graph-point[aria-label="cutoff / resonance"]');
+ checks.collapsedIllustrationsStayHidden=!!sound.querySelector('.visual-sound-panel[data-visual-kind="delay"] details:not([open]) .visual-panel-area');
  if(frame.clientWidth>=1100) {
   const viewportHeight=frame.contentWindow.innerHeight;
   const footer=doc.querySelector("footer");

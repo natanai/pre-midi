@@ -1156,9 +1156,12 @@ function renderSound() {
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
   const next=patchCopy(sound().patch);
-  let parent=next;
-  for(let i=0;i<path.length-1;i++)parent=parent[path[i]]??={};
-  parent[path[path.length-1]]=value;
+  const updates=Array.isArray(path[0])?path.map((key,i)=>[key,value[i]]):[[path,value]];
+  for(const [keys,newValue] of updates){
+   let owner=next;
+   for(const key of keys.slice(0,-1))owner=owner[key]??={};
+   owner[keys.at(-1)]=newValue;
+  }
   scope(next);
   for(const panel of $("synth-editor").querySelectorAll(".visual-sound-panel"))
    panel.drawSoundIllustration?.(next);
@@ -1166,9 +1169,12 @@ function renderSound() {
  const onChange=(path,value)=>{
   const changed=modify(()=>{
    const target=sound().patch;
-   let owner=target;
-   for(let i=0;i<path.length-1;i++)owner=owner[path[i]]??={};
-   owner[path[path.length-1]]=value;
+   const updates=Array.isArray(path[0])?path.map((key,i)=>[key,value[i]]):[[path,value]];
+   for(const [keys,newValue] of updates){
+    let owner=target;
+    for(const key of keys.slice(0,-1))owner=owner[key]??={};
+    owner[keys.at(-1)]=newValue;
+   }
    if(target.modulation!==undefined)target.version=2;
    target.presetId="custom";
   });

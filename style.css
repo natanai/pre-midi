@@ -1394,51 +1394,64 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .sound-section-heading .sound-heading #instrument-name {min-width:62px}
 }
 
-/* The sound illustrations are the entry points to their existing patch dials.
-   Keep the measurement scope below them, not in place of them. */
-.sound-section .synth-grid {display:flex;flex-direction:column;gap:12px}
-.sound-primary-controls {display:flex;justify-content:flex-start;padding:8px 14px}
-.sound-primary-controls > div {width:100px;flex:none}
+/* Illustrated patch controls share the studio's normal collapsible sections. */
+.sound-section .synth-grid {display:flex;flex-direction:column;gap:10px}
+.sound-overview {border-bottom:1px solid var(--faint)}
+.sound-overview .sound-primary-controls {display:flex;justify-content:flex-end;
+ padding:7px 12px 0;border:0;background:transparent}
+.sound-overview .sound-primary-controls>div {width:96px;min-width:0;flex:none}
+.sound-overview .sound-visualizer {padding:8px 12px 13px;border:0}
+.sound-overview .signal-scope-graph {width:100%;height:230px}
+.sound-overview .signal-scope-chart {position:relative;min-width:0}
+.signal-chart-label {position:absolute;pointer-events:none;background:#020304d9;
+ padding:1px 3px;line-height:1.35;letter-spacing:.025em;font-size:11px;color:var(--muted)}
+.signal-chart-wave {top:3%;left:6px}
+.signal-chart-time {top:52%;left:6px}
+.signal-chart-pitch {top:79%;left:6px}
+.signal-chart-end {top:52%;right:6px;text-align:right}
 .visual-sound-panel {min-width:0;border:1px solid var(--line);background:#050505;position:relative}
-.visual-panel-area {height:148px;position:relative;background:#020304;border-bottom:1px solid var(--faint)}
-.visual-panel-graph {display:block;width:100%;height:100%;touch-action:pan-y;cursor:pointer}
+.visual-sound-panel>.synth-group {border:0;background:transparent}
+.visual-sound-panel>.synth-group>summary {text-transform:lowercase}
+.visual-sound-panel>.synth-group[open]>summary {border-bottom:1px solid var(--faint)}
+.visual-sound-panel>.synth-group>.visual-panel-area {
+ position:relative;height:160px;background:#020304;border-bottom:1px solid var(--faint)}
+.visual-panel-graph {display:block;width:100%;height:100%;pointer-events:none}
 .visual-graph-line {fill:none;stroke:var(--visual-color,var(--track-accent,#08e4ec));
  stroke-width:1.7;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .visual-graph-secondary {fill:none;stroke:#515151;stroke-width:.8;
  stroke-dasharray:3 4;vector-effect:non-scaling-stroke}
-.visual-graph-label {fill:var(--muted);font-size:10px;pointer-events:none}
-.visual-graph-handle {fill:#050505;stroke:var(--visual-color,var(--track-accent,#08e4ec));
- stroke-width:2;cursor:grab;touch-action:none;vector-effect:non-scaling-stroke}
-.visual-graph-hit {cursor:grab;touch-action:none;stroke:none;outline:none}
-.visual-graph-hit:hover+.visual-graph-handle,.visual-graph-hit:focus-visible+.visual-graph-handle,
-.visual-graph-handle:hover,.visual-graph-handle:focus-visible {
- fill:var(--visual-color,var(--track-accent,#08e4ec));stroke:#fff;stroke-width:2.5;
- outline:none
-}
-.visual-panel-expand {position:absolute;right:8px;top:6px;z-index:1;
+.visual-graph-label {fill:var(--muted);font-size:10px}
+.visual-graph-points {position:absolute;inset:0;pointer-events:none}
+.visual-graph-point {position:absolute;transform:translate(-50%,-50%);
+ width:28px;height:28px;min-width:28px;min-height:28px;padding:0;border:0;
+ border-radius:0;background:transparent;cursor:grab;touch-action:none;
+ pointer-events:auto;display:grid;place-items:center}
+.visual-graph-point::after {content:"";display:block;width:7px;height:7px;
+ border:1px solid var(--track-accent,#08e4ec);border-radius:50%;
+ background:#050505;box-sizing:border-box;transition:transform .1s ease}
+.visual-graph-point:hover::after,.visual-graph-point:focus-visible::after {
+ transform:scale(1.5);background:var(--track-accent,#08e4ec);border-color:var(--bright)}
+.visual-graph-point:focus-visible {outline:1px dotted var(--bright);outline-offset:0}
+.visual-graph-point:active {cursor:grabbing}
+.visual-panel-expand {position:absolute;right:8px;top:6px;z-index:2;
  min-width:30px;min-height:30px;padding:2px 6px;
  color:var(--muted);font-size:17px;border:1px solid transparent;background:#020304e6}
-.visual-panel-expand:hover,.visual-panel-expand:focus-visible {
- color:var(--bright);border-color:var(--line)}
-.visual-sound-panel>.synth-group {border:0;background:transparent}
+.visual-panel-expand:hover,.visual-panel-expand:focus-visible {color:var(--bright);border-color:var(--line)}
 .visual-sound-panel>.synth-group>.synth-fields {padding:14px 12px}
-.visual-sound-panel>.synth-group>summary {text-transform:lowercase}
 .visual-sound-panel .dial-field {min-width:82px}
 body.sound-visual-zoom::before {content:"";position:fixed;inset:0;
  z-index:199;background:#000e}
-.visual-sound-panel.zoomed {position:fixed;z-index:200;left:50%;top:5dvh;
+body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:210}
+.visual-sound-panel.zoomed {position:fixed;z-index:220;left:50%;top:5dvh;
  transform:translateX(-50%);width:min(850px,calc(100vw - 22px));
  max-height:90dvh;overflow-y:auto;overscroll-behavior:contain;
  border-color:var(--bright);box-shadow:0 12px 60px #000}
-.visual-sound-panel.zoomed .visual-panel-area {height:clamp(220px,37dvh,380px)}
-.visual-sound-panel.zoomed>.synth-group {display:block}
+.visual-sound-panel.zoomed>.synth-group>.visual-panel-area {height:clamp(220px,37dvh,380px)}
 .visual-sound-panel.zoomed>.synth-group>.synth-fields {grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
 @media(max-width:570px) {
- .visual-panel-area {height:146px}
+ .sound-overview .signal-scope-graph {height:200px}
+ .visual-sound-panel>.synth-group>.visual-panel-area {height:152px}
  .visual-sound-panel.zoomed {top:3dvh;max-height:94dvh}
- .visual-sound-panel.zoomed .visual-panel-area {height:min(37dvh,260px)}
- .sound-section .synth-grid {gap:10px}
+ .visual-sound-panel.zoomed>.synth-group>.visual-panel-area {height:min(37dvh,260px)}
+ .sound-section .synth-grid {gap:9px}
 }
-
-body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:210}
-.visual-sound-panel.zoomed {z-index:220}
