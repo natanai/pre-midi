@@ -178,7 +178,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
  wrapper.style.setProperty("--scope-accent",accent);
  const head=document.createElement("div");head.className="signal-scope-header";
  const title=document.createElement("span");title.className="signal-scope-title";
- title.textContent=patch.type==="sample"?"RECORDED SOUND":"SOUND SHAPE";
+ title.textContent="waveform";
  const legend=document.createElement("span");legend.className="signal-scope-legend";legend.textContent="rendering";
  head.append(title,legend);
  const svg=node("svg",{viewBox:"0 0 720 264",preserveAspectRatio:"none",role:"img",
@@ -217,7 +217,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
     else pitches[1].removeAttribute("d");
     gate.setAttribute("d","M"+(HOLD/seconds*TIME_WIDTH).toFixed(2)+" 151 V193");
     end.textContent=seconds.toFixed(1)+"s";
-    legend.textContent=(clipped?"first ":"")+seconds.toFixed(1)+"s · actual audio";
+    legend.textContent=(clipped?"first ":"")+seconds.toFixed(1)+"s";
     svg.setAttribute("aria-label","Measured "+Math.round(wave.windowSeconds*1000)+
      " millisecond stereo waveform at "+wave.startSeconds.toFixed(2)+" seconds, loudness over "+
      seconds.toFixed(1)+" seconds, and pitch movement"+(clipped?"; longer tail clipped":""));
