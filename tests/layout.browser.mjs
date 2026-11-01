@@ -49,6 +49,8 @@ try{
  await reportedTest("newcomer-check","/__newcomer_result",390,844);
  await reportedTest("example-presets-check","/__example_presets_result",1440,900);
  await reportedTest("example-presets-check","/__example_presets_result",390,844);
+ await reportedTest("drum-racks-check","/__drum_racks_result",1440,900);
+ await reportedTest("drum-racks-check","/__drum_racks_result",390,844);
  for(const [width,height] of [[1440,900],[1024,800],[780,900],[390,844]]){
   await reportedTest("layout-check","/__layout_result",width,height);
   await reportedTest("rack-check","/__rack_result",width,height);
