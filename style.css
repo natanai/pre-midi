@@ -1020,7 +1020,6 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .rack-sound-controls input[type=number] {width:85px}
 .rack-sound-actions {display:flex;flex-wrap:wrap;gap:6px;width:100%}
 .rack-sound-actions button {white-space:normal;min-height:36px}
-.layout-actions {padding:0 14px 12px}
 [hidden] {display:none!important}
 /* The selected Sound label can widen on mobile; history stays within the heading. */
 .history-actions {max-width:100%;min-width:0;flex-wrap:nowrap}
@@ -1123,11 +1122,6 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 }
 .floating-help[hidden] {display:none!important}
 .unit-help {font-size:inherit}
-.layout-actions {border-top:1px solid var(--faint);padding-top:6px}
-.layout-actions button {color:var(--muted);text-transform:lowercase}
-.layout-actions button:not(:disabled):hover {color:var(--bright)}
-.layout-actions button::before {content:"[";color:var(--muted)}
-.layout-actions button::after {content:"]";color:var(--muted)}
 /* these controls are already available in the per-row action menu */
 .rack-sound-actions :is(#move-sound-up,#move-sound-down,#duplicate-sound,#remove-sound) {display:none}
 
@@ -1368,8 +1362,15 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 }
 .sound-entity-menu-content button {
  display:block;width:100%;padding:8px;text-align:left;
- color:var(--signal-pink);white-space:nowrap
+ color:var(--text);white-space:nowrap
 }
+.sound-entity-menu-content button.danger {color:var(--signal-pink)}
+.sound-entity-menu-content button:not(:disabled):hover {
+ color:var(--bright);background:var(--stripe);text-decoration:none
+}
+.sound-entity-menu-content button.danger:hover:not(:disabled) {color:var(--signal-pink)}
+.sound-entity-menu-content button:disabled {opacity:.4;cursor:not-allowed}
+.sound-entity-menu-content button[hidden] {display:none}
 .sound-primary-controls {
  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
  gap:4px;align-items:start;justify-items:center;
