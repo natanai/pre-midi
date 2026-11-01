@@ -69,6 +69,19 @@ frame.addEventListener("load",async()=>{
   await choose($("add-instrument"),"Neon Lead");
   check("Add Instrument makes separate piano",count()===6&&!rows().length);
   focus(1);rows()[0].querySelectorAll(".rack-step")[0].click();rows()[1].querySelectorAll(".rack-step")[0].click();
+  // A rack hit opens the existing per-note editor via right-click.
+  const rackHit=rows()[0].querySelector(".rack-step.filled");
+  const hitCount=(await score()).instruments[1].chunks[0].notes.length;
+  const usedContext=rackHit?.dispatchEvent(new w.MouseEvent("contextmenu",
+   {bubbles:true,cancelable:true,button:2}))===false;
+  check("rack hit right-click opens note effects",usedContext &&
+   $("note-mode").getAttribute("aria-pressed")==="true" &&
+   !$("note-expression").hidden &&
+   !!rows()[0].querySelector(".rack-step.selected") &&
+   (await score()).instruments[1].chunks[0].notes.length===hitCount);
+  $("note-effects-done").click();
+  check("rack note context editor exits normally",$("note-mode").getAttribute("aria-pressed")==="false" &&
+   (await score()).instruments[1].chunks[0].notes.length===hitCount);
   const before=await score(),instId=before.instruments[1].id,events=clone(before.instruments[1].chunks);
   const roll=d.querySelector(".piano-scroll");roll.scrollLeft=80;const left=roll.scrollLeft;
   rows()[0].querySelector(".rack-name").click();
