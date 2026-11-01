@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScale,isPitchInScaleAtStep,scaleDirectionAtStep} from "../scaleGuide.js";
+import {pianoKeyGeometry} from "../pianoKeyboard.js";
 
 test("all twelve tonics and named modes have valid, distinct pitch-class sets",()=>{
  assert.equal(SCALE_ROOTS.length,12);
@@ -77,4 +78,20 @@ test("directional scale context is unambiguous only when the prior onset agrees"
  assert.equal(scaleDirectionAtStep(78,phrase,0),"either");
  assert.equal(scaleDirectionAtStep(78,phrase,9),"ascending"); // onset at 9 is simultaneous, not earlier
  assert.equal(scaleDirectionAtStep(78,phrase,10),"ascending");
+});
+
+test("piano keyboard geometry fills the entire roll with continuous white keys",()=>{
+ const {white,black,height}=pianoKeyGeometry();
+ assert.equal(height,48*23);
+ assert.equal(white.length,28);
+ assert.equal(black.length,20);
+ assert.equal(white[0].top,0);
+ assert.equal(white.at(-1).top+white.at(-1).height,height);
+ for(let index=1;index<white.length;index++)
+  assert.equal(white[index-1].top+white[index-1].height,white[index].top);
+ for(const key of black){
+  assert.ok(key.top>0 && key.top+key.height<height);
+  assert.equal(key.top,(83-key.pitch)*23+1);
+ }
+ assert.equal(new Set([...white,...black].map(key=>key.pitch)).size,48);
 });
