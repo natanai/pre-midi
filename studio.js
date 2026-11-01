@@ -765,7 +765,7 @@ function renderNotes() {
  const scroll = root.parentElement, top = scroll.scrollTop, left = scroll.scrollLeft;
  root.replaceChildren();
  root.style.setProperty("--track-accent", signal(inst));
- const scaleGuide=scaleGuideFor(inst);
+ const scaleGuide=scaleGuideFor();
  const scaleActive=scaleGuide.mode!=="chromatic";
  const scaleMode=SCALE_MODES.find(mode=>mode.id===scaleGuide.mode);
  const scaleName=scaleMode?.name||"chromatic";
