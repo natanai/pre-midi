@@ -44,3 +44,9 @@ Black or near-black surfaces, grayscale chrome, thin rules, monospace typography
 Do not delete audio code, examples, compatibility tests, verified sample provenance or ongoing roadmap work merely because they are not visible in the UI. Remove stale plans only after their surviving requirements are carried into the canonical documents and tests. The published `dist/` is generated from the live JS dependency graph and pinned samples, and must exclude tests/docs/scripts. Never commit generated `dist/` or downloaded `samples/`.
 
 After implementation, run checks, reconcile concurrent work on main, publish to GitHub Pages and verify the deployment for testing. The canonical roadmap is `docs/song-rollout.md`; don't create a second competing plan.
+
+## Phone host boundary (2026-11-01)
+
+Retired phone overrides are not to return. The phone entry is `phone/index.html` with `phone/phone.css` only, currently a truthful rebuild notice. **Do not** introduce phone-specific media rules in `style.css` or `studioAlignment.css`, and do not load desktop `studio.js` from the phone host. Remaining narrow-width styles are for resized desktop/tablet workspaces.
+
+`docs/phone-studio.md` is the **one canonical phone architecture/acceptance plan**. Phone views and gestures live under `phone/`, while musical commands, synthesis, state, serialization and host adapters are shared. Do not fork `.premidi` schema. Every new desktop feature must update the phone parity ledger until feature-level CI gates exist. Emulated phone-width Chromium is not a substitute for Safari and Home Screen touch qualification. Preserve the desktop functionality throughout the rebuild.

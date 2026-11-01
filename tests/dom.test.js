@@ -68,8 +68,8 @@ test("note and sound controls have distinct, wrapping groups", () => {
  assert.match(html,/reopening the project restores its sounds, not your preset library/);
  assert.doesNotMatch(html,/<div class="sound-actions"><button id="save-sound"/);
  assert.doesNotMatch(studio,/prompt\(wholeRack/);
- assert.match(css,/@media \(max-width:860px\)/);
- assert.match(css,/@media \(max-width:570px\)/);
+ assert.doesNotMatch(css,/@media\s*\(\s*max-width:\s*(?:340|520|570|640|650)px\s*\)/);
+ assert.match(css,/@media \(min-width:601px\) and \(max-width:860px\)/);
 });
 
 test("instrument presets have one owner and the full synth editor is reachable",()=>{

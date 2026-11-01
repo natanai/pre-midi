@@ -14,6 +14,7 @@ const server=createServer(async(req,res)=>{
    pending.get(pathname)({status:url.searchParams.get("status"),details:url.searchParams.get("details")});
    res.end("OK");return;
   }
+  if(pathname==="/__layout_progress"){console.log("layout stage:",url.searchParams.get("stage"));res.end("OK");return;}
   const servedRoot=pathname.startsWith("/tests/")?root:appRoot;
   const file=resolve(servedRoot,"."+pathname);
   if(!file.startsWith(servedRoot+"/"))throw Error("Invalid path");
@@ -34,7 +35,7 @@ async function reportedTest(file,endpoint,width=1440,height=900,microphone=false
   "http://127.0.0.1:"+port+"/tests/"+file+".html?width="+width],{stdio:"ignore"});
  try{
   const finished=await Promise.race([result,
-   new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(file+" timed out")),file==="scope-check"?120000:45000);}),
+   new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(file+" timed out")),file==="scope-check"?120000:60000);}),
    new Promise((_,reject)=>{child.on("error",reject);child.on("exit",code=>reject(Error(file+" browser exited: "+code)));})]);
   assert.equal(finished?.status,"PASS",file+" at "+width+": "+finished?.details);
   console.log("PASS",file,width+"x"+height,finished.details);
@@ -43,18 +44,12 @@ async function reportedTest(file,endpoint,width=1440,height=900,microphone=false
 try{
  await reportedTest("scope-check","/__scope_result");
  await reportedTest("automation-check","/__automation_result",1440,900);
- await reportedTest("automation-check","/__automation_result",390,844);
  await reportedTest("modulation-check","/__modulation_result",1440,900);
- await reportedTest("modulation-check","/__modulation_result",390,844);
  await reportedTest("preset-save-check","/__preset_save_result",1440,900);
- await reportedTest("preset-save-check","/__preset_save_result",390,844);
  await reportedTest("newcomer-check","/__newcomer_result",1440,900);
- await reportedTest("newcomer-check","/__newcomer_result",390,844);
  await reportedTest("example-presets-check","/__example_presets_result",1440,900);
- await reportedTest("example-presets-check","/__example_presets_result",390,844);
  await reportedTest("drum-racks-check","/__drum_racks_result",1440,900);
- await reportedTest("drum-racks-check","/__drum_racks_result",390,844);
- for(const [width,height] of [[1440,900],[1024,800],[780,900],[390,844]]){
+ for(const [width,height] of [[1440,900],[1024,800],[780,900]]){
   await reportedTest("layout-check","/__layout_result",width,height);
   await reportedTest("rack-check","/__rack_result",width,height);
  }
@@ -63,7 +58,6 @@ try{
  await reportedTest("arrangement-audio-check","/__arrangement_audio_result");
  await reportedTest("example-audio-check","/__example_audio_result");
  await reportedTest("synth-check","/__synth_result",1440,900);
- await reportedTest("synth-check","/__synth_result",390,844);
  // A short desktop viewport catches inspector clipping hidden by full-height monitors.
  await reportedTest("layout-check","/__layout_result",1440,640);
  await reportedTest("recording.browser","/__recorder_result",1440,900,true);

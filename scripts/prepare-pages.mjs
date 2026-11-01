@@ -47,13 +47,18 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  const modules=await runtimeModules(root);
  if(!revision){
   const hash=createHash("sha256");
-  for(const file of [...modules,"style.css","studioAlignment.css"])hash.update(await readFile(new URL(file,root)));
+  for(const file of [...modules,"style.css","studioAlignment.css","index.html","phone/index.html","phone/phone.css"])hash.update(await readFile(new URL(file,root)));
   revision=hash.digest("hex");
  }
  const html=versionPage(await readFile(new URL("index.html",root),"utf8"),modules,revision);
  await rm(output,{recursive:true,force:true});
  await mkdir(output,{recursive:true});
  await writeFile(new URL("index.html",output),html);
+ const phoneHtml=(await readFile(new URL("phone/index.html",root),"utf8"))
+  .replace('href="./phone.css"','href="./phone.css?build='+revision.slice(0,12)+'"');
+ await mkdir(new URL("phone/",output),{recursive:true});
+ await writeFile(new URL("phone/index.html",output),phoneHtml);
+ await copyFile(new URL("phone/phone.css",root),new URL("phone/phone.css",output));
  for(const file of [...modules,"style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg"]){
   await mkdir(new URL("./",new URL(file,output)),{recursive:true});
   await copyFile(new URL(file,root),new URL(file,output));
@@ -64,7 +69,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  for(const filename of required)
   await copyFile(new URL("samples/"+filename,root),new URL(filename,samples));
  const listed=await readdir(output);
- const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg","samples"]);
+ const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg","samples","phone"]);
  if(listed.some(name=>!allowed.has(name)))
   throw Error("Unexpected files in published artifact.");
  console.log("Staged",modules.length,"runtime modules and",required.size,"verified samples; no tests or development files.");

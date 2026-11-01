@@ -7,6 +7,8 @@ import {parse} from "../schema.js";
 import {importProject} from "../packageIO.js";
 const pre=document.getElementById("result");
 const iframe=document.querySelector("iframe");
+// The desktop recording fixture must not trigger the phone entry from an iframe's default 300px width.
+iframe.style.width="100%";iframe.style.height="90vh";iframe.style.border="0";
 const fail=error=>{
  document.documentElement.dataset.recorder="FAIL";
  pre.textContent=String(error?.stack||error);

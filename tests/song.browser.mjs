@@ -22,7 +22,7 @@ const server=createServer(async(request,response)=>{
 });
 await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
 try{
- for(const [width,height] of [[1440,900],[390,844]]){
+ for(const [width,height] of [[1440,900],[780,900]]){
   const port=server.address().port,chrome=process.env.CHROME_BIN||"google-chrome";
   const result=new Promise(resolve=>{receive=resolve;});
   const child=spawn(chrome,["--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",

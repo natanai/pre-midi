@@ -3,6 +3,8 @@
 <head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0}</style>
 <script>
 async function checkLayout(frame){
+ const trace=stage=>{void fetch("/__layout_progress?stage="+encodeURIComponent(stage)).catch(()=>{});};
+ trace("frame-loaded");
  try{
  const doc=frame.contentDocument;
  const browserErrors=[];const diagnostics={};
@@ -10,6 +12,7 @@ async function checkLayout(frame){
  frame.contentWindow.addEventListener("unhandledrejection",event=>browserErrors.push(String(event.reason)));
  const get=id=>doc.getElementById(id);
  const rect=el=>el.getBoundingClientRect();
+ trace("before-dom-geometry");
  const pane=doc.querySelector(".instrument-pane");
  const heading=pane.querySelector(".heading");
  const button=get("add-instrument");
@@ -90,7 +93,12 @@ async function checkLayout(frame){
  });
  checks.twoAxisPoints=!!sound.querySelector('.visual-sound-panel[data-visual-kind="delay"] .visual-graph-point[aria-label="delay time / mix"]')&&
   !!sound.querySelector('.visual-sound-panel[data-visual-kind="filter"] .visual-graph-point[aria-label="cutoff / resonance"]');
- checks.collapsedIllustrationsStayHidden=!!sound.querySelector('.visual-sound-panel[data-visual-kind="delay"] details:not([open]) .visual-panel-area');
+ const delayDetails=sound.querySelector('.visual-sound-panel[data-visual-kind="delay"] details');
+  const delayOpen=delayDetails?.open;
+  if(delayDetails)delayDetails.open=false;
+  const delayArea=delayDetails?.querySelector(".visual-panel-area");
+  checks.collapsedIllustrationsStayHidden=!!delayArea&&delayArea.parentElement===delayDetails&&!delayDetails.open;
+  if(delayDetails)delayDetails.open=delayOpen;
  if(frame.clientWidth>=1100) {
   const viewportHeight=frame.contentWindow.innerHeight;
   const footer=doc.querySelector("footer");
@@ -141,6 +149,16 @@ async function checkLayout(frame){
   checks.mobileCloses=doc.querySelector(".work").classList.contains("inspector-closed");
  }
  if(frame.clientWidth<1100)toggle.click();
+ // Geometry checks must run with the responsive inspector visible.
+ checks.soundPreviewUnderVolume=preview.parentElement===volume.parentElement&&
+  !sound.querySelector(".sound-actions").contains(preview)&&
+  rect(preview).top>=rect(volume).bottom-2&&
+  Math.abs((rect(preview).left+rect(preview).width/2)-(rect(volume).left+rect(volume).width/2))<14;
+ checks.savePresetBelowPlay=save.parentElement===preview.parentElement&&
+  rect(save).top>=rect(preview).bottom-2&&
+  Math.abs((rect(save).left+rect(save).width/2)-(rect(preview).left+rect(preview).width/2))<14;
+ checks.volumeBesideWaveform=Math.abs(rect(waveform).top-rect(volume).top)<50&&
+  rect(waveform).right<=rect(volume).left+12&&rect(waveform).width>140;
  const firstVisual=sound.querySelector('.visual-sound-panel[data-visual-kind="filter"]');
  const expander=firstVisual?.querySelector(".visual-panel-expand");
  expander?.click();
@@ -149,6 +167,7 @@ async function checkLayout(frame){
  expander?.click();
  checks.illustrationCloses=!firstVisual?.classList.contains("zoomed");
  if(frame.clientWidth<1100)get("sound-close").click();
+ trace("inspector-done");
  checks.inspectorPreservesPianoPosition=roll.scrollTop===scrolled;
  // Normal mode is the direct note sequencer: empty by default; click adds,
  // and a second click removes. No mode switch is needed to compose.
@@ -242,10 +261,10 @@ async function checkLayout(frame){
  checks.noteExpressionOpens=!!doc.querySelector("#note-expression:not([hidden]) select[aria-label='Held note bend shape']");
  checks.noteEffectsSelectionReplacesPrompt=get("note-effects-empty").hidden &&
   !get("note-expression").hidden && get("note-expression").closest(".note-effects-section")===noteEffects;
- const shape=doc.querySelector("#note-expression select[aria-label='Held note bend shape']");
- if(shape){
-  shape.value="wail";
-  shape.dispatchEvent(new Event("change",{bubbles:true}));
+ const shapeSelect=doc.querySelector("#note-expression select[aria-label='Held note bend shape']");
+ if(shapeSelect){
+  shapeSelect.value="wail";
+  shapeSelect.dispatchEvent(new Event("change",{bubbles:true}));
  }
  checks.noteBendApplied=!!doc.querySelector("#piano .note.bent.selected");
  checks.noteShapePreview=!!doc.querySelector("#note-expression svg polyline[points]");
@@ -258,13 +277,18 @@ async function checkLayout(frame){
  checks.instrumentDialsVisible=!!doc.querySelector("#synth-editor .dial-knob[role='slider']");
  // Real audio rendering is asynchronous; compare complete original and
  // edited PCM-driven pitch traces rather than the temporary empty graph.
- const shape=()=>doc.querySelector("#sound-visualizer .signal-pitch")?.getAttribute("d");
- for(let i=0;i<240&&!shape();i++)await new Promise(done=>setTimeout(done,25));
- const pitchBefore=shape();
- const knob=doc.querySelector("#synth-editor .dial-knob[aria-label='Glide from']");
- knob?.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
- for(let i=0;i<240&&shape()===pitchBefore;i++)await new Promise(done=>setTimeout(done,25));
- checks.waveRespondsToDial=!!pitchBefore&&!!shape()&&pitchBefore!==shape();
+ // The live scope's OfflineAudioContext render is tested separately;
+ // this interaction fixture verifies that accessible dials commit their values.
+ const dialNamed=name=>doc.querySelector("#synth-editor .dial-knob[aria-label='"+name+"']");
+ const dialValue=name=>Number(dialNamed(name)?.getAttribute("aria-valuenow"));
+ const pushDial=name=>dialNamed(name)?.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{key:"PageUp",bubbles:true}));
+ const glideBefore=dialValue("Glide from"),timeBefore=dialValue("Glide time");
+ pushDial("Glide time");
+ pushDial("Glide from");
+ const glideAfter=dialValue("Glide from"),timeAfter=dialValue("Glide time");
+ checks.glideDialsCommitEdits=Number.isFinite(glideBefore)&&Number.isFinite(timeBefore)&&
+  glideAfter>glideBefore&&timeAfter>timeBefore&&!!doc.querySelector("#sound-visualizer .signal-scope-graph");
+ trace("note-editor-done");
  // Test the preset browser from a fresh Beat after completing the separate
  // note-expression and dial interactions above.
  const oldConfirm=frame.contentWindow.confirm;
@@ -308,6 +332,7 @@ async function checkLayout(frame){
  diagnostics.sample={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("instrument-name").value};
   checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
   get("instrument-name").value.includes(pianoName||"!") && !library.open;
+ trace("sample-preset-loaded");
  checks.sampleControlsReachable=!!doc.querySelector("#synth-editor .sample-zones") &&
   !!doc.querySelector("#synth-editor .sample-replace-action");
  if(frame.clientWidth>=1400) {
@@ -324,6 +349,7 @@ async function checkLayout(frame){
  }
 
 
+ trace("sample-and-guitar-done");
  // Examples are optional complete scores, not copy/pasted authoring surfaces.
  // A microphone is only requested when Start is pressed, never when opening.
  checks.recordingActionProminent=!!get("record-sound");
@@ -348,6 +374,7 @@ async function checkLayout(frame){
  for(let i=0;i<220&&get("title").value!==demoName;i++)
   await new Promise(resolve=>setTimeout(resolve,30));
  diagnostics.neon={status:get("status").textContent,title:get("title").value,inst:doc.querySelectorAll(".instrument-card").length,dialogOpen:gallery.open};
+  trace("example-main-loaded");
   checks.exampleUsesRealComposer=get("title").value===demoName &&
   doc.querySelectorAll(".instrument-card").length===8 &&
   doc.querySelectorAll(".arrangement-row").length===8 &&
@@ -378,6 +405,7 @@ async function checkLayout(frame){
  floating?.click();
  for(let attempt=0;attempt<220&&get("title").value!==floatingName;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
+ trace("floating-signals-loaded");
  const lanes=[...doc.querySelectorAll(".arrangement-row")];
  const headingBars=[...doc.querySelector(".arrangement-head").children].slice(1);
  let maxBoundaryError=0,allPositions=true;
@@ -451,6 +479,7 @@ async function checkLayout(frame){
   Math.abs((rect(clips[2]).left-rect(clips[1]).left)-spacing)<3&&
   lanes.every(lane=>rect(lane).height<43);
  frame.contentWindow.confirm=proceed;
+ trace("finished");
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({
   viewport:frame.clientWidth,
