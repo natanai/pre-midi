@@ -73,19 +73,19 @@ const mono=(p,type)=>{
  }else if(type==="envelope"||type==="sample"){
   const env=type==="envelope"?p.envelope:{
    attack:p.attack??0,decay:0,sustain:1,release:p.release??.2};
-  const attackX=25+clamp(env.attack/3)*78;
+  const attackX=25+clamp(env.attack/(type==="sample"?2:3))*78;
   const decayX=attackX+18+clamp(env.decay/3)*80;
   const sustainY=88-65*clamp(env.sustain);
-  const releaseX=248+clamp(env.release/4)*95;
+  const releaseX=248+clamp(env.release/(type==="sample"?3:4))*95;
   line("M18 92 H348 M248 15 V96",true);
   line(pathFrom([[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]]]));
   const prefix=type==="sample"?[]:["envelope"];
-  dot([...prefix,"attack"],attackX,23,0,3,"x-attack","attack");
+  dot([...prefix,"attack"],attackX,23,0,type==="sample"?2:3,"x-attack","attack");
   if(type==="envelope"){
    dot(["envelope","decay"],decayX,sustainY,0,3,"x-decay","decay");
    dot(["envelope","sustain"],209,sustainY,0,1,"y-inverted","sustain");
   }
-  dot([...prefix,"release"],releaseX,90,.01,4,"x-release","release");
+  dot([...prefix,"release"],releaseX,90,.01,type==="sample"?3:4,"x-release","release");
   tag(16,14,"on");tag(248,14,"off");
  }else if(type==="movement"){
   const m=movement(p);
@@ -136,7 +136,7 @@ function setZoom(wrapper,id,enabled){
  const button=wrapper.querySelector(".visual-panel-expand");
  if(button){button.textContent=enabled?"−":"⤢";button.setAttribute("aria-label",(enabled?"shrink ":"expand ")+id.split("-")[0]+" illustration");}
 }
-document.addEventListener("keydown",event=>{
+if(typeof document!=="undefined")document.addEventListener("keydown",event=>{
  if(event.key==="Escape"&&zoomId){
   const wrapper=document.querySelector('.visual-sound-panel.zoomed');
   if(wrapper){setZoom(wrapper,zoomId,false);event.stopPropagation();}
@@ -227,7 +227,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   if(graphic.hasPointerCapture(event.pointerId))graphic.releasePointerCapture(event.pointerId);
  });
  graphic.addEventListener("pointercancel",()=>{
-  if(!active)return;active=null;draw(patch);onPreview([""],undefined);
+  if(!active)return;const original=active.handle.path;active=null;draw(patch);onPreview(original,at(patch,original));
  });
  graphic.addEventListener("keydown",event=>{
   const target=event.target.closest?.("[data-sound-path]");
