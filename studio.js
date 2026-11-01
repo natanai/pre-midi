@@ -835,9 +835,18 @@ function renderNotes() {
   row.dataset.pitch=String(pitch);
   // The note column remains a fixed-width grid gutter. In keyboard mode,
   // actual piano keys render in one independent layer above all rows.
-  const label=element("span",showPianoKeys?"":noteLabel(pitch),"note-name");
-  label.setAttribute("aria-label",noteLabel(pitch));
-  label.title=noteLabel(pitch);
+  const label=element(showPianoKeys?"span":"button",showPianoKeys?"":noteLabel(pitch),"note-name");
+  label.setAttribute("aria-label",showPianoKeys?noteLabel(pitch):"Play "+noteLabel(pitch));
+  label.title=showPianoKeys?noteLabel(pitch):"play "+noteLabel(pitch);
+  if(!showPianoKeys){
+   label.type="button";
+   label.addEventListener("click",()=>{
+    label.classList.add("pressed");
+    setTimeout(()=>label.classList.remove("pressed"),220);
+    if(!playback&&!pendingPlay)
+     void audition(inst,pitch,beat).catch(error=>message("Couldn't preview key: "+error.message,true));
+   });
+  }
   row.append(label);
   keys.push({pitch,row,label});
   const cells = [];
