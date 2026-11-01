@@ -4,6 +4,7 @@ import {movement,pitchCents} from "./expression.js";
 import {harmonicWave} from "./harmonics.js";
 import {DEFAULT_SAMPLE_FILTER,driveCurve} from "./audioEffects.js";
 import {routeValueAt,MOD_TARGETS} from "./src/dsp/modulation.js";
+import {assignSoundEdit} from "./soundEditPath.js";
 
 const NS="http://www.w3.org/2000/svg";
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
@@ -322,7 +323,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const next=structuredClone(patch);
   const paths=point.axes.map(a=>a.path);
   const values=point.axes.map(a=>valueAt(a,position));
-  paths.forEach((path,i)=>setValue(next,path,values[i]));
+  assignSoundEdit(next,paths,values);
   draw(next);
   // Two axes are one sound edit and one undo step, never two disconnected edits.
   const key=paths.length===1?paths[0]:paths;
