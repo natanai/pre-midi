@@ -92,3 +92,28 @@ test("an opened Sound inspector exposes full controls without a compact mode",()
  assert.doesNotMatch(css,/inspector-compact/);
  assert.doesNotMatch(html,/id="sound-expand"/);
 });
+
+test("chunk menu duplicates exactly the chosen row and has one new-chunk action at its bottom",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
+ assert.match(html,/id="chunk-menu" class="chunk-menu"/);
+ assert.doesNotMatch(html,/id="add-chunk"|id="duplicate-chunk"/);
+ assert.match(studio,/duplicateChunk\(chunk.id\)/);
+ assert.match(studio,/duplicate\.setAttribute\("aria-label","duplicate "\+chunk.name\)/);
+ assert.ok(studio.indexOf('menu.append(row);')<studio.indexOf('menu.append(add);'));
+ assert.match(studio,/duplicate\.disabled=inst\.chunks\.length>=32/);
+ assert.match(css,/\.chunk-menu-new \{/);
+});
+test("note level belongs to the selected note effects inspector for piano and racks",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ const expression=readFileSync(new URL("../expressionUI.js",import.meta.url),"utf8");
+ assert.doesNotMatch(html,/id="velocity"|id="length"|>strength </);
+ assert.match(studio,/velocity:DEFAULT_NOTE_LEVEL/g);
+ assert.match(expression,/make\("span","note level"\)/);
+ assert.match(expression,/levelInput\.addEventListener\("change",\(\)=>onLevelChange\?\./);
+ assert.match(studio,/entry\.patch\.bend,level=>modify\(\(\)=>\{note\.velocity=level;\}\)/);
+ assert.match(studio,/sound\(\)\.patch\.bend,level=>modify\(\(\)=>\{/);
+ assert.match(studio,/duration:1,velocity:DEFAULT_NOTE_LEVEL/);
+});
