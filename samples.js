@@ -31,6 +31,19 @@ export const SAMPLE_ASSETS=[
  m("hat-closed",STARGATE,"stargate-sample-pack/freesound/drums/cymbal/closed/439766__twentytwentymusic__electronic-closed-hat-9.wav","64284c93c3a23b80f9b02bb61fe96e7d502b5cef",60),
  m("hat-open",STARGATE,"stargate-sample-pack/freesound/drums/cymbal/open/439820__twentytwentymusic__electronic-open-hat-7.wav","405e836d37030ae32f7ca1a0cdc7385c17d8861e",60),
  m("bongo",STARGATE,"stargate-sample-pack/freesound/drums/bongo/219157__jagadamba__bongo01.wav","a231d879a67d59b75a6e816ffa17b37ceefd3ffe",60),
+ m("wood-snare",STARGATE,"stargate-sample-pack/freesound/drums/snare/173087__yellowtree__wood-snare-sample-3.wav","4fdb8f0b780e80a4e8e1d62b93c54f91b4864f1a",60),
+ m("live-hat",STARGATE,"stargate-sample-pack/freesound/drums/cymbal/closed/339278__cabled-mess__hihat-closed-raw-03-gate-eq.wav","36bedb7a2dc6d99a1d3ea866f0bb9e128dd7324f",60),
+ m("dry-rim",STARGATE,"stargate-sample-pack/freesound/drums/rimshot/455640__uberproduktion__fd808a-rimshot.wav","2481a3c01b383ad7b3dead8c4324f3026ab4cc18",60),
+ m("room-crash",STARGATE,"stargate-sample-pack/freesound/drums/cymbal/crash/261413__veiler__crash.wav","af1e4b75953b6e3bc511ec013e002bfa23b239a4",60),
+ m("floor-tom",STARGATE,"stargate-sample-pack/fugue-state-audio/drums/toms/sdbkit-lotom.wav","a4cb49abef7ecdf3ceaafa3b4f719489fd4e997d",60),
+ m("high-tom",STARGATE,"stargate-sample-pack/fugue-state-audio/drums/toms/sdbkit-hitom.wav","5ac8dbbc4791e3a6a8499c7ea28a33ae8ea2b5b1",60),
+ m("mid-tom",STARGATE,"stargate-sample-pack/fugue-state-audio/drums/toms/sdbkit-midtom.wav","2dd488e3ca598ad3267535118909208457bc9857",60),
+ m("machine-kick",STARGATE,"stargate-sample-pack/fugue-state-audio/drums/kicks/sdbkit-kick.wav","750c627d1387926933b3f1174353e469c1cc8e22",60),
+ m("machine-snare",STARGATE,"stargate-sample-pack/fugue-state-audio/drums/snares/sdbkit-snare.wav","428a010f42773a55d9dc65aaccc4600da01db972",60),
+ m("machine-hat",STARGATE,"stargate-sample-pack/fugue-state-audio/drums/hihats/sdbkit-hatclsd.wav","9c453a1f5a704408edefa340276c6b5db78fab53",60),
+ m("machine-open-hat",STARGATE,"stargate-sample-pack/fugue-state-audio/drums/hihats/sdbkit-hatopen.wav","ddeae93a7813c70bf716891343c6adebdd129909",60),
+ m("hand-shaker",STARGATE,"stargate-sample-pack/fugue-state-audio/drums/percussion/x0xproc2-maracas.wav","01310159df770b7c81bd4aee1a4d9f25764b33ec",60),
+ m("soft-clap",STARGATE,"stargate-sample-pack/freesound/drums/clap/493707__bastianpusch__handclap01.wav","2c75267c5195dafc3c8d04d24f9fde57c33c5730",60),
  m("recorder",VCSL,"Aerophones/Edge-blown Aerophones/Baroque Alto Recorder/Staccato/AltRecorder_Stac_C4_rr1_Main.wav","db96e84032789b062e96c08a7e616885beacce72",60),
  m("whistle",VCSL,"Aerophones/Edge-blown Aerophones/Ball Whistle/Main_BallWhistle_Short-001.wav","5d6f10fa67189231eef2a4fb72f97e19983e056b",60),
  ...GUITAR_RECORDINGS.map(item=>m(item.id,META,item.path,item.sha,item.root,"audio/ogg",
@@ -63,10 +76,23 @@ const sampleLibrary=[
  {id:"hiphop-clap",name:"Hip-Hop Clap",category:"Drums",description:"Recorded clap, one-shot playback.",assets:["clap"],followPitch:false},
  {id:"tight-hat",name:"Closed Hat",category:"Drums",description:"Recorded closed hi-hat, one-shot playback.",assets:["hat-closed"],followPitch:false},
  {id:"open-hat",name:"Open Hat",category:"Drums",description:"Recorded open hi-hat, one-shot playback.",assets:["hat-open"],followPitch:false},
- {id:"hand-bongo",name:"Bongo",category:"Drums",description:"Recorded bongo, one-shot playback.",assets:["bongo"],followPitch:false}
+ {id:"hand-bongo",name:"Bongo",category:"Drums",description:"Recorded bongo, one-shot playback.",assets:["bongo"],followPitch:false},
+ {id:"wood-snare",name:"Wood Snare",category:"Drums",description:"Dry natural snare hit.",assets:["wood-snare"],followPitch:false},
+ {id:"live-hat",name:"Live Closed Hat",category:"Drums",description:"Dry acoustic closed hi-hat.",assets:["live-hat"],followPitch:false},
+ {id:"dry-rim",name:"Dry Rimshot",category:"Drums",description:"Focused rim accent.",assets:["dry-rim"],followPitch:false},
+ {id:"room-crash",name:"Room Crash",category:"Drums",description:"Acoustic cymbal crash with a natural tail.",assets:["room-crash"],followPitch:false},
+ {id:"floor-tom",name:"Floor Tom",category:"Drums",description:"Deep recorded tom.",assets:["floor-tom"],followPitch:false},
+ {id:"high-tom",name:"High Tom",category:"Drums",description:"Bright recorded tom.",assets:["high-tom"],followPitch:false},
+ {id:"mid-tom",name:"Mid Tom",category:"Drums",description:"Middle tom for fills.",assets:["mid-tom"],followPitch:false},
+ {id:"machine-kick",name:"Machine Kick",category:"Drums",description:"Short machine-style kick.",assets:["machine-kick"],followPitch:false},
+ {id:"machine-snare",name:"Machine Snare",category:"Drums",description:"Compact machine-style snare.",assets:["machine-snare"],followPitch:false},
+ {id:"machine-hat",name:"Machine Closed Hat",category:"Drums",description:"Tight machine-style hi-hat.",assets:["machine-hat"],followPitch:false},
+ {id:"machine-open-hat",name:"Machine Open Hat",category:"Drums",description:"Longer machine-style hi-hat.",assets:["machine-open-hat"],followPitch:false},
+ {id:"hand-shaker",name:"Shaker",category:"Drums",description:"Short textured shaker hit.",assets:["hand-shaker"],followPitch:false},
+ {id:"soft-clap",name:"Hand Clap",category:"Drums",description:"Dry hand-clap recording.",assets:["soft-clap"],followPitch:false}
 ];
-const hitPresets=new Set(["ball-whistle","acoustic-kick","tape-snare","hiphop-clap","tight-hat","open-hat","hand-bongo"]);
-export const SAMPLE_LIBRARY=sampleLibrary.map(preset=>({...preset,trigger:hitPresets.has(preset.id)?"hit":"pitched"}));
+// One-shot samples are defined by their musical behavior, not a second ID list.
+export const SAMPLE_LIBRARY=sampleLibrary.map(preset=>({...preset,trigger:preset.followPitch?"pitched":"hit"}));
 export const sampleAsset=id=>SAMPLE_ASSETS.find(x=>x.id===id);
 export const samplePreset=id=>SAMPLE_LIBRARY.find(x=>x.id===id);
 export const sampleFile=asset=>new URL("./samples/"+asset.id+"."+(asset.mime==="audio/ogg"?"ogg":"wav"),import.meta.url).href;
