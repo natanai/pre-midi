@@ -191,12 +191,18 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
  const right=node("path",{class:"signal-wave signal-amplitude-right",fill:"var(--scope-accent)",stroke:"none"});
  const pitches=[node("path",{class:"signal-pitch",fill:"none","stroke-width":"1.9"}),
   node("path",{class:"signal-pitch",fill:"none","stroke-width":"1.3","stroke-dasharray":"4 3",opacity:".65"})];
- const label=(x,y,content)=>{const el=node("text",{x,y,class:"signal-axis"});el.textContent=content;return el;};
- const waveLabel=label(8,13,"waveform"),end=label(671,146,"");
+ // HTML labels remain legible regardless of the graph's SVG scaling.
+ const chart=document.createElement("div");chart.className="signal-scope-chart";
+ const label=(kind,value)=>{
+  const el=document.createElement("span");
+  el.className="signal-chart-label "+kind;el.textContent=value;return el;
+ };
+ const waveLabel=label("signal-chart-wave",""),end=label("signal-chart-end","");
  const gate=node("path",{class:"signal-scope-guides"});
- svg.append(guides,waveRight,waveLeft,left,right,...pitches,waveLabel,
-  label(8,146,"l / r · time"),label(8,212,"pitch"),end,gate);
- wrapper.append(head,svg);root.append(wrapper);
+ svg.append(guides,waveRight,waveLeft,left,right,...pitches,gate);
+ chart.append(svg,waveLabel,label("signal-chart-time","l / r · time"),
+  label("signal-chart-pitch","pitch"),end);
+ wrapper.append(head,chart);root.append(wrapper);
  let revision=0,disposed=false,timer=null,currentLevel=initialLevel;
  function update(nextPatch,level=currentLevel){
   currentLevel=level;const token=++revision;
@@ -207,7 +213,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
     const wave=scopeWaveformData(buffer,referencePitch);
     waveLeft.setAttribute("d",waveformPath(wave.channels[0]));
     waveRight.setAttribute("d",waveformPath(wave.channels[1]));
-    waveLabel.textContent="waveform · "+Math.round(wave.windowSeconds*1000)+"ms";
+    waveLabel.textContent=Math.round(wave.windowSeconds*1000)+" ms";
     const [l,r]=scopeAudioBins(buffer);
     left.setAttribute("d",envelopePath(l,0));right.setAttribute("d",envelopePath(r,1));
     pitches[0].setAttribute("d",pitchPath(nextPatch,seconds,referencePitch,0));
@@ -225,7 +231,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
    }).catch(error=>{
     if(disposed||token!==revision)return;
     waveLeft.removeAttribute("d");waveRight.removeAttribute("d");
-    left.removeAttribute("d");right.removeAttribute("d");waveLabel.textContent="waveform";
+    left.removeAttribute("d");right.removeAttribute("d");waveLabel.textContent="";
     pitches.forEach(line=>line.removeAttribute("d"));gate.removeAttribute("d");end.textContent="";
     legend.textContent="preview unavailable";wrapper.title=String(error.message||error);
    });
