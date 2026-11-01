@@ -1080,24 +1080,63 @@ function renderNotes() {
   if(target)target.velocity=level;
  }));
 }
+function closeChunkMenu() {
+ $("chunk-menu").hidden=true;
+ $("chunk").setAttribute("aria-expanded","false");
+}
+function createChunk() {
+ modify(()=>{
+  const inst=instrument(),chunk=makeChunk("Chunk "+(inst.chunks.length+1));
+  inst.chunks.push(chunk);
+  selectedChunks.set(inst.id,chunk.id);
+ });
+}
+function duplicateChunk(chunkId) {
+ modify(()=>{
+  const inst=instrument(),source=inst.chunks.find(chunk=>chunk.id===chunkId);
+  if(!source||inst.chunks.length>=32)return;
+  const copy=clone(source);
+  copy.id=id();
+  copy.name=(source.name+" copy").slice(0,60);
+  for(const note of copy.notes)note.id=id();
+  inst.chunks.push(copy);
+  selectedChunks.set(inst.id,copy.id);
+ });
+}
 function renderChunkEditor() {
- const inst = instrument(), select = $("chunk");
- const oldValue = selectedChunks.get(inst.id);
- select.replaceChildren();
- for (const chunk of inst.chunks) {
-  const option = element("option", chunk.name);
-  option.value = chunk.id;
-  select.append(option);
+ const inst=instrument(),menu=$("chunk-menu");
+ const active=chunkFor(inst);
+ selectedChunks.set(inst.id,active.id);
+ closeChunkMenu();
+ menu.replaceChildren();
+ for(const chunk of inst.chunks){
+  const row=element("div",undefined,"chunk-menu-row");
+  const select=button(chunk.name,()=>{
+   closeChunkMenu();
+   selectedChunks.set(inst.id,chunk.id);
+   renderChunkEditor();
+  },"chunk-menu-select");
+  select.setAttribute("aria-current",chunk.id===active.id?"true":"false");
+  const duplicate=button("+",()=>{
+   closeChunkMenu();
+   duplicateChunk(chunk.id);
+  },"chunk-menu-duplicate");
+  duplicate.setAttribute("aria-label","duplicate "+chunk.name);
+  duplicate.title="duplicate "+chunk.name;
+  duplicate.disabled=inst.chunks.length>=32;
+  row.append(select,duplicate);
+  menu.append(row);
  }
- const active = inst.chunks.find(c => c.id === oldValue) || inst.chunks[0];
- selectedChunks.set(inst.id, active.id);
- select.value = active.id;
- $("chunk-name").value = active.name;
- $("add-chunk").disabled = inst.chunks.length >= 32;
- $("duplicate-chunk").disabled = inst.chunks.length >= 32;
- $("delete-chunk").disabled = inst.chunks.length <= 1;
- $("editing-identity").textContent = inst.name;
- $("edit-instrument-note").textContent = inst.name;
+ const add=button("+ new chunk",()=>{
+  closeChunkMenu();
+  createChunk();
+ },"chunk-menu-new");
+ add.disabled=inst.chunks.length>=32;
+ menu.append(add);
+ $("chunk-name").value=active.name;
+ $("delete-chunk").disabled=inst.chunks.length<=1;
+ $("editing-identity").textContent=inst.name;
+ $("edit-instrument-note").textContent=inst.name;
  renderNotes();
 }
 function renderSound() {
@@ -1790,26 +1829,20 @@ function removeInstrument(instrumentId){
  });
 }
 $("remove-instrument").addEventListener("click",()=>removeInstrument(instrument().id));
-$("chunk").addEventListener("change", event => {
- selectedChunks.set(instrument().id, event.target.value);
- renderChunkEditor();
+$("chunk").addEventListener("click",()=>{
+ const menu=$("chunk-menu"),opening=menu.hidden;
+ menu.hidden=!opening;
+ $("chunk").setAttribute("aria-expanded",String(opening));
+ if(opening)menu.querySelector(".chunk-menu-select")?.focus();
 });
-$("add-chunk").addEventListener("click", () => {
- modify(() => {
-  const inst = instrument(), chunk = makeChunk("Chunk " + (inst.chunks.length + 1));
-  inst.chunks.push(chunk);
-  selectedChunks.set(inst.id, chunk.id);
- });
-});
-$("duplicate-chunk").addEventListener("click", () => {
- modify(() => {
-  const inst = instrument(), source = chunkFor(inst), chunk = clone(source);
-  chunk.id = id();
-  chunk.name = (source.name + " copy").slice(0,60);
-  for (const note of chunk.notes) note.id = id();
-  inst.chunks.push(chunk);
-  selectedChunks.set(inst.id, chunk.id);
- });
+document.addEventListener("pointerdown",event=>{
+ if(!event.target.closest?.(".chunk-switcher"))closeChunkMenu();
+},true);
+document.addEventListener("keydown",event=>{
+ if(event.key==="Escape"&&!$("chunk-menu").hidden){
+  closeChunkMenu();
+  $("chunk").focus();
+ }
 });
 $("delete-chunk").addEventListener("click", () => {
  const inst = instrument(), chunk = chunkFor(inst);
