@@ -242,5 +242,6 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  });
  if(zoomId===id){wrapper.classList.add("zoomed");expand.textContent="−";}
  draw(patch);
+ wrapper.drawSoundIllustration=draw;
  return {element:wrapper,draw};
 }
