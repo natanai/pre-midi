@@ -1505,3 +1505,23 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
 .sound-overview .sound-preview-play:focus-visible {
  border-color:var(--signal-cyan);color:var(--signal-cyan);
 }
+
+/* Preset save uses the same quiet controls as the sound preview. */
+.sound-overview .sound-preset-save {
+ display:grid;place-items:center;width:34px;height:29px;min-width:34px;
+ margin:0;padding:0;border:1px solid var(--line);background:transparent;
+ color:var(--bright);
+}
+.sound-overview .sound-preset-save:hover,
+.sound-overview .sound-preset-save:focus-visible {
+ border-color:var(--signal-cyan);color:var(--signal-cyan);
+}
+.sound-overview .sound-preset-save svg {display:block}
+.save-preset-dialog {width:min(460px,calc(100vw - 28px));max-height:85dvh}
+.save-preset-dialog form {display:grid;gap:15px;padding:17px}
+.save-preset-name {display:grid;gap:8px;color:var(--muted);font-size:11px}
+.save-preset-name input {width:100%;min-width:0;box-sizing:border-box;font-size:13px}
+.save-preset-info {display:grid;gap:8px;color:var(--muted);font-size:12px;line-height:1.55}
+.save-preset-info p {margin:0}
+.save-preset-actions {display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.save-preset-actions button {min-width:72px;min-height:32px}
