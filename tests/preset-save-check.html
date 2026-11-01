@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><style>body{margin:0}iframe{width:100%;height:100vh;border:0}</style>
+<iframe title="Save preset workflow"></iframe><pre id="result" hidden></pre>
+<script>
+const frame=document.querySelector("iframe"),checks={};
+const assert=(label,value)=>{checks[label]=!!value;if(!value)throw Error(label);};
+const wait=async(check,label)=>{for(let i=0;i<160;i++){if(check())return;await new Promise(r=>setTimeout(r,25));}throw Error("Timed out: "+label);};
+frame.addEventListener("load",async()=>{
+ const doc=frame.contentDocument,win=frame.contentWindow,get=id=>doc.getElementById(id);
+ let status="FAIL";
+ try{
+  await wait(()=>!!get("save-sound")&&!!get("save-preset-dialog"),"preset action");
+  if(get("sound-toggle").getAttribute("aria-expanded")!=="true")get("sound-toggle").click();
+  const play=get("hear-sound"),save=get("save-sound");
+  assert("one preset save action",doc.querySelectorAll("#save-sound").length===1);
+  assert("monochrome floppy icon",!!save.querySelector("svg")&&!save.textContent.trim());
+  assert("save icon beside play",save.parentElement===play.parentElement);
+  assert("save icon below play",save.getBoundingClientRect().top>=play.getBoundingClientRect().bottom-2);
+  assert("accessible save",save.getAttribute("aria-label")==="Save preset");
+  save.click();
+  assert("dialog opens",get("save-preset-dialog").open);
+  assert("local only explanation",get("save-preset-info").textContent.includes("not synced or backed up"));
+  assert("project export explanation",get("save-preset-info").textContent.includes(".premidi")&&
+   get("save-preset-info").textContent.includes(".zip"));
+  assert("does not imply preset import",get("save-preset-info").textContent.includes("not your preset library"));
+  const before=win.localStorage.getItem("premidi-user-sounds-v2")||"";
+  get("save-preset-cancel").click();
+  assert("cancel closes without saving",!get("save-preset-dialog").open&&
+   (win.localStorage.getItem("premidi-user-sounds-v2")||"")===before);
+  save.click();get("save-preset-name").value="Local backup test";
+  get("save-preset-form").requestSubmit();
+  await wait(()=>(win.localStorage.getItem("premidi-user-sounds-v2")||"").includes("Local backup test"),
+   "preset persisted");
+  assert("save closes dialog",!get("save-preset-dialog").open);
+  const entries=JSON.parse(win.localStorage.getItem("premidi-user-sounds-v2")||"[]");
+  assert("save adds a valid sound preset",entries.some(p=>p.name==="Local backup test"&&p.patch));
+  status="PASS";
+ }catch(error){checks.error=String(error.stack||error);}
+ document.getElementById("result").textContent=JSON.stringify(checks);
+ await fetch("/__preset_save_result?status="+status+"&details="+encodeURIComponent(JSON.stringify(checks)));
+},{once:true});
+frame.src="../index.html";
+</script>
