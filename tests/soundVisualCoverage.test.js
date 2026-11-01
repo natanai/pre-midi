@@ -18,6 +18,7 @@ const sample=()=>({
  type:"sample",zones:[{assetId:"recording",root:60}],
  gain:.9,transpose:0,pan:0,strumMs:0,attack:.07,release:.28,
  followPitch:true,oneShot:false,preserveDynamics:false,
+ filter:{type:"lowpass",cutoff:9500,resonance:.7},drive:.12,
  movement:{rate:4,depth:24,delay:.15,glide:3,glideTime:.3,
   tremolo:.3,tremoloRate:4,tone:.3,toneRate:2},
  bend:{shape:"wave",amount:2,rate:3}
