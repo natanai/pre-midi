@@ -38,6 +38,18 @@ export function ownVoice(context,{sources,nodes,gate,start,release,end,priority=
    else{gate.gain.setValueAtTime(1,when);gate.gain.linearRampToValueAtTime(0,fadeEnd);}
    for(const source of sources){try{source.stop(fadeEnd);}catch{}}
    return finish;
+  },
+  releaseOver(at,seconds){
+   if(disposed||retiring)return finish;
+   const when=Math.max(context.currentTime,at),tail=Math.max(.015,Math.min(2.5,seconds));
+   const fadeEnd=when+tail;
+   if(fadeEnd>=finish)return finish;
+   retiring=true;retireAt=when;finish=fadeEnd;
+   gate.gain.cancelScheduledValues(when);
+   gate.gain.setValueAtTime(1,when);
+   gate.gain.linearRampToValueAtTime(0,fadeEnd);
+   for(const source of sources){try{source.stop(fadeEnd);}catch{}}
+   return finish;
   },dispose};
 }
 export class VoiceSession{
