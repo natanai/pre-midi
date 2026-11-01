@@ -5,6 +5,7 @@ import {PRESETS,makePatch} from "../synth.js";
 import {SAMPLE_LIBRARY,makeSamplerPatch} from "../samples.js";
 import {EXAMPLE_SOUND_PRESETS} from "../examples.js";
 import {DRUM_RACKS} from "../drumRacks.js";
+import {FACTORY_SOUND_CATALOG,RETIRED_SAMPLE_LISTINGS} from "../soundCatalog.js";
 
 const factory=[...PRESETS,...SAMPLE_LIBRARY,...EXAMPLE_SOUND_PRESETS,...DRUM_RACKS];
 const pitch=60;
@@ -73,4 +74,21 @@ const selfSimilar=examples.map(e=>{
 const summary={total:all.length,singles:singles.length,racks:all.length-singles.length,
  counts:Object.fromEntries([...new Set(all.map(p=>p.source))].map(src=>[src,all.filter(p=>p.source===src).length])),
  byCategory:Object.fromEntries([...new Set(all.map(p=>p.category))].map(cat=>[cat,all.filter(p=>p.category===cat).length]))};
-console.log(JSON.stringify({summary,shared,selfSimilar},null,2));
+const visible=FACTORY_SOUND_CATALOG.map(details);
+const visibleIds=new Set(visible.map(p=>p.id));
+const repeatedRecordingGroups=[...new Set(visible.filter(p=>p.type==="sample").map(p=>baseKey(p)))]
+ .map(key=>visible.filter(p=>p.type==="sample"&&baseKey(p)===key))
+ .filter(group=>group.length>1);
+const report={
+ ...summary,
+ visible:visible.length,
+ hiddenByCuration:all.length-visible.length,
+ retiredSampleIds:RETIRED_SAMPLE_LISTINGS,
+ duplicatedExampleStandaloneCount:examples.length,
+ retainedCompleteExampleRacks:visible.filter(p=>p.source==="example"&&p.sourceCount).length,
+ publicRepeatedSampleGroups:repeatedRecordingGroups.map(group=>group.map(p=>p.id)),
+ unresolvedExactPatchDuplicates:visible.filter(p=>!p.sourceCount).flatMap((p,i)=>visible.filter(q=>!q.sourceCount).slice(i+1)
+  .filter(q=>p.type===q.type&&JSON.stringify({...p.patch,presetId:""})===JSON.stringify({...q.patch,presetId:""}))
+  .map(q=>[p.id,q.id]))
+};
+console.log(JSON.stringify(process.argv.includes("--full")?{report,shared,selfSimilar}:report,null,2));
