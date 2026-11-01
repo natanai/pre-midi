@@ -27,6 +27,9 @@ This is a design constraint, not license to remove essential warnings, error mes
 
 ## Sound-design qualification
 
+- **The instrument library is a catalog of foundational timbres, not a gallery of minor preset variations.** Prefer one neutral, editable starting patch per meaningful sound source or synthesis character. Changing only cutoff, attack, release, gain, delay, distortion, or detune usually does not justify a separate factory listing. Add a second preset based on the same recording only when its treatment makes a substantially different playable instrument; test this by listening blind at matched pitch and volume, not by comparing parameter values alone.
+- Curate duplicate/near-duplicate entries instead of growing the factory library indefinitely. Keep existing project's self-contained patches and sample asset references playable even when retiring a factory listing. Regression tests should catch reused sample zones within the same keys category and other obvious duplicate starting recipes.
+
 Professional capability and newcomer comprehension are both release requirements. Keep volume, brightness, onset and fade easy to reach in the existing inspector, with deeper controls available contextually. Do not add a mandatory beginner/expert mode. Preserve the select → hear → edit → save variation workflow at desktop and phone widths. Automated clicks do not replace observed newcomer or listening review.
 
 ## Visual system
