@@ -36,7 +36,26 @@ export const diagram=(patch,type)=>{
  const handle=(x,y,axes,label)=>handles.push({x,y,axes,label});
  const axis=(path,min,max,mode,options={})=>({path,min,max,mode,...options});
  const p=patch;
- if(type.startsWith("oscillator")){
+ if(type==="oscillators"){
+  const second=Number(p.oscillators?.[1]?.level)>0||
+   (p.modulation?.routes??[]).some(route=>route.target==="oscillators.1.level");
+  for(const index of second?[0,1]:[0]){
+   const o=p.oscillators[index],center=index===0?(second?34:59):87;
+   line("M18 "+center+" H342",true);
+   const gain=clamp(o.level);
+   line(pathRange(280,t=>{
+    const phase=t*10*Math.PI*2**(o.octave*.32)*2**(o.detune/1200);
+    return [18+t*324,center-20*gain*waveAt(o.wave,phase,o.harmonics)];
+   }),index===1);
+   const bottom=center+(index===0&&second?20:22),top=center-20;
+   handle(38+clamp((o.detune+100)/200)*278,bottom-(bottom-top)*gain,[
+    axis(["oscillators",index,"detune"],-100,100,"linearX",{from:38,to:316,step:1}),
+    axis(["oscillators",index,"level"],0,1,"linearY",{from:bottom,to:top,step:.01})
+   ],"oscillator "+(index+1)+" detune / level");
+   tag(18,index===0?11:70,"osc "+(index+1));
+  }
+  tag(294,11,"detune →");
+ }else if(type.startsWith("oscillator")){
   const index=Number(type.slice(-1))-1,o=p.oscillators[index];
   const cutoff=clamp(Math.log(Math.max(50,p.filter.cutoff)/50)/Math.log(280));
   const drive=p.effects.drive||0;

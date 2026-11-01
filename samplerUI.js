@@ -1,10 +1,29 @@
 import {movement,movementDefaults,BEND_SHAPES} from "./expression.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {createDial,explainLabel,helpForLabel} from "./dial.js";
-import {sampleTone,SAMPLE_FILTERS} from "./audioEffects.js";
+import {sampleTone,SAMPLE_FILTERS,DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
 // Sample controls and synth controls share the same dial and visualization
 // owner. All durable edits still flow through studio.js modify().
-export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{}){
+const sampleOpenStates=new Map();
+export function activeSamplePanels(patch){
+ const active=new Set(),tone=sampleTone(patch),move=movement(patch);
+ if(JSON.stringify(tone.filter)!==JSON.stringify(DEFAULT_SAMPLE_FILTER)||tone.drive!==0)
+  active.add("tone");
+ if(Object.keys(movementDefaults).some(key=>move[key]!==movementDefaults[key])||
+    (patch.bend?.shape??"straight")!=="straight"||(patch.bend?.amount??2)!==2||(patch.bend?.rate??4)!==4)
+  active.add("movement");
+ if((patch.gain??.9)!==.9||(patch.transpose??0)!==0||
+    (patch.pan??0)!==0||(patch.strumMs??0)!==0||
+    (patch.attack??.005)!==.005||(patch.release??.17)!==.17||
+    !!patch.preserveDynamics)
+  active.add("sample");
+ return active;
+}
+export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{},soundId=null){
+ const stateKey=soundId??patch;
+ let expanded=sampleOpenStates.get(stateKey);
+ if(!expanded){expanded=activeSamplePanels(patch);sampleOpenStates.set(stateKey,expanded);}
+
  root.replaceChildren();
  const header=document.createElement("div");header.className="sampler-description";
  const count=new Set(patch.zones.map(zone=>zone.root)).size;
@@ -13,7 +32,8 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  root.append(header);
  // Direct sound shaping is prominent, including on imported and recorded audio.
  const tone=sampleTone(patch);
- const toneGroup=document.createElement("details");toneGroup.className="synth-group sample-tone";toneGroup.open=true;
+ const toneGroup=document.createElement("details");toneGroup.className="synth-group sample-tone";toneGroup.open=expanded.has("tone");
+ toneGroup.addEventListener("toggle",()=>toneGroup.open?expanded.add("tone"):expanded.delete("tone"));
  const toneTitle=document.createElement("summary");toneTitle.textContent="Tone · filter & distortion";
  const toneFields=document.createElement("div");toneFields.className="synth-fields dial-grid";
  const filterLabel=document.createElement("label");filterLabel.className="synth-field";
@@ -38,7 +58,8 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  toneFields.append(createDial({label:"Distortion",min:0,max:1,step:.01,display:"percent"},tone.drive,
   value=>onChange(["drive"],value),value=>onPreview(["drive"],value)));
  toneGroup.append(toneTitle,toneFields);root.append(toneGroup);
- const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=false;
+ const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=expanded.has("movement");
+ movementGroup.addEventListener("toggle",()=>movementGroup.open?expanded.add("movement"):expanded.delete("movement"));
  const movementTitle=document.createElement("summary");movementTitle.textContent="Pitch & movement";
  const movementFields=document.createElement("div");movementFields.className="synth-fields dial-grid";
  const m=movement(patch);
@@ -79,7 +100,8 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   value=>onChange(["bend"],{...bend,[key]:value}),
   value=>onPreview(["bend",key],value)));
  movementGroup.append(movementTitle,movementFields);root.append(movementGroup);
- const details=document.createElement("details");details.className="synth-group sample-shaping";details.open=false;
+ const details=document.createElement("details");details.className="synth-group sample-shaping";details.open=expanded.has("sample");
+ details.addEventListener("toggle",()=>details.open?expanded.add("sample"):expanded.delete("sample"));
  const summary=document.createElement("summary");summary.textContent="Sample & articulation";
  const fields=document.createElement("div");fields.className="synth-fields dial-grid";
  const configs=[

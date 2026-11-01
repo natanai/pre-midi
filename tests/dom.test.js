@@ -66,7 +66,7 @@ test("instrument presets have one owner and the full synth editor is reachable",
  assert.match(studio,/openLibrary\("add"\)/);
  assert.match(studio,/openLibrary\("replace"\)/);
  assert.match(studio,/renderPatchEditor\(/);
- assert.match(editor,/Oscillator 1/);
+ assert.match(editor,/Oscillators/);
  assert.match(editor,/Envelope/);
  assert.match(editor,/Filter & noise/);
  assert.match(editor,/Pitch & movement/);
@@ -169,6 +169,8 @@ test("primary instrument controls replace redundant lower fields",()=>{
  assert.match(html,/id="remove-instrument"/);
  assert.ok(!html.includes('class="sound-control-group sound-identity-controls"'));
  assert.match(css,/\.visual-sound-panel/);
+ assert.match(css,/\.oscillator-stack/);
+ assert.match(studio,/entry\.id\);/);
  assert.match(studio,/PRIMARY_SYNTH_FIELDS/);
  assert.match(studio,/createSignalDisplay\(\$\("sound-visualizer"\),patch,beat,signal\(inst\),inst.volume\*entry.gain,entry.referencePitch,inst.automation\)/);
  assert.ok(!synth.includes('{name:"Sound",open:true'));

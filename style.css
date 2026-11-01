@@ -1455,3 +1455,39 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
  .visual-sound-panel.zoomed>.synth-group>.visual-panel-area {height:min(37dvh,260px)}
  .sound-section .synth-grid {gap:9px}
 }
+
+/* One sound overview: measured audio and master volume share the same row. */
+.sound-overview {
+ display:grid;grid-template-columns:minmax(0,1fr) 94px;gap:2px;
+ align-items:start;min-width:0
+}
+.sound-overview .sound-visualizer {
+ grid-column:1;grid-row:1;min-width:0;padding:8px 5px 12px 12px
+}
+.sound-overview .sound-primary-controls {
+ grid-column:2;grid-row:1;align-self:start;justify-content:center;
+ padding:14px 0 0;min-width:0;width:100%
+}
+.sound-overview .sound-primary-controls>div {max-width:94px;width:100%;min-width:0}
+.sound-section .synth-grid {align-items:stretch}
+.sound-section .synth-grid>.visual-sound-panel {width:100%;align-self:stretch;box-sizing:border-box}
+.visual-sound-panel>.synth-group>summary {
+ display:flex;width:100%;min-width:0;box-sizing:border-box
+}
+.oscillator-stack {display:grid;gap:0}
+.oscillator-unit {min-width:0;padding:4px 0 8px}
+.oscillator-unit+.oscillator-unit {border-top:1px solid var(--faint)}
+.oscillator-unit-heading {
+ display:flex;align-items:center;justify-content:space-between;
+ gap:12px;padding:7px 12px 0;font-size:11px;color:var(--muted)
+}
+.oscillator-unit .synth-fields {padding:10px 12px 14px}
+.oscillator-add {display:block;margin:0 12px 14px;padding:8px 10px;
+ border:1px solid var(--line);text-align:left;font-size:12px;color:var(--bright)}
+.oscillator-remove {padding:4px 6px;color:var(--muted);font-size:11px}
+.oscillator-add:hover,.oscillator-remove:hover {color:var(--bright);border-color:var(--bright)}
+@media(max-width:570px) {
+ .sound-overview {grid-template-columns:minmax(0,1fr) 82px}
+ .sound-overview .sound-primary-controls>div {max-width:82px}
+ .sound-overview .sound-visualizer {padding-left:7px}
+}
