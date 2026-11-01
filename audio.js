@@ -177,6 +177,31 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
   {pitch,velocity:expression?.velocity??.8,bend:expression?.bend},
   context.currentTime+.01,hitDuration??expression?.duration??.24,beat,previews());
 }
+// Performance-only held notes, without changing the saved Beat.
+export async function auditionHeld(instrument,pitch,beat=null){
+ let patch=instrument.patch,volume=instrument.volume;
+ if(instrument.sounds){
+  const chosen=instrument.sounds[0];
+  patch=chosen.patch;volume*=chosen.gain;
+ }
+ const selected={patch,volume};
+ // Native currently exposes timed preview voices. Never silently switch the
+ // portable Windows build to Web Audio; native hold/release needs a host command.
+ if(nativeEnabled()){
+  await auditionNative(selected,[{pitch,velocity:.82}],{duration:1.5});
+  return ()=>{};
+ }
+ context||=new AudioContext();
+ if(context.state!=="running")await context.resume();
+ if(beat&&patch.type==="sample"){
+  const zone=sampleForNote(patch,pitch,.82);
+  await decodeSamples(context,beat,bufferCache(context),new Set(zone?[zone.assetId]:[]));
+ }
+ const voice=scheduleNote(context,context.destination,selected,
+  {pitch,velocity:.82},context.currentTime+.01,15,beat,previews());
+ const tail=Math.max(.015,Math.min(2.5,patch.envelope?.release??patch.release??.18));
+ return ()=>voice?.releaseOver?.(context.currentTime,tail);
+}
 // Preview a real acoustic chord through the exact same sample voice and
 // strumOffset implementation used by timeline playback and WAV export.
 export async function auditionChord(instrument,pitches,beat,velocity=.85) {

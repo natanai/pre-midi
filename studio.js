@@ -4,7 +4,8 @@ import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, auditionChord, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
+import { play, audition, auditionChord, auditionHeld, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
+import { installKeyboardPiano } from "./keyboardPiano.js";
 import { resizeNote, moveNote } from "./noteEditing.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
@@ -69,6 +70,7 @@ let beat=song?.beats[0]||cached||create();
 let songExpanded=!!song,selectedBeatId=beat.id,songUI=null;
 let selectedInstrumentId=beat.instruments[0].id;
 let selectedNoteId = null;
+let keyboardPiano = null;
 let selectedSounds=new Map();
 let editingNoteEffects = false;
 let selectedChunks = new Map();
@@ -755,7 +757,7 @@ function renderNotes() {
  root.classList.toggle("piano-keyboard",inst.layout!=="rack"&&showPianoKeys);
  root.setAttribute("aria-label",inst.layout==="rack"?"Sound rack":"Piano roll");
  renderScaleControls(inst);
- if(inst.layout==="rack"){renderRack(root,inst,chunk);return;}
+ if(inst.layout==="rack"){keyboardPiano?.stop();renderRack(root,inst,chunk);return;}
  const scroll = root.parentElement, top = scroll.scrollTop, left = scroll.scrollLeft;
  root.replaceChildren();
  root.style.setProperty("--track-accent", signal(inst));
@@ -1062,6 +1064,7 @@ function renderNotes() {
  root.append(playhead);
  paintKeys(scaleFocusStep);
  paintPianoPlayhead();
+ keyboardPiano?.refresh();
  scroll.scrollTop = top;
  scroll.scrollLeft = left;
  const note=editingNoteEffects?chunk.notes.find(entry=>entry.id===selectedNoteId):null;
@@ -2048,6 +2051,11 @@ songUI=installSongUI({
  onImportBeat:()=>$("song-import-file").click()
 });
 initializeScaleControls();
+keyboardPiano=installKeyboardPiano({
+ toggle:$("qwerty-piano"),toolbar:document.querySelector(".piano-tools"),
+ scroll:document.querySelector(".piano-scroll"),getInstrument:instrument,getBeat:()=>beat,
+ playNote:auditionHeld
+});
 render();
 if(cached)message("Local draft restored");
 assetsReady=loadDraft().then(raw=>{

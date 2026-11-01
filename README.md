@@ -22,6 +22,12 @@ Song's **● voice** opens a recording dialog. Pick the Song start bar, optional
 
 **Play** runs the Song only while the Song timeline is expanded. When collapsed, it plays the selected Beat. **Export** chooses Beat or Song, then `.premidi` (default) or WAV. The **Open .premidi** action replaces the active project; **Add .premidi** inside Song adds a Beat.
 
+### QWERTY piano
+
+In the pitched piano roll, use the small keyboard icon next to the piano-key toggle to audition the current Instrument without placing notes. The hover/focus diagram shows the physical QWERTY mapping: `Z X C V B N M , . /` play consecutive white keys from C3 through E4; the upper row supplies sharps. Numpad `+`/`-` moves the entire register by octaves. Holding **left Shift** changes only the right-hand register (N through /). Esc exits performance mode. **Change keys** in the icon's popover lets you rebind pitches to unique physical keys, with restore-defaults support. This is a local preference, not an exported `.premidi` instruction.
+
+Browser performance mode supports simultaneous key presses and releases through the existing synth/sample voice path. The Windows native preview API currently supports timed previews, not per-note hold/release; this performance-mode limitation requires a native host enhancement and does not cause a Web Audio fallback.
+
 ## Native project files
 
 - **Beat:** legacy version 7 remains supported; modulation and automation use newer versioned Beat documents (v9 and v11 respectively). Older supported Beat documents migrate through the versioned parser.
