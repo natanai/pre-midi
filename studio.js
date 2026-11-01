@@ -15,7 +15,7 @@ import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
 import { renderPatchEditor,PRIMARY_SYNTH_FIELDS } from "./instrumentUI.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
-import { DRUM_RACKS } from "./drumRacks.js";
+import {FACTORY_SOUND_CATALOG} from "./soundCatalog.js";
 import { nextRackPreview } from "./rackPreview.js";
 import { loadLibrarySample, makeSampleAsset, MAX_BEAT_BYTES, sampleForNote } from "./sampler.js";
 import { sampleAsset } from "./samples.js";
@@ -1803,7 +1803,7 @@ $("hear-sound").addEventListener("click",()=>{
 });
 $("save-sound").addEventListener("click",()=>openPresetSave(instrument().layout==="rack"));
 $("save-row-sound").addEventListener("click",()=>openPresetSave(false));
-function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...EXAMPLE_SOUND_PRESETS,...savedSounds,...DRUM_RACKS];}
+function allSounds(){return [...FACTORY_SOUND_CATALOG,...savedSounds];}
 function openLibrary(mode) {
  closePicker();
  if(mode==="add"&&beat.instruments.length>=12)return;

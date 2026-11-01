@@ -6,6 +6,15 @@ on:
 permissions:
   contents: read
 jobs:
+  catalog-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Report catalog source overlap
+        run: node scripts/sound-catalog-audit.mjs
   verify:
     runs-on: ubuntu-latest
     steps:
