@@ -695,7 +695,15 @@ function renderRack(root,inst,chunk){
     (existing?.bend?.shape&&existing.bend.shape!=="straight"?" bent":""));
    cell.setAttribute("aria-label",entry.name+", step "+(step+1)+(existing?", hit; "+Math.round(existing.velocity*100)+"% strength":"; add hit"));
    cell.setAttribute("aria-pressed",String(!!existing));
-   cell.title=existing?(editingNoteEffects?"Edit hit effects":"Remove hit")+" · Shift-click strength":"Add hit";
+   cell.title=existing?(editingNoteEffects?"Edit hit effects":"Remove hit")+" · Shift-click strength · right-click effects":"Add hit";
+   cell.addEventListener("contextmenu",event=>{
+    // Only actual hits open the inspector; retain the native menu on empty steps.
+    const hit=chunk.notes.find(note=>note.soundId===entry.id&&note.start===step);
+    if(!hit)return;
+    event.preventDefault();
+    selectedSounds.set(inst.id,entry.id);
+    setNoteEffectsMode(true,hit.id,false);
+   });
    cell.addEventListener("keydown",event=>{
     if(existing&&["Delete","Backspace"].includes(event.key)){
      event.preventDefault();modify(()=>{chunk.notes=chunk.notes.filter(note=>note.id!==existing.id);});
@@ -838,7 +846,7 @@ function renderNotes() {
      + (direction?", "+(direction==="either"?"either direction":direction):"")
      + (present ? ", note length " + present.duration + " steps; " + (editingNoteEffects?"click to edit note effects":"click to remove") + "; hold and drag to move" :
       cell.disabled?", adding notes restricted":", click to add note"));
-    cell.title = present ? (editingNoteEffects?"Click to shape note · Shift-click strength":"Click to remove · Shift-click strength") + " · hold and drag to move · drag end to resize" : "Add " + noteLabel(pitch) + " · drag to extend";
+    cell.title = present ? (editingNoteEffects?"Click to shape note · Shift-click strength":"Click to remove · Shift-click strength") + " · hold and drag to move · drag end to resize · right-click effects" : "Add " + noteLabel(pitch) + " · drag to extend";
    }
   }
 
@@ -877,6 +885,13 @@ function renderNotes() {
     }
    }, "note" + (step % 4 === 0 ? " beat" : ""));
    cells.push(cell);
+   cell.addEventListener("contextmenu",event=>{
+    // A note tail is still the same note. Never add/remove on a right-click.
+    const note=chunk.notes.find(n=>n.pitch===pitch&&step>=n.start&&step<n.start+n.duration);
+    if(!note)return;
+    event.preventDefault();
+    setNoteEffectsMode(true,note.id,false);
+   });
    cell.addEventListener("pointerenter",()=>focusScaleStep(step));
    cell.addEventListener("focus",()=>focusScaleStep(step));
 
@@ -1239,11 +1254,12 @@ async function chooseExample(example){
 $("examples").addEventListener("click",showExamples);
 $("close-examples").addEventListener("click",()=>$("example-dialog").close());
 
-function setNoteEffectsMode(active){
+function setNoteEffectsMode(active,noteId=null,focusButton=true){
  editingNoteEffects=active;
- selectedNoteId=null;
+ selectedNoteId=active?noteId:null;
  render();
- $("note-mode").focus({preventScroll:true});
+ // Direct note context actions should not move focus to the toolbar.
+ if(focusButton)$("note-mode").focus({preventScroll:true});
 }
 $("note-mode").addEventListener("click",()=>setNoteEffectsMode(!editingNoteEffects));
 $("note-effects-done").addEventListener("click",()=>setNoteEffectsMode(false));
