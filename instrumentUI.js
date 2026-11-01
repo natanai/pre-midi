@@ -1,5 +1,6 @@
 import {renderModulationEditor} from "./modulationUI.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
+import {assignSoundEdit} from "./soundEditPath.js";
 // Controls are generated from the same patch keys validated by synth.js.
 // All edits go through the caller's one canonical beat mutation pathway.
 import { WAVES, FILTERS, makePatch } from "./synth.js";
@@ -184,12 +185,7 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
   onPreview(path,value);
   if(!path.length)return;
   const current=structuredClone(patch);
-  const updates=Array.isArray(path[0])?path.map((key,i)=>[key,value[i]]):[[path,value]];
-  for(const [keys,newValue] of updates){
-   let owner=current;
-   for(const key of keys.slice(0,-1))owner=owner[key]??={};
-   owner[keys.at(-1)]=newValue;
-  }
+  assignSoundEdit(current,path,value);
   for(const panel of panels)panel.draw(current);
  };
  for(const group of groups){
