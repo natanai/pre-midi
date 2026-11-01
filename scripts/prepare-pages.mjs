@@ -54,7 +54,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  await rm(output,{recursive:true,force:true});
  await mkdir(output,{recursive:true});
  await writeFile(new URL("index.html",output),html);
- for(const file of [...modules,"style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md"]){
+ for(const file of [...modules,"style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg"]){
   await mkdir(new URL("./",new URL(file,output)),{recursive:true});
   await copyFile(new URL(file,root),new URL(file,output));
  }
@@ -64,7 +64,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  for(const filename of required)
   await copyFile(new URL("samples/"+filename,root),new URL(filename,samples));
  const listed=await readdir(output);
- const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","samples"]);
+ const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg","samples"]);
  if(listed.some(name=>!allowed.has(name)))
   throw Error("Unexpected files in published artifact.");
  console.log("Staged",modules.length,"runtime modules and",required.size,"verified samples; no tests or development files.");
