@@ -71,7 +71,7 @@
    <label class="transport-field">bpm <input id="bpm" type="number" min="40" max="240"></label>
    <label class="transport-field">bars <select id="bars"><option>2</option><option>4</option><option>8</option><option>16</option></select></label>
    <label class="transport-field transport-loop"><span>loop</span><span class="loop-box"><input id="loop" type="checkbox" checked></span></label>
-   <div class="transport-position"><span>bar : beat</span><output id="position" aria-label="bar 1, beat 1">1:1</output></div>
+   <div class="transport-position" aria-label="Playback position"><span>bar : beat</span><output id="position" aria-label="bar 1, beat 1">1:1</output></div>
   </div>
  </section>
  <div class="work">
@@ -87,8 +87,12 @@
    </section>
    <section class="notes-section" aria-label="Chunk note editor">
     <div class="heading notes-heading">
-     <div class="chunk-heading"><h2>Notes</h2><span id="editing-identity" class="editing-identity"></span></div>
-     <div class="history-actions"><button id="sound-toggle" type="button" aria-expanded="true" aria-controls="sound-section">Sound</button><button id="note-mode" type="button" aria-pressed="false" aria-controls="note-effects-section">Edit note effects</button><button id="undo" type="button">Undo</button><button id="redo" type="button">Redo</button></div>
+     <div class="chunk-heading"><h2>notes</h2><button id="note-mode" type="button" aria-label="edit note effects" title="edit note effects" aria-pressed="false" aria-controls="note-effects-section">✎</button><span id="editing-identity" class="editing-identity"></span></div>
+     <div class="history-actions" role="group" aria-label="edit history and sound">
+      <button id="undo" type="button" aria-label="undo last change" title="undo last change (ctrl+z)">↶</button>
+      <button id="redo" type="button" aria-label="redo last change" title="redo last change (ctrl+shift+z)">↷</button>
+      <button id="sound-toggle" type="button" aria-label="show sound editor" title="show sound editor" aria-expanded="false" aria-controls="sound-section">♫</button>
+     </div>
     </div>
     <div class="notes-toolbar">
      <div class="chunk-tools">
@@ -116,7 +120,7 @@
    </section>
    <section id="sound-section" class="sound-section" aria-label="Instrument sound">
     <div class="heading sound-section-heading">
-     <div class="sound-heading"><h2>sound</h2><span id="edit-instrument-note" class="editing-identity"></span></div>
+     <div class="sound-heading"><h2>sound</h2></div>
      <div class="sound-window-actions"><button id="sound-close" type="button" aria-label="Close sound editor">×</button></div>
      </div>
     <div class="sound-actions"><button id="hear-sound" type="button" aria-label="Hear current sound">hear sound</button><button id="change-sound" type="button">browse sounds</button><button id="save-sound" type="button">save preset</button></div>

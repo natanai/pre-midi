@@ -12,10 +12,21 @@
 .transport .transport-loop {align-items:center;min-width:40px;cursor:pointer}
 .transport .loop-box {display:grid;place-items:center;width:40px;height:34px}
 .transport .loop-box input {margin:0;width:15px;height:15px;min-height:15px}
-.transport .transport-position {min-width:66px}
+/* The readout is a single labeled position, not a second loop control. */
+.transport .transport-position {
+ display:grid;grid-template-rows:14px 24px;align-content:center;justify-items:center;
+ width:100px;min-width:100px;height:52px;min-height:52px;
+ gap:2px;padding:4px 9px;border:1px solid var(--line);
+ background:var(--panel);text-align:center
+}
+.transport .transport-position > span {
+ width:100%;white-space:nowrap;text-align:center;line-height:14px
+}
 .transport .transport-position output {
- display:flex;align-items:center;justify-content:flex-start;
- height:34px;min-height:34px;min-width:0;font-size:14px;font-variant-numeric:tabular-nums
+ display:block;width:100%;height:24px;min-height:24px;min-width:0;
+ text-align:center;line-height:24px;
+ font-size:15px;color:var(--bright);font-variant-numeric:tabular-nums;
+ letter-spacing:.02em
 }
 .notes-toolbar {align-items:flex-end;justify-content:flex-start;gap:10px 14px}
 .notes-toolbar label {gap:4px;line-height:14px}
@@ -31,7 +42,6 @@
 .sound-section-heading .sound-heading {
  min-width:0;max-width:calc(100% - 40px);flex-wrap:nowrap;align-items:baseline;overflow:hidden
 }
-.sound-section-heading .editing-identity {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sound-window-actions {margin-left:auto;flex:none;align-self:center}
 .sound-window-actions button {height:30px;min-height:30px;line-height:1}
 .sound-section > .sound-actions {

@@ -119,3 +119,36 @@ test("note level belongs to the selected note effects inspector for piano and ra
  assert.match(studio,/velocity:level,bend:note\.bend/);
  assert.match(studio,/duration:1,velocity:DEFAULT_NOTE_LEVEL/);
 });
+
+test("compact note and Sound header keeps history accessible and Sound rightmost",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
+ const header=html.slice(html.indexOf('class="heading notes-heading"'),html.indexOf('<div class="notes-toolbar">'));
+ const note=header.indexOf('id="note-mode"');
+ const undo=header.indexOf('id="undo"');
+ const redo=header.indexOf('id="redo"');
+ const sound=header.indexOf('id="sound-toggle"');
+ assert.ok(note>=0&&note<undo&&undo<redo&&redo<sound,"Sound must be the last control");
+ assert.ok(header.includes('<h2>notes</h2><button id="note-mode"'));
+ for(const [id,symbol] of [["note-mode","✎"],["undo","↶"],["redo","↷"],["sound-toggle","♫"]]){
+  assert.match(header,new RegExp('id="'+id+'"[^>]*>'+symbol+'</button>'));
+  assert.match(header,new RegExp('id="'+id+'"[^>]*aria-label="'));
+ }
+ assert.ok(studio.includes('$("undo").addEventListener("click", undo)'));
+ assert.ok(studio.includes('$("redo").addEventListener("click", redo)'));
+ assert.ok(studio.includes('$("sound-toggle").textContent="♫"'));
+ assert.ok(studio.includes('$("note-mode").textContent="✎"'));
+ assert.match(css,/\.history-actions button::before,\.history-actions button::after \{content:none\}/);
+});
+test("Sound heading does not duplicate its editable instrument name",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ const sound=html.slice(html.indexOf('id="sound-section"'),html.indexOf('id="note-effects-section"'));
+ assert.ok(sound.includes('<div class="sound-heading"><h2>sound</h2></div>'));
+ assert.ok(sound.includes('<label>Name <input id="instrument-name"'));
+ assert.ok(sound.includes('id="sound-name"'));
+ assert.ok(!sound.includes('id="edit-instrument-note"'));
+ assert.ok(!studio.includes('$("edit-instrument-note")'));
+ assert.ok(studio.includes('$("sound-section").setAttribute("aria-label"'));
+});

@@ -12,7 +12,9 @@ test("transport position is independent from the loop switch",()=>{
  assert.match(html,/class="transport-playback"/);
  assert.match(html,/class="transport-field transport-loop"/);
  assert.match(html,/class="loop-box"><input id="loop"/);
- assert.match(html,/class="transport-position"/);
+ assert.match(html,/class="transport-position" aria-label="Playback position"/);
+ assert.match(css,/\.transport \.transport-position \{[\s\S]*?border:1px solid var\(--line\)/);
+ assert.match(css,/\.transport \.transport-position output \{[\s\S]*?text-align:center/);
  assert.match(html,/bar : beat/);
  assert.match(html,/<output id="position"[^>]*>1:1<\/output>/);
  assert.doesNotMatch(html,/<output id="position"[^>]*>1\.1<\/output>/);

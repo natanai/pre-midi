@@ -1144,7 +1144,6 @@ function renderChunkEditor() {
  $("chunk-name").value=active.name;
  $("delete-chunk").disabled=inst.chunks.length<=1;
  $("editing-identity").textContent=inst.name;
- $("edit-instrument-note").textContent=inst.name;
  renderNotes();
 }
 function renderSound() {
@@ -1208,7 +1207,8 @@ function renderSound() {
   "Reference note must be within C2–C7 to use the piano roll":
   beat.instruments.length>=12&&inst.sounds.length>1?
   "The beat already has 12 instruments": "Move this sound to its own piano-roll instrument";
- $("edit-instrument-note").textContent=inst.layout==="rack"?inst.name+" / "+entry.name:inst.name;
+ $("sound-section").setAttribute("aria-label",
+  "sound editor for "+inst.name+(inst.layout==="rack"?" / "+entry.name:""));
  if(patch.type==="sample"){
   renderSamplerEditor($("synth-editor"),patch,onChange,
    patch.zones.map(zone=>beat.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
@@ -1224,8 +1224,9 @@ function render() {
  repairSelection();
  syncInspector();
  $("note-mode").setAttribute("aria-pressed",String(editingNoteEffects));
- $("note-mode").textContent=editingNoteEffects?"✓ done":"edit note effects";
+ $("note-mode").textContent="✎";
  $("note-mode").setAttribute("aria-label",editingNoteEffects?"finish editing note effects":"edit note effects");
+ $("note-mode").title=editingNoteEffects?"finish editing note effects":"edit note effects";
  document.querySelector(".work")?.classList.toggle("editing-note-effects",editingNoteEffects);
  document.querySelector(".notes-section")?.classList.toggle("editing-note-effects",editingNoteEffects);
  $("title").value = beat.title;
@@ -1269,7 +1270,9 @@ function syncInspector(){
  const opened=inspectorState!=="closed"&&!editingNoteEffects;
  $("sound-section").setAttribute("aria-hidden",String(!opened));
  $("sound-toggle").setAttribute("aria-expanded",String(opened));
- $("sound-toggle").textContent=opened?"✓ Sound":"Sound";
+ $("sound-toggle").textContent="♫";
+ $("sound-toggle").setAttribute("aria-label",opened?"close sound editor":"open sound editor");
+ $("sound-toggle").title=opened?"close sound editor":"open sound editor";
 }
 function setInspector(state){
  inspectorState=state;
