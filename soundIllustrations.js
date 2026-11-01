@@ -28,7 +28,7 @@ function waveAt(type,phase,harmonics){
 const pathFrom=points=>points.map(([x,y],i)=>(i?"L":"M")+x.toFixed(2)+" "+y.toFixed(2)).join(" ");
 const pathRange=(count,fn)=>pathFrom(Array.from({length:count},(_,i)=>fn(i/(count-1))));
 // Diagrams respond to canonical parameters; the measured scope is separate.
-const diagram= (patch,type)=>{
+export const diagram=(patch,type)=>{
  const color=type==="movement"?"var(--signal-mauve)":"var(--track-accent,#08e4ec)";
  const paths=[],handles=[],labels=[];
  const line=(d,secondary=false)=>paths.push({d,secondary});
@@ -128,7 +128,7 @@ const diagram= (patch,type)=>{
    line("M"+x.toFixed(2)+" 98 V"+(98-height).toFixed(2),i>0);
    if(i>0)tag(x-5,Math.max(17,95-height-5),String(i));
   }
-  handle(142,60-33*Math.tanh(.5*(1+drive*8))/Math.tanh(1+drive*8),[
+  handle(142,76-51*drive,[
    axis(["effects","drive"],0,1,"linearY",{from:76,to:25,step:.01})
   ],"distortion");
   handle(origin+spacing,98-64*mix,[
