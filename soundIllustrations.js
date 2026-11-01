@@ -35,7 +35,7 @@ const mono=(p,type)=>{
  const dot=(path,x,y,min,max,axis="x",label="")=>handles.push({path,x,y,min,max,axis,label:label||String(path.at(-1))});
  const tag=(x,y,text)=>labels.push([x,y,text]);
  if(type.startsWith("oscillator")){
-  const index=Number(type.slice(-1)),o=p.oscillators[index];
+  const index=Number(type.slice(-1))-1,o=p.oscillators[index];
   const brightness=clamp(Math.log(Math.max(50,p.filter.cutoff)/50)/Math.log(280));
   const drive=p.effects.drive||0;
   line("M12 60 H348",true);
