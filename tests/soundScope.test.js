@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {makePatch} from "../synth.js";
-import {scopeAmplitudeAt,scopeWindowSeconds,scopeAudioBins} from "../soundScope.js";
+import {scopeAmplitudeAt,scopeWindowSeconds,scopeAudioBins,scopeWaveformData} from "../soundScope.js";
 
 test("sound scope windows include release and live delay repeats",()=>{
  const p=makePatch("init");
@@ -42,4 +42,25 @@ test("sample windows follow the real sample life and show long one-shots as a fi
  assert.equal(scopeWindowSeconds(p,1.1),2.2);
  assert.ok(scopeWindowSeconds(p,4.5)>4.5);
  assert.equal(scopeWindowSeconds(p,25),12);
+});
+
+test("full-width waveform uses genuine stereo samples without hiding volume or pan",()=>{
+ const rate=44100,length=rate*2;
+ const channels=[
+  Float32Array.from({length},(_,i)=>.7*Math.sin(2*Math.PI*220*i/rate)),
+  Float32Array.from({length},(_,i)=>.24*Math.sin(2*Math.PI*220*i/rate))
+ ];
+ const buffer={numberOfChannels:2,length,sampleRate:rate,getChannelData:c=>channels[c]};
+ const waveform=scopeWaveformData(buffer,60,620);
+ assert.equal(waveform.channels[0].length,620);
+ assert.ok(waveform.windowSeconds>=.018 && waveform.windowSeconds<.12);
+ assert.ok(waveform.startSeconds>=0 && waveform.startSeconds<1.1);
+ const peak=samples=>Math.max(...samples.map(Math.abs));
+ assert.ok(peak(waveform.channels[0])>.65);
+ assert.ok(peak(waveform.channels[1])<.25);
+ assert.ok(peak(waveform.channels[1])>.22);
+ const lowered={...buffer,getChannelData:c=>Float32Array.from(channels[c],v=>v*.5)};
+ const quieter=scopeWaveformData(lowered,60,620);
+ assert.ok(peak(quieter.channels[0])<peak(waveform.channels[0])*.51,
+  "waveform should preserve actual gain changes, not auto-normalize");
 });
