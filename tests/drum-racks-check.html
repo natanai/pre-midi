@@ -32,12 +32,35 @@ frame.addEventListener("load",async()=>{
    .every(c=>!!(c.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING));
   checks.individualsAvailable=cards().some(c=>c.dataset.presetId==="wood-snare") &&
    cards().some(c=>c.dataset.presetId==="machine-kick");
+  const preview=kitCards[0].querySelector(".preset-preview");
+  preview.click();
+  const first=preview.dataset.previewSoundId;
+  checks.firstRackPreview=preview.textContent.includes("1/11")&&!!first;
+  preview.click();
+  checks.previewCycles=preview.textContent.includes("2/11") &&
+   !!preview.dataset.previewSoundId && preview.dataset.previewSoundId!==first;
   kitCards[0].querySelector(".preset-choose").click();
   await wait(()=>!library.open && doc.querySelectorAll(".instrument-card").length===2,
    "Add Warm Room rack");
   checks.rackEditable=get("instrument-name").value==="Warm Room Kit" &&
    doc.querySelectorAll("#piano .rack-row").length===11;
   checks.rackSelection=!!get("instrument-name").value.includes("Room");
+  const hear=get("hear-sound");
+  hear.click();const playedFirst=hear.dataset.previewSoundId;
+  hear.click();
+  checks.hearRackCycles=hear.textContent.includes("2/11")&&
+   hear.dataset.previewSoundId!==playedFirst;
+  get("change-sound").click();
+  await wait(()=>library.open,"Browse sounds uses shared library");
+  drums.click();
+  const browseRack=cards().find(c=>c.dataset.presetId==="night-drive-drum-rack");
+  checks.browseShowsRack=!!browseRack&&browseRack.querySelector(".preset-choose")?.textContent==="add rack";
+  browseRack?.querySelector(".preset-choose")?.click();
+  await wait(()=>!library.open&&doc.querySelectorAll(".instrument-card").length===3,
+   "Browse adds another whole rack");
+  checks.browseAddsNotReplaces=get("instrument-name").value==="Night Drive Kit"&&
+   doc.querySelectorAll("#piano .rack-row").length===10;
+
   document.documentElement.dataset.drumRacks=Object.values(checks).every(Boolean)?"PASS":"FAIL";
   result.textContent=JSON.stringify(checks);
  }catch(error){
