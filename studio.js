@@ -702,7 +702,7 @@ function renderRack(root,inst,chunk){
    },"note rack-step"+(step%4===0?" beat":"")+(existing?" filled":"")+
     (editingNoteEffects&&existing?.id===selectedNoteId?" selected":"")+
     (existing?.bend?.shape&&existing.bend.shape!=="straight"?" bent":""));
-   cell.setAttribute("aria-label",entry.name+", step "+(step+1)+(existing?", hit; "+Math.round(existing.velocity*100)+"% strength":"; add hit"));
+   cell.setAttribute("aria-label",entry.name+", step "+(step+1)+(existing?", hit; "+Math.round(existing.velocity*100)+"% level":"; add hit"));
    cell.setAttribute("aria-pressed",String(!!existing));
    cell.title=existing?(editingNoteEffects?"Edit hit effects":"Remove hit")+" · right-click effects":"Add hit";
    cell.addEventListener("contextmenu",event=>{
@@ -886,7 +886,7 @@ function renderNotes() {
     }
     if(scaleGuide.lock&&!isPitchInScaleAtStep(pitch,scaleGuide,editedChunk.notes,step))return;
     const created={id:id(),pitch,start:step,
-     duration:Math.min(Number($("length").value),16-step),velocity:DEFAULT_NOTE_LEVEL};
+     duration:1,velocity:DEFAULT_NOTE_LEVEL};
     selectedNoteId=editingNoteEffects?created.id:null;
     if(modify(()=>{editedChunk.notes.push(created);})){
      tapPianoKey(pitch);
@@ -923,7 +923,7 @@ function renderNotes() {
     let finished=false,grabbed=mode!=="move";
     if(mode==="paint"){
      note={id:id(),pitch,start:step,
-      duration:Math.min(Number($("length").value),16-step),velocity:DEFAULT_NOTE_LEVEL};
+      duration:1,velocity:DEFAULT_NOTE_LEVEL};
      chunk.notes.push(note);
      resizeNote(chunk,note.id,note.duration);
      selectedNoteId=editingNoteEffects?note.id:null;
