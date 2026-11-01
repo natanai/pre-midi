@@ -15,7 +15,9 @@ async function checkLayout(frame){
  const button=get("add-instrument");
  const toolbar=doc.querySelector(".notes-toolbar");
  const notesHead=doc.querySelector(".notes-heading");
- const controls=[...toolbar.querySelectorAll("button, select, input")];
+ // The chunk picker now owns a hidden popover of buttons; a zero-box
+ // descendant is not a visible toolbar control and cannot visually overflow it.
+ const controls=[...toolbar.querySelectorAll("button, select, input")].filter(el=>el.getClientRects().length>0);
  const sidebar=rect(pane), add=rect(button), title=rect(heading);
  const tools=rect(toolbar), noteHead=rect(notesHead);
  const checks={
