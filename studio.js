@@ -21,6 +21,7 @@ import { loadLibrarySample, makeSampleAsset, MAX_BEAT_BYTES, sampleForNote } fro
 import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
 import {sampleTone} from "./audioEffects.js";
+import {assignSoundEdit} from "./soundEditPath.js";
 import { loadDraft, saveDraft, savePresetAssets } from "./storage.js";
 import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
@@ -1165,12 +1166,7 @@ function renderSound() {
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
   const next=patchCopy(sound().patch);
-  const updates=Array.isArray(path[0])?path.map((key,i)=>[key,value[i]]):[[path,value]];
-  for(const [keys,newValue] of updates){
-   let owner=next;
-   for(const key of keys.slice(0,-1))owner=owner[key]??={};
-   owner[keys.at(-1)]=newValue;
-  }
+  assignSoundEdit(next,path,value);
   scope(next);
   for(const panel of $("synth-editor").querySelectorAll(".visual-sound-panel"))
    panel.drawSoundIllustration?.(next);
@@ -1178,12 +1174,7 @@ function renderSound() {
  const onChange=(path,value)=>{
   const changed=modify(()=>{
    const target=sound().patch;
-   const updates=Array.isArray(path[0])?path.map((key,i)=>[key,value[i]]):[[path,value]];
-   for(const [keys,newValue] of updates){
-    let owner=target;
-    for(const key of keys.slice(0,-1))owner=owner[key]??={};
-    owner[keys.at(-1)]=newValue;
-   }
+   assignSoundEdit(target,path,value);
    if(target.modulation!==undefined)target.version=2;
    target.presetId="custom";
   });
