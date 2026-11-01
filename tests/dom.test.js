@@ -50,6 +50,10 @@ test("note and sound controls have distinct, wrapping groups", () => {
  }
  assert.match(css,/\.notes-toolbar\s*\{[^}]*flex-wrap:wrap/);
  assert.match(html,/class="sound-primary-controls"/);
+ assert.match(html,/id="hear-sound" class="sound-preview-play" type="button" aria-label="Hear current sound">▶<\/button>/);
+ assert.ok(html.indexOf('id="instrument-volume-dial"')<html.indexOf('id="hear-sound"'));
+ assert.ok(html.indexOf('id="hear-sound"')<html.indexOf('id="sound-visualizer"'));
+ assert.doesNotMatch(html,/<div class="sound-actions"><button id="hear-sound"/);
  assert.match(html,/id="synth-editor"/);
  assert.match(html,/id="instrument-dialog"/);
  assert.match(html,/id="change-sound"/);
