@@ -9,7 +9,7 @@ import {scheduleSample,sampleForNote} from "./sampler.js";
 import {getAsset} from "./assetRegistry.js";
 import {nativeEnabled,nativeRequest,nativePlans,nativeRequiredAssets,prepareNativeAssets,renderNative} from "./src/hosts/native/session.js";
 
-const NS="http://www.w3.org/2000/svg",RATE=44100,HOLD=1.25,MAX_WINDOW=12,COUNT=300,TIME_WIDTH=510;
+const NS="http://www.w3.org/2000/svg",RATE=44100,HOLD=1.25,MAX_WINDOW=12,COUNT=300,TIME_WIDTH=720;
 const mounted=new WeakMap();
 const clamp=(v,lo=0,hi=1)=>Math.min(hi,Math.max(lo,v));
 const node=(type,attributes={})=>{
@@ -50,27 +50,48 @@ export function scopeAudioBins(buffer,count=COUNT){
  }
  return channels.length===1?[channels[0],channels[0]]:channels;
 }
-function envelopePath(bins,channel){
- // Draw measured left peaks above the zero line and right peaks below it.
- // A pan move visibly shifts energy between the two halves.
- const direction=channel===0?-1:1;
- const peak=(bin,i)=>(i/(bins.length-1)*TIME_WIDTH).toFixed(2)+" "+
-  (48+direction*32*Math.tanh(Math.max(-bin.low,bin.high)*1.7)).toFixed(2);
- return bins.map((bin,i)=>(i?"L":"M")+peak(bin,i)).join(" ")+" "+
-  bins.slice().reverse().map((bin,i)=>
-   "L"+((bins.length-i-1)/(bins.length-1)*TIME_WIDTH).toFixed(2)+" 48").join(" ")+" Z";
+// Zoom to a few cycles of the real audio, rather than manufacturing a wave
+// from patch parameters. All sound edits use the same fixed amplitude mapping;
+// neither channel nor patch is normalized independently.
+export function scopeWaveformData(buffer,referencePitch=60,count=620){
+ const rate=buffer.sampleRate;
+ const fundamental=440*2**((referencePitch-69)/12);
+ const size=Math.min(buffer.length,Math.max(2,Math.round(rate*clamp(7/fundamental,.018,.12))));
+ const channelData=[buffer.getChannelData(0),
+  buffer.getChannelData(Math.min(1,buffer.numberOfChannels-1))];
+ // A slow attack or plucked transient should not leave a mostly empty wave.
+ // Select one genuinely audible slice in the first held second, using the
+ // identical timing and sample indices for the left and right channels.
+ const latest=Math.max(0,Math.min(buffer.length-size,Math.round(rate*1.08)));
+ let start=0,best=-1;
+ for(let k=0;k<15;k++){
+  const candidate=Math.min(latest,Math.round(rate*(.02+k*.072)));
+  let energy=0;
+  for(let i=0;i<64;i++){
+   const at=candidate+Math.round((size-1)*i/63);
+   energy+=channelData[0][at]**2+channelData[1][at]**2;
+  }
+  const preference=1-.12*Math.abs(candidate/rate-.24);
+  if(energy*preference>best){best=energy*preference;start=candidate;}
+ }
+ const countPoints=Math.max(2,count);
+ const channels=channelData.map(data=>Array.from({length:countPoints},(_,i)=>
+  data[start+Math.round((size-1)*i/(countPoints-1))]));
+ return {channels,startSeconds:start/rate,windowSeconds:size/rate};
 }
-function detailPath(buffer){
- // 20ms of actual output, providing a timbre view alongside the seconds-long
- // amplitude view. In particular, filters and distortion alter these samples.
- const left=buffer.getChannelData(0),right=buffer.getChannelData(Math.min(1,buffer.numberOfChannels-1));
- const n=170,size=Math.max(1,Math.floor(.02*buffer.sampleRate));
- const start=Math.min(Math.floor(.3*buffer.sampleRate),Math.max(0,buffer.length-size));
- return Array.from({length:n},(_,i)=>{
-  const at=start+Math.round(i/(n-1)*(size-1));
-  return (i?"L":"M")+(522+i/(n-1)*191).toFixed(2)+" "+
-   (48-32*Math.tanh((left[at]+right[at])*.5*1.7)).toFixed(2);
- }).join(" ");
+function waveformPath(samples){
+ return samples.map((value,i)=>(i?"L":"M")+(i/(samples.length-1)*TIME_WIDTH).toFixed(2)+" "+
+  (76-47*Math.tanh(value*1.7)).toFixed(2)).join(" ");
+}
+function envelopePath(bins,channel){
+ // One measured stereo channel above and one below the middle line, so
+ // panning changes the display even if the mono waveform's timbre is similar.
+ const direction=channel===0?-1:1;
+ const point=(bin,i)=>(i/(bins.length-1)*TIME_WIDTH).toFixed(2)+" "+
+  (172+direction*17*Math.tanh(Math.max(-bin.low,bin.high)*1.7)).toFixed(2);
+ return bins.map((bin,i)=>(i?"L":"M")+point(bin,i)).join(" ")+" "+
+  bins.slice().reverse().map((bin,i)=>
+   "L"+((bins.length-i-1)/(bins.length-1)*TIME_WIDTH).toFixed(2)+" 172").join(" ")+" Z";
 }
 function pitchPath(patch,seconds,referencePitch,oscillator=0){
  const motion=movement(patch),slot=patch.type==="synth"?patch.oscillators[oscillator]:null;
@@ -94,8 +115,8 @@ function pitchPath(patch,seconds,referencePitch,oscillator=0){
    cents+=states[index];
   });
   const semitones=base+(pitchCents({bend:patch.bend},motion,Math.min(t,HOLD),HOLD)+vibrato+cents)/100;
-  const distance=clamp(Math.sign(semitones)*Math.log1p(Math.abs(semitones)*3)/Math.log(37)*31,-31,31);
-  return (i?"L":"M")+(i/(COUNT-1)*720).toFixed(2)+" "+(123-distance).toFixed(2);
+  const distance=clamp(Math.sign(semitones)*Math.log1p(Math.abs(semitones)*3)/Math.log(37)*22,-22,22);
+  return (i?"L":"M")+(i/(COUNT-1)*TIME_WIDTH).toFixed(2)+" "+(232-distance).toFixed(2);
  }).join(" ");
 }
 async function webAudio(patch,beat,level,pitch,automation){
@@ -160,19 +181,21 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
  title.textContent=patch.type==="sample"?"RECORDED SOUND":"SOUND SHAPE";
  const legend=document.createElement("span");legend.className="signal-scope-legend";legend.textContent="rendering";
  head.append(title,legend);
- const svg=node("svg",{viewBox:"0 0 720 164",preserveAspectRatio:"none",role:"img",
-  "aria-label":"Rendered stereo sound envelope, waveform detail, and pitch movement"});
+ const svg=node("svg",{viewBox:"0 0 720 264",preserveAspectRatio:"none",role:"img",
+  "aria-label":"Measured audio waveform, stereo amplitude over time, and pitch movement"});
  svg.classList.add("signal-scope-graph");
- const guides=node("path",{d:"M0 48 H720 M0 120 H720 M516 15 V81",class:"signal-scope-guides"});
- const left=node("path",{class:"signal-wave",fill:"var(--scope-accent)",stroke:"none",opacity:".5"});
- const right=node("path",{class:"signal-wave",fill:"var(--scope-accent)",stroke:"none",opacity:".3"});
- const detail=node("path",{class:"signal-wave",fill:"none","stroke-width":"1.2"});
- const pitches=[node("path",{class:"signal-pitch",fill:"none","stroke-width":"2"}),
+ const guides=node("path",{d:"M0 76 H720 M0 132 H720 M0 172 H720 M0 198 H720 M0 232 H720",class:"signal-scope-guides"});
+ const waveRight=node("path",{class:"signal-waveform signal-waveform-right",fill:"none","stroke-width":"1"});
+ const waveLeft=node("path",{class:"signal-waveform signal-waveform-left",fill:"none","stroke-width":"1.65"});
+ const left=node("path",{class:"signal-wave signal-amplitude-left",fill:"var(--scope-accent)",stroke:"none"});
+ const right=node("path",{class:"signal-wave signal-amplitude-right",fill:"var(--scope-accent)",stroke:"none"});
+ const pitches=[node("path",{class:"signal-pitch",fill:"none","stroke-width":"1.9"}),
   node("path",{class:"signal-pitch",fill:"none","stroke-width":"1.3","stroke-dasharray":"4 3",opacity:".65"})];
  const label=(x,y,content)=>{const el=node("text",{x,y,class:"signal-axis"});el.textContent=content;return el;};
- const end=label(464,93,""),gate=node("path",{class:"signal-scope-guides"});
- svg.append(guides,left,right,detail,...pitches,label(8,12,"L / R · TIME"),label(522,12,"20ms"),
-  label(8,86,"PITCH"),end,gate);
+ const waveLabel=label(8,13,"waveform"),end=label(671,146,"");
+ const gate=node("path",{class:"signal-scope-guides"});
+ svg.append(guides,waveRight,waveLeft,left,right,...pitches,waveLabel,
+  label(8,146,"l / r · time"),label(8,212,"pitch"),end,gate);
  wrapper.append(head,svg);root.append(wrapper);
  let revision=0,disposed=false,timer=null,currentLevel=initialLevel;
  function update(nextPatch,level=currentLevel){
@@ -181,23 +204,28 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
   timer=setTimeout(()=>{
    void renderScopeAudio(nextPatch,beat,currentLevel,referencePitch,automation).then(({buffer,seconds,clipped})=>{
     if(disposed||token!==revision)return;
+    const wave=scopeWaveformData(buffer,referencePitch);
+    waveLeft.setAttribute("d",waveformPath(wave.channels[0]));
+    waveRight.setAttribute("d",waveformPath(wave.channels[1]));
+    waveLabel.textContent="waveform · "+Math.round(wave.windowSeconds*1000)+"ms";
     const [l,r]=scopeAudioBins(buffer);
     left.setAttribute("d",envelopePath(l,0));right.setAttribute("d",envelopePath(r,1));
-    detail.setAttribute("d",detailPath(buffer));
     pitches[0].setAttribute("d",pitchPath(nextPatch,seconds,referencePitch,0));
     const second=nextPatch.type==="synth"&&(nextPatch.oscillators[1].level>0||
      (nextPatch.modulation?.routes??[]).some(route=>route.target==="oscillators.1.level"));
     if(second)pitches[1].setAttribute("d",pitchPath(nextPatch,seconds,referencePitch,1));
     else pitches[1].removeAttribute("d");
-    gate.setAttribute("d","M"+(HOLD/seconds*TIME_WIDTH).toFixed(2)+" 15 V81");
+    gate.setAttribute("d","M"+(HOLD/seconds*TIME_WIDTH).toFixed(2)+" 151 V193");
     end.textContent=seconds.toFixed(1)+"s";
-    legend.textContent="L / R · "+(clipped?"first ":"")+seconds.toFixed(1)+"s";
-    svg.setAttribute("aria-label","Actual left and right audio over "+seconds.toFixed(1)+
-     " seconds, 20 millisecond waveform detail, and pitch movement"+(clipped?"; longer tail clipped":""));
+    legend.textContent=(clipped?"first ":"")+seconds.toFixed(1)+"s · actual audio";
+    svg.setAttribute("aria-label","Measured "+Math.round(wave.windowSeconds*1000)+
+     " millisecond stereo waveform at "+wave.startSeconds.toFixed(2)+" seconds, loudness over "+
+     seconds.toFixed(1)+" seconds, and pitch movement"+(clipped?"; longer tail clipped":""));
     wrapper.removeAttribute("title");
    }).catch(error=>{
     if(disposed||token!==revision)return;
-    left.removeAttribute("d");right.removeAttribute("d");detail.removeAttribute("d");
+    waveLeft.removeAttribute("d");waveRight.removeAttribute("d");
+    left.removeAttribute("d");right.removeAttribute("d");waveLabel.textContent="waveform";
     pitches.forEach(line=>line.removeAttribute("d"));gate.removeAttribute("d");end.textContent="";
     legend.textContent="preview unavailable";wrapper.title=String(error.message||error);
    });
