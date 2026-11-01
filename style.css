@@ -149,7 +149,6 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .chunk-tools {gap:6px 14px}
 .chunk-fields {gap:4px}
 .chunk-actions {gap:4px 11px;padding-bottom:2px}
-.note-controls {gap:10px}
 .notes-toolbar label {
  display:flex;flex-direction:column;gap:5px;
  color:var(--muted);font-size:11px;
@@ -186,7 +185,6 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .chunk-actions button::before,.chunk-actions button::after {color:var(--muted)}
 .chunk-actions button::before {content:"["}
 .chunk-actions button::after {content:"]"}
-.note-length-control select {min-width:76px}
 .scale-controls {
  display:flex;align-items:flex-end;flex-wrap:wrap;gap:7px 10px;
  margin-left:auto;min-width:0;
@@ -490,8 +488,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   .piano-scroll {margin:0 8px 13px}
   .controls {padding:12px}
   .notes-toolbar {padding:12px;gap:12px 20px}
-  .note-length-control {margin-left:0}
-  .chunk-tools {width:100%}
+    .chunk-tools {width:100%}
   .chunk-fields {flex:1;flex-wrap:nowrap}
   .chunk-fields .chunk-name-field {flex:1;min-width:0}
   .chunk-fields #chunk-name {width:100%}
