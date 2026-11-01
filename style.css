@@ -312,17 +312,18 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .piano-row.out-of-scale .note-name {color:#666}
 .note.out-of-scale:not(.filled):not(.tail) {background:#050505}
 .piano-row .note.out-of-scale:disabled {opacity:.52;cursor:not-allowed}
-/* Physical keys are painted in their own full-height gutter, not as
-   pseudo-elements inside 23px grid rows. This avoids stacking and clipping. */
+/* A chromatic piano key layout remains independent of the 23px note grid.
+   Flat monochrome keys match the studio's controls; saturated color only
+   indicates selected scale, anticipated pitch, and played-note feedback. */
 #piano.piano-keyboard {--piano-gutter:82px}
 #piano.piano-keyboard .note-name {
  background:transparent;border:0;padding:0;color:transparent;
 }
 #piano .piano-keys-overlay {
- position:absolute;top:0;bottom:0;left:0;
+ position:absolute;inset:0 auto 0 0;
  width:var(--piano-gutter,82px);
  box-sizing:border-box;overflow:hidden;
- background:#eee;border-right:2px solid #333;
+ background:#171717;border-right:1px solid #484848;
  z-index:3;pointer-events:none;
 }
 #piano .piano-key {
@@ -330,37 +331,67 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 }
 #piano .piano-key.white {
  right:0;
- background:linear-gradient(90deg,#fafafa 0%,#ededed 70%,#d0d0d0 94%,#a0a0a0 100%);
- border-bottom:1px solid #777;
- border-right:1px solid #777;
+ background:#bcbfc0;
+ border-right:1px solid #777b7d;
+ border-bottom:1px solid #707477;
+ box-shadow:inset -4px 0 0 #aeb2b4;
 }
 #piano .piano-key.black {
- z-index:1;width:62%;
- background:linear-gradient(90deg,#0b0b0b 0%,#191919 63%,#353535 92%,#101010 100%);
- border:1px solid #030303;border-right-color:#555;
- border-radius:0 3px 3px 0;
- box-shadow:2px 2px 3px #0008,inset 0 1px 1px #ffffff23;
+ z-index:1;width:59%;
+ background:#17191b;
+ border:1px solid #08090a;border-right-color:#555a5d;
+ box-shadow:inset -2px 0 0 #25282a,1px 1px 0 #1119;
 }
 #piano .piano-key-caption {
- position:absolute;right:5px;top:50%;transform:translateY(-50%);
- font-size:10px;font-weight:600;letter-spacing:-.03em;
- color:#303030;white-space:nowrap;
+ position:absolute;right:6px;top:50%;transform:translateY(-50%);
+ font-size:10px;font-weight:600;letter-spacing:0;
+ color:#343638;white-space:nowrap;
 }
 #piano .piano-key.white.in-scale {
- background:linear-gradient(90deg,#def8fa 0%,#e3eff0 76%,#b3d6da 100%);
- box-shadow:inset 4px 0 0 var(--signal-cyan);
+ background:#b3c7c9;
+ box-shadow:inset 3px 0 0 var(--signal-cyan),inset -4px 0 0 #9cabad;
 }
 #piano .piano-key.black.in-scale {
- background:linear-gradient(90deg,#12484e 0%,#1c3538 70%,#24575d 100%);
- box-shadow:inset 4px 0 0 var(--signal-cyan),2px 2px 3px #0009;
+ background:#1a363a;
+ box-shadow:inset 3px 0 0 var(--signal-cyan),inset -2px 0 0 #30494d;
 }
 #piano .piano-key.white.out-of-scale {
- background:linear-gradient(90deg,#b6b6b6 0%,#a9a9a9 88%,#929292 100%);
+ background:#8d9295;box-shadow:inset -4px 0 0 #7e8284;
 }
 #piano .piano-key.black.out-of-scale {
- background:linear-gradient(90deg,#050505 0%,#141414 85%,#080808 100%);
+ background:#101112;box-shadow:inset -2px 0 0 #202224;
 }
-#piano .piano-key.out-of-scale .piano-key-caption {color:#555}
+#piano .piano-key.out-of-scale .piano-key-caption {color:#4c4f51}
+/* Hover indicates a candidate pitch without suggesting a note was added.
+   The played-note motion below is intentionally more conspicuous. */
+#piano .piano-key.white.hovered {
+ background:#d9e5e6;
+ box-shadow:inset -4px 0 0 var(--track-accent);
+}
+#piano .piano-key.white.in-scale.hovered {
+ box-shadow:inset 3px 0 0 var(--signal-cyan),inset -4px 0 0 var(--track-accent);
+}
+#piano .piano-key.black.hovered {
+ background:#304448;
+ box-shadow:inset -3px 0 0 var(--track-accent);
+}
+#piano .piano-key.black.in-scale.hovered {
+ box-shadow:inset 3px 0 0 var(--signal-cyan),inset -3px 0 0 var(--track-accent);
+}
+#piano .piano-key.pressed {
+ animation:piano-key-tap 220ms ease-out both;
+}
+@keyframes piano-key-tap {
+ 0% {transform:translateX(0);filter:brightness(1)}
+ 32% {transform:translateX(-2px);filter:brightness(1.28)}
+ 100% {transform:translateX(0);filter:brightness(1)}
+}
+@media(prefers-reduced-motion:reduce){
+ #piano .piano-key.pressed {
+  animation:none;filter:brightness(1.2);
+  outline:2px solid var(--track-accent);outline-offset:-2px;
+ }
+}
 .note {
   padding:0;min-width:0;border:0;border-right:1px solid #292929;
   border-bottom:1px solid #1b1b1b;background:#101010;
