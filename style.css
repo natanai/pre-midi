@@ -1332,3 +1332,55 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  filter:brightness(1.14);
 }
 .piano-row .note.end:not(.dragging) {cursor:ew-resize}
+
+/* The Sound window has one identity row and one consistent, non-redundant
+   set of primary shaping knobs at every inspector width. */
+.sound-section-heading .sound-heading {
+ display:flex;align-items:center;flex:1 1 auto;gap:10px;min-width:0;flex-wrap:nowrap
+}
+.sound-section-heading .sound-heading #instrument-name {
+ flex:1 1 160px;min-width:72px;width:100%;max-width:210px;
+ height:30px;min-height:30px;margin:0;padding:5px 8px;
+ background:var(--panel);border:1px solid var(--line);
+ color:var(--bright);font:inherit;font-size:12px
+}
+.sound-section-heading .sound-heading #instrument-name:focus-visible {
+ outline:1px solid var(--signal-cyan);outline-offset:0
+}
+.sound-entity-menu {position:relative;flex:none;z-index:10}
+.sound-entity-menu summary {
+ display:grid;place-items:center;min-width:30px;min-height:30px;
+ border:1px solid var(--line);padding:0 4px;cursor:pointer;
+ list-style:none;font-size:18px;color:var(--muted);line-height:1
+}
+.sound-entity-menu summary::-webkit-details-marker {display:none}
+.sound-entity-menu[open] summary,.sound-entity-menu summary:hover {color:var(--bright);border-color:var(--bright)}
+.sound-entity-menu-content {
+ position:absolute;z-index:30;top:calc(100% + 4px);right:0;
+ width:max-content;min-width:158px;padding:6px;
+ background:var(--void);border:1px solid var(--line);box-shadow:0 8px 25px #000e
+}
+.sound-entity-menu-content button {
+ display:block;width:100%;padding:8px;text-align:left;
+ color:var(--signal-pink);white-space:nowrap
+}
+.sound-primary-controls {
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:4px;align-items:start;justify-items:center;
+ padding:13px 8px 12px;background:var(--panel);
+ border-bottom:1px solid var(--line)
+}
+.sound-primary-controls > div {display:flex;justify-content:center;width:100%;min-width:0}
+.sound-primary-controls .dial-field {
+ width:100%;min-width:0;max-width:none;flex:none;
+ gap:4px;--track-accent:var(--signal-cyan)
+}
+.sound-primary-controls .dial-label {
+ min-height:20px;font-size:11px;white-space:nowrap
+}
+.sound-primary-controls .dial-value {white-space:nowrap}
+@media(max-width:340px) {
+ .sound-primary-controls {grid-template-columns:repeat(2,minmax(0,1fr));row-gap:14px}
+ .sound-section-heading .sound-heading {gap:6px}
+ .sound-section-heading .sound-heading #instrument-name {min-width:62px}
+}
