@@ -43,6 +43,10 @@ async function checkLayout(frame){
  const scrolled=roll.scrollTop;
  checks.composerVisible=notesBefore.width>180&&rect(doc.querySelector(".timeline-section")).width>180;
  checks.soundInspectorAvailable=!!sound.querySelector("#synth-editor")&&!!sound.querySelector("#sound-visualizer");
+ checks.visualIllustrations=!!sound.querySelector('.visual-sound-panel[data-visual-kind="filter"]')&&
+  sound.querySelectorAll(".visual-sound-panel .visual-panel-graph").length>=7;
+ checks.measuredWaveformBelowControls=get("synth-editor").nextElementSibling===get("sound-visualizer");
+ checks.noDeveloperFacingWaveformCopy=!get("sound-visualizer").textContent.includes("actual audio");
  if(frame.clientWidth>=1100) {
   const viewportHeight=frame.contentWindow.innerHeight;
   const footer=doc.querySelector("footer");
@@ -84,6 +88,15 @@ async function checkLayout(frame){
   get("sound-close").click();
   checks.mobileCloses=doc.querySelector(".work").classList.contains("inspector-closed");
  }
+ if(frame.clientWidth<1100)toggle.click();
+ const firstVisual=sound.querySelector('.visual-sound-panel[data-visual-kind="filter"]');
+ const expander=firstVisual?.querySelector(".visual-panel-expand");
+ expander?.click();
+ checks.illustrationExpands=!!firstVisual?.classList.contains("zoomed")&&
+  frame.contentWindow.getComputedStyle(firstVisual).position==="fixed";
+ expander?.click();
+ checks.illustrationCloses=!firstVisual?.classList.contains("zoomed");
+ if(frame.clientWidth<1100)get("sound-close").click();
  checks.inspectorPreservesPianoPosition=roll.scrollTop===scrolled;
  // Normal mode is the direct note sequencer: empty by default; click adds,
  // and a second click removes. No mode switch is needed to compose.
