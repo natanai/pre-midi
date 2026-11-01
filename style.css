@@ -314,6 +314,9 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
   background:#181818;color:var(--text);font-size:11px;
 }
 .piano-row.sharp .note-name {background:#090909;color:var(--muted)}
+.piano-row button.note-name {width:100%;height:23px;text-align:left;cursor:pointer}
+.piano-row button.note-name.pressed {background:#315052;color:var(--bright)}
+.piano-row button.note-name:hover {text-decoration:none;color:var(--bright)}
 .piano-row.in-scale .note-name {border-left:2px solid var(--signal-cyan);color:var(--bright)}
 .piano-row.out-of-scale .note-name {color:#666}
 .note.out-of-scale:not(.filled):not(.tail) {background:#050505}
