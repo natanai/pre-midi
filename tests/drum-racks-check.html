@@ -1,0 +1,50 @@
+<!doctype html><html lang="en" data-drum-racks="PENDING">
+<head><meta charset="utf-8"><title>Drum rack library integration</title></head>
+<body><pre id="results"></pre><iframe src="../index.html" style="width:100%;height:700px;border:0"></iframe>
+<script type="module">
+const frame=document.querySelector("iframe"),result=document.getElementById("results");
+const checks={};
+const wait=async(predicate,label)=>{
+ for(let i=0;i<320;i++){
+  if(predicate())return;
+  await new Promise(resolve=>setTimeout(resolve,35));
+ }
+ throw Error("Timed out: "+label);
+};
+frame.addEventListener("load",async()=>{
+ const doc=frame.contentDocument,get=id=>doc.getElementById(id),library=get("instrument-dialog");
+ try{
+  frame.contentWindow.confirm=()=>true;
+  get("new").click();
+  get("add-instrument").click();
+  await wait(()=>library.open,"Open library");
+  const drums=[...doc.querySelectorAll(".library-filter")].find(b=>b.textContent==="Drums");
+  if(!drums)throw Error("Missing Drums category");
+  drums.click();
+  const list=get("library-sounds"),cards=()=>[...list.querySelectorAll(".preset-card")];
+  const kits=["room-drum-rack","night-drive-drum-rack","distant-static-drum-rack"];
+  checks.racksInDrums=kits.every(id=>cards().some(c=>c.dataset.presetId===id));
+  const heading=list.querySelector(".library-rack-heading");
+  const kitCards=kits.map(id=>cards().find(c=>c.dataset.presetId===id));
+  checks.rackSection=heading?.textContent==="preset racks" &&
+   kitCards.every(card=>!!card && !!(heading.compareDocumentPosition(card)&Node.DOCUMENT_POSITION_FOLLOWING));
+  checks.racksBelowSounds=cards().filter(c=>!kits.includes(c.dataset.presetId))
+   .every(c=>!!(c.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING));
+  checks.individualsAvailable=cards().some(c=>c.dataset.presetId==="wood-snare") &&
+   cards().some(c=>c.dataset.presetId==="machine-kick");
+  kitCards[0].querySelector(".preset-choose").click();
+  await wait(()=>!library.open && doc.querySelectorAll(".instrument-card").length===2,
+   "Add Warm Room rack");
+  checks.rackEditable=get("instrument-name").value==="Warm Room Kit" &&
+   doc.querySelectorAll("#piano .rack-row").length===11;
+  checks.rackSelection=!!get("instrument-name").value.includes("Room");
+  document.documentElement.dataset.drumRacks=Object.values(checks).every(Boolean)?"PASS":"FAIL";
+  result.textContent=JSON.stringify(checks);
+ }catch(error){
+  document.documentElement.dataset.drumRacks="FAIL";
+  result.textContent=String(error?.stack||error)+" "+JSON.stringify(checks)+" "+get("status")?.textContent;
+ }
+ void fetch("/__drum_racks_result?status="+document.documentElement.dataset.drumRacks+
+  "&details="+encodeURIComponent(result.textContent)).catch(()=>{});
+},{once:true});
+</script></body></html>
