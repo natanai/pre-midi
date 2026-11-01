@@ -1505,3 +1505,41 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
 .sound-overview .sound-preview-play:focus-visible {
  border-color:var(--signal-cyan);color:var(--signal-cyan);
 }
+
+/* QWERTY piano: visible playing surface, subdued editing controls. */
+.piano-tools {position:relative}
+#qwerty-piano {font-size:16px}
+#qwerty-piano[aria-pressed="true"] {color:var(--signal-cyan);border-color:var(--signal-cyan)}
+.keyboard-piano-status {font-size:11px;color:var(--signal-cyan);white-space:nowrap}
+.keyboard-piano-guide {
+ position:absolute;left:47px;top:calc(100% + 3px);z-index:25;
+ width:min(386px,calc(100vw - 30px));padding:12px;
+ background:#171a1c;border:1px solid #666c70;
+ box-shadow:0 8px 24px #0009;box-sizing:border-box;
+ visibility:hidden;opacity:0;pointer-events:none;transition:opacity .09s linear;
+}
+.piano-tools:has(#qwerty-piano:hover) .keyboard-piano-guide,
+.piano-tools:has(#qwerty-piano:focus-visible) .keyboard-piano-guide,
+.keyboard-piano-guide:hover,.keyboard-piano-guide:focus-within {
+ visibility:visible;opacity:1;pointer-events:auto;
+}
+.keyboard-piano-diagram svg {display:block;width:100%;height:auto;max-height:150px}
+.keyboard-piano-guide p {font-size:10px;color:var(--muted);margin:5px 0 9px;white-space:normal}
+.keyboard-piano-configure {font-size:11px;min-height:26px;padding:3px 8px}
+body.keyboard-piano-active .app :is(input,select,textarea) {opacity:.4;filter:grayscale(1)}
+body.keyboard-piano-active .app button:not(#qwerty-piano):not(.piano-key):not(.note-name):not(.keyboard-piano-configure) {opacity:.38}
+body.keyboard-piano-active .piano-scroll {pointer-events:none}
+#piano .piano-key.keyboard-held.white {background:#72bbc1;box-shadow:inset 4px 0 0 var(--signal-cyan),inset -3px 0 0 #4e969a}
+#piano .piano-key.keyboard-held.black {background:#14747c;box-shadow:inset 3px 0 0 var(--signal-cyan)}
+#piano .piano-row.keyboard-held .note-name {background:#245a60;color:#fff}
+#piano .piano-row.keyboard-held .note:not(.filled):not(.tail) {background:#173439}
+.keyboard-piano-dialog {background:#141516;color:var(--text);border:1px solid #747b7e;max-height:80vh;width:min(480px,calc(100vw - 28px));padding:20px}
+.keyboard-piano-dialog::backdrop {background:#000b}
+.keyboard-piano-dialog h2 {font-size:17px;margin:0 0 8px}
+.keyboard-piano-dialog p {font-size:12px;color:var(--muted)}
+.keyboard-piano-feedback {min-height:18px;color:var(--signal-cyan)!important}
+.keyboard-piano-bindings {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;max-height:42vh;overflow-y:auto}
+.keyboard-piano-binding {display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:12px;border:1px solid var(--line);padding:4px}
+.keyboard-piano-binding button {min-width:48px;padding:4px;font-size:12px}
+.keyboard-piano-dialog-actions {display:flex;justify-content:space-between;gap:10px;margin-top:18px}
+@media(max-width:520px){.keyboard-piano-bindings {grid-template-columns:repeat(2,minmax(0,1fr))}}
