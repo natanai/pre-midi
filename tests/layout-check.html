@@ -38,6 +38,12 @@ async function checkLayout(frame){
   rect(pencil).bottom<=noteHead.bottom+1;
  // Inspector is the same real Sound editor in a different responsive position.
  const sound=get("sound-section"),toggle=get("sound-toggle"),roll=doc.querySelector(".piano-scroll");
+ const actionMenu=get("instrument-actions");
+ checks.soundConversionInMenu=
+  actionMenu.contains(get("convert-rack")) &&
+  actionMenu.contains(get("convert-pitched")) &&
+  !doc.querySelector(".layout-actions") &&
+  get("convert-pitched").hidden;
  const notesBefore=rect(doc.querySelector(".notes-section"));
  roll.scrollTop=140;
  const scrolled=roll.scrollTop;
@@ -50,6 +56,10 @@ async function checkLayout(frame){
   checks.desktopPageFitsWindow=Math.max(doc.documentElement.scrollHeight,doc.body.scrollHeight)<=viewportHeight+2;
   checks.soundInitiallyBesideComposer=getComputedStyle(sound).position==="relative" &&
    toggle.getAttribute("aria-expanded")==="true";
+  actionMenu.open=true;
+  checks.soundConversionDropdownVisible=getComputedStyle(get("convert-rack")).display!=="none" &&
+   get("convert-rack").getBoundingClientRect().width>0;
+  actionMenu.open=false;
   checks.inspectorWithinViewport=rect(sound).top>=0 && rect(sound).bottom<=rect(footer).top+2 &&
    rect(sound).height>100 && getComputedStyle(sound).overflowY==="auto";
   const pagePosition=page.scrollTop,inspectorHeight=rect(sound).height;
@@ -80,6 +90,10 @@ async function checkLayout(frame){
   toggle.click();
   checks.mobileExpandedOpens=getComputedStyle(sound).position==="fixed" &&
    doc.querySelector(".work").classList.contains("inspector-expanded");
+  actionMenu.open=true;
+  checks.soundConversionDropdownVisible=getComputedStyle(get("convert-rack")).display!=="none" &&
+   get("convert-rack").getBoundingClientRect().width>0;
+  actionMenu.open=false;
   checks.mobileDialsVisible=getComputedStyle(get("synth-editor")).display!=="none";
   get("sound-close").click();
   checks.mobileCloses=doc.querySelector(".work").classList.contains("inspector-closed");
