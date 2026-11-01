@@ -240,13 +240,8 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
   const panel=illustrateSoundPanel(details,kind,patch,onChange,preview,0);
   panels.push(panel);grid.append(panel.element);
  }
- const modulation=illustrateSoundPanel(renderModulationEditor(patch,onChange),
+ const modulation=illustrateSoundPanel(renderModulationEditor(patch,onChange,soundId),
   "modulation",patch,onChange,preview,0);
- // Modulation has independent internal state; open it for authored routes.
- if((patch.modulation?.routes??[]).length){
-  const details=modulation.element.querySelector("details");
-  if(details&&!details.open)details.open=true;
- }
  panels.push(modulation);grid.append(modulation.element);
  root.append(grid);
 }
