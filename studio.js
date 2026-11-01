@@ -1251,7 +1251,7 @@ function renderSound() {
  if(patch.type==="sample"){
   renderSamplerEditor($("synth-editor"),patch,onChange,
    patch.zones.map(zone=>beat.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
-   ()=>openAudioReplace(),preview);
+   ()=>openAudioReplace(),preview,entry.id);
  }else {
   renderPatchEditor($("synth-editor"),patch,onChange,preview,entry.id);
   renderCutoffAutomation($("synth-editor"),inst,beat,block=>{const changed=modify(()=>{if(block)instrument().automation=block;else delete instrument().automation;});if(changed&&playback)message("cutoff movement updates with new notes");});
