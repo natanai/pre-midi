@@ -2,7 +2,7 @@
 // The catalog is intentionally derived from factory and example patches, not
 // an independent hand-maintained inventory.
 import {PRESETS,makePatch} from "../synth.js";
-import {SAMPLE_LIBRARY,makeSamplerPatch} from "../samples.js";
+import {SAMPLE_LIBRARY,SAMPLE_ASSETS,makeSamplerPatch} from "../samples.js";
 import {EXAMPLE_SOUND_PRESETS} from "../examples.js";
 import {DRUM_RACKS} from "../drumRacks.js";
 import {FACTORY_SOUND_CATALOG,RETIRED_SAMPLE_LISTINGS} from "../soundCatalog.js";
@@ -87,6 +87,8 @@ const report={
  duplicatedExampleStandaloneCount:examples.length,
  retainedCompleteExampleRacks:visible.filter(p=>p.source==="example"&&p.sourceCount).length,
  publicRepeatedSampleGroups:repeatedRecordingGroups.map(group=>group.map(p=>p.id)),
+ matchingAssetHashes:[...new Set(SAMPLE_ASSETS.map(a=>a.sha))].map(sha=>SAMPLE_ASSETS.filter(a=>a.sha===sha).map(a=>a.id))
+  .filter(ids=>ids.length>1),
  unresolvedExactPatchDuplicates:visible.filter(p=>!p.sourceCount).flatMap((p,i)=>visible.filter(q=>!q.sourceCount).slice(i+1)
   .filter(q=>p.type===q.type&&JSON.stringify({...p.patch,presetId:""})===JSON.stringify({...q.patch,presetId:""}))
   .map(q=>[p.id,q.id]))
