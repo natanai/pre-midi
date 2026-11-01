@@ -1,4 +1,5 @@
 import {renderModulationEditor} from "./modulationUI.js";
+import {illustrateSoundPanel} from "./soundIllustrations.js";
 // Controls are generated from the same patch keys validated by synth.js.
 // All edits go through the caller's one canonical beat mutation pathway.
 import { WAVES, FILTERS } from "./synth.js";
@@ -126,6 +127,15 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{}) {
  root.replaceChildren();
  const grid=document.createElement("div");
  grid.className="synth-grid";
+ const panels=[];
+ const preview=(path,value)=>{
+  onPreview(path,value);
+  if(!path.length)return;
+  const current=structuredClone(patch);let owner=current;
+  for(const key of path.slice(0,-1))owner=owner[key]??={};
+  owner[path.at(-1)]=value;
+  for(const panel of panels)panel.draw(current);
+ };
  for(const group of groups){
   const details=document.createElement("details");
   details.className="synth-group";
@@ -135,7 +145,7 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{}) {
   summary.textContent=group.name;
   const fields=document.createElement("div");
   fields.className="synth-fields";
-  for(const field of group.fields)fields.append(renderField(field,patch,onChange,onPreview));
+  for(const field of group.fields)fields.append(renderField(field,patch,onChange,preview));
   details.append(summary,fields);
   const index=group.fields[0].path[0]==="oscillators"?group.fields[0].path[1]:null;
   if(index!==null&&patch.oscillators[index].wave==="harmonic"){
@@ -159,14 +169,20 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{}) {
     const field={label:n===0?"H1 · Root":"H"+(n+1),min:0,max:1,step:.01,display:"percent",defaultValue:n===0?1:0};
     const dial=createDial(field,patch.oscillators[index].harmonics[n],
      value=>onChange(["oscillators",index,"harmonics",n],value),
-     value=>onPreview(["oscillators",index,"harmonics",n],value));
+     value=>preview(["oscillators",index,"harmonics",n],value));
     dial.querySelector('[role="slider"]').setAttribute("aria-label","Oscillator "+(index+1)+" harmonic "+(n+1));
     (n<8?first:rest).append(dial);
    }
    more.append(heading,rest);panel.append(first,more);details.append(panel);
   }
-  grid.append(details);
+  const kind=group.name.startsWith("Oscillator")?"oscillator"+(index+1):
+   group.name==="Envelope"?"envelope":group.name==="Filter & noise"?"filter":
+   group.name==="Movement"?"movement":"effects";
+  const panel=illustrateSoundPanel(details,kind,patch,onChange,preview,0);
+  panels.push(panel);grid.append(panel.element);
  }
- grid.append(renderModulationEditor(patch,onChange));
+ const modulation=illustrateSoundPanel(renderModulationEditor(patch,onChange),
+  "modulation",patch,onChange,preview,0);
+ panels.push(modulation);grid.append(modulation.element);
  root.append(grid);
 }
