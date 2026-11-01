@@ -12,7 +12,7 @@ frame.addEventListener("load",async()=>{
  let d=frame.contentDocument;const w=frame.contentWindow,$=id=>d.getElementById(id);
  let exported=null;
  try{
-  await delay(100);w.confirm=()=>true;w.prompt=()=>"My complete rack";
+  await delay(100);w.confirm=()=>true;
   $("new").click();
   function captureExports(){
    w.HTMLAnchorElement.prototype.click=function(){};
