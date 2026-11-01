@@ -55,7 +55,7 @@ function envelopePath(bins,channel){
  // A pan move visibly shifts energy between the two halves.
  const direction=channel===0?-1:1;
  const peak=(bin,i)=>(i/(bins.length-1)*TIME_WIDTH).toFixed(2)+" "+
-  clamp(48+direction*Math.min(32,Math.max(-bin.low,bin.high)*85),15,81).toFixed(2);
+  (48+direction*32*Math.tanh(Math.max(-bin.low,bin.high)*1.7)).toFixed(2);
  return bins.map((bin,i)=>(i?"L":"M")+peak(bin,i)).join(" ")+" "+
   bins.slice().reverse().map((bin,i)=>
    "L"+((bins.length-i-1)/(bins.length-1)*TIME_WIDTH).toFixed(2)+" 48").join(" ")+" Z";
@@ -69,7 +69,7 @@ function detailPath(buffer){
  return Array.from({length:n},(_,i)=>{
   const at=start+Math.round(i/(n-1)*(size-1));
   return (i?"L":"M")+(522+i/(n-1)*191).toFixed(2)+" "+
-   clamp(48-(left[at]+right[at])*.5*93,15,81).toFixed(2);
+   (48-32*Math.tanh((left[at]+right[at])*.5*1.7)).toFixed(2);
  }).join(" ");
 }
 function pitchPath(patch,seconds,referencePitch,oscillator=0){
@@ -98,7 +98,7 @@ function pitchPath(patch,seconds,referencePitch,oscillator=0){
   return (i?"L":"M")+(i/(COUNT-1)*720).toFixed(2)+" "+(123-distance).toFixed(2);
  }).join(" ");
 }
-async function webAudio(patch,beat,level,pitch){
+async function webAudio(patch,beat,level,pitch,automation){
  let buffer=null,zone=null;
  if(patch.type==="sample"){
   zone=sampleForNote(patch,pitch,1);
@@ -114,13 +114,18 @@ async function webAudio(patch,beat,level,pitch){
  const seconds=scopeWindowSeconds(patch,life),context=new OfflineAudioContext(2,Math.ceil(seconds*RATE),RATE);
  const voice={patch,volume:level},note={pitch,velocity:1};
  if(buffer)scheduleSample(context,context.destination,voice,note,0,HOLD,beat,new Map([[zone.assetId,buffer]]));
- else scheduleSynthPlan(context,context.destination,planSynthVoice(voice,note,0,HOLD));
+ else scheduleSynthPlan(context,context.destination,planSynthVoice(voice,note,0,HOLD,
+  automation?{automation,timeline:{step:0,unit:60/(beat?.bpm??120)/4,
+   limitStep:(beat?.bars??8)*16}}:{}));
  const output=await context.startRendering();
  const full=patch.type==="sample"?life+.08:HOLD+patch.envelope.release+delayTailSeconds(patch.effects)+.08;
  return {buffer:output,seconds,clipped:full>MAX_WINDOW};
 }
-async function nativeAudio(patch,level,pitch){
- const event={kind:"note",instrument:{patch,volume:level},note:{pitch,velocity:1},at:0,duration:HOLD};
+async function nativeAudio(patch,beat,level,pitch,automation){
+ const event={kind:"note",instrument:{patch,volume:level,...(automation?{automation}:{})},
+  note:{pitch,velocity:1},at:0,duration:HOLD,
+  ...(automation?{timeline:{step:0,unit:60/(beat?.bpm??120)/4,
+   limitStep:(beat?.bars??8)*16}}:{})};
  const ids=nativeRequiredAssets([event]);
  const status=ids.size?await nativeRequest({action:"status"}):null;
  const rate=status?.sampleRate||RATE;
@@ -140,11 +145,11 @@ async function nativeAudio(patch,level,pitch){
  return {buffer:{length:frames,sampleRate:rate,numberOfChannels:2,getChannelData:c=>channels[c]},
   seconds,clipped:full>MAX_WINDOW};
 }
-export async function renderScopeAudio(patch,beat,level=1,pitch=60){
+export async function renderScopeAudio(patch,beat,level=1,pitch=60,automation=null){
  // Native mode must not silently render a Web Audio substitute.
- return nativeEnabled()?nativeAudio(patch,level,pitch):webAudio(patch,beat,level,pitch);
+ return nativeEnabled()?nativeAudio(patch,beat,level,pitch,automation):webAudio(patch,beat,level,pitch,automation);
 }
-export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,referencePitch=60){
+export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,referencePitch=60,automation=null){
  mounted.get(root)?.dispose();
  root.replaceChildren();
  const wrapper=document.createElement("div");wrapper.className="signal-scope";
@@ -173,7 +178,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
   currentLevel=level;const token=++revision;
   clearTimeout(timer);
   timer=setTimeout(()=>{
-   void renderScopeAudio(nextPatch,beat,currentLevel,referencePitch).then(({buffer,seconds,clipped})=>{
+   void renderScopeAudio(nextPatch,beat,currentLevel,referencePitch,automation).then(({buffer,seconds,clipped})=>{
     if(disposed||token!==revision)return;
     const [l,r]=scopeAudioBins(buffer);
     left.setAttribute("d",envelopePath(l,0));right.setAttribute("d",envelopePath(r,1));
