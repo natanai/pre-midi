@@ -178,9 +178,11 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
  color:var(--bright);font-size:17px;
 }
 .chunk-menu-new {
- display:block;width:100%;min-height:36px;margin-top:4px;
- padding:8px;border-top:1px solid var(--line);text-align:left;color:var(--bright);
+ display:grid;place-items:center;width:100%;min-height:36px;margin-top:4px;
+ padding:4px;border:1px dashed var(--line);
+ color:var(--bright);font-size:18px;
 }
+.chunk-menu-new:hover:not(:disabled) {background:var(--stripe);text-decoration:none}
 .chunk-actions button {min-height:34px}
 .chunk-actions button::before,.chunk-actions button::after {color:var(--muted)}
 .chunk-actions button::before {content:"["}
