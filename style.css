@@ -1491,3 +1491,17 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
  .sound-overview .sound-primary-controls>div {max-width:82px}
  .sound-overview .sound-visualizer {padding-left:7px}
 }
+
+/* The preview action belongs to the selected sound's volume strip. */
+.sound-overview .sound-primary-controls {
+ flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;
+}
+.sound-overview .sound-preview-play {
+ display:grid;place-items:center;width:34px;height:29px;min-width:34px;
+ margin:0;padding:0 0 0 2px;border:1px solid var(--line);
+ background:transparent;color:var(--bright);font-size:13px;line-height:1;
+}
+.sound-overview .sound-preview-play:hover,
+.sound-overview .sound-preview-play:focus-visible {
+ border-color:var(--signal-cyan);color:var(--signal-cyan);
+}
