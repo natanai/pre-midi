@@ -120,16 +120,26 @@
    </section>
    <section id="sound-section" class="sound-section" aria-label="Instrument sound">
     <div class="heading sound-section-heading">
-     <div class="sound-heading"><h2>sound</h2></div>
-     <div class="sound-window-actions"><button id="sound-close" type="button" aria-label="Close sound editor">×</button></div>
+     <div class="sound-heading">
+      <h2>sound</h2>
+      <input id="instrument-name" maxlength="60" aria-label="Instrument name" title="rename instrument">
      </div>
+     <div class="sound-window-actions">
+      <details id="instrument-actions" class="sound-entity-menu">
+       <summary aria-label="instrument actions" title="instrument actions">···</summary>
+       <div class="sound-entity-menu-content">
+        <button id="remove-instrument" type="button" class="danger">delete instrument</button>
+       </div>
+      </details>
+      <button id="sound-close" type="button" aria-label="Close sound editor">×</button>
+     </div>
+    </div>
     <div class="sound-actions"><button id="hear-sound" type="button" aria-label="Hear current sound">hear sound</button><button id="change-sound" type="button">browse sounds</button><button id="save-sound" type="button">save preset</button></div>
-    <div class="controls">
-     <div class="sound-control-group sound-identity-controls">
-      <label>Name <input id="instrument-name" maxlength="60"></label>
-      <div id="instrument-volume-dial" class="instrument-volume-dial" aria-label="Instrument volume"></div>
-     </div>
-     <button id="remove-instrument" type="button" class="danger">Remove instrument</button>
+    <div class="sound-primary-controls" aria-label="primary sound controls">
+     <div id="instrument-volume-dial" class="instrument-volume-dial" aria-label="Instrument volume"></div>
+     <div id="primary-brightness-dial"></div>
+     <div id="primary-attack-dial"></div>
+     <div id="primary-release-dial"></div>
     </div>
     <div id="sound-controls" class="rack-sound-controls" hidden>
      <label>Sound name <input id="sound-name" maxlength="60" aria-label="Selected sound name"></label>
