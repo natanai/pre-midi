@@ -6,7 +6,7 @@ import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSo
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
 import { resizeNote, moveNote } from "./noteEditing.js";
-import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
+import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
@@ -78,8 +78,8 @@ let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
 
-// Scale controls are non-destructive editor preferences, scoped to a Beat and
-// instrument. Canonical notes and .premidi exports stay unchanged.
+// Scale controls are non-destructive editor preferences scoped to each Beat.
+// Canonical notes and compact .premidi playback instructions stay unchanged.
 const SCALE_PREFS = "premidi-scale-guide-v1";
 const scaleGuides = new Map();
 const PIANO_KEYS_PREF = "premidi-piano-keys-v1";
@@ -93,16 +93,21 @@ try {
    scaleGuides.set(key,normalizeScaleGuide(value));
  }
 }catch{}
-function scaleGuideFor(inst=instrument()){
- return scaleGuides.get(beat.id+":"+inst.id) || normalizeScaleGuide(null);
+function scaleGuideFor(targetBeat=beat){
+ return scaleGuideForBeat(scaleGuides,targetBeat);
 }
-function updateScaleGuide(change) {
- const inst=instrument(),key=beat.id+":"+inst.id;
- const guide=normalizeScaleGuide({...scaleGuideFor(inst),...change});
+function setBeatScaleGuide(targetBeat,guide) {
+ // Canonical keys use only Beat IDs. Old per-instrument keys are migrated
+ // when the beat scale changes, without touching saved note data.
+ const key=targetBeat.id;
+ for(const inst of targetBeat.instruments)scaleGuides.delete(key+":"+inst.id);
  scaleGuides.delete(key);
- scaleGuides.set(key,guide);
+ scaleGuides.set(key,normalizeScaleGuide(guide));
  while(scaleGuides.size>128)scaleGuides.delete(scaleGuides.keys().next().value);
  try {localStorage.setItem(SCALE_PREFS,JSON.stringify(Object.fromEntries(scaleGuides)));}catch{}
+}
+function updateScaleGuide(change) {
+ setBeatScaleGuide(beat,{...scaleGuideFor(),...change});
  renderNotes();
 }
 function initializeScaleControls() {
@@ -116,8 +121,8 @@ function initializeScaleControls() {
  root.addEventListener("change",event=>updateScaleGuide({root:Number(event.target.value)}));
  mode.addEventListener("change",event=>updateScaleGuide({mode:event.target.value}));
  $("scale-lock").addEventListener("change",event=>updateScaleGuide({lock:event.target.checked}));
- $("piano-keys").addEventListener("change",event=>{
-  showPianoKeys=event.target.checked;
+ $("piano-keys").addEventListener("click",()=>{
+  showPianoKeys=!showPianoKeys;
   try {localStorage.setItem(PIANO_KEYS_PREF,showPianoKeys?"on":"off");}catch{}
   renderNotes();
  });
@@ -125,13 +130,15 @@ function initializeScaleControls() {
 function renderScaleControls(inst) {
  const rack=inst.layout==="rack";
  document.querySelector(".scale-controls").hidden=rack;
+ document.querySelector(".piano-tools").hidden=rack;
  if(rack)return;
- const guide=scaleGuideFor(inst);
+ const guide=scaleGuideFor();
  $("scale-root").value=String(guide.root);
  $("scale-mode").value=guide.mode;
  $("scale-lock").checked=guide.lock;
  $("scale-lock").disabled=guide.mode==="chromatic";
- $("piano-keys").checked=showPianoKeys;
+ $("piano-keys").setAttribute("aria-pressed",String(showPianoKeys));
+ $("piano-keys").title=showPianoKeys?"show note names":"show piano keys";
 }
 
 // Audio assets are immutable blobs. Undo stores only mutable beat structure
@@ -329,10 +336,12 @@ function modifySong(change){
  if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
  return commitChange(before);
 }
-function addSongBeat(source){
+function addSongBeat(source,{inheritScale=false}={}){
  if(!song)return;
- modifySong(()=>{
-  const added=addBeat(song,source,{independent:song.beats.some(b=>b.id===source.id)});
+ const inheritedGuide=inheritScale?scaleGuideFor():null;
+ let added;
+ const saved=modifySong(()=>{
+  added=addBeat(song,source,{independent:song.beats.some(b=>b.id===source.id)});
   const lane=addSongTrack(song,"beat");
   addBeatClip(song,lane.id,added.id,0);
   beat=added;selectedBeatId=beat.id;
@@ -340,6 +349,10 @@ function addSongBeat(source){
   selectedChunks=new Map();selectedSounds=new Map();
   selectedSlot={instrumentId:selectedInstrumentId,bar:0};
  });
+ if(saved&&inheritedGuide){
+  setBeatScaleGuide(added,inheritedGuide);
+  renderNotes();
+ }
 }
 function resetTo(next) {
  if(vocalTake||vocalFinalizing||vocalRequest){
@@ -777,14 +790,18 @@ function renderNotes() {
    const active=chunk.notes.find(note=>note.id===draggedNoteId);
    if(active){hoverPianoPitch(active.pitch);return;}
   }
+  const key=event.target.closest?.(".piano-key");
   const row=event.target.closest?.(".piano-row");
-  if(row&&root.contains(row))hoverPianoPitch(Number(row.dataset.pitch));
+  if(key&&root.contains(key))hoverPianoPitch(Number(key.dataset.pitch));
+  else if(row&&root.contains(row))hoverPianoPitch(Number(row.dataset.pitch));
   else hoverPianoPitch(null);
  };
  root.onpointerleave=()=>hoverPianoPitch(null);
  root.onfocusin=event=>{
+  const key=event.target.closest?.(".piano-key");
   const row=event.target.closest?.(".piano-row");
-  if(row&&root.contains(row))hoverPianoPitch(Number(row.dataset.pitch));
+  if(key&&root.contains(key))hoverPianoPitch(Number(key.dataset.pitch));
+  else if(row&&root.contains(row))hoverPianoPitch(Number(row.dataset.pitch));
  };
  root.onfocusout=event=>{
   if(!root.contains(event.relatedTarget))hoverPianoPitch(null);
@@ -1016,18 +1033,27 @@ function renderNotes() {
  }
  if(showPianoKeys){
   const keyboard=element("div",undefined,"piano-keys-overlay");
-  keyboard.setAttribute("aria-hidden","true");
+  keyboard.setAttribute("role","group");
+  keyboard.setAttribute("aria-label","Play piano keys");
   const geometry=pianoKeyGeometry();
   // White keys share a single boundary, so they cannot overlap or leave
   // gaps. Black keys are painted afterwards, above adjacent whites.
   for(const [kind,items] of [["white",geometry.white],["black",geometry.black]]){
    for(const {pitch,top,height} of items){
-    const key=element("div",undefined,"piano-key "+kind);
+    const key=element("button",undefined,"piano-key "+kind);
+    key.type="button";
     key.style.top=top+"px";
     key.style.height=height+"px";
     key.dataset.pitch=String(pitch);
+    key.setAttribute("aria-label","Play "+noteLabel(pitch));
+    key.title="play "+noteLabel(pitch);
     if(kind==="white"&&pitch%12===0)
      key.append(element("span",noteLabel(pitch),"piano-key-caption"));
+    key.addEventListener("click",()=>{
+     tapPianoKey(pitch);
+     if(!playback&&!pendingPlay)
+      void audition(inst,pitch,beat).catch(error=>message("Couldn't preview key: "+error.message,true));
+    });
     keyboard.append(key);
     keyByPitch.set(pitch,key);
    }
@@ -1075,7 +1101,7 @@ function renderChunkEditor() {
  $("add-chunk").disabled = inst.chunks.length >= 32;
  $("duplicate-chunk").disabled = inst.chunks.length >= 32;
  $("delete-chunk").disabled = inst.chunks.length <= 1;
- $("editing-identity").textContent = inst.name + " / " + active.name;
+ $("editing-identity").textContent = inst.name;
  $("edit-instrument-note").textContent = inst.name;
  renderNotes();
 }
@@ -1896,7 +1922,7 @@ songUI=installSongUI({
   if(voiceDialog.open&&!vocalRequest&&!vocalTake)
    $("voice-start-bar").value=String(Math.floor(step/16)+1);
  },
- onAddBeat:()=>{const next=create();next.bpm=song.bpm;addSongBeat(next);},
+ onAddBeat:()=>{const next=create();next.bpm=song.bpm;addSongBeat(next,{inheritScale:true});},
  onImportBeat:()=>$("song-import-file").click()
 });
 initializeScaleControls();
