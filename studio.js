@@ -828,7 +828,7 @@ function renderNotes() {
     cell.classList.toggle("out-of-scale",scaleActive&&!inScale);
     // A locked scale blocks only new out-of-scale notes; old notes remain
     // selectable, removable, resizable and audible.
-    cell.disabled=scaleGuide.lock&&!inScale&&!present;
+    cell.disabled=scaleGuide.lock&&!inScale&&!present&&!draggedNoteId;
     cell.setAttribute("aria-label", noteLabel(pitch) + ", step " + (pos + 1)
      + (scaleActive?(inScale?", in scale":", outside scale"):"")
      + (direction?", "+(direction==="either"?"either direction":direction):"")
