@@ -182,3 +182,26 @@ test("Notes pencil suppresses generic heading brackets rather than stacking them
  assert.match(css,/\.heading button::before \{content:"\["/);
  assert.match(css,/#note-mode::before,#note-mode::after \{content:none\}/);
 });
+
+test("sound layout conversion actions live only in the contextual ellipsis menu",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
+ const menuStart=html.indexOf('id="instrument-actions"');
+ const menuEnd=html.indexOf('</details>',menuStart);
+ assert.ok(menuStart>=0&&menuEnd>menuStart);
+ const menu=html.slice(menuStart,menuEnd);
+ assert.match(menu,/<button id="convert-rack" type="button">convert to rack<\/button>/);
+ assert.match(menu,/<button id="convert-pitched" type="button" hidden>convert to piano roll<\/button>/);
+ assert.match(menu,/id="remove-instrument"/);
+ assert.equal((html.match(/id="convert-rack"/g)||[]).length,1);
+ assert.equal((html.match(/id="convert-pitched"/g)||[]).length,1);
+ assert.doesNotMatch(html,/class="layout-actions"/);
+ assert.match(studio,/\$\("convert-rack"\)\.hidden=inst.layout==="rack"/);
+ assert.match(studio,/\$\("convert-pitched"\)\.hidden=inst.layout!=="rack"/);
+ assert.match(studio,/\$\("convert-rack"\)\.disabled=!!inst.automation\|\|!canConvertToRack\(inst\)/);
+ assert.match(studio,/\$\("convert-pitched"\)\.disabled=!canMoveRackSoundToPianoRoll\(/);
+ assert.match(studio,/\$\("instrument-actions"\)\.open=false/);
+ assert.match(css,/\.sound-entity-menu-content button\.danger \{color:var\(--signal-pink\)\}/);
+ assert.match(css,/\.sound-entity-menu-content button\[hidden\] \{display:none\}/);
+});
