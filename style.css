@@ -1255,3 +1255,13 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .desktop-settings summary{cursor:pointer;padding:7px 10px;border:1px solid #444;list-style:none}
 .desktop-settings .entity-action-list{right:0;left:auto;min-width:250px;z-index:100}
 .desktop-settings output,.desktop-settings label{display:block;padding:7px 10px;white-space:nowrap;font-size:12px}
+
+/* Existing note bodies can be grabbed; empty rows retain vertical touch scroll. */
+.piano-row .note.filled, .piano-row .note.tail {cursor:grab;touch-action:none}
+.piano-row .note:not(.filled):not(.tail) {touch-action:pan-y}
+.piano-row .note.dragging {
+ cursor:grabbing;
+ outline:1px solid var(--bright);
+ outline-offset:-1px;
+ filter:brightness(1.14);
+}
