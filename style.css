@@ -1434,3 +1434,6 @@ body.sound-visual-zoom::before {content:"";position:fixed;inset:0;
  .visual-sound-panel.zoomed .visual-panel-area {height:min(37dvh,260px)}
  .sound-section .synth-grid {gap:10px}
 }
+
+body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:210}
+.visual-sound-panel.zoomed {z-index:220}
