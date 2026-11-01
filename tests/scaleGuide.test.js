@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScale,isPitchInScaleAtStep,scaleDirectionAtStep} from "../scaleGuide.js";
+import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScale,isPitchInScaleAtStep,scaleDirectionAtStep} from "../scaleGuide.js";
 import {pianoKeyGeometry} from "../pianoKeyboard.js";
 
 test("all twelve tonics and named modes have valid, distinct pitch-class sets",()=>{
@@ -94,4 +94,29 @@ test("piano keyboard geometry fills the entire roll with continuous white keys",
   assert.equal(key.top,(83-key.pitch)*23+1);
  }
  assert.equal(new Set([...white,...black].map(key=>key.pitch)).size,48);
+});
+
+test("scale preferences follow the Beat when switching or adding instruments",()=>{
+ const beat={id:"beat-a",instruments:[{id:"first"},{id:"second"}]};
+ const legacy=new Map([["beat-a:first",{root:0,mode:"dorian",lock:true}]]);
+ assert.deepEqual(scaleGuideForBeat(legacy,beat),{root:0,mode:"dorian",lock:true});
+ beat.instruments.push({id:"third"});
+ assert.deepEqual(scaleGuideForBeat(legacy,beat),{root:0,mode:"dorian",lock:true});
+ legacy.set("beat-a",{root:7,mode:"major",lock:false});
+ assert.deepEqual(scaleGuideForBeat(legacy,beat),{root:7,mode:"major",lock:false});
+ assert.deepEqual(scaleGuideForBeat(legacy,{id:"beat-b",instruments:[{id:"other"}]}),
+  {root:0,mode:"chromatic",lock:false});
+});
+test("legacy Beat preferences prefer an intentional scale and preserve chromatic unlocking",()=>{
+ const beat={id:"beat-a",instruments:[{id:"first"},{id:"second"}]};
+ const preferences=new Map([
+  ["beat-a:first",{root:0,mode:"chromatic",lock:false}],
+  ["beat-a:second",{root:2,mode:"minor-pentatonic",lock:true}]
+ ]);
+ assert.deepEqual(scaleGuideForBeat(preferences,beat),
+  {root:2,mode:"minor-pentatonic",lock:true});
+ preferences.set("beat-a",{root:2,mode:"minor-pentatonic",lock:false});
+ const unlocked=scaleGuideForBeat(preferences,beat);
+ assert.equal(unlocked.lock,false);
+ assert.equal(isPitchInScale(61,unlocked),false,"unlocked notes remain marked outside the guide");
 });
