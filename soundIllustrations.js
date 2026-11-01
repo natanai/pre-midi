@@ -146,7 +146,7 @@ export const diagram=(patch,type)=>{
    line("M20 "+(112-9*gain).toFixed(2)+" H150",true);
    line("M173 "+(105-6*transpose/12).toFixed(2)+" H252",true);
    line("M274 104 H340 M"+(307+30*pan).toFixed(2)+" 98 V110",true);
-   tag(19,110,"level");tag(171,110,pitchFollow?"pitch":"root "+root);
+   tag(19,110,"level");tag(171,110,(pitchFollow?"pitch ":"root ")+root);
    tag(290,95,"pan");
    line("M"+(18+(strum+25)/50*52).toFixed(2)+" 94 V102",true);
    if(oneShot)line("M344 40 V91",true);
