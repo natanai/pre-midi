@@ -8,6 +8,7 @@ import { play, audition, auditionChord, wav, primeSamples, nativeEnabled, cancel
 import { resizeNote } from "./noteEditing.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
+import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
@@ -446,7 +447,10 @@ function paintPianoPlayhead() {
   chunkProgress(beat,currentInstrument.id,activeChunk.id,pianoProgress) : null;
  marker.hidden = relative===null;
  if(relative===null)return;
- const x=pianoScrubberX(relative,grid.clientWidth,instrument().layout==="rack"?128:63);
+ // The painted grid gutter may be wider in piano-keyboard mode.
+ const gutter=currentInstrument.layout==="rack"?128:
+  (grid.querySelector(".piano-row .note-name")?.getBoundingClientRect().width??63);
+ const x=pianoScrubberX(relative,grid.clientWidth,gutter);
  marker.style.transform = `translateX(${x}px)`;
 }
 function renderTimeline(){
@@ -736,12 +740,18 @@ function renderNotes() {
  const scaleName=scaleMode?.name||"chromatic";
  const directionalScale=!!scaleMode?.descendingSteps;
  const keys=[];
+ const keyByPitch=new Map();
  function paintKeys(step){
   if(!scaleActive)return;
   for(const {pitch,row,label} of keys){
    const valid=isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step);
    row.classList.toggle("in-scale",valid);
    row.classList.toggle("out-of-scale",!valid);
+   const key=keyByPitch.get(pitch);
+   if(key){
+    key.classList.toggle("in-scale",valid);
+    key.classList.toggle("out-of-scale",!valid);
+   }
    const direction=directionalScale?scaleDirectionAtStep(pitch,chunk.notes,step):"";
    label.title=noteLabel(pitch)+" · "+(valid?"in ":"outside ")+SCALE_ROOTS[scaleGuide.root]+" "+scaleName+
     (direction?" · "+(direction==="either"?"either direction":direction):"");
@@ -757,16 +767,11 @@ function renderNotes() {
   const pitchClass=pitch%12;
   const sharp=[1,3,6,8,10].includes(pitchClass);
   const row=element("div",undefined,"piano-row"+(sharp?" sharp":""));
-  const label=element("span",showPianoKeys?(pitchClass===0?noteLabel(pitch):""):noteLabel(pitch),"note-name");
+  // The note column remains a fixed-width grid gutter. In keyboard mode,
+  // actual piano keys render in one independent layer above all rows.
+  const label=element("span",showPianoKeys?"":noteLabel(pitch),"note-name");
   label.setAttribute("aria-label",noteLabel(pitch));
   label.title=noteLabel(pitch);
-  if(showPianoKeys&&!sharp){
-   // White keys span the space to adjacent white-key centers; black keys
-   // sit above the join, like a physical piano keyboard.
-   const gaps={0:[1,2],2:[2,2],4:[2,1],5:[1,2],7:[2,2],9:[2,2],11:[2,1]}[pitchClass];
-   label.style.setProperty("--key-top",((1-gaps[0])*11.5)+"px");
-   label.style.setProperty("--key-height",((gaps[0]+gaps[1])*11.5)+"px");
-  }
   row.append(label);
   keys.push({pitch,row,label});
   const cells = [];
@@ -898,6 +903,25 @@ function renderNotes() {
   }
   root.append(row);
   previewRow();
+ }
+ if(showPianoKeys){
+  const keyboard=element("div",undefined,"piano-keys-overlay");
+  keyboard.setAttribute("aria-hidden","true");
+  const geometry=pianoKeyGeometry();
+  // White keys share a single boundary, so they cannot overlap or leave
+  // gaps. Black keys are painted afterwards, above adjacent whites.
+  for(const [kind,items] of [["white",geometry.white],["black",geometry.black]]){
+   for(const {pitch,top,height} of items){
+    const key=element("div",undefined,"piano-key "+kind);
+    key.style.top=top+"px";
+    key.style.height=height+"px";
+    if(kind==="white"&&pitch%12===0)
+     key.append(element("span",noteLabel(pitch),"piano-key-caption"));
+    keyboard.append(key);
+    keyByPitch.set(pitch,key);
+   }
+  }
+  root.append(keyboard);
  }
  const playhead = element("div", undefined, "piano-playhead");
  playhead.setAttribute("aria-hidden", "true");
