@@ -175,7 +175,13 @@ export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrume
   };
   const shift=(delta,rightOnly)=>{
     if(!canShift(whole,right,delta,rightOnly)){status.title="piano roll pitch limit reached";return;}
-    releaseAll(false);
+    if(rightOnly){
+      // Moving the right register must not interrupt a held left-hand chord.
+      for(const code of [...held.keys()]){
+        const index=codes.indexOf(code);
+        if(index>=0&&PIANO_NOTES[index].right)release(code);
+      }
+    }else releaseAll(false);
     if(rightOnly)right+=delta;else whole+=delta;
     updateStatus();
     const center=Math.round((pitchAt(0,whole,right)+pitchAt(PIANO_NOTES.length-1,whole,right))/2);
