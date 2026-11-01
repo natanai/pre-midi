@@ -742,18 +742,21 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 }
 
 
-/* Studio instrument signal monitor: illustrative, responsive to the live
-   editable sound parameters; never a second audio engine. */
+/* Studio signal monitor: display measured playback PCM and pitch movement. */
 .sound-visualizer {padding:11px 14px;border-top:1px solid var(--faint)}
 .signal-scope {border:1px solid var(--faint);background:#020304}
 .signal-scope-header {display:flex;justify-content:space-between;gap:10px;
   border-bottom:1px solid var(--faint);padding:8px 10px}
 .signal-scope-title,.signal-scope-legend {font-size:10px;letter-spacing:.08em;color:var(--muted)}
 .signal-scope-title {color:var(--scope-accent)}
-.signal-scope-graph {width:100%;height:148px;display:block;color:var(--scope-accent)}
-.signal-scope-guides {stroke:#272727;stroke-width:1;stroke-dasharray:2 4}
-.signal-wave {stroke:var(--scope-accent);opacity:.9}
-.signal-pitch {stroke:var(--signal-mauve)}
+.signal-scope-graph {width:100%;height:220px;display:block;color:var(--scope-accent)}
+.signal-scope-guides {stroke:#272727;stroke-width:1;stroke-dasharray:2 4;fill:none}
+.signal-waveform {stroke:var(--scope-accent);stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.signal-waveform-left {opacity:.95}
+.signal-waveform-right {opacity:.42}
+.signal-wave {stroke:none;opacity:.28}
+.signal-amplitude-right {opacity:.17}
+.signal-pitch {stroke:var(--signal-mauve);vector-effect:non-scaling-stroke}
 .signal-axis {font-size:9px;fill:#777}
 /* One accessible dial primitive across both sampled and synthesized sources. */
 .dial-grid,.synth-fields.dial-grid {display:flex;flex-wrap:wrap;gap:14px 9px;align-items:flex-start}
@@ -807,7 +810,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .notes-heading {flex-wrap:wrap}
  .history-actions {flex-wrap:nowrap}
  .sound-visualizer {padding:9px 12px}
- .signal-scope-graph {height:120px}
+ .signal-scope-graph {height:195px}
  .dial-field {flex-basis:90px;min-width:81px}
  .synth-fields:has(.dial-field) {gap:10px 5px}
  .sound-identity-controls {align-items:center}
@@ -953,7 +956,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .work.inspector-expanded .sound-section{height:min(84dvh,850px);max-height:calc(100dvh - 30px)}
  .sound-section .heading{position:sticky;top:0;z-index:2}
  .sound-section .sound-visualizer{padding:8px 12px}
- .sound-section .signal-scope-graph{height:100px}
+ .sound-section .signal-scope-graph{height:188px}
  .notes-section .piano-scroll{max-height:clamp(350px,57dvh,720px)}
  .mainwork .timeline-section{position:relative}
  .notes-section .notes-toolbar{position:sticky;top:0;z-index:4}
