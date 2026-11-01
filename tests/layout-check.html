@@ -246,10 +246,10 @@ async function checkLayout(frame){
  checks.noteExpressionOpens=!!doc.querySelector("#note-expression:not([hidden]) select[aria-label='Held note bend shape']");
  checks.noteEffectsSelectionReplacesPrompt=get("note-effects-empty").hidden &&
   !get("note-expression").hidden && get("note-expression").closest(".note-effects-section")===noteEffects;
- const shape=doc.querySelector("#note-expression select[aria-label='Held note bend shape']");
- if(shape){
-  shape.value="wail";
-  shape.dispatchEvent(new Event("change",{bubbles:true}));
+ const shapeSelect=doc.querySelector("#note-expression select[aria-label='Held note bend shape']");
+ if(shapeSelect){
+  shapeSelect.value="wail";
+  shapeSelect.dispatchEvent(new Event("change",{bubbles:true}));
  }
  checks.noteBendApplied=!!doc.querySelector("#piano .note.bent.selected");
  checks.noteShapePreview=!!doc.querySelector("#note-expression svg polyline[points]");
