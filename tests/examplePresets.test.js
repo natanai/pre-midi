@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "../examples.js";
+import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample,exampleSoundCategory} from "../examples.js";
 import {makeSampleAsset,sampleForNote} from "../sampler.js";
 import {sampleAsset} from "../samples.js";
 import {validatePatch} from "../synth.js";
@@ -26,7 +26,8 @@ test("every example instrument is a built-in preset with the same name and exact
    assert.ok(preset,"Missing "+presetId);
    assert.equal(preset.name,instrument.name);
    assert.equal(preset.volume,instrument.volume);
-   assert.equal(preset.category,"Examples");
+   assert.equal(preset.category,instrument.layout==="rack"?"Drums":exampleSoundCategory(example.voices[index],instrument.sounds[0].trigger));
+   assert.notEqual(preset.category,"Examples");
    assert.ok(preset.description.includes(example.name));
    expectedNames.push(preset.name);
    if(instrument.layout==="rack"){
@@ -39,6 +40,7 @@ test("every example instrument is a built-in preset with the same name and exact
      assert.ok(individual,"Missing individually selectable rack sound "+rowName);
      assert.equal(individual.name,sound.name);
      assert.equal(individual.trigger,"hit");
+     assert.equal(individual.category,"Drums");
      assert.deepEqual(individual.patch,sound.patch);
      assert.equal(individual.referencePitch,sound.referencePitch);
      assert.equal(individual.gain,sound.gain);
