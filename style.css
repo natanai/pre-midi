@@ -630,6 +630,13 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .library-filter {border:1px solid var(--line);padding:5px 10px;min-height:32px;font-size:12px}
 .library-filter.selected {border-color:var(--bright);background:#1a1a1a;color:var(--bright)}
 .library-sounds {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--faint);max-height:58dvh;overflow-y:auto}
+.library-rack-heading {
+ grid-column:1/-1;
+ margin:0;padding:13px 15px 9px;
+ font-size:12px;font-weight:normal;
+ text-transform:lowercase;color:var(--bright);
+ background:var(--void);border-top:1px solid var(--line);
+}
 .preset-card {display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:15px;background:var(--void)}
 .preset-information {display:grid;gap:6px;min-width:0}
 .preset-information strong {font-size:13px;font-weight:normal;color:var(--bright);overflow-wrap:anywhere}
