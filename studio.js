@@ -1967,6 +1967,7 @@ $("move-sound-down").addEventListener("click",()=>moveRackSound(instrument().id,
 $("duplicate-sound").addEventListener("click",()=>duplicateRackSound(instrument().id,sound().id));
 $("remove-sound").addEventListener("click",()=>removeRackSound(instrument().id,sound().id));
 $("convert-rack").addEventListener("click",()=>{
+ $("instrument-actions").open=false;
  if(!canConvertToRack(instrument()))return;
  modify(()=>convertToRack(instrument()));
 });
@@ -1990,7 +1991,10 @@ function extractSoundToPianoRoll(instrumentId,soundId){
    selectedChunks.delete(instrumentId);
  });
 }
-$("convert-pitched").addEventListener("click",()=>extractSoundToPianoRoll(instrument().id,sound().id));
+$("convert-pitched").addEventListener("click",()=>{
+ $("instrument-actions").open=false;
+ extractSoundToPianoRoll(instrument().id,sound().id);
+});
 $("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
 
 

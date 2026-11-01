@@ -129,6 +129,8 @@
       <details id="instrument-actions" class="sound-entity-menu">
        <summary aria-label="instrument actions" title="instrument actions">···</summary>
        <div class="sound-entity-menu-content">
+        <button id="convert-rack" type="button">convert to rack</button>
+        <button id="convert-pitched" type="button" hidden>convert to piano roll</button>
         <button id="remove-instrument" type="button" class="danger">delete instrument</button>
        </div>
       </details>
@@ -154,10 +156,6 @@
       <button id="duplicate-sound" type="button">Duplicate sound</button>
       <button id="remove-sound" type="button">Remove sound</button>
      </div>
-    </div>
-    <div class="layout-actions">
-     <button id="convert-rack" type="button">convert to rack</button>
-     <button id="convert-pitched" type="button" hidden>convert to piano roll</button>
     </div>
     <div id="synth-editor" class="synth-editor" aria-label="Instrument sound controls"></div>
     <div id="sound-visualizer" class="sound-visualizer" aria-label="Measured waveform and pitch"></div>
