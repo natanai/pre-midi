@@ -9,7 +9,7 @@ import {scheduleSample,sampleForNote} from "./sampler.js";
 import {getAsset} from "./assetRegistry.js";
 import {nativeEnabled,nativeRequest,nativePlans,nativeRequiredAssets,prepareNativeAssets,renderNative} from "./src/hosts/native/session.js";
 
-const NS="http://www.w3.org/2000/svg",RATE=22050,HOLD=1.25,MAX_WINDOW=12,COUNT=300,TIME_WIDTH=510;
+const NS="http://www.w3.org/2000/svg",RATE=44100,HOLD=1.25,MAX_WINDOW=12,COUNT=300,TIME_WIDTH=510;
 const mounted=new WeakMap();
 const clamp=(v,lo=0,hi=1)=>Math.min(hi,Math.max(lo,v));
 const node=(type,attributes={})=>{
@@ -127,7 +127,8 @@ async function nativeAudio(patch,beat,level,pitch,automation){
   ...(automation?{timeline:{step:0,unit:60/(beat?.bpm??120)/4,
    limitStep:(beat?.bars??8)*16}}:{})};
  const ids=nativeRequiredAssets([event]);
- const status=ids.size?await nativeRequest({action:"status"}):null;
+ // Match the configured native device rate even for purely synthesized sounds.
+ const status=await nativeRequest({action:"status"});
  const rate=status?.sampleRate||RATE;
  const assets=ids.size?await prepareNativeAssets(ids,status):new Map();
  const zone=patch.type==="sample"?sampleForNote(patch,pitch,1):null;
