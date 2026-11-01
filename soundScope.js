@@ -2,6 +2,7 @@
 import {movement,pitchCents} from "./expression.js";
 import {envelopeLevelAt} from "./src/dsp/amplitude-envelope.js";
 import {delayTailSeconds} from "./src/dsp/effect-tail.js";
+import {routeValueAt,smoothingAlpha} from "./src/dsp/modulation.js";
 import {planSynthVoice} from "./src/dsp/synth-voice.js";
 import {scheduleSynthPlan} from "./audio.js";
 import {scheduleSample,sampleForNote} from "./sampler.js";
@@ -71,14 +72,29 @@ function detailPath(buffer){
    clamp(48-(left[at]+right[at])*.5*93,15,81).toFixed(2);
  }).join(" ");
 }
-function pitchPath(patch,seconds){
- const motion=movement(patch);
+function pitchPath(patch,seconds,referencePitch,oscillator=0){
+ const motion=movement(patch),slot=patch.type==="synth"?patch.oscillators[oscillator]:null;
+ const zone=patch.type==="sample"?sampleForNote(patch,referencePitch,1):null;
+ // Native and Web Audio both apply the sampler's transpose to the playback
+ // rate. Without pitch follow, the sample root itself determines the pitch.
+ const base=slot?slot.octave*12+slot.detune/100:
+  patch.followPitch?patch.transpose:(zone?.root??referencePitch)+patch.transpose-referencePitch;
+ const routes=slot?(patch.modulation?.routes??[]).filter(route=>
+  route.target==="oscillators."+oscillator+".detune"):[];
+ const states=routes.map(()=>0),step=seconds/(COUNT-1);
  return Array.from({length:COUNT},(_,i)=>{
-  const t=i/(COUNT-1)*seconds;
+  const t=i*step;
   const vibrato=motion.depth&&t<HOLD+.02?
    motion.depth*Math.sin(2*Math.PI*motion.rate*t)*clamp((t-Math.min(motion.delay,HOLD-.005))/.13):0;
-  const semitones=(pitchCents({bend:patch.bend},motion,Math.min(t,HOLD),HOLD)+vibrato)/100;
-  const distance=Math.sign(semitones)*Math.log1p(Math.abs(semitones)*3)/Math.log(37)*31;
+  let cents=0;
+  routes.forEach((route,index)=>{
+   const desired=routeValueAt(route,{elapsed:t,gate:HOLD,velocity:1,pitch:referencePitch});
+   const alpha=smoothingAlpha(route.smoothing,1/step);
+   states[index]+=alpha*(desired-states[index]);
+   cents+=states[index];
+  });
+  const semitones=base+(pitchCents({bend:patch.bend},motion,Math.min(t,HOLD),HOLD)+vibrato+cents)/100;
+  const distance=clamp(Math.sign(semitones)*Math.log1p(Math.abs(semitones)*3)/Math.log(37)*31,-31,31);
   return (i?"L":"M")+(i/(COUNT-1)*720).toFixed(2)+" "+(123-distance).toFixed(2);
  }).join(" ");
 }
@@ -145,10 +161,11 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
  const left=node("path",{class:"signal-wave",fill:"var(--scope-accent)",stroke:"none",opacity:".5"});
  const right=node("path",{class:"signal-wave",fill:"var(--scope-accent)",stroke:"none",opacity:".3"});
  const detail=node("path",{class:"signal-wave",fill:"none","stroke-width":"1.2"});
- const pitch=node("path",{class:"signal-pitch",fill:"none","stroke-width":"2"});
+ const pitches=[node("path",{class:"signal-pitch",fill:"none","stroke-width":"2"}),
+  node("path",{class:"signal-pitch",fill:"none","stroke-width":"1.3","stroke-dasharray":"4 3",opacity:".65"})];
  const label=(x,y,content)=>{const el=node("text",{x,y,class:"signal-axis"});el.textContent=content;return el;};
  const end=label(464,93,""),gate=node("path",{class:"signal-scope-guides"});
- svg.append(guides,left,right,detail,pitch,label(8,12,"L / R · TIME"),label(522,12,"20ms"),
+ svg.append(guides,left,right,detail,...pitches,label(8,12,"L / R · TIME"),label(522,12,"20ms"),
   label(8,86,"PITCH"),end,gate);
  wrapper.append(head,svg);root.append(wrapper);
  let revision=0,disposed=false,timer=null,currentLevel=initialLevel;
@@ -160,7 +177,12 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
     if(disposed||token!==revision)return;
     const [l,r]=scopeAudioBins(buffer);
     left.setAttribute("d",envelopePath(l,0));right.setAttribute("d",envelopePath(r,1));
-    detail.setAttribute("d",detailPath(buffer));pitch.setAttribute("d",pitchPath(nextPatch,seconds));
+    detail.setAttribute("d",detailPath(buffer));
+    pitches[0].setAttribute("d",pitchPath(nextPatch,seconds,referencePitch,0));
+    const second=nextPatch.type==="synth"&&(nextPatch.oscillators[1].level>0||
+     (nextPatch.modulation?.routes??[]).some(route=>route.target==="oscillators.1.level"));
+    if(second)pitches[1].setAttribute("d",pitchPath(nextPatch,seconds,referencePitch,1));
+    else pitches[1].removeAttribute("d");
     gate.setAttribute("d","M"+(HOLD/seconds*TIME_WIDTH).toFixed(2)+" 15 V81");
     end.textContent=seconds.toFixed(1)+"s";
     legend.textContent="L / R · "+(clipped?"first ":"")+seconds.toFixed(1)+"s";
@@ -170,7 +192,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
    }).catch(error=>{
     if(disposed||token!==revision)return;
     left.removeAttribute("d");right.removeAttribute("d");detail.removeAttribute("d");
-    pitch.removeAttribute("d");gate.removeAttribute("d");end.textContent="";
+    pitches.forEach(line=>line.removeAttribute("d"));gate.removeAttribute("d");end.textContent="";
     legend.textContent="preview unavailable";wrapper.title=String(error.message||error);
    });
   },token===1?0:70);
