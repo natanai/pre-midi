@@ -138,11 +138,14 @@
      </div>
     </div>
     <div class="sound-actions"><button id="hear-sound" type="button" aria-label="Hear current sound">hear sound</button><button id="change-sound" type="button">browse sounds</button><button id="save-sound" type="button">save preset</button></div>
-    <div class="sound-primary-controls" aria-label="primary sound controls">
-     <div id="instrument-volume-dial" class="instrument-volume-dial" aria-label="Instrument volume"></div>
-     <div id="primary-brightness-dial"></div>
-     <div id="primary-attack-dial"></div>
-     <div id="primary-release-dial"></div>
+    <div class="sound-overview">
+     <div class="sound-primary-controls" aria-label="primary sound controls">
+      <div id="instrument-volume-dial" class="instrument-volume-dial" aria-label="Instrument volume"></div>
+      <div id="primary-brightness-dial"></div>
+      <div id="primary-attack-dial"></div>
+      <div id="primary-release-dial"></div>
+     </div>
+     <div id="sound-visualizer" class="sound-visualizer" aria-label="Measured waveform and pitch"></div>
     </div>
     <div id="sound-controls" class="rack-sound-controls" hidden>
      <label>Sound name <input id="sound-name" maxlength="60" aria-label="Selected sound name"></label>
@@ -158,7 +161,6 @@
      </div>
     </div>
     <div id="synth-editor" class="synth-editor" aria-label="Instrument sound controls"></div>
-    <div id="sound-visualizer" class="sound-visualizer" aria-label="Measured waveform and pitch"></div>
    </section>
    <section id="note-effects-section" class="note-effects-section" aria-labelledby="note-effects-title" aria-hidden="true">
     <div class="heading note-effects-heading"><h2 id="note-effects-title">note effects</h2><button id="note-effects-done" type="button">done</button></div>
