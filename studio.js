@@ -1868,7 +1868,7 @@ async function auditionPreset(preset,previewControl=null) {
    // Load only the sampled row being auditioned, not an entire 11-row kit
    // for every click. A later click supersedes a still-loading preview.
    const samples=await resolveSamples({patch:entry.patch,samples:preset.samples});
-   if(rackPreviewRequests.get(key)!==request)return;
+   if(rackPreviewRequests.get(key)!==request || !$("instrument-dialog").open)return;
    const inst=makeInstrument(1,1,entry);
    inst.layout="rack";inst.volume=preset.volume??.7;
    await audition(inst,entry.referencePitch,{samples},{soundId:entry.id,duration:.6});
