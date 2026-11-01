@@ -2,12 +2,18 @@ import {explainUnit,explainLabel} from './dial.js';
 const opened=new Set();
 export function renderCutoffAutomation(root,instrument,beat,onChange){
  if(instrument.layout!=='pitched'||instrument.sounds[0].patch.type!=='synth')return;
- const patch=instrument.sounds[0].patch,block=instrument.automation,dial=root.querySelector('[aria-label="Cutoff"]')?.closest('.dial-field'),group=dial?.closest('.synth-group');if(!group)return;
+ const patch=instrument.sounds[0].patch,block=instrument.automation;
+ // Brightness now lives in the primary Sound row, not inside the filter
+ // accordion. Keep the automation action in the actual Filter & noise group.
+ const group=[...root.querySelectorAll('.synth-group')].find(section=>
+  section.querySelector('summary')?.textContent?.trim()==='Filter & noise');
+ if(!group)return;
+ const fields=group.querySelector('.synth-fields')??group;
  const toggle=document.createElement('button');toggle.type='button';toggle.className='automation-toggle';toggle.textContent=block?'cutoff over time':'move over time';toggle.setAttribute('aria-label',block?'Edit cutoff automation':'Automate cutoff');
  toggle.addEventListener('click',()=>{
-  if(!block){opened.add(instrument.id);onChange({version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:[{id:crypto.randomUUID(),step:0,value:patch.filter.cutoff},{id:crypto.randomUUID(),step:Math.min(16,beat.bars*16),value:Math.max(50,patch.filter.cutoff/4)}]});}
+  if(!block){group.open=true;opened.add(instrument.id);onChange({version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:[{id:crypto.randomUUID(),step:0,value:patch.filter.cutoff},{id:crypto.randomUUID(),step:Math.min(16,beat.bars*16),value:Math.max(50,patch.filter.cutoff/4)}]});}
   else{const panel=root.querySelector('.cutoff-automation');panel.open=!panel.open;if(panel.open)panel.scrollIntoView({block:'nearest'});}
- });if(!block)dial.append(toggle);
+ });if(!block)fields.append(toggle);
  if(!block)return;
  const panel=document.createElement('details');panel.className='cutoff-automation';panel.open=opened.has(instrument.id);panel.addEventListener('toggle',()=>{if(panel.open)opened.add(instrument.id);else opened.delete(instrument.id);});
  const summary=document.createElement('summary'),heading=document.createElement('span');heading.textContent='cutoff over time';explainLabel(heading,'cutoff timeline');summary.append(heading);panel.append(summary);
