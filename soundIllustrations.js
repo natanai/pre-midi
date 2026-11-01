@@ -147,7 +147,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  const wrapper=document.createElement("section");wrapper.className="visual-sound-panel";
  wrapper.dataset.visualKind=kind;
  const area=document.createElement("div");area.className="visual-panel-area";
- const graphic=svgNode("svg",{viewBox:"0 0 360 112",role:"img",
+ const graphic=svgNode("svg",{viewBox:"0 0 360 112",preserveAspectRatio:"none",role:"img",
   "aria-label":kind.replace(/\d+/g,"")+" sound illustration"});
  graphic.classList.add("visual-panel-graph");
  const expand=document.createElement("button");expand.type="button";
