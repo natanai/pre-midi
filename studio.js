@@ -752,7 +752,6 @@ function renderNotes() {
  root.classList.toggle("sound-rack",inst.layout==="rack");
  root.classList.toggle("piano-keyboard",inst.layout!=="rack"&&showPianoKeys);
  root.setAttribute("aria-label",inst.layout==="rack"?"Sound rack":"Piano roll");
- document.querySelector(".note-length-control").hidden=inst.layout==="rack";
  renderScaleControls(inst);
  if(inst.layout==="rack"){renderRack(root,inst,chunk);return;}
  const scroll = root.parentElement, top = scroll.scrollTop, left = scroll.scrollLeft;
@@ -965,7 +964,7 @@ function renderNotes() {
       moveNote(chunk,note.id,original.start+Math.round(dx/cellWidth),
        original.pitch-Math.round(dy/rowHeight),{minPitch:36,maxPitch:83});
      }else{
-      resizeNote(chunk,note.id,(original?.duration??Number($("length").value))+
+      resizeNote(chunk,note.id,(original?.duration??1)+
        Math.round(dx/cellWidth));
      }
      paintRows(oldPitch);
