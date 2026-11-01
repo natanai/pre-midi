@@ -126,6 +126,25 @@ async function checkLayout(frame){
  checks.scaleBlockedNotesStayAbsent=doc.querySelectorAll("#piano .note.filled").length===0;
  setScale(scaleMode,"chromatic");
  checks.scaleChromaticUnlocksNotes=!scaleLock.checked&&scaleLock.disabled&&!!sharpNote()&&!sharpNote().disabled;
+ // Right-clicking a note opens the existing editor without deleting it.
+ const contextEvent=()=>new frame.contentWindow.MouseEvent("contextmenu",{bubbles:true,cancelable:true,button:2});
+ const blank=[...doc.querySelectorAll("#piano .note")].find(el=>el.getAttribute("aria-label")?.includes("C4, step 2"));
+ checks.emptyPianoStepPreservesContextMenu=blank?.dispatchEvent(contextEvent())===true &&
+  get("note-mode").getAttribute("aria-pressed")==="false";
+ firstNote()?.click();
+ const beforeRightClick=doc.querySelectorAll("#piano .note.filled").length;
+ const rightClickHandled=firstNote()?.dispatchEvent(contextEvent())===false;
+ checks.rightClickNoteOpensIsolatedEffects=rightClickHandled &&
+  get("note-mode").getAttribute("aria-pressed")==="true" &&
+  doc.querySelector(".work").classList.contains("editing-note-effects") &&
+  !!doc.querySelector("#piano .note.filled.selected") &&
+  !get("note-expression").hidden &&
+  doc.querySelectorAll("#piano .note.filled").length===beforeRightClick;
+ get("note-effects-done").click();
+ checks.contextEffectsDoneRestoresNormalMode=get("note-mode").getAttribute("aria-pressed")==="false" &&
+  !doc.querySelector(".work").classList.contains("editing-note-effects");
+ firstNote()?.click();
+ checks.contextEffectsDoNotChangeNotes=doc.querySelectorAll("#piano .note.filled").length===0;
  get("note-mode").click();
  const noteEffects=get("note-effects-section"),noteMode=get("note-mode");
  checks.noteModeVisible=noteMode.getAttribute("aria-pressed")==="true" &&
