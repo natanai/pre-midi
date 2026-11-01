@@ -77,6 +77,7 @@ let voiceCountAbort=null,voiceToken=0;
 let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
 const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
+const DEFAULT_NOTE_LEVEL=.9;
 
 // Scale controls are non-destructive editor preferences scoped to each Beat.
 // Canonical notes and compact .premidi playback instructions stay unchanged.
@@ -692,22 +693,18 @@ function renderRack(root,inst,chunk){
    const existing=chunk.notes.find(note=>note.soundId===entry.id&&note.start===step);
    const cell=button(existing?"●":"",event=>{
     selectedSounds.set(inst.id,entry.id);
-    if(existing&&event.shiftKey){
-     const next=[.25,.55,.9].find(value=>value>existing.velocity+.01)??.25;
-     modify(()=>{existing.velocity=next;});return;
-    }
     if(existing&&editingNoteEffects){selectedNoteId=existing.id;renderNotes();renderSound();return;}
     if(existing){selectedNoteId=null;modify(()=>{chunk.notes=chunk.notes.filter(note=>note.id!==existing.id);});return;}
-    const note={id:id(),soundId:entry.id,start:step,duration:1,velocity:Number($("velocity").value)};
+    const note={id:id(),soundId:entry.id,start:step,duration:1,velocity:DEFAULT_NOTE_LEVEL};
     selectedNoteId=editingNoteEffects?note.id:null;
     if(modify(()=>chunk.notes.push(note))&&!playback&&!pendingPlay)
-     void audition(inst,entry.referencePitch,beat,{soundId:entry.id}).catch(()=>{});
+     void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:note.velocity}).catch(()=>{});
    },"note rack-step"+(step%4===0?" beat":"")+(existing?" filled":"")+
     (editingNoteEffects&&existing?.id===selectedNoteId?" selected":"")+
     (existing?.bend?.shape&&existing.bend.shape!=="straight"?" bent":""));
-   cell.setAttribute("aria-label",entry.name+", step "+(step+1)+(existing?", hit; "+Math.round(existing.velocity*100)+"% strength":"; add hit"));
+   cell.setAttribute("aria-label",entry.name+", step "+(step+1)+(existing?", hit; "+Math.round(existing.velocity*100)+"% level":"; add hit"));
    cell.setAttribute("aria-pressed",String(!!existing));
-   cell.title=existing?(editingNoteEffects?"Edit hit effects":"Remove hit")+" · Shift-click strength · right-click effects":"Add hit";
+   cell.title=existing?(editingNoteEffects?"Edit hit effects":"Remove hit")+" · right-click effects":"Add hit";
    cell.addEventListener("contextmenu",event=>{
     // Only actual hits open the inspector; retain the native menu on empty steps.
     const hit=chunk.notes.find(note=>note.soundId===entry.id&&note.start===step);
@@ -734,14 +731,11 @@ function renderRack(root,inst,chunk){
  renderNoteExpression($("note-expression"),note,entry.name,note?note.duration*60/beat.bpm/4:0,
   bend=>modify(()=>{note.bend=bend;}),
   ()=>modify(()=>{chunk.notes=chunk.notes.filter(item=>item.id!==note.id);selectedNoteId=null;}),
-  ()=>{void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:note.velocity,bend:note.bend}).catch(error=>message(error.message,true));},entry.patch.bend);
- if(note){
-  const label=element("label","Hit strength ","rack-strength");
-  const input=element("input");input.type="range";input.min="0";input.max="1";input.step=".01";input.value=String(note.velocity);
-  input.setAttribute("aria-label","Selected hit strength");
-  input.addEventListener("change",()=>modify(()=>{note.velocity=Number(input.value);}));
-  label.append(input,element("output",Math.round(note.velocity*100)+"%"));$("note-expression").prepend(label);
- }
+  ()=>{void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:note.velocity,bend:note.bend}).catch(error=>message(error.message,true));},entry.patch.bend,level=>{
+   if(modify(()=>{note.velocity=level;})&&!playback&&!pendingPlay)
+    void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:level,bend:note.bend}).catch(error=>message("Couldn't preview hit: "+error.message,true));
+  });
+
 }
 // Feedback belongs to the studio keyboard, never to saved notes or audio.
 function tapPianoKey(pitch) {
@@ -758,7 +752,6 @@ function renderNotes() {
  root.classList.toggle("sound-rack",inst.layout==="rack");
  root.classList.toggle("piano-keyboard",inst.layout!=="rack"&&showPianoKeys);
  root.setAttribute("aria-label",inst.layout==="rack"?"Sound rack":"Piano roll");
- document.querySelector(".note-length-control").hidden=inst.layout==="rack";
  renderScaleControls(inst);
  if(inst.layout==="rack"){renderRack(root,inst,chunk);return;}
  const scroll = root.parentElement, top = scroll.scrollTop, left = scroll.scrollLeft;
@@ -871,7 +864,7 @@ function renderNotes() {
      + (direction?", "+(direction==="either"?"either direction":direction):"")
      + (present ? ", note length " + present.duration + " steps; " + (editingNoteEffects?"click to edit note effects":"click to remove") + "; hold and drag to move" :
       cell.disabled?", adding notes restricted":", click to add note"));
-    cell.title = present ? (editingNoteEffects?"Click to shape note · Shift-click strength":"Click to remove · Shift-click strength") + " · hold and drag to move · drag end to resize · right-click effects" : "Add " + noteLabel(pitch) + " · drag to extend";
+    cell.title = present ? (editingNoteEffects?"Click to shape note":"Click to remove") + " · hold and drag to move · drag end to resize · right-click effects" : "Add " + noteLabel(pitch) + " · drag to extend";
    }
   }
 
@@ -883,12 +876,6 @@ function renderNotes() {
     const targetInst = instrument();
     const editedChunk = chunkFor(targetInst);
     const existing = editedChunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
-    if(existing && event.shiftKey){
-     const options=[.25,.55,.9];
-     const next=options.find(value=>value>existing.velocity+.01)??options[0];
-     if(modify(()=>{existing.velocity=next;}))message("Note strength: "+Math.round(next*100)+"%");
-     return;
-    }
     if(existing && editingNoteEffects){
      selectedNoteId=existing.id;
      renderNotes();
@@ -901,12 +888,12 @@ function renderNotes() {
     }
     if(scaleGuide.lock&&!isPitchInScaleAtStep(pitch,scaleGuide,editedChunk.notes,step))return;
     const created={id:id(),pitch,start:step,
-     duration:Math.min(Number($("length").value),16-step),velocity:Number($("velocity").value)};
+     duration:1,velocity:DEFAULT_NOTE_LEVEL};
     selectedNoteId=editingNoteEffects?created.id:null;
     if(modify(()=>{editedChunk.notes.push(created);})){
      tapPianoKey(pitch);
      if(!playback&&!pendingPlay)
-      void audition(targetInst,pitch,beat).catch(()=>{});
+      void audition(targetInst,pitch,beat,{velocity:created.velocity}).catch(()=>{});
     }
    }, "note" + (step % 4 === 0 ? " beat" : ""));
    cells.push(cell);
@@ -925,7 +912,6 @@ function renderNotes() {
    cell.addEventListener("pointerdown", event => {
     if(event.button!==0 || event.isPrimary===false)return;
     const existing=chunk.notes.find(n=>n.pitch===pitch && step>=n.start && step<n.start+n.duration);
-    if(existing && event.shiftKey)return; // Keep shift-click strength editing.
     if(!existing && (cell.disabled ||
      (scaleGuide.lock && !isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step))))return;
     const bounds=cell.getBoundingClientRect(),edge=event.pointerType==="touch"?18:13;
@@ -939,7 +925,7 @@ function renderNotes() {
     let finished=false,grabbed=mode!=="move";
     if(mode==="paint"){
      note={id:id(),pitch,start:step,
-      duration:Math.min(Number($("length").value),16-step),velocity:Number($("velocity").value)};
+      duration:1,velocity:DEFAULT_NOTE_LEVEL};
      chunk.notes.push(note);
      resizeNote(chunk,note.id,note.duration);
      selectedNoteId=editingNoteEffects?note.id:null;
@@ -947,7 +933,7 @@ function renderNotes() {
      draggedNoteId=note.id;
      previewRow();
      tapPianoKey(pitch);
-     if(!playback&&!pendingPlay)void audition(inst,pitch,beat).catch(()=>{});
+     if(!playback&&!pendingPlay)void audition(inst,pitch,beat,{velocity:note.velocity}).catch(()=>{});
     }else if(mode==="resize"){
      ignoreClick=true;
      draggedNoteId=note.id;
@@ -978,7 +964,7 @@ function renderNotes() {
       moveNote(chunk,note.id,original.start+Math.round(dx/cellWidth),
        original.pitch-Math.round(dy/rowHeight),{minPitch:36,maxPitch:83});
      }else{
-      resizeNote(chunk,note.id,(original?.duration??Number($("length").value))+
+      resizeNote(chunk,note.id,(original?.duration??1)+
        Math.round(dx/cellWidth));
      }
      paintRows(oldPitch);
@@ -1091,26 +1077,73 @@ function renderNotes() {
    velocity:current.velocity,bend:current.bend,
    duration:current.duration*60/beat.bpm/4
   }).catch(error=>message("Couldn't preview note: "+error.message,true));
- },sound().patch.bend);
+ },sound().patch.bend,level=>{
+  const target=chunkFor(instrument()).notes.find(entry=>entry.id===selectedNoteId);
+  if(!target)return;
+  if(modify(()=>{target.velocity=level;})&&!playback&&!pendingPlay)
+   void audition(instrument(),target.pitch,beat,{velocity:level,bend:target.bend,duration:target.duration*60/beat.bpm/4})
+    .catch(error=>message("Couldn't preview note: "+error.message,true));
+ });
+}
+function closeChunkMenu() {
+ $("chunk-menu").hidden=true;
+ $("chunk").setAttribute("aria-expanded","false");
+}
+function createChunk() {
+ modify(()=>{
+  const inst=instrument(),chunk=makeChunk("Chunk "+(inst.chunks.length+1));
+  inst.chunks.push(chunk);
+  selectedChunks.set(inst.id,chunk.id);
+ });
+}
+function duplicateChunk(chunkId) {
+ modify(()=>{
+  const inst=instrument(),source=inst.chunks.find(chunk=>chunk.id===chunkId);
+  if(!source||inst.chunks.length>=32)return;
+  const copy=clone(source);
+  copy.id=id();
+  copy.name=(source.name+" copy").slice(0,60);
+  for(const note of copy.notes)note.id=id();
+  inst.chunks.push(copy);
+  selectedChunks.set(inst.id,copy.id);
+ });
 }
 function renderChunkEditor() {
- const inst = instrument(), select = $("chunk");
- const oldValue = selectedChunks.get(inst.id);
- select.replaceChildren();
- for (const chunk of inst.chunks) {
-  const option = element("option", chunk.name);
-  option.value = chunk.id;
-  select.append(option);
+ const inst=instrument(),menu=$("chunk-menu");
+ const active=chunkFor(inst);
+ selectedChunks.set(inst.id,active.id);
+ closeChunkMenu();
+ menu.replaceChildren();
+ for(const chunk of inst.chunks){
+  const row=element("div",undefined,"chunk-menu-row");
+  const select=button(chunk.name,()=>{
+   closeChunkMenu();
+   selectedChunks.set(inst.id,chunk.id);
+   renderChunkEditor();
+  },"chunk-menu-select");
+  select.setAttribute("aria-current",chunk.id===active.id?"true":"false");
+  const duplicate=button("+",()=>{
+   closeChunkMenu();
+   duplicateChunk(chunk.id);
+  },"chunk-menu-duplicate");
+  duplicate.setAttribute("aria-label","duplicate "+chunk.name);
+  duplicate.title="duplicate "+chunk.name;
+  duplicate.disabled=inst.chunks.length>=32;
+  row.append(select,duplicate);
+  menu.append(row);
  }
- const active = inst.chunks.find(c => c.id === oldValue) || inst.chunks[0];
- selectedChunks.set(inst.id, active.id);
- select.value = active.id;
- $("chunk-name").value = active.name;
- $("add-chunk").disabled = inst.chunks.length >= 32;
- $("duplicate-chunk").disabled = inst.chunks.length >= 32;
- $("delete-chunk").disabled = inst.chunks.length <= 1;
- $("editing-identity").textContent = inst.name;
- $("edit-instrument-note").textContent = inst.name;
+ const add=button("+",()=>{
+  closeChunkMenu();
+  createChunk();
+ },"chunk-menu-new");
+ add.setAttribute("aria-label","new chunk");
+ add.title="new chunk";
+ add.disabled=inst.chunks.length>=32;
+ menu.append(add);
+ $("chunk-name").value=active.name;
+ $("delete-chunk").disabled=inst.chunks.length<=1;
+ $("editing-identity").textContent=inst.name;
+ $("edit-instrument-note").textContent=inst.name;
  renderNotes();
 }
 function renderSound() {
@@ -1803,26 +1836,20 @@ function removeInstrument(instrumentId){
  });
 }
 $("remove-instrument").addEventListener("click",()=>removeInstrument(instrument().id));
-$("chunk").addEventListener("change", event => {
- selectedChunks.set(instrument().id, event.target.value);
- renderChunkEditor();
+$("chunk").addEventListener("click",()=>{
+ const menu=$("chunk-menu"),opening=menu.hidden;
+ menu.hidden=!opening;
+ $("chunk").setAttribute("aria-expanded",String(opening));
+ if(opening)menu.querySelector(".chunk-menu-select")?.focus();
 });
-$("add-chunk").addEventListener("click", () => {
- modify(() => {
-  const inst = instrument(), chunk = makeChunk("Chunk " + (inst.chunks.length + 1));
-  inst.chunks.push(chunk);
-  selectedChunks.set(inst.id, chunk.id);
- });
-});
-$("duplicate-chunk").addEventListener("click", () => {
- modify(() => {
-  const inst = instrument(), source = chunkFor(inst), chunk = clone(source);
-  chunk.id = id();
-  chunk.name = (source.name + " copy").slice(0,60);
-  for (const note of chunk.notes) note.id = id();
-  inst.chunks.push(chunk);
-  selectedChunks.set(inst.id, chunk.id);
- });
+document.addEventListener("pointerdown",event=>{
+ if(!event.target.closest?.(".chunk-switcher"))closeChunkMenu();
+},true);
+document.addEventListener("keydown",event=>{
+ if(event.key==="Escape"&&!$("chunk-menu").hidden){
+  closeChunkMenu();
+  $("chunk").focus();
+ }
 });
 $("delete-chunk").addEventListener("click", () => {
  const inst = instrument(), chunk = chunkFor(inst);

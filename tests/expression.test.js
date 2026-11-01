@@ -4,6 +4,7 @@ import {create,parse,validate,id} from "../schema.js";
 import {makePatch,PRESETS,validatePatch} from "../synth.js";
 import {SAMPLE_LIBRARY,makeSamplerPatch} from "../samples.js";
 import {BEND_SHAPES,bendSemitones,movement,validateBend,validateMovement,pitchCents,schedulePitch} from "../expression.js";
+import {planSynthVoice} from "../src/dsp/synth-voice.js";
 
 test("original expressive synths are distinct editable and valid",()=>{
  const options=PRESETS.filter(p=>p.category==="Expressive");
@@ -87,4 +88,18 @@ test("instrument bends are canonical defaults, while an individual note can over
  assert.deepEqual(parse(JSON.stringify(score)).instruments[0].sounds[0].patch.bend,inst.sounds[0].patch.bend);
  note.bend={shape:"fall",amount:2,rate:4};
  assert.deepEqual(validate(score),[]);
+});
+
+test("per-note level changes sound energy without changing instrument settings or MIDI pitch",()=>{
+ const doc=create(),instrument=doc.instruments[0],patch=instrument.sounds[0].patch;
+ const a={id:id(),pitch:60,start:0,duration:4,velocity:.25};
+ const b={...a,id:id(),start:4,velocity:.9};
+ instrument.chunks[0].notes.push(a,b);
+ const before=structuredClone({patch,volume:instrument.volume,notes:instrument.chunks[0].notes});
+ const quiet=planSynthVoice({patch,volume:instrument.volume},a,0,.5);
+ const loud=planSynthVoice({patch,volume:instrument.volume},b,1,.5);
+ assert.ok(loud.peak>quiet.peak*3,"velocity affects the native synth amplitude");
+ assert.equal(loud.oscillators[0].frequency,quiet.oscillators[0].frequency);
+ assert.deepEqual({patch,volume:instrument.volume,notes:instrument.chunks[0].notes},before);
+ assert.deepEqual(validate(doc),[]);
 });

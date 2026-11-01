@@ -94,20 +94,14 @@
      <div class="chunk-tools">
       <div class="chunk-fields">
        <label class="chunk-name-field">chunk <input id="chunk-name" aria-label="Chunk name" maxlength="60"></label>
-       <label class="chunk-switcher" title="switch chunk">
-        <select id="chunk" aria-label="Choose chunk to edit"></select>
-        <span class="chunk-switch-icon" aria-hidden="true">▾</span>
-       </label>
+       <div class="chunk-switcher">
+        <button id="chunk" type="button" aria-label="choose chunk" aria-haspopup="true" aria-controls="chunk-menu" aria-expanded="false" title="choose chunk">▾</button>
+        <div id="chunk-menu" class="chunk-menu" role="group" aria-label="chunks" hidden></div>
+       </div>
       </div>
       <div class="chunk-actions" aria-label="Chunk actions">
-       <button id="add-chunk" type="button">+ new</button>
-       <button id="duplicate-chunk" type="button">duplicate</button>
        <button id="delete-chunk" type="button">delete</button>
       </div>
-     </div>
-     <div class="note-controls">
-      <label class="note-velocity-control">strength <select id="velocity" aria-label="New note strength"><option value="0.25">Soft</option><option value="0.55">Medium</option><option value="0.9" selected>Firm</option></select></label>
-      <label class="note-length-control">new notes <select id="length" aria-label="Initial note length"><option value="1">1/16</option><option value="2">1/8</option><option value="4">1/4</option><option value="8">1/2</option><option value="16">1 bar</option></select></label>
      </div>
      <div class="scale-controls" role="group" aria-label="Beat scale guide">
       <label>key <select id="scale-root" aria-label="Scale root note"></select></label>

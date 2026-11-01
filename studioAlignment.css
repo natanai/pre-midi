@@ -24,7 +24,6 @@
 .chunk-fields {align-items:flex-end;gap:4px}
 .chunk-actions {align-items:flex-end;align-self:flex-end;gap:4px;padding:0;min-height:34px}
 .chunk-actions button {height:34px;min-height:34px;padding:5px 4px;line-height:1.2}
-.note-length-control {margin-left:0}
 .sound-section-heading {
  display:flex;align-items:center;justify-content:space-between;
  flex-wrap:nowrap;gap:8px;min-height:39px;padding:5px 12px 2px;border-bottom:0
