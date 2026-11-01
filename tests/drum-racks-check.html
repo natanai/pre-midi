@@ -28,15 +28,17 @@ frame.addEventListener("load",async()=>{
   const kitCards=kits.map(id=>cards().find(c=>c.dataset.presetId===id));
   checks.rackSection=heading?.textContent==="preset racks" &&
    kitCards.every(card=>!!card && !!(heading.compareDocumentPosition(card)&Node.DOCUMENT_POSITION_FOLLOWING));
-  // Example-derived complete racks also belong below this heading, while
-  // their individual hits stay above it.
-  checks.racksBelowSounds=["wood-snare","machine-kick","acoustic-kick",
-   "example-neon-after-hours-0-pulse"].every(id=>{
+  // Example racks remain useful starting arrangements, but example rows
+  // that copy existing hits are no longer separate catalogue listings.
+  checks.racksBelowSounds=["wood-snare","machine-kick","acoustic-kick"].every(id=>{
     const c=cards().find(c=>c.dataset.presetId===id);
     return !!c && !!(c.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING);
    }) && !!(heading.compareDocumentPosition(
     cards().find(c=>c.dataset.presetId==="example-neon-after-hours-0"))&
     Node.DOCUMENT_POSITION_FOLLOWING);
+  checks.noNearDuplicateHitCards=!cards().some(c=>
+   c.dataset.presetId==="example-neon-after-hours-0-impact" ||
+   c.dataset.presetId==="example-neon-after-hours-0-closed");
   checks.individualsAvailable=cards().some(c=>c.dataset.presetId==="wood-snare") &&
    cards().some(c=>c.dataset.presetId==="machine-kick");
   const preview=kitCards[0].querySelector(".preset-preview");
