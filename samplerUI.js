@@ -10,7 +10,7 @@ export function activeSamplePanels(patch){
  if(JSON.stringify(tone.filter)!==JSON.stringify(DEFAULT_SAMPLE_FILTER)||tone.drive!==0)
   active.add("tone");
  if(Object.keys(movementDefaults).some(key=>move[key]!==movementDefaults[key])||
-    patch.bend?.shape!=="straight"||patch.bend?.amount!==2||patch.bend?.rate!==4)
+    (patch.bend?.shape??"straight")!=="straight"||(patch.bend?.amount??2)!==2||(patch.bend?.rate??4)!==4)
   active.add("movement");
  if((patch.gain??.9)!==.9||(patch.transpose??0)!==0||
     (patch.pan??0)!==0||(patch.strumMs??0)!==0||
