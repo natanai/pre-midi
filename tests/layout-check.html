@@ -54,7 +54,14 @@ async function checkLayout(frame){
   sound.querySelectorAll('.visual-sound-panel[data-visual-kind^="oscillator"]').length===1&&
   !!oscillatorPanel.querySelector('.oscillator-unit[data-oscillator="1"]');
  const volume=get("instrument-volume-dial"),waveform=get("sound-visualizer");
- checks.volumeBesideWaveform=Math.abs(rect(waveform).top-rect(volume).top)<50&&
+ const preview=get("hear-sound");
+ checks.soundPreviewUnderVolume=preview.parentElement===volume.parentElement&&
+  !sound.querySelector(".sound-actions").contains(preview)&&
+  rect(preview).top>=rect(volume).bottom-2&&
+  Math.abs((rect(preview).left+rect(preview).width/2)-(rect(volume).left+rect(volume).width/2))<14;
+ checks.soundPreviewOneAction=sound.querySelectorAll("#hear-sound").length===1&&
+  preview.getAttribute("aria-label")==="Hear current sound";
+  checks.volumeBesideWaveform=Math.abs(rect(waveform).top-rect(volume).top)<50&&
   rect(waveform).right<=rect(volume).left+12&&rect(waveform).width>140;
  checks.moduleHeadersFullWidth=[...sound.querySelectorAll(".visual-sound-panel")].every(panel=>{
   const header=panel.querySelector(":scope > details > summary");
