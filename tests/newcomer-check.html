@@ -23,15 +23,15 @@ frame.addEventListener("load",async()=>{
   card.querySelector(".preset-preview").click();await wait(()=>heard>0,"audible preset preview");
   card.querySelector(".preset-choose").click();await wait(()=>!get("instrument-dialog").open,"choose sound");
   if(get("sound-toggle").getAttribute("aria-expanded")!=="true")get("sound-toggle").click();
-  const primary=doc.querySelector("#synth-editor .synth-group");
-  assert("common sound controls appear first",primary.open&&primary.querySelector("summary").textContent==="Sound"&&
-   ["Cutoff","Attack","Release"].every(name=>primary.contains(knob(name))));
-  assert("one control per parameter",["Cutoff","Attack","Release"].every(name=>doc.querySelectorAll('[role="slider"][aria-label="'+name+'"]').length===1));
+  const primary=doc.querySelector(".sound-primary-controls");
+  assert("common sound controls appear first",!!primary&&
+   ["brightness","attack","release","volume"].every(name=>primary.contains(knob(name))));
+  assert("one control per parameter",["brightness","attack","release","volume"].every(name=>doc.querySelectorAll('[role="slider"][aria-label="'+name+'"]').length===1));
   const before=(await score()).instruments.at(-1),beforeHeard=heard;
   get("hear-sound").click();await wait(()=>heard>beforeHeard,"hear current sound");
   assert("one preview per hear action",heard-beforeHeard===2);
   assert("one hear action for the selected sound",doc.querySelectorAll("#hear-sound").length===1);
-  for(const [name,key,count] of [["Cutoff","ArrowUp",8],["Attack","ArrowUp",5],["Release","ArrowUp",5],["Volume","ArrowDown",10]])
+  for(const [name,key,count] of [["brightness","ArrowUp",8],["attack","ArrowUp",5],["release","ArrowUp",5],["volume","ArrowDown",10]])
    for(let i=0;i<count;i++)knob(name).dispatchEvent(new win.KeyboardEvent("keydown",{key,bubbles:true}));
   const after=(await score()).instruments.at(-1);
   assert("brightness and timing edit the actual patch",after.sounds[0].patch.filter.cutoff>before.sounds[0].patch.filter.cutoff&&
@@ -48,7 +48,7 @@ frame.addEventListener("load",async()=>{
   const restored=(await score()).instruments.at(-1);
   const {presetId:oldId,...oldTone}=after.sounds[0].patch,{presetId:newId,...newTone}=restored.sounds[0].patch;
   assert("variation preserves softness and patch",restored.volume===after.volume&&JSON.stringify(newTone)===JSON.stringify(oldTone)&&newId===saved.dataset.presetId);
-  knob("Volume").dispatchEvent(new win.KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+  knob("volume").dispatchEvent(new win.KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
   get("change-sound").click();
   const replacement=[...doc.querySelectorAll(".preset-card")].find(card=>card.querySelector("strong").textContent==="Newcomer variation");
   replacement.querySelector(".preset-choose").click();await wait(()=>!get("instrument-dialog").open,"replace with saved variation");

@@ -34,13 +34,14 @@ async function reportedTest(file,endpoint,width=1440,height=900,microphone=false
   "http://127.0.0.1:"+port+"/tests/"+file+".html?width="+width],{stdio:"ignore"});
  try{
   const finished=await Promise.race([result,
-   new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(file+" timed out")),45000);}),
+   new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(file+" timed out")),file==="scope-check"?120000:45000);}),
    new Promise((_,reject)=>{child.on("error",reject);child.on("exit",code=>reject(Error(file+" browser exited: "+code)));})]);
   assert.equal(finished?.status,"PASS",file+" at "+width+": "+finished?.details);
   console.log("PASS",file,width+"x"+height,finished.details);
  }finally{clearTimeout(timer);pending.delete(endpoint);child.kill("SIGKILL");}
 }
 try{
+ await reportedTest("scope-check","/__scope_result");
  await reportedTest("automation-check","/__automation_result",1440,900);
  await reportedTest("automation-check","/__automation_result",390,844);
  await reportedTest("modulation-check","/__modulation_result",1440,900);

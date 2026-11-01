@@ -1,0 +1,165 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Sound shape audio qualification</title>
+<pre id="result"></pre>
+<script type="module">
+import {renderScopeAudio,createSignalDisplay,scopeAudioBins,scopeWindowSeconds} from "../soundScope.js";
+import {makePatch} from "../synth.js";
+import {movementDefaults} from "../src/dsp/expression.js";
+import {encodeMonoWav,RECORDING_RATE} from "../recording.js";
+import {putAsset} from "../assetRegistry.js";
+const assert=(ok,message)=>{if(!ok)throw Error(message);};
+const clone=patch=>structuredClone(patch);
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const base=makePatch("init");
+base.oscillators[0].wave="sawtooth";base.oscillators[1].level=.35;
+base.oscillators[1].wave="triangle";
+base.filter.cutoff=1700;base.filter.resonance=2;
+base.envelope={attack:.04,decay:.35,sustain:.7,release:.25};
+const groups=[
+ ["wave",p=>{p.oscillators[0].wave="square";}],
+ ["oscillator level",p=>{p.oscillators[1].level=.85;}],
+ ["octave",p=>{p.oscillators[1].octave=1;}],
+ ["detune",p=>{p.oscillators[1].detune=45;}],
+ ["harmonics",p=>{p.oscillators[0].wave="harmonic";p.oscillators[0].harmonics=Array(32).fill(0);p.oscillators[0].harmonics[0]=1;p.oscillators[0].harmonics[3]=.7;}],
+ ["noise",p=>{p.noise=.7;}],
+ ["noise decay",p=>{p.noise=.7;p.noiseDecay=.3;}],
+ ["filter type",p=>{p.filter.type="highpass";}],
+ ["cutoff",p=>{p.filter.cutoff=320;}],
+ ["resonance",p=>{p.filter.resonance=10;}],
+ ["filter sweep",p=>{p.filter.sweep=-3;}],
+ ["sweep time",p=>{p.filter.sweep=-3;p.filter.sweepTime=1;}],
+ ["attack",p=>{p.envelope.attack=.4;}],
+ ["decay",p=>{p.envelope.decay=1;}],
+ ["sustain",p=>{p.envelope.sustain=.2;}],
+ ["release",p=>{p.envelope.release=1.1;}],
+ ["distortion",p=>{p.effects.drive=.7;}],
+ ["delay",p=>{p.effects.delayMix=.65;}],
+ ["delay time",p=>{p.effects.delayMix=.65;p.effects.delayTime=.45;}],
+ ["delay feedback",p=>{p.effects.delayMix=.65;p.effects.delayFeedback=.7;}],
+ ["pan",p=>{p.pan=.85;}],
+ ["vibrato depth",p=>{p.movement.depth=48;}],
+ ["vibrato rate",p=>{p.movement.depth=48;p.movement.rate=8;}],
+ ["vibrato waits",p=>{p.movement.depth=48;p.movement.delay=.6;}],
+ ["glide",p=>{p.movement.glide=7;}],
+ ["glide time",p=>{p.movement.glide=7;p.movement.glideTime=.9;}],
+ ["pulse",p=>{p.movement.tremolo=.7;}],
+ ["pulse speed",p=>{p.movement.tremolo=.7;p.movement.tremoloRate=9;}],
+ ["tone wave",p=>{p.movement.tone=.9;}],
+ ["tone speed",p=>{p.movement.tone=.9;p.movement.toneRate=8;}],
+ ["bend",p=>{p.bend={shape:"rise",amount:5,rate:5};}],
+ ["modulated cutoff",p=>{p.version=2;p.modulation={version:1,routes:[{id:"scope-lfo",source:{kind:"lfo",shape:"sine",rate:2},target:"filter.cutoff",unit:"octaves",depth:2,polarity:"bipolar",smoothing:0}]};}]
+];
+// A dependent control is compared against the *same enabled parent*, to avoid
+// mistaking "has no audible effect while disabled" for a visualizer regression.
+const parent={
+ "noise decay":p=>{p.noise=.7;},
+ "sweep time":p=>{p.filter.sweep=-3;},
+ "delay time":p=>{p.effects.delayMix=.65;},
+ "delay feedback":p=>{p.effects.delayMix=.65;},
+ "vibrato rate":p=>{p.movement.depth=48;},
+ "vibrato waits":p=>{p.movement.depth=48;},
+ "glide time":p=>{p.movement.glide=7;},
+ "pulse speed":p=>{p.movement.tremolo=.7;},
+ "tone speed":p=>{p.movement.tone=.9;}
+};
+function different(a,b){
+ const ac=[a.buffer.getChannelData(0),a.buffer.getChannelData(1)];
+ const bc=[b.buffer.getChannelData(0),b.buffer.getChannelData(1)];
+ let delta=0,max=0;
+ for(let ch=0;ch<2;ch++){
+  const count=Math.min(ac[ch].length,bc[ch].length);
+  for(let i=0;i<count;i+=17){delta+=Math.abs(ac[ch][i]-bc[ch][i]);max++;}
+ }
+ return delta/Math.max(1,max);
+}
+async function pair(label,from,to,beat=null,pitch=60){
+ const [before,after]=await Promise.all([
+  renderScopeAudio(from,beat,.78,pitch),renderScopeAudio(to,beat,.78,pitch)]);
+ assert(before.buffer.numberOfChannels===2&&after.buffer.numberOfChannels===2,label+": missing stereo");
+ const difference=different(before,after);
+ assert(difference>1e-6,label+" did not change the rendered audio ("+difference+")");
+ // The scope's actual plotted data must change, not merely the backing PCM.
+ const plottedA=scopeAudioBins(before.buffer),plottedB=scopeAudioBins(after.buffer);
+ let visibleDelta=0;
+ for(let c=0;c<2;c++)for(let i=0;i<300;i++){
+  visibleDelta+=Math.abs(plottedA[c][i].low-plottedB[c][i].low);
+  visibleDelta+=Math.abs(plottedA[c][i].high-plottedB[c][i].high);
+ }
+ const sampleWindow=output=>{
+  const l=output.buffer.getChannelData(0),r=output.buffer.getChannelData(1);
+  const start=Math.round(.3*output.buffer.sampleRate);
+  return Array.from({length:170},(_,i)=>{
+   const at=start+Math.round(i/169*.02*output.buffer.sampleRate);
+   return (l[at]+r[at])*.5;
+  });
+ };
+ const waveA=sampleWindow(before),waveB=sampleWindow(after);
+ for(let i=0;i<waveA.length;i++)visibleDelta+=Math.abs(waveA[i]-waveB[i]);
+ assert(visibleDelta>1e-6,label+" changed audio but not plotted waveform data");
+ return difference;
+}
+async function run(){
+ const measured=[];
+ for(const [name,edit] of groups){
+  const from=clone(base),to=clone(base);
+  parent[name]?.(from);edit(to);
+  measured.push([name,await pair(name,from,to)]);
+ }
+ const automation={version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
+  points:[{id:"begin",step:0,value:250},{id:"end",step:32,value:7000}]};
+ const [staticAudio,movingAudio]=await Promise.all([
+  renderScopeAudio(base,{bpm:120,bars:8},.78,60),
+  renderScopeAudio(base,{bpm:120,bars:8},.78,60,automation)]);
+ assert(different(staticAudio,movingAudio)>1e-6,"cutoff automation did not affect rendered preview");
+ measured.push(["cutoff automation",different(staticAudio,movingAudio)]);
+ // Use an actual decoded audio asset for sampler qualification.
+ const id="scope-audio-fixture";
+ const samples=Float32Array.from({length:RECORDING_RATE*2},(_,i)=>{
+  const t=i/RECORDING_RATE;
+  return .45*Math.exp(-t*.6)*(Math.sin(2*Math.PI*220*t)+.2*Math.sin(2*Math.PI*1760*t));
+ });
+ putAsset(id,encodeMonoWav(samples));
+ const beat={samples:[{id,path:"assets/"+id+".wav",mime:"audio/wav",name:id,source:"test"}]};
+ const recorded={type:"sample",presetId:"scope-test",zones:[{assetId:id,root:60}],
+  followPitch:true,oneShot:false,transpose:0,gain:.8,attack:.01,release:.25,
+  pan:0,preserveDynamics:false,movement:{...movementDefaults},
+  filter:{type:"lowpass",cutoff:4500,resonance:1},drive:0,
+  bend:{shape:"straight",amount:2,rate:4}};
+ const samplerEdits=[
+  ["recorded brightness",p=>p.filter.cutoff=550],
+  ["recorded filter type",p=>p.filter.type="highpass"],
+  ["recorded resonance",p=>p.filter.resonance=12],
+  ["recorded distortion",p=>p.drive=.8],
+  ["recorded gain",p=>p.gain=.3],
+  ["recorded attack",p=>p.attack=.4],
+  ["recorded release",p=>p.release=.9],
+  ["recorded one shot",p=>p.oneShot=true],
+  ["recorded pitch follow",p=>p.followPitch=false],
+  ["recorded transpose",p=>p.transpose=7],
+  ["recorded pan",p=>p.pan=.7],
+  ["recorded dynamics",p=>p.preserveDynamics=true],
+  ["recorded pulse",p=>p.movement.tremolo=.65],
+  ["recorded vibrato",p=>p.movement.depth=60]
+ ];
+ for(const [name,edit] of samplerEdits){
+  const from=clone(recorded),to=clone(recorded);edit(to);
+  measured.push([name,await pair(name,from,to,beat,["recorded release","recorded one shot"].includes(name)?60:65)]);
+ }
+ assert(scopeWindowSeconds({...base,envelope:{...base.envelope,release:3}})>4,"long release cropped");
+ const rendered=await renderScopeAudio(base,null,.78,60);
+ const bins=scopeAudioBins(rendered.buffer);
+ assert(bins.length===2&&bins[0].length===300,"scope bins absent");
+ const root=document.createElement("div");document.body.append(root);
+ const render=createSignalDisplay(root,base,null,"#08e4ec",.78,60);
+ for(let i=0;i<200&&!root.querySelector(".signal-wave")?.getAttribute("d");i++)await wait(30);
+ const left=root.querySelector(".signal-wave");
+ assert(left.getAttribute("d"),"scope failed to paint PCM");
+ const before=left.getAttribute("d");render({...base,filter:{...base.filter,cutoff:250}});
+ for(let i=0;i<200&&left.getAttribute("d")===before;i++)await wait(30);
+ assert(left.getAttribute("d")!==before,"live patch preview failed");
+ document.getElementById("result").textContent=JSON.stringify({count:measured.length,examples:measured.slice(0,5)});
+ document.documentElement.dataset.scope="PASS";
+}
+run().catch(error=>{document.getElementById("result").textContent=String(error.stack||error);document.documentElement.dataset.scope="FAIL";})
+ .finally(()=>{void fetch("/__scope_result?status="+document.documentElement.dataset.scope+
+  "&details="+encodeURIComponent(document.getElementById("result").textContent)).catch(()=>{});});
+</script></html>

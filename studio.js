@@ -1152,7 +1152,7 @@ function renderSound() {
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
- const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst),inst.volume*entry.gain);
+ const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst),inst.volume*entry.gain,entry.referencePitch,inst.automation);
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
   const next=patchCopy(sound().patch);
