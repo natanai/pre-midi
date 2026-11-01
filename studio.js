@@ -1160,6 +1160,8 @@ function renderSound() {
   for(let i=0;i<path.length-1;i++)parent=parent[path[i]]??={};
   parent[path[path.length-1]]=value;
   scope(next);
+  for(const panel of $("synth-editor").querySelectorAll(".visual-sound-panel"))
+   panel.drawSoundIllustration?.(next);
  };
  const onChange=(path,value)=>{
   const changed=modify(()=>{
