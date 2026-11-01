@@ -1512,7 +1512,7 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
 #qwerty-piano[aria-pressed="true"] {color:var(--signal-cyan);border-color:var(--signal-cyan)}
 .keyboard-piano-status {font-size:11px;color:var(--signal-cyan);white-space:nowrap}
 .keyboard-piano-guide {
- position:absolute;left:47px;top:calc(100% + 3px);z-index:25;
+ position:absolute;left:47px;top:100%;z-index:25;
  width:min(386px,calc(100vw - 30px));padding:12px;
  background:#171a1c;border:1px solid #666c70;
  box-shadow:0 8px 24px #0009;box-sizing:border-box;
