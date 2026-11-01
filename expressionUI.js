@@ -12,19 +12,32 @@ function svg(tag,attrs={}){
  for(const [key,value] of Object.entries(attrs))el.setAttribute(key,String(value));
  return el;
 }
-export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChange,onDelete,onHear,defaultBend){
+export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChange,onDelete,onHear,defaultBend,onLevelChange){
  root.replaceChildren();
  root.hidden=!note;
  if(!note)return;
  const bend=note.bend||defaultBend||{shape:"straight",amount:2,rate:4};
  const caption=make("div",undefined,"expression-title");
  caption.append(make("strong","Bend · "+pitchLabel+(note.bend?"":" · instrument default"),"expression-note"));
- const play=make("button","▶ Hear bend","expression-hear");
+ const play=make("button","▶ hear note","expression-hear");
  play.type="button";play.addEventListener("click",onHear);
  caption.append(play);
  const clear=make("button","Delete note","expression-delete");
  clear.type="button";clear.addEventListener("click",onDelete);
  caption.append(clear);
+ const level=make("label",undefined,"expression-level");
+ level.title="the level of this note; samples may respond with a different recorded layer";
+ const levelTitle=make("span","note level");
+ const levelRow=make("div",undefined,"expression-level-row");
+ const levelInput=make("input");
+ levelInput.type="range";levelInput.min="0";levelInput.max="1";levelInput.step=".01";
+ levelInput.value=String(note.velocity);
+ levelInput.setAttribute("aria-label","Note level");
+ const levelValue=make("output",Math.round(note.velocity*100)+"%");
+ levelInput.addEventListener("input",()=>{levelValue.value=Math.round(Number(levelInput.value)*100)+"%";});
+ levelInput.addEventListener("change",()=>onLevelChange?.(Number(levelInput.value)));
+ levelRow.append(levelInput,levelValue);
+ level.append(levelTitle,levelRow);
  const controls=make("div",undefined,"expression-controls");
  const choice=make("label","Shape");
  const select=make("select");
@@ -57,6 +70,6 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
   });
   shape.setAttribute("points",points.join(" "));
  }
- root.append(caption,controls,visual);
+ root.append(caption,level,controls,visual);
  draw();
 }
