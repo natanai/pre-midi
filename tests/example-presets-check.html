@@ -26,9 +26,11 @@ frame.addEventListener("load",async()=>{
   await wait(()=>library.open,"Open sound picker");
   checks.noExamplesCategory=![...library.querySelectorAll(".library-filter")].some(b=>b.textContent==="Examples");
   category("Drums");
-  checks.rackAndHitInDrums=!!card("example-neon-after-hours-0") &&
-   !!card("example-neon-after-hours-0-pulse") &&
+  checks.rackInDrums=!!card("example-neon-after-hours-0") &&
    card("example-neon-after-hours-0")?.querySelector("strong")?.textContent==="Drum rack · nine sounds";
+  checks.noDuplicatedExampleHits=!card("example-neon-after-hours-0-pulse") &&
+   !card("example-neon-after-hours-0-impact") &&
+   !!card("acoustic-kick") && !!card("tape-snare");
   checks.pitchedNotInDrums=!card("example-neon-after-hours-1");
   const rack=card("example-neon-after-hours-0");
   rack?.querySelector(".preset-choose")?.click();
@@ -37,18 +39,20 @@ frame.addEventListener("load",async()=>{
    get("instrument-name").value==="Drum rack · nine sounds";
 
   get("add-instrument").click();category("Bass");
-  const bass=card("example-neon-after-hours-1");
-  checks.bassInBass=!!bass&&bass.querySelector("strong")?.textContent==="Sustained sub-bass";
+  const bass=card("sub-current");
+  checks.baseBassAvailable=!!bass&&bass.querySelector("strong")?.textContent==="Sub Bass";
+  checks.noDuplicatedExampleBass=!card("example-neon-after-hours-1");
   bass?.querySelector(".preset-choose")?.click();
-  await wait(()=>!library.open&&doc.querySelectorAll(".instrument-card").length===3,"Add example bass");
-  checks.pitchedEditable=get("instrument-name").value==="Sustained sub-bass"&&
+  await wait(()=>!library.open&&doc.querySelectorAll(".instrument-card").length===3,"Add base bass");
+  checks.pitchedEditable=get("instrument-name").value==="Sub Bass"&&
    !!doc.querySelector("#piano .note-name");
 
   get("add-instrument").click();category("Drums");
-  const solo=card("example-neon-after-hours-0-pulse");
+  const solo=card("pulse-kick");
+  checks.baseSynthHitAvailable=!!solo;
   solo?.querySelector(".preset-choose")?.click();
-  await wait(()=>!library.open&&doc.querySelectorAll(".instrument-card").length===4,"Add example hit");
-  checks.rowEditable=get("instrument-name").value==="Synth kick"&&
+  await wait(()=>!library.open&&doc.querySelectorAll(".instrument-card").length===4,"Add base synth hit");
+  checks.rowEditable=get("instrument-name").value==="Synth Kick"&&
    doc.querySelectorAll("#piano .rack-row").length===1;
   document.documentElement.dataset.examplePresets=Object.values(checks).every(Boolean)?"PASS":"FAIL";
   result.textContent=JSON.stringify(checks);
