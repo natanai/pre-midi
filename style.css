@@ -302,7 +302,7 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
   height:4px;
   background:#fff;
 }
-.piano-row {display:grid;grid-template-columns:63px repeat(16,minmax(40px,1fr));height:23px}
+.piano-row {display:grid;grid-template-columns:var(--piano-gutter,63px) repeat(16,minmax(40px,1fr));height:23px}
 .note-name {
   padding:4px 6px;border-right:1px solid var(--line);border-bottom:1px solid #222;
   background:#181818;color:var(--text);font-size:11px;
@@ -312,38 +312,55 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 .piano-row.out-of-scale .note-name {color:#666}
 .note.out-of-scale:not(.filled):not(.tail) {background:#050505}
 .piano-row .note.out-of-scale:disabled {opacity:.52;cursor:not-allowed}
-/* Optional physical keyboard: white keys fill the distance between adjacent
-   white-key centers, with black keys sitting in front of their joins. Note
-   cells keep their original chromatic alignment and clickable dimensions. */
+/* Physical keys are painted in their own full-height gutter, not as
+   pseudo-elements inside 23px grid rows. This avoids stacking and clipping. */
+#piano.piano-keyboard {--piano-gutter:82px}
 #piano.piano-keyboard .note-name {
- position:relative;z-index:1;display:flex;align-items:center;justify-content:flex-end;
- overflow:visible;border:0;padding:0 5px;background:transparent;
- color:#202020;font-size:10px;font-weight:700;
+ background:transparent;border:0;padding:0;color:transparent;
 }
-#piano.piano-keyboard .note-name::before {
- content:"";position:absolute;z-index:-1;pointer-events:none;
- top:var(--key-top,0px);
- height:var(--key-height,23px);
- left:0;right:0;
- box-sizing:border-box;background:#d3d3d3;
- border-right:1px solid #666;border-bottom:1px solid #777;
+#piano .piano-keys-overlay {
+ position:absolute;top:0;bottom:0;left:0;
+ width:var(--piano-gutter,82px);
+ box-sizing:border-box;overflow:hidden;
+ background:#eee;border-right:2px solid #333;
+ z-index:3;pointer-events:none;
 }
-#piano.piano-keyboard .piano-row.sharp .note-name {z-index:3;color:#e5e5e5}
-#piano.piano-keyboard .piano-row.sharp .note-name::before {
- top:1px;height:21px;left:0;right:auto;width:44px;
- background:#0c0c0c;border:1px solid #060606;border-radius:0 2px 2px 0;
- box-shadow:2px 1px 2px #0008;
+#piano .piano-key {
+ position:absolute;left:0;box-sizing:border-box;
 }
-#piano.piano-keyboard .piano-row.in-scale .note-name {border-left:0;color:#15272b}
-#piano.piano-keyboard .piano-row.in-scale .note-name::before {
- background:#dbeaec;box-shadow:inset 3px 0 0 var(--signal-cyan);
+#piano .piano-key.white {
+ right:0;
+ background:linear-gradient(90deg,#fafafa 0%,#ededed 70%,#d0d0d0 94%,#a0a0a0 100%);
+ border-bottom:1px solid #777;
+ border-right:1px solid #777;
 }
-#piano.piano-keyboard .piano-row.sharp.in-scale .note-name::before {
- background:#17373b;box-shadow:inset 3px 0 0 var(--signal-cyan),2px 1px 2px #0008;
+#piano .piano-key.black {
+ z-index:1;width:62%;
+ background:linear-gradient(90deg,#0b0b0b 0%,#191919 63%,#353535 92%,#101010 100%);
+ border:1px solid #030303;border-right-color:#555;
+ border-radius:0 3px 3px 0;
+ box-shadow:2px 2px 3px #0008,inset 0 1px 1px #ffffff23;
 }
-#piano.piano-keyboard .piano-row.out-of-scale .note-name {color:#555}
-#piano.piano-keyboard .piano-row.out-of-scale:not(.sharp) .note-name::before {background:#aaa}
-#piano.piano-keyboard .piano-row.sharp.out-of-scale .note-name::before {background:#050505}
+#piano .piano-key-caption {
+ position:absolute;right:5px;top:50%;transform:translateY(-50%);
+ font-size:10px;font-weight:600;letter-spacing:-.03em;
+ color:#303030;white-space:nowrap;
+}
+#piano .piano-key.white.in-scale {
+ background:linear-gradient(90deg,#def8fa 0%,#e3eff0 76%,#b3d6da 100%);
+ box-shadow:inset 4px 0 0 var(--signal-cyan);
+}
+#piano .piano-key.black.in-scale {
+ background:linear-gradient(90deg,#12484e 0%,#1c3538 70%,#24575d 100%);
+ box-shadow:inset 4px 0 0 var(--signal-cyan),2px 2px 3px #0009;
+}
+#piano .piano-key.white.out-of-scale {
+ background:linear-gradient(90deg,#b6b6b6 0%,#a9a9a9 88%,#929292 100%);
+}
+#piano .piano-key.black.out-of-scale {
+ background:linear-gradient(90deg,#050505 0%,#141414 85%,#080808 100%);
+}
+#piano .piano-key.out-of-scale .piano-key-caption {color:#555}
 .note {
   padding:0;min-width:0;border:0;border-right:1px solid #292929;
   border-bottom:1px solid #1b1b1b;background:#101010;
