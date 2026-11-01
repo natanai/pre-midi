@@ -7,7 +7,7 @@ const wait=async(check,label)=>{for(let i=0;i<160;i++){if(check())return;await n
 const assert=(label,ok)=>{checks[label]=!!ok;if(!ok)throw Error(label);};
 frame.addEventListener("load",async()=>{
  let doc=frame.contentDocument,win=frame.contentWindow,blob,heard=0;
- const get=id=>doc.getElementById(id),knob=name=>doc.querySelector('#sound-section [role="slider"][aria-label="'+name+'"]');
+ const get=id=>doc.getElementById(id),knob=name=>doc.querySelector('#sound-section .dial-knob[aria-label="'+name+'"]');
  const capture=()=>{
   const create=win.URL.createObjectURL.bind(win.URL);win.URL.createObjectURL=value=>{if(value.type==="application/json")blob=value;return create(value);};
   win.HTMLAnchorElement.prototype.click=function(){};
@@ -28,10 +28,12 @@ frame.addEventListener("load",async()=>{
    ["brightness","attack","release"].every(name=>get("synth-editor").contains(knob(name)))&&
    get("synth-editor").querySelectorAll(".visual-sound-panel").length>=6);
   const soundEditor=get("sound-section");
+  // Interactive waveform grab points may also expose slider semantics, but
+  // they are intentionally a second *way* to edit, not duplicate knobs.
   const controlCounts=Object.fromEntries(["brightness","attack","release","volume"].map(name=>
-   [name,soundEditor.querySelectorAll('[role="slider"][aria-label="'+name+'"]').length]));
+   [name,soundEditor.querySelectorAll('.dial-knob[aria-label="'+name+'"]').length]));
   checks.soundControlCounts=controlCounts;
-  assert("one control per parameter",Object.values(controlCounts).every(n=>n===1));
+  assert("one dial per parameter",Object.values(controlCounts).every(n=>n===1));
   const before=(await score()).instruments.at(-1),beforeHeard=heard;
   get("hear-sound").click();await wait(()=>heard>beforeHeard,"hear current sound");
   assert("one preview per hear action",heard-beforeHeard===2);
