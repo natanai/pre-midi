@@ -731,7 +731,10 @@ function renderRack(root,inst,chunk){
  renderNoteExpression($("note-expression"),note,entry.name,note?note.duration*60/beat.bpm/4:0,
   bend=>modify(()=>{note.bend=bend;}),
   ()=>modify(()=>{chunk.notes=chunk.notes.filter(item=>item.id!==note.id);selectedNoteId=null;}),
-  ()=>{void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:note.velocity,bend:note.bend}).catch(error=>message(error.message,true));},entry.patch.bend,level=>modify(()=>{note.velocity=level;}));
+  ()=>{void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:note.velocity,bend:note.bend}).catch(error=>message(error.message,true));},entry.patch.bend,level=>{
+   if(modify(()=>{note.velocity=level;})&&!playback&&!pendingPlay)
+    void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:level,bend:note.bend}).catch(error=>message("Couldn't preview hit: "+error.message,true));
+  });
 
 }
 // Feedback belongs to the studio keyboard, never to saved notes or audio.
@@ -1075,10 +1078,13 @@ function renderNotes() {
    velocity:current.velocity,bend:current.bend,
    duration:current.duration*60/beat.bpm/4
   }).catch(error=>message("Couldn't preview note: "+error.message,true));
- },sound().patch.bend,level=>modify(()=>{
+ },sound().patch.bend,level=>{
   const target=chunkFor(instrument()).notes.find(entry=>entry.id===selectedNoteId);
-  if(target)target.velocity=level;
- }));
+  if(!target)return;
+  if(modify(()=>{target.velocity=level;})&&!playback&&!pendingPlay)
+   void audition(instrument(),target.pitch,beat,{velocity:level,bend:target.bend,duration:target.duration*60/beat.bpm/4})
+    .catch(error=>message("Couldn't preview note: "+error.message,true));
+ });
 }
 function closeChunkMenu() {
  $("chunk-menu").hidden=true;
