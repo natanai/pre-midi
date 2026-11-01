@@ -1265,3 +1265,4 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  outline-offset:-1px;
  filter:brightness(1.14);
 }
+.piano-row .note.end:not(.dragging) {cursor:ew-resize}
