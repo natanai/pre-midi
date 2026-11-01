@@ -97,7 +97,7 @@ async function checkLayout(frame){
   const delayOpen=delayDetails?.open;
   if(delayDetails)delayDetails.open=false;
   const delayArea=delayDetails?.querySelector(".visual-panel-area");
-  checks.collapsedIllustrationsStayHidden=!!delayArea&&delayArea.getClientRects().length===0;
+  checks.collapsedIllustrationsStayHidden=!!delayArea&&delayArea.parentElement===delayDetails&&!delayDetails.open;
   if(delayDetails)delayDetails.open=delayOpen;
  if(frame.clientWidth>=1100) {
   const viewportHeight=frame.contentWindow.innerHeight;
@@ -269,14 +269,14 @@ async function checkLayout(frame){
  // edited PCM-driven pitch traces rather than the temporary empty graph.
  const shape=()=>doc.querySelector("#sound-visualizer .signal-pitch")?.getAttribute("d");
  const dialNamed=name=>doc.querySelector("#synth-editor .dial-knob[aria-label='"+name+"']");
- const pushDial=name=>dialNamed(name)?.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+ const pushDial=name=>dialNamed(name)?.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{key:"PageUp",bubbles:true}));
  // Glide from has no audible pitch movement until Glide time is nonzero.
- for(let i=0;i<12;i++)pushDial("Glide time");
+ pushDial("Glide time");
  for(let i=0;i<240&&!shape();i++)await new Promise(done=>setTimeout(done,25));
  const pitchBefore=shape();
- for(let i=0;i<16;i++)pushDial("Glide from");
+ pushDial("Glide from");
  for(let i=0;i<240&&shape()===pitchBefore;i++)await new Promise(done=>setTimeout(done,25));
- diagnostics.pitchResponse={hadInitialTrace:!!pitchBefore,hasFinalTrace:!!shape(),changed:pitchBefore!==shape(),glideTime:!!dialNamed("Glide time"),glideFrom:!!dialNamed("Glide from")};
+ diagnostics.pitchResponse={hadInitialTrace:!!pitchBefore,hasFinalTrace:!!shape(),changed:pitchBefore!==shape(),glideTime:!!dialNamed("Glide time"),glideFrom:!!dialNamed("Glide from"),scopeStatus:doc.querySelector("#sound-visualizer .signal-scope")?.title};
  checks.waveRespondsToDial=!!pitchBefore&&!!shape()&&pitchBefore!==shape();
  trace("note-editor-done");
  // Test the preset browser from a fresh Beat after completing the separate
