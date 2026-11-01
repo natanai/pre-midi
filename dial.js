@@ -47,6 +47,7 @@ const labelHelp=Object.freeze({
  "release":"how long it fades after you let go",
  "filter":"choose which parts of the sound get through",
  "filter type":"choose which parts of the sound get through",
+ "brightness":"move the filter to shape the high and low parts of the sound",
  "cutoff":"move where the filtering happens",
  "resonance":"make the filter's edge whistle",
  "filter sweep":"make the filter slide into place with each note",
