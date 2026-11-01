@@ -38,6 +38,17 @@ export const SAMPLE_ASSETS=[
 ];
 const sampleLibrary=[
  {id:"real-piano",name:"Recorded Piano",category:"Recorded",description:"Piano samples at C3 and C4.",assets:["piano-c3","piano-c4"],followPitch:true},
+ // Variations reuse the same two verified CC0 piano recordings; no new assets
+ // are embedded in .premidi files or duplicated in portable releases.
+ {id:"close-piano",name:"Close Piano",category:"Keys",description:"Clear recorded piano attacks and a gently extended release.",
+  assets:["piano-c3","piano-c4"],followPitch:true,gain:.88,attack:.004,release:.84,
+  filter:{type:"lowpass",cutoff:9700,resonance:.65}},
+ {id:"felt-room-piano",name:"Felt Room Piano",category:"Keys",description:"Softened recorded piano with a rounded, intimate attack.",
+  assets:["piano-c3","piano-c4"],followPitch:true,gain:.86,attack:.024,release:1.15,
+  filter:{type:"lowpass",cutoff:3100,resonance:.65}},
+ {id:"tape-piano",name:"Tape Piano",category:"Keys",description:"Dark, slightly saturated recorded piano with mellowed highs.",
+  assets:["piano-c3","piano-c4"],followPitch:true,gain:.78,attack:.012,release:.93,
+  filter:{type:"lowpass",cutoff:2100,resonance:.7},drive:.075},
  ...GUITAR_PRESETS,
  { ...GUITAR_PRESETS.find(p=>p.id==="steel-guitar"),
    id:"steel-lap-cry",name:"Steel Guitar Upward Glide",category:"Expressive",
@@ -82,6 +93,8 @@ export function makeSamplerPatch(preset){
   gain:preset.gain??.9,attack:preset.attack??.005,release:preset.release??.17,
   pan:0,strumMs:preset.strumMs??0,preserveDynamics:preset.preserveDynamics??false,
   movement:{...movementDefaults,...(preset.movement||{})},
+  ...(preset.filter?{filter:{...preset.filter}}:{}),
+  ...(preset.drive===undefined?{}:{drive:preset.drive}),
   bend:{shape:"straight",amount:2,rate:4}
  };
 }
