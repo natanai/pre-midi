@@ -129,9 +129,8 @@ function initializeScaleControls() {
 }
 function renderScaleControls(inst) {
  const rack=inst.layout==="rack";
- document.querySelector(".scale-controls").hidden=rack;
+ // The Beat scale remains visible even while editing its drum racks.
  document.querySelector(".piano-tools").hidden=rack;
- if(rack)return;
  const guide=scaleGuideFor();
  $("scale-root").value=String(guide.root);
  $("scale-mode").value=guide.mode;
