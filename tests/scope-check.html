@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><title>Sound shape audio qualification</title>
 <pre id="result"></pre>
 <script type="module">
-import {renderScopeAudio,createSignalDisplay,scopeAudioBins,scopeWindowSeconds} from "../soundScope.js";
+import {renderScopeAudio,createSignalDisplay,scopeAudioBins,scopeWaveformData,scopeWindowSeconds} from "../soundScope.js";
 import {makePatch} from "../synth.js";
 import {movementDefaults} from "../src/dsp/expression.js";
 import {encodeMonoWav,RECORDING_RATE} from "../recording.js";
@@ -94,6 +94,13 @@ async function pair(label,from,to,beat=null,pitch=60){
  };
  const waveA=sampleWindow(before),waveB=sampleWindow(after);
  for(let i=0;i<waveA.length;i++)visibleDelta+=Math.abs(waveA[i]-waveB[i]);
+ const realA=scopeWaveformData(before.buffer,pitch).channels;
+ const realB=scopeWaveformData(after.buffer,pitch).channels;
+ const waveChange=realA.reduce((sum,channel,c)=>sum+channel.reduce((total,value,i)=>
+  total+Math.abs(value-realB[c][i]),0),0);
+ if(["wave","harmonics","cutoff","distortion","recorded brightness",
+     "recorded distortion","detune","recorded pan"].includes(label))
+  assert(waveChange>1e-4,label+" audible edit did not change the primary real PCM waveform");
  assert(visibleDelta>1e-6,label+" changed audio but not plotted waveform data");
  return difference;
 }
@@ -151,8 +158,11 @@ async function run(){
  const root=document.createElement("div");document.body.append(root);
  const render=createSignalDisplay(root,base,null,"#08e4ec",.78,60);
  for(let i=0;i<200&&!root.querySelector(".signal-wave")?.getAttribute("d");i++)await wait(30);
- const left=root.querySelector(".signal-wave");
- assert(left.getAttribute("d"),"scope failed to paint PCM");
+ const left=root.querySelector(".signal-waveform-left");
+ assert(left?.getAttribute("d"),"full-width waveform failed to paint PCM");
+ assert(root.querySelectorAll(".signal-waveform").length===2,"missing stereo waveform");
+ assert(root.querySelector(".signal-scope-graph").viewBox.baseVal.height>=250,
+  "waveform is not displayed prominently");
  const before=left.getAttribute("d");render({...base,filter:{...base.filter,cutoff:250}});
  for(let i=0;i<200&&left.getAttribute("d")===before;i++)await wait(30);
  assert(left.getAttribute("d")!==before,"live patch preview failed");
