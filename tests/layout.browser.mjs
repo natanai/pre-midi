@@ -41,6 +41,7 @@ async function reportedTest(file,endpoint,width=1440,height=900,microphone=false
  }finally{clearTimeout(timer);pending.delete(endpoint);child.kill("SIGKILL");}
 }
 try{
+ await reportedTest("scope-check","/__scope_result");
  await reportedTest("automation-check","/__automation_result",1440,900);
  await reportedTest("automation-check","/__automation_result",390,844);
  await reportedTest("modulation-check","/__modulation_result",1440,900);
@@ -57,7 +58,6 @@ try{
  }
  await reportedTest("rack-audio-check","/__rack_audio_result");
  await reportedTest("audio-check","/__audio_result");
- await reportedTest("scope-check","/__scope_result");
  await reportedTest("arrangement-audio-check","/__arrangement_audio_result");
  await reportedTest("example-audio-check","/__example_audio_result");
  await reportedTest("synth-check","/__synth_result",1440,900);
