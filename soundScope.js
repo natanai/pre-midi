@@ -20,10 +20,20 @@ const wave=(type,x)=> {
  if(type==="sawtooth")return p*2-1;
  return Math.sin(x);
 };
-function envelope(env,t){
- if(t<env.attack)return clamp(t/Math.max(.001,env.attack));
- if(t<env.attack+env.decay)return 1-(1-env.sustain)*clamp((t-env.attack)/Math.max(.001,env.decay));
- return env.sustain;
+// An illustrative 2.2-second note (held to 1.25s, then released). Unlike
+// the previous scope it shows attack and release rather than a perpetual gate.
+export function scopeAmplitudeAt(patch,t){
+ const env=patch.type==="sample"?
+  {attack:patch.attack,decay:0,sustain:1,release:patch.release}:patch.envelope;
+ const held=at=>{
+  if(at<env.attack)return clamp(at/Math.max(.001,env.attack));
+  if(at<env.attack+env.decay)
+   return 1-(1-env.sustain)*clamp((at-env.attack)/Math.max(.001,env.decay));
+  return env.sustain;
+ };
+ const gate=1.25;
+ if(t<=gate)return held(t);
+ return held(gate)*(1-clamp((t-gate)/Math.max(.01,env.release)));
 }
 function synthWave(patch,progress){
  const t=progress*2.2;
@@ -49,7 +59,7 @@ function synthWave(patch,progress){
  result=Math.tanh(result*(1+drive*4))/Math.tanh(1+drive*4);
  const mod=.85+.15*Math.cos(2*Math.PI*m.toneRate*t)*(m.tone||0);
  const pulse=1-(m.tremolo||0)*.45*(1+Math.cos(2*Math.PI*m.tremoloRate*t));
- return result*envelope(patch.envelope,t)*mod*pulse;
+ return result*mod*pulse;
 }
 function sampleWave(patch,progress,samples){
  const i=Math.min(samples.length-1,Math.floor(progress*samples.length));
@@ -61,7 +71,7 @@ function sampleWave(patch,progress,samples){
 function pathFrom(values,width,height,zero,scale){
  return values.map((v,i)=>(i?"L":"M")+((i/(values.length-1))*width).toFixed(2)+" "+(zero-v*scale).toFixed(2)).join(" ");
 }
-export function createSignalDisplay(root,patch,score,accent){
+export function createSignalDisplay(root,patch,score,accent,initialLevel=1){
  root.replaceChildren();
  const wrapper=document.createElement("div");wrapper.className="signal-scope";
  const head=document.createElement("div");head.className="signal-scope-header";
@@ -102,19 +112,33 @@ export function createSignalDisplay(root,patch,score,accent){
    }catch{}
   }
  }
- let currentPatch=patch;
- function render(nextPatch){
-  currentPatch=nextPatch;
+ let currentPatch=patch,currentLevel=initialLevel;
+ function render(nextPatch,level=currentLevel){
+  currentPatch=nextPatch;currentLevel=level;
   const m=movement(nextPatch),n=250;
-  const waves=Array.from({length:n},(_,i)=>{
+  const raw=Array.from({length:n},(_,i)=>{
    const p=i/(n-1);
    return nextPatch.type==="sample"?
     decoded?sampleWave(nextPatch,p,decoded):
-      Math.sin(2*Math.PI*p*11)*(.4+.6*clamp(nextPatch.gain??1,0,1))*Math.exp(-p*3):
+     Math.sin(2*Math.PI*p*11)*(.4+.6*clamp(nextPatch.gain??1,0,1))*Math.exp(-p*3):
     synthWave(nextPatch,p);
   });
-  const max=Math.max(.5,...waves.map(Math.abs));
-  upper.setAttribute("d",pathFrom(waves,720,80,48,34/max));
+  // This is an illustrative shape, not an offline audio render. The same
+  // source's filter, envelope, and level are represented without normalizing
+  // away brightness and volume changes between dial positions.
+  const filter=nextPatch.type==="sample"?nextPatch.filter:null;
+  let smoothed=0;
+  const ratio=filter?clamp(Math.log(filter.cutoff/50)/Math.log(280)):1;
+  const alpha=.025+.975*ratio*ratio;
+  const waves=raw.map((value,i)=>{
+   smoothed+=alpha*(value-smoothed);
+   const shaped=!filter?value:filter.type==="lowpass"?smoothed:
+    filter.type==="highpass"?value-smoothed:
+    filter.type==="bandpass"?smoothed*.6+(value-smoothed)*.4:
+    value-(smoothed-value)*.35;
+   return shaped*scopeAmplitudeAt(nextPatch,i/(n-1)*2.2)*level;
+  });
+  upper.setAttribute("d",pathFrom(waves,720,80,48,34));
   const pitch=Array.from({length:n},(_,i)=>{
    const sec=i/(n-1)*2.2;
    return pitchCents({bend:nextPatch.bend},m,sec,2.2)/100+
