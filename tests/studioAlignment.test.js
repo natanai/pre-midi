@@ -24,7 +24,7 @@ test("transport position is independent from the loop switch",()=>{
 
 test("sound actions own a deliberate row with no orphan synth subtitle",()=>{
  const start=html.indexOf('class="heading sound-section-heading"');
- const end=html.indexOf('class="controls"',start);
+ const end=html.indexOf('class="sound-primary-controls"',start);
  assert.ok(start>0&&end>start);
  const sound=html.slice(start,end);
  assert.match(sound,/class="sound-window-actions"/);

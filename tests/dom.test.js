@@ -49,7 +49,7 @@ test("note and sound controls have distinct, wrapping groups", () => {
   assert.ok(notes.includes('id="'+id+'"'),"Missing note control "+id);
  }
  assert.match(css,/\.notes-toolbar\s*\{[^}]*flex-wrap:wrap/);
- assert.match(html,/class="sound-control-group sound-identity-controls"/);
+ assert.match(html,/class="sound-primary-controls"/);
  assert.match(html,/id="synth-editor"/);
  assert.match(html,/id="instrument-dialog"/);
  assert.match(html,/id="change-sound"/);
@@ -145,10 +145,32 @@ test("Sound heading does not duplicate its editable instrument name",()=>{
  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const sound=html.slice(html.indexOf('id="sound-section"'),html.indexOf('id="note-effects-section"'));
- assert.ok(sound.includes('<div class="sound-heading"><h2>sound</h2></div>'));
- assert.ok(sound.includes('<label>Name <input id="instrument-name"'));
+ assert.ok(sound.includes('<h2>sound</h2>'));
+ assert.ok(sound.includes('class="sound-heading"'));
+ assert.ok(sound.includes('<input id="instrument-name" maxlength="60" aria-label="Instrument name"'));
  assert.ok(sound.includes('id="sound-name"'));
  assert.ok(!sound.includes('id="edit-instrument-note"'));
  assert.ok(!studio.includes('$("edit-instrument-note")'));
  assert.ok(studio.includes('$("sound-section").setAttribute("aria-label"'));
+});
+
+test("primary instrument controls replace redundant lower fields",()=>{
+ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ const synth=readFileSync(new URL("../instrumentUI.js",import.meta.url),"utf8");
+ const sampler=readFileSync(new URL("../samplerUI.js",import.meta.url),"utf8");
+ const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
+ assert.match(html,/class="sound-primary-controls"/);
+ for(const id of ["instrument-volume-dial","primary-brightness-dial","primary-attack-dial","primary-release-dial"])
+  assert.ok(html.includes('id="'+id+'"'),id);
+ assert.ok(html.indexOf('id="primary-release-dial"')<html.indexOf('id="sound-visualizer"'));
+ assert.match(html,/class="sound-entity-menu"/);
+ assert.match(html,/id="remove-instrument"/);
+ assert.ok(!html.includes('class="sound-control-group sound-identity-controls"'));
+ assert.match(css,/\.sound-primary-controls \{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+ assert.match(studio,/PRIMARY_SYNTH_FIELDS/);
+ assert.match(studio,/createSignalDisplay\(\$\("sound-visualizer"\),patch,beat,signal\(inst\),inst.volume\*entry.gain\)/);
+ assert.ok(!synth.includes('{name:"Sound",open:true'));
+ assert.ok(!sampler.includes('["cutoff","Cutoff",50,14000,1,"hz",true]'));
+ assert.ok(!sampler.includes('["attack","Attack",0,2,.005,"seconds"]'));
 });

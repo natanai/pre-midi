@@ -5,12 +5,14 @@ import { WAVES, FILTERS } from "./synth.js";
 import { BEND_SHAPES } from "./expression.js";
 import { createDial,explainLabel,helpForLabel } from "./dial.js";
 import {HARMONIC_COUNT,harmonicRecipe} from "./harmonics.js";
+// These canonical descriptors render in the top Sound row, not a second
+// accordion. They remain ordinary patch fields for native/browser parity.
+export const PRIMARY_SYNTH_FIELDS=Object.freeze([
+ {path:["filter","cutoff"],label:"brightness",min:50,max:14000,step:1,display:"hz",log:true},
+ {path:["envelope","attack"],label:"attack",min:0,max:3,step:.01,display:"seconds"},
+ {path:["envelope","release"],label:"release",min:.01,max:4,step:.01,display:"seconds"}
+]);
 const groups=[
- {name:"Sound",open:true,fields:[
-  {path:["filter","cutoff"],label:"Cutoff",min:50,max:14000,step:1,display:"hz",log:true},
-  {path:["envelope","attack"],label:"Attack",min:0,max:3,step:.01,display:"seconds"},
-  {path:["envelope","release"],label:"Release",min:.01,max:4,step:.01,display:"seconds"}
- ]},
  {name:"Oscillator 1",open:true,fields:[
   {path:["oscillators",0,"wave"],label:"Wave",options:WAVES},
   {path:["oscillators",0,"level"],label:"Level",min:0,max:1,step:.01,display:"percent"},

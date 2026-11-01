@@ -12,12 +12,13 @@ import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
-import { renderPatchEditor } from "./instrumentUI.js";
+import { renderPatchEditor,PRIMARY_SYNTH_FIELDS } from "./instrumentUI.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
 import { DRUM_RACKS } from "./drumRacks.js";
 import { loadLibrarySample, makeSampleAsset, MAX_BEAT_BYTES, sampleForNote } from "./sampler.js";
 import { sampleAsset } from "./samples.js";
 import { renderSamplerEditor } from "./samplerUI.js";
+import {sampleTone} from "./audioEffects.js";
 import { loadDraft, saveDraft, savePresetAssets } from "./storage.js";
 import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
@@ -1151,7 +1152,7 @@ function renderSound() {
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
- const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst));
+ const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst),inst.volume*entry.gain);
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
   const next=patchCopy(sound().patch);
@@ -1180,10 +1181,34 @@ function renderSound() {
    },140);
   }
  };
+ // Prominent edits share exactly the same persistent patch fields as the
+ // existing sound modules, with no duplicate parameter controls below.
  const volume=$("instrument-volume-dial");
  volume.replaceChildren();
- volume.append(createDial({label:inst.layout==="rack"?"Rack volume":"Volume",min:0,max:1,step:.01,display:"percent"},
-  inst.volume,value=>modify(()=>{instrument().volume=value;})));
+ volume.append(createDial({label:inst.layout==="rack"?"rack volume":"volume",min:0,max:1,step:.01,display:"percent"},
+  inst.volume,value=>modify(()=>{instrument().volume=value;}),
+  value=>scope(patch,value*entry.gain)));
+ const topFields=patch.type==="synth"?PRIMARY_SYNTH_FIELDS:[
+  {label:"brightness",path:["filter"],min:50,max:14000,step:1,display:"hz",log:true},
+  {label:"attack",path:["attack"],min:0,max:2,step:.005,display:"seconds"},
+  {label:"release",path:["release"],min:.01,max:3,step:.01,display:"seconds"}
+ ];
+ const topNodes=["primary-brightness-dial","primary-attack-dial","primary-release-dial"];
+ topFields.forEach((field,index)=>{
+  const root=$(topNodes[index]);root.replaceChildren();
+  const filter=patch.type==="sample"&&index===0;
+  const current=filter?sampleTone(patch).filter.cutoff:
+   field.path.reduce((value,key)=>value?.[key],patch);
+  const update=(value,apply)=>{
+   if(filter)apply(["filter"],{...sampleTone(patch).filter,cutoff:value});
+   else apply(field.path,value);
+  };
+  const filterType=patch.type==="sample"?sampleTone(patch).filter.type:patch.filter.type;
+  const help=index===0?(filterType==="lowpass"?
+   "turn it down to muffle the high stuff":"move the filter to reshape the sound"):undefined;
+  root.append(createDial({...field,help},current,
+   value=>update(value,onChange),value=>update(value,preview)));
+ });
  $("sound-name").value=entry.name;
  $("move-sound-up").disabled=inst.sounds.indexOf(entry)===0;
  $("move-sound-down").disabled=inst.sounds.indexOf(entry)===inst.sounds.length-1;
