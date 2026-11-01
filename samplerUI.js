@@ -150,9 +150,9 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   target[path.at(-1)]=value;
   for(const visual of visuals)visual.draw(next);
  };
- for(const [details,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"]]){
-  const visual=illustrateSoundPanel(details,kind,patch,onChange,preview);
-  visuals.push(visual);details.replaceWith(visual.element);
+ for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"]]){
+  const visual=illustrateSoundPanel(section,kind,patch,onChange,preview);
+  visuals.push(visual);section.replaceWith(visual.element);
  }
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
