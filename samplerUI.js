@@ -1,4 +1,5 @@
 import {movement,movementDefaults,BEND_SHAPES} from "./expression.js";
+import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {createDial,explainLabel,helpForLabel} from "./dial.js";
 import {sampleTone,SAMPLE_FILTERS} from "./audioEffects.js";
 // Sample controls and synth controls share the same dial and visualization
@@ -137,6 +138,21 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  } else {
   populateMapping();
   root.append(mapping);
+ }
+ // Keep the same diagrams and direct manipulation for recorded instruments.
+ // These wrappers leave the actual sampler dials and mapping controls intact.
+ const visuals=[];
+ const preview=(path,value)=>{
+  onPreview(path,value);
+  if(!path?.length)return;
+  const next=structuredClone(patch);let target=next;
+  for(const key of path.slice(0,-1))target=target[key]??={};
+  target[path.at(-1)]=value;
+  for(const visual of visuals)visual.draw(next);
+ };
+ for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"]]){
+  const visual=illustrateSoundPanel(section,kind,patch,onChange,preview);
+  visuals.push(visual);section.replaceWith(visual.element);
  }
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);

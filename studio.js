@@ -1160,6 +1160,8 @@ function renderSound() {
   for(let i=0;i<path.length-1;i++)parent=parent[path[i]]??={};
   parent[path[path.length-1]]=value;
   scope(next);
+  for(const panel of $("synth-editor").querySelectorAll(".visual-sound-panel"))
+   panel.drawSoundIllustration?.(next);
  };
  const onChange=(path,value)=>{
   const changed=modify(()=>{
@@ -1193,6 +1195,12 @@ function renderSound() {
   {label:"attack",path:["attack"],min:0,max:2,step:.005,display:"seconds"},
   {label:"release",path:["release"],min:.01,max:3,step:.01,display:"seconds"}
  ];
+ // Return the same dial nodes to the header before replacing the editor.
+ // The visuals adopt them after rendering, without duplicate parameters.
+ const primary=document.querySelector(".sound-primary-controls");
+ for(const key of ["primary-brightness-dial","primary-attack-dial","primary-release-dial"]){
+  const dial=$(key);if(dial.parentElement!==primary)primary.append(dial);
+ }
  const topNodes=["primary-brightness-dial","primary-attack-dial","primary-release-dial"];
  topFields.forEach((field,index)=>{
   const root=$(topNodes[index]);root.replaceChildren();
@@ -1242,6 +1250,14 @@ function renderSound() {
   renderPatchEditor($("synth-editor"),patch,onChange,preview);
   renderCutoffAutomation($("synth-editor"),inst,beat,block=>{const changed=modify(()=>{if(block)instrument().automation=block;else delete instrument().automation;});if(changed&&playback)message("cutoff movement updates with new notes");});
  }
+ const editor=$("synth-editor");
+ const placeDial=(id,kind)=>{
+  const fields=editor.querySelector('.visual-sound-panel[data-visual-kind="'+kind+'"] .synth-fields');
+  if(fields)fields.prepend($(id));
+ };
+ placeDial("primary-brightness-dial","filter");
+ placeDial("primary-attack-dial",patch.type==="sample"?"sample":"envelope");
+ placeDial("primary-release-dial",patch.type==="sample"?"sample":"envelope");
  $("remove-instrument").disabled=false;
   $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }

@@ -24,8 +24,9 @@ frame.addEventListener("load",async()=>{
   card.querySelector(".preset-choose").click();await wait(()=>!get("instrument-dialog").open,"choose sound");
   if(get("sound-toggle").getAttribute("aria-expanded")!=="true")get("sound-toggle").click();
   const primary=doc.querySelector(".sound-primary-controls");
-  assert("common sound controls appear first",!!primary&&
-   ["brightness","attack","release","volume"].every(name=>primary.contains(knob(name))));
+  assert("common sound controls with their illustrations",!!primary&&primary.contains(knob("volume"))&&
+   ["brightness","attack","release"].every(name=>get("synth-editor").contains(knob(name)))&&
+   get("synth-editor").querySelectorAll(".visual-sound-panel").length>=6);
   assert("one control per parameter",["brightness","attack","release","volume"].every(name=>doc.querySelectorAll('[role="slider"][aria-label="'+name+'"]').length===1));
   const before=(await score()).instruments.at(-1),beforeHeard=heard;
   get("hear-sound").click();await wait(()=>heard>beforeHeard,"hear current sound");

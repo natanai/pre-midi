@@ -158,7 +158,16 @@
   await wait(()=>get("status").dataset.saving==="false","Song saved locally",7000);
   await new Promise(resolve=>{frame.onload=resolve;frame.src="/index.html";});
   captureDownloads(frame.contentWindow);
-  await wait(()=>frame.contentDocument.querySelectorAll(".song-track-row").length===3,"Song restored from local draft",7000);
+  await wait(()=>frame.contentDocument.querySelectorAll(".song-track-row").length===3,"Song restored from local draft",7000).catch(error=>{
+   const current=frame.contentWindow,document=frame.contentDocument;
+   const cache=current.localStorage.getItem("premidi-v5-draft")||"";
+   const detail={rows:document.querySelectorAll(".song-track-row").length,
+    songHidden:document.getElementById("song-panel")?.hidden,
+    heading:document.getElementById("title")?.value,
+    status:document.getElementById("status")?.textContent,
+    cacheSize:cache.length,cachePrefix:cache.slice(0,140),issues};
+   throw Error(error.message+"; "+JSON.stringify(detail));
+  });
   assert(get("song-title").value==="Arrangement check","Song title persisted");
   assert(frame.contentDocument.querySelectorAll(".song-beat-clip").length===3,"All Song clips persisted");
   assert(!get("song-panel").hidden,"Song remains expanded on reload");
