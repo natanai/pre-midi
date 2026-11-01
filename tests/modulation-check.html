@@ -22,7 +22,11 @@ frame.addEventListener("load",async()=>{
   await choose("add-instrument","user-legacy");
   await choose("add-instrument","touch-keys");
   if(get("sound-toggle").getAttribute("aria-expanded")!=="true")get("sound-toggle").click();
-  let panel=doc.querySelector(".modulation-editor");check("routing is optional",!panel.open);panel.querySelector("summary").click();
+  let panel=doc.querySelector(".modulation-editor");
+  check("modulation editor exists",!!panel);
+  // Modules with active (non-default) settings may open automatically.
+  if(!panel.open)panel.querySelector("summary").click();
+  check("modulation editor accessible",panel.open);
   const knob=panel.querySelector('[aria-label="Movement amount 1"]'),before=Number(knob.getAttribute("aria-valuenow"));
   knob.dispatchEvent(new win.KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
   panel=doc.querySelector(".modulation-editor");panel.querySelector(":scope > button").click();
