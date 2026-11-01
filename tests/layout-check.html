@@ -80,10 +80,24 @@ async function checkLayout(frame){
  const firstNote=()=>[...doc.querySelectorAll("#piano .note")].find(el=>
   el.getAttribute("aria-label")?.includes("C4, step 1"));
  checks.newCompositionBlank=doc.querySelectorAll("#piano .note.filled").length===0;
+ // Verify the *real* keyboard responds to grid hover, note placement, and
+ // key release without changing the stored MIDI notes or adding browser jobs.
+ const pianoKey=()=>doc.querySelector('#piano .piano-key[data-pitch="60"]');
+ const blackKey=doc.querySelector('#piano .piano-key.black');
+ const whiteKey=doc.querySelector('#piano .piano-key.white');
+ checks.pianoKeyboardFlat=!!whiteKey&&!!blackKey&&
+  frame.contentWindow.getComputedStyle(whiteKey).backgroundImage==="none"&&
+  frame.contentWindow.getComputedStyle(blackKey).backgroundImage==="none";
+ firstNote()?.dispatchEvent(new frame.contentWindow.PointerEvent("pointermove",{bubbles:true}));
+ checks.pianoKeyFollowsGridHover=!!pianoKey()?.classList.contains("hovered");
+ get("piano").dispatchEvent(new frame.contentWindow.PointerEvent("pointerleave"));
+ checks.pianoKeyHoverClears=!!pianoKey()&&!pianoKey().classList.contains("hovered");
  firstNote()?.click();
  checks.noteAddedByClick=doc.querySelectorAll("#piano .note.filled").length>0;
+ checks.pianoKeyPressesOnAdd=!!pianoKey()?.classList.contains("pressed");
  firstNote()?.click();
  checks.noteRemovedByClick=doc.querySelectorAll("#piano .note.filled").length===0;
+ checks.pianoKeyDoesNotPressOnRemove=!!pianoKey()&&!pianoKey().classList.contains("pressed");
  // Exercise the actual piano-roll toolbar, including access to previously
  // written out-of-scale notes when limiting future note entry.
  const scaleRoot=get("scale-root"),scaleMode=get("scale-mode"),scaleLock=get("scale-lock");
