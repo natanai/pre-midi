@@ -33,7 +33,9 @@ frame.addEventListener("load",async()=>{
   const beat=await exported();check("modulated Beat uses v9",beat.version===9);check("v9 parses",parse(JSON.stringify(beat)).version===9);
   const patch=beat.instruments.at(-1).sounds[0].patch;
   check("native routes remain editable",patch.version===2&&patch.modulation.routes.length===4&&patch.modulation.routes[0].depth>before);
-  win.prompt=()=>"Moving variation";get("save-sound").click();await wait(()=>(win.localStorage.getItem("premidi-user-sounds-v2")||"").includes("Moving variation"),"save moving patch");
+  get("save-sound").click();check("save preset dialog opens",get("save-preset-dialog").open);
+  get("save-preset-name").value="Moving variation";get("save-preset-form").requestSubmit();
+  await wait(()=>(win.localStorage.getItem("premidi-user-sounds-v2")||"").includes("Moving variation"),"save moving patch");
   check("legacy preset storage stays intact",win.localStorage.getItem("premidi-user-sounds-v1")===legacy);
   const reload=new Promise(done=>frame.addEventListener("load",done,{once:true}));win.location.reload();await reload;doc=frame.contentDocument;win=frame.contentWindow;win.confirm=()=>true;capture();
   await choose("add-instrument","Moving variation");const reopened=await exported();
