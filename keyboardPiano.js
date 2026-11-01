@@ -135,7 +135,20 @@ export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrume
     toggle.title=active?"exit keyboard piano mode (Esc)":"play with QWERTY keyboard";
     document.body.classList.toggle("keyboard-piano-active",active);
   };
+  const disabledFields=new Map();
+  const gateTextFields=on=>{
+    if(on){
+      for(const field of document.querySelectorAll(".app input, .app textarea, .app select")){
+        if(!disabledFields.has(field))disabledFields.set(field,field.disabled);
+        field.disabled=true;
+      }
+    }else{
+      for(const [field,wasDisabled] of disabledFields)field.disabled=wasDisabled;
+      disabledFields.clear();
+    }
+  };
   const refresh=()=>{
+    if(active)gateTextFields(true);
     document.querySelectorAll(".keyboard-held").forEach(node=>node.classList.remove("keyboard-held"));
     for(const pitch of performancePitch.values()){
       document.querySelectorAll('#piano [data-pitch="'+pitch+'"]').forEach(node=>node.classList.add("keyboard-held"));
@@ -151,6 +164,7 @@ export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrume
   const setActive=next=>{
     if(next===active)return;
     releaseAll();active=next;
+    gateTextFields(active);
     if(active){
       whole=0;right=0;
       const middle=Math.round((pitchAt(0)+pitchAt(PIANO_NOTES.length-1))/2);
