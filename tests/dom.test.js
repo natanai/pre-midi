@@ -13,8 +13,9 @@ test("the UI uses instruments, timeline and chunks without deprecated wording", 
  assert.match(html, /<h2>Instruments<\/h2>/);
  assert.match(html, /<h2>Timeline<\/h2>/);
  assert.match(html, /class="chunk-name-field">chunk <input id="chunk-name"/);
- assert.match(html, /<select id="chunk" aria-label="Choose chunk to edit"/);
- assert.match(html, /new notes <select/);
+ assert.match(html, /<button id="chunk" type="button" aria-label="choose chunk"/);
+ assert.match(html, /id="chunk-menu"/);
+ assert.doesNotMatch(html, /id="velocity"|id="length"/);
  assert.doesNotMatch(html, /<h2>Tracks<\/h2>|Pattern|Arrangement/);
 });
 test("note end grip, pointer resizing, and live scheduler are connected", () => {
@@ -44,7 +45,7 @@ test("note and sound controls have distinct, wrapping groups", () => {
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  const notes=html.slice(html.indexOf('<section class="notes-section"'),html.indexOf('</section>',html.indexOf('<section class="notes-section"')));
  assert.ok(notes.indexOf('class="notes-toolbar"')>notes.indexOf('class="notes-heading"'));
- for(const id of ["chunk","chunk-name","add-chunk","duplicate-chunk","delete-chunk","length"]) {
+ for(const id of ["chunk","chunk-menu","chunk-name","delete-chunk"]) {
   assert.ok(notes.includes('id="'+id+'"'),"Missing note control "+id);
  }
  assert.match(css,/\.notes-toolbar\s*\{[^}]*flex-wrap:wrap/);
@@ -76,8 +77,10 @@ test("instrument presets have one owner and the full synth editor is reachable",
 test("guitar dynamics and reachable low-string notes are exposed in the original editor",()=>{
  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
- assert.match(html,/id="velocity"/);
- assert.match(studio,/event.shiftKey/);
+ assert.doesNotMatch(html,/id="velocity"|id="length"/);
+ assert.match(studio,/velocity:DEFAULT_NOTE_LEVEL/);
+ assert.match(studio,/duplicateChunk\(chunk.id\)/);
+ assert.match(studio,/createChunk\(\)/);
  assert.match(studio,/pitch >= 36/);
 });
 
