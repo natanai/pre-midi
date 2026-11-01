@@ -100,5 +100,5 @@ test("piano-roll pointer handler keeps simple clicks and commits drags only once
  assert.match(source,/moveNote\(chunk,note\.id,original\.start/);
  assert.match(source,/mode==="paint"[\s\S]*?chunk\.notes\.push\(note\)/);
  assert.match(source,/if\(changed\)\{\s*ignoreClick=true;[\s\S]*?setTimeout\(\(\)=>commitChange\(before\),0\)/);
- assert.match(source,/if\(ignoreClick\) return;/);
+ assert.match(source,/if\s*\(ignoreClick\)\s*return;/);
 });
