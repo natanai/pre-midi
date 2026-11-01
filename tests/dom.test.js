@@ -70,7 +70,8 @@ test("instrument presets have one owner and the full synth editor is reachable",
  assert.match(editor,/Envelope/);
  assert.match(editor,/Filter & noise/);
  assert.match(editor,/Pitch & movement/);
- assert.match(editor,/Distortion & delay/);
+ assert.match(editor,/Distortion/);
+ assert.match(editor,/Delay/);
  assert.doesNotMatch(html,/id="waveform"/);
 });
 
