@@ -49,8 +49,4 @@
  gap:4px 10px;padding:0 10px 7px;border-bottom:1px solid var(--line)
 }
 .sound-section > .sound-actions button {height:32px;min-height:32px;padding:5px 3px}
-@media(max-width:570px){
- .transport {gap:7px 10px}
- .notes-toolbar {gap:10px}
- .sound-section > .sound-actions {padding:0 8px 6px}
-}
+

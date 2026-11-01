@@ -6,6 +6,12 @@
 <meta name="theme-color" content="#000000">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <title>pre-midi — studio</title>
+<script>
+// Phone viewports have a dedicated entry; desktop controller never boots there.
+if (!window.__TAURI_INTERNALS__ && matchMedia("(max-width: 600px), (max-height: 500px) and (pointer: coarse)").matches) {
+ location.replace(new URL("./phone/", location.href));
+}
+</script>
 <link rel="stylesheet" href="./style.css">
 <link rel="stylesheet" href="./studioAlignment.css">
 </head>

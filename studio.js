@@ -1304,7 +1304,7 @@ function render() {
 
 
 function positionNoteEffectsInspector(){
- // One real note editor, moved only when the desktop/mobile layout changes.
+ // One real note editor, moved only between wide and narrow desktop layouts.
  const panel=$("note-effects-section");
  const notes=document.querySelector(".notes-section");
  const main=document.querySelector(".mainwork");
@@ -1335,7 +1335,7 @@ function setInspector(state){
  syncInspector();
 }
 inspectorViewport.addEventListener("change",event=>{
- // Both layouts use precisely the same existing Sound element and editor.
+ // Wide and narrow desktop layouts use the same Sound element and editor.
  setInspector(event.matches?"expanded":"closed");
 });
 $("sound-toggle").addEventListener("click",()=>{

@@ -1,8 +1,12 @@
 # pre-midi
 
-A local-first Beat maker and Song arranger for the [pre-programmed](https://github.com/natanai/pre-programmed) game engine. Native desktop and mobile are the primary long-term deployment targets; the current browser studio remains supported without defining the ceiling for audio quality.
+A local-first Beat maker and Song arranger for the [pre-programmed](https://github.com/natanai/pre-programmed) game engine. Native desktop and phone web app are long-term deployment targets; the browser desktop studio remains supported without defining the ceiling for audio quality.
 
 [Open the web studio](https://natanai.github.io/pre-midi/) · [Windows portable preview](https://github.com/natanai/pre-midi/releases) · [Native audio status](docs/native-audio.md) · [Synthesis roadmap](docs/synthesis-roadmap.json)
+
+## Phone studio rebuild
+
+The previous phone-width desktop layout has been retired because editing interactions were unreliable. The phone entry currently shows a rebuild notice instead of a partially functional editor. The planned iOS Add to Home Screen edition will have its own phone UI but share the desktop music engine and project format. **Phone editing, offline mode and install-quality behavior are not yet implemented.** See the [canonical phone rebuild plan](docs/phone-studio.md).
 
 ## Windows portable preview
 
@@ -43,8 +47,8 @@ The goal is **one native music format** for the studio and pre-programmed, inclu
 The web editor runs directly in modern browsers via GitHub Pages, with no application runtime dependencies and no backend. The Windows portable desktop host uses Tauri and the shared musical core; native macOS/Linux packaging is deferred during rapid prototyping.
 
 - `npm run check` — JavaScript syntax checks and Node regression tests.
-- `node tests/song.browser.mjs` — desktop/mobile Song browser interaction, playback, and recording checks (requires Chrome).
-- `node tests/layout.browser.mjs` — responsive layout, examples, racks, conversion and sound tests (requires Chrome).
+- `node tests/song.browser.mjs` — desktop and narrow-desktop Song browser interaction, playback, and recording checks (requires Chrome).
+- `node tests/layout.browser.mjs` — desktop and narrow-desktop layout, examples, racks, conversion and sound tests (requires Chrome).
 - `node scripts/fetch-samples.mjs` — fetch exact pinned CC0 samples and verify their hashes into the ignored `samples/` directory.
 - `node scripts/prepare-pages.mjs` — stage **only** the runtime dependency graph, styles, notices and required verified samples in ignored `dist/` for publishing. GitHub Pages does not publish tests, plans or scripts.
 
@@ -58,5 +62,6 @@ The source files have no generated bundles committed to Git. Browser audio is bu
 - [Sound-conversion method](docs/synth-conversion.md).
 - [Sample provenance and checksums](docs/sample-sources.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 - [Studio interface rules for contributors and agents](AGENTS.md).
+- [Canonical phone interface architecture and parity gates](docs/phone-studio.md).
 
 The design remains Beat-first, uncluttered and lowercase in the UI. Preserve external audio assets and existing file compatibility in every format change.
