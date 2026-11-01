@@ -1,10 +1,12 @@
 import {MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {createDial,explainLabel} from "./dial.js";
-let expanded=false;
-export function renderModulationEditor(patch,onChange){
- const details=document.createElement("details");details.className="synth-group modulation-editor";details.open=expanded;
+const openBySound=new Map();
+export function renderModulationEditor(patch,onChange,soundId=null){
+ const key=soundId??patch;
+ if(!openBySound.has(key))openBySound.set(key,!!patch.modulation?.routes?.length);
+ const details=document.createElement("details");details.className="synth-group modulation-editor";details.open=openBySound.get(key);
  const summary=document.createElement("summary");summary.textContent="movement routes";details.append(summary);
- details.addEventListener("toggle",()=>expanded=details.open);
+ details.addEventListener("toggle",()=>openBySound.set(key,details.open));
  const routes=patch.modulation?.routes??[];
  const change=next=>onChange(["modulation"],{version:1,routes:next});
  const update=(index,values)=>change(routes.map((route,i)=>i===index?{...route,...values}:route));
@@ -29,6 +31,6 @@ export function renderModulationEditor(patch,onChange){
   const remove=document.createElement("button");remove.type="button";remove.textContent="remove movement";remove.addEventListener("click",()=>change(routes.filter((_,i)=>i!==index)));settings.append(remove);row.append(settings);details.append(row);
  }
  const add=document.createElement("button");add.type="button";add.textContent="add movement";add.disabled=routes.length>=16;
- add.addEventListener("click",()=>{expanded=true;change([...routes,{id:globalThis.crypto.randomUUID(),source:defaultSource("lfo"),target:"filter.cutoff",unit:"octaves",depth:1,polarity:"unipolar",smoothing:.005}]);});details.append(add);
+ add.addEventListener("click",()=>{openBySound.set(key,true);change([...routes,{id:globalThis.crypto.randomUUID(),source:defaultSource("lfo"),target:"filter.cutoff",unit:"octaves",depth:1,polarity:"unipolar",smoothing:.005}]);});details.append(add);
  return details;
 }
