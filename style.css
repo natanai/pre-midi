@@ -143,7 +143,7 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
  gap:10px 18px;padding:10px 14px;
  border-bottom:1px solid var(--faint);background:var(--panel);
 }
-.chunk-tools,.chunk-fields,.chunk-actions,.note-controls {
+.chunk-tools,.chunk-fields,.chunk-actions {
  display:flex;align-items:end;flex-wrap:wrap;min-width:0;
 }
 .chunk-tools {gap:6px 14px}
@@ -488,7 +488,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   .piano-scroll {margin:0 8px 13px}
   .controls {padding:12px}
   .notes-toolbar {padding:12px;gap:12px 20px}
-    .chunk-tools {width:100%}
+  .chunk-tools {width:100%}
   .chunk-fields {flex:1;flex-wrap:nowrap}
   .chunk-fields .chunk-name-field {flex:1;min-width:0}
   .chunk-fields #chunk-name {width:100%}
