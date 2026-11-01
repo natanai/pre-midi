@@ -169,7 +169,7 @@ test("primary instrument controls replace redundant lower fields",()=>{
  assert.ok(!html.includes('class="sound-control-group sound-identity-controls"'));
  assert.match(css,/\.sound-primary-controls \{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
  assert.match(studio,/PRIMARY_SYNTH_FIELDS/);
- assert.match(studio,/createSignalDisplay\(\$\("sound-visualizer"\),patch,beat,signal\(inst\),inst.volume\*entry.gain,entry.referencePitch\)/);
+ assert.match(studio,/createSignalDisplay\(\$\("sound-visualizer"\),patch,beat,signal\(inst\),inst.volume\*entry.gain,entry.referencePitch,inst.automation\)/);
  assert.ok(!synth.includes('{name:"Sound",open:true'));
  assert.ok(!sampler.includes('["cutoff","Cutoff",50,14000,1,"hz",true]'));
  assert.ok(!sampler.includes('["attack","Attack",0,2,.005,"seconds"]'));
