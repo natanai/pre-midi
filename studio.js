@@ -1132,10 +1132,12 @@ function renderChunkEditor() {
   row.append(select,duplicate);
   menu.append(row);
  }
- const add=button("+ new chunk",()=>{
+ const add=button("+",()=>{
   closeChunkMenu();
   createChunk();
  },"chunk-menu-new");
+ add.setAttribute("aria-label","new chunk");
+ add.title="new chunk";
  add.disabled=inst.chunks.length>=32;
  menu.append(add);
  $("chunk-name").value=active.name;
