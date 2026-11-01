@@ -163,11 +163,11 @@ test("primary instrument controls replace redundant lower fields",()=>{
  assert.match(html,/class="sound-primary-controls"/);
  for(const id of ["instrument-volume-dial","primary-brightness-dial","primary-attack-dial","primary-release-dial"])
   assert.ok(html.includes('id="'+id+'"'),id);
- assert.ok(html.indexOf('id="primary-release-dial"')<html.indexOf('id="sound-visualizer"'));
+ assert.ok(html.indexOf('id="synth-editor"')<html.indexOf('id="sound-visualizer"'));
  assert.match(html,/class="sound-entity-menu"/);
  assert.match(html,/id="remove-instrument"/);
  assert.ok(!html.includes('class="sound-control-group sound-identity-controls"'));
- assert.match(css,/\.sound-primary-controls \{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+ assert.match(css,/\\.visual-sound-panel/);
  assert.match(studio,/PRIMARY_SYNTH_FIELDS/);
  assert.match(studio,/createSignalDisplay\(\$\("sound-visualizer"\),patch,beat,signal\(inst\),inst.volume\*entry.gain,entry.referencePitch,inst.automation\)/);
  assert.ok(!synth.includes('{name:"Sound",open:true'));
