@@ -757,7 +757,7 @@ function renderNotes() {
  root.classList.toggle("piano-keyboard",inst.layout!=="rack"&&showPianoKeys);
  root.setAttribute("aria-label",inst.layout==="rack"?"Sound rack":"Piano roll");
  renderScaleControls(inst);
- if(inst.layout==="rack"){renderRack(root,inst,chunk);return;}
+ if(inst.layout==="rack"){keyboardPiano?.stop();renderRack(root,inst,chunk);return;}
  const scroll = root.parentElement, top = scroll.scrollTop, left = scroll.scrollLeft;
  root.replaceChildren();
  root.style.setProperty("--track-accent", signal(inst));
@@ -1064,6 +1064,7 @@ function renderNotes() {
  root.append(playhead);
  paintKeys(scaleFocusStep);
  paintPianoPlayhead();
+ keyboardPiano?.refresh();
  scroll.scrollTop = top;
  scroll.scrollLeft = left;
  const note=editingNoteEffects?chunk.notes.find(entry=>entry.id===selectedNoteId):null;
