@@ -155,17 +155,32 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
  color:var(--muted);font-size:11px;
 }
 .chunk-fields #chunk-name {width:clamp(155px,13vw,215px);max-width:100%}
-.notes-toolbar label.chunk-switcher {
- position:relative;display:block;width:34px;height:34px;
-}
+.chunk-switcher {position:relative;flex:none;align-self:flex-end;width:34px;height:34px}
 .chunk-switcher #chunk {
- display:block;width:34px;min-width:34px;height:34px;
- padding:0;appearance:none;color:transparent;font-size:0;cursor:pointer;
+ display:grid;place-items:center;width:34px;height:34px;padding:0;
+ border:1px solid var(--line);color:var(--bright);font-size:16px;
 }
-.chunk-switcher #chunk option {color:var(--bright);font-size:14px}
-.chunk-switch-icon {
- position:absolute;inset:0;display:grid;place-items:center;
- pointer-events:none;color:var(--bright);font-size:16px;
+.chunk-switcher #chunk[aria-expanded="true"] {border-color:var(--bright)}
+.chunk-menu {
+ position:absolute;top:calc(100% + 4px);left:0;z-index:12;
+ width:min(264px,calc(100vw - 32px));max-height:300px;overflow-y:auto;
+ padding:4px;background:var(--void);border:1px solid var(--line);
+ box-shadow:0 10px 32px #000d;
+}
+.chunk-menu-row {display:flex;align-items:stretch;gap:4px;min-height:34px}
+.chunk-menu-select {
+ flex:1;min-width:0;padding:7px 8px;text-align:left;
+ white-space:normal;overflow-wrap:anywhere;
+}
+.chunk-menu-select[aria-current="true"] {background:var(--stripe);border-left:2px solid var(--signal-cyan);color:var(--bright)}
+.chunk-menu-duplicate {
+ flex:none;align-self:center;display:grid;place-items:center;
+ width:32px;height:30px;padding:0;border:1px solid var(--line);
+ color:var(--bright);font-size:17px;
+}
+.chunk-menu-new {
+ display:block;width:100%;min-height:36px;margin-top:4px;
+ padding:8px;border-top:1px solid var(--line);text-align:left;color:var(--bright);
 }
 .chunk-actions button {min-height:34px}
 .chunk-actions button::before,.chunk-actions button::after {color:var(--muted)}
@@ -670,7 +685,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .sample-map-details summary {padding:12px 0;cursor:pointer;color:var(--text);font-size:12px}
 .sample-map-details summary:hover {color:var(--bright)}
 .sample-map-details .sample-zones {padding:12px 0 16px;max-height:290px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
-.note-velocity-control {flex:none}
+/* Note level belongs to the selected-note inspector, not note creation. */
 
 /* Note motion is an additive editor for the real piano-roll note, never a
    separate note definition or save path. */
@@ -683,6 +698,10 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
   color:var(--bright);background:var(--stripe);--note-expression:var(--signal-mauve)
 }
 .expression-title {display:flex;align-items:center;justify-content:space-between;gap:20px;flex:1 1 130px}
+.expression-level {display:grid;gap:6px;min-width:0;color:var(--muted);font-size:11px}
+.expression-level-row {display:flex;align-items:center;gap:9px}
+.expression-level-row input {flex:1;min-width:90px;accent-color:var(--signal-mauve)}
+.expression-level-row output {min-width:40px;text-align:right;color:var(--bright);font-size:12px;font-variant-numeric:tabular-nums}
 .expression-note {font-size:12px;font-weight:normal;white-space:nowrap;color:var(--signal-mauve)}
 .expression-delete {font-size:11px;color:var(--signal-pink);border:1px solid var(--line);padding:8px}
 .expression-controls {display:flex;flex-wrap:wrap;align-items:end;gap:10px 18px;flex:2 1 410px}
@@ -964,8 +983,6 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .rack-sound-actions {display:flex;flex-wrap:wrap;gap:6px;width:100%}
 .rack-sound-actions button {white-space:normal;min-height:36px}
 .layout-actions {padding:0 14px 12px}
-.rack-strength {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
-.rack-strength input {min-width:80px;flex:1}
 [hidden] {display:none!important}
 /* The selected Sound label can widen on mobile; history stays within the heading. */
 .history-actions {max-width:100%;min-width:0;flex-wrap:wrap}
