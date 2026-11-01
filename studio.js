@@ -1786,6 +1786,7 @@ $("hear-sound").addEventListener("click",()=>{
   ?nextRackPreview(rackPreviewPositions,"instrument:"+inst.id,inst.sounds):null;
  const entry=choice?.sound||sound(inst);
  const hear=$("hear-sound");
+ hear.dataset.previewSoundId=entry.id;
  if(choice){
   hear.textContent="hear sound · "+(choice.index+1)+"/"+choice.total;
   hear.title="hear "+entry.name;
@@ -1859,6 +1860,7 @@ async function auditionPreset(preset,previewControl=null) {
    const entry=choice.sound,request=(rackPreviewRequests.get(key)??0)+1;
    rackPreviewRequests.set(key,request);
    if(previewControl){
+    previewControl.dataset.previewSoundId=entry.id;
     previewControl.textContent="▶ "+(choice.index+1)+"/"+choice.total;
     previewControl.title="Preview "+entry.name+" ("+(choice.index+1)+" of "+choice.total+")";
     previewControl.setAttribute("aria-label",previewControl.title);
