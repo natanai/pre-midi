@@ -56,7 +56,7 @@ test("resizing an instrument's chunk doesn't affect another instrument", () => {
 
 test("moving a held note changes its start and pitch without losing expression", () => {
  const score=withNotes(),chunk=score.instruments[0].chunks[0],note=chunk.notes[0];
- note.bend={shape:"curve",points:[{time:0,cents:0}]};
+ note.bend={shape:"rise",amount:2,rate:4};
  const originalId=note.id,originalDuration=note.duration,originalVelocity=note.velocity;
  assert.equal(moveNote(chunk,note.id,7,72,{minPitch:36,maxPitch:83}),true);
  assert.equal(note.start,7);
@@ -64,7 +64,7 @@ test("moving a held note changes its start and pitch without losing expression",
  assert.equal(note.id,originalId);
  assert.equal(note.duration,originalDuration);
  assert.equal(note.velocity,originalVelocity);
- assert.equal(note.bend.shape,"curve");
+ assert.equal(note.bend.shape,"rise");
  assert.deepEqual(validate(score),[]);
 });
 test("moving notes clamps to the displayed grid and never overlaps same-pitch notes", () => {
@@ -75,7 +75,7 @@ test("moving notes clamps to the displayed grid and never overlaps same-pitch no
  assert.equal(moveNote(chunk,first.id,-9,-10,{minPitch:36,maxPitch:83}),true);
  assert.equal(first.start,0);
  assert.equal(first.pitch,36);
- chunk.notes.push({id:id(),pitch:64,start:6,duration:5,velocity:.75});
+ chunk.notes.push({id:id(),pitch:64,start:8,duration:5,velocity:.75});
  const original=[first.start,first.pitch];
  assert.equal(moveNote(chunk,first.id,7,64,{minPitch:36,maxPitch:83}),false);
  assert.deepEqual([first.start,first.pitch],original);
