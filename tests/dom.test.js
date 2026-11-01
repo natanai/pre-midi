@@ -41,6 +41,7 @@ test("instrument creation is a full-width action, not a cramped header control",
  assert.match(css,/\.add-instrument-action\s*\{[^}]*white-space:normal/);
 });
 test("note and sound controls have distinct, wrapping groups", () => {
+ const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  const notes=html.slice(html.indexOf('<section class="notes-section"'),html.indexOf('</section>',html.indexOf('<section class="notes-section"')));
@@ -57,7 +58,16 @@ test("note and sound controls have distinct, wrapping groups", () => {
  assert.match(html,/id="synth-editor"/);
  assert.match(html,/id="instrument-dialog"/);
  assert.match(html,/id="change-sound"/);
- assert.match(html,/id="save-sound"/);
+ assert.match(html,/id="save-sound" class="sound-preset-save" type="button" aria-label="Save preset"/);
+ assert.ok(html.indexOf('id="hear-sound"')<html.indexOf('id="save-sound"')&&
+  html.indexOf('id="save-sound"')<html.indexOf('id="sound-visualizer"'));
+ assert.match(html,/id="save-preset-dialog"[^>]*aria-describedby="save-preset-info"/);
+ assert.match(html,/id="save-preset-name"[^>]*maxlength="60"/);
+ assert.match(html,/id="save-preset-form"/);
+ assert.match(html,/presets are stored in this browser or app, not synced or backed up/);
+ assert.match(html,/reopening the project restores its sounds, not your preset library/);
+ assert.doesNotMatch(html,/<div class="sound-actions"><button id="save-sound"/);
+ assert.doesNotMatch(studio,/prompt\(wholeRack/);
  assert.match(css,/@media \(max-width:860px\)/);
  assert.match(css,/@media \(max-width:570px\)/);
 });

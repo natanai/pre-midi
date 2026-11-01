@@ -1231,7 +1231,7 @@ function renderSound() {
   $("remove-sound").textContent=soundDeleteLabel(inst);
  $("sound-controls").hidden=inst.layout!=="rack";
  $("save-row-sound").hidden=inst.layout!=="rack";
- $("save-sound").textContent=inst.layout==="rack"?"Save rack preset":"Save preset";
+ $("save-sound").setAttribute("aria-label",inst.layout==="rack"?"Save rack preset":"Save preset");
  const level=$("sound-volume-dial");level.replaceChildren();
  level.append(createDial({label:"Sound level",min:0,max:1,step:.01,display:"percent"},entry.gain,
   value=>modify(()=>{sound().gain=value;})));
@@ -1736,13 +1736,10 @@ $("import-as-synth").addEventListener("click",()=>{
  void recorder.openFile(new Blob([bytes],{type:asset.mime}),name);
 });
 $("cancel-audio-kind").addEventListener("click",()=>{$("audio-kind-dialog").close();pendingImport=null;});
-async function savePreset(wholeRack=false){
+async function savePreset(name,wholeRack=false){
  const inst=instrument(),entry=sound();
- const name=prompt(wholeRack?"Name your complete rack preset:":"Name your sound preset:",
-  (wholeRack?inst.name:entry.name)+" variation")?.trim();
- if(!name)return;
- if(name.length>60)return message("Preset name must be 60 characters or less.",true);
- if(savedSounds.length>=100)return message("Your sound library contains 100 presets.",true);
+ if(!name||name.length>60){message("Preset name must be 1–60 characters.",true);return false;}
+ if(savedSounds.length>=100){message("Your sound library contains 100 presets.",true);return false;}
  const sounds=wholeRack?clone(inst.sounds):[clone(entry)];
  const needs=new Set(sounds.flatMap(sound=>sound.patch.type==="sample"?sound.patch.zones.map(zone=>zone.assetId):[]));
  const samples=beat.samples.filter(asset=>needs.has(asset.id));
@@ -1752,12 +1749,34 @@ async function savePreset(wholeRack=false){
  try{
   await savePresetAssets(samples);
   localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));savedSounds.push(item);
-  message("Saved "+name+" in your browser's sound library.");
- }catch(error){message("Could not save preset: "+error.message+". Export your beat to keep it.",true);}
+  message("Saved "+name+" locally.");
+  return true;
+ }catch(error){message("Could not save preset: "+error.message+". Export your beat to keep it.",true);return false;}
 }
+const presetDialog=$("save-preset-dialog"),presetForm=$("save-preset-form");
+let presetRack=false,presetSaving=false;
+function openPresetSave(wholeRack=false){
+ presetRack=wholeRack;
+ $("save-preset-title").textContent=wholeRack?"save rack preset":"save preset";
+ $("save-preset-name").value=(wholeRack?instrument().name:sound().name)+" variation";
+ $("save-preset-confirm").disabled=false;
+ presetDialog.showModal();
+ $("save-preset-name").select();
+}
+$("save-preset-close").addEventListener("click",()=>presetDialog.close());
+$("save-preset-cancel").addEventListener("click",()=>presetDialog.close());
+presetForm.addEventListener("submit",async event=>{
+ event.preventDefault();
+ if(presetSaving)return;
+ const name=$("save-preset-name").value.trim();
+ if(!name){$("save-preset-name").focus();return;}
+ presetSaving=true;$("save-preset-confirm").disabled=true;
+ try{if(await savePreset(name,presetRack))presetDialog.close();}
+ finally{presetSaving=false;$("save-preset-confirm").disabled=false;}
+});
 $("hear-sound").addEventListener("click",()=>{void audition(instrument(),sound().referencePitch,beat,{soundId:sound().id,duration:.6}).catch(error=>message("Could not preview sound: "+error.message,true));});
-$("save-sound").addEventListener("click",()=>{void savePreset(instrument().layout==="rack");});
-$("save-row-sound").addEventListener("click",()=>{void savePreset(false);});
+$("save-sound").addEventListener("click",()=>openPresetSave(instrument().layout==="rack"));
+$("save-row-sound").addEventListener("click",()=>openPresetSave(false));
 function allSounds(){return [...PRESETS,...SAMPLE_LIBRARY,...EXAMPLE_SOUND_PRESETS,...savedSounds,...DRUM_RACKS];}
 function openLibrary(mode) {
  closePicker();

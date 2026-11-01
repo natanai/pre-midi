@@ -46,6 +46,8 @@ try{
  await reportedTest("automation-check","/__automation_result",390,844);
  await reportedTest("modulation-check","/__modulation_result",1440,900);
  await reportedTest("modulation-check","/__modulation_result",390,844);
+ await reportedTest("preset-save-check","/__preset_save_result",1440,900);
+ await reportedTest("preset-save-check","/__preset_save_result",390,844);
  await reportedTest("newcomer-check","/__newcomer_result",1440,900);
  await reportedTest("newcomer-check","/__newcomer_result",390,844);
  await reportedTest("example-presets-check","/__example_presets_result",1440,900);
