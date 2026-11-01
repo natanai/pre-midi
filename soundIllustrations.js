@@ -2,6 +2,8 @@
 // diagrams, not an alternate audio engine or a second source of patch state.
 import {movement,pitchCents} from "./expression.js";
 import {harmonicWave} from "./harmonics.js";
+import {DEFAULT_SAMPLE_FILTER,driveCurve} from "./audioEffects.js";
+import {routeValueAt,MOD_TARGETS} from "./src/dsp/modulation.js";
 
 const NS="http://www.w3.org/2000/svg";
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
@@ -73,7 +75,7 @@ export const diagram=(patch,type)=>{
   ],"detune / level");
   tag(14,14,"detune →");tag(294,14,"level ↑");
  }else if(type==="filter"){
-  const f=p.filter||{type:"lowpass",cutoff:8000,resonance:1};
+  const f=p.filter||(p.type==="sample"?DEFAULT_SAMPLE_FILTER:{type:"lowpass",cutoff:8000,resonance:1});
   const freq=x=>50*280**((x-18)/324);
   const cutoff=clamp(Math.log(Math.max(50,f.cutoff)/50)/Math.log(280));
   const x=18+cutoff*324,r=clamp((f.resonance-.1)/15.9);
@@ -93,6 +95,29 @@ export const diagram=(patch,type)=>{
    axis(["filter","resonance"],.1,16,"linearY",{from:95-60*base,to:95-60*base-25,step:.1})
   ],"cutoff / resonance");
   tag(18,15,"low");tag(308,15,"high");
+  if(p.type==="sample"){
+   const transfer=driveCurve(p.drive??0);
+   line(pathRange(121,t=>[205+t*123,99-13*transfer[Math.round(t*(transfer.length-1))]]),true);
+   tag(217,110,"drive");
+  }else{
+   const sweep=f.sweep??0,sweepTime=f.sweepTime??.2;
+   const startCutoff=clamp(f.cutoff*2**sweep,50,14000);
+   const startX=18+clamp(Math.log(startCutoff/50)/Math.log(280))*324;
+   const stopX=18+clamp(Math.log(f.cutoff/50)/Math.log(280))*324;
+   const timeY=26+clamp(sweepTime/3)*54;
+   // The line represents the cutoff's actual start/end and sweep duration.
+   if(sweep!==0){
+    line(pathFrom([[startX,26],[startX+(stopX-startX)*.5,timeY*.65+14],[stopX,timeY]]),true);
+    tag(clamp(startX+5,24,295),23,"sweep");
+   }
+   // Noise is unpitched, so show a decaying irregular signal.
+   const noise=clamp(p.noise??0),decay=clamp((p.noiseDecay??0)/4);
+   if(noise>0){
+    line(pathRange(110,t=>[18+140*t,99-14*noise*
+     (1-t)**(1.5+6*(1-decay))*Math.sin(t*67)*Math.cos(t*17)]),true);
+    tag(18,111,"noise");
+   }
+  }
  }else if(type==="envelope"||type==="sample"){
   const sample=type==="sample",e=sample?
    {attack:p.attack??0,decay:0,sustain:1,release:p.release??.2}:p.envelope;
@@ -114,6 +139,19 @@ export const diagram=(patch,type)=>{
   handle(releaseX,90,[axis([...prefix,"release"],.01,releaseMax,"linearX",
    {from:248,to:343,step:.01})],"release");
   tag(18,14,"on");tag(248,14,"off");
+  if(sample){
+   const gain=clamp(p.gain??.9,0,2),transpose=p.transpose??0,pan=p.pan??0;
+   const strum=p.strumMs??0,root=p.zones?.[0]?.root??60;
+   const pitchFollow=p.followPitch!==false,oneShot=!!p.oneShot,dynamics=!!p.preserveDynamics;
+   line("M20 "+(112-9*gain).toFixed(2)+" H150",true);
+   line("M173 "+(105-6*transpose/12).toFixed(2)+" H252",true);
+   line("M274 104 H340 M"+(307+30*pan).toFixed(2)+" 98 V110",true);
+   tag(19,110,"level");tag(171,110,(pitchFollow?"pitch ":"root ")+root);
+   tag(290,95,"pan");
+   line("M"+(18+(strum+25)/50*52).toFixed(2)+" 94 V102",true);
+   if(oneShot)line("M344 40 V91",true);
+   if(dynamics)line("M331 41 L338 35 L345 41",true);
+  }
  }else if(type==="movement"){
   const m=movement(p);
   line("M15 62 H345",true);
@@ -131,11 +169,20 @@ export const diagram=(patch,type)=>{
    axis(["movement","depth"],0,100,"linearY",{from:62,to:27,step:1})
   ],"vibrato rate / depth");
   tag(15,14,"pitch");tag(287,14,"rate →");
+  // Separate amplitude and timbre motion cannot be seen on a pitch plot.
+  const pulse=m.tremolo??0,pulseRate=m.tremoloRate??5;
+  const tone=m.tone??0,toneRate=m.toneRate??2;
+  line(pathRange(150,t=>[18+t*324,86-8*pulse*Math.sin(2*Math.PI*t*1.5*pulseRate)]),true);
+  line(pathRange(150,t=>[18+t*324,100-7*tone*Math.sin(2*Math.PI*t*1.5*toneRate)]),true);
+  const pan=clamp(p.pan??0,-1,1);
+  line("M22 109 H"+(22+22*(1-pan)).toFixed(2),true);
+  line("M294 109 H"+(294+22*(1+pan)).toFixed(2),true);
+  tag(20,79,"level");tag(20,96,"tone");tag(260,110,"l / r");
  }else if(type==="distortion"){
-  const drive=p.effects.drive||0;
+  const drive=p.effects.drive||0,transfer=driveCurve(drive);
   line("M18 96 H344 M180 17 V97",true);
   line(pathRange(300,t=>{
-   const input=2*t-1,output=Math.tanh(input*(1+drive*8))/Math.tanh(1+drive*8);
+   const output=transfer[Math.round(t*(transfer.length-1))];
    return [24+t*312,58-output*37];
   }));
   handle(306,88-60*drive,[
@@ -166,11 +213,26 @@ export const diagram=(patch,type)=>{
   tag(18,13,"mix ↑");tag(287,13,"time →");tag(30,112,"dry");
  }else if(type==="modulation"){
   const routes=p.modulation?.routes??[];
-  tag(17,14,"source");tag(295,14,"target");
-  if(!routes.length)line("M26 56 Q180 23 334 56",true);
-  else routes.slice(0,5).forEach((route,i)=>{
-   const y=26+i*15;line("M22 "+y+" Q175 "+(y+24)+" 337 "+y);
+  tag(17,13,"source");tag(291,13,"target");
+  if(!routes.length)line("M24 57 H336",true);
+  // Modulation amplitudes come from the actual source and route math.
+  const shown=routes.slice(0,4),centers=[30,51,73,95];
+  shown.forEach((route,i)=>{
+   const center=centers[i],limit=MOD_TARGETS.find(t=>t.id===route.target)?.limit||1;
+   line("M67 "+center+" H290",true);
+   line(pathRange(130,t=>{
+    const seconds=1.25*t;
+    const value=routeValueAt(route,{elapsed:seconds,gate:1,velocity:.7,pitch:65});
+    const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
+    return [67+223*t,center-9*Math.tanh(value/visualScale)];
+   }));
+   const source=route.source.kind==="lfo"?"lfo":route.source.kind==="keytrack"?"keys":
+    route.source.kind==="velocity"?"touch":"env";
+   const target=MOD_TARGETS.find(item=>item.id===route.target);
+   tag(18,center+3,source);tag(294,center+3,target?.name.replace("oscillator ","osc ")||"target");
   });
+  if(routes.length>4)tag(18,111,"+"+(routes.length-4)+" routes");
+
  }
  return {paths,handles,labels,color};
 };
