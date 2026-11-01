@@ -113,7 +113,9 @@ test("note level belongs to the selected note effects inspector for piano and ra
  assert.match(studio,/velocity:DEFAULT_NOTE_LEVEL/g);
  assert.match(expression,/make\("span","note level"\)/);
  assert.match(expression,/levelInput\.addEventListener\("change",\(\)=>onLevelChange\?\./);
- assert.match(studio,/entry\.patch\.bend,level=>modify\(\(\)=>\{note\.velocity=level;\}\)/);
- assert.match(studio,/sound\(\)\.patch\.bend,level=>modify\(\(\)=>\{/);
+ assert.match(studio,/entry\.patch\.bend,level=>\{/);
+ assert.match(studio,/sound\(\)\.patch\.bend,level=>\{/);
+ assert.match(studio,/velocity:level,bend:target\.bend/);
+ assert.match(studio,/velocity:level,bend:note\.bend/);
  assert.match(studio,/duration:1,velocity:DEFAULT_NOTE_LEVEL/);
 });
