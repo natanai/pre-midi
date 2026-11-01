@@ -49,6 +49,19 @@ async function checkLayout(frame){
  const scrolled=roll.scrollTop;
  checks.composerVisible=notesBefore.width>180&&rect(doc.querySelector(".timeline-section")).width>180;
  checks.soundInspectorAvailable=!!sound.querySelector("#synth-editor")&&!!sound.querySelector("#sound-visualizer");
+ const oscillatorPanel=sound.querySelector('.visual-sound-panel[data-visual-kind="oscillators"]');
+ checks.oneOscillatorModule=!!oscillatorPanel&&
+  sound.querySelectorAll('.visual-sound-panel[data-visual-kind^="oscillator"]').length===1&&
+  !!oscillatorPanel.querySelector('.oscillator-unit[data-oscillator="1"]');
+ const volume=get("instrument-volume-dial"),waveform=get("sound-visualizer");
+ checks.volumeBesideWaveform=Math.abs(rect(waveform).top-rect(volume).top)<50&&
+  rect(waveform).right<=rect(volume).left+12&&rect(waveform).width>140;
+ checks.moduleHeadersFullWidth=[...sound.querySelectorAll(".visual-sound-panel")].every(panel=>{
+  const header=panel.querySelector(":scope > details > summary");
+  return !!header&&Math.abs(rect(header).width-rect(panel).width)<4;
+ });
+ checks.oscillatorAddOrSecondPresent=!!oscillatorPanel.querySelector(".oscillator-add")||
+  !!oscillatorPanel.querySelector('.oscillator-unit[data-oscillator="2"]');
  checks.visualIllustrations=!!sound.querySelector('.visual-sound-panel[data-visual-kind="filter"]')&&
   sound.querySelectorAll(".visual-sound-panel .visual-panel-graph").length>=7;
  checks.measuredWaveformAboveControls=!!get("sound-visualizer").closest(".sound-overview")&&get("sound-visualizer").compareDocumentPosition(get("synth-editor"))&Node.DOCUMENT_POSITION_FOLLOWING?true:false;
