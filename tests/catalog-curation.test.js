@@ -31,8 +31,18 @@ test("retiring a browser entry never retires its source sample assets or example
   assert.ok(!ids(FACTORY_SOUND_CATALOG).has(entry.id),"Song-specific duplicated sound visible");
   assert.ok(entry.patch,"Example source patch cannot be deleted");
  }
- assert.equal(new Set(SAMPLE_ASSETS.map(a=>a.sha)).size,SAMPLE_ASSETS.length,
-  "Two recorded asset IDs point to identical sample bytes");
+ // Two historical shortcut IDs intentionally reuse the corresponding C3
+ // guitar recording; they do not justify duplicate catalogue instruments.
+ const byHash=new Map();
+ for(const asset of SAMPLE_ASSETS){
+  if(!byHash.has(asset.sha))byHash.set(asset.sha,[]);
+  byHash.get(asset.sha).push(asset.id);
+ }
+ const duplicateBytes=[...byHash.values()].filter(ids=>ids.length>1)
+  .map(ids=>ids.sort()).sort((a,b)=>a[0].localeCompare(b[0]));
+ assert.deepEqual(duplicateBytes,[
+  ["g-nf-48","nylon-c3"],["g-ss1-48","steel-c3"]
+ ].sort((a,b)=>a[0].localeCompare(b[0])),"Unexpected duplicated audio asset bytes");
 });
 
 test("multiple public instruments using the same recorded assets have a real playing distinction",()=>{
