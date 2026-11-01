@@ -53,8 +53,10 @@ const groups=[
   {path:["movement","toneRate"],label:"Tone speed",min:.1,max:20,step:.1,display:"hz"},
   {path:["pan"],label:"Pan",min:-1,max:1,step:.01,display:"pan"}
  ]},
- {name:"Distortion & delay",open:false,fields:[
-  {path:["effects","drive"],label:"Distortion",min:0,max:1,step:.01,display:"percent"},
+ {name:"Distortion",open:false,fields:[
+  {path:["effects","drive"],label:"Distortion",min:0,max:1,step:.01,display:"percent"}
+ ]},
+ {name:"Delay",open:false,fields:[
   {path:["effects","delayMix"],label:"Delay",min:0,max:1,step:.01,display:"percent"},
   {path:["effects","delayTime"],label:"Delay time",min:.05,max:1,step:.01,display:"seconds"},
   {path:["effects","delayFeedback"],label:"Feedback",min:0,max:.8,step:.01,display:"percent"}
@@ -181,7 +183,8 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{}) {
   }
   const kind=group.name.startsWith("Oscillator")?"oscillator"+(index+1):
    group.name==="Envelope"?"envelope":group.name==="Filter & noise"?"filter":
-   group.name==="Pitch & movement"?"movement":"effects";
+   group.name==="Pitch & movement"?"movement":
+   group.name==="Distortion"?"distortion":"delay";
   const panel=illustrateSoundPanel(details,kind,patch,onChange,preview,0);
   panels.push(panel);grid.append(panel.element);
  }
