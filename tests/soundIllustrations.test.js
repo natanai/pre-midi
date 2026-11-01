@@ -20,7 +20,7 @@ const axesFor=(chart,keys)=>chart.handles.flatMap(item=>item.axes).find(a=>path(
 
 test("sound diagrams cover all real synth sections without inventing parameter paths",()=>{
  const patch=synth();
- for(const kind of ["oscillator1","oscillator2","filter","envelope","movement","effects","modulation"]){
+ for(const kind of ["oscillator1","oscillator2","filter","envelope","movement","distortion","delay","modulation"]){
   const chart=diagram(patch,kind);
   assert.ok(chart.paths.length,kind+" has no diagram");
   for(const point of chart.handles){
@@ -63,16 +63,16 @@ test("oscillator handle maps detune horizontally and level vertically",()=>{
 
 test("delay repeats track mix, spacing, and feedback rather than arbitrary ticks",()=>{
  const patch=synth();
- const first=diagram(patch,"effects");
+ const first=diagram(patch,"delay");
  assert.ok(axesFor(first,["effects","delayTime"]).mode.endsWith("X"));
  assert.ok(axesFor(first,["effects","delayMix"]).mode.endsWith("Y"));
  assert.ok(axesFor(first,["effects","delayFeedback"]).mode.endsWith("Y"));
  const later=synth();later.effects.delayTime=.8;
- assert.ok(diagram(later,"effects").handles[1].x>first.handles[1].x);
+ assert.ok(diagram(later,"delay").handles[1].x>first.handles[1].x);
  const quieter=synth();quieter.effects.delayMix=.1;
- assert.ok(diagram(quieter,"effects").handles[1].y>first.handles[1].y);
+ assert.ok(diagram(quieter,"delay").handles[1].y>first.handles[1].y);
  const fading=synth();fading.effects.delayFeedback=.08;
- assert.notEqual(diagram(fading,"effects").paths[4].d,first.paths[4].d);
+ assert.notEqual(diagram(fading,"delay").paths[3].d,first.paths[3].d);
 });
 
 test("recorded sounds and ADSR use compatible editable graphs",()=>{
@@ -80,4 +80,11 @@ test("recorded sounds and ADSR use compatible editable graphs",()=>{
  assert.ok(axesFor(diagram(patch,"sample"),["attack"]));
  assert.ok(axesFor(diagram(patch,"sample"),["release"]));
  assert.ok(axesFor(diagram(synth(),"envelope"),["envelope","sustain"]));
+});
+
+test("distortion has its own response curve and drive control",()=>{
+ const patch=synth(),first=diagram(patch,"distortion");
+ assert.ok(axesFor(first,["effects","drive"]));
+ const stronger=synth();stronger.effects.drive=.95;
+ assert.notEqual(first.paths[1].d,diagram(stronger,"distortion").paths[1].d);
 });
