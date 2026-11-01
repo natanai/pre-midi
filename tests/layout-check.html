@@ -3,6 +3,8 @@
 <head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0}</style>
 <script>
 async function checkLayout(frame){
+ const trace=stage=>{void fetch("/__layout_progress?stage="+encodeURIComponent(stage)).catch(()=>{});};
+ trace("frame-loaded");
  try{
  const doc=frame.contentDocument;
  const browserErrors=[];const diagnostics={};
@@ -10,6 +12,7 @@ async function checkLayout(frame){
  frame.contentWindow.addEventListener("unhandledrejection",event=>browserErrors.push(String(event.reason)));
  const get=id=>doc.getElementById(id);
  const rect=el=>el.getBoundingClientRect();
+ trace("before-dom-geometry");
  const pane=doc.querySelector(".instrument-pane");
  const heading=pane.querySelector(".heading");
  const button=get("add-instrument");
@@ -149,6 +152,7 @@ async function checkLayout(frame){
  expander?.click();
  checks.illustrationCloses=!firstVisual?.classList.contains("zoomed");
  if(frame.clientWidth<1100)get("sound-close").click();
+ trace("inspector-done");
  checks.inspectorPreservesPianoPosition=roll.scrollTop===scrolled;
  // Normal mode is the direct note sequencer: empty by default; click adds,
  // and a second click removes. No mode switch is needed to compose.
@@ -265,6 +269,7 @@ async function checkLayout(frame){
  knob?.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
  for(let i=0;i<240&&shape()===pitchBefore;i++)await new Promise(done=>setTimeout(done,25));
  checks.waveRespondsToDial=!!pitchBefore&&!!shape()&&pitchBefore!==shape();
+ trace("note-editor-done");
  // Test the preset browser from a fresh Beat after completing the separate
  // note-expression and dial interactions above.
  const oldConfirm=frame.contentWindow.confirm;
@@ -308,6 +313,7 @@ async function checkLayout(frame){
  diagnostics.sample={status:get("status").textContent,inst:doc.querySelectorAll(".instrument-card").length,libraryOpen:library.open,patch:get("instrument-name").value};
   checks.sampleCreatesInstrument=doc.querySelectorAll(".instrument-card").length===3 &&
   get("instrument-name").value.includes(pianoName||"!") && !library.open;
+ trace("sample-preset-loaded");
  checks.sampleControlsReachable=!!doc.querySelector("#synth-editor .sample-zones") &&
   !!doc.querySelector("#synth-editor .sample-replace-action");
  if(frame.clientWidth>=1400) {
@@ -324,6 +330,7 @@ async function checkLayout(frame){
  }
 
 
+ trace("sample-and-guitar-done");
  // Examples are optional complete scores, not copy/pasted authoring surfaces.
  // A microphone is only requested when Start is pressed, never when opening.
  checks.recordingActionProminent=!!get("record-sound");
@@ -348,6 +355,7 @@ async function checkLayout(frame){
  for(let i=0;i<220&&get("title").value!==demoName;i++)
   await new Promise(resolve=>setTimeout(resolve,30));
  diagnostics.neon={status:get("status").textContent,title:get("title").value,inst:doc.querySelectorAll(".instrument-card").length,dialogOpen:gallery.open};
+  trace("example-main-loaded");
   checks.exampleUsesRealComposer=get("title").value===demoName &&
   doc.querySelectorAll(".instrument-card").length===8 &&
   doc.querySelectorAll(".arrangement-row").length===8 &&
@@ -378,6 +386,7 @@ async function checkLayout(frame){
  floating?.click();
  for(let attempt=0;attempt<220&&get("title").value!==floatingName;attempt++)
   await new Promise(resolve=>setTimeout(resolve,25));
+ trace("floating-signals-loaded");
  const lanes=[...doc.querySelectorAll(".arrangement-row")];
  const headingBars=[...doc.querySelector(".arrangement-head").children].slice(1);
  let maxBoundaryError=0,allPositions=true;
@@ -451,6 +460,7 @@ async function checkLayout(frame){
   Math.abs((rect(clips[2]).left-rect(clips[1]).left)-spacing)<3&&
   lanes.every(lane=>rect(lane).height<43);
  frame.contentWindow.confirm=proceed;
+ trace("finished");
  document.documentElement.dataset.layout=Object.values(checks).every(Boolean)?"PASS":"FAIL";
  document.getElementById("result").textContent=JSON.stringify({
   viewport:frame.clientWidth,
