@@ -49,11 +49,15 @@ export function scopeAudioBins(buffer,count=COUNT){
  }
  return channels.length===1?[channels[0],channels[0]]:channels;
 }
-function envelopePath(bins){
- const point=(bin,i,top)=>(i/(bins.length-1)*TIME_WIDTH).toFixed(2)+" "+
-  clamp(48-(top?bin.high:bin.low)*85,15,81).toFixed(2);
- return bins.map((bin,i)=>(i?"L":"M")+point(bin,i,true)).join(" ")+" "+
-  bins.slice().reverse().map((bin,i)=>"L"+point(bin,bins.length-i-1,false)).join(" ")+" Z";
+function envelopePath(bins,channel){
+ // Draw measured left peaks above the zero line and right peaks below it.
+ // A pan move visibly shifts energy between the two halves.
+ const direction=channel===0?-1:1;
+ const peak=(bin,i)=>(i/(bins.length-1)*TIME_WIDTH).toFixed(2)+" "+
+  clamp(48+direction*Math.min(32,Math.max(-bin.low,bin.high)*85),15,81).toFixed(2);
+ return bins.map((bin,i)=>(i?"L":"M")+peak(bin,i)).join(" ")+" "+
+  bins.slice().reverse().map((bin,i)=>
+   "L"+((bins.length-i-1)/(bins.length-1)*TIME_WIDTH).toFixed(2)+" 48").join(" ")+" Z";
 }
 function detailPath(buffer){
  // 20ms of actual output, providing a timbre view alongside the seconds-long
@@ -144,7 +148,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
  const pitch=node("path",{class:"signal-pitch",fill:"none","stroke-width":"2"});
  const label=(x,y,content)=>{const el=node("text",{x,y,class:"signal-axis"});el.textContent=content;return el;};
  const end=label(464,93,""),gate=node("path",{class:"signal-scope-guides"});
- svg.append(guides,left,right,detail,pitch,label(8,12,"TIME"),label(522,12,"20ms"),
+ svg.append(guides,left,right,detail,pitch,label(8,12,"L / R · TIME"),label(522,12,"20ms"),
   label(8,86,"PITCH"),end,gate);
  wrapper.append(head,svg);root.append(wrapper);
  let revision=0,disposed=false,timer=null,currentLevel=initialLevel;
@@ -155,7 +159,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
    void renderScopeAudio(nextPatch,beat,currentLevel,referencePitch).then(({buffer,seconds,clipped})=>{
     if(disposed||token!==revision)return;
     const [l,r]=scopeAudioBins(buffer);
-    left.setAttribute("d",envelopePath(l));right.setAttribute("d",envelopePath(r));
+    left.setAttribute("d",envelopePath(l,0));right.setAttribute("d",envelopePath(r,1));
     detail.setAttribute("d",detailPath(buffer));pitch.setAttribute("d",pitchPath(nextPatch,seconds));
     gate.setAttribute("d","M"+(HOLD/seconds*TIME_WIDTH).toFixed(2)+" 15 V81");
     end.textContent=seconds.toFixed(1)+"s";
