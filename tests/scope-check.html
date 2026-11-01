@@ -117,7 +117,7 @@ async function run(){
  ];
  for(const [name,edit] of samplerEdits){
   const from=clone(recorded),to=clone(recorded);edit(to);
-  measured.push([name,await pair(name,from,to,beat,name==="recorded release"?60:65)]);
+  measured.push([name,await pair(name,from,to,beat,["recorded release","recorded one shot"].includes(name)?60:65)]);
  }
  assert(scopeWindowSeconds({...base,envelope:{...base.envelope,release:3}})>4,"long release cropped");
  const rendered=await renderScopeAudio(base,null,.78,60);
