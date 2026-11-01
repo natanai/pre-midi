@@ -19,8 +19,8 @@ test("stereo PCM bins preserve actual levels and distinct channel peaks",()=>{
   Float32Array.from([0,-.8,.1,0,.6,-.3,0,0])];
  const buffer={numberOfChannels:2,length:8,sampleRate:8,getChannelData:index=>channels[index]};
  const [left,right]=scopeAudioBins(buffer,2);
- assert.deepEqual(left.map(x=>[x.low,x.high]),[[-.4,.2],[-.2,.3]]);
- assert.deepEqual(right.map(x=>[x.low,x.high]),[[-.8,.1],[-.3,.6]]);
+ assert.deepEqual(left.map(x=>[x.low,x.high].map(value=>Number(value.toFixed(3)))),[[-.4,.2],[-.2,.3]]);
+ assert.deepEqual(right.map(x=>[x.low,x.high].map(value=>Number(value.toFixed(3)))),[[-.8,.1],[-.3,.6]]);
  const half={...buffer,getChannelData:index=>Float32Array.from(channels[index],v=>v*.5)};
  const [quieter]=scopeAudioBins(half,2);
  assert.ok(quieter[0].rms<left[0].rms);
