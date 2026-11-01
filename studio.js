@@ -1838,8 +1838,9 @@ async function chooseSound(preset) {
   const assets=await resolveSamples(preset);
   const patch=preset.sounds?patchCopy(preset.sounds[0].patch):getPreset(preset.id)?makePatch(preset.id):preset.patch?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
-  // Example-derived patches and saved variations carry their authored base ID.
-  if(!preset.patch && !preset.sounds)patch.presetId=preset.id;
+  // Example-derived patches retain their underlying factory identity, while
+  // a selected saved variation must identify its own user preset in .premidi.
+  if(preset.category==="Mine" || (!preset.patch && !preset.sounds))patch.presetId=preset.id;
   const trigger=presetTrigger(preset);
   const selected=beat.instruments.find(item=>item.id===context.instrumentId);
   if(context.mode!=="add"&&selected?.automation&&patch.type!=="synth"&&trigger==="pitched"&&!preset.sounds){
