@@ -17,6 +17,28 @@ The reset removes the narrow phone-only blocks and routes phone viewports before
 
 Do not restore scattered phone CSS into `style.css` or `studioAlignment.css`. All phone-specific visual and interaction code must live in the `phone/` subtree. Desktop and phone host modules may each use a **small number of internal responsive rules inside their own host**, but neither should patch the other's control selectors.
 
+## Approved revisions — 2026-11-01
+
+The user approved the full phone studio plan, with these three refinements taking precedence over older sections in this document:
+
+1. **Three primary workspaces, not four:** **Notes**, **Sound**, and **Song**. The currently selected Instrument and Chunk remain directly available in Notes. Tapping Instrument opens an intentional contextual picker/sheet with current Instruments, a unified Add/Browse catalog, factory and user presets, and Rack presets. Changing Instruments never requires a detour to a separate workspace. There is no fourth Instruments tab.
+2. **Exhaustive, source-backed action inventory is a Phase 1 deliverable.** The existing feature parity ledger below is a subsystem outline, **not yet an exhaustive inventory**. Build a single machine-readable capability registry from the real entry-point controls, dynamically rendered synth/sampler fields, gestures, keyboard bindings, Track/Clip actions, import/export operations and desktop/native host capabilities. For each action specify a stable identifier, shared command or justified host-specific equivalent, desktop route, phone route, state/output contract, tests and verified status. Use deterministic extraction and a CI coverage gate so new desktop controls cannot silently lack a phone mapping. Registry data is implementation evidence, not a second human roadmap: **this document remains the single source of truth for acceptance**. An unimplemented phone mapping is a tracked gap, never evidence of parity.
+3. **Qualify the iOS host early.** Alongside the first functioning Notes editor, establish prototype Home Screen standalone launch, Web Audio activation, local draft persistence and basic offline-shell tests. Do not postpone discovery of iOS-specific failures until all Sounds and Songs are implemented. Full offline caching, update recovery, file flows and storage hardening remain later release gates.
+
+Additional approved interaction rules: tapping an existing note **selects** it rather than deleting it; delete is an explicit contextual action; long press is optional, not required to find controls. Scroll/paint/pinch must have distinct gesture hit zones and accessible alternatives. Phone owns touch mapping; the new shared note commands and session modules begin the shared, DOM-free note editing seam, but **Phase 1 and the complete phone UI are not yet finished**.
+
+### Approved milestone order
+
+- **Phase 0 — completed:** retire broken phone CSS and establish the dedicated shell without altering desktop sound or project files.
+- **Phase 1 — in progress:** shared commands, identical desktop/headless-phone state fixtures, exhaustive generated action registry and CI coverage gate.
+- **Phase 2:** usable Notes interface, Instrument sheet, Chunk/scale controls, playback, touch note operations, save/restore; initial Home Screen and offline/host feasibility; real iPhone tap-to-place gate.
+- **Phase 3:** all synth/sampler controls and visualizations, sound/rack library and recording, isolated note effects.
+- **Phase 4:** Song arrangement, linked Beat Clips, vocal Tracks, automation, external Asset references.
+- **Phase 5:** production iOS file/share integration, interruption and storage failure recovery, versioned atomic service worker and complete offline asset availability.
+- **Phase 6:** all capability-registry entries demonstrably supported or documented with an appropriate equivalent, performance budgets and repeatable real-device evidence.
+
+The detailed legacy delivery gates below remain relevant; the approved milestone sequence above controls scheduling. An early web-based prototype is not equivalent to an iOS-qualified installable offline application.
+
 ## Long-term code layout
 
 ```text
@@ -39,11 +61,11 @@ An **entry-level** phone viewport decision selects the phone host before desktop
 
 ## Proposed phone information architecture
 
-A compact global project/title and transport strip persists; the main workspace is maximized for a *single primary editing task* at a time. Bottom or context navigation switches among **Notes**, **Instruments**, **Sound**, and **Song**, without destroying state or changing transport context implicitly. A small project menu provides New, Open, Export, Save/Backup, settings and recording entry points. This is a design proposal, not a commitment to final icon choices.
+A compact global project/title and transport strip persists; the main workspace is maximized for a *single primary editing task* at a time. Bottom or context navigation switches among **Notes**, **Sound**, and **Song**, without destroying state or changing transport context implicitly. A small project menu provides New, Open, Export, Save/Backup, settings and recording entry points. This is a design proposal, not a commitment to final icon choices.
 
 **Notes** is the default: the piano roll occupies nearly the full screen. Keep the pitch keyboard visible while time scrolls; a bar ruler indicates position; vertical pitch scroll and horizontal time scroll are independent. Provide zoom controls rather than squeezing all 16 bars into one phone width. Scale-allowed pitches and audition feedback remain visible. When an Instrument is a Rack, the editor shows sound rows rather than pretending its sounds are pitches.
 
-**Instruments** is a quick switcher plus full catalog browser. Add instrument and Browse sounds must show the same categories, built-in presets and rack presets; actions must clearly distinguish adding a new Instrument from replacing a selected Sound. Song/Beat/Chunk state survives switching.
+**Instruments** is a contextual picker available directly from Notes, with a full catalog browser. Add instrument and Browse sounds must show the same categories, built-in presets and rack presets; actions must clearly distinguish adding a new Instrument from replacing a selected Sound. Song/Beat/Chunk state survives switching.
 
 **Sound** is a dedicated screen with the selected Instrument identity, primary level, audible sound shape/scope, preview and save preset controls, and collapsed advanced modules below. All controls, per-note overrides, sample mapping and the existing rack-to-pitched conversion paths must be reachable. Do not drop deep synthesizer parameters merely to fit the screen.
 
