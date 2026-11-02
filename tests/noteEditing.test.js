@@ -97,8 +97,8 @@ test("piano-roll pointer handler keeps simple clicks and commits drags only once
  const {readFileSync}=await import("node:fs");
  const source=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  assert.match(source,/setTimeout\(\(\)=>\{\s*if\(finished\)return;\s*grabbed=true/);
- assert.match(source,/moveNote\(chunk,note\.id,original\.start/);
- assert.match(source,/mode==="paint"[\s\S]*?chunk\.notes\.push\(note\)/);
+ assert.match(source,/applyNoteCommand\(chunk,\{type:"note.move"/);
+ assert.match(source,/mode==="paint"[\s\S]*?applyNoteCommand\(chunk,\{type:"note.add",note\}\)/);
  assert.match(source,/if\(changed\)\{\s*ignoreClick=true;[\s\S]*?setTimeout\(\(\)=>commitChange\(before\),0\)/);
  assert.match(source,/if\s*\(ignoreClick\)\s*return;/);
 });
