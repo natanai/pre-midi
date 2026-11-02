@@ -15,7 +15,7 @@ const CACHE="premidi-scale-guide-v1";
 let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false;
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 const contacts=new Map();
-let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=0;
+let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
 const status=(label,error=false)=>{$("status").value=label;$("status").dataset.error=String(error);};
 function nameOf(pitch){return NOTE_NAMES[pitch%12]+(Math.floor(pitch/12)-1);}
