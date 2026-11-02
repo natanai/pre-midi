@@ -15,7 +15,7 @@ const CACHE="premidi-scale-guide-v1";
 let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false;
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 const contacts=new Map();
-let lastPointerCell=null,lastPointerAt=0;
+let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=0;
 const cellMap=new Map();
 const status=(label,error=false)=>{$("status").value=label;$("status").dataset.error=String(error);};
 function nameOf(pitch){return NOTE_NAMES[pitch%12]+(Math.floor(pitch/12)-1);}
@@ -145,7 +145,7 @@ function renderGrid(preserveScroll=true){
    // Keyboard and assistive activation do not synthesize Pointer Events.
    cell.addEventListener("click",event=>{
     if(event.detail!==0||gesture||navigation)return;
-    if(lastPointerCell===cell&&performance.now()-lastPointerAt<420)return;
+    if((lastPointerCell===cell&&performance.now()-lastPointerAt<420)||performance.now()-lastNavigationAt<420)return;
     activateCell(row,step);
    });
    cellMap.set(row.key+"|"+step,{cell,row,step});
@@ -307,6 +307,7 @@ function endTouch(event){
  }
  contacts.delete(event.pointerId);
  if(wasNavigating){
+  lastNavigationAt=performance.now();
   if(event.type!=="pointerup"){navigation=null;contacts.clear();}
   else resetNavigation();
  }
