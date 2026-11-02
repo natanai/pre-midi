@@ -15,7 +15,7 @@ const server=createServer(async(request,response)=>{
    response.end("OK");return;
   }
   const file=path==="/tests/phone-check.html"
-   ?resolve(projectRoot,"tests/phone-check.html"):resolve(appRoot,"."+path);
+   ?resolve(projectRoot,"tests/phone-check.html"):resolve(appRoot,"."+(path.endsWith("/")?path+"index.html":path));
   if(!(file.startsWith(appRoot+"/")||file===resolve(projectRoot,"tests/phone-check.html")))throw Error("Invalid path");
   const content=await readFile(file);
   response.writeHead(200,{"Content-Type":({".js":"text/javascript",".css":"text/css",".html":"text/html",".png":"image/png",".webmanifest":"application/manifest+json",".svg":"image/svg+xml"})[extname(file)]||"application/octet-stream"});
