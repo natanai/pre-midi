@@ -5,7 +5,7 @@ import {createSong,validateSong} from "../songModel.js";
 import {applyNoteCommand,NOTE_COMMAND_TYPES} from "../studioCommands.js";
 import {createStudioSession} from "../studioSession.js";
 
-const make=()=>{const doc=create();doc.id="beat-fixture";const inst=doc.instruments[0];inst.id="inst-fixture";inst.chunks[0].id="chunk-fixture";return doc;};
+const make=()=>{const doc=create();doc.id="beat-fixture";const inst=doc.instruments[0];inst.id="inst-fixture";inst.chunks[0].id="chunk-fixture";inst.timeline[0]=inst.chunks[0].id;return doc;};
 const add={type:"note.add",note:{id:"note-fixture",pitch:60,start:2,duration:3,velocity:.9}};
 const actions=[add,{type:"note.move",noteId:"note-fixture",start:4,pitch:62},
  {type:"note.resize",noteId:"note-fixture",duration:5},
