@@ -139,7 +139,7 @@ function renderGrid(preserveScroll=true){
  playhead.id="roll-playhead";playhead.className="roll-playhead";
  playhead.setAttribute("aria-hidden","true");
  grid.append(playhead);
- for(const row of rowModels(){
+ for(const row of rowModels()){
   const line=document.createElement("div");line.className="piano-row";
   const key=document.createElement("button");
   key.type="button";key.className="piano-key"+(row.pitch!==null&&[1,3,6,8,10].includes(row.pitch%12)?" black":"")+(row.pitch!==null&&row.pitch%12===0?" c":"");
