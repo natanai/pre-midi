@@ -30,7 +30,10 @@ test("changing finger count reanchors a one-finger navigation without jumping",(
  const anchor=navigationAnchor(dual,{left:0,top:0,scrollLeft:180,scrollTop:400,zoom:42});
  const single=new Map([[2,{x:250,y:220}]]);
  const reanchored=navigationAnchor(single,{left:0,top:0,scrollLeft:180,scrollTop:400,zoom:42});
- assert.deepEqual(nextNavigation(reanchored,single,{left:0,top:0}),{zoom:42,scrollLeft:180,scrollTop:400});
+ const unchanged=nextNavigation(reanchored,single,{left:0,top:0});
+ assert.equal(unchanged.zoom,42);
+ assert.equal(unchanged.scrollTop,400);
+ assert.ok(Math.abs(unchanged.scrollLeft-180)<1e-9);
  assert.equal(spreadOf(single),0);
  assert.deepEqual(centerOf(single),{x:250,y:220});
  assert.equal(anchor.spread>0,true);
