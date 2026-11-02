@@ -104,13 +104,13 @@ function buildInventory(sources){
 }
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const sources={};
-for(const path of SOURCE_FILES)sources[path]=await readFile(resolve(root,path),"utf8");
+for(const path of SOURCE_FILES)sources[path]=(await readFile(resolve(root,path),"utf8")).replace(/\r\n?/g,"\n");
 const data=buildInventory(sources);
 const output=JSON.stringify(data,null,2)+"\n";
 const indexPath=resolve(root,"docs/phone-capabilities.json");
 if(process.argv.includes("--write")){await writeFile(indexPath,output);console.log("Updated",data.actions.length,"capabilities");}
 else if(process.argv.includes("--check")){
- const saved=await readFile(indexPath,"utf8").catch(()=>null);
+ const saved=(await readFile(indexPath,"utf8").catch(()=>null))?.replace(/\r\n?/g,"\n");
  if(saved!==output){console.error("Phone action inventory out of date: run node scripts/phone-capabilities.mjs --write and review every new phone mapping in docs/phone-capabilities.json");process.exitCode=1;}
  else if(data.actions.length<140){console.error("Phone inventory unexpectedly shrank");process.exitCode=1;}
  else console.log("Phone action inventory verified:",data.actions.length,"entries; every phone item remains explicitly unqualified until tested");
