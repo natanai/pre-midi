@@ -6,16 +6,18 @@ import {loadDraft,saveDraft} from "../storage.js";
 import {exportProject,importProject} from "../packageIO.js";
 import {play,audition} from "../audio.js";
 import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep} from "../scaleGuide.js";
+import {clampZoom,navigationAnchor,nextNavigation,noteDragSteps} from "./gestures/roll.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
 const NOTE_NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
 const CACHE="premidi-scale-guide-v1";
 let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false;
-let activeWorkspace="notes",zoom=42,editGeneration=0;
+let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
+const contacts=new Map();
+let lastPointerCell=null,lastPointerAt=0;
 const cellMap=new Map();
 const status=(label,error=false)=>{$("status").value=label;$("status").dataset.error=String(error);};
-function stepWidth(){return zoom;}
 function nameOf(pitch){return NOTE_NAMES[pitch%12]+(Math.floor(pitch/12)-1);}
 function parseDraft(raw){
  if(!raw)return null;
@@ -142,7 +144,8 @@ function renderGrid(preserveScroll=true){
    cell.dataset.row=row.key;cell.dataset.step=String(step);
    // Keyboard and assistive activation do not synthesize Pointer Events.
    cell.addEventListener("click",event=>{
-    if(event.detail!==0||gesture)return;
+    if(event.detail!==0||gesture||navigation)return;
+    if(lastPointerCell===cell&&performance.now()-lastPointerAt<420)return;
     activateCell(row,step);
    });
    cellMap.set(row.key+"|"+step,{cell,row,step});
@@ -176,63 +179,137 @@ function activateCell(row,step){
   paintCells();void hear(row);
  }
 }
+function currentRect(){
+ const viewport=$("roll-scroll"),rect=viewport.getBoundingClientRect();
+ return {left:rect.left,top:rect.top,scrollLeft:viewport.scrollLeft,
+  scrollTop:viewport.scrollTop,zoom};
+}
+function cancelNoteGesture(){
+ const active=gesture;
+ gesture=null;
+ if(!active)return;
+ try{if(active.target.hasPointerCapture?.(active.id))active.target.releasePointerCapture(active.id);}catch{}
+ session.finishPreview(true);
+ selectedNoteId=active.previousSelected;
+ paintCells();
+}
+function cancelActiveGesture(){
+ cancelNoteGesture();
+ navigation=null;
+ contacts.clear();
+}
+function resetNavigation(){
+ if(!contacts.size){navigation=null;return;}
+ navigation=navigationAnchor(contacts,currentRect());
+}
+function scrollRoll(change){
+ const viewport=$("roll-scroll");
+ viewport.scrollBy({...change,behavior:"smooth"});
+}
+function setPanMode(enabled){
+ cancelActiveGesture();
+ panMode=enabled;
+ const button=$("pan-mode");
+ button.setAttribute("aria-pressed",String(panMode));
+ button.textContent=panMode?"pan on":"pan";
+ $("piano-grid").classList.toggle("navigation-mode",panMode);
+}
 function startTouch(event){
- if(!session||gesture||event.button!==0||event.isPrimary===false)return;
- const cell=event.target.closest?.(".cell");if(!cell||!$("piano-grid").contains(cell))return;
+ if(!session||event.button!==0)return;
+ const cell=event.target.closest?.(".cell");
+ const belongs=cell&&$("piano-grid").contains(cell);
+ // A second non-primary Safari touch must cancel the tentative first note
+ // before either finger is allowed to pan/pinch the timeline.
+ if(!belongs&&!navigation)return;
+ if(contacts.has(event.pointerId))return;
+ contacts.set(event.pointerId,{x:event.clientX,y:event.clientY});
+ if(contacts.size>1||navigation||panMode){
+  if(gesture)cancelNoteGesture();
+  resetNavigation();
+  if(belongs)try{cell.setPointerCapture(event.pointerId);}catch{}
+  if(event.cancelable)event.preventDefault();
+  return;
+ }
+ if(gesture||!belongs)return;
  const entry=cellMap.get(cell.dataset.row+"|"+cell.dataset.step);
- if(!entry)return;
+ if(!entry){contacts.delete(event.pointerId);return;}
  const {row,step}=entry,found=noteAt(row,step),rect=cell.getBoundingClientRect();
- if(!found&&!allowed(row,step))return;
- const end=found&&step===found.start+found.duration-1&&event.clientX>rect.right-Math.min(14,rect.width*.3);
+ if(!found&&!allowed(row,step)){contacts.delete(event.pointerId);return;}
+ const end=found&&step===found.start+found.duration-1&&
+  event.clientX>rect.right-Math.min(14,rect.width*.3);
  const mode=found?(end&&row.kind!=="rack"?"resize":"move"):"paint";
+ const previousSelected=selectedNoteId;
  session.beginPreview();
  let note=found;
  if(!found){
   const result=session.applyPreview({type:"note.add",note:{
    start:step,duration:1,velocity:.9,...(row.kind==="rack"?{soundId:row.key}:{pitch:row.pitch})
   }});
-  if(!result.changed){session.finishPreview(true);return;}
+  if(!result.changed){session.finishPreview(true);contacts.delete(event.pointerId);return;}
   note=result.note;
   void hear(row);
  }
  selectedNoteId=note.id;
- gesture={id:event.pointerId,target:cell,row,mode,noteId:note.id,
+ gesture={id:event.pointerId,target:cell,row,mode,noteId:note.id,previousSelected,
   original:{start:note.start,pitch:note.pitch,duration:note.duration},
   x:event.clientX,y:event.clientY,width:rect.width,height:rect.height,
   moved:false,wasNew:!found};
  try{cell.setPointerCapture(event.pointerId);}catch{}
  paintCells();
- // touch editing occurs only on cells; the adjacent ruler/keys retain scrolling.
  if(event.cancelable)event.preventDefault();
 }
 function moveTouch(event){
+ if(!contacts.has(event.pointerId))return;
+ contacts.set(event.pointerId,{x:event.clientX,y:event.clientY});
+ if(navigation){
+  const next=nextNavigation(navigation,contacts,currentRect());
+  if(next){
+   setZoom(next.zoom);
+   const viewport=$("roll-scroll");
+   viewport.scrollLeft=next.scrollLeft;
+   viewport.scrollTop=next.scrollTop;
+  }
+  if(event.cancelable)event.preventDefault();
+  return;
+ }
  const g=gesture;if(!g||g.id!==event.pointerId)return;
  const dx=event.clientX-g.x,dy=event.clientY-g.y;
  if(Math.hypot(dx,dy)>7)g.moved=true;
  if(!g.moved)return;
- event.preventDefault();
- const steps=Math.round(dx/g.width);
- if(g.mode==="paint"&&g.row.kind!=="rack"||g.mode==="resize"){
+ if(event.cancelable)event.preventDefault();
+ const steps=noteDragSteps(dx,g.width);
+ if((g.mode==="paint"&&g.row.kind!=="rack")||g.mode==="resize"){
   const requested=g.mode==="paint"?1+Math.max(0,steps):g.original.duration+steps;
   session.applyPreview({type:"note.resize",noteId:g.noteId,duration:requested});
  }else if(g.mode==="move"){
   session.applyPreview({type:"note.move",noteId:g.noteId,
    start:g.original.start+steps,
-   ...(g.row.kind==="rack"?{}:{pitch:g.original.pitch-Math.round(dy/g.height)})});
+   ...(g.row.kind==="rack"?{}:{pitch:g.original.pitch-noteDragSteps(dy,g.height)})});
  }
  paintCells();
 }
 function endTouch(event){
- const g=gesture;if(!g||g.id!==event.pointerId)return;
- if(event.type==="pointerup")moveTouch(event);
- const cancelled=event.type!=="pointerup";
- gesture=null;
- try{if(g.target.hasPointerCapture(event.pointerId))g.target.releasePointerCapture(event.pointerId);}catch{}
- try{session.finishPreview(cancelled||(!g.wasNew&&!g.moved));}
- catch(error){status("edit failed: "+error.message,true);}
- paintCells();
+ if(!contacts.has(event.pointerId)&&gesture?.id!==event.pointerId)return;
+ if(event.type==="pointerup"&&gesture?.id===event.pointerId)moveTouch(event);
+ const g=gesture,wasNavigating=!!navigation;
+ if(g&&g.id===event.pointerId){
+  gesture=null;
+  try{
+   session.finishPreview(event.type!=="pointerup"||(!g.wasNew&&!g.moved));
+  }catch(error){
+   status("edit failed: "+error.message,true);
+  }
+  lastPointerCell=g.target;
+  lastPointerAt=performance.now();
+  paintCells();
+ }
+ contacts.delete(event.pointerId);
+ if(wasNavigating){
+  if(event.type!=="pointerup"){navigation=null;contacts.clear();}
+  else resetNavigation();
+ }
 }
-function render(){if(!session)return;renderContext();renderGrid(false);}
+function render(preserveScroll=false){if(!session)return;renderContext();renderGrid(preserveScroll);}
 function download(blob,name){
  const url=URL.createObjectURL(blob),a=document.createElement("a");
  a.href=url;a.download=name;a.style.display="none";document.body.append(a);a.click();a.remove();
@@ -266,7 +343,7 @@ function initializeControls(){
    btn.type="button";btn.textContent=inst.name;
    btn.setAttribute("aria-pressed",String(inst.id===session.getInstrument().id));
    btn.addEventListener("click",()=>{
-    session.selectInstrument(inst.id);selectedNoteId=null;
+    cancelActiveGesture();session.selectInstrument(inst.id);selectedNoteId=null;
     $("instruments-dialog").close();render();
    });
    root.append(btn);
@@ -276,31 +353,33 @@ function initializeControls(){
  });
  $("instruments-close").addEventListener("click",()=>$("instruments-dialog").close());
  $("add-instrument").addEventListener("click",()=>{
-  if(session.addInstrument()){
+  cancelActiveGesture();if(session.addInstrument()){
    $("instruments-dialog").close();selectedNoteId=null;render();
   }
  });
  $("chunk-picker").addEventListener("change",event=>{
-  session.selectChunk(event.target.value);selectedNoteId=null;renderGrid(true);
+  cancelActiveGesture();session.selectChunk(event.target.value);selectedNoteId=null;renderGrid(true);
  });
- $("piano-grid").addEventListener("pointerdown",startTouch);
- $("piano-grid").addEventListener("pointermove",moveTouch);
- $("piano-grid").addEventListener("pointerup",endTouch);
- $("piano-grid").addEventListener("pointercancel",endTouch);
- $("piano-grid").addEventListener("lostpointercapture",endTouch);
+ const viewport=$("roll-scroll");
+ viewport.addEventListener("pointerdown",startTouch);
+ viewport.addEventListener("pointermove",moveTouch);
+ viewport.addEventListener("pointerup",endTouch);
+ viewport.addEventListener("pointercancel",endTouch);
+ viewport.addEventListener("lostpointercapture",endTouch);
+ $("pan-mode").addEventListener("click",()=>setPanMode(!panMode));
  $("delete-note").addEventListener("click",()=>{
-  if(!selectedNoteId)return;
+  cancelActiveGesture();if(!selectedNoteId)return;
   session.dispatch({type:"note.delete",noteId:selectedNoteId});
   selectedNoteId=null;paintCells();
  });
- $("undo").addEventListener("click",()=>{if(session.undo()){selectedNoteId=null;render();}});
- $("redo").addEventListener("click",()=>{if(session.redo()){selectedNoteId=null;render();}});
+ $("undo").addEventListener("click",()=>{cancelActiveGesture();if(session.undo()){selectedNoteId=null;render(true);}});
+ $("redo").addEventListener("click",()=>{cancelActiveGesture();if(session.redo()){selectedNoteId=null;render(true);}});
  $("zoom-in").addEventListener("click",()=>setZoom(zoom+8));
  $("zoom-out").addEventListener("click",()=>setZoom(zoom-8));
- $("pitch-up").addEventListener("click",()=>$("roll-scroll").scrollBy({top:-ROW*12,behavior:"smooth"}));
- $("pitch-down").addEventListener("click",()=>$("roll-scroll").scrollBy({top:ROW*12,behavior:"smooth"}));
- $("time-left").addEventListener("click",()=>$("roll-scroll").scrollBy({left:-zoom*4,behavior:"smooth"}));
- $("time-right").addEventListener("click",()=>$("roll-scroll").scrollBy({left:zoom*4,behavior:"smooth"}));
+ $("pitch-up").addEventListener("click",()=>scrollRoll({top:-ROW*12}));
+ $("pitch-down").addEventListener("click",()=>scrollRoll({top:ROW*12}));
+ $("time-left").addEventListener("click",()=>scrollRoll({left:-zoom*4}));
+ $("time-right").addEventListener("click",()=>scrollRoll({left:zoom*4}));
  $("play").addEventListener("click",()=>void togglePlayback());
  $("bpm").addEventListener("change",event=>{
   const next=Number(event.target.value);
@@ -314,14 +393,14 @@ function initializeControls(){
  $("project-close").addEventListener("click",()=>$("project-dialog").close());
  $("new-beat").addEventListener("click",()=>{
   if(!confirm("Start a new Beat? Export a backup first to keep this project."))return;
-  stopPlayback();session.replace(create());selectedNoteId=null;render();$("project-dialog").close();
+  cancelActiveGesture();stopPlayback();session.replace(create());selectedNoteId=null;render();$("project-dialog").close();
  });
  $("open-beat").addEventListener("click",()=>$("open-file").click());
  $("open-file").addEventListener("change",async event=>{
   const file=event.target.files?.[0];if(!file)return;
   if(!confirm("Open "+file.name+"? This replaces the locally saved project.")){event.target.value="";return;}
   try{
-   stopPlayback();
+   cancelActiveGesture();stopPlayback();
    const next=file.name.toLowerCase().endsWith(".zip")
     ?(await importSongProject(file).catch(()=>importProject(file)))
     :(JSON.parse(await file.text()).kind==="song"?await importSongProject(file):await importProject(file));
@@ -337,11 +416,11 @@ function initializeControls(){
   for(const entry of document.querySelectorAll("[data-workspace]"))
    entry.setAttribute("aria-current",entry.dataset.workspace===activeWorkspace?"page":"false");
  });
- document.addEventListener("visibilitychange",()=>{if(document.hidden)stopPlayback();});
- window.addEventListener("pagehide",stopPlayback);
+ document.addEventListener("visibilitychange",()=>{if(document.hidden){cancelActiveGesture();stopPlayback();}});
+ window.addEventListener("pagehide",()=>{cancelActiveGesture();stopPlayback();});
 }
 function setZoom(value){
- zoom=Math.max(30,Math.min(70,value));
+ zoom=clampZoom(value);
  document.documentElement.style.setProperty("--step",zoom+"px");
 }
 function stopPlayback(){
