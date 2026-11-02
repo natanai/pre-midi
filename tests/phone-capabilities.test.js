@@ -2,10 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {execFileSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
 const root=new URL("../",import.meta.url);
 const catalog=JSON.parse(readFileSync(new URL("docs/phone-capabilities.json",root),"utf8"));
 test("source-backed phone action index cannot silently drift from desktop",()=>{
- assert.equal(execFileSync(process.execPath,[new URL("scripts/phone-capabilities.mjs",root).pathname,"--check"],{encoding:"utf8"}).includes("verified"),true);
+ assert.equal(execFileSync(process.execPath,[fileURLToPath(new URL("scripts/phone-capabilities.mjs",root)),"--check"],{encoding:"utf8"}).includes("verified"),true);
  assert.equal(catalog.format,"pre-midi-phone-capabilities");
  assert.ok(catalog.actions.length>=300);
  assert.equal(new Set(catalog.actions.map(entry=>entry.id)).size,catalog.actions.length);
