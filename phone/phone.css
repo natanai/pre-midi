@@ -49,7 +49,11 @@ button:active{background:#252525}
 .piano-key.black{background:#080808;color:#777}
 .piano-key.c{color:#f0f0f0}
 .piano-key.pressed{background:var(--accent);color:#000}
+.piano-grid,.ruler,.piano-row,.piano-key,.cell{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.ruler,.piano-key{touch-action:pan-x pan-y}
 .cell{position:relative;display:block;min-height:var(--row);height:var(--row);width:var(--step);padding:0;border:0;border-bottom:1px solid #222;border-right:1px solid #242424;background:#090909;touch-action:none}
+.navigation-mode .cell{cursor:grab;touch-action:none}
+#pan-mode[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
 .cell.beat{border-left:1px solid #454545}
 .cell.white-row{background:#0e0e0e}
 .cell.out-of-scale{background:#070707}

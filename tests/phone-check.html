@@ -40,7 +40,55 @@ try{
  await wait(()=>doc.querySelector("#instrument-picker").textContent.includes("Instrument 2"),"new instrument");
  const scale=doc.querySelector("#scale-mode");scale.value="major";scale.dispatchEvent(new Event("change",{bubbles:true}));
  if(doc.querySelector("#scale-mode").value!=="major")throw Error("Scale not selected");
- await result("PASS","phone note tapping, edit history, pointer painting, instrument sheet and scale UI");
+ // Exercise Safari-shaped pointer interruption and second-finger arbitration.
+ const pointer=(target,type,id,x,y,isPrimary=true)=>target.dispatchEvent(new PointerEvent(type,{
+  bubbles:true,cancelable:true,pointerType:"touch",pointerId:id,isPrimary,button:type==="pointermove"?-1:0,clientX:x,clientY:y
+ }));
+ const untouched=(pitch,step)=>doc.querySelector('.cell[data-row="'+pitch+'"][data-step="'+step+'"]');
+ const interrupt=untouched(63,7),ir=interrupt.getBoundingClientRect();
+ pointer(interrupt,"pointerdown",31,ir.left+9,ir.top+10);
+ if(!interrupt.classList.contains("filled"))throw Error("interrupted gesture never created preview");
+ pointer(interrupt,"pointermove",31,ir.left+90,ir.top+10);
+ pointer(interrupt,"pointercancel",31,ir.left+90,ir.top+10);
+ if(interrupt.classList.contains("filled"))throw Error("pointercancel committed a ghost note");
+ const hidden=untouched(64,8),hr=hidden.getBoundingClientRect();
+ pointer(hidden,"pointerdown",32,hr.left+9,hr.top+10);
+ frame.contentWindow.dispatchEvent(new Event("pagehide"));
+ if(hidden.classList.contains("filled"))throw Error("pagehide failed to roll back uncommitted note");
+ const viewport=doc.querySelector("#roll-scroll"),vr=viewport.getBoundingClientRect();
+ const first=untouched(65,9),second=untouched(66,10);
+ const beforeZoom=parseFloat(doc.documentElement.style.getPropertyValue("--step"))||42;
+ pointer(first,"pointerdown",41,vr.left+110,vr.top+125);
+ if(!first.classList.contains("filled"))throw Error("first touch did not preview");
+ pointer(second,"pointerdown",42,vr.left+210,vr.top+125,false);
+ if(first.classList.contains("filled")||second.classList.contains("filled"))
+  throw Error("second touch failed to cancel tentative note");
+ pointer(first,"pointermove",41,vr.left+70,vr.top+125);
+ pointer(second,"pointermove",42,vr.left+250,vr.top+125,false);
+ const afterZoom=parseFloat(doc.documentElement.style.getPropertyValue("--step"));
+ if(!(afterZoom>beforeZoom))throw Error("two-finger pinch did not zoom the grid");
+ pointer(first,"pointerup",41,vr.left+70,vr.top+125);
+ pointer(second,"pointerup",42,vr.left+250,vr.top+125,false);
+ first.click();
+ if(first.classList.contains("filled"))throw Error("a synthetic click after pinch inserted a note");
+ const panButton=doc.querySelector("#pan-mode");
+ panButton.click();
+ if(panButton.getAttribute("aria-pressed")!=="true")throw Error("navigation mode inaccessible");
+ const panCell=untouched(67,7),pr=panCell.getBoundingClientRect();
+ viewport.scrollLeft=50;
+ const oldScroll=viewport.scrollLeft;
+ pointer(panCell,"pointerdown",51,pr.left+10,pr.top+10);
+ pointer(panCell,"pointermove",51,pr.left-70,pr.top+10);
+ pointer(panCell,"pointerup",51,pr.left-70,pr.top+10);
+ if(!(viewport.scrollLeft>oldScroll))throw Error("explicit one-finger pan did not navigate time");
+ if(panCell.classList.contains("filled"))throw Error("pan mode placed a note");
+ panButton.click();
+ if(panButton.getAttribute("aria-pressed")!=="false")throw Error("navigation mode did not exit");
+ if(getComputedStyle(untouched(70,1)).touchAction!=="none")
+  throw Error("note edit surface does not opt out of native scrolling");
+ if(!getComputedStyle(doc.querySelector(".piano-key")).touchAction.includes("pan"))
+  throw Error("piano key navigation strip does not allow native touch scroll");
+ await result("PASS","phone taps, drag painting, pointer cancellation, pagehide, second-finger pinch, synthetic-click suppression, pan mode and shared undo");
 }catch(error){
  await result("FAIL",error.stack||String(error));
 }
