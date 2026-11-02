@@ -106,7 +106,7 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const sources={};
 for(const path of SOURCE_FILES)sources[path]=await readFile(resolve(root,path),"utf8");
 const data=buildInventory(sources);
-const output=JSON.stringify(data,null,2)+"\\n";
+const output=JSON.stringify(data,null,2)+"\n";
 const indexPath=resolve(root,"docs/phone-capabilities.json");
 if(process.argv.includes("--write")){await writeFile(indexPath,output);console.log("Updated",data.actions.length,"capabilities");}
 else if(process.argv.includes("--check")){
