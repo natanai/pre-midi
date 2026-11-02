@@ -184,11 +184,11 @@ function currentRect(){
  return {left:rect.left,top:rect.top,scrollLeft:viewport.scrollLeft,
   scrollTop:viewport.scrollTop,zoom};
 }
-function cancelNoteGesture(){
+function cancelNoteGesture(keepCapture=false){
  const active=gesture;
  gesture=null;
  if(!active)return;
- try{if(active.target.hasPointerCapture?.(active.id))active.target.releasePointerCapture(active.id);}catch{}
+ if(!keepCapture)try{if(active.target.hasPointerCapture?.(active.id))active.target.releasePointerCapture(active.id);}catch{}
  session.finishPreview(true);
  selectedNoteId=active.previousSelected;
  paintCells();
@@ -224,7 +224,7 @@ function startTouch(event){
  if(contacts.has(event.pointerId))return;
  contacts.set(event.pointerId,{x:event.clientX,y:event.clientY});
  if(contacts.size>1||navigation||panMode){
-  if(gesture)cancelNoteGesture();
+  if(gesture)cancelNoteGesture(true);
   resetNavigation();
   if(belongs)try{cell.setPointerCapture(event.pointerId);}catch{}
   if(event.cancelable)event.preventDefault();
@@ -295,7 +295,9 @@ function endTouch(event){
  if(g&&g.id===event.pointerId){
   gesture=null;
   try{
-   session.finishPreview(event.type!=="pointerup"||(!g.wasNew&&!g.moved));
+   const cancelled=event.type!=="pointerup";
+   session.finishPreview(cancelled||(!g.wasNew&&!g.moved));
+   if(cancelled)selectedNoteId=g.previousSelected;
   }catch(error){
    status("edit failed: "+error.message,true);
   }
@@ -336,6 +338,7 @@ function initializeControls(){
  $("scale-mode").addEventListener("change",event=>setGuide({mode:event.target.value}));
  $("scale-lock").addEventListener("change",event=>setGuide({lock:event.target.checked}));
  $("instrument-picker").addEventListener("click",()=>{
+  cancelActiveGesture();
   const root=$("instrument-options");root.replaceChildren();
   const beat=session.getBeat();
   for(const inst of beat.instruments){
@@ -374,8 +377,8 @@ function initializeControls(){
  });
  $("undo").addEventListener("click",()=>{cancelActiveGesture();if(session.undo()){selectedNoteId=null;render(true);}});
  $("redo").addEventListener("click",()=>{cancelActiveGesture();if(session.redo()){selectedNoteId=null;render(true);}});
- $("zoom-in").addEventListener("click",()=>setZoom(zoom+8));
- $("zoom-out").addEventListener("click",()=>setZoom(zoom-8));
+ $("zoom-in").addEventListener("click",()=>zoomAroundCenter(zoom+8));
+ $("zoom-out").addEventListener("click",()=>zoomAroundCenter(zoom-8));
  $("pitch-up").addEventListener("click",()=>scrollRoll({top:-ROW*12}));
  $("pitch-down").addEventListener("click",()=>scrollRoll({top:ROW*12}));
  $("time-left").addEventListener("click",()=>scrollRoll({left:-zoom*4}));
@@ -387,6 +390,7 @@ function initializeControls(){
   renderContext();
  });
  $("project-actions").addEventListener("click",()=>{
+  cancelActiveGesture();
   $("export-song").hidden=session.getDocument().kind!=="song";
   $("project-dialog").showModal();
  });
@@ -411,6 +415,7 @@ function initializeControls(){
  $("export-beat").addEventListener("click",()=>exportCurrent("beat"));
  $("export-song").addEventListener("click",()=>exportCurrent("song"));
  for(const button of document.querySelectorAll("[data-workspace]"))button.addEventListener("click",()=>{
+  cancelActiveGesture();
   activeWorkspace=button.dataset.workspace;
   for(const name of ["notes","sound","song"])$("view-"+name).hidden=name!==activeWorkspace;
   for(const entry of document.querySelectorAll("[data-workspace]"))
@@ -422,6 +427,12 @@ function initializeControls(){
 function setZoom(value){
  zoom=clampZoom(value);
  document.documentElement.style.setProperty("--step",zoom+"px");
+}
+function zoomAroundCenter(value){
+ const viewport=$("roll-scroll");
+ const anchor=(viewport.scrollLeft+viewport.clientWidth/2-62)/zoom;
+ setZoom(value);
+ viewport.scrollLeft=Math.max(0,62+anchor*zoom-viewport.clientWidth/2);
 }
 function stopPlayback(){
  if(playing){playing.stop();playing=null;}
