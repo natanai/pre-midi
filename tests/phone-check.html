@@ -34,6 +34,39 @@ try{
  await wait(()=>doc.querySelector(".cell[data-row='62'][data-step='2']").classList.contains("filled"),"pointer gesture placed note");
  const painted=doc.querySelector(".cell[data-row='62'][data-step='4']");
  if(!painted.classList.contains("tail")&&!painted.classList.contains("end"))throw Error("touch paint duration did not extend");
+ // The selected note has a visible handle on its final cell, not a hidden 14px hotspot.
+ if(!painted.classList.contains("resize-handle"))throw Error("selected note end has no visible resize grip");
+ const end=painted.getBoundingClientRect(),pointerNote=(type,x,y)=>{
+  painted.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:"touch",pointerId:85,isPrimary:true,
+   button:type==="pointermove"?-1:0,clientX:x,clientY:y}));
+ };
+ pointerNote("pointerdown",end.right-5,end.top+14);
+ pointerNote("pointermove",end.right+79,end.top+14);
+ pointerNote("pointerup",end.right+79,end.top+14);
+ const newEnd=doc.querySelector(".cell[data-row='62'][data-step='6']");
+ if(!newEnd.classList.contains("end")||!newEnd.classList.contains("resize-handle"))
+  throw Error("dragging ↔ on an existing selected note did not extend its duration");
+ const shortRect=newEnd.getBoundingClientRect();
+ const pointerShort=(type,x)=>{
+  newEnd.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:"touch",pointerId:86,isPrimary:true,
+   button:type==="pointermove"?-1:0,clientX:x,clientY:shortRect.top+14}));
+ };
+ pointerShort("pointerdown",shortRect.right-4);
+ pointerShort("pointermove",shortRect.right-46);
+ pointerShort("pointerup",shortRect.right-46);
+ if(!doc.querySelector(".cell[data-row='62'][data-step='5']").classList.contains("end"))
+  throw Error("dragging selected note’s ↔ handle left did not shorten its duration");
+ if(newEnd.classList.contains("end"))throw Error("shortened note still occupies its previous end");
+ const cursor=doc.querySelector("#roll-playhead");
+ if(!cursor||cursor.getAttribute("aria-hidden")!=="true")throw Error("stopped roll must hide its cursor");
+ doc.querySelector("#play").click();
+ await wait(()=>cursor.getAttribute("aria-hidden")==="false","chunk playhead to appear during playback");
+ const startX=parseFloat(cursor.style.left);
+ await sleep(190);
+ const laterX=parseFloat(cursor.style.left);
+ if(!(laterX>startX))throw Error("phone playback cursor did not advance across the grid");
+ doc.querySelector("#play").click();
+ await wait(()=>cursor.getAttribute("aria-hidden")==="true","stop to hide cursor");
  doc.querySelector("#instrument-picker").click();
  await wait(()=>doc.querySelector("#instruments-dialog").open,"instrument picker");
  doc.querySelector("#add-instrument").click();
@@ -88,7 +121,7 @@ try{
   throw Error("note edit surface does not opt out of native scrolling");
  if(!getComputedStyle(doc.querySelector(".piano-key")).touchAction.includes("pan"))
   throw Error("piano key navigation strip does not allow native touch scroll");
- await result("PASS","phone taps, drag painting, pointer cancellation, pagehide, second-finger pinch, synthetic-click suppression, pan mode and shared undo");
+ await result("PASS","phone taps, visible note resize handle, playback cursor movement and stopping, pointer interruption, second-finger pinch, pan and undo");
 }catch(error){
  await result("FAIL",error.stack||String(error));
 }
