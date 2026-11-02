@@ -6,7 +6,7 @@ import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSo
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, auditionHeld, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
 import { installKeyboardPiano } from "./keyboardPiano.js";
-import { resizeNote, moveNote } from "./noteEditing.js";
+import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {pianoKeyGeometry} from "./pianoKeyboard.js";
@@ -701,10 +701,10 @@ function renderRack(root,inst,chunk){
    const cell=button(existing?"●":"",event=>{
     selectedSounds.set(inst.id,entry.id);
     if(existing&&editingNoteEffects){selectedNoteId=existing.id;renderNotes();renderSound();return;}
-    if(existing){selectedNoteId=null;modify(()=>{chunk.notes=chunk.notes.filter(note=>note.id!==existing.id);});return;}
+    if(existing){selectedNoteId=null;modify(()=>applyNoteCommand(chunk,{type:"note.delete",noteId:existing.id}));return;}
     const note={id:id(),soundId:entry.id,start:step,duration:1,velocity:DEFAULT_NOTE_LEVEL};
     selectedNoteId=editingNoteEffects?note.id:null;
-    if(modify(()=>chunk.notes.push(note))&&!playback&&!pendingPlay)
+    if(modify(()=>applyNoteCommand(chunk,{type:"note.add",note},{layout:"rack",sounds:inst.sounds}))&&!playback&&!pendingPlay)
      void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:note.velocity}).catch(()=>{});
    },"note rack-step"+(step%4===0?" beat":"")+(existing?" filled":"")+
     (editingNoteEffects&&existing?.id===selectedNoteId?" selected":"")+
@@ -722,7 +722,7 @@ function renderRack(root,inst,chunk){
    });
    cell.addEventListener("keydown",event=>{
     if(existing&&["Delete","Backspace"].includes(event.key)){
-     event.preventDefault();modify(()=>{chunk.notes=chunk.notes.filter(note=>note.id!==existing.id);});
+     event.preventDefault();modify(()=>applyNoteCommand(chunk,{type:"note.delete",noteId:existing.id}));
     }
    });
    row.append(cell);
@@ -737,7 +737,7 @@ function renderRack(root,inst,chunk){
  const entry=note?inst.sounds.find(sound=>sound.id===note.soundId):sound(inst);
  renderNoteExpression($("note-expression"),note,entry.name,note?note.duration*60/beat.bpm/4:0,
   bend=>modify(()=>{note.bend=bend;}),
-  ()=>modify(()=>{chunk.notes=chunk.notes.filter(item=>item.id!==note.id);selectedNoteId=null;}),
+  ()=>modify(()=>{applyNoteCommand(chunk,{type:"note.delete",noteId:note.id});selectedNoteId=null;}),
   ()=>{void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:note.velocity,bend:note.bend}).catch(error=>message(error.message,true));},entry.patch.bend,level=>{
    if(modify(()=>{note.velocity=level;})&&!playback&&!pendingPlay)
     void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:level,bend:note.bend}).catch(error=>message("Couldn't preview hit: "+error.message,true));
@@ -890,14 +890,14 @@ function renderNotes() {
     }
     if(existing){
      selectedNoteId=null;
-     modify(()=>{editedChunk.notes=editedChunk.notes.filter(n=>n.id!==existing.id);});
+     modify(()=>applyNoteCommand(editedChunk,{type:"note.delete",noteId:existing.id}));
      return;
     }
     if(scaleGuide.lock&&!isPitchInScaleAtStep(pitch,scaleGuide,editedChunk.notes,step))return;
     const created={id:id(),pitch,start:step,
      duration:1,velocity:DEFAULT_NOTE_LEVEL};
     selectedNoteId=editingNoteEffects?created.id:null;
-    if(modify(()=>{editedChunk.notes.push(created);})){
+    if(modify(()=>applyNoteCommand(editedChunk,{type:"note.add",note:created}))){
      tapPianoKey(pitch);
      if(!playback&&!pendingPlay)
       void audition(targetInst,pitch,beat,{velocity:created.velocity}).catch(()=>{});
@@ -933,8 +933,7 @@ function renderNotes() {
     if(mode==="paint"){
      note={id:id(),pitch,start:step,
       duration:1,velocity:DEFAULT_NOTE_LEVEL};
-     chunk.notes.push(note);
-     resizeNote(chunk,note.id,note.duration);
+     applyNoteCommand(chunk,{type:"note.add",note});
      selectedNoteId=editingNoteEffects?note.id:null;
      ignoreClick=true;
      draggedNoteId=note.id;
@@ -968,11 +967,11 @@ function renderNotes() {
      moveEvent.preventDefault();
      const oldPitch=note.pitch;
      if(mode==="move"){
-      moveNote(chunk,note.id,original.start+Math.round(dx/cellWidth),
-       original.pitch-Math.round(dy/rowHeight),{minPitch:36,maxPitch:83});
+      applyNoteCommand(chunk,{type:"note.move",noteId:note.id,start:original.start+Math.round(dx/cellWidth),
+       pitch:original.pitch-Math.round(dy/rowHeight)},{minPitch:36,maxPitch:83});
      }else{
-      resizeNote(chunk,note.id,(original?.duration??1)+
-       Math.round(dx/cellWidth));
+      applyNoteCommand(chunk,{type:"note.resize",noteId:note.id,
+       duration:(original?.duration??1)+Math.round(dx/cellWidth)});
      }
      paintRows(oldPitch);
     }
@@ -1016,7 +1015,7 @@ function renderNotes() {
     if(!selected||selected.pitch!==pitch||step<selected.start||step>=selected.start+selected.duration)return;
     event.preventDefault();
     const id=selectedNoteId;selectedNoteId=null;
-    modify(()=>{chunk.notes=chunk.notes.filter(n=>n.id!==id);});
+    modify(()=>applyNoteCommand(chunk,{type:"note.delete",noteId:id}));
    });
    // Keyboard support is also immediate and uses the canonical undo pathway.
    cell.addEventListener("keydown", event => {
@@ -1025,7 +1024,7 @@ function renderNotes() {
     if (!target) return;
     event.preventDefault();
     const delta = event.key === "ArrowRight" ? 1 : -1;
-    modify(() => resizeNote(chunk, target.id, target.duration + delta));
+    modify(() => applyNoteCommand(chunk,{type:"note.resize",noteId:target.id,duration:target.duration+delta}));
    });
    row.append(cell);
   }
