@@ -7,12 +7,13 @@ import {exportProject,importProject} from "../packageIO.js";
 import {play,audition} from "../audio.js";
 import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep} from "../scaleGuide.js";
 import {clampZoom,navigationAnchor,nextNavigation,noteDragSteps} from "./gestures/roll.js";
+import {phonePlayheadX} from "./rollPlayback.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
 const NOTE_NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
 const CACHE="premidi-scale-guide-v1";
-let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false;
+let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null;
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
@@ -110,12 +111,15 @@ function paintCells(){
   cell.classList.toggle("tail",!!note&&note.start!==step);
   cell.classList.toggle("end",!!note&&note.start+note.duration-1===step);
   cell.classList.toggle("selected",!!note&&note.id===selectedNoteId);
+  const canGrip=!rack&&!!note&&note.id===selectedNoteId&&note.start+note.duration-1===step;
+  cell.classList.toggle("resize-handle",canGrip);
   cell.classList.toggle("out-of-scale",!inScale&&scale.mode!=="chromatic");
   cell.disabled=!inScale&&scale.lock&&!note;
   cell.setAttribute("aria-label",row.label+", step "+(step+1)+
    (note?", note "+(note.start+1)+" length "+note.duration+", select to edit":"; place note")+
    (cell.disabled?", outside selected scale":""));
-  cell.title=note?"Select note · drag to move · drag right end to resize":"Tap to place · drag to extend";
+  cell.title=canGrip?"drag ↔ to change note length":note?"tap to select · drag to move":"tap to place · drag to extend";
+  if(canGrip)cell.setAttribute("aria-label",row.label+", selected note, length "+note.duration+" steps; drag the marked right edge to resize");
  }
  refreshSelection();
 }
@@ -131,6 +135,10 @@ function renderGrid(preserveScroll=true){
   ruler.append(element);
  }
  grid.append(ruler);
+ const playhead=document.createElement("div");
+ playhead.id="roll-playhead";playhead.className="roll-playhead";
+ playhead.setAttribute("aria-hidden","true");
+ grid.append(playhead);
  for(const row of rowModels()){
   const line=document.createElement("div");line.className="piano-row";
   const key=document.createElement("button");
@@ -154,6 +162,7 @@ function renderGrid(preserveScroll=true){
   grid.append(line);
  }
  paintCells();
+ updatePlayhead();
  viewport.scrollLeft=oldLeft;
  if(preserveScroll)viewport.scrollTop=oldTop;
  else if(session.getInstrument().layout!=="rack")viewport.scrollTop=(MAX_PITCH-72)*ROW;
@@ -236,7 +245,7 @@ function startTouch(event){
  const {row,step}=entry,found=noteAt(row,step),rect=cell.getBoundingClientRect();
  if(!found&&!allowed(row,step)){contacts.delete(event.pointerId);return;}
  const end=found&&step===found.start+found.duration-1&&
-  event.clientX>rect.right-Math.min(14,rect.width*.3);
+  event.clientX>=rect.right-Math.min(24,rect.width*.55);
  const mode=found?(end&&row.kind!=="rack"?"resize":"move"):"paint";
  const previousSelected=selectedNoteId;
  session.beginPreview();
@@ -311,6 +320,15 @@ function endTouch(event){
   if(event.type!=="pointerup"){navigation=null;contacts.clear();}
   else resetNavigation();
  }
+}
+function updatePlayhead(){
+ const line=$("roll-playhead");
+ if(!line||!session)return;
+ const position=playbackPosition,selection=session.getSelection();
+ const x=position?phonePlayheadX(session.getBeat(),selection.instrumentId,selection.chunkId,position,zoom):null;
+ line.hidden=x===null;
+ line.setAttribute("aria-hidden",String(x===null));
+ if(x!==null)line.style.left=x+"px";
 }
 function render(preserveScroll=false){if(!session)return;renderContext();renderGrid(preserveScroll);}
 function download(blob,name){
@@ -428,6 +446,7 @@ function initializeControls(){
 function setZoom(value){
  zoom=clampZoom(value);
  document.documentElement.style.setProperty("--step",zoom+"px");
+ updatePlayhead();
 }
 function zoomAroundCenter(value){
  const viewport=$("roll-scroll");
@@ -437,6 +456,7 @@ function zoomAroundCenter(value){
 }
 function stopPlayback(){
  if(playing){playing.stop();playing=null;}
+ playbackPosition=null;updatePlayhead();
  pendingPlay=false;$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");
 }
 async function togglePlayback(){
@@ -447,7 +467,8 @@ async function togglePlayback(){
   const handle=await play(()=>session.getBeat(),{
    loop:()=>$("loop").checked,
    onPosition:(bar,step)=>{$("position").value=(bar+1)+":"+(Math.floor(step/4)+1);},
-   onStop:()=>{playing=null;$("play").textContent="▶";$("position").value="1:1";}
+   onProgress:(bar,step)=>{playbackPosition={bar,step};updatePlayhead();},
+   onStop:()=>{playing=null;playbackPosition=null;updatePlayhead();$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");$("position").value="1:1";}
   });
   playing=handle;$("play").textContent="■";$("play").setAttribute("aria-label","Stop Beat");
  }catch(error){status("playback error: "+error.message,true);}

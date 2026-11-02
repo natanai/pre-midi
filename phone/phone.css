@@ -38,7 +38,10 @@ button:active{background:#252525}
 .tool-space{flex:1}
 .grid-frame{display:flex;flex:1;min-height:0;overflow:hidden}
 .roll-scroll{overflow:auto;overscroll-behavior:contain;flex:1;scrollbar-width:thin;scrollbar-color:#444 #111}
-.piano-grid{width:max-content;min-height:max-content;--keyboard-width:62px}
+.piano-grid{position:relative;width:max-content;min-height:max-content;--keyboard-width:62px}
+.roll-playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);box-shadow:0 0 7px #08e4ec99;z-index:3;pointer-events:none;will-change:left}
+.roll-playhead::before{content:"";position:absolute;top:2px;left:-5px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid var(--accent)}
+.roll-playhead[hidden]{display:none}
 .ruler,.piano-row{display:grid;grid-template-columns:var(--keyboard-width) repeat(16,var(--step))}
 .ruler{position:sticky;top:0;z-index:5;height:27px;background:#0c0c0c;border-bottom:1px solid #666}
 .ruler .pitch-column{position:sticky;left:0;z-index:6;background:#090909;border-right:1px solid #555}
@@ -61,6 +64,9 @@ button:active{background:#252525}
 .cell.filled{border-left:2px solid #d5ffff;border-top-left-radius:3px;border-bottom-left-radius:3px}
 .cell.end{border-right:3px solid #fff;border-top-right-radius:3px;border-bottom-right-radius:3px}
 .cell.selected{background:#16a4ad;border-top-color:var(--accent);border-bottom-color:#16a4ad;outline:2px solid #fff;outline-offset:-2px;z-index:2}
+/* The selected note’s marked right edge is the draggable length handle. */
+.cell.resize-handle::after{content:"↔";position:absolute;right:0;top:50%;transform:translateY(-50%);width:min(24px,55%);height:26px;display:flex;align-items:center;justify-content:center;background:#f4ffff;color:#08282c;border:1px solid #000;box-shadow:-2px 0 0 #057d84;font-size:18px;line-height:1;pointer-events:none;z-index:2}
+.cell.resize-handle{cursor:ew-resize}
 .cell:focus-visible{z-index:3}
 .grid-navigation{justify-content:space-between;border-top:1px solid var(--line);border-bottom:0;padding:5px 8px}
 .grid-navigation button{padding:0 5px;min-height:34px;font-size:11px;flex:1}
