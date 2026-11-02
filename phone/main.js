@@ -302,6 +302,11 @@ function initializeControls(){
  $("time-left").addEventListener("click",()=>$("roll-scroll").scrollBy({left:-zoom*4,behavior:"smooth"}));
  $("time-right").addEventListener("click",()=>$("roll-scroll").scrollBy({left:zoom*4,behavior:"smooth"}));
  $("play").addEventListener("click",()=>void togglePlayback());
+ $("bpm").addEventListener("change",event=>{
+  const next=Number(event.target.value);
+  if(!session.setBpm(next)){event.target.value=String(session.getBeat().bpm);return;}
+  renderContext();
+ });
  $("project-actions").addEventListener("click",()=>{
   $("export-song").hidden=session.getDocument().kind!=="song";
   $("project-dialog").showModal();
