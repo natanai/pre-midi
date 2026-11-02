@@ -1,6 +1,6 @@
 # pre-midi phone studio — canonical architecture, rebuild and parity gates
 
-Status: **retired phone UI; dedicated shell only** (2026-11-01).
+Status: **Phase 1 inventory implemented; first Phase 2 phone Notes prototype under qualification** (2026-11-02).
 Owner document: **this file**. Do not create a second phone/mobile roadmap or parity matrix. Synthesizer/DSP work remains in `docs/synthesis-roadmap.json`; Song/game-engine integration remains in `docs/song-rollout.md`; naming follows `docs/terminology.json`.
 
 ## Intended result
@@ -13,7 +13,7 @@ An iPhone user opens the published website in Safari, chooses **Add to Home Scre
 
 Previously the same `index.html` desktop DOM and `studio.js` ran at every screen size. Phone-specific overrides accumulated in desktop CSS at 340, 520, 570, 640 and 650 px, plus broader responsive breakpoints. This made the phone appear responsive without validating note placement in actual iOS Safari.
 
-The reset removes the narrow phone-only blocks and routes phone viewports before loading desktop CSS/JS to the independent `phone/index.html`, which loads `phone/phone.css` only. That shell intentionally shows a rebuild notice. Desktop and narrower desktop/tablet workspace rules remain; pointer-based note editing, audio, examples, schemas, storage and exports are **not deleted**. Pages staging copies the phone entry. Narrow Chromium desktop tests no longer masquerade as iOS touch qualification.
+The reset removes the narrow phone-only blocks and routes phone viewports before loading desktop CSS/JS to the independent `phone/index.html`, which loads `phone/phone.css` only. The original shell showed a rebuild notice. A dedicated Notes composer now begins the Phase 2 implementation, but the standalone iOS behaviors remain unqualified. Desktop and narrower desktop/tablet workspace rules remain; pointer-based note editing, audio, examples, schemas, storage and exports are **not deleted**. Pages staging copies the phone entry. Narrow Chromium desktop tests no longer masquerade as iOS touch qualification.
 
 Do not restore scattered phone CSS into `style.css` or `studioAlignment.css`. All phone-specific visual and interaction code must live in the `phone/` subtree. Desktop and phone host modules may each use a **small number of internal responsive rules inside their own host**, but neither should patch the other's control selectors.
 
@@ -44,6 +44,10 @@ The detailed legacy delivery gates below remain relevant; the approved milestone
 The checked-in **generated evidence index** is `docs/phone-capabilities.json`, produced by `scripts/phone-capabilities.mjs`. Current scan: **353 entries** covering desktop HTML controls, registered and assigned event listeners, synthesizer patch descriptors, sampler parameter families and the generated harmonic-partial editor. Every entry identifies the source control/handler, an intended phone route and `phoneStatus: "todo"`. The source index does **not** mark any interaction as implemented merely because the shared engine supports the parameter. It has not yet proven all dynamically generated event families, transport outcomes and host-specific permissions, nor does a listener equal one user intention.
 
 Run `npm run check:phone-capabilities` to compare the deterministic scan against the committed index. It runs in CI before the full test suite. A newly added or removed desktop listener, HTML control or supported descriptor changes the index and fails CI until a developer regenerates it and reviews its phone destination/status. Future slices must refine per-entry semantic identity and add exception/equivalence evidence rather than treating an automatic source listing as a completed UX audit. The canonical acceptance criteria and feature ledger remain **this document**.
+
+### Phase 2 first composer slice (under qualification)
+
+The dedicated phone entry now has an initial Notes screen with shared Beat/Chunk selection, basic Instrument sheet, pitched and Rack steps, scale guide, pointer-based tap/paint/move/resize selection, explicit deletion, undo/redo, navigation controls, basic Beat transport, local IndexedDB saves, Beat project import/export and a preliminary standalone web manifest. Sound and Song are clearly marked **unfinished**, not approximated by desktop UI. The phase is still **in progress**: no actual iPhone tap gate has passed, two-finger panning/pinch, granular note effects, complete Rack/preset selection, robust iOS Files, install/update/offline caching, recording and all deep module controls remain outstanding. Browser synthetic pointer/click tests must not be represented as physical iOS qualification.
 
 ## Long-term code layout
 
