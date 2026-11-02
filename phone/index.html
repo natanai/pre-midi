@@ -5,19 +5,89 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-title" content="pre-midi">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="apple-touch-icon" href="../desktop/icons/icon.png">
+<link rel="manifest" href="./manifest.webmanifest">
 <link rel="stylesheet" href="./phone.css">
-<title>pre-midi — phone</title>
+<title>pre-midi</title>
 </head>
 <body>
 <main class="phone-shell">
- <header class="phone-header"><strong>pre-midi</strong><span>phone studio</span></header>
- <section class="phone-status" aria-labelledby="phone-status-title">
-  <h1 id="phone-status-title">rebuilding phone studio</h1>
-  <p>editing on phones is temporarily unavailable</p>
-  <p>the desktop studio and existing projects are unchanged</p>
+ <header class="phone-header">
+  <strong>pre-midi</strong>
+  <span id="project-name">untitled beat</span>
+  <button id="project-actions" type="button" aria-label="Project actions">···</button>
+ </header>
+ <section class="transport" aria-label="Beat transport">
+  <button id="play" type="button" aria-label="Play Beat">▶</button>
+  <output id="position" aria-label="Bar one beat one">1:1</output>
+  <label>bpm <input id="bpm" type="number" min="40" max="240" value="120" inputmode="numeric" aria-label="Beat tempo"></label>
+  <label class="loop">loop <input id="loop" type="checkbox" checked></label>
  </section>
- <footer>phone interface in development</footer>
+ <section class="workspace" id="view-notes" aria-label="Notes workspace">
+  <div class="notes-top">
+   <button type="button" id="instrument-picker" aria-haspopup="dialog">Sine Keys <span aria-hidden="true">▾</span></button>
+   <label>chunk <select id="chunk-picker" aria-label="Select chunk"></select></label>
+  </div>
+  <div class="scale-tools" aria-label="Scale guide">
+   <label>key <select id="scale-root" aria-label="Scale tonic"></select></label>
+   <label>scale <select id="scale-mode" aria-label="Scale mode"></select></label>
+   <label class="scale-lock">limit <input type="checkbox" id="scale-lock"></label>
+  </div>
+  <div class="editing-tools">
+   <button id="undo" type="button" aria-label="Undo">↶</button>
+   <button id="redo" type="button" aria-label="Redo">↷</button>
+   <button id="delete-note" type="button" disabled>delete note</button>
+   <span class="tool-space"></span>
+   <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+   <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+  </div>
+  <div class="grid-frame">
+   <div id="roll-scroll" class="roll-scroll" role="region" aria-label="Piano roll, scroll for pitches and steps" tabindex="0">
+    <div id="piano-grid" class="piano-grid" aria-label="Editable note grid"></div>
+   </div>
+  </div>
+  <div class="grid-navigation">
+   <button id="pitch-up" type="button" aria-label="Scroll up an octave">↑ pitch</button>
+   <button id="time-left" type="button" aria-label="Scroll earlier in the Beat">← time</button>
+   <button id="time-right" type="button" aria-label="Scroll later in the Beat">time →</button>
+   <button id="pitch-down" type="button" aria-label="Scroll down an octave">↓ pitch</button>
+  </div>
+ </section>
+ <section class="workspace placeholder" id="view-sound" hidden>
+  <h2>sound</h2>
+  <p>the phone sound editor is next</p>
+  <p>your instrument settings stay in the project</p>
+ </section>
+ <section class="workspace placeholder" id="view-song" hidden>
+  <h2>song</h2>
+  <p>the phone arranger is not ready yet</p>
+  <p>existing song data remains preserved</p>
+ </section>
+ <output id="status" class="phone-status" role="status" aria-live="polite">opening local draft…</output>
+ <nav class="phone-nav" aria-label="Workspace">
+  <button type="button" data-workspace="notes" aria-current="page">notes</button>
+  <button type="button" data-workspace="sound">sound</button>
+  <button type="button" data-workspace="song">song</button>
+ </nav>
 </main>
+<dialog id="instruments-dialog" aria-label="Choose instrument" class="phone-dialog">
+ <header><h2>instruments</h2><button type="button" id="instruments-close" aria-label="Close instrument picker">×</button></header>
+ <div id="instrument-options"></div>
+ <button id="add-instrument" type="button">+ add instrument</button>
+ <p class="dialog-hint">sound presets and rack management are coming to phone</p>
+</dialog>
+<dialog id="project-dialog" aria-label="Project" class="phone-dialog">
+ <header><h2>project</h2><button type="button" id="project-close" aria-label="Close project menu">×</button></header>
+ <button id="new-beat" type="button">new beat</button>
+ <button id="open-beat" type="button">open .premidi / ZIP</button>
+ <button id="export-beat" type="button">export beat</button>
+ <button id="export-song" type="button" hidden>export song</button>
+ <input type="file" id="open-file" accept=".premidi,.zip,application/zip" hidden>
+ <p class="dialog-hint">drafts save locally; export a backup to keep your work</p>
+</dialog>
+<script type="module" src="./main.js"></script>
 </body>
 </html>

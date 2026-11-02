@@ -1,0 +1,22 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {execFileSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
+const root=new URL("../",import.meta.url);
+const catalog=JSON.parse(readFileSync(new URL("docs/phone-capabilities.json",root),"utf8"));
+test("source-backed phone action index cannot silently drift from desktop",()=>{
+ assert.equal(execFileSync(process.execPath,[fileURLToPath(new URL("scripts/phone-capabilities.mjs",root)),"--check"],{encoding:"utf8"}).includes("verified"),true);
+ assert.equal(catalog.format,"pre-midi-phone-capabilities");
+ assert.ok(catalog.actions.length>=300);
+ assert.equal(new Set(catalog.actions.map(entry=>entry.id)).size,catalog.actions.length);
+ assert.ok(catalog.actions.every(entry=>entry.phoneRoute&&entry.desktopRoute&&entry.phoneStatus==="todo"&&entry.proof==="not-qualified"));
+ assert.ok(catalog.actions.some(entry=>entry.id==="html:scale-root"));
+ assert.ok(catalog.actions.some(entry=>entry.id==="html:song-record"));
+ assert.ok(catalog.actions.some(entry=>entry.id==="html:save-sound"));
+ assert.ok(catalog.actions.some(entry=>entry.id==="synth:filter,cutoff"));
+ assert.ok(catalog.actions.some(entry=>entry.id==="synth:oscillators.harmonics[1..32]"));
+ assert.ok(catalog.actions.some(entry=>entry.id==="sample:zones[].root"));
+ assert.ok(catalog.actions.some(entry=>entry.source==="songUI.js"&&entry.kind==="listener"));
+ assert.ok(catalog.actions.some(entry=>entry.source==="desktopUI.js"&&entry.phoneRoute==="settings/host-equivalent"));
+});

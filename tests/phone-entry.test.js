@@ -8,7 +8,12 @@ test("dedicated phone entry starts before desktop styles",()=>{
  assert.ok(desktop.indexOf('location.replace(new URL("./phone/", location.href))')<desktop.indexOf('href="./style.css"'));
  assert.match(phone,/href="\.\/phone.css"/);
  assert.doesNotMatch(phone,/studio\.js|style\.css|studioAlignment\.css|id="piano"/);
- assert.match(phone,/rebuilding phone studio/);
+ assert.match(phone,/src="\.\/main\.js"/);
+ assert.match(phone,/id="piano-grid"/);
+ assert.match(phone,/id="instrument-picker"/);
+ assert.match(phone,/data-workspace="notes"/);
+ assert.match(file("phone/main.js"),/createStudioSession\(/);
+ assert.doesNotMatch(file("phone/main.js"),/from ["\x27]\.\.\/studio\.js/);
 });
 test("phone CSS overrides are absent from desktop sheets",()=>{
  for(const p of ["style.css","studioAlignment.css"])

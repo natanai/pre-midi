@@ -74,6 +74,16 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
   if(!from.length)return false;
   to.push(clone(document));document=from.pop();repair();notify();return true;
  }
+ function setBpm(value){
+  const tempo=Number(value);
+  if(preview||!Number.isInteger(tempo)||tempo<40||tempo>240)return false;
+  const current=beat();if(current.bpm===tempo)return false;
+  const before=clone(document);current.bpm=tempo;
+  const problems=check();
+  if(problems.length){document=before;repair();throw Error(problems[0]);}
+  history.push(before);if(history.length>100)history.shift();
+  future=[];notify();return true;
+ }
  function addInstrument(){
   if(preview||beat().instruments.length>=12)return false;
   const before=clone(document),current=beat();
@@ -95,7 +105,7 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    if(preview||!instrument().chunks.some(item=>item.id===value))return false;
    chunks.set(instrument().id,value);return true;
   },
-  beginPreview,applyPreview,finishPreview,dispatch,replace,addInstrument,
+  beginPreview,applyPreview,finishPreview,dispatch,replace,addInstrument,setBpm,
   undo:()=>stepBack(history,future),redo:()=>stepBack(future,history),
   canUndo:()=>history.length>0,canRedo:()=>future.length>0
  };

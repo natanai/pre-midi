@@ -7,11 +7,11 @@ import {posix} from "node:path";
 import {pathToFileURL} from "node:url";
 import {SAMPLE_ASSETS} from "../samples.js";
 
-const entry="studio.js";
+const entries=["studio.js","phone/main.js"];
 const dependencyPattern=/(?:from\s*|import\s*)["'](\.{1,2}\/[^"']+\.js)["']/g;
 const safeModule=file=>/^(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/.test(file);
 export async function runtimeModules(root){
- const found=new Set(),pending=[entry];
+ const found=new Set(),pending=[...entries];
  while(pending.length){
   const file=pending.pop();
   if(found.has(file))continue;
@@ -47,7 +47,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  const modules=await runtimeModules(root);
  if(!revision){
   const hash=createHash("sha256");
-  for(const file of [...modules,"style.css","studioAlignment.css","index.html","phone/index.html","phone/phone.css"])hash.update(await readFile(new URL(file,root)));
+  for(const file of [...modules,"style.css","studioAlignment.css","index.html","phone/index.html","phone/phone.css","phone/manifest.webmanifest"])hash.update(await readFile(new URL(file,root)));
   revision=hash.digest("hex");
  }
  const html=versionPage(await readFile(new URL("index.html",root),"utf8"),modules,revision);
@@ -55,10 +55,14 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  await mkdir(output,{recursive:true});
  await writeFile(new URL("index.html",output),html);
  const phoneHtml=(await readFile(new URL("phone/index.html",root),"utf8"))
-  .replace('href="./phone.css"','href="./phone.css?build='+revision.slice(0,12)+'"');
+  .replace('href="./phone.css"','href="./phone.css?build='+revision.slice(0,12)+'"')
+   .replace('src="./main.js"','src="./main.js?build='+revision.slice(0,12)+'"');
  await mkdir(new URL("phone/",output),{recursive:true});
  await writeFile(new URL("phone/index.html",output),phoneHtml);
  await copyFile(new URL("phone/phone.css",root),new URL("phone/phone.css",output));
+ await copyFile(new URL("phone/manifest.webmanifest",root),new URL("phone/manifest.webmanifest",output));
+ await mkdir(new URL("desktop/icons/",output),{recursive:true});
+ await copyFile(new URL("desktop/icons/icon.png",root),new URL("desktop/icons/icon.png",output));
  for(const file of [...modules,"style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg"]){
   await mkdir(new URL("./",new URL(file,output)),{recursive:true});
   await copyFile(new URL(file,root),new URL(file,output));
@@ -69,7 +73,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  for(const filename of required)
   await copyFile(new URL("samples/"+filename,root),new URL(filename,samples));
  const listed=await readdir(output);
- const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg","samples","phone"]);
+ const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg","samples","phone","desktop"]);
  if(listed.some(name=>!allowed.has(name)))
   throw Error("Unexpected files in published artifact.");
  console.log("Staged",modules.length,"runtime modules and",required.size,"verified samples; no tests or development files.");

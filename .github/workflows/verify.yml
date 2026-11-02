@@ -33,6 +33,8 @@ jobs:
         run: node tests/song.browser.mjs
       - name: Check desktop and narrow-desktop studio in Chrome
         run: PREMIDI_APP_ROOT=dist node tests/layout.browser.mjs
+      - name: Verify first phone composer in Chrome (not iOS qualification)
+        run: PREMIDI_APP_ROOT=dist node tests/phone.browser.mjs
       - name: Fetch verified native device dependency
         run: node scripts/fetch-miniaudio.mjs
       - name: Test native control ownership, codecs and offline export
