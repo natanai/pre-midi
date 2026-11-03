@@ -197,6 +197,8 @@ try{
  doc.querySelector('[data-workspace="notes"]').click();
  doc.querySelector("#instrument-picker").click();
  await wait(()=>doc.querySelector("#instruments-dialog").open,"phone instrument sheet");
+ if(!doc.querySelector('#instrument-options .phone-instrument-row button[aria-label^="Delete"]'))
+  throw Error("Instrument picker cannot delete Instruments directly");
  doc.querySelector("#add-instrument").click();
  await wait(()=>doc.querySelector("#catalog-dialog").open,"unified factory catalog");
  const mine=[...doc.querySelectorAll("#catalog-filters button")].find(button=>button.textContent==="Mine");
