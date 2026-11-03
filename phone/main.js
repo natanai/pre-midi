@@ -69,6 +69,7 @@ function renderScale(){
  const current=guide(),root=$("scale-root"),mode=$("scale-mode"),lock=$("scale-lock");
  root.value=String(current.root);mode.value=current.mode;
  lock.checked=current.lock;lock.disabled=current.mode==="chromatic";
+ $("scale-summary").textContent="scale · "+SCALE_ROOTS[current.root]+" "+(SCALE_MODES.find(mode=>mode.id===current.mode)?.name||current.mode)+(current.lock?" · limited":"");
 }
 function renderContext(){
  const beat=session.getBeat(),inst=session.getInstrument();
