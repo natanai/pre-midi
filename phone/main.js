@@ -8,6 +8,7 @@ import {play,audition} from "../audio.js";
 import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep} from "../scaleGuide.js";
 import {clampZoom,navigationAnchor,nextNavigation,noteDragSteps} from "./gestures/roll.js";
 import {phonePlayheadX} from "./rollPlayback.js";
+import {renderPhoneSound} from "./views/sound.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
@@ -15,6 +16,7 @@ const NOTE_NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"
 const CACHE="premidi-scale-guide-v1";
 let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null;
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
+let activeSoundId=null;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
@@ -330,7 +332,43 @@ function updatePlayhead(){
  line.setAttribute("aria-hidden",String(x===null));
  if(x!==null)line.style.left=x+"px";
 }
-function render(preserveScroll=false){if(!session)return;renderContext();renderGrid(preserveScroll);}
+function render(preserveScroll=false){
+ if(!session)return;
+ renderContext();renderGrid(preserveScroll);
+ if(activeWorkspace==="sound")paintSound();
+}
+function paintSound(){
+ if(!session)return;
+ const container=$("phone-sound-content"),viewport=$("view-sound"),scrolled=viewport.scrollTop;
+ const callbacks={
+  session,selectedSoundId:activeSoundId,
+  onSelectSound(soundId)=>{activeSoundId=soundId;paintSound();},
+  onPatchChange(soundId,path,value){
+   try{
+    if(session.changeSoundPatch(soundId,path,value))paintSound();
+   }catch(error){status("sound change rejected: "+error.message,true);paintSound();}
+  },
+  onLevelChange(kind,value,soundId){
+   try{
+    const changed=kind==="instrument"?session.changeInstrumentVolume(value):session.changeSoundGain(soundId,value);
+    if(changed)paintSound();
+   }catch(error){status("volume change rejected: "+error.message,true);paintSound();}
+  },
+  onNameChange(value){
+   try{if(session.renameInstrument(value)){renderContext();paintSound();}}
+   catch(error){status("rename rejected: "+error.message,true);paintSound();}
+  },
+  onPreview(soundId){
+   const inst=session.getInstrument(),row=inst.sounds.find(sound=>sound.id===soundId)||inst.sounds[0];
+   void audition(inst,row.referencePitch,session.getBeat(),{soundId:row.id,velocity:.9,duration:.45})
+    .catch(error=>status("preview error: "+error.message,true));
+  },
+  onError:message=>status(message,true)
+ };
+ const result=renderPhoneSound(container,callbacks);
+ activeSoundId=result.soundId;
+ viewport.scrollTop=scrolled;
+}
 function download(blob,name){
  const url=URL.createObjectURL(blob),a=document.createElement("a");
  a.href=url;a.download=name;a.style.display="none";document.body.append(a);a.click();a.remove();
@@ -437,6 +475,7 @@ function initializeControls(){
   cancelActiveGesture();
   activeWorkspace=button.dataset.workspace;
   for(const name of ["notes","sound","song"])$("view-"+name).hidden=name!==activeWorkspace;
+  if(activeWorkspace==="sound")paintSound();
   for(const entry of document.querySelectorAll("[data-workspace]"))
    entry.setAttribute("aria-current",entry.dataset.workspace===activeWorkspace?"page":"false");
  });
