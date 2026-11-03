@@ -99,6 +99,18 @@
  <div id="catalog-filters" class="phone-catalog-filters"></div>
  <div id="catalog-sounds" class="phone-catalog-sounds"></div>
 </dialog>
+<dialog id="sample-dialog" class="phone-dialog" aria-label="Record or import a sound">
+ <header><h2>sample</h2><button type="button" data-close aria-label="Close sample recorder">×</button></header>
+ <label class="phone-sample-field">type <select data-kind><option value="note">pitched note</option><option value="hit">rack hit</option></select></label>
+ <label class="phone-sample-field">duration <select data-length><option value=".75">0.75 s</option><option value="1.5" selected>1.5 s</option><option value="3">3 s</option><option value="4">4 s</option></select></label>
+ <div class="phone-sample-actions"><button type="button" data-record>● record</button><button type="button" data-import>import WAV</button><input data-file type="file" accept=".wav,audio/wav" hidden></div>
+ <audio data-preview controls preload="none"></audio>
+ <label class="phone-sample-field">name <input data-name type="text" maxlength="60" value="My note"></label>
+ <label class="phone-sample-field">recorded pitch <select data-pitch></select></label>
+ <output class="phone-sample-status" role="status" aria-live="polite">ready</output>
+ <button type="button" data-use disabled>use sound</button>
+ <p class="dialog-hint">your audio stays in a separate WAV asset · export a ZIP backup to keep it</p>
+</dialog>
 <script type="module" src="./main.js"></script>
 </body>
 </html>
