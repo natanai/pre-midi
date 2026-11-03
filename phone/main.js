@@ -342,7 +342,7 @@ function paintSound(){
  const container=$("phone-sound-content"),viewport=$("view-sound"),scrolled=viewport.scrollTop;
  const callbacks={
   session,selectedSoundId:activeSoundId,
-  onSelectSound(soundId)=>{activeSoundId=soundId;paintSound();},
+  onSelectSound:(soundId)=>{activeSoundId=soundId;paintSound();},
   onPatchChange(soundId,path,value){
    try{
     if(session.changeSoundPatch(soundId,path,value))paintSound();
