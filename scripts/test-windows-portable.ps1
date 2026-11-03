@@ -139,6 +139,11 @@ Wait-WebViewProfileExit (Join-Path $automatic 'data/webview')
 Invoke-StudioSmoke (Join-Path $automatic 'pre-midi.exe') 'portable-auto-upgraded' 'portable-auto' -Restore
 # A corrupted staged archive must fail before replacing any application file.
 $before = (Get-FileHash (Join-Path $automatic 'pre-midi.exe') -Algorithm SHA256).Hash
+# Successful startup cleans the helper staging folder. Restage the files for
+# this independent tampering test rather than depending on prior leftovers.
+New-Item $work -ItemType Directory -Force | Out-Null
+Copy-Item (Join-Path $automatic 'pre-midi.exe') (Join-Path $work 'runner.exe') -Force
+Copy-Item $zip.FullName (Join-Path $work 'verified.zip') -Force
 $bad = Start-Process (Join-Path $work 'runner.exe') -ArgumentList @('--apply-portable-update', '4294967295', ('0' * 64), $version) -WorkingDirectory $automatic -PassThru
 if (!$bad.WaitForExit(30000)) { $bad.Kill(); throw 'Tampered package check timed out' }
 if ($bad.ExitCode -eq 0 -or (Get-FileHash (Join-Path $automatic 'pre-midi.exe') -Algorithm SHA256).Hash -ne $before) {
