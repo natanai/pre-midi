@@ -203,7 +203,25 @@ try{
  doc.querySelector("#project-close").click();
  action("edit beat").click();
  if(doc.querySelector("#view-notes").hidden)throw Error("Song Beat cannot return to Notes editing");
- await result("PASS","note touch/edit, offline shell, Sound/catalog and Song Clips/transport/export");
+ // Only explicit controls open microphone permission workflows.
+ doc.querySelector('[data-workspace="song"]').click();
+ const recordEntry=[...doc.querySelectorAll(".phone-song-actions button")].find(button=>button.textContent==="● voice");
+ if(!recordEntry)throw Error("Song microphone entry is missing");
+ recordEntry.click();
+ if(!doc.querySelector("#voice-dialog").open||!doc.querySelector("#voice-start"))
+  throw Error("Song microphone recorder does not open");
+ doc.querySelector("#voice-close").click();
+ if(doc.querySelector("#voice-dialog").open)throw Error("voice recorder cancel did not close");
+ doc.querySelector('[data-workspace="notes"]').click();
+ doc.querySelector("#instrument-picker").click();
+ doc.querySelector("#add-instrument").click();
+ const rec=[...doc.querySelectorAll("#catalog-sounds button")].find(button=>button.textContent.includes("record / import"));
+ if(!rec)throw Error("phone factory catalog has no microphone/WAV import");
+ rec.click();
+ if(!doc.querySelector("#sample-dialog").open)throw Error("short sample dialog failed to open");
+ if(!doc.querySelector("#sample-dialog [data-file]"))throw Error("WAV file input unavailable");
+ doc.querySelector("#sample-dialog [data-close]").click();
+ await result("PASS","phone score editing, Sound catalog, Song Clips, offline editor shell and explicit mic/voice controls");
 }catch(error){
  await result("FAIL",error.stack||String(error));
 }
