@@ -18,6 +18,7 @@ import {id} from "../schema.js";
 import {prepareSongTake} from "../songRecorder.js";
 import {makeRecordingAsset} from "../recordingAssets.js";
 import {renderNoteExpression} from "../expressionUI.js";
+import {makeTransferFile,canShareFile,shareFile} from "./fileDelivery.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
@@ -27,7 +28,7 @@ let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 let activeSoundId=null,catalogMode="add",catalogCategory="All",sampleRecorder=null,voiceTake=null,voiceToken=0;
 const savedSounds=loadUserSounds();
-let presetScope=null;
+let presetScope=null,transferFile=null;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
@@ -617,15 +618,50 @@ function download(blob,name){
  a.href=url;a.download=name;a.style.display="none";document.body.append(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),10000);
 }
+function readyExport(blob,name){
+ transferFile=makeTransferFile(blob,name);
+ $("file-name").textContent=transferFile.name;
+ $("file-size").textContent=(transferFile.size/1024).toFixed(1)+" KB · "+transferFile.type;
+ $("file-status").textContent="choose Share or Download to keep this file";
+ $("file-status").dataset.error="false";
+ $("file-share").hidden=!canShareFile(transferFile);
+ $("project-dialog").close();
+ if(!$("file-dialog").open)$("file-dialog").showModal();
+ status("export prepared · choose a destination and verify it was saved");
+}
 function exportCurrent(scope="beat"){
  try{
   const doc=scope==="song"?session.getDocument():session.getBeat();
   const result=scope==="song"?exportSongProject(doc):exportProject(doc);
-  download(result.blob,result.name);status("exported "+result.name);
-  $("project-dialog").close();
+  readyExport(result.blob,result.name);
  }catch(error){status("export failed: "+error.message,true);}
 }
 function initializeControls(){
+ $("file-close").addEventListener("click",()=>$("file-dialog").close());
+ $("file-dialog").addEventListener("close",()=>{transferFile=null;});
+ $("file-share").addEventListener("click",()=>{
+  if(!transferFile)return;
+  const file=transferFile,button=$("file-share");
+  button.disabled=true;
+  // Web Share must begin inside a real click, including when WAV took time to render.
+  let operation;
+  try{operation=shareFile(file);}
+  catch(error){$("file-status").textContent=error.message;$("file-status").dataset.error="true";button.disabled=false;return;}
+  void Promise.resolve(operation).then(()=>{
+   status("share sheet completed · verify "+file.name+" exists in the destination");
+   $("file-dialog").close();
+  }).catch(error=>{
+   $("file-status").textContent=error.name==="AbortError"?"sharing cancelled · file is still ready":
+    "sharing failed: "+error.message+" · try Download";
+   $("file-status").dataset.error=String(error.name!=="AbortError");
+  }).finally(()=>{button.disabled=false;});
+ });
+ $("file-download").addEventListener("click",()=>{
+  if(!transferFile)return;
+  const file=transferFile;download(file,file.name);
+  status("download requested for "+file.name+" · confirm it appears in Files");
+  $("file-dialog").close();
+ });
  $("preset-close").addEventListener("click",()=>$("preset-dialog").close());
  $("preset-form").addEventListener("submit",event=>{
   event.preventDefault();
@@ -762,7 +798,7 @@ function initializeControls(){
   const button=$("render-wav");button.disabled=true;status("rendering WAV…");
   try{
    const audio=await wav(doc),name=(doc.title||"pre-midi").replace(/[^a-z0-9_-]+/gi,"-")+".wav";
-   download(audio,name);$("project-dialog").close();status("rendered "+name);
+   readyExport(audio,name);status("WAV ready · choose Share or Download");
   }catch(error){status("WAV export error: "+error.message,true);}
   finally{button.disabled=false;}
  });

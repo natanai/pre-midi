@@ -254,3 +254,9 @@ button:active{background:#252525}
 #preset-dialog .phone-sample-field input{height:40px;padding:6px 9px;color:var(--ink)}
 #preset-dialog #preset-save{width:100%;color:var(--accent);margin-top:12px}
 .phone-catalog-actions button[aria-label^="Remove saved"]{color:#ffb9c6}
+
+/* No export is described as saved until the user completes Share or Download. */
+.phone-file-dialog .phone-file-name{display:block;margin:12px 0 5px;font-size:13px;overflow-wrap:anywhere;color:var(--accent)}
+.phone-file-dialog #file-share,.phone-file-dialog #file-download{width:100%;padding:7px 12px;text-align:left;margin:8px 0;font-size:12px}
+.phone-file-dialog #file-share{border-color:var(--accent);color:var(--accent)}
+.phone-file-dialog #file-size{margin-bottom:12px}
