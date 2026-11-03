@@ -11,6 +11,9 @@ import {phonePlayheadX} from "./rollPlayback.js";
 import {renderPhoneSound} from "./views/sound.js";
 import {renderPhoneCatalog,factorySpec,resolveFactoryAssets,previewFactoryPreset} from "./views/catalog.js";
 import {renderPhoneSong} from "./views/song.js";
+import {createPhoneSampleRecorder,authoredSamplePatch} from "./views/record.js";
+import {makeSampleAsset} from "../sampler.js";
+import {id} from "../schema.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
@@ -18,7 +21,7 @@ const NOTE_NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"
 const CACHE="premidi-scale-guide-v1";
 let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null,playbackScope="beat";
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
-let activeSoundId=null,catalogMode="add",catalogCategory="All";
+let activeSoundId=null,catalogMode="add",catalogCategory="All",sampleRecorder=null;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
@@ -355,6 +358,7 @@ function paintCatalog(){
   filters:$("catalog-filters"),list:$("catalog-sounds"),
   category:catalogCategory,mode:catalogMode,beat:session.getBeat(),
   onCategory:name=>{catalogCategory=name;paintCatalog();},
+  onRecord:()=>sampleRecorder.open(),
   onUse:async(preset,button)=>{
    button.disabled=true;
    status("loading "+preset.name+"…");
@@ -379,6 +383,20 @@ function paintCatalog(){
    finally{button.disabled=false;}
   }
  });
+}
+function useRecordedSound({name,wav,root,followPitch}){
+ if(!session)return false;
+ const current=session.getInstrument(),targetId=activeSoundId||current.sounds[0].id;
+ const asset=makeSampleAsset(id(),name,"audio/wav",wav,"user-recorded");
+ const patch=authoredSamplePatch(asset,{root,followPitch});
+ const mode=catalogMode;
+ const ok=session.selectCatalogSound({name,patch,trigger:followPitch?"pitched":"hit",
+  assets:[asset],mode,soundId:targetId,referencePitch:root});
+ if(!ok){status("this instrument cannot receive that recording",true);return false;}
+ $("catalog-dialog").close();
+ activeSoundId=null;selectedNoteId=null;render();
+ status("saved "+name+" locally · export your project ZIP for a durable backup");
+ return true;
 }
 function paintSong(){
  if(!session)return;
@@ -459,6 +477,13 @@ function exportCurrent(scope="beat"){
  }catch(error){status("export failed: "+error.message,true);}
 }
 function initializeControls(){
+ sampleRecorder=createPhoneSampleRecorder({
+  dialog:$("sample-dialog"),
+  output:$("sample-dialog").querySelector(".phone-sample-status"),
+  onUse:useRecordedSound,
+  onError:error=>status("sample error: "+error.message,true)
+ });
+
  for(const [index,name] of SCALE_ROOTS.entries()){
   const option=document.createElement("option");option.value=String(index);option.textContent=name;
   $("scale-root").append(option);
