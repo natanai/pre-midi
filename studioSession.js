@@ -330,9 +330,12 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
  }
  function removeInstrument(instrumentId=instrument().id){
   return editInstrument(()=>{
+   const beforeId=activeInstrumentId;
    const selected=deleteInstrumentFromBeat(beat(),instrumentId);
    if(!selected)return false;
-   activeInstrumentId=selected;return true;
+   activeInstrumentId=beforeId!==instrumentId&&
+    beat().instruments.some(item=>item.id===beforeId)?beforeId:selected;
+   return true;
   });
  }
  function removeRackSound(soundId){
