@@ -32,12 +32,16 @@ pub async fn check_updates(app:tauri::AppHandle,state:State<'_,Pending>,channel:
   .max_by(|a,b|a.0.cmp(&b.0));
  let Some((version,release))=release else{return Ok(None)};
  let manifest=release.assets.iter().find(|a|a.name=="desktop-updates.json");
- let limit=if app.state::<crate::storage::Storage>().portable_root.is_some(){
-   "Portable edition: close pre-midi, replace pre-midi.exe and the release files from the new ZIP, and keep your data, projects and exports folders. Open pre-midi again manually."}
-  else if KEY.is_empty(){"Automatic installation is unavailable: this preview has no trusted update signing key. Install a later preview manually from GitHub Releases."}
-  else if manifest.is_none(){"This release has no signed update package for automatic installation."}
-  else if cfg!(target_os="linux") && std::env::var_os("APPIMAGE").is_none(){"Use your package manager to install Linux DEB updates. Automatic updates are available in the AppImage edition."}
-  else {""};
+ let portable=app.state::<crate::storage::Storage>().portable_root.is_some();
+ let limit=if KEY.is_empty(){
+   "Automatic installation is unavailable in this build because no trusted release signing key is embedded. Download a ZIP and replace the application files manually."
+  } else if manifest.is_none() {
+   "This release has no signed update package. Download a ZIP and replace the application files manually."
+  } else if cfg!(target_os="windows") && !portable {
+   "This prerelease publishes a portable ZIP only; installed Windows editions need a separately qualified installer."
+  } else if cfg!(target_os="linux") && std::env::var_os("APPIMAGE").is_none() {
+   "Use your package manager to install Linux DEB updates."
+  } else {""};
  let release_url=format!("https://github.com/{REPO}/releases/tag/{}",release.tag_name);
  let portable_name=format!("pre-midi-{}-windows-x86_64-portable.zip",version);
  let portable_url=release.assets.iter().find(|asset|asset.name==portable_name)
@@ -49,7 +53,9 @@ pub async fn check_updates(app:tauri::AppHandle,state:State<'_,Pending>,channel:
  if !limit.is_empty(){return Ok(Some(result));}
  let expected=format!("https://github.com/{REPO}/releases/download/{}/desktop-updates.json",release.tag_name);
  if manifest.unwrap().browser_download_url!=expected{return Err("Unexpected update manifest source".into());}
- let updater=app.updater_builder().pubkey(KEY).endpoints(vec![expected.parse().map_err(|_|"Invalid update URL")?]).map_err(|e|e.to_string())?
+ let mut builder=app.updater_builder().pubkey(KEY);
+ if portable {builder=builder.target("windows-x86_64-portable");}
+ let updater=builder.endpoints(vec![expected.parse().map_err(|_|"Invalid update URL")?]).map_err(|e|e.to_string())?
   .timeout(Duration::from_secs(60)).restart_after_install(false).build().map_err(|e|e.to_string())?;
  let update=updater.check().await.map_err(|e|e.to_string())?.ok_or("The release has no newer compatible update")?;
  if update.version!=version.to_string() || !update.download_url.as_str().starts_with(&format!("https://github.com/{REPO}/releases/download/{}/",release.tag_name)){
@@ -63,6 +69,7 @@ pub async fn download_update(state:State<'_,Pending>)->Result<(),String>{
  let update=state.0.lock().map_err(|e|e.to_string())?.as_ref().ok_or("Check for updates first")?.0.clone();
  // Tauri verifies the Minisign signature and its signed version before returning.
  let bytes=update.download(|_,_|{},||{}).await.map_err(|e|e.to_string())?;
+ update.verify(&bytes).map_err(|e|e.to_string())?;
  let mut pending=state.0.lock().map_err(|e|e.to_string())?;
  let item=pending.as_mut().ok_or("Update selection changed")?;
  if item.0.version!=update.version{return Err("Update selection changed".into());}
@@ -72,12 +79,19 @@ pub async fn download_update(state:State<'_,Pending>)->Result<(),String>{
 pub async fn install_update(app:tauri::AppHandle,state:State<'_,Pending>)->Result<(),String>{
  let (update,bytes)=state.0.lock().map_err(|e|e.to_string())?.take().ok_or("No verified update is ready")?;
  let bytes=bytes.ok_or("Download and verify the update first")?;
+ update.verify(&bytes).map_err(|e|e.to_string())?;
+ if let Some(root)=app.state::<crate::storage::Storage>().portable_root.clone(){
+   if !cfg!(target_os="windows"){return Err("Portable self-updates are available on Windows only".into());}
+   crate::portable_update::begin(&root,&update.version,&bytes)?;
+   // Close windows and audio cleanly; the independent helper waits for this
+   // process to exit before replacing pre-midi.exe.
+   return crate::close_app(&app,0);
+ }
  crate::audio::shutdown(&app);
  if let Err(error)=update.install(bytes){crate::audio::cancel_shutdown(&app);return Err(error.to_string());}
- // Windows exits inside Tauri after launching NSIS. macOS/AppImage stage a
- // replacement using the framework's backup/restore flow; never relaunch.
  app.exit(0);Ok(())
 }
+
 #[cfg(test)]mod tests{
  use super::*;
  #[test]fn channels_never_downgrade(){

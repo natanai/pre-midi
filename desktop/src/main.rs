@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod updates;
+mod portable_update;
 mod storage;
 mod audio;
 use tauri::{Emitter,Manager};
@@ -58,7 +59,12 @@ fn smoke_result(app:tauri::AppHandle,result:serde_json::Value)->Result<(),String
  if result["passed"]!=true{audio::shutdown(&app);app.exit(1);return Ok(());}
  close_app(&app,0)
 }
+#[tauri::command]
+fn portable_update_ready(app:tauri::AppHandle)->Result<(),String>{
+ portable_update::acknowledge_ready(&app.package_info().version.to_string())
+}
 fn main(){
+ if let Some(code)=portable_update::helper_exit_code(){std::process::exit(code);}
  tauri::Builder::default()
  .manage(Lifecycle::default()).manage(updates::Pending::default())
  .manage(audio::Audio::default())
@@ -110,6 +116,6 @@ fn main(){
   }
  })
  .invoke_handler(tauri::generate_handler![desktop_info,save_file,finish_close,native_fixture,smoke_result,
-  audio::native_audio,audio::native_render,audio::native_capture_finish,audio::native_decode,updates::check_updates,updates::open_release_url,updates::download_update,updates::install_update])
+  audio::native_audio,audio::native_render,audio::native_capture_finish,audio::native_decode,updates::check_updates,updates::open_release_url,updates::download_update,updates::install_update,portable_update_ready])
  .run(tauri::generate_context!()).expect("Could not launch pre-midi");
 }
