@@ -31,11 +31,14 @@
    <button type="button" id="instrument-picker" aria-haspopup="dialog">Sine Keys <span aria-hidden="true">▾</span></button>
    <label>chunk <select id="chunk-picker" aria-label="Select chunk"></select></label>
   </div>
-  <div class="scale-tools" aria-label="Scale guide">
+  <details id="scale-settings" class="phone-fold">
+   <summary id="scale-summary">scale · C chromatic</summary>
+   <div class="scale-tools" aria-label="Scale guide">
    <label>key <select id="scale-root" aria-label="Scale tonic"></select></label>
    <label>scale <select id="scale-mode" aria-label="Scale mode"></select></label>
    <label class="scale-lock">limit <input type="checkbox" id="scale-lock"></label>
-  </div>
+   </div>
+  </details>
   <div class="editing-tools">
    <button id="undo" type="button" aria-label="Undo">↶</button>
    <button id="redo" type="button" aria-label="Redo">↷</button>
@@ -50,12 +53,14 @@
     <div id="piano-grid" class="piano-grid" aria-label="Editable note grid"></div>
    </div>
   </div>
-  <div class="grid-navigation">
+  <details class="phone-fold phone-navigation"><summary>navigate · pitch / time</summary>
+   <div class="grid-navigation">
    <button id="pitch-up" type="button" aria-label="Scroll up an octave">↑ pitch</button>
    <button id="time-left" type="button" aria-label="Scroll earlier in the Beat">← time</button>
    <button id="time-right" type="button" aria-label="Scroll later in the Beat">time →</button>
    <button id="pitch-down" type="button" aria-label="Scroll down an octave">↓ pitch</button>
-  </div>
+   </div>
+  </details>
  </section>
  <section class="workspace phone-sound-workspace" id="view-sound" hidden aria-label="Sound workspace">
   <div id="phone-sound-content"></div>
