@@ -196,7 +196,7 @@ fn start_and_check(root:&Path,work:&Path,version:&str)->Result<(),String>{
 fn perform(root:&Path,pid:u32,hash:&str,version:&str)->Result<(),String>{
     let work=root.join(".premidi-update");
     require_directory_inside(root,&work)?;
-    if !version.starts_with("0.") || semver::Version::parse(version).is_err() ||
+    if semver::Version::parse(version).is_err() ||
        hash.len()!=64 || !hash.bytes().all(|b|b.is_ascii_hexdigit()) {
         return Err("Invalid updater arguments".into());
     }

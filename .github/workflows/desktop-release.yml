@@ -196,7 +196,9 @@ jobs:
           if gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-draft.txt"; then
             test "$(cat "$RUNNER_TEMP/release-draft.txt")" = true || { echo 'Refusing to overwrite a published release'; exit 1; }
           else
-            gh release create "$RELEASE_TAG" --draft --prerelease --title "pre-midi ${RELEASE_TAG#v} Windows portable preview" --notes-file release/release-notes.md
+            args=(--draft --title "pre-midi ${RELEASE_TAG#v} Windows portable")
+            if [[ "$RELEASE_TAG" == *-* ]]; then args+=(--prerelease); fi
+            gh release create "$RELEASE_TAG" "${args[@]}" --notes-file release/release-notes.md
           fi
           for file in release/*; do
             case "$file" in *artifacts-*.json|*release-notes.md) continue;; esac

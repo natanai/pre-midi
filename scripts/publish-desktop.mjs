@@ -38,7 +38,7 @@ if(portableOnly){
 }
 const notes=await readFile(new URL('docs/desktop-release-notes.md',root),'utf8');
 if(signed||portableOnly)await writeFile(new URL('desktop-updates.json',dir),JSON.stringify({version,notes,pub_date:new Date().toISOString(),platforms},null,2)+'\n');
-await writeFile(new URL('desktop-release.json',dir),JSON.stringify({version,tag,commit:process.env.GITHUB_SHA,channel:version.includes('-')?'preview':'stable',distribution:portableOnly?'windows-portable-preview':'full-desktop',signedUpdates:signed||portableOnly,artifacts},null,2)+'\n');
+await writeFile(new URL('desktop-release.json',dir),JSON.stringify({version,tag,commit:process.env.GITHUB_SHA,channel:version.includes('-')?'preview':'stable',distribution:portableOnly?(version.includes('-')?'windows-portable-preview':'windows-portable-stable'):'full-desktop',signedUpdates:signed||portableOnly,artifacts},null,2)+'\n');
 const names=(await readdir(dir)).filter(name=>!name.startsWith('artifacts-')&&!name.endsWith('.md')).sort();
 const checksums=[];for(const name of names){const bytes=await readFile(new URL(name,dir));checksums.push(createHash('sha256').update(bytes).digest('hex')+'  '+name);}
 await writeFile(new URL('SHA256SUMS.txt',dir),checksums.join('\n')+'\n');

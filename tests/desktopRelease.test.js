@@ -21,23 +21,31 @@ async function setup(entries=fixtures){
 }
 const run=dir=>execFileSync(process.execPath,[fileURLToPath(script),dir],{cwd:root,stdio:'pipe'});
 const runPortable=dir=>execFileSync(process.execPath,[fileURLToPath(script),dir,'--windows-portable-only'],{cwd:root,stdio:'pipe'});
-test('portable preview publishes one Windows ZIP with checksums and no update installer',async()=>{
- const {dir}=await setup([['windows','x86_64','portable']]);
+async function signedFixture(dir,artifacts){
+ const a=artifacts[0];a.signature='test-signature-with-version-binding';
+ await writeFile(join(dir,a.name+'.sig'),a.signature+'\\n');
+ await writeFile(join(dir,'artifacts-test.json'),JSON.stringify(artifacts));
+}
+test('signed portable preview publishes a ZIP, signature, version manifest and checksums',async()=>{
+ const {dir,artifacts}=await setup([['windows','x86_64','portable']]);
  try{
-  runPortable(dir);const report=JSON.parse(await readFile(join(dir,'desktop-release.json'),'utf8'));
-  assert.equal(report.distribution,'windows-portable-preview');assert.equal(report.artifacts.length,1);assert.equal(report.signedUpdates,false);
-  assert.equal((await readFile(join(dir,'SHA256SUMS.txt'),'utf8')).trim().split('\n').length,2);
-  await assert.rejects(readFile(join(dir,'desktop-updates.json')),{code:'ENOENT'});
+  await signedFixture(dir,artifacts);runPortable(dir);const report=JSON.parse(await readFile(join(dir,'desktop-release.json'),'utf8'));
+  assert.equal(report.distribution,'windows-portable-preview');assert.equal(report.artifacts.length,1);assert.equal(report.signedUpdates,true);
+  assert.equal((await readFile(join(dir,'SHA256SUMS.txt'),'utf8')).trim().split('\n').length,4);
+  const manifest=JSON.parse(await readFile(join(dir,'desktop-updates.json'),'utf8'));
+  assert.equal(manifest.platforms['windows-x86_64-portable'].signature,artifacts[0].signature);
+  assert.equal(manifest.platforms['windows-x86_64-portable'].url,'https://github.com/natanai/pre-midi/releases/download/v'+report.version+'/'+artifacts[0].name);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 test('portable preview refuses installer or other platform assets',async()=>{
  const {dir}=await setup();
- try{assert.throws(()=>runPortable(dir),error=>error.stderr.toString().includes('only the Windows portable ZIP'));}
+ try{assert.throws(()=>runPortable(dir),error=>error.stderr.toString().includes('Portable release must contain only'));}
  finally{await rm(dir,{recursive:true,force:true});}
 });
 test('portable preview refuses a missing or corrupt Windows package',async()=>{
  const {dir,artifacts}=await setup([['windows','x86_64','portable']]);
  try{
+  await signedFixture(dir,artifacts);
   await writeFile(join(dir,artifacts[0].name),'corrupt');
   assert.throws(()=>runPortable(dir),error=>error.stderr.toString().includes('checksum mismatch'));
   await writeFile(join(dir,'artifacts-test.json'),'[]');
@@ -85,5 +93,19 @@ test('signed manifest selects the AppImage even when a DEB also has a signature'
   const manifest=JSON.parse(await readFile(join(dir,'desktop-updates.json'),'utf8'));
   assert.equal(manifest.platforms['linux-x86_64-appimage'].signature,'appimage-signature');
   assert.equal(Object.keys(manifest.platforms).length,4);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('portable release publication fails closed when the signing key is unavailable',async()=>{
+ const {dir}=await setup([['windows','x86_64','portable']]);
+ try{assert.throws(()=>runPortable(dir),error=>error.stderr.toString().includes('Refusing to publish unsigned portable release'));}
+ finally{await rm(dir,{recursive:true,force:true});}
+});
+test('portable release rejects mismatched detached signature metadata',async()=>{
+ const {dir,artifacts}=await setup([['windows','x86_64','portable']]);
+ try{
+  await signedFixture(dir,artifacts);
+  await writeFile(join(dir,artifacts[0].name+'.sig'),'another-signature');
+  assert.throws(()=>runPortable(dir),error=>error.stderr.toString().includes('signature does not match'));
  }finally{await rm(dir,{recursive:true,force:true});}
 });
