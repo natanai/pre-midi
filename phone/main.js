@@ -16,6 +16,7 @@ import {makeSampleAsset} from "../sampler.js";
 import {id} from "../schema.js";
 import {prepareSongTake} from "../songRecorder.js";
 import {makeRecordingAsset} from "../recordingAssets.js";
+import {renderNoteExpression} from "../expressionUI.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
@@ -68,6 +69,7 @@ function refreshSelection(){
  const selected=session.getChunk().notes.find(note=>note.id===selectedNoteId);
  if(!selected)selectedNoteId=null;
  $("delete-note").disabled=!selected;
+ $("note-effects").disabled=!selected;
  $("undo").disabled=!session.canUndo();
  $("redo").disabled=!session.canRedo();
 }
@@ -197,6 +199,40 @@ function activateCell(row,step){
   selectedNoteId=result.noteId;
   paintCells();void hear(row);
  }
+}
+function paintNoteEditor(){
+ const dialog=$("note-effects-dialog");
+ if(!dialog.open||!session)return;
+ const note=session.getChunk().notes.find(entry=>entry.id===selectedNoteId);
+ if(!note){dialog.close();return;}
+ const inst=session.getInstrument(),beat=session.getBeat();
+ const row=inst.layout==="rack"?inst.sounds.find(item=>item.id===note.soundId):inst.sounds[0];
+ const pitch=inst.layout==="rack"?row?.referencePitch:note.pitch;
+ const seconds=note.duration*60/beat.bpm/4;
+ const preview=()=>{
+  void audition(inst,pitch,beat,{soundId:row?.id,velocity:note.velocity,bend:note.bend,
+   duration:seconds}).catch(error=>status("note preview: "+error.message,true));
+ };
+ const apply=(command)=>{
+  try{
+   const result=session.dispatch({noteId:note.id,...command});
+   if(result.changed){paintCells();paintNoteEditor();}
+  }catch(error){status("note effects: "+error.message,true);paintNoteEditor();}
+ };
+ renderNoteExpression($("phone-note-editor"),note,inst.layout==="rack"?row?.name:nameOf(note.pitch),seconds,
+  bend=>apply({type:"note.bend",bend}),
+  ()=>{apply({type:"note.delete"});selectedNoteId=null;dialog.close();paintCells();},
+  preview,row?.patch?.bend,
+  velocity=>{apply({type:"note.level",velocity});preview();}
+ );
+ $("note-bend-default").disabled=!note.bend;
+}
+function openNoteEditor(){
+ if(!selectedNoteId)return;
+ cancelActiveGesture();
+ const dialog=$("note-effects-dialog");
+ if(!dialog.open)dialog.showModal();
+ paintNoteEditor();
 }
 function currentRect(){
  const viewport=$("roll-scroll"),rect=viewport.getBoundingClientRect();
@@ -605,6 +641,15 @@ function initializeControls(){
  viewport.addEventListener("pointercancel",endTouch);
  viewport.addEventListener("lostpointercapture",endTouch);
  $("pan-mode").addEventListener("click",()=>setPanMode(!panMode));
+ $("note-effects").addEventListener("click",openNoteEditor);
+ $("note-effects-close").addEventListener("click",()=>$("note-effects-dialog").close());
+ $("note-bend-default").addEventListener("click",()=>{
+  if(!selectedNoteId)return;
+  try{
+   session.dispatch({type:"note.bend",noteId:selectedNoteId,bend:null});
+   paintCells();paintNoteEditor();
+  }catch(error){status("note bend reset: "+error.message,true);}
+ });
  $("delete-note").addEventListener("click",()=>{
   cancelActiveGesture();if(!selectedNoteId)return;
   session.dispatch({type:"note.delete",noteId:selectedNoteId});
