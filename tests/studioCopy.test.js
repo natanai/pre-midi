@@ -64,3 +64,12 @@ test("sound shape responds to rise and fade for both synth and recording",()=>{
   assert.ok(scopeAmplitudeAt(slow,1.7)>scopeAmplitudeAt(patch,1.7),"longer release remains more audible");
  }
 });
+
+test("hear sound stays an icon, including after a rack audition and rerender",()=>{
+ const html=read("index.html"),studio=read("studio.js");
+ assert.match(html,/<button id="hear-sound"[^>]*>▶<\/button>/);
+ assert.match(studio,/hear\.textContent="▶"/);
+ assert.doesNotMatch(studio,/hear\.textContent="hear sound/);
+ assert.match(studio,/hear\.setAttribute\("aria-label","hear "\+entry\.name/);
+ assert.match(studio,/nextRackPreview/);
+});
