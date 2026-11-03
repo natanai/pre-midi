@@ -85,7 +85,7 @@ test("Pages stages nested DSP modules and both stylesheets without development f
    assert.match(worker,/phone\/index.html/);
    assert.match(worker,/src\/dsp\/value.js/);
    assert.doesNotMatch(worker,/__ASSETS__|__BUILD__|__FACTORY_SAMPLES__/);
-   assert.match(worker,/samples\\/piano-c3\\.ogg/);
+   assert.ok(worker.includes("samples/piano-c3.ogg"));
   assert.equal(await readFile(new URL("dist/phone/manifest.webmanifest",root),"utf8"),files["phone/manifest.webmanifest"]);
   assert.equal(await readFile(new URL("dist/desktop/icons/icon.png",root),"utf8"),files["desktop/icons/icon.png"]);
   assert.match(await readFile(new URL("dist/phone/index.html",root),"utf8"),/phone.css\?build=abcdef123456/);
