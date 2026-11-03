@@ -63,6 +63,10 @@ The dedicated phone entry now has an initial Notes screen with shared Beat/Chunk
 
 The phone host registers a root-scoped, versioned service worker; interception is restricted to the dedicated phone page, CSS/manifest/icon and complete JavaScript dependency closure. Installation caches all files as one unit. A new revision replaces the old cache after activation, leaving the desktop URL and other requests untouched. Recordings/projects remain in IndexedDB. This delivers a basic offline **editor shell**, not complete offline audio: factory sample files are not precached and remain network-dependent. The build generates a deterministic allowlist from the dependency closure. Chrome tests check cache installation. Physical iOS Home Screen launch, audio activation after offline resume and interruption/update remain unqualified.
 
+### Phase 3 Sound implementation, first module parity slice
+
+The **Sound** workspace now renders the exact shared desktop synthesizer editor, sampler editor, modulation controls and sound illustrations in dedicated `phone/` styles. It exposes the selected instrument, all of its Rack sound rows, instrument and per-sound level, name and sound preview. The studio session owns undoable `renameInstrument`, `changeInstrumentVolume`, `changeSoundGain`, and path-specific `changeSoundPatch` operations; each mutation uses the existing format validators and rolls back on invalid values. All synth groups, oscillator controls including harmonic partials, modulation routing, envelope, filter, movement, distortion and delay are reachable through their shared DOM component. Recorded-sample tone and mapping controls are present, but **replacing or recording a sample on phone is not yet implemented**; its control is disabled, preserving imported recordings. Catalog browsing/preset management, robust playback audition and exact touch behavior remain unqualified. CI tests verify undo, source validator rollback and staged browser patch edits. This is a working subset of Phase 3, not completion of it.
+
 ## Long-term code layout
 
 ```text
