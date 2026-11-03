@@ -114,7 +114,7 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
   });
  }
  function changeSoundGain(soundId,gain){
-  if(!Number.isFinite(gain)||gain<0||gain>2)return false;
+  if(!Number.isFinite(gain)||gain<0||gain>1)return false;
   return editInstrument(inst=>{
    const sound=inst.sounds.find(row=>row.id===soundId);
    if(!sound||sound.gain===gain)return false;
