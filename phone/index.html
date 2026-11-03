@@ -101,6 +101,15 @@
  <div id="catalog-filters" class="phone-catalog-filters"></div>
  <div id="catalog-sounds" class="phone-catalog-sounds"></div>
 </dialog>
+<dialog id="preset-dialog" class="phone-dialog" aria-label="Save sound preset">
+ <form id="preset-form">
+  <header><h2>save preset</h2><button type="button" id="preset-close" aria-label="Cancel preset save">×</button></header>
+  <label class="phone-sample-field">name <input id="preset-name" type="text" maxlength="60" required></label>
+  <p id="preset-scope" class="dialog-hint">selected sound</p>
+  <button id="preset-save" type="submit">save locally</button>
+ </form>
+ <p class="dialog-hint">Presets live in this browser's storage. To recover recorded audio on another device, export a project ZIP that contains the recordings.</p>
+</dialog>
 <dialog id="note-effects-dialog" class="phone-dialog phone-note-dialog" aria-label="Selected note effects">
  <header><h2>note effects</h2><button id="note-effects-close" type="button" aria-label="Close note effects">×</button></header>
  <div id="phone-note-editor"></div>
