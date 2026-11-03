@@ -46,6 +46,7 @@ export function installDesktopUI({flush}) {
  window.premidiDesktop.info().then(info=>{
   version.textContent='pre-midi '+info.version;
   channel.value=localStorage.getItem('premidi-update-channel')||info.channel;
+  if(info.updateRecovery)prompt('portable update recovery',info.updateRecovery+'\nYour projects and recordings were not removed.');
   invoke('portable_update_ready').catch(error=>console.error('Portable update readiness:',error));
  })
   .catch(error=>prompt('could not read desktop version',String(error)));

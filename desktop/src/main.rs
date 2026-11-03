@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool,AtomicI32,Ordering};
 #[tauri::command]
 fn desktop_info(app:tauri::AppHandle,storage:tauri::State<'_,storage::Storage>)->serde_json::Value{
  serde_json::json!({"version":app.package_info().version.to_string(),"channel":if app.package_info().version.pre.is_empty(){"stable"}else{"preview"},
- "updateSigningConfigured":!updates::KEY.is_empty(),"dataPath":storage.webview,"portable":storage.portable_root.is_some(),"portableRoot":storage.portable_root,
+ "updateSigningConfigured":!updates::KEY.is_empty(),"dataPath":storage.webview,"portable":storage.portable_root.is_some(),"portableRoot":storage.portable_root,"updateRecovery":portable_update::take_failure(storage.portable_root.as_deref()),
  "projectsPath":storage.projects,"exportsPath":storage.exports,"audioBackend":"native-cpp","nativeRealtime":true,
  "smokeRestore":std::env::var_os("PREMIDI_SMOKE_EXPECT_RESTORE").is_some(),"smokeFresh":std::env::var_os("PREMIDI_SMOKE_EXPECT_FRESH").is_some(),
  "smokeStorageToken":std::env::var("PREMIDI_SMOKE_STORAGE_TOKEN").unwrap_or_default(),

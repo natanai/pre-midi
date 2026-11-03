@@ -133,4 +133,6 @@ if (!$bad.WaitForExit(30000)) { $bad.Kill(); throw 'Tampered package check timed
 if ($bad.ExitCode -eq 0 -or (Get-FileHash (Join-Path $automatic 'pre-midi.exe') -Algorithm SHA256).Hash -ne $before) {
   throw 'Tampered staged archive was accepted or modified installed files'
 }
+if (!(Test-Path (Join-Path $work 'failure.txt'))) { throw 'Rejected update did not record its failure' }
+Remove-Item (Join-Path $work 'failure.txt')
 Invoke-StudioSmoke (Join-Path $automatic 'pre-midi.exe') 'portable-auto-after-reject' 'portable-auto' -Restore

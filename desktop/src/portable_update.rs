@@ -217,6 +217,7 @@ fn perform(root:&Path,pid:u32,hash:&str,version:&str)->Result<(),String>{
             return Err(format!("{e}; rollback failed: {rollback}. Backup retained"));
         }
         fs::remove_dir_all(&backup).map_err(|e|e.to_string())?;
+        let _=fs::write(work.join("failure.txt"),format!("{e}; previous version restored"));
         let _=Command::new(root.join("pre-midi.exe")).current_dir(root).spawn();
         return Err(format!("{e}; previous version restored"));
     }
@@ -282,4 +283,19 @@ mod tests {
     assert!(!existing(&root.join("backup")));
     let _=fs::remove_dir_all(root);
  }
+}
+
+/// Show a failure once in Settings, or prune a previously successful staging
+/// directory on a later launch, after the helper is no longer using it.
+pub fn take_failure(root:Option<&Path>)->Option<String>{
+ let work=root?.join(".premidi-update");
+ let failure=work.join("failure.txt");
+ if let Ok(detail)=fs::read_to_string(&failure){
+    let _=fs::remove_file(&failure);
+    return Some(detail);
+ }
+ if existing(&work.join("success.txt")) && !existing(&work.join("backup")){
+    let _=fs::remove_dir_all(&work);
+ }
+ None
 }
