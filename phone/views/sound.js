@@ -28,7 +28,8 @@ export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSoun
  name.addEventListener("change",()=>onNameChange(name.value));
  title.append(name);heading.append(title);
  const audition=element("button","phone-sound-audition");
- audition.type="button";audition.textContent="▶";audition.setAttribute("aria-label","Preview selected sound");
+ audition.type="button";audition.textContent="▶";audition.setAttribute("aria-label",inst.layout==="rack"?"Preview next rack sound":"Preview selected sound");
+ audition.title=inst.layout==="rack"?"each tap plays the next rack sound":"preview selected sound";
  audition.addEventListener("click",()=>onPreview(selectedSoundId));
  heading.append(audition);
  const save=element("button","phone-sound-save");
