@@ -2,6 +2,7 @@
 import {clone,create,makeInstrument,validate,upgradeBeatFeatures} from "./schema.js";
 import {validateSong,upgradeSongFeatures} from "./songModel.js";
 import {applyNoteCommand} from "./studioCommands.js";
+import {assignSoundEdit} from "./soundEditPath.js";
 
 export function createStudioSession(initial=create(),onCommit=()=>{}){
  let document=clone(initial),activeBeatId=null,activeInstrumentId=null;
@@ -84,6 +85,53 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
   history.push(before);if(history.length>100)history.shift();
   future=[];notify();return true;
  }
+ function editInstrument(mutate){
+  if(preview)return false;
+  const previous=clone(document),current=instrument();
+  let changed;
+  try{changed=mutate(current);}
+  catch(error){document=previous;repair();throw error;}
+  if(!changed)return false;
+  const problems=check();
+  if(problems.length){document=previous;repair();throw Error(problems[0]);}
+  history.push(previous);if(history.length>100)history.shift();
+  future=[];notify();return true;
+ }
+ function renameInstrument(name){
+  if(typeof name!=="string"||!name.trim()||name.length>60)return false;
+  return editInstrument(inst=>{
+   if(inst.name===name.trim())return false;
+   inst.name=name.trim();return true;
+  });
+ }
+ function changeInstrumentVolume(volume){
+  if(!Number.isFinite(volume)||volume<0||volume>1)return false;
+  return editInstrument(inst=>{
+   if(inst.volume===volume)return false;
+   inst.volume=volume;return true;
+  });
+ }
+ function changeSoundGain(soundId,gain){
+  if(!Number.isFinite(gain)||gain<0||gain>2)return false;
+  return editInstrument(inst=>{
+   const sound=inst.sounds.find(row=>row.id===soundId);
+   if(!sound||sound.gain===gain)return false;
+   sound.gain=gain;return true;
+  });
+ }
+ function changeSoundPatch(soundId,path,value){
+  if(!Array.isArray(path)||!path.length)return false;
+  return editInstrument(inst=>{
+   const sound=inst.sounds.find(row=>row.id===soundId);
+   if(!sound)return false;
+   const patch=clone(sound.patch);
+   assignSoundEdit(patch,path,clone(value));
+   if(patch.modulation!==undefined)patch.version=2;
+   patch.presetId="custom";
+   if(JSON.stringify(patch)===JSON.stringify(sound.patch))return false;
+   sound.patch=patch;return true;
+  });
+ }
  function addInstrument(){
   if(preview||beat().instruments.length>=12)return false;
   const before=clone(document),current=beat();
@@ -106,6 +154,7 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    chunks.set(instrument().id,value);return true;
   },
   beginPreview,applyPreview,finishPreview,dispatch,replace,addInstrument,setBpm,
+  renameInstrument,changeInstrumentVolume,changeSoundGain,changeSoundPatch,
   undo:()=>stepBack(history,future),redo:()=>stepBack(future,history),
   canUndo:()=>history.length>0,canRedo:()=>future.length>0
  };
