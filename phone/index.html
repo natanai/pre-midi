@@ -42,7 +42,8 @@
   <div class="editing-tools">
    <button id="undo" type="button" aria-label="Undo">↶</button>
    <button id="redo" type="button" aria-label="Redo">↷</button>
-   <button id="delete-note" type="button" disabled>delete note</button>
+   <button id="note-effects" type="button" disabled>note effects</button>
+    <button id="delete-note" type="button" disabled>delete note</button>
    <button id="pan-mode" type="button" aria-pressed="false" aria-label="Navigate without editing notes">pan</button>
    <span class="tool-space"></span>
    <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
@@ -99,6 +100,11 @@
  <p class="dialog-hint" id="catalog-context">choose a sound</p>
  <div id="catalog-filters" class="phone-catalog-filters"></div>
  <div id="catalog-sounds" class="phone-catalog-sounds"></div>
+</dialog>
+<dialog id="note-effects-dialog" class="phone-dialog phone-note-dialog" aria-label="Selected note effects">
+ <header><h2>note effects</h2><button id="note-effects-close" type="button" aria-label="Close note effects">×</button></header>
+ <div id="phone-note-editor"></div>
+ <button type="button" id="note-bend-default">use instrument bend</button>
 </dialog>
 <dialog id="sample-dialog" class="phone-dialog" aria-label="Record or import a sound">
  <header><h2>sample</h2><button type="button" data-close aria-label="Close sample recorder">×</button></header>
