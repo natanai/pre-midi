@@ -632,6 +632,21 @@ function initializeControls(){
   $("project-dialog").showModal();
  });
  $("project-close").addEventListener("click",()=>$("project-dialog").close());
+ $("cache-factory").addEventListener("click",async()=>{
+  const button=$("cache-factory");
+  if(!("serviceWorker" in navigator)){status("this browser cannot cache offline sounds",true);return;}
+  button.disabled=true;
+  $("offline-status").textContent="downloading factory recordings for offline use…";
+  try{
+   const registration=await navigator.serviceWorker.ready;
+   if(!registration.active)throw Error("offline editor is not ready");
+   registration.active.postMessage({kind:"PREMIDI_CACHE_FACTORY"});
+  }catch(error){
+   $("offline-status").textContent="offline sounds unavailable: "+error.message;
+   button.disabled=false;
+  }
+ });
+
  $("voice-start").addEventListener("click",()=>void startPhoneVocal());
  $("voice-stop").addEventListener("click",()=>void finishPhoneVocal());
  $("voice-close").addEventListener("click",cancelPhoneVoice);
@@ -724,6 +739,19 @@ try{
 // Host-only capability: service worker serves code/UI; IndexedDB retains local projects.
 // It intentionally does not promise cached sample WAV/OGG files yet.
 if("serviceWorker" in navigator){
+ navigator.serviceWorker.addEventListener("message",event=>{
+  const {kind,done,total,error}=event.data||{};
+  const button=$("cache-factory"),out=$("offline-status");
+  if(kind==="PREMIDI_FACTORY_PROGRESS")out.textContent="factory sounds saved "+done+" / "+total;
+  if(kind==="PREMIDI_FACTORY_FAILED"){
+   out.textContent="download stopped at "+done+" / "+total+" · "+error+" · tap again to retry";
+   button.disabled=false;
+  }
+  if(kind==="PREMIDI_FACTORY_READY"){
+   out.textContent="factory audio available offline · "+done+" sounds";
+   button.disabled=false;button.textContent="refresh offline sounds";
+  }
+ });
  navigator.serviceWorker.register("../sw.js",{scope:"../",updateViaCache:"none"})
   .then(()=>navigator.serviceWorker.ready)
   .then(()=>{
