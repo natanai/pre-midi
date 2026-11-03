@@ -66,9 +66,9 @@ test("Pages stages nested DSP modules and both stylesheets without development f
   await mkdir(new URL("phone/",root));
   await mkdir(new URL("desktop/icons/",root),{recursive:true});
   const files={"studio.js":'import {value} from "./src/dsp/value.js";',
-   "src/dsp/value.js":'export const value=1;',"style.css":"body{}","studioAlignment.css":".row{}",
+   "src/dsp/value.js":'export const value=1;',"src/dsp/phone-value.js":'export const phoneValue=1;',"style.css":"body{}","studioAlignment.css":".row{}",
    "phone/index.html":'<head><link rel="stylesheet" href="./phone.css"></head><script type="module" src="./main.js"></script>',"phone/phone.css":"body{}",
-   "phone/main.js":'export const phoneReady=true;',"phone/manifest.webmanifest":"{}",
+   "phone/main.js":'import {phoneValue} from "../src/dsp/phone-value.js"; export const phoneReady=phoneValue;',"phone/manifest.webmanifest":"{}",
     "phone/sw.js":'const build="__BUILD__"; const assets=__ASSETS__; const factory=__FACTORY_SAMPLES__;',
    "desktop/icons/icon.png":"png-icon-fixture",
    "THIRD_PARTY_NOTICES.md":"notices","favicon.svg":'<svg xmlns="http://www.w3.org/2000/svg"></svg>',"index.html":'<head></head><script type="module" src="./studio.js"></script>'};
@@ -83,7 +83,8 @@ test("Pages stages nested DSP modules and both stylesheets without development f
    const worker=await readFile(new URL("dist/sw.js",root),"utf8");
    assert.match(worker,/abcdef123456/);
    assert.match(worker,/phone\/index.html/);
-   assert.match(worker,/src\/dsp\/value.js/);
+   assert.ok(worker.includes("src/dsp/phone-value.js"));
+   assert.ok(!worker.includes('"src/dsp/value.js"'),"desktop-only module must not be precached on iOS");
    assert.doesNotMatch(worker,/__ASSETS__|__BUILD__|__FACTORY_SAMPLES__/);
    assert.ok(worker.includes("samples/piano-c3.ogg"));
   assert.equal(await readFile(new URL("dist/phone/manifest.webmanifest",root),"utf8"),files["phone/manifest.webmanifest"]);
