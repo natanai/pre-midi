@@ -170,7 +170,36 @@ try{
   throw Error("using shared sound factory did not create a playable Instrument");
  if(!doc.querySelector("#scale-summary").textContent.includes("scale"))
   throw Error("compact scale settings became unreachable");
- await result("PASS","notes, touch, playback, offline shell, Sound DSP and unified factory Add/Browse catalog");
+ // Build an actual Song from the existing Beat and modify canonical Clips.
+ doc.querySelector('[data-workspace="song"]').click();
+ const createSong=doc.querySelector("#phone-song-content .phone-song-start button");
+ if(!createSong)throw Error("Beat to Song conversion is missing on phone");
+ createSong.click();
+ await wait(()=>doc.querySelector(".phone-song-track"),"phone Song arrangement");
+ const songControls=[...doc.querySelectorAll(".phone-song-actions button")];
+ const action=text=>songControls.find(button=>button.textContent===text);
+ if(!action("+ beat track")||!action("edit beat"))throw Error("Song track and Beat editor unavailable");
+ action("+ beat track").click();
+ await wait(()=>doc.querySelectorAll(".phone-song-track").length===2,"second Beat Track");
+ const addClip=[...doc.querySelectorAll(".phone-song-track")].at(-1).querySelector(".phone-song-track-heading button");
+ addClip.click();
+ await wait(()=>doc.querySelectorAll(".phone-song-clip").length===2,"new Beat Clip");
+ const settings=[...doc.querySelectorAll(".phone-song-track")].at(-1).querySelector(".phone-song-clip-settings");
+ const steps=settings.querySelector('[aria-label="start step"]');steps.value="3";
+ steps.dispatchEvent(new Event("change",{bubbles:true}));
+ if(![...doc.querySelectorAll(".phone-song-track")].at(-1).querySelector('[aria-label="start step"]')?.value.includes("3"))
+  throw Error("offset Song Clip edit failed");
+ doc.querySelector("#play").click();
+ await wait(()=>doc.querySelector("#phone-song-playhead")?.hidden===false,"Song playback line");
+ doc.querySelector("#play").click();
+ await wait(()=>doc.querySelector("#phone-song-playhead")?.hidden===true,"Song stop cursor");
+ doc.querySelector("#project-actions").click();
+ if(doc.querySelector("#export-song").hidden||!doc.querySelector("#render-wav"))
+  throw Error("Song export or WAV render not available on phone");
+ doc.querySelector("#project-close").click();
+ action("edit beat").click();
+ if(doc.querySelector("#view-notes").hidden)throw Error("Song Beat cannot return to Notes editing");
+ await result("PASS","note touch/edit, offline shell, Sound/catalog and Song Clips/transport/export");
 }catch(error){
  await result("FAIL",error.stack||String(error));
 }
