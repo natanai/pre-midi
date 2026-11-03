@@ -287,3 +287,7 @@ button:active{background:#252525}
 #instrument-options .phone-instrument-row button:first-child{flex:1;min-width:0;text-align:left;padding:6px 12px}
 #instrument-options .phone-instrument-row button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 #instrument-options .phone-instrument-row button:last-child{min-width:38px;color:#ffb9c6}
+
+.phone-project-title{display:flex;flex-direction:column;gap:6px;margin:12px 0;font-size:11px;color:var(--sub)}
+.phone-project-title input{height:40px;padding:6px 9px;color:var(--ink)}
+.phone-chunks-dialog #beat-bars{max-width:145px}
