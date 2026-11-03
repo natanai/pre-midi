@@ -125,6 +125,17 @@ if ($helper.ExitCode -ne 0) {
 }
 if ((Get-Content (Join-Path $work 'success.txt') -Raw).Trim() -ne $version) { throw 'Portable updater did not confirm its new version' }
 if (Test-Path (Join-Path $work 'backup')) { throw 'Successful portable update retained its rollback backup' }
+# The helper confirms UI readiness, not completion of the separate smoke suite.
+# Wait for that first launched app to finish and release its portable WebView profile.
+$installedSmoke = $env:PREMIDI_SMOKE_OUTPUT
+for ($attempt = 0; $attempt -lt 480; $attempt++) {
+  if (Test-Path $installedSmoke) { break }
+  Start-Sleep -Milliseconds 250
+}
+if (!(Test-Path $installedSmoke)) { throw 'Updated app never completed its first post-update smoke run' }
+$firstReport = Get-Content $installedSmoke -Raw | ConvertFrom-Json
+if (!$firstReport.passed) { throw 'Updated app failed its first post-update smoke run' }
+Wait-WebViewProfileExit (Join-Path $automatic 'data/webview')
 Invoke-StudioSmoke (Join-Path $automatic 'pre-midi.exe') 'portable-auto-upgraded' 'portable-auto' -Restore
 # A corrupted staged archive must fail before replacing any application file.
 $before = (Get-FileHash (Join-Path $automatic 'pre-midi.exe') -Algorithm SHA256).Hash
