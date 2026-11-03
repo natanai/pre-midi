@@ -155,7 +155,22 @@ try{
  doc.querySelector('[data-workspace="sound"]').click();
  if(doc.querySelector('[aria-label="Wave (oscillators.0.wave)"]')?.value!=="square")
   throw Error("phone Sound patch was lost on workspace switching");
- await result("PASS","note editing, playhead, standalone offline cache and shared phone synth module edits");
+ doc.querySelector('[data-workspace="notes"]').click();
+ doc.querySelector("#instrument-picker").click();
+ await wait(()=>doc.querySelector("#instruments-dialog").open,"phone instrument sheet");
+ doc.querySelector("#add-instrument").click();
+ await wait(()=>doc.querySelector("#catalog-dialog").open,"unified factory catalog");
+ const entries=doc.querySelectorAll("#catalog-sounds .phone-catalog-item");
+ if(entries.length<15)throw Error("factory Sound catalog was not fully offered on phone");
+ const item=doc.querySelector('#catalog-sounds [data-preset-id="init"]');
+ if(!item)throw Error("factory Init preset missing from same browser");
+ item.querySelector('button[aria-label="add Init"]').click();
+ await wait(()=>!doc.querySelector("#catalog-dialog").open,"factory sound to add");
+ if(!doc.querySelector("#instrument-picker").textContent.includes("Init"))
+  throw Error("using shared sound factory did not create a playable Instrument");
+ if(!doc.querySelector("#scale-summary").textContent.includes("scale"))
+  throw Error("compact scale settings became unreachable");
+ await result("PASS","notes, touch, playback, offline shell, Sound DSP and unified factory Add/Browse catalog");
 }catch(error){
  await result("FAIL",error.stack||String(error));
 }
