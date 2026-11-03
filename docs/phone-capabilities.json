@@ -1018,7 +1018,31 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:songUI:block-keydown:2",
+      "source": "songUI.js",
+      "anchor": "block",
+      "kind": "listener",
+      "event": "keydown",
+      "desktopRoute": "songUI.js block.keydown",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:songUI:block-pointercancel:1",
+      "source": "songUI.js",
+      "anchor": "block",
+      "kind": "listener",
+      "event": "pointercancel",
+      "desktopRoute": "songUI.js block.pointercancel",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:songUI:block-pointercancel:2",
       "source": "songUI.js",
       "anchor": "block",
       "kind": "listener",
@@ -1042,7 +1066,31 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:songUI:block-pointerdown:2",
+      "source": "songUI.js",
+      "anchor": "block",
+      "kind": "listener",
+      "event": "pointerdown",
+      "desktopRoute": "songUI.js block.pointerdown",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:songUI:block-pointermove:1",
+      "source": "songUI.js",
+      "anchor": "block",
+      "kind": "listener",
+      "event": "pointermove",
+      "desktopRoute": "songUI.js block.pointermove",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:songUI:block-pointermove:2",
       "source": "songUI.js",
       "anchor": "block",
       "kind": "listener",
@@ -1066,12 +1114,36 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:songUI:block-pointerup:2",
+      "source": "songUI.js",
+      "anchor": "block",
+      "kind": "listener",
+      "event": "pointerup",
+      "desktopRoute": "songUI.js block.pointerup",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:songUI:edit-click:1",
       "source": "songUI.js",
       "anchor": "edit",
       "kind": "listener",
       "event": "click",
       "desktopRoute": "songUI.js edit.click",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:songUI:remove-click:1",
+      "source": "songUI.js",
+      "anchor": "remove",
+      "kind": "listener",
+      "event": "click",
+      "desktopRoute": "songUI.js remove.click",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "song",
       "phoneStatus": "todo",
