@@ -82,8 +82,8 @@ test("Pages stages nested DSP modules and both stylesheets without development f
   assert.equal(await readFile(new URL("dist/phone/main.js",root),"utf8"),files["phone/main.js"]);
    const worker=await readFile(new URL("dist/sw.js",root),"utf8");
    assert.match(worker,/abcdef123456/);
-   assert.match(worker,/phone\\/index.html/);
-   assert.match(worker,/src\\/dsp\\/value.js/);
+   assert.match(worker,/phone\/index.html/);
+   assert.match(worker,/src\/dsp\/value.js/);
    assert.doesNotMatch(worker,/__ASSETS__|__BUILD__/);
   assert.equal(await readFile(new URL("dist/phone/manifest.webmanifest",root),"utf8"),files["phone/manifest.webmanifest"]);
   assert.equal(await readFile(new URL("dist/desktop/icons/icon.png",root),"utf8"),files["desktop/icons/icon.png"]);
