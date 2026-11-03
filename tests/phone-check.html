@@ -121,7 +121,17 @@ try{
   throw Error("note edit surface does not opt out of native scrolling");
  if(!getComputedStyle(doc.querySelector(".piano-key")).touchAction.includes("pan"))
   throw Error("piano key navigation strip does not allow native touch scroll");
- await result("PASS","phone taps, visible note resize handle, playback cursor movement and stopping, pointer interruption, second-finger pinch, pan and undo");
+ const phoneWindow=frame.contentWindow;
+ if(!("serviceWorker" in phoneWindow.navigator))throw Error("service worker unavailable on local secure browser origin");
+ await Promise.race([phoneWindow.navigator.serviceWorker.ready,
+  new Promise((_,reject)=>setTimeout(()=>reject(Error("offline shell install timeout")),15000))]);
+ const cacheNames=await phoneWindow.caches.keys();
+ const activeName=cacheNames.find(name=>name.startsWith("pre-midi-phone-"));
+ if(!activeName)throw Error("PWA did not install an offline shell cache");
+ const offlineCache=await phoneWindow.caches.open(activeName);
+ if(!await offlineCache.match(new URL("/schema.js",location.origin)))
+  throw Error("Canonical Beat schema module is not available offline");
+ await result("PASS","note edit, playback and installed PWA offline editor-shell cache");
 }catch(error){
  await result("FAIL",error.stack||String(error));
 }

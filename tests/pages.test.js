@@ -69,6 +69,7 @@ test("Pages stages nested DSP modules and both stylesheets without development f
    "src/dsp/value.js":'export const value=1;',"style.css":"body{}","studioAlignment.css":".row{}",
    "phone/index.html":'<head><link rel="stylesheet" href="./phone.css"></head><script type="module" src="./main.js"></script>',"phone/phone.css":"body{}",
    "phone/main.js":'export const phoneReady=true;',"phone/manifest.webmanifest":"{}",
+    "phone/sw.js":'const build="__BUILD__"; const assets=__ASSETS__;',
    "desktop/icons/icon.png":"png-icon-fixture",
    "THIRD_PARTY_NOTICES.md":"notices","favicon.svg":'<svg xmlns="http://www.w3.org/2000/svg"></svg>',"index.html":'<head></head><script type="module" src="./studio.js"></script>'};
   for(const [file,content] of Object.entries(files))await writeFile(new URL(file,root),content);
@@ -79,6 +80,11 @@ test("Pages stages nested DSP modules and both stylesheets without development f
   assert.equal(await readFile(new URL("dist/favicon.svg",root),"utf8"),files["favicon.svg"]);
   assert.equal(await readFile(new URL("dist/phone/phone.css",root),"utf8"),files["phone/phone.css"]);
   assert.equal(await readFile(new URL("dist/phone/main.js",root),"utf8"),files["phone/main.js"]);
+   const worker=await readFile(new URL("dist/sw.js",root),"utf8");
+   assert.match(worker,/abcdef123456/);
+   assert.match(worker,/phone\/index.html/);
+   assert.match(worker,/src\/dsp\/value.js/);
+   assert.doesNotMatch(worker,/__ASSETS__|__BUILD__/);
   assert.equal(await readFile(new URL("dist/phone/manifest.webmanifest",root),"utf8"),files["phone/manifest.webmanifest"]);
   assert.equal(await readFile(new URL("dist/desktop/icons/icon.png",root),"utf8"),files["desktop/icons/icon.png"]);
   assert.match(await readFile(new URL("dist/phone/index.html",root),"utf8"),/phone.css\?build=abcdef123456/);
