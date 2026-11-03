@@ -259,7 +259,23 @@ try{
  if(!doc.querySelector("#sample-dialog").open)throw Error("short sample dialog failed to open");
  if(!doc.querySelector("#sample-dialog [data-file]"))throw Error("WAV file input unavailable");
  doc.querySelector("#sample-dialog [data-close]").click();
- await result("PASS","phone score editing, Sound catalog, Song Clips, offline editor shell and explicit mic/voice controls");
+ doc.querySelector("#catalog-close").click();
+ doc.querySelector("#chunk-actions").click();
+ await wait(()=>doc.querySelector("#chunks-dialog").open,"phone Chunk and Beat placement sheet");
+ doc.querySelector("#chunk-new").click();
+ await wait(()=>doc.querySelector("#chunk-picker").options.length===2,"new phone Chunk");
+ if(!doc.querySelector("#chunk-location").textContent.includes("bar 2"))
+  throw Error("new phone Chunk was not assigned to a playable Beat bar");
+ doc.querySelector("#bar-offset").value="3";
+ doc.querySelector("#bar-offset").dispatchEvent(new Event("change",{bubbles:true}));
+ if(Number(doc.querySelector("#bar-offset").value)!==3)
+  throw Error("phone bar offset failed");
+ doc.querySelector("#chunk-duplicate").click();
+ await wait(()=>doc.querySelector("#chunk-picker").options.length===3,"duplicate phone Chunk");
+ if(!doc.querySelector("#chunk-location").textContent.includes("bar 3"))
+  throw Error("duplicated Chunk lacks Beat placement");
+ doc.querySelector("#chunks-close").click();
+ await result("PASS","notes, isolated effects, preset saves, Song Clips, offline cache, mic entry, Files and playable Chunks");
 }catch(error){
  await result("FAIL",error.stack||String(error));
 }
