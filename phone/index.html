@@ -65,10 +65,8 @@
  <section class="workspace phone-sound-workspace" id="view-sound" hidden aria-label="Sound workspace">
   <div id="phone-sound-content"></div>
  </section>
- <section class="workspace placeholder" id="view-song" hidden>
-  <h2>song</h2>
-  <p>the phone arranger is not ready yet</p>
-  <p>existing song data remains preserved</p>
+ <section class="workspace phone-song-workspace" id="view-song" hidden aria-label="Song arrangement">
+  <div id="phone-song-content"></div>
  </section>
  <output id="status" class="phone-status" role="status" aria-live="polite">opening local draft…</output>
  <nav class="phone-nav" aria-label="Workspace">
@@ -89,6 +87,7 @@
  <button id="new-beat" type="button">new beat</button>
  <button id="open-beat" type="button">open .premidi / ZIP</button>
  <button id="export-beat" type="button">export beat</button>
+ <button id="render-wav" type="button">render WAV</button>
  <button id="export-song" type="button" hidden>export song</button>
  <input type="file" id="open-file" accept=".premidi,.zip,application/zip" hidden>
  <p class="dialog-hint">drafts save locally; export a backup to keep your work</p>
