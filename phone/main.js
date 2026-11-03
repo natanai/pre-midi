@@ -14,6 +14,8 @@ import {renderPhoneSong} from "./views/song.js";
 import {createPhoneSampleRecorder,authoredSamplePatch} from "./views/record.js";
 import {makeSampleAsset} from "../sampler.js";
 import {id} from "../schema.js";
+import {prepareSongTake} from "../songRecorder.js";
+import {makeRecordingAsset} from "../recordingAssets.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
@@ -21,7 +23,7 @@ const NOTE_NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"
 const CACHE="premidi-scale-guide-v1";
 let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null,playbackScope="beat";
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
-let activeSoundId=null,catalogMode="add",catalogCategory="All",sampleRecorder=null;
+let activeSoundId=null,catalogMode="add",catalogCategory="All",sampleRecorder=null,voiceTake=null,voiceToken=0;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
@@ -398,6 +400,78 @@ function useRecordedSound({name,wav,root,followPitch}){
  status("saved "+name+" locally · export your project ZIP for a durable backup");
  return true;
 }
+const voiceStatus=(text,error=false)=>{
+ $("voice-status").textContent=text;$("voice-status").dataset.error=String(error);
+};
+function updateVoiceControls(){
+ $("voice-start").disabled=!!voiceTake;
+ $("voice-stop").disabled=!voiceTake||voiceTake.finishing;
+ $("voice-close").disabled=!!voiceTake?.finishing;
+}
+function cancelPhoneVoice(){
+ voiceToken++;
+ const take=voiceTake;voiceTake=null;
+ take?.prepared?.cancel();
+ stopPlayback();
+ updateVoiceControls();
+ if($("voice-dialog").open)$("voice-dialog").close();
+}
+async function finishPhoneVocal(){
+ const state=voiceTake;
+ if(!state||state.finishing)return;
+ state.finishing=true;updateVoiceControls();voiceStatus("saving vocal take…");
+ try{
+  if(playing)stopPlayback();
+  const capture=await state.prepared.finish();
+  if(!capture||voiceToken!==state.token)return;
+  const name=$("voice-name").value.trim()||"Voice";
+  const metadata=makeRecordingAsset(id(),name,capture.mime,capture.bytes,{
+   durationSeconds:capture.durationSeconds,trimSeconds:capture.trimSeconds
+  });
+  session.attachVocalRecording(metadata,{startStep:state.startStep});
+  paintSong();
+  voiceStatus("saved "+name+" as a Vocal Clip");
+  $("voice-dialog").close();
+  status("vocal take saved locally · export Song ZIP to keep its audio");
+ }catch(error){voiceStatus(error?.message||String(error),true);}
+ finally{
+  state.prepared.cancel();
+  if(voiceTake===state)voiceTake=null;
+  updateVoiceControls();
+ }
+}
+async function startPhoneVocal(){
+ if(voiceTake||session.getDocument().kind!=="song")return;
+ const requested=Math.floor(Number($("voice-bar").value));
+ if(!Number.isSafeInteger(requested)||requested<1||requested>1000)
+  return voiceStatus("choose a valid starting bar",true);
+ const startStep=(requested-1)*16,token=++voiceToken;
+ $("voice-start").disabled=true;
+ voiceStatus("requesting microphone permission…");
+ let prepared;
+ try{
+  prepared=await prepareSongTake();
+  if(token!==voiceToken||!$("voice-dialog").open){prepared.cancel();return;}
+  stopPlayback();
+  const state={prepared,token,startStep,finishing:false};
+  voiceTake=state;playbackScope="song";updateVoiceControls();
+  voiceStatus("playing + recording from bar "+requested);
+  const handle=await play(()=>session.getDocument(),{
+   loop:false,startStep,
+   onStart:metadata=>prepared.begin({...metadata,onLimit:()=>void finishPhoneVocal()}),
+   onPosition:(bar,step)=>{$("position").value=(bar+1)+":"+(Math.floor(step/4)+1);},
+   onProgress:(bar,step)=>{playbackPosition={bar,step};updateSongPlayhead();},
+   onStop:()=>{playing=null;playbackPosition=null;updateSongPlayhead();void finishPhoneVocal();}
+  });
+  if(voiceTake!==state){handle.stop();return;}
+  playing=handle;$("play").textContent="■";$("play").setAttribute("aria-label","Stop Song recording");
+ }catch(error){
+  prepared?.cancel();
+  if(token===voiceToken){voiceTake=null;voiceStatus(error?.name==="NotAllowedError"?
+   "microphone permission denied":error.message,true);}
+  updateVoiceControls();
+ }finally{if(!voiceTake)updateVoiceControls();}
+}
 function paintSong(){
  if(!session)return;
  const call=action=>()=>{
@@ -419,6 +493,11 @@ function paintSong(){
   onRenameSong:name=>call(()=>session.renameSong(name))(),
   onSelectBeat:beatId=>{if(session.selectBeat(beatId)){selectedNoteId=null;renderContext();renderGrid(true);paintSong();}},
   onEditBeat:()=>document.querySelector('[data-workspace="notes"]').click(),
+  onRecordVocal:()=>{
+   if(voiceTake)return;
+   $("voice-status").textContent="ready";
+   if(!$("voice-dialog").open)$("voice-dialog").showModal();
+  },
   onError:message=>status(message,true)
  });
  updateSongPlayhead();
@@ -553,6 +632,10 @@ function initializeControls(){
   $("project-dialog").showModal();
  });
  $("project-close").addEventListener("click",()=>$("project-dialog").close());
+ $("voice-start").addEventListener("click",()=>void startPhoneVocal());
+ $("voice-stop").addEventListener("click",()=>void finishPhoneVocal());
+ $("voice-close").addEventListener("click",cancelPhoneVoice);
+ $("voice-dialog").addEventListener("cancel",event=>{event.preventDefault();cancelPhoneVoice();});
  $("new-beat").addEventListener("click",()=>{
   if(!confirm("Start a new Beat? Export a backup first to keep this project."))return;
   cancelActiveGesture();stopPlayback();session.replace(create());selectedNoteId=null;render();$("project-dialog").close();
@@ -593,8 +676,8 @@ function initializeControls(){
   for(const entry of document.querySelectorAll("[data-workspace]"))
    entry.setAttribute("aria-current",entry.dataset.workspace===activeWorkspace?"page":"false");
  });
- document.addEventListener("visibilitychange",()=>{if(document.hidden){cancelActiveGesture();stopPlayback();}});
- window.addEventListener("pagehide",()=>{cancelActiveGesture();stopPlayback();});
+ document.addEventListener("visibilitychange",()=>{if(document.hidden){cancelActiveGesture();if(voiceTake)cancelPhoneVoice();else stopPlayback();}});
+ window.addEventListener("pagehide",()=>{cancelActiveGesture();if(voiceTake)cancelPhoneVoice();else stopPlayback();});
 }
 function setZoom(value){
  zoom=clampZoom(value);
