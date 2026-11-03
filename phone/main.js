@@ -20,6 +20,7 @@ import {makeRecordingAsset} from "../recordingAssets.js";
 import {renderNoteExpression} from "../expressionUI.js";
 import {placementFor,defaultPlacement} from "../arrangement.js";
 import {makeTransferFile,canShareFile,shareFile} from "./fileDelivery.js";
+import {nextRackPreview} from "../rackPreview.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
@@ -29,6 +30,7 @@ let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 let activeSoundId=null,catalogMode="add",catalogCategory="All",sampleRecorder=null,voiceTake=null,voiceToken=0;
 const savedSounds=loadUserSounds();
+const phoneRackPreviewPositions=new Map();
 let presetScope=null,transferFile=null,activePlacementBar=0;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
@@ -624,11 +626,12 @@ async function saveSelectedPreset(){
  $("preset-dialog").close();presetScope=null;
  status("saved "+item.name+" · browse Mine to reuse · export a ZIP to back up recordings");
 }
-function mutatePhoneInstrument(action,label){
+function mutatePhoneInstrument(action,label,{preserveSound=false}={}){
  try{
   const changed=action();
   if(!changed){status("action is unavailable for this sound",true);return;}
-  activeSoundId=null;selectedNoteId=null;render(false);
+  if(!preserveSound)activeSoundId=null;
+  selectedNoteId=null;render(false);
   status(label+" · saved locally");
  }catch(error){status("instrument edit: "+error.message,true);paintSound();}
 }
@@ -651,7 +654,7 @@ function paintSound(){
   },
   onBrowse:mode=>openCatalog(mode),
   onSave:(wholeRack,soundId)=>openPresetSave(wholeRack,soundId),
-  onRenameSound:(soundId,name)=>mutatePhoneInstrument(()=>session.renameSound(soundId,name),"renamed sound"),
+  onRenameSound:(soundId,name)=>mutatePhoneInstrument(()=>session.renameSound(soundId,name),"renamed sound",{preserveSound:true}),
   onRemoveInstrument:()=>{
    const inst=session.getInstrument();
    if(!confirm("Delete "+(inst.layout==="rack"?"rack":"instrument")+" “"+inst.name+"” and its Chunks?"))return;
@@ -670,8 +673,12 @@ function paintSound(){
    catch(error){status("rename rejected: "+error.message,true);paintSound();}
   },
   onPreview(soundId){
-   const inst=session.getInstrument(),row=inst.sounds.find(sound=>sound.id===soundId)||inst.sounds[0];
+   const inst=session.getInstrument();
+   const choice=inst.layout==="rack"?
+    nextRackPreview(phoneRackPreviewPositions,"phone-instrument:"+inst.id,inst.sounds):null;
+   const row=choice?.sound||inst.sounds.find(sound=>sound.id===soundId)||inst.sounds[0];
    void audition(inst,row.referencePitch,session.getBeat(),{soundId:row.id,velocity:.9,duration:.45})
+    .then(()=>{if(choice)status("preview "+row.name+" · "+(choice.index+1)+"/"+choice.total);})
     .catch(error=>status("preview error: "+error.message,true));
   },
   onError:message=>status(message,true)
