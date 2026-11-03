@@ -23,6 +23,7 @@ import { renderSamplerEditor } from "./samplerUI.js";
 import {sampleTone} from "./audioEffects.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import { loadDraft, saveDraft, savePresetAssets } from "./storage.js";
+import {loadUserSounds,writeUserSounds,presetFromInstrument} from "./userSoundLibrary.js";
 import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
 import {createSignalDisplay} from "./soundScope.js";
@@ -41,28 +42,13 @@ import {installDesktopUI} from "./desktopUI.js";
 const $ = key => document.getElementById(key);
 let assetsReady=Promise.resolve();
 const CACHE = "premidi-v5-draft";
-const SAVED_SOUNDS = "premidi-user-sounds-v2";
-// Retain the previous fallback key. Native v5 drafts and files migrate through
-// the same parser, including safe hit conversion and preserved musical events.
+// Retain the previous fallback draft for desktop compatibility.
 const parseDocument=raw=>{
  const candidate=JSON.parse(raw);
  return candidate.kind==="song"?parseSong(raw):parse(raw);
 };
 const cached=(()=>{try{return parseDocument(localStorage.getItem(CACHE)||"");}catch{return null;}})();
-const savedSounds=(()=>{
- try {
-  const entries=JSON.parse(localStorage.getItem(SAVED_SOUNDS)||localStorage.getItem("premidi-user-sounds-v1")||"[]");
-  return Array.isArray(entries)?entries.filter(item=>
-   item && typeof item.id==="string" && item.id.length<80 &&
-   typeof item.name==="string" && item.name.length<=60 && item.name.trim() &&
-   (item.sounds ? validRackPreset(item) : validatePatch(item.patch).length===0)).slice(0,100):[];
- }catch{return [];}
-})();
-function validRackPreset(item){
- const trial=create(),inst=trial.instruments[0];
- inst.layout="rack";inst.sounds=item.sounds;trial.samples=item.samples||[];upgradeBeatFeatures(trial);
- return validate(trial).length===0;
-}
+const savedSounds=loadUserSounds();
 let libraryMode="add",libraryCategory="All",libraryContext=null;
 const rackPreviewPositions=new Map(),rackPreviewRequests=new Map();
 const inspectorViewport=window.matchMedia("(min-width:1100px)");
@@ -1739,15 +1725,10 @@ async function savePreset(name,wholeRack=false){
  const inst=instrument(),entry=sound();
  if(!name||name.length>60){message("Preset name must be 1–60 characters.",true);return false;}
  if(savedSounds.length>=100){message("Your sound library contains 100 presets.",true);return false;}
- const sounds=wholeRack?clone(inst.sounds):[clone(entry)];
- const needs=new Set(sounds.flatMap(sound=>sound.patch.type==="sample"?sound.patch.zones.map(zone=>zone.assetId):[]));
- const samples=beat.samples.filter(asset=>needs.has(asset.id));
- const item={id:"user-"+id(),name,category:"Mine",description:wholeRack?"Rack · "+sounds.length+" sounds":"Saved sound",samples};
- if(wholeRack){item.sounds=sounds;item.layout="rack";item.volume=inst.volume;}
- else {item.volume=inst.volume;item.patch=entry.patch?patchCopy(entry.patch):null;item.trigger=entry.trigger;item.referencePitch=entry.referencePitch;item.gain=entry.gain;}
  try{
-  await savePresetAssets(samples);
-  localStorage.setItem(SAVED_SOUNDS,JSON.stringify([...savedSounds,item]));savedSounds.push(item);
+  const item=presetFromInstrument(inst,beat,{name,wholeRack,soundId:entry.id});
+  await savePresetAssets(item.samples);
+  writeUserSounds([...savedSounds,item]);savedSounds.push(item);
   message("Saved "+name+" locally.");
   return true;
  }catch(error){message("Could not save preset: "+error.message+". Export your beat to keep it.",true);return false;}
