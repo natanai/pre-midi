@@ -260,3 +260,16 @@ button:active{background:#252525}
 .phone-file-dialog #file-share,.phone-file-dialog #file-download{width:100%;padding:7px 12px;text-align:left;margin:8px 0;font-size:12px}
 .phone-file-dialog #file-share{border-color:var(--accent);color:var(--accent)}
 .phone-file-dialog #file-size{margin-bottom:12px}
+
+/* One phone-only Chunk sheet owns all Beat phrase placement decisions. */
+.notes-top #chunk-actions{min-width:35px;min-height:39px;padding:0 5px}
+.phone-chunks-dialog .phone-chunk-field{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:11px;color:var(--sub)}
+.phone-chunks-dialog .phone-chunk-field input,.phone-chunks-dialog .phone-chunk-field select{height:40px;width:100%;min-width:0;padding:6px 9px;color:var(--ink)}
+.phone-chunks-dialog .phone-chunk-actions{display:flex;gap:6px;margin:12px 0}
+.phone-chunks-dialog .phone-chunk-actions button{flex:1;font-size:11px;padding:4px}
+.phone-chunks-dialog #chunk-remove:not(:disabled){color:#f5b5bc}
+.phone-chunks-dialog #chunk-location{display:block;margin:8px 0;font-size:11px}
+.phone-chunks-dialog .phone-chunk-assign{display:grid;grid-template-columns:1fr 1.5fr;gap:9px;margin:12px 0}
+.phone-chunks-dialog #bar-timing{margin-top:8px}
+.phone-chunks-dialog #bar-timing p{padding:6px 10px;margin:0;line-height:1.4}
+.phone-chunks-dialog .phone-chunk-timing{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px}
