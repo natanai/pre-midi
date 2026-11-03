@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {create} from "../schema.js";
-import {createSong,addVocalTake,validateSong} from "../songModel.js";
+import {createSong,addSongTrack,addVocalTake,removeSongClip,removeEmptyVocalTrack,validateSong} from "../songModel.js";
 import {makeRecordingAsset,inspectRecordingBytes} from "../recordingAssets.js";
 import {getAsset,putAsset,clearAssets} from "../assetRegistry.js";
 import {exportSongProject,importSongProject} from "../songIO.js";
@@ -71,4 +71,54 @@ test("recorded waveform peaks are bounded, native metadata is validated",()=>{
  assert.deepEqual(validateSong(song),[]);
  song.recordings[0].waveform=[-2];
  assert.match(validateSong(song).join(" "),/waveform/);
+});
+
+test("a vocal take can move without changing its duration, timing data or asset",()=>{
+ const song=createSong(create()),recording=makeRecordingAsset("voice-move","Voice move","audio/webm",webmBytes(),
+  {durationSeconds:3.5,trimSeconds:.1});
+ const {clip}=addVocalTake(song,recording);
+ const length=clip.lengthSteps;
+ clip.startStep=32;
+ assert.equal(clip.lengthSteps,length);
+ assert.equal(recordingEventsAtStep(song,0).length,0);
+ assert.equal(recordingEventsAtStep(song,32)[0].clip,clip);
+ assert.deepEqual(validateSong(song),[]);
+});
+test("removing a vocal clip also removes its empty track and unreferenced recording",()=>{
+ const song=createSong(create());
+ const first=makeRecordingAsset("voice-one","First","audio/webm",webmBytes(),
+  {durationSeconds:5,trimSeconds:.07});
+ const second=makeRecordingAsset("voice-two","Second","audio/webm",webmBytes(),
+  {durationSeconds:3,trimSeconds:.07});
+ const one=addVocalTake(song,first,{startStep:16});
+ const two=addVocalTake(song,second,{startStep:48});
+ const beatTrack=song.tracks.find(track=>track.kind==="beat");
+ assert.equal(removeSongClip(song,one.clip.id),one.clip);
+ assert.ok(!song.tracks.includes(one.track));
+ assert.ok(song.tracks.includes(two.track));
+ assert.ok(song.tracks.includes(beatTrack));
+ assert.deepEqual(song.recordings.map(recording=>recording.id),[second.id]);
+ assert.deepEqual(validateSong(song),[]);
+ removeSongClip(song,two.clip.id);
+ assert.deepEqual(song.tracks,[beatTrack]);
+ assert.deepEqual(song.recordings,[]);
+ assert.deepEqual(validateSong(song),[]);
+ assert.deepEqual(getAsset(first.id),webmBytes(),"Keep source bytes available for undo");
+ assert.throws(()=>removeSongClip(song,one.clip.id),/does not exist/);
+});
+test("legacy empty vocal lanes can be deleted without affecting playable tracks",()=>{
+ const song=createSong(create()),empty=addSongTrack(song,"vocal");
+ const orphan=makeRecordingAsset("voice-orphan","Old take","audio/webm",webmBytes(),
+  {durationSeconds:2,trimSeconds:.1});
+ song.recordings.push(orphan);
+ assert.equal(removeEmptyVocalTrack(song,empty.id),empty);
+ assert.equal(song.tracks.length,1);
+ assert.equal(song.tracks[0].kind,"beat");
+ assert.deepEqual(song.recordings,[]);
+ assert.deepEqual(validateSong(song),[]);
+ assert.throws(()=>removeEmptyVocalTrack(song,empty.id),/Only an empty vocal track/);
+ const a=addSongTrack(song,"vocal"),b=addSongTrack(song,"vocal");
+ removeEmptyVocalTrack(song,a.id);
+ assert.equal(addSongTrack(song,"vocal").name,"Voice 3","New track names must not duplicate surviving lanes");
+ assert.equal(b.name,"Voice 2");
 });
