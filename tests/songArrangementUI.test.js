@@ -122,3 +122,15 @@ test("Voice setup is explicit and recording starts at the selected Song bar",()=
  assert.match(audio,/startStep=0/);
  assert.match(audio,/scheduled=start/);
 });
+
+test("voice clips share Song placement controls and empty legacy lanes stay removable",()=>{
+ const ui=read("songUI.js"),css=read("style.css");
+ assert.match(ui,/enableVocalDrag\(block,clip\)/);
+ assert.match(ui,/block\.setPointerCapture\(pointerId\)/);
+ assert.match(ui,/clip\.startStep=next/);
+ assert.match(ui,/event\.key==="ArrowRight"\?BAR_STEPS:-BAR_STEPS/);
+ assert.match(ui,/\$\("song-beat-start-field"\)\.hidden=false/);
+ assert.match(ui,/removeSongClip\(getSong\(\),item\.clip\.id\)/);
+ assert.match(ui,/removeEmptyVocalTrack\(song,track\.id\)/);
+ assert.match(css,/\.song-vocal-clip\s*\{[^}]*touch-action:none/s);
+});
