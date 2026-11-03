@@ -1,7 +1,7 @@
 // DOM-free Beat/Song editing session. One command and history contract for every host.
 import {clone,create,makeInstrument,makeSound,id,validate,upgradeBeatFeatures} from "./schema.js";
 import {selectionOperation,MAX_SOUNDS} from "./soundModel.js";
-import {validateSong,upgradeSongFeatures,createSong,addBeat,addSongTrack,addBeatClip,editBeatClip} from "./songModel.js";
+import {validateSong,upgradeSongFeatures,createSong,addBeat,addSongTrack,addBeatClip,editBeatClip,addVocalTake} from "./songModel.js";
 import {applyNoteCommand} from "./studioCommands.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 
@@ -250,6 +250,9 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    editBeatClip(song,clipId,changes);return true;
   });
  }
+ function attachVocalRecording(recording,{startStep=0}={}){
+  return changeSong(song=>{addVocalTake(song,recording,{startStep});return true;});
+ }
  function removeSongClip(clipId){
   return changeSong(song=>{
    const track=song.tracks.find(item=>item.clips.some(clip=>clip.id===clipId));
@@ -285,6 +288,7 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
   beginPreview,applyPreview,finishPreview,dispatch,replace,addInstrument,setBpm,
   renameInstrument,changeInstrumentVolume,changeSoundGain,changeSoundPatch,selectCatalogSound,
   convertBeatToSong,changeSong,setSongBpm,renameSong,addSongBeat,addTrack,renameTrack,appendSongClip,changeSongClip,removeSongClip,
+  attachVocalRecording,
   undo:()=>stepBack(history,future),redo:()=>stepBack(future,history),
   canUndo:()=>history.length>0,canRedo:()=>future.length>0
  };
