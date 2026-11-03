@@ -262,6 +262,31 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    track.clips=track.clips.filter(clip=>clip.id!==clipId);return true;
   });
  }
+ function renameBeat(name){
+  if(typeof name!=="string"||!name.trim()||name.length>100)return false;
+  return editInstrument(()=>{
+   const current=beat();
+   if(current.title===name.trim())return false;
+   current.title=name.trim();return true;
+  });
+ }
+ function setBeatBars(count){
+  if(!Number.isInteger(count)||count<1||count>16)return false;
+  return editInstrument(()=>{
+   const current=beat();
+   if(current.bars===count)return false;
+   current.bars=count;
+   for(const inst of current.instruments){
+    while(inst.timeline.length<count)inst.timeline.push(null);
+    inst.timeline.length=count;
+    if(inst.placements){
+     while(inst.placements.length<count)inst.placements.push(null);
+     inst.placements.length=count;
+    }
+   }
+   return true;
+  });
+ }
  function addChunk({duplicate=false}={}){
   return editInstrument(inst=>{
    if(inst.chunks.length>=32)return false;
@@ -386,7 +411,7 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    chunks.set(instrument().id,value);return true;
   },
   beginPreview,applyPreview,finishPreview,dispatch,replace,addInstrument,setBpm,
-   addChunk,renameChunk,removeChunk,setBarChunk,setBarPlacement,
+   addChunk,renameChunk,removeChunk,setBarChunk,setBarPlacement,renameBeat,setBeatBars,
   renameInstrument,changeInstrumentVolume,changeSoundGain,changeSoundPatch,selectCatalogSound,
    renameSound,removeInstrument,removeRackSound,convertSelectedToRack,extractRackSound,
   convertBeatToSong,changeSong,setSongBpm,renameSong,addSongBeat,addTrack,renameTrack,appendSongClip,changeSongClip,removeSongClip,
