@@ -2,7 +2,8 @@
 import {create,parse,validate} from "../schema.js";
 import {parseSong,exportSongProject,importSongProject} from "../songIO.js";
 import {createStudioSession} from "../studioSession.js";
-import {loadDraft,saveDraft} from "../storage.js";
+import {loadDraft,saveDraft,savePresetAssets} from "../storage.js";
+import {loadUserSounds,writeUserSounds,presetFromInstrument} from "../userSoundLibrary.js";
 import {exportProject,importProject} from "../packageIO.js";
 import {play,audition,wav} from "../audio.js";
 import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep} from "../scaleGuide.js";
@@ -25,6 +26,8 @@ const CACHE="premidi-scale-guide-v1";
 let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null,playbackScope="beat";
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 let activeSoundId=null,catalogMode="add",catalogCategory="All",sampleRecorder=null,voiceTake=null,voiceToken=0;
+const savedSounds=loadUserSounds();
+let presetScope=null;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
@@ -394,9 +397,17 @@ function openCatalog(mode){
 function paintCatalog(){
  renderPhoneCatalog({
   filters:$("catalog-filters"),list:$("catalog-sounds"),
-  category:catalogCategory,mode:catalogMode,beat:session.getBeat(),
+  category:catalogCategory,mode:catalogMode,beat:session.getBeat(),userPresets:savedSounds,
   onCategory:name=>{catalogCategory=name;paintCatalog();},
   onRecord:()=>sampleRecorder.open(),
+  onRemoveSaved:preset=>{
+   if(!confirm("Remove saved preset “"+preset.name+"” from this browser?"))return;
+   try{
+    const remaining=savedSounds.filter(item=>item.id!==preset.id);
+    writeUserSounds(remaining);savedSounds.splice(0,savedSounds.length,...remaining);
+    paintCatalog();status("removed preset · existing project sounds are unchanged");
+   }catch(error){status("could not remove preset: "+error.message,true);}
+  },
   onUse:async(preset,button)=>{
    button.disabled=true;
    status("loading "+preset.name+"…");
@@ -545,6 +556,28 @@ function updateSongPlayhead(){
  line.hidden=current===null;
  if(current)line.style.left=(current.bar*16+current.step)*3+"px";
 }
+function openPresetSave(wholeRack=false,soundId=null){
+ const inst=session.getInstrument(),sound=inst.sounds.find(item=>item.id===soundId)||inst.sounds[0];
+ presetScope={wholeRack,soundId:sound.id,instrumentId:inst.id};
+ $("preset-name").value=wholeRack?inst.name:sound.name;
+ $("preset-scope").textContent=wholeRack?"save the complete Rack with "+inst.sounds.length+" sounds":
+  "save "+sound.name+" as a reusable Sound";
+ if(!$("preset-dialog").open)$("preset-dialog").showModal();
+}
+async function saveSelectedPreset(){
+ if(!presetScope)return;
+ const {wholeRack,soundId,instrumentId}=presetScope;
+ const inst=session.getBeat().instruments.find(item=>item.id===instrumentId);
+ if(!inst)throw Error("The instrument changed. Open Save again.");
+ if(savedSounds.length>=100)throw Error("This browser already has 100 saved presets.");
+ const item=presetFromInstrument(inst,session.getBeat(),{
+  name:$("preset-name").value.trim(),wholeRack,soundId
+ });
+ await savePresetAssets(item.samples);
+ writeUserSounds([...savedSounds,item]);savedSounds.push(item);
+ $("preset-dialog").close();presetScope=null;
+ status("saved "+item.name+" · browse Mine to reuse · export a ZIP to back up recordings");
+}
 function paintSound(){
  if(!session)return;
  const container=$("phone-sound-content"),viewport=$("view-sound"),scrolled=viewport.scrollTop;
@@ -563,6 +596,7 @@ function paintSound(){
    }catch(error){status("volume change rejected: "+error.message,true);paintSound();}
   },
   onBrowse:mode=>openCatalog(mode),
+  onSave:(wholeRack,soundId)=>openPresetSave(wholeRack,soundId),
   onNameChange(value){
    try{if(session.renameInstrument(value)){renderContext();paintSound();}}
    catch(error){status("rename rejected: "+error.message,true);paintSound();}
@@ -592,6 +626,14 @@ function exportCurrent(scope="beat"){
  }catch(error){status("export failed: "+error.message,true);}
 }
 function initializeControls(){
+ $("preset-close").addEventListener("click",()=>$("preset-dialog").close());
+ $("preset-form").addEventListener("submit",event=>{
+  event.preventDefault();
+  const button=$("preset-save");if(button.disabled)return;button.disabled=true;
+  void saveSelectedPreset().catch(error=>status("could not save sound preset: "+error.message,true))
+   .finally(()=>{button.disabled=false;});
+ });
+
  sampleRecorder=createPhoneSampleRecorder({
   dialog:$("sample-dialog"),
   output:$("sample-dialog").querySelector(".phone-sample-status"),
