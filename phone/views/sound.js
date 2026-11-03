@@ -52,7 +52,7 @@ export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSoun
  picker.value=active.id;
  picker.addEventListener("change",()=>onSelectSound(picker.value));
  selectLabel.append(picker);controls.append(selectLabel);
- controls.append(namedSlider("sound level",active.gain,{min:0,max:2},value=>onLevelChange("sound",value,active.id)));
+ controls.append(namedSlider("sound level",active.gain,{min:0,max:1},value=>onLevelChange("sound",value,active.id)));
  root.append(controls);
  const browse=element("button","phone-sound-browse");browse.type="button";browse.textContent=inst.layout==="rack"?"+ add sound":"browse sounds";
  browse.addEventListener("click",()=>onBrowse("replace"));

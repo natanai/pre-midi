@@ -17,7 +17,7 @@ test("the deployed page versions every transitive module and its stylesheet toge
  for(const file of files){
   assert.equal(map["./"+file],"./"+file+"?build=abcd1234abcd");
   const source=readFileSync(new URL(file,root),"utf8");
-  for(const [,path] of source.matchAll(/(?:from\s*|import\s*)["'](\.{1,2}\/[^"']+\.js)["']/g))
+  for(const [,path] of source.matchAll(/(?:from\s*|import\s*(?:\(\s*)?)["'](\.{1,2}\/[^"']+\.js)["']/g))
    assert.ok(map["./"+posix.normalize(posix.join(posix.dirname(file),path))],"Unversioned dependency: "+file+" → "+path);
  }
  assert.equal(versionPage(html,files,"abcd1234abcd1234"),html);
@@ -36,13 +36,18 @@ test("minimal website build includes the entire runtime import graph",async()=>{
  const root=new URL("../",import.meta.url);
  const modules=await runtimeModules(root);
  assert.ok(modules.includes("studio.js"));
+ const phoneModules=await runtimeModules(root,["phone/main.js"]);
+ assert.ok(phoneModules.includes("phone/main.js"));
+ assert.ok(phoneModules.includes("schema.js"));
+ assert.ok(!phoneModules.includes("studio.js"),"phone shell must not bundle desktop DOM host");
+ assert.ok(phoneModules.length<modules.length,"phone shell should cache fewer modules than full website");
  assert.ok(modules.includes("songModel.js"));
  assert.ok(modules.includes("songRecorder.js"));
  assert.ok(modules.includes("synthMatch.js"));
  assert.equal(modules.length,new Set(modules).size);
  for(const file of modules){
   const source=readFileSync(new URL(file,root),"utf8");
-  for(const [,dep] of source.matchAll(/(?:from\s*|import\s*)["'](\.{1,2}\/[^"']+\.js)["']/g))
+  for(const [,dep] of source.matchAll(/(?:from\s*|import\s*(?:\(\s*)?)["'](\.{1,2}\/[^"']+\.js)["']/g))
    assert.ok(modules.includes(posix.normalize(posix.join(posix.dirname(file),dep))),"Missing runtime dependency: "+file+" -> "+dep);
  }
 });
@@ -66,9 +71,9 @@ test("Pages stages nested DSP modules and both stylesheets without development f
   await mkdir(new URL("phone/",root));
   await mkdir(new URL("desktop/icons/",root),{recursive:true});
   const files={"studio.js":'import {value} from "./src/dsp/value.js";',
-   "src/dsp/value.js":'export const value=1;',"style.css":"body{}","studioAlignment.css":".row{}",
+   "src/dsp/value.js":'export const value=1;',"src/dsp/phone-value.js":'export const phoneValue=1;',"src/dsp/phone-extra.js":'export const extra=true;',"style.css":"body{}","studioAlignment.css":".row{}",
    "phone/index.html":'<head><link rel="stylesheet" href="./phone.css"></head><script type="module" src="./main.js"></script>',"phone/phone.css":"body{}",
-   "phone/main.js":'export const phoneReady=true;',"phone/manifest.webmanifest":"{}",
+   "phone/main.js":'import {phoneValue} from "../src/dsp/phone-value.js"; export const phoneReady=phoneValue; export const load=()=>import("../src/dsp/phone-extra.js");',"phone/manifest.webmanifest":"{}",
     "phone/sw.js":'const build="__BUILD__"; const assets=__ASSETS__; const factory=__FACTORY_SAMPLES__;',
    "desktop/icons/icon.png":"png-icon-fixture",
    "THIRD_PARTY_NOTICES.md":"notices","favicon.svg":'<svg xmlns="http://www.w3.org/2000/svg"></svg>',"index.html":'<head></head><script type="module" src="./studio.js"></script>'};
@@ -83,7 +88,9 @@ test("Pages stages nested DSP modules and both stylesheets without development f
    const worker=await readFile(new URL("dist/sw.js",root),"utf8");
    assert.match(worker,/abcdef123456/);
    assert.match(worker,/phone\/index.html/);
-   assert.match(worker,/src\/dsp\/value.js/);
+   assert.ok(worker.includes("src/dsp/phone-value.js"));
+   assert.ok(worker.includes("src/dsp/phone-extra.js"),"literal dynamic imports must work offline");
+   assert.ok(!worker.includes('"src/dsp/value.js"'),"desktop-only module must not be precached on iOS");
    assert.doesNotMatch(worker,/__ASSETS__|__BUILD__|__FACTORY_SAMPLES__/);
    assert.ok(worker.includes("samples/piano-c3.ogg"));
   assert.equal(await readFile(new URL("dist/phone/manifest.webmanifest",root),"utf8"),files["phone/manifest.webmanifest"]);
