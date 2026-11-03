@@ -67,6 +67,10 @@ export function applyNoteCommand(chunk,command,{layout=null,sounds=null,minPitch
   return {changed,noteId:note.id,note};
  }
  if(type==="note.bend"){
+  if(command.bend===null){
+   if(note.bend===undefined)return {changed:false};
+   delete note.bend;return {changed:true,noteId:note.id,note};
+  }
   if(!command.bend||typeof command.bend!=="object")return {changed:false};
   const changed=JSON.stringify(note.bend)!==JSON.stringify(command.bend);
   if(changed)note.bend=clone(command.bend);
