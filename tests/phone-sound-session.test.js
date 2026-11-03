@@ -30,13 +30,13 @@ test("phone Sound edits share the validated patch schema, history and undo/redo"
 test("phone Sound mutations reject unsafe changes without committing or corrupting score",()=>{
  let writes=0;
  const session=createStudioSession(create(),()=>writes++);
- const sound=session.getInstrument().sounds[0];
+ const sound=session.getInstrument().sounds[0],cutoffBefore=sound.patch.filter.cutoff;
  assert.equal(session.changeSoundGain("missing",.4),false);
  assert.equal(session.changeInstrumentVolume(10),false);
  assert.equal(session.renameInstrument(""),false);
  assert.throws(()=>session.changeSoundPatch(sound.id,["filter","cutoff"],-100));
  assert.throws(()=>session.changeSoundPatch(sound.id,["oscillators",0,"wave"],"invalid-wave"));
- assert.equal(session.getInstrument().sounds[0].patch.filter.cutoff,sound.patch.filter.cutoff);
+ assert.equal(session.getInstrument().sounds[0].patch.filter.cutoff,cutoffBefore);
  assert.deepEqual(validate(session.getBeat()),[]);
  assert.equal(writes,0);
 });
