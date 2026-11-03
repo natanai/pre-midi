@@ -1,5 +1,6 @@
 // DOM-free Beat/Song editing session. One command and history contract for every host.
-import {clone,create,makeInstrument,makeSound,id,validate,upgradeBeatFeatures} from "./schema.js";
+import {clone,create,makeInstrument,makeSound,makeChunk,id,validate,upgradeBeatFeatures} from "./schema.js";
+import {placementFor,defaultPlacement} from "./arrangement.js";
 import {selectionOperation,MAX_SOUNDS} from "./soundModel.js";
 import {validateSong,upgradeSongFeatures,createSong,addBeat,addSongTrack,addBeatClip,editBeatClip,addVocalTake} from "./songModel.js";
 import {applyNoteCommand} from "./studioCommands.js";
@@ -260,6 +261,64 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    track.clips=track.clips.filter(clip=>clip.id!==clipId);return true;
   });
  }
+ function addChunk({duplicate=false}={}){
+  return editInstrument(inst=>{
+   if(inst.chunks.length>=32)return false;
+   const source=chunk(),copy=duplicate?clone(source):makeChunk("Chunk "+(inst.chunks.length+1));
+   if(duplicate){
+    copy.id=id();copy.name=(source.name+" copy").slice(0,60);
+    for(const note of copy.notes)note.id=id();
+   }
+   inst.chunks.push(copy);chunks.set(inst.id,copy.id);
+   // Assign the first free bar, so a newly written Chunk can play.
+   const bar=inst.timeline.findIndex(value=>value===null);
+   if(bar>=0)inst.timeline[bar]=copy.id;
+   return true;
+  });
+ }
+ function renameChunk(name){
+  if(typeof name!=="string"||!name.trim()||name.length>60)return false;
+  return editInstrument(()=>{
+   const current=chunk();
+   if(current.name===name.trim())return false;
+   current.name=name.trim();return true;
+  });
+ }
+ function removeChunk(){
+  return editInstrument(inst=>{
+   if(inst.chunks.length<=1)return false;
+   const currentId=chunk().id;
+   inst.chunks=inst.chunks.filter(item=>item.id!==currentId);
+   inst.timeline=inst.timeline.map((value,bar)=>{
+    if(value!==currentId)return value;
+    if(inst.placements)inst.placements[bar]=null;
+    return null;
+   });
+   chunks.set(inst.id,inst.chunks[0].id);return true;
+  });
+ }
+ function setBarChunk(bar,chunkId){
+  return editInstrument(inst=>{
+   if(!Number.isInteger(bar)||bar<0||bar>=beat().bars||
+    chunkId!==null&&!inst.chunks.some(item=>item.id===chunkId))return false;
+   if(inst.timeline[bar]===chunkId)return false;
+   inst.timeline[bar]=chunkId;
+   if(chunkId===null&&inst.placements)inst.placements[bar]=null;
+   return true;
+  });
+ }
+ function setBarPlacement(bar,changes){
+  return editInstrument(inst=>{
+   if(!Number.isInteger(bar)||bar<0||bar>=beat().bars||
+    !inst.timeline[bar]||!changes||typeof changes!=="object"||
+    !Object.keys(changes).every(key=>["offset","length","every","repeats"].includes(key)))return false;
+   const current=placementFor(inst,bar),next={...current,...changes};
+   if(Object.keys(next).every(key=>next[key]===current[key]))return false;
+   inst.placements??=Array.from({length:beat().bars},()=>null);
+   inst.placements[bar]=JSON.stringify(next)===JSON.stringify(defaultPlacement())?null:next;
+   return true;
+  });
+ }
  function addInstrument(){
   if(preview||beat().instruments.length>=12)return false;
   const before=clone(document),current=beat();
@@ -286,6 +345,7 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    chunks.set(instrument().id,value);return true;
   },
   beginPreview,applyPreview,finishPreview,dispatch,replace,addInstrument,setBpm,
+   addChunk,renameChunk,removeChunk,setBarChunk,setBarPlacement,
   renameInstrument,changeInstrumentVolume,changeSoundGain,changeSoundPatch,selectCatalogSound,
   convertBeatToSong,changeSong,setSongBpm,renameSong,addSongBeat,addTrack,renameTrack,appendSongClip,changeSongClip,removeSongClip,
   attachVocalRecording,
