@@ -5,7 +5,7 @@ const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 
 test("factory audio remains in a stable cache while the offline editor shell is revisioned",()=>{
  const sw=read("phone/sw.js"),build=read("scripts/prepare-pages.mjs");
- assert.match(sw,/const CACHE="pre-midi-phone-"+VERSION;/);
+ assert.ok(sw.includes('const CACHE="pre-midi-phone-"+VERSION;'));
  assert.match(sw,/const FACTORY_CACHE="pre-midi-factory-audio-v1";/);
  assert.match(sw,/name\.startsWith\("pre-midi-phone-"\)/);
  assert.match(sw,/caches\.open\(factorySet\.has\(lookup\)\?FACTORY_CACHE:CACHE\)/);
