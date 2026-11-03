@@ -99,3 +99,38 @@ if ($app.ExitCode -eq 0 -or $failure.passed -or $failure.error -notlike '*writab
   throw 'Unusable portable folder did not fail safely'
 }
 Write-Host (Get-Content $env:PREMIDI_SMOKE_OUTPUT -Raw)
+
+
+# Integration-test the independent updater process with the actual portable ZIP.
+# This invokes the helper after staging. Signed GitHub download verification is
+# separately handled by Tauri in updates.rs; this tests the filesystem transaction.
+$automatic = Join-Path $env:RUNNER_TEMP 'premidi portable automatic'
+Expand-Archive $previousZip $automatic
+Invoke-StudioSmoke (Join-Path $automatic 'pre-midi.exe') 'portable-auto-previous' 'portable-auto' -Fresh
+$work = Join-Path $automatic '.premidi-update'
+New-Item $work -ItemType Directory | Out-Null
+Copy-Item $zip.FullName (Join-Path $work 'verified.zip')
+Copy-Item (Join-Path $moved 'pre-midi.exe') (Join-Path $work 'runner.exe')
+$hash = (Get-FileHash (Join-Path $work 'verified.zip') -Algorithm SHA256).Hash.ToLowerInvariant()
+$version = (Get-Content (Join-Path $repo 'package.json') -Raw | ConvertFrom-Json).version
+Remove-Item 'Env:PREMIDI_SMOKE_EXPECT_FRESH' -ErrorAction SilentlyContinue
+$env:PREMIDI_SMOKE_EXPECT_RESTORE = '1'
+$env:PREMIDI_SMOKE_STORAGE_TOKEN = 'portable-auto'
+$env:PREMIDI_SMOKE_OUTPUT = Join-Path $env:RUNNER_TEMP 'premidi-portable-auto-installed-smoke.json'
+$helper = Start-Process (Join-Path $work 'runner.exe') -ArgumentList @('--apply-portable-update', '4294967295', $hash, $version) -WorkingDirectory $automatic -PassThru
+if (!$helper.WaitForExit(180000)) { $helper.Kill(); throw 'Portable updater helper timed out' }
+if ($helper.ExitCode -ne 0) {
+  $failure = Get-Content (Join-Path $work 'failure.txt') -Raw -ErrorAction SilentlyContinue
+  throw "Portable updater helper failed: $failure"
+}
+if ((Get-Content (Join-Path $work 'success.txt') -Raw).Trim() -ne $version) { throw 'Portable updater did not confirm its new version' }
+if (Test-Path (Join-Path $work 'backup')) { throw 'Successful portable update retained its rollback backup' }
+Invoke-StudioSmoke (Join-Path $automatic 'pre-midi.exe') 'portable-auto-upgraded' 'portable-auto' -Restore
+# A corrupted staged archive must fail before replacing any application file.
+$before = (Get-FileHash (Join-Path $automatic 'pre-midi.exe') -Algorithm SHA256).Hash
+$bad = Start-Process (Join-Path $work 'runner.exe') -ArgumentList @('--apply-portable-update', '4294967295', ('0' * 64), $version) -WorkingDirectory $automatic -PassThru
+if (!$bad.WaitForExit(30000)) { $bad.Kill(); throw 'Tampered package check timed out' }
+if ($bad.ExitCode -eq 0 -or (Get-FileHash (Join-Path $automatic 'pre-midi.exe') -Algorithm SHA256).Hash -ne $before) {
+  throw 'Tampered staged archive was accepted or modified installed files'
+}
+Invoke-StudioSmoke (Join-Path $automatic 'pre-midi.exe') 'portable-auto-after-reject' 'portable-auto' -Restore
