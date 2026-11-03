@@ -75,7 +75,8 @@
 <dialog id="instruments-dialog" aria-label="Choose instrument" class="phone-dialog">
  <header><h2>instruments</h2><button type="button" id="instruments-close" aria-label="Close instrument picker">×</button></header>
  <div id="instrument-options"></div>
- <button id="add-instrument" type="button">+ add instrument</button>
+ <button id="add-instrument" type="button">+ add instrument from sounds</button>
+ <button id="browse-sounds" type="button">browse / replace sound</button>
  <p class="dialog-hint">sound presets and rack management are coming to phone</p>
 </dialog>
 <dialog id="project-dialog" aria-label="Project" class="phone-dialog">
@@ -87,6 +88,12 @@
  <input type="file" id="open-file" accept=".premidi,.zip,application/zip" hidden>
  <p class="dialog-hint">drafts save locally; export a backup to keep your work</p>
  <output id="offline-status" class="dialog-hint" role="status">offline shell setup pending · sounds may require network</output>
+</dialog>
+<dialog id="catalog-dialog" class="phone-dialog phone-catalog-dialog" aria-label="Browse factory sounds">
+ <header><h2>sounds</h2><button type="button" id="catalog-close" aria-label="Close sounds browser">×</button></header>
+ <p class="dialog-hint" id="catalog-context">choose a sound</p>
+ <div id="catalog-filters" class="phone-catalog-filters"></div>
+ <div id="catalog-sounds" class="phone-catalog-sounds"></div>
 </dialog>
 <script type="module" src="./main.js"></script>
 </body>
