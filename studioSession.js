@@ -1,7 +1,7 @@
 // DOM-free Beat/Song editing session. One command and history contract for every host.
 import {clone,create,makeInstrument,makeSound,id,validate,upgradeBeatFeatures} from "./schema.js";
 import {selectionOperation,MAX_SOUNDS} from "./soundModel.js";
-import {validateSong,upgradeSongFeatures} from "./songModel.js";
+import {validateSong,upgradeSongFeatures,createSong,addBeat,addSongTrack,addBeatClip,editBeatClip} from "./songModel.js";
 import {applyNoteCommand} from "./studioCommands.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 
@@ -185,6 +185,78 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    document=before;activeInstrumentId=beforeId;repair();throw error;
   }
  }
+ function convertBeatToSong(){
+  if(document.kind==="song"||preview)return false;
+  const before=clone(document);document=createSong(before);
+  const problems=check();
+  if(problems.length){document=before;repair();throw Error(problems[0]);}
+  history.push(before);if(history.length>100)history.shift();
+  future=[];repair();notify();return true;
+ }
+ function changeSong(mutator){
+  if(preview||document.kind!=="song")return false;
+  const before=clone(document);
+  let changed;
+  try{changed=mutator(document);}
+  catch(error){document=before;repair();throw error;}
+  if(!changed)return false;
+  const problems=check();
+  if(problems.length){document=before;repair();throw Error(problems[0]);}
+  history.push(before);if(history.length>100)history.shift();
+  future=[];repair();notify();return true;
+ }
+ function setSongBpm(bpm){
+  const value=Number(bpm);
+  if(!Number.isInteger(value)||value<40||value>240)return false;
+  return changeSong(song=>{
+   if(song.bpm===value)return false;
+   song.bpm=value;return true;
+  });
+ }
+ function renameSong(name){
+  if(typeof name!=="string"||!name.trim()||name.length>100)return false;
+  return changeSong(song=>{
+   if(song.title===name.trim())return false;
+   song.title=name.trim();return true;
+  });
+ }
+ function addSongBeat(){
+  return changeSong(song=>{
+   const next=create();next.bpm=song.bpm;
+   const added=addBeat(song,next);
+   activeBeatId=added.id;return true;
+  });
+ }
+ function addTrack(kind="beat"){
+  return changeSong(song=>{addSongTrack(song,kind);return true;});
+ }
+ function renameTrack(trackId,name){
+  if(typeof name!=="string"||!name.trim()||name.length>100)return false;
+  return changeSong(song=>{
+   const track=song.tracks.find(item=>item.id===trackId);
+   if(!track||track.name===name.trim())return false;
+   track.name=name.trim();return true;
+  });
+ }
+ function appendSongClip(trackId,beatId,startStep=0,lengthSteps=null){
+  return changeSong(song=>{addBeatClip(song,trackId,beatId,startStep,lengthSteps);return true;});
+ }
+ function changeSongClip(clipId,changes){
+  return changeSong(song=>{
+   const track=song.tracks.find(item=>item.kind==="beat"&&item.clips.some(clip=>clip.id===clipId));
+   if(!track)return false;
+   const old=track.clips.find(clip=>clip.id===clipId);
+   if(Object.entries(changes).every(([key,value])=>old[key]===value))return false;
+   editBeatClip(song,clipId,changes);return true;
+  });
+ }
+ function removeSongClip(clipId){
+  return changeSong(song=>{
+   const track=song.tracks.find(item=>item.clips.some(clip=>clip.id===clipId));
+   if(!track)return false;
+   track.clips=track.clips.filter(clip=>clip.id!==clipId);return true;
+  });
+ }
  function addInstrument(){
   if(preview||beat().instruments.length>=12)return false;
   const before=clone(document),current=beat();
@@ -198,6 +270,10 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
  return {
   getDocument:()=>document,getBeat:beat,getInstrument:instrument,getChunk:chunk,
   getSelection:()=>({beatId:beat().id,instrumentId:instrument().id,chunkId:chunk().id}),
+  selectBeat(value){
+   if(preview||document.kind!=="song"||!document.beats.some(item=>item.id===value))return false;
+   activeBeatId=value;activeInstrumentId=null;repair();return true;
+  },
   selectInstrument(value){
    if(preview||!beat().instruments.some(item=>item.id===value))return false;
    activeInstrumentId=value;repair();return true;
@@ -208,6 +284,7 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
   },
   beginPreview,applyPreview,finishPreview,dispatch,replace,addInstrument,setBpm,
   renameInstrument,changeInstrumentVolume,changeSoundGain,changeSoundPatch,selectCatalogSound,
+  convertBeatToSong,changeSong,setSongBpm,renameSong,addSongBeat,addTrack,renameTrack,appendSongClip,changeSongClip,removeSongClip,
   undo:()=>stepBack(history,future),redo:()=>stepBack(future,history),
   canUndo:()=>history.length>0,canRedo:()=>future.length>0
  };
