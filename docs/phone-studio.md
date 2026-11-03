@@ -89,6 +89,10 @@ Selected notes expose an explicit **note effects** button next to Delete in Note
 
 Phone Sound now offers **save selected sound preset** and (for Rack instruments) **save whole Rack preset**. The shared `userSoundLibrary.js` defines the desktop and phone preset reading/writing rules and existing `premidi-user-sounds-v2` key, with legacy key fallback, normal validation and the 100-preset limit. The unified browser offers a **Mine** category with reuse and deletion. Sample Asset bytes are persisted through IndexedDB separately from localStorage preset metadata; a missing sample cannot silently be treated as loaded. There is no cross-device account sync. Browser-local presets are **not** a durable backup: a project ZIP carrying required samples remains necessary for exported musical work. Desktop and phone are still separate storage containers when the browser/installed Home Screen context differs. End-to-end iPhone storage and preset migration remain open.
 
+### Phase 5 Files/Share export confirmation slice
+
+Phone export now prepares the **existing** validated Beat, Song, sampled-asset ZIP or WAV Blob as a real `File` with canonical name and MIME, then presents an explicit **share / save to Files** action (only if Web Share file sharing is supported) alongside **download**. A fresh press on Share retains the user gesture even after a long asynchronous WAV render. Web Share cancellation leaves the file prepared, while Share resolution or a browser download request is reported cautiously, prompting the author to verify the file exists in their destination. The UI does not equate finishing a WAV render, opening a share sheet or calling `a.download` with successfully backing up data. File bytes still come from the canonical `packageIO.js`, `songIO.js` and `audio.js`; no new archive format is introduced. Browser and unit tests cover file content/type and the export destination screen. **iPhone Home Screen Files roundtrips, iCloud placement, handling of huge renders and suspended share sheets remain real-device acceptance gaps.**
+
 ## Long-term code layout
 
 ```text

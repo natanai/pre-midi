@@ -101,6 +101,15 @@
  <div id="catalog-filters" class="phone-catalog-filters"></div>
  <div id="catalog-sounds" class="phone-catalog-sounds"></div>
 </dialog>
+<dialog id="file-dialog" class="phone-dialog phone-file-dialog" aria-label="Export project or audio">
+ <header><h2>export</h2><button type="button" id="file-close" aria-label="Close export">×</button></header>
+ <output id="file-name" class="phone-file-name" aria-live="polite">prepared file</output>
+ <p class="dialog-hint" id="file-size"></p>
+ <button type="button" id="file-share">share / save to Files</button>
+ <button type="button" id="file-download">download</button>
+ <output id="file-status" class="phone-sample-status" aria-live="polite">choose where to keep your backup</output>
+ <p class="dialog-hint">A browser-local draft or preset can be lost if storage is cleared. Keep your exported .premidi or ZIP in Files, iCloud, or another location you control.</p>
+</dialog>
 <dialog id="preset-dialog" class="phone-dialog" aria-label="Save sound preset">
  <form id="preset-form">
   <header><h2>save preset</h2><button type="button" id="preset-close" aria-label="Cancel preset save">×</button></header>

@@ -232,7 +232,13 @@ try{
  doc.querySelector("#project-actions").click();
  if(doc.querySelector("#export-song").hidden||!doc.querySelector("#render-wav"))
   throw Error("Song export or WAV render not available on phone");
- doc.querySelector("#project-close").click();
+ doc.querySelector("#export-song").click();
+ await wait(()=>doc.querySelector("#file-dialog").open,"file export destination");
+ if(![".premidi",".zip"].some(ext=>doc.querySelector("#file-name").textContent.endsWith(ext)))
+  throw Error("Song export was not offered as a native .premidi or ZIP");
+ if(!doc.querySelector("#file-download")||!doc.querySelector("#file-share"))
+  throw Error("iOS file destination alternatives missing");
+ doc.querySelector("#file-close").click();
  action("edit beat").click();
  if(doc.querySelector("#view-notes").hidden)throw Error("Song Beat cannot return to Notes editing");
  // Only explicit controls open microphone permission workflows.
