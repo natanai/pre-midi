@@ -10,12 +10,13 @@ import {clampZoom,navigationAnchor,nextNavigation,noteDragSteps} from "./gesture
 import {phonePlayheadX} from "./rollPlayback.js";
 import {renderPhoneSound} from "./views/sound.js";
 import {renderPhoneCatalog,factorySpec,resolveFactoryAssets,previewFactoryPreset} from "./views/catalog.js";
+import {renderPhoneSong} from "./views/song.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
 const NOTE_NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
 const CACHE="premidi-scale-guide-v1";
-let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null;
+let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null,playbackScope="beat";
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 let activeSoundId=null,catalogMode="add",catalogCategory="All";
 const contacts=new Map();
@@ -82,7 +83,7 @@ function renderContext(){
   chunk.append(option);
  }
  chunk.value=session.getChunk().id;
- $("bpm").value=String(beat.bpm);
+ $("bpm").value=String(activeWorkspace==="song"&&session.getDocument().kind==="song"?session.getDocument().bpm:beat.bpm);
  renderScale();refreshSelection();
 }
 function rowModels(){
@@ -338,6 +339,7 @@ function render(preserveScroll=false){
  if(!session)return;
  renderContext();renderGrid(preserveScroll);
  if(activeWorkspace==="sound")paintSound();
+ if(activeWorkspace==="song")paintSong();
 }
 function openCatalog(mode){
  cancelActiveGesture();
@@ -377,6 +379,38 @@ function paintCatalog(){
    finally{button.disabled=false;}
   }
  });
+}
+function paintSong(){
+ if(!session)return;
+ const call=action=>()=>{
+  try{
+   const changed=action();
+   if(changed){paintSong();renderContext();}
+  }catch(error){status("song edit rejected: "+error.message,true);paintSong();}
+ };
+ renderPhoneSong($("phone-song-content"),{
+  session,
+  onCreateSong:call(()=>session.convertBeatToSong()),
+  onAddBeat:call(()=>session.addSongBeat()),
+  onAddTrack:kind=>call(()=>session.addTrack(kind))(),
+  onAddClip:(trackId,beatId)=>call(()=>session.appendSongClip(trackId,beatId,
+   Math.max(0,...session.getDocument().tracks.find(track=>track.id===trackId).clips.map(clip=>clip.startStep+clip.lengthSteps))))(),
+  onEditClip:(clipId,changes)=>call(()=>session.changeSongClip(clipId,changes))(),
+  onRemoveClip:clipId=>call(()=>session.removeSongClip(clipId))(),
+  onRenameTrack:(trackId,name)=>call(()=>session.renameTrack(trackId,name))(),
+  onRenameSong:name=>call(()=>session.renameSong(name))(),
+  onSelectBeat:beatId=>{if(session.selectBeat(beatId)){selectedNoteId=null;renderContext();renderGrid(true);paintSong();}},
+  onEditBeat:()=>document.querySelector('[data-workspace="notes"]').click(),
+  onError:message=>status(message,true)
+ });
+ updateSongPlayhead();
+}
+function updateSongPlayhead(){
+ const line=$("phone-song-playhead");
+ if(!line)return;
+ const current=playbackScope==="song"?playbackPosition:null;
+ line.hidden=current===null;
+ if(current)line.style.left=(current.bar*16+current.step)*3+"px";
 }
 function paintSound(){
  if(!session)return;
@@ -483,7 +517,9 @@ function initializeControls(){
  $("play").addEventListener("click",()=>void togglePlayback());
  $("bpm").addEventListener("change",event=>{
   const next=Number(event.target.value);
-  if(!session.setBpm(next)){event.target.value=String(session.getBeat().bpm);return;}
+  const changed=activeWorkspace==="song"&&session.getDocument().kind==="song"?
+   session.setSongBpm(next):session.setBpm(next);
+  if(!changed){event.target.value=String(activeWorkspace==="song"&&session.getDocument().kind==="song"?session.getDocument().bpm:session.getBeat().bpm);return;}
   renderContext();
  });
  $("project-actions").addEventListener("click",()=>{
@@ -516,6 +552,7 @@ function initializeControls(){
   activeWorkspace=button.dataset.workspace;
   for(const name of ["notes","sound","song"])$("view-"+name).hidden=name!==activeWorkspace;
   if(activeWorkspace==="sound")paintSound();
+  if(activeWorkspace==="song")paintSong();
   for(const entry of document.querySelectorAll("[data-workspace]"))
    entry.setAttribute("aria-current",entry.dataset.workspace===activeWorkspace?"page":"false");
  });
@@ -535,7 +572,7 @@ function zoomAroundCenter(value){
 }
 function stopPlayback(){
  if(playing){playing.stop();playing=null;}
- playbackPosition=null;updatePlayhead();
+ playbackPosition=null;updatePlayhead();updateSongPlayhead();
  pendingPlay=false;$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");
 }
 async function togglePlayback(){
@@ -543,11 +580,13 @@ async function togglePlayback(){
  if(pendingPlay)return;
  pendingPlay=true;
  try{
-  const handle=await play(()=>session.getBeat(),{
+  playbackScope=activeWorkspace==="song"&&session.getDocument().kind==="song"?"song":"beat";
+ const handle=await play(()=>playbackScope==="song"?session.getDocument():session.getBeat(),{
    loop:()=>$("loop").checked,
    onPosition:(bar,step)=>{$("position").value=(bar+1)+":"+(Math.floor(step/4)+1);},
-   onProgress:(bar,step)=>{playbackPosition={bar,step};updatePlayhead();},
-   onStop:()=>{playing=null;playbackPosition=null;updatePlayhead();$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");$("position").value="1:1";}
+   onProgress:(bar,step)=>{playbackPosition={bar,step};
+    if(playbackScope==="song")updateSongPlayhead();else updatePlayhead();},
+   onStop:()=>{playing=null;playbackPosition=null;updatePlayhead();updateSongPlayhead();$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");$("position").value="1:1";}
   });
   playing=handle;$("play").textContent="■";$("play").setAttribute("aria-label","Stop Beat");
  }catch(error){status("playback error: "+error.message,true);}
