@@ -30,6 +30,7 @@
   <div class="notes-top">
    <button type="button" id="instrument-picker" aria-haspopup="dialog">Sine Keys <span aria-hidden="true">▾</span></button>
    <label>chunk <select id="chunk-picker" aria-label="Select chunk"></select></label>
+    <button id="chunk-actions" type="button" aria-haspopup="dialog" aria-label="Manage chunks and Beat placements">···</button>
   </div>
   <details id="scale-settings" class="phone-fold">
    <summary id="scale-summary">scale · C chromatic</summary>
@@ -100,6 +101,30 @@
  <p class="dialog-hint" id="catalog-context">choose a sound</p>
  <div id="catalog-filters" class="phone-catalog-filters"></div>
  <div id="catalog-sounds" class="phone-catalog-sounds"></div>
+</dialog>
+<dialog id="chunks-dialog" class="phone-dialog phone-chunks-dialog" aria-label="Chunk and Beat placement">
+ <header><h2>chunks</h2><button id="chunks-close" type="button" aria-label="Close chunk management">×</button></header>
+ <label class="phone-chunk-field">selected chunk name <input id="chunk-name" type="text" maxlength="60"></label>
+ <div class="phone-chunk-actions">
+  <button id="chunk-new" type="button">+ new</button>
+  <button id="chunk-duplicate" type="button">duplicate</button>
+  <button id="chunk-remove" type="button">remove</button>
+ </div>
+ <output class="dialog-hint" id="chunk-location">Select a bar to place this Chunk.</output>
+ <div class="phone-chunk-assign">
+  <label class="phone-chunk-field">bar <select id="bar-index" aria-label="Beat bar"></select></label>
+  <label class="phone-chunk-field">play in this bar <select id="bar-chunk" aria-label="Chunk playing in selected bar"></select></label>
+ </div>
+ <details id="bar-timing" class="phone-fold">
+  <summary>offset and polymeter</summary>
+  <p class="dialog-hint">Offset starts the phrase within its bar. Every and Repeats can produce shorter or longer cycles across bars.</p>
+  <div class="phone-chunk-timing">
+   <label class="phone-chunk-field">offset steps <input id="bar-offset" type="number" min="0" max="15" step="1" inputmode="numeric"></label>
+   <label class="phone-chunk-field">length steps <input id="bar-length" type="number" min="1" max="16" step="1" inputmode="numeric"></label>
+   <label class="phone-chunk-field">every steps <input id="bar-every" type="number" min="1" max="64" step="1" inputmode="numeric"></label>
+   <label class="phone-chunk-field">repeats <input id="bar-repeats" type="number" min="1" max="32" step="1" inputmode="numeric"></label>
+  </div>
+ </details>
 </dialog>
 <dialog id="file-dialog" class="phone-dialog phone-file-dialog" aria-label="Export project or audio">
  <header><h2>export</h2><button type="button" id="file-close" aria-label="Close export">×</button></header>
