@@ -170,6 +170,16 @@ try{
  volume.value=".45";volume.dispatchEvent(new Event("change",{bubbles:true}));
  if(Number(doc.querySelector('[aria-label="instrument level"]')?.value)!==.45)
   throw Error("phone Instrument volume did not commit");
+ const more=doc.querySelector("#phone-sound-content .phone-sound-more");
+ if(!more)throw Error("phone Sound has no Instrument/Rack More actions");
+ more.open=true;
+ const rowName=doc.querySelector('[aria-label="Selected sound name"]');
+ if(!rowName||!more.textContent.includes("delete instrument")||!more.textContent.includes("convert to rack"))
+  throw Error("shared Instrument and conversion commands unreachable on phone");
+ rowName.value="Phone sound";
+ rowName.dispatchEvent(new Event("change",{bubbles:true}));
+ if(doc.querySelector('[aria-label="Selected sound name"]')?.value!=="Phone sound")
+  throw Error("selected sound was not renamed through shared session");
  doc.querySelector('[aria-label="Save selected sound preset"]').click();
  await wait(()=>doc.querySelector("#preset-dialog").open,"save sound preset");
  doc.querySelector("#preset-name").value="Phone Favorite";
