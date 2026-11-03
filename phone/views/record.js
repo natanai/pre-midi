@@ -2,7 +2,16 @@
 // sample Assets as desktop. No recorder or microphone stream survives closing.
 import {RECORDER_DURATIONS,RECORDING_RATE,encodeMonoWav,monoFromAudioBlob,
  recordingExcerpt,estimatePitch,describeRecording,pitchLabel} from "../../recording.js";
+import {movementDefaults} from "../../expression.js";
 
+// Matches the canonical sampler patch schema; references separately saved WAV bytes.
+export function authoredSamplePatch(asset,{root=60,followPitch=true}={}){
+ if(!asset?.id||!Number.isInteger(root)||root<36||root>96)throw Error("Invalid recorded note.");
+ return {type:"sample",presetId:"custom",zones:[{assetId:asset.id,root}],
+  followPitch,oneShot:!followPitch,transpose:0,gain:.9,attack:.005,release:.17,
+  pan:0,strumMs:0,preserveDynamics:false,movement:{...movementDefaults},
+  bend:{shape:"straight",amount:2,rate:4}};
+}
 const STOP=Symbol("Cancelled capture");
 const chooseMime=()=>["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"]
  .find(value=>globalThis.MediaRecorder?.isTypeSupported?.(value))||null;
