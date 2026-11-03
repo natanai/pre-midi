@@ -8,6 +8,8 @@ import {play,audition} from "../audio.js";
 import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep} from "../scaleGuide.js";
 import {clampZoom,navigationAnchor,nextNavigation,noteDragSteps} from "./gestures/roll.js";
 import {phonePlayheadX} from "./rollPlayback.js";
+import {renderPhoneSound} from "./views/sound.js";
+import {renderPhoneCatalog,factorySpec,resolveFactoryAssets,previewFactoryPreset} from "./views/catalog.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
@@ -15,6 +17,7 @@ const NOTE_NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"
 const CACHE="premidi-scale-guide-v1";
 let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null;
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
+let activeSoundId=null,catalogMode="add",catalogCategory="All";
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
@@ -66,6 +69,7 @@ function renderScale(){
  const current=guide(),root=$("scale-root"),mode=$("scale-mode"),lock=$("scale-lock");
  root.value=String(current.root);mode.value=current.mode;
  lock.checked=current.lock;lock.disabled=current.mode==="chromatic";
+ $("scale-summary").textContent="scale · "+SCALE_ROOTS[current.root]+" "+(SCALE_MODES.find(mode=>mode.id===current.mode)?.name||current.mode)+(current.lock?" · limited":"");
 }
 function renderContext(){
  const beat=session.getBeat(),inst=session.getInstrument();
@@ -330,7 +334,83 @@ function updatePlayhead(){
  line.setAttribute("aria-hidden",String(x===null));
  if(x!==null)line.style.left=x+"px";
 }
-function render(preserveScroll=false){if(!session)return;renderContext();renderGrid(preserveScroll);}
+function render(preserveScroll=false){
+ if(!session)return;
+ renderContext();renderGrid(preserveScroll);
+ if(activeWorkspace==="sound")paintSound();
+}
+function openCatalog(mode){
+ cancelActiveGesture();
+ catalogMode=mode;catalogCategory="All";
+ if($("instruments-dialog").open)$("instruments-dialog").close();
+ $("catalog-context").textContent=mode==="add"?"add a new Instrument or Rack":
+  mode==="replace-row"?"replace the selected Rack row":"replace the current sound or choose a Rack";
+ paintCatalog();
+ $("catalog-dialog").showModal();
+}
+function paintCatalog(){
+ renderPhoneCatalog({
+  filters:$("catalog-filters"),list:$("catalog-sounds"),
+  category:catalogCategory,mode:catalogMode,beat:session.getBeat(),
+  onCategory:name=>{catalogCategory=name;paintCatalog();},
+  onUse:async(preset,button)=>{
+   button.disabled=true;
+   status("loading "+preset.name+"…");
+   try{
+    const assets=await resolveFactoryAssets(preset,session.getBeat());
+    const selected=session.getInstrument();
+    const result=session.selectCatalogSound({...factorySpec(preset),assets,mode:catalogMode,
+     soundId:selected.layout==="rack"?activeSoundId||selected.sounds[0].id:selected.sounds[0].id});
+    if(!result){status("instrument limit reached or sound could not be added",true);button.disabled=false;return;}
+    activeSoundId=null;selectedNoteId=null;
+    $("catalog-dialog").close();
+    render();
+    status("loaded "+preset.name+" · saved locally");
+   }catch(error){status("could not load "+preset.name+": "+error.message,true);button.disabled=false;}
+  },
+  onPreview:async(preset,button)=>{
+   button.disabled=true;
+   try{
+    const step=await previewFactoryPreset(preset,session.getBeat());
+    if(step)button.textContent="▶ "+step;
+   }catch(error){status("preview error: "+error.message,true);}
+   finally{button.disabled=false;}
+  }
+ });
+}
+function paintSound(){
+ if(!session)return;
+ const container=$("phone-sound-content"),viewport=$("view-sound"),scrolled=viewport.scrollTop;
+ const callbacks={
+  session,selectedSoundId:activeSoundId,
+  onSelectSound:(soundId)=>{activeSoundId=soundId;paintSound();},
+  onPatchChange(soundId,path,value){
+   try{
+    if(session.changeSoundPatch(soundId,path,value))paintSound();
+   }catch(error){status("sound change rejected: "+error.message,true);paintSound();}
+  },
+  onLevelChange(kind,value,soundId){
+   try{
+    const changed=kind==="instrument"?session.changeInstrumentVolume(value):session.changeSoundGain(soundId,value);
+    if(changed)paintSound();
+   }catch(error){status("volume change rejected: "+error.message,true);paintSound();}
+  },
+  onBrowse:mode=>openCatalog(mode),
+  onNameChange(value){
+   try{if(session.renameInstrument(value)){renderContext();paintSound();}}
+   catch(error){status("rename rejected: "+error.message,true);paintSound();}
+  },
+  onPreview(soundId){
+   const inst=session.getInstrument(),row=inst.sounds.find(sound=>sound.id===soundId)||inst.sounds[0];
+   void audition(inst,row.referencePitch,session.getBeat(),{soundId:row.id,velocity:.9,duration:.45})
+    .catch(error=>status("preview error: "+error.message,true));
+  },
+  onError:message=>status(message,true)
+ };
+ const result=renderPhoneSound(container,callbacks);
+ activeSoundId=result.soundId;
+ viewport.scrollTop=scrolled;
+}
 function download(blob,name){
  const url=URL.createObjectURL(blob),a=document.createElement("a");
  a.href=url;a.download=name;a.style.display="none";document.body.append(a);a.click();a.remove();
@@ -374,11 +454,9 @@ function initializeControls(){
   $("instruments-dialog").showModal();
  });
  $("instruments-close").addEventListener("click",()=>$("instruments-dialog").close());
- $("add-instrument").addEventListener("click",()=>{
-  cancelActiveGesture();if(session.addInstrument()){
-   $("instruments-dialog").close();selectedNoteId=null;render();
-  }
- });
+ $("add-instrument").addEventListener("click",()=>openCatalog("add"));
+ $("browse-sounds").addEventListener("click",()=>openCatalog("replace"));
+ $("catalog-close").addEventListener("click",()=>$("catalog-dialog").close());
  $("chunk-picker").addEventListener("change",event=>{
   cancelActiveGesture();session.selectChunk(event.target.value);selectedNoteId=null;renderGrid(true);
  });
@@ -437,6 +515,7 @@ function initializeControls(){
   cancelActiveGesture();
   activeWorkspace=button.dataset.workspace;
   for(const name of ["notes","sound","song"])$("view-"+name).hidden=name!==activeWorkspace;
+  if(activeWorkspace==="sound")paintSound();
   for(const entry of document.querySelectorAll("[data-workspace]"))
    entry.setAttribute("aria-current",entry.dataset.workspace===activeWorkspace?"page":"false");
  });

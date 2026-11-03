@@ -131,7 +131,46 @@ try{
  const offlineCache=await phoneWindow.caches.open(activeName);
  if(!await offlineCache.match(new URL("/schema.js",location.origin)))
   throw Error("Canonical Beat schema module is not available offline");
- await result("PASS","note edit, playback and installed PWA offline editor-shell cache");
+ // The phone's Sound tab must expose the actual shared synthesizer modules.
+ doc.querySelector('[data-workspace="sound"]').click();
+ await wait(()=>doc.querySelector("#phone-sound-content .synth-grid"),"sound editor rendered");
+ if(doc.querySelectorAll("#phone-sound-content .visual-sound-panel").length<5)
+  throw Error("phone Sound editor omitted shared DSP modules");
+ const instrumentName=doc.querySelector("#phone-sound-content .phone-sound-title input");
+ instrumentName.value="Phone synth";instrumentName.dispatchEvent(new Event("change",{bubbles:true}));
+ if(!doc.querySelector("#phone-sound-content .phone-sound-title input").value.includes("Phone synth"))
+  throw Error("phone instrument rename not applied");
+ const soundWave=doc.querySelector('[aria-label="Wave (oscillators.0.wave)"]');
+ if(!soundWave)throw Error("phone synth oscillator wave unavailable");
+ soundWave.value="square";soundWave.dispatchEvent(new Event("change",{bubbles:true}));
+ const applied=doc.querySelector('[aria-label="Wave (oscillators.0.wave)"]');
+ if(applied?.value!=="square")throw Error("phone Wave patch change did not survive re-render");
+ const volume=doc.querySelector('[aria-label="instrument level"]');
+ volume.value=".45";volume.dispatchEvent(new Event("change",{bubbles:true}));
+ if(Number(doc.querySelector('[aria-label="instrument level"]')?.value)!==.45)
+  throw Error("phone Instrument volume did not commit");
+ doc.querySelector('[data-workspace="notes"]').click();
+ if(!doc.querySelector("#instrument-picker").textContent.includes("Phone synth"))
+  throw Error("phone Sound rename did not propagate to Notes");
+ doc.querySelector('[data-workspace="sound"]').click();
+ if(doc.querySelector('[aria-label="Wave (oscillators.0.wave)"]')?.value!=="square")
+  throw Error("phone Sound patch was lost on workspace switching");
+ doc.querySelector('[data-workspace="notes"]').click();
+ doc.querySelector("#instrument-picker").click();
+ await wait(()=>doc.querySelector("#instruments-dialog").open,"phone instrument sheet");
+ doc.querySelector("#add-instrument").click();
+ await wait(()=>doc.querySelector("#catalog-dialog").open,"unified factory catalog");
+ const entries=doc.querySelectorAll("#catalog-sounds .phone-catalog-item");
+ if(entries.length<15)throw Error("factory Sound catalog was not fully offered on phone");
+ const item=doc.querySelector('#catalog-sounds [data-preset-id="init"]');
+ if(!item)throw Error("factory Init preset missing from same browser");
+ item.querySelector('button[aria-label="add Init"]').click();
+ await wait(()=>!doc.querySelector("#catalog-dialog").open,"factory sound to add");
+ if(!doc.querySelector("#instrument-picker").textContent.includes("Init"))
+  throw Error("using shared sound factory did not create a playable Instrument");
+ if(!doc.querySelector("#scale-summary").textContent.includes("scale"))
+  throw Error("compact scale settings became unreachable");
+ await result("PASS","notes, touch, playback, offline shell, Sound DSP and unified factory Add/Browse catalog");
 }catch(error){
  await result("FAIL",error.stack||String(error));
 }

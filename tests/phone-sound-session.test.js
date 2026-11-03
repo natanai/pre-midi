@@ -1,0 +1,42 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {create,validate} from "../schema.js";
+import {createStudioSession} from "../studioSession.js";
+
+test("phone Sound edits share the validated patch schema, history and undo/redo",()=>{
+ let writes=0;
+ const session=createStudioSession(create(),()=>writes++),sound=session.getInstrument().sounds[0];
+ const original=sound.patch.filter.cutoff;
+ assert.equal(session.changeSoundPatch(sound.id,["filter","cutoff"],2200),true);
+ assert.equal(session.getInstrument().sounds[0].patch.filter.cutoff,2200);
+ assert.equal(session.getInstrument().sounds[0].patch.presetId,"custom");
+ assert.equal(session.changeInstrumentVolume(.5),true);
+ assert.equal(session.changeSoundGain(sound.id,.9),true);
+ assert.equal(session.renameInstrument("Phone synth"),true);
+ assert.deepEqual(validate(session.getBeat()),[]);
+ assert.equal(session.getInstrument().name,"Phone synth");
+ assert.equal(session.undo(),true);
+ assert.notEqual(session.getInstrument().name,"Phone synth");
+ assert.equal(session.undo(),true);
+ assert.equal(session.getInstrument().sounds[0].gain,1);
+ assert.equal(session.undo(),true);
+ assert.equal(session.getInstrument().volume,.7);
+ assert.equal(session.undo(),true);
+ assert.equal(session.getInstrument().sounds[0].patch.filter.cutoff,original);
+ assert.equal(session.redo(),true);
+ assert.equal(session.getInstrument().sounds[0].patch.filter.cutoff,2200);
+ assert.ok(writes>=5);
+});
+test("phone Sound mutations reject unsafe changes without committing or corrupting score",()=>{
+ let writes=0;
+ const session=createStudioSession(create(),()=>writes++);
+ const sound=session.getInstrument().sounds[0],cutoffBefore=sound.patch.filter.cutoff;
+ assert.equal(session.changeSoundGain("missing",.4),false);
+ assert.equal(session.changeInstrumentVolume(10),false);
+ assert.equal(session.renameInstrument(""),false);
+ assert.throws(()=>session.changeSoundPatch(sound.id,["filter","cutoff"],-100));
+ assert.throws(()=>session.changeSoundPatch(sound.id,["oscillators",0,"wave"],"invalid-wave"));
+ assert.equal(session.getInstrument().sounds[0].patch.filter.cutoff,cutoffBefore);
+ assert.deepEqual(validate(session.getBeat()),[]);
+ assert.equal(writes,0);
+});
