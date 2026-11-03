@@ -42,6 +42,9 @@
   win.addEventListener("error",e=>issues.push(String(e.message||e.error)));
   win.addEventListener("unhandledrejection",e=>issues.push(String(e.reason)));
   await wait(()=>frame.contentDocument.querySelectorAll(".instrument-card").length>=1,"Beat editor initialized");
+  assert(get("hear-sound").textContent.trim()==="▶","Sound preview is icon-only after initial render");
+  get("hear-sound").click();
+  assert(get("hear-sound").textContent.trim()==="▶","Sound preview remains icon-only after audition");
   assert(get("song-panel").hidden,"Song must be hidden until requested");
   // Short Beat durations keep full audio-export checks reliable in headless
   // mobile-sized Chrome without reducing test coverage of Beat/Song scopes.
@@ -222,6 +225,32 @@
    "Song with vocal renders WAV",25000);
   assert(wavDownloads.length>vocalWavCount,"recorded Song produced a WAV file");
   await checkWav(wavDownloads.at(-1),true);
+  const recordedVoice=frame.contentDocument.querySelector(".song-vocal-clip");
+  const voiceId=recordedVoice.dataset.clipId;
+  recordedVoice.click();
+  assert(!get("song-beat-start-field").hidden,"Voice clips can edit their start bar");
+  get("song-clip-start").value="5";
+  get("song-clip-start").dispatchEvent(new Event("change",{bubbles:true}));
+  let shifted=frame.contentDocument.querySelector('[data-clip-id="'+voiceId+'"]');
+  assert(Math.abs(parseFloat(shifted.style.left)-216)<1,"Voice clip moved to bar five");
+  get("undo").click();
+  shifted=frame.contentDocument.querySelector('[data-clip-id="'+voiceId+'"]');
+  assert(Math.abs(parseFloat(shifted.style.left)-108)<1,"Vocal timing can be undone");
+  shifted.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true}));
+  shifted=frame.contentDocument.querySelector('[data-clip-id="'+voiceId+'"]');
+  assert(Math.abs(parseFloat(shifted.style.left)-162)<1,"ArrowRight advances a vocal one bar");
+  shifted.click();
+  get("song-clip-remove").click();
+  assert(frame.contentDocument.querySelectorAll(".song-vocal-clip").length===0,"Vocal clip removed");
+  assert(frame.contentDocument.querySelectorAll(".song-track-row").length===3,
+   "Removing the only take removes the empty voice row and preserves Beats");
+  get("export").click();
+  const cleanedProjectCount=projectDownloads.length;
+  get("export-form").querySelector('input[name="export-format"][value="premidi"]').click();
+  get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+  await wait(()=>projectDownloads.length>cleanedProjectCount,"Song exported after deleting take");
+  const cleanedBytes=new Uint8Array(await projectDownloads.at(-1).arrayBuffer());
+  assert(!(cleanedBytes[0]===80&&cleanedBytes[1]===75),"Deleted recordings must not remain in Song ZIP");
   assert(issues.length===0,"Browser exceptions: "+issues.join(", "));
   document.documentElement.dataset.result="PASS";
   await report("PASS","Song clips, layering, keyboard, undo, playback, reload");
