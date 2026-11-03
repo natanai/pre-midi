@@ -61,3 +61,19 @@ test("phone Rack row delete removes only its hits and sound rename is undoable",
  assert.equal(session.undo(),true);
  assert.equal(session.getInstrument().sounds.length,2);
 });
+
+test("phone can rename a Beat and resize its bar timeline across all Instruments",()=>{
+ const session=createStudioSession(create());
+ session.addInstrument();
+ assert.equal(session.renameBeat("Evening Loop"),true);
+ assert.equal(session.getBeat().title,"Evening Loop");
+ assert.equal(session.setBeatBars(10),true);
+ assert.equal(session.getBeat().bars,10);
+ assert.ok(session.getBeat().instruments.every(inst=>inst.timeline.length===10&&inst.placements.length===10));
+ assert.equal(session.setBeatBars(3),true);
+ assert.deepEqual(validate(session.getBeat()),[]);
+ assert.ok(session.getBeat().instruments.every(inst=>inst.timeline.length===3));
+ assert.equal(session.undo(),true);
+ assert.equal(session.getBeat().bars,10);
+ assert.equal(session.setBeatBars(0),false);
+});
