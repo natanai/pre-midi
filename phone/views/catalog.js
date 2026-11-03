@@ -53,13 +53,16 @@ export async function previewFactoryPreset(preset,beat){
  await audition(inst,row.referencePitch,{samples:assets},{soundId:row.id,duration:.5});
  return null;
 }
-export function renderPhoneCatalog({filters,list,category,mode,beat,onCategory,onUse,onPreview}){
+export function renderPhoneCatalog({filters,list,category,mode,beat,onCategory,onUse,onPreview,onRecord}){
  filters.replaceChildren();list.replaceChildren();
  for(const name of catalogCategories()){
   const button=document.createElement("button");button.type="button";button.textContent=name;
   button.setAttribute("aria-pressed",String(category===name));
   button.addEventListener("click",()=>onCategory(name));filters.append(button);
  }
+ const personal=document.createElement("div");personal.className="phone-catalog-import";
+ const record=document.createElement("button");record.type="button";record.textContent="● record / import my sound";
+ record.addEventListener("click",onRecord);personal.append(record);list.append(personal);
  for(const preset of catalogEntries(category).filter(p=>mode!=="replace-row"||!p.sounds)){
   const card=document.createElement("article");card.className="phone-catalog-item";
   card.dataset.presetId=preset.id;
