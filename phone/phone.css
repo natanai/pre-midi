@@ -87,3 +87,57 @@ button:active{background:#252525}
 .phone-dialog #instrument-options>button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 .dialog-hint{font-size:11px;color:var(--sub);line-height:1.5;margin-top:18px}
 @media (max-height:630px){.scale-tools{padding-block:4px}.notes-top,.editing-tools{padding-block:4px}.phone-nav{min-height:46px}.grid-navigation{padding-block:2px}}
+
+/* Dedicated phone layout around shared synth, sampler and sound-visual controls.
+   Synth modules and DSP definitions are reused; desktop styles never load. */
+.phone-sound-workspace{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+#phone-sound-content{display:flex;flex-direction:column;gap:10px;padding:10px 12px 16px;min-width:0}
+.phone-sound-heading{display:flex;align-items:flex-end;gap:8px}
+.phone-sound-title{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1;color:var(--sub);font-size:11px}
+.phone-sound-title input{width:100%;height:40px;color:var(--ink);padding:8px;background:#080808}
+.phone-sound-audition{width:46px;height:40px;color:var(--accent);font-size:19px}
+.phone-sound-head-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.phone-sound-selector{display:flex;flex-direction:column;gap:7px;font-size:11px;color:var(--sub)}
+.phone-sound-selector select{width:100%;height:38px;min-width:0;padding:5px 6px;color:var(--ink)}
+.phone-level{display:flex;flex-direction:column;gap:7px;color:var(--sub);font-size:11px;min-width:0}
+.phone-level input{min-width:0;width:100%;accent-color:var(--accent);min-height:24px;touch-action:pan-y}
+.phone-level output{color:var(--ink);font-variant-numeric:tabular-nums;font-size:11px}
+.phone-sound-info{font-size:11px;color:var(--sub);line-height:1.5;margin:0}
+.phone-patch-editor,.phone-patch-editor *{min-width:0}
+.phone-patch-editor .synth-grid{display:flex;flex-direction:column;gap:10px}
+.phone-patch-editor .visual-sound-panel{display:flex;flex-direction:column;gap:0;border:1px solid #343434;background:#060606;position:relative}
+.phone-patch-editor .visual-panel-area{min-height:128px;max-height:190px;position:relative;border-bottom:1px solid #282828;overflow:hidden}
+.phone-patch-editor .visual-panel-graph{display:block;width:100%;height:160px}
+.phone-patch-editor .visual-graph-points{position:absolute;inset:0;pointer-events:none}
+.phone-patch-editor .visual-graph-point{position:absolute;pointer-events:auto;min-height:24px;min-width:24px;padding:2px;border-color:#777;color:var(--accent)}
+.phone-patch-editor .visual-panel-expand{position:absolute;top:5px;right:5px;z-index:2;min-height:29px;width:31px;background:#050505cc}
+.phone-patch-editor .synth-group{display:block;padding:0 10px 10px}
+.phone-patch-editor .synth-group summary{display:list-item;cursor:pointer;padding:12px 3px;color:var(--ink);font-size:13px;min-height:40px;list-style-position:inside}
+.phone-patch-editor .synth-group:not([open]){padding-bottom:0}
+.phone-patch-editor .synth-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 8px;padding:7px 0 12px}
+.phone-patch-editor .synth-field{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--sub)}
+.phone-patch-editor .synth-field select,.phone-patch-editor .synth-field input{width:100%;height:38px;padding:5px;color:var(--ink)}
+.phone-patch-editor .dial-field{display:flex;min-height:95px;align-items:center;flex-direction:column;gap:5px;padding:6px 2px;border:1px solid #222}
+.phone-patch-editor .dial-disabled{opacity:.4}
+.phone-patch-editor .dial-label{font-size:11px;line-height:1.35;text-align:center;min-height:25px;color:var(--sub)}
+.phone-patch-editor .dial-knob{width:55px;height:55px;touch-action:none;cursor:ns-resize;outline-offset:3px;flex:none}
+.phone-patch-editor .dial-knob svg{display:block;width:100%;height:100%;overflow:visible}
+.phone-patch-editor .dial-ring,.phone-patch-editor .dial-amount{fill:none;stroke-width:4}
+.phone-patch-editor .dial-ring{stroke:#555}
+.phone-patch-editor .dial-amount{stroke:var(--accent)}
+.phone-patch-editor .dial-pointer{stroke:#e9f9fb;stroke-width:3;stroke-linecap:round;transform-origin:32px 32px}
+.phone-patch-editor .dial-value{font-size:11px;color:var(--ink);font-variant-numeric:tabular-nums}
+.phone-patch-editor .oscillator-unit{padding:7px 0 12px;border-bottom:1px solid #292929}
+.phone-patch-editor .oscillator-unit-heading{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin:5px 0}
+.phone-patch-editor .oscillator-add,.phone-patch-editor .oscillator-remove{padding:0 8px;font-size:11px}
+.phone-patch-editor .harmonic-editor{padding:7px 0}
+.phone-patch-editor .harmonic-recipes{display:flex;flex-wrap:wrap;gap:5px}
+.phone-patch-editor .harmonic-recipes button{font-size:10px;padding:4px;flex:1}
+.phone-patch-editor .harmonic-more summary{font-size:11px;color:var(--sub)}
+.phone-patch-editor .modulation-editor{padding-block:0}
+.phone-patch-editor .modulation-route{border-bottom:1px solid #292929;grid-template-columns:1fr}
+.phone-patch-editor .sample-zones,.phone-patch-editor .sample-toggles{display:flex;flex-direction:column;gap:8px;padding:9px}
+.phone-patch-editor .sample-replace-action{width:100%;padding:5px;margin:10px 0}
+.phone-patch-editor .sampler-description{padding:8px;color:var(--sub);font-size:12px}
+.floating-help{position:fixed;z-index:1000;max-width:min(275px,calc(100vw - 20px));padding:10px;background:#181818;color:var(--ink);border:1px solid #777;font:12px/1.45 ui-monospace,monospace}
+@media(max-width:345px){.phone-patch-editor .synth-fields{grid-template-columns:1fr}}
