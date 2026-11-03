@@ -70,7 +70,11 @@ try{
  doc.querySelector("#instrument-picker").click();
  await wait(()=>doc.querySelector("#instruments-dialog").open,"instrument picker");
  doc.querySelector("#add-instrument").click();
- await wait(()=>doc.querySelector("#instrument-picker").textContent.includes("Instrument 2"),"new instrument");
+ await wait(()=>doc.querySelector("#catalog-dialog").open,"factory Add Instrument selector");
+ const init=doc.querySelector('#catalog-sounds [data-preset-id="init"]');
+ if(!init)throw Error("factory Init sound missing from Add Instrument");
+ init.querySelector('button[aria-label="add Init"]').click();
+ await wait(()=>doc.querySelector("#instrument-picker").textContent.includes("Init"),"factory Instrument added");
  const scale=doc.querySelector("#scale-mode");scale.value="major";scale.dispatchEvent(new Event("change",{bubbles:true}));
  if(doc.querySelector("#scale-mode").value!=="major")throw Error("Scale not selected");
  // Exercise Safari-shaped pointer interruption and second-finger arbitration.
