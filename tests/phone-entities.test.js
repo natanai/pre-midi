@@ -14,6 +14,10 @@ test("phone instrument deletion reuses canonical fallback and never leaves an in
  assert.equal(session.getInstrument().id,first);
  assert.equal(session.undo(),true);
  assert.equal(session.getBeat().instruments.length,2);
+ assert.equal(session.selectInstrument(first),true);
+ assert.equal(session.removeInstrument(second),true);
+ assert.equal(session.getInstrument().id,first);
+ assert.equal(session.undo(),true);
  assert.equal(session.removeInstrument(second),true);
  assert.equal(session.removeInstrument(first),true);
  assert.equal(session.getBeat().instruments.length,1);
