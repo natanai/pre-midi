@@ -760,6 +760,7 @@ function initializeControls(){
   const root=$("instrument-options");root.replaceChildren();
   const beat=session.getBeat();
   for(const inst of beat.instruments){
+   const row=document.createElement("div");row.className="phone-instrument-row";
    const btn=document.createElement("button");
    btn.type="button";btn.textContent=inst.name;
    btn.setAttribute("aria-pressed",String(inst.id===session.getInstrument().id));
@@ -767,7 +768,18 @@ function initializeControls(){
     cancelActiveGesture();session.selectInstrument(inst.id);selectedNoteId=null;
     $("instruments-dialog").close();render();
    });
-   root.append(btn);
+   const remove=document.createElement("button");remove.type="button";remove.textContent="×";
+   remove.setAttribute("aria-label","Delete "+inst.name);
+   remove.addEventListener("click",()=>{
+    if(!confirm("Delete "+(inst.layout==="rack"?"rack":"instrument")+" “"+inst.name+"” and its Chunks?"))return;
+    try{
+     if(session.removeInstrument(inst.id)){
+      selectedNoteId=null;$("instruments-dialog").close();render();
+      status("deleted "+inst.name+" · undo is available");
+     }
+    }catch(error){status("could not delete instrument: "+error.message,true);}
+   });
+   row.append(btn,remove);root.append(row);
   }
   $("add-instrument").disabled=beat.instruments.length>=12;
   $("instruments-dialog").showModal();
