@@ -59,6 +59,10 @@ A user-confirmed real Safari session successfully placed and deleted notes, drag
 
 The dedicated phone entry now has an initial Notes screen with shared Beat/Chunk selection, basic Instrument sheet, pitched and Rack steps, scale guide, pointer-based tap/paint/move/resize selection, explicit deletion, undo/redo, navigation controls, basic Beat transport, local IndexedDB saves, Beat project import/export and a preliminary standalone web manifest. Sound and Song are clearly marked **unfinished**, not approximated by desktop UI. The phase is still **in progress**: no actual iPhone tap gate has passed, two-finger panning/pinch, granular note effects, complete Rack/preset selection, robust iOS Files, install/update/offline caching, recording and all deep module controls remain outstanding. Browser synthetic pointer/click tests must not be represented as physical iOS qualification.
 
+### Early PWA host feasibility slice (under browser qualification)
+
+The phone host registers a root-scoped, versioned service worker; interception is restricted to the dedicated phone page, CSS/manifest/icon and complete JavaScript dependency closure. Installation caches all files as one unit. A new revision replaces the old cache after activation, leaving the desktop URL and other requests untouched. Recordings/projects remain in IndexedDB. This delivers a basic offline **editor shell**, not complete offline audio: factory sample files are not precached and remain network-dependent. The build generates a deterministic allowlist from the dependency closure. Chrome tests check cache installation. Physical iOS Home Screen launch, audio activation after offline resume and interruption/update remain unqualified.
+
 ## Long-term code layout
 
 ```text
