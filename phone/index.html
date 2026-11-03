@@ -31,11 +31,14 @@
    <button type="button" id="instrument-picker" aria-haspopup="dialog">Sine Keys <span aria-hidden="true">▾</span></button>
    <label>chunk <select id="chunk-picker" aria-label="Select chunk"></select></label>
   </div>
-  <div class="scale-tools" aria-label="Scale guide">
+  <details id="scale-settings" class="phone-fold">
+   <summary id="scale-summary">scale · C chromatic</summary>
+   <div class="scale-tools" aria-label="Scale guide">
    <label>key <select id="scale-root" aria-label="Scale tonic"></select></label>
    <label>scale <select id="scale-mode" aria-label="Scale mode"></select></label>
    <label class="scale-lock">limit <input type="checkbox" id="scale-lock"></label>
-  </div>
+   </div>
+  </details>
   <div class="editing-tools">
    <button id="undo" type="button" aria-label="Undo">↶</button>
    <button id="redo" type="button" aria-label="Redo">↷</button>
@@ -50,22 +53,20 @@
     <div id="piano-grid" class="piano-grid" aria-label="Editable note grid"></div>
    </div>
   </div>
-  <div class="grid-navigation">
+  <details class="phone-fold phone-navigation"><summary>navigate · pitch / time</summary>
+   <div class="grid-navigation">
    <button id="pitch-up" type="button" aria-label="Scroll up an octave">↑ pitch</button>
    <button id="time-left" type="button" aria-label="Scroll earlier in the Beat">← time</button>
    <button id="time-right" type="button" aria-label="Scroll later in the Beat">time →</button>
    <button id="pitch-down" type="button" aria-label="Scroll down an octave">↓ pitch</button>
-  </div>
+   </div>
+  </details>
  </section>
- <section class="workspace placeholder" id="view-sound" hidden>
-  <h2>sound</h2>
-  <p>the phone sound editor is next</p>
-  <p>your instrument settings stay in the project</p>
+ <section class="workspace phone-sound-workspace" id="view-sound" hidden aria-label="Sound workspace">
+  <div id="phone-sound-content"></div>
  </section>
- <section class="workspace placeholder" id="view-song" hidden>
-  <h2>song</h2>
-  <p>the phone arranger is not ready yet</p>
-  <p>existing song data remains preserved</p>
+ <section class="workspace phone-song-workspace" id="view-song" hidden aria-label="Song arrangement">
+  <div id="phone-song-content"></div>
  </section>
  <output id="status" class="phone-status" role="status" aria-live="polite">opening local draft…</output>
  <nav class="phone-nav" aria-label="Workspace">
@@ -77,7 +78,8 @@
 <dialog id="instruments-dialog" aria-label="Choose instrument" class="phone-dialog">
  <header><h2>instruments</h2><button type="button" id="instruments-close" aria-label="Close instrument picker">×</button></header>
  <div id="instrument-options"></div>
- <button id="add-instrument" type="button">+ add instrument</button>
+ <button id="add-instrument" type="button">+ add instrument from sounds</button>
+ <button id="browse-sounds" type="button">browse / replace sound</button>
  <p class="dialog-hint">sound presets and rack management are coming to phone</p>
 </dialog>
 <dialog id="project-dialog" aria-label="Project" class="phone-dialog">
@@ -85,10 +87,17 @@
  <button id="new-beat" type="button">new beat</button>
  <button id="open-beat" type="button">open .premidi / ZIP</button>
  <button id="export-beat" type="button">export beat</button>
+ <button id="render-wav" type="button">render WAV</button>
  <button id="export-song" type="button" hidden>export song</button>
  <input type="file" id="open-file" accept=".premidi,.zip,application/zip" hidden>
  <p class="dialog-hint">drafts save locally; export a backup to keep your work</p>
  <output id="offline-status" class="dialog-hint" role="status">offline shell setup pending · sounds may require network</output>
+</dialog>
+<dialog id="catalog-dialog" class="phone-dialog phone-catalog-dialog" aria-label="Browse factory sounds">
+ <header><h2>sounds</h2><button type="button" id="catalog-close" aria-label="Close sounds browser">×</button></header>
+ <p class="dialog-hint" id="catalog-context">choose a sound</p>
+ <div id="catalog-filters" class="phone-catalog-filters"></div>
+ <div id="catalog-sounds" class="phone-catalog-sounds"></div>
 </dialog>
 <script type="module" src="./main.js"></script>
 </body>

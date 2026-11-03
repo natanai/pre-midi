@@ -70,7 +70,11 @@ try{
  doc.querySelector("#instrument-picker").click();
  await wait(()=>doc.querySelector("#instruments-dialog").open,"instrument picker");
  doc.querySelector("#add-instrument").click();
- await wait(()=>doc.querySelector("#instrument-picker").textContent.includes("Instrument 2"),"new instrument");
+ await wait(()=>doc.querySelector("#catalog-dialog").open,"factory Add Instrument selector");
+ const init=doc.querySelector('#catalog-sounds [data-preset-id="init"]');
+ if(!init)throw Error("factory Init sound missing from Add Instrument");
+ init.querySelector('button[aria-label="add Init"]').click();
+ await wait(()=>doc.querySelector("#instrument-picker").textContent.includes("Init"),"factory Instrument added");
  const scale=doc.querySelector("#scale-mode");scale.value="major";scale.dispatchEvent(new Event("change",{bubbles:true}));
  if(doc.querySelector("#scale-mode").value!=="major")throw Error("Scale not selected");
  // Exercise Safari-shaped pointer interruption and second-finger arbitration.
@@ -131,7 +135,75 @@ try{
  const offlineCache=await phoneWindow.caches.open(activeName);
  if(!await offlineCache.match(new URL("/schema.js",location.origin)))
   throw Error("Canonical Beat schema module is not available offline");
- await result("PASS","note edit, playback and installed PWA offline editor-shell cache");
+ // The phone's Sound tab must expose the actual shared synthesizer modules.
+ doc.querySelector('[data-workspace="sound"]').click();
+ await wait(()=>doc.querySelector("#phone-sound-content .synth-grid"),"sound editor rendered");
+ if(doc.querySelectorAll("#phone-sound-content .visual-sound-panel").length<5)
+  throw Error("phone Sound editor omitted shared DSP modules");
+ const instrumentName=doc.querySelector("#phone-sound-content .phone-sound-title input");
+ instrumentName.value="Phone synth";instrumentName.dispatchEvent(new Event("change",{bubbles:true}));
+ if(!doc.querySelector("#phone-sound-content .phone-sound-title input").value.includes("Phone synth"))
+  throw Error("phone instrument rename not applied");
+ const soundWave=doc.querySelector('[aria-label="Wave (oscillators.0.wave)"]');
+ if(!soundWave)throw Error("phone synth oscillator wave unavailable");
+ soundWave.value="square";soundWave.dispatchEvent(new Event("change",{bubbles:true}));
+ const applied=doc.querySelector('[aria-label="Wave (oscillators.0.wave)"]');
+ if(applied?.value!=="square")throw Error("phone Wave patch change did not survive re-render");
+ const volume=doc.querySelector('[aria-label="instrument level"]');
+ volume.value=".45";volume.dispatchEvent(new Event("change",{bubbles:true}));
+ if(Number(doc.querySelector('[aria-label="instrument level"]')?.value)!==.45)
+  throw Error("phone Instrument volume did not commit");
+ doc.querySelector('[data-workspace="notes"]').click();
+ if(!doc.querySelector("#instrument-picker").textContent.includes("Phone synth"))
+  throw Error("phone Sound rename did not propagate to Notes");
+ doc.querySelector('[data-workspace="sound"]').click();
+ if(doc.querySelector('[aria-label="Wave (oscillators.0.wave)"]')?.value!=="square")
+  throw Error("phone Sound patch was lost on workspace switching");
+ doc.querySelector('[data-workspace="notes"]').click();
+ doc.querySelector("#instrument-picker").click();
+ await wait(()=>doc.querySelector("#instruments-dialog").open,"phone instrument sheet");
+ doc.querySelector("#add-instrument").click();
+ await wait(()=>doc.querySelector("#catalog-dialog").open,"unified factory catalog");
+ const entries=doc.querySelectorAll("#catalog-sounds .phone-catalog-item");
+ if(entries.length<15)throw Error("factory Sound catalog was not fully offered on phone");
+ const item=doc.querySelector('#catalog-sounds [data-preset-id="init"]');
+ if(!item)throw Error("factory Init preset missing from same browser");
+ item.querySelector('button[aria-label="add Init"]').click();
+ await wait(()=>!doc.querySelector("#catalog-dialog").open,"factory sound to add");
+ if(!doc.querySelector("#instrument-picker").textContent.includes("Init"))
+  throw Error("using shared sound factory did not create a playable Instrument");
+ if(!doc.querySelector("#scale-summary").textContent.includes("scale"))
+  throw Error("compact scale settings became unreachable");
+ // Build an actual Song from the existing Beat and modify canonical Clips.
+ doc.querySelector('[data-workspace="song"]').click();
+ const createSong=doc.querySelector("#phone-song-content .phone-song-start button");
+ if(!createSong)throw Error("Beat to Song conversion is missing on phone");
+ createSong.click();
+ await wait(()=>doc.querySelector(".phone-song-track"),"phone Song arrangement");
+ const songControls=[...doc.querySelectorAll(".phone-song-actions button")];
+ const action=text=>songControls.find(button=>button.textContent===text);
+ if(!action("+ beat track")||!action("edit beat"))throw Error("Song track and Beat editor unavailable");
+ action("+ beat track").click();
+ await wait(()=>doc.querySelectorAll(".phone-song-track").length===2,"second Beat Track");
+ const addClip=[...doc.querySelectorAll(".phone-song-track")].at(-1).querySelector(".phone-song-track-heading button");
+ addClip.click();
+ await wait(()=>doc.querySelectorAll(".phone-song-clip").length===2,"new Beat Clip");
+ const settings=[...doc.querySelectorAll(".phone-song-track")].at(-1).querySelector(".phone-song-clip-settings");
+ const steps=settings.querySelector('[aria-label="start step"]');steps.value="3";
+ steps.dispatchEvent(new Event("change",{bubbles:true}));
+ if(![...doc.querySelectorAll(".phone-song-track")].at(-1).querySelector('[aria-label="start step"]')?.value.includes("3"))
+  throw Error("offset Song Clip edit failed");
+ doc.querySelector("#play").click();
+ await wait(()=>doc.querySelector("#phone-song-playhead")?.hidden===false,"Song playback line");
+ doc.querySelector("#play").click();
+ await wait(()=>doc.querySelector("#phone-song-playhead")?.hidden===true,"Song stop cursor");
+ doc.querySelector("#project-actions").click();
+ if(doc.querySelector("#export-song").hidden||!doc.querySelector("#render-wav"))
+  throw Error("Song export or WAV render not available on phone");
+ doc.querySelector("#project-close").click();
+ action("edit beat").click();
+ if(doc.querySelector("#view-notes").hidden)throw Error("Song Beat cannot return to Notes editing");
+ await result("PASS","note touch/edit, offline shell, Sound/catalog and Song Clips/transport/export");
 }catch(error){
  await result("FAIL",error.stack||String(error));
 }

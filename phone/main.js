@@ -4,17 +4,21 @@ import {parseSong,exportSongProject,importSongProject} from "../songIO.js";
 import {createStudioSession} from "../studioSession.js";
 import {loadDraft,saveDraft} from "../storage.js";
 import {exportProject,importProject} from "../packageIO.js";
-import {play,audition} from "../audio.js";
+import {play,audition,wav} from "../audio.js";
 import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep} from "../scaleGuide.js";
 import {clampZoom,navigationAnchor,nextNavigation,noteDragSteps} from "./gestures/roll.js";
 import {phonePlayheadX} from "./rollPlayback.js";
+import {renderPhoneSound} from "./views/sound.js";
+import {renderPhoneCatalog,factorySpec,resolveFactoryAssets,previewFactoryPreset} from "./views/catalog.js";
+import {renderPhoneSong} from "./views/song.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
 const NOTE_NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
 const CACHE="premidi-scale-guide-v1";
-let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null;
+let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null,playbackScope="beat";
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
+let activeSoundId=null,catalogMode="add",catalogCategory="All";
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
@@ -66,10 +70,11 @@ function renderScale(){
  const current=guide(),root=$("scale-root"),mode=$("scale-mode"),lock=$("scale-lock");
  root.value=String(current.root);mode.value=current.mode;
  lock.checked=current.lock;lock.disabled=current.mode==="chromatic";
+ $("scale-summary").textContent="scale · "+SCALE_ROOTS[current.root]+" "+(SCALE_MODES.find(mode=>mode.id===current.mode)?.name||current.mode)+(current.lock?" · limited":"");
 }
 function renderContext(){
  const beat=session.getBeat(),inst=session.getInstrument();
- $("project-name").textContent=beat.title;
+ $("project-name").textContent=activeWorkspace==="song"&&session.getDocument().kind==="song"?session.getDocument().title:beat.title;
  $("instrument-picker").firstChild.textContent=inst.name+" ";
  const chunk=$("chunk-picker");chunk.replaceChildren();
  for(const choice of inst.chunks){
@@ -78,7 +83,7 @@ function renderContext(){
   chunk.append(option);
  }
  chunk.value=session.getChunk().id;
- $("bpm").value=String(beat.bpm);
+ $("bpm").value=String(activeWorkspace==="song"&&session.getDocument().kind==="song"?session.getDocument().bpm:beat.bpm);
  renderScale();refreshSelection();
 }
 function rowModels(){
@@ -330,7 +335,116 @@ function updatePlayhead(){
  line.setAttribute("aria-hidden",String(x===null));
  if(x!==null)line.style.left=x+"px";
 }
-function render(preserveScroll=false){if(!session)return;renderContext();renderGrid(preserveScroll);}
+function render(preserveScroll=false){
+ if(!session)return;
+ renderContext();renderGrid(preserveScroll);
+ if(activeWorkspace==="sound")paintSound();
+ if(activeWorkspace==="song")paintSong();
+}
+function openCatalog(mode){
+ cancelActiveGesture();
+ catalogMode=mode;catalogCategory="All";
+ if($("instruments-dialog").open)$("instruments-dialog").close();
+ $("catalog-context").textContent=mode==="add"?"add a new Instrument or Rack":
+  mode==="replace-row"?"replace the selected Rack row":"replace the current sound or choose a Rack";
+ paintCatalog();
+ $("catalog-dialog").showModal();
+}
+function paintCatalog(){
+ renderPhoneCatalog({
+  filters:$("catalog-filters"),list:$("catalog-sounds"),
+  category:catalogCategory,mode:catalogMode,beat:session.getBeat(),
+  onCategory:name=>{catalogCategory=name;paintCatalog();},
+  onUse:async(preset,button)=>{
+   button.disabled=true;
+   status("loading "+preset.name+"…");
+   try{
+    const assets=await resolveFactoryAssets(preset,session.getBeat());
+    const selected=session.getInstrument();
+    const result=session.selectCatalogSound({...factorySpec(preset),assets,mode:catalogMode,
+     soundId:selected.layout==="rack"?activeSoundId||selected.sounds[0].id:selected.sounds[0].id});
+    if(!result){status("instrument limit reached or sound could not be added",true);button.disabled=false;return;}
+    activeSoundId=null;selectedNoteId=null;
+    $("catalog-dialog").close();
+    render();
+    status("loaded "+preset.name+" · saved locally");
+   }catch(error){status("could not load "+preset.name+": "+error.message,true);button.disabled=false;}
+  },
+  onPreview:async(preset,button)=>{
+   button.disabled=true;
+   try{
+    const step=await previewFactoryPreset(preset,session.getBeat());
+    if(step)button.textContent="▶ "+step;
+   }catch(error){status("preview error: "+error.message,true);}
+   finally{button.disabled=false;}
+  }
+ });
+}
+function paintSong(){
+ if(!session)return;
+ const call=action=>()=>{
+  try{
+   const changed=action();
+   if(changed){paintSong();renderContext();}
+  }catch(error){status("song edit rejected: "+error.message,true);paintSong();}
+ };
+ renderPhoneSong($("phone-song-content"),{
+  session,
+  onCreateSong:call(()=>session.convertBeatToSong()),
+  onAddBeat:call(()=>session.addSongBeat()),
+  onAddTrack:kind=>call(()=>session.addTrack(kind))(),
+  onAddClip:(trackId,beatId)=>call(()=>session.appendSongClip(trackId,beatId,
+   Math.max(0,...session.getDocument().tracks.find(track=>track.id===trackId).clips.map(clip=>clip.startStep+clip.lengthSteps))))(),
+  onEditClip:(clipId,changes)=>call(()=>session.changeSongClip(clipId,changes))(),
+  onRemoveClip:clipId=>call(()=>session.removeSongClip(clipId))(),
+  onRenameTrack:(trackId,name)=>call(()=>session.renameTrack(trackId,name))(),
+  onRenameSong:name=>call(()=>session.renameSong(name))(),
+  onSelectBeat:beatId=>{if(session.selectBeat(beatId)){selectedNoteId=null;renderContext();renderGrid(true);paintSong();}},
+  onEditBeat:()=>document.querySelector('[data-workspace="notes"]').click(),
+  onError:message=>status(message,true)
+ });
+ updateSongPlayhead();
+}
+function updateSongPlayhead(){
+ const line=$("phone-song-playhead");
+ if(!line)return;
+ const current=playbackScope==="song"?playbackPosition:null;
+ line.hidden=current===null;
+ if(current)line.style.left=(current.bar*16+current.step)*3+"px";
+}
+function paintSound(){
+ if(!session)return;
+ const container=$("phone-sound-content"),viewport=$("view-sound"),scrolled=viewport.scrollTop;
+ const callbacks={
+  session,selectedSoundId:activeSoundId,
+  onSelectSound:(soundId)=>{activeSoundId=soundId;paintSound();},
+  onPatchChange(soundId,path,value){
+   try{
+    if(session.changeSoundPatch(soundId,path,value))paintSound();
+   }catch(error){status("sound change rejected: "+error.message,true);paintSound();}
+  },
+  onLevelChange(kind,value,soundId){
+   try{
+    const changed=kind==="instrument"?session.changeInstrumentVolume(value):session.changeSoundGain(soundId,value);
+    if(changed)paintSound();
+   }catch(error){status("volume change rejected: "+error.message,true);paintSound();}
+  },
+  onBrowse:mode=>openCatalog(mode),
+  onNameChange(value){
+   try{if(session.renameInstrument(value)){renderContext();paintSound();}}
+   catch(error){status("rename rejected: "+error.message,true);paintSound();}
+  },
+  onPreview(soundId){
+   const inst=session.getInstrument(),row=inst.sounds.find(sound=>sound.id===soundId)||inst.sounds[0];
+   void audition(inst,row.referencePitch,session.getBeat(),{soundId:row.id,velocity:.9,duration:.45})
+    .catch(error=>status("preview error: "+error.message,true));
+  },
+  onError:message=>status(message,true)
+ };
+ const result=renderPhoneSound(container,callbacks);
+ activeSoundId=result.soundId;
+ viewport.scrollTop=scrolled;
+}
 function download(blob,name){
  const url=URL.createObjectURL(blob),a=document.createElement("a");
  a.href=url;a.download=name;a.style.display="none";document.body.append(a);a.click();a.remove();
@@ -374,11 +488,9 @@ function initializeControls(){
   $("instruments-dialog").showModal();
  });
  $("instruments-close").addEventListener("click",()=>$("instruments-dialog").close());
- $("add-instrument").addEventListener("click",()=>{
-  cancelActiveGesture();if(session.addInstrument()){
-   $("instruments-dialog").close();selectedNoteId=null;render();
-  }
- });
+ $("add-instrument").addEventListener("click",()=>openCatalog("add"));
+ $("browse-sounds").addEventListener("click",()=>openCatalog("replace"));
+ $("catalog-close").addEventListener("click",()=>$("catalog-dialog").close());
  $("chunk-picker").addEventListener("change",event=>{
   cancelActiveGesture();session.selectChunk(event.target.value);selectedNoteId=null;renderGrid(true);
  });
@@ -405,7 +517,9 @@ function initializeControls(){
  $("play").addEventListener("click",()=>void togglePlayback());
  $("bpm").addEventListener("change",event=>{
   const next=Number(event.target.value);
-  if(!session.setBpm(next)){event.target.value=String(session.getBeat().bpm);return;}
+  const changed=activeWorkspace==="song"&&session.getDocument().kind==="song"?
+   session.setSongBpm(next):session.setBpm(next);
+  if(!changed){event.target.value=String(activeWorkspace==="song"&&session.getDocument().kind==="song"?session.getDocument().bpm:session.getBeat().bpm);return;}
   renderContext();
  });
  $("project-actions").addEventListener("click",()=>{
@@ -432,11 +546,25 @@ function initializeControls(){
   event.target.value="";
  });
  $("export-beat").addEventListener("click",()=>exportCurrent("beat"));
+ $("render-wav").addEventListener("click",async()=>{
+  const scope=activeWorkspace==="song"&&session.getDocument().kind==="song"?"song":"beat";
+  const doc=scope==="song"?session.getDocument():session.getBeat();
+  const button=$("render-wav");button.disabled=true;status("rendering WAV…");
+  try{
+   const audio=await wav(doc),name=(doc.title||"pre-midi").replace(/[^a-z0-9_-]+/gi,"-")+".wav";
+   download(audio,name);$("project-dialog").close();status("rendered "+name);
+  }catch(error){status("WAV export error: "+error.message,true);}
+  finally{button.disabled=false;}
+ });
  $("export-song").addEventListener("click",()=>exportCurrent("song"));
  for(const button of document.querySelectorAll("[data-workspace]"))button.addEventListener("click",()=>{
   cancelActiveGesture();
   activeWorkspace=button.dataset.workspace;
   for(const name of ["notes","sound","song"])$("view-"+name).hidden=name!==activeWorkspace;
+  if(activeWorkspace==="sound")paintSound();
+  if(activeWorkspace==="song")paintSong();
+  renderContext();
+  $("play").setAttribute("aria-label",activeWorkspace==="song"&&session.getDocument().kind==="song"?"Play Song":"Play Beat");
   for(const entry of document.querySelectorAll("[data-workspace]"))
    entry.setAttribute("aria-current",entry.dataset.workspace===activeWorkspace?"page":"false");
  });
@@ -456,21 +584,23 @@ function zoomAroundCenter(value){
 }
 function stopPlayback(){
  if(playing){playing.stop();playing=null;}
- playbackPosition=null;updatePlayhead();
- pendingPlay=false;$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");
+ playbackPosition=null;updatePlayhead();updateSongPlayhead();
+ pendingPlay=false;$("play").textContent="▶";$("play").setAttribute("aria-label",activeWorkspace==="song"&&session.getDocument().kind==="song"?"Play Song":"Play Beat");
 }
 async function togglePlayback(){
  if(playing){stopPlayback();return;}
  if(pendingPlay)return;
  pendingPlay=true;
  try{
-  const handle=await play(()=>session.getBeat(),{
+  playbackScope=activeWorkspace==="song"&&session.getDocument().kind==="song"?"song":"beat";
+ const handle=await play(()=>playbackScope==="song"?session.getDocument():session.getBeat(),{
    loop:()=>$("loop").checked,
    onPosition:(bar,step)=>{$("position").value=(bar+1)+":"+(Math.floor(step/4)+1);},
-   onProgress:(bar,step)=>{playbackPosition={bar,step};updatePlayhead();},
-   onStop:()=>{playing=null;playbackPosition=null;updatePlayhead();$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");$("position").value="1:1";}
+   onProgress:(bar,step)=>{playbackPosition={bar,step};
+    if(playbackScope==="song")updateSongPlayhead();else updatePlayhead();},
+   onStop:()=>{playing=null;playbackPosition=null;updatePlayhead();updateSongPlayhead();$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");$("position").value="1:1";}
   });
-  playing=handle;$("play").textContent="■";$("play").setAttribute("aria-label","Stop Beat");
+  playing=handle;$("play").textContent="■";$("play").setAttribute("aria-label",playbackScope==="song"?"Stop Song":"Stop Beat");
  }catch(error){status("playback error: "+error.message,true);}
  finally{pendingPlay=false;}
 }
