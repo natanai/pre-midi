@@ -35,6 +35,8 @@ jobs:
       - uses: actions/checkout@v4
       - id: resolve
         uses: actions/github-script@v8
+        env:
+          PREMIDI_SIGNING_READY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && vars.TAURI_UPDATER_PUBLIC_KEY != '' }}
         with:
           script: |
             const fs = require('fs');
@@ -54,6 +56,10 @@ jobs:
             const commit = require('child_process').execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
             let publish = requested;
             let build = context.eventName === 'pull_request' || context.eventName === 'workflow_dispatch';
+            if (publish && context.eventName === 'push' && !tagged && process.env.PREMIDI_SIGNING_READY !== 'true') {
+              core.notice('Skipping automatic portable publication until GitHub release-signing credentials are configured. Use workflow_dispatch to publish after signing is ready.');
+              publish = false;
+            }
             try {
               const ref = await github.rest.git.getRef({...context.repo,ref:'tags/'+tag});
               if(ref.data.object.sha !== commit) {
