@@ -624,6 +624,14 @@ async function saveSelectedPreset(){
  $("preset-dialog").close();presetScope=null;
  status("saved "+item.name+" · browse Mine to reuse · export a ZIP to back up recordings");
 }
+function mutatePhoneInstrument(action,label){
+ try{
+  const changed=action();
+  if(!changed){status("action is unavailable for this sound",true);return;}
+  activeSoundId=null;selectedNoteId=null;render(false);
+  status(label+" · saved locally");
+ }catch(error){status("instrument edit: "+error.message,true);paintSound();}
+}
 function paintSound(){
  if(!session)return;
  const container=$("phone-sound-content"),viewport=$("view-sound"),scrolled=viewport.scrollTop;
@@ -643,6 +651,20 @@ function paintSound(){
   },
   onBrowse:mode=>openCatalog(mode),
   onSave:(wholeRack,soundId)=>openPresetSave(wholeRack,soundId),
+  onRenameSound:(soundId,name)=>mutatePhoneInstrument(()=>session.renameSound(soundId,name),"renamed sound"),
+  onRemoveInstrument:()=>{
+   const inst=session.getInstrument();
+   if(!confirm("Delete "+(inst.layout==="rack"?"rack":"instrument")+" “"+inst.name+"” and its Chunks?"))return;
+   mutatePhoneInstrument(()=>session.removeInstrument(inst.id),"deleted instrument");
+  },
+  onRemoveSound:soundId=>{
+   const inst=session.getInstrument(),row=inst.sounds.find(item=>item.id===soundId);
+   if(!row||!confirm("Remove “"+row.name+"” and its hit notes?"))return;
+   mutatePhoneInstrument(()=>session.removeRackSound(soundId),"removed rack sound");
+  },
+  onExtractSound:soundId=>mutatePhoneInstrument(()=>session.extractRackSound(soundId),
+   "moved rack sound to piano roll"),
+  onConvertToRack:()=>mutatePhoneInstrument(()=>session.convertSelectedToRack(),"converted to rack"),
   onNameChange(value){
    try{if(session.renameInstrument(value)){renderContext();paintSound();}}
    catch(error){status("rename rejected: "+error.message,true);paintSound();}
