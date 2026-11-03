@@ -18,6 +18,7 @@ import {id} from "../schema.js";
 import {prepareSongTake} from "../songRecorder.js";
 import {makeRecordingAsset} from "../recordingAssets.js";
 import {renderNoteExpression} from "../expressionUI.js";
+import {placementFor,defaultPlacement} from "../arrangement.js";
 import {makeTransferFile,canShareFile,shareFile} from "./fileDelivery.js";
 
 const $=id=>document.getElementById(id);
@@ -28,7 +29,7 @@ let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 let activeSoundId=null,catalogMode="add",catalogCategory="All",sampleRecorder=null,voiceTake=null,voiceToken=0;
 const savedSounds=loadUserSounds();
-let presetScope=null,transferFile=null;
+let presetScope=null,transferFile=null,activePlacementBar=0;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
@@ -237,6 +238,50 @@ function openNoteEditor(){
  const dialog=$("note-effects-dialog");
  if(!dialog.open)dialog.showModal();
  paintNoteEditor();
+}
+function paintChunkSheet(){
+ if(!session)return;
+ const inst=session.getInstrument(),beat=session.getBeat(),selected=session.getChunk();
+ $("chunk-name").value=selected.name;
+ for(const [id,disabled] of [["chunk-new",inst.chunks.length>=32],
+  ["chunk-duplicate",inst.chunks.length>=32],["chunk-remove",inst.chunks.length<=1]])
+  $(id).disabled=disabled;
+ const used=inst.timeline.flatMap((value,index)=>value===selected.id?[index+1]:[]);
+ $("chunk-location").textContent=used.length?"this chunk plays in bar"+(used.length===1?" ":"s ")+used.join(", "):
+  "this chunk is not assigned to a bar · choose one below";
+ activePlacementBar=Math.max(0,Math.min(beat.bars-1,activePlacementBar));
+ const bar=$("bar-index");bar.replaceChildren();
+ for(let i=0;i<beat.bars;i++){
+  const option=document.createElement("option");option.value=String(i);
+  option.textContent="bar "+(i+1);bar.append(option);
+ }
+ bar.value=String(activePlacementBar);
+ const assignment=$("bar-chunk");assignment.replaceChildren();
+ const empty=document.createElement("option");empty.value="";empty.textContent="empty / silence";
+ assignment.append(empty);
+ for(const item of inst.chunks){
+  const option=document.createElement("option");option.value=item.id;option.textContent=item.name;
+  assignment.append(option);
+ }
+ assignment.value=inst.timeline[activePlacementBar]||"";
+ const placement=placementFor(inst,activePlacementBar);
+ for(const field of ["offset","length","every","repeats"]){
+  const control=$("bar-"+field);control.value=String(placement[field]);
+  control.disabled=!inst.timeline[activePlacementBar];
+ }
+ if(JSON.stringify(placement)!==JSON.stringify(defaultPlacement()))$("bar-timing").open=true;
+}
+function openChunkSheet(){
+ cancelActiveGesture();
+ paintChunkSheet();
+ if(!$("chunks-dialog").open)$("chunks-dialog").showModal();
+}
+function commitChunkEdit(action,label){
+ try{
+  const changed=action();
+  if(changed){selectedNoteId=null;render(true);paintChunkSheet();status(label+" · saved locally");}
+  else paintChunkSheet();
+ }catch(error){status("chunk edit: "+error.message,true);paintChunkSheet();}
 }
 function currentRect(){
  const viewport=$("roll-scroll"),rect=viewport.getBoundingClientRect();
@@ -712,6 +757,38 @@ function initializeControls(){
  $("chunk-picker").addEventListener("change",event=>{
   cancelActiveGesture();session.selectChunk(event.target.value);selectedNoteId=null;renderGrid(true);
  });
+ $("chunk-actions").addEventListener("click",openChunkSheet);
+ $("chunks-close").addEventListener("click",()=>$("chunks-dialog").close());
+ $("chunk-new").addEventListener("click",()=>commitChunkEdit(()=>{
+  const changed=session.addChunk();
+  if(changed){const inst=session.getInstrument();const index=inst.timeline.indexOf(session.getChunk().id);
+   if(index>=0)activePlacementBar=index;}
+  return changed;
+ },"new chunk"));
+ $("chunk-duplicate").addEventListener("click",()=>commitChunkEdit(()=>{
+  const changed=session.addChunk({duplicate:true});
+  if(changed){const inst=session.getInstrument();const index=inst.timeline.indexOf(session.getChunk().id);
+   if(index>=0)activePlacementBar=index;}
+  return changed;
+ },"duplicated chunk"));
+ $("chunk-remove").addEventListener("click",()=>{
+  const name=session.getChunk().name;
+  if(!confirm("Remove “"+name+"” from this Beat, including its notes and placements?"))return;
+  commitChunkEdit(()=>session.removeChunk(),"removed chunk");
+ });
+ $("chunk-name").addEventListener("change",event=>commitChunkEdit(
+  ()=>session.renameChunk(event.target.value),"renamed chunk"));
+ $("bar-index").addEventListener("change",event=>{
+  activePlacementBar=Number(event.target.value);paintChunkSheet();
+ });
+ $("bar-chunk").addEventListener("change",event=>commitChunkEdit(
+  ()=>session.setBarChunk(activePlacementBar,event.target.value||null),"updated bar "+(activePlacementBar+1)));
+ for(const field of ["offset","length","every","repeats"]){
+  $("bar-"+field).addEventListener("change",event=>commitChunkEdit(
+   ()=>session.setBarPlacement(activePlacementBar,{[field]:Number(event.target.value)}),
+   "updated "+field+" on bar "+(activePlacementBar+1)));
+ }
+
  const viewport=$("roll-scroll");
  viewport.addEventListener("pointerdown",startTouch);
  viewport.addEventListener("pointermove",moveTouch);

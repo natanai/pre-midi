@@ -8,10 +8,10 @@ import {pathToFileURL} from "node:url";
 import {SAMPLE_ASSETS} from "../samples.js";
 
 const entries=["studio.js","phone/main.js"];
-const dependencyPattern=/(?:from\s*|import\s*)["'](\.{1,2}\/[^"']+\.js)["']/g;
+const dependencyPattern=/(?:from\s*|import\s*(?:\(\s*)?)["'](\.{1,2}\/[^"']+\.js)["']/g;
 const safeModule=file=>/^(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/.test(file);
-export async function runtimeModules(root){
- const found=new Set(),pending=[...entries];
+export async function runtimeModules(root,entryPoints=entries){
+ const found=new Set(),pending=[...entryPoints];
  while(pending.length){
   const file=pending.pop();
   if(found.has(file))continue;
@@ -45,6 +45,7 @@ export function versionPage(html,files,revision){
 }
 export async function preparePages(root,revision=process.env.GITHUB_SHA,output=new URL("dist/",root)){
  const modules=await runtimeModules(root);
+ const phoneModules=await runtimeModules(root,["phone/main.js"]);
  if(!revision){
   const hash=createHash("sha256");
   for(const file of [...modules,"style.css","studioAlignment.css","index.html","phone/index.html","phone/phone.css","phone/manifest.webmanifest","phone/sw.js"])hash.update(await readFile(new URL(file,root)));
@@ -63,10 +64,10 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  await copyFile(new URL("phone/manifest.webmanifest",root),new URL("phone/manifest.webmanifest",output));
  await mkdir(new URL("desktop/icons/",output),{recursive:true});
  await copyFile(new URL("desktop/icons/icon.png",root),new URL("desktop/icons/icon.png",output));
- // The phone worker precaches only its immutable app shell and complete JS dependency closure.
- // Audio recordings stay in IndexedDB; static sample files are not claimed offline yet.
+ // The phone worker precaches only the phone dependency closure. Desktop-only
+ // modules are published for desktop, but never downloaded on iOS install.
  const swAssets=["phone/index.html","phone/main.js","phone/phone.css","phone/manifest.webmanifest",
-  "favicon.svg","desktop/icons/icon.png",...modules];
+  "favicon.svg","desktop/icons/icon.png",...phoneModules];
  const swTemplate=await readFile(new URL("phone/sw.js",root),"utf8");
  const worker=swTemplate.replace("__BUILD__",revision.slice(0,16))
   .replace("__ASSETS__",JSON.stringify([...new Set(swAssets)]))
