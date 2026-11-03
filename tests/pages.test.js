@@ -17,7 +17,7 @@ test("the deployed page versions every transitive module and its stylesheet toge
  for(const file of files){
   assert.equal(map["./"+file],"./"+file+"?build=abcd1234abcd");
   const source=readFileSync(new URL(file,root),"utf8");
-  for(const [,path] of source.matchAll(/(?:from\s*|import\s*)["'](\.{1,2}\/[^"']+\.js)["']/g))
+  for(const [,path] of source.matchAll(/(?:from\s*|import\s*(?:\(\s*)?)["'](\.{1,2}\/[^"']+\.js)["']/g))
    assert.ok(map["./"+posix.normalize(posix.join(posix.dirname(file),path))],"Unversioned dependency: "+file+" → "+path);
  }
  assert.equal(versionPage(html,files,"abcd1234abcd1234"),html);
@@ -47,7 +47,7 @@ test("minimal website build includes the entire runtime import graph",async()=>{
  assert.equal(modules.length,new Set(modules).size);
  for(const file of modules){
   const source=readFileSync(new URL(file,root),"utf8");
-  for(const [,dep] of source.matchAll(/(?:from\s*|import\s*)["'](\.{1,2}\/[^"']+\.js)["']/g))
+  for(const [,dep] of source.matchAll(/(?:from\s*|import\s*(?:\(\s*)?)["'](\.{1,2}\/[^"']+\.js)["']/g))
    assert.ok(modules.includes(posix.normalize(posix.join(posix.dirname(file),dep))),"Missing runtime dependency: "+file+" -> "+dep);
  }
 });
