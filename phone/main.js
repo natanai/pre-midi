@@ -563,6 +563,8 @@ function initializeControls(){
   for(const name of ["notes","sound","song"])$("view-"+name).hidden=name!==activeWorkspace;
   if(activeWorkspace==="sound")paintSound();
   if(activeWorkspace==="song")paintSong();
+  renderContext();
+  $("play").setAttribute("aria-label",activeWorkspace==="song"&&session.getDocument().kind==="song"?"Play Song":"Play Beat");
   for(const entry of document.querySelectorAll("[data-workspace]"))
    entry.setAttribute("aria-current",entry.dataset.workspace===activeWorkspace?"page":"false");
  });
@@ -583,7 +585,7 @@ function zoomAroundCenter(value){
 function stopPlayback(){
  if(playing){playing.stop();playing=null;}
  playbackPosition=null;updatePlayhead();updateSongPlayhead();
- pendingPlay=false;$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");
+ pendingPlay=false;$("play").textContent="▶";$("play").setAttribute("aria-label",activeWorkspace==="song"&&session.getDocument().kind==="song"?"Play Song":"Play Beat");
 }
 async function togglePlayback(){
  if(playing){stopPlayback();return;}
@@ -598,7 +600,7 @@ async function togglePlayback(){
     if(playbackScope==="song")updateSongPlayhead();else updatePlayhead();},
    onStop:()=>{playing=null;playbackPosition=null;updatePlayhead();updateSongPlayhead();$("play").textContent="▶";$("play").setAttribute("aria-label","Play Beat");$("position").value="1:1";}
   });
-  playing=handle;$("play").textContent="■";$("play").setAttribute("aria-label","Stop Beat");
+  playing=handle;$("play").textContent="■";$("play").setAttribute("aria-label",playbackScope==="song"?"Stop Song":"Stop Beat");
  }catch(error){status("playback error: "+error.message,true);}
  finally{pendingPlay=false;}
 }
