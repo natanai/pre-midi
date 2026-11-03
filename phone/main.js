@@ -4,7 +4,7 @@ import {parseSong,exportSongProject,importSongProject} from "../songIO.js";
 import {createStudioSession} from "../studioSession.js";
 import {loadDraft,saveDraft} from "../storage.js";
 import {exportProject,importProject} from "../packageIO.js";
-import {play,audition} from "../audio.js";
+import {play,audition,wav} from "../audio.js";
 import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep} from "../scaleGuide.js";
 import {clampZoom,navigationAnchor,nextNavigation,noteDragSteps} from "./gestures/roll.js";
 import {phonePlayheadX} from "./rollPlayback.js";
@@ -74,7 +74,7 @@ function renderScale(){
 }
 function renderContext(){
  const beat=session.getBeat(),inst=session.getInstrument();
- $("project-name").textContent=beat.title;
+ $("project-name").textContent=activeWorkspace==="song"&&session.getDocument().kind==="song"?session.getDocument().title:beat.title;
  $("instrument-picker").firstChild.textContent=inst.name+" ";
  const chunk=$("chunk-picker");chunk.replaceChildren();
  for(const choice of inst.chunks){
@@ -546,6 +546,16 @@ function initializeControls(){
   event.target.value="";
  });
  $("export-beat").addEventListener("click",()=>exportCurrent("beat"));
+ $("render-wav").addEventListener("click",async()=>{
+  const scope=activeWorkspace==="song"&&session.getDocument().kind==="song"?"song":"beat";
+  const doc=scope==="song"?session.getDocument():session.getBeat();
+  const button=$("render-wav");button.disabled=true;status("rendering WAV…");
+  try{
+   const audio=await wav(doc),name=(doc.title||"pre-midi").replace(/[^a-z0-9_-]+/gi,"-")+".wav";
+   download(audio,name);$("project-dialog").close();status("rendered "+name);
+  }catch(error){status("WAV export error: "+error.message,true);}
+  finally{button.disabled=false;}
+ });
  $("export-song").addEventListener("click",()=>exportCurrent("song"));
  for(const button of document.querySelectorAll("[data-workspace]"))button.addEventListener("click",()=>{
   cancelActiveGesture();
