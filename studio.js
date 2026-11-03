@@ -1141,7 +1141,7 @@ function renderChunkEditor() {
 function renderSound() {
  const inst=instrument(),entry=sound(inst),patch=entry.patch;
  const hear=$("hear-sound");
- hear.textContent="hear sound";
+ hear.textContent="▶";
  hear.title=inst.layout==="rack"?"hear rack sounds one at a time":"hear current sound";
  hear.setAttribute("aria-label",inst.layout==="rack"?"Hear rack sounds one at a time":"Hear current sound");
  $("instrument-name").value=inst.name;
@@ -1762,11 +1762,10 @@ $("hear-sound").addEventListener("click",()=>{
  const hear=$("hear-sound");
  hear.dataset.previewSoundId=entry.id;
  if(choice){
-  hear.textContent="hear sound · "+(choice.index+1)+"/"+choice.total;
-  hear.title="hear "+entry.name;
+  hear.title="hear "+entry.name+" ("+(choice.index+1)+" of "+choice.total+")";
   hear.setAttribute("aria-label","hear "+entry.name+" ("+(choice.index+1)+" of "+choice.total+")");
  }else{
-  hear.textContent="hear sound";hear.title="hear current sound";
+  hear.title="hear current sound";
   hear.setAttribute("aria-label","Hear current sound");
  }
  void audition(inst,entry.referencePitch,beat,{soundId:entry.id,duration:.6})
