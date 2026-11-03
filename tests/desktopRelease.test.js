@@ -23,7 +23,7 @@ const run=dir=>execFileSync(process.execPath,[fileURLToPath(script),dir],{cwd:ro
 const runPortable=dir=>execFileSync(process.execPath,[fileURLToPath(script),dir,'--windows-portable-only'],{cwd:root,stdio:'pipe'});
 async function signedFixture(dir,artifacts){
  const a=artifacts[0];a.signature='test-signature-with-version-binding';
- await writeFile(join(dir,a.name+'.sig'),a.signature+'\\n');
+ await writeFile(join(dir,a.name+'.sig'),a.signature+'\n');
  await writeFile(join(dir,'artifacts-test.json'),JSON.stringify(artifacts));
 }
 test('signed portable preview publishes a ZIP, signature, version manifest and checksums',async()=>{
