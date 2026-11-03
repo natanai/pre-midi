@@ -47,7 +47,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  const modules=await runtimeModules(root);
  if(!revision){
   const hash=createHash("sha256");
-  for(const file of [...modules,"style.css","studioAlignment.css","index.html","phone/index.html","phone/phone.css","phone/manifest.webmanifest"])hash.update(await readFile(new URL(file,root)));
+  for(const file of [...modules,"style.css","studioAlignment.css","index.html","phone/index.html","phone/phone.css","phone/manifest.webmanifest","phone/sw.js"])hash.update(await readFile(new URL(file,root)));
   revision=hash.digest("hex");
  }
  const html=versionPage(await readFile(new URL("index.html",root),"utf8"),modules,revision);
@@ -63,6 +63,15 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  await copyFile(new URL("phone/manifest.webmanifest",root),new URL("phone/manifest.webmanifest",output));
  await mkdir(new URL("desktop/icons/",output),{recursive:true});
  await copyFile(new URL("desktop/icons/icon.png",root),new URL("desktop/icons/icon.png",output));
+ // The phone worker precaches only its immutable app shell and complete JS dependency closure.
+ // Audio recordings stay in IndexedDB; static sample files are not claimed offline yet.
+ const swAssets=["phone/index.html","phone/main.js","phone/phone.css","phone/manifest.webmanifest",
+  "favicon.svg","desktop/icons/icon.png",...modules];
+ const swTemplate=await readFile(new URL("phone/sw.js",root),"utf8");
+ const worker=swTemplate.replace("__BUILD__",revision.slice(0,16))
+  .replace("__ASSETS__",JSON.stringify([...new Set(swAssets)]));
+ if(worker.includes("__BUILD__")||worker.includes("__ASSETS__"))throw Error("Unversioned phone worker");
+ await writeFile(new URL("sw.js",output),worker);
  for(const file of [...modules,"style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg"]){
   await mkdir(new URL("./",new URL(file,output)),{recursive:true});
   await copyFile(new URL(file,root),new URL(file,output));
@@ -73,7 +82,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  for(const filename of required)
   await copyFile(new URL("samples/"+filename,root),new URL(filename,samples));
  const listed=await readdir(output);
- const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg","samples","phone","desktop"]);
+ const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg","samples","phone","desktop","sw.js"]);
  if(listed.some(name=>!allowed.has(name)))
   throw Error("Unexpected files in published artifact.");
  console.log("Staged",modules.length,"runtime modules and",required.size,"verified samples; no tests or development files.");
