@@ -3,6 +3,8 @@
 const VERSION="__BUILD__";
 const ASSETS=__ASSETS__;
 const CACHE="pre-midi-phone-"+VERSION;
+// Optional factory audio must survive shell updates; only the shell is revisioned.
+const FACTORY_CACHE="pre-midi-factory-audio-v1";
 const base=new URL("./",self.registration.scope);
 const urls=ASSETS.map(path=>new URL(path,base).href);
 const allowed=new Set(urls);
@@ -31,7 +33,7 @@ self.addEventListener("fetch",event=>{
   new URL("phone/index.html",base).href:request.origin+request.pathname;
  if(!allowed.has(lookup)&&!factorySet.has(lookup))return; // Desktop and arbitrary URLs remain untouched.
  event.respondWith((async()=>{
-  const cache=await caches.open(CACHE);
+  const cache=await caches.open(factorySet.has(lookup)?FACTORY_CACHE:CACHE);
   const hit=await cache.match(lookup);
   if(hit)return hit;
   return fetch(event.request);
@@ -44,7 +46,7 @@ self.addEventListener("message",event=>{
  if(event.data?.kind!=="PREMIDI_CACHE_FACTORY")return;
  const client=event.source;
  event.waitUntil((async()=>{
-  const cache=await caches.open(CACHE),total=factoryUrls.length;
+  const cache=await caches.open(FACTORY_CACHE),total=factoryUrls.length;
   let completed=0;
   for(const url of factoryUrls){
    try{
