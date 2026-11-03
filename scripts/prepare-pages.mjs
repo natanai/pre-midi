@@ -69,8 +69,9 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
   "favicon.svg","desktop/icons/icon.png",...modules];
  const swTemplate=await readFile(new URL("phone/sw.js",root),"utf8");
  const worker=swTemplate.replace("__BUILD__",revision.slice(0,16))
-  .replace("__ASSETS__",JSON.stringify([...new Set(swAssets)]));
- if(worker.includes("__BUILD__")||worker.includes("__ASSETS__"))throw Error("Unversioned phone worker");
+  .replace("__ASSETS__",JSON.stringify([...new Set(swAssets)]))
+  .replace("__FACTORY_SAMPLES__",JSON.stringify(SAMPLE_ASSETS.map(asset=>"samples/"+asset.id+"."+(asset.mime==="audio/ogg"?"ogg":"wav"))));
+ if(worker.includes("__BUILD__")||worker.includes("__ASSETS__")||worker.includes("__FACTORY_SAMPLES__"))throw Error("Unversioned phone worker");
  await writeFile(new URL("sw.js",output),worker);
  for(const file of [...modules,"style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg"]){
   await mkdir(new URL("./",new URL(file,output)),{recursive:true});
