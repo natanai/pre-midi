@@ -8,7 +8,7 @@ import {pathToFileURL} from "node:url";
 import {SAMPLE_ASSETS} from "../samples.js";
 
 const entries=["studio.js","phone/main.js"];
-const dependencyPattern=/(?:from\s*|import\s*)["'](\.{1,2}\/[^"']+\.js)["']/g;
+const dependencyPattern=/(?:from\s*|import\s*(?:\(\s*)?)["'](\.{1,2}\/[^"']+\.js)["']/g;
 const safeModule=file=>/^(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/.test(file);
 export async function runtimeModules(root,entryPoints=entries){
  const found=new Set(),pending=[...entryPoints];
