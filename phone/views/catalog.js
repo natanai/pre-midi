@@ -2,8 +2,8 @@
 // Asset downloads are explicit user actions; never encode samples in .premidi.
 import {FACTORY_SOUND_CATALOG} from "../../soundCatalog.js";
 import {getPreset,makePatch,patchCopy} from "../../synth.js";
-import {SAMPLE_LIBRARY,makeSamplerPatch} from "../../samples.js";
-import {sampleAsset,loadLibrarySample} from "../../sampler.js";
+import {SAMPLE_LIBRARY,makeSamplerPatch,sampleAsset} from "../../samples.js";
+import {loadLibrarySample} from "../../sampler.js";
 import {makeInstrument,makeSound} from "../../schema.js";
 import {audition} from "../../audio.js";
 import {nextRackPreview} from "../../rackPreview.js";
