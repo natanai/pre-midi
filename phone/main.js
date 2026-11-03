@@ -482,3 +482,18 @@ try{
  initialize(create());
  status("could not recover draft: "+error.message+" · export backups are important",true);
 }
+
+// Host-only capability: service worker serves code/UI; IndexedDB retains local projects.
+// It intentionally does not promise cached sample WAV/OGG files yet.
+if("serviceWorker" in navigator){
+ navigator.serviceWorker.register("../sw.js",{scope:"../",updateViaCache:"none"})
+  .then(()=>navigator.serviceWorker.ready)
+  .then(()=>{
+   const indicator=$("offline-status");
+   if(indicator)indicator.textContent="editor shell cached · sample audio needs network";
+  })
+  .catch(error=>{
+   const indicator=$("offline-status");
+   if(indicator)indicator.textContent="offline shell unavailable · "+error.message;
+  });
+}
