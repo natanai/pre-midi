@@ -244,6 +244,7 @@ function openNoteEditor(){
 function paintChunkSheet(){
  if(!session)return;
  const inst=session.getInstrument(),beat=session.getBeat(),selected=session.getChunk();
+ $("beat-bars").value=String(beat.bars);
  $("chunk-name").value=selected.name;
  for(const [id,disabled] of [["chunk-new",inst.chunks.length>=32],
   ["chunk-duplicate",inst.chunks.length>=32],["chunk-remove",inst.chunks.length<=1]])
@@ -800,6 +801,14 @@ function initializeControls(){
  });
  $("chunk-actions").addEventListener("click",openChunkSheet);
  $("chunks-close").addEventListener("click",()=>$("chunks-dialog").close());
+ $("beat-bars").addEventListener("change",event=>{
+  const target=Number(event.target.value),current=session.getBeat();
+  if(target<current.bars&&current.instruments.some(inst=>inst.timeline.slice(target).some(Boolean))&&
+   !confirm("Shortening the Beat removes the later bar assignments. Their Chunks will still exist. Continue?")){
+   event.target.value=String(current.bars);return;
+  }
+  commitChunkEdit(()=>session.setBeatBars(target),"updated Beat bars");
+ });
  $("chunk-new").addEventListener("click",()=>commitChunkEdit(()=>{
   const changed=session.addChunk();
   if(changed){const inst=session.getInstrument();const index=inst.timeline.indexOf(session.getChunk().id);
@@ -869,10 +878,17 @@ function initializeControls(){
  });
  $("project-actions").addEventListener("click",()=>{
   cancelActiveGesture();
+  $("beat-title").value=session.getBeat().title;
   $("export-song").hidden=session.getDocument().kind!=="song";
   $("project-dialog").showModal();
  });
  $("project-close").addEventListener("click",()=>$("project-dialog").close());
+ $("beat-title").addEventListener("change",event=>{
+  try{
+   if(session.renameBeat(event.target.value)){render(true);status("renamed Beat · saved locally");}
+   else event.target.value=session.getBeat().title;
+  }catch(error){event.target.value=session.getBeat().title;status("Beat title: "+error.message,true);}
+ });
  $("cache-factory").addEventListener("click",async()=>{
   const button=$("cache-factory");
   if(!("serviceWorker" in navigator)){status("this browser cannot cache offline sounds",true);return;}
