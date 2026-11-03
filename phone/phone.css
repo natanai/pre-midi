@@ -212,3 +212,9 @@ button:active{background:#252525}
 .phone-sample-status[data-error="true"]{color:#ff6a8a}
 .phone-catalog-import{position:sticky;top:0;z-index:2;background:#090909;padding:6px 0;border-bottom:1px solid #444}
 .phone-catalog-import button{width:100%;color:var(--accent);font-size:11px}
+
+#voice-dialog .phone-sample-field{display:flex;flex-direction:column;gap:7px;font-size:11px;color:var(--sub);margin:12px 0}
+#voice-dialog .phone-sample-field input{min-height:40px;padding:6px 10px;color:var(--ink)}
+#voice-dialog .phone-sample-actions{display:flex;gap:8px;margin-top:12px}
+#voice-dialog .phone-sample-actions button{flex:1;padding:7px 8px}
+#voice-dialog #voice-stop:not(:disabled){border-color:var(--accent);color:var(--accent)}
