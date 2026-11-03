@@ -36,6 +36,11 @@ test("minimal website build includes the entire runtime import graph",async()=>{
  const root=new URL("../",import.meta.url);
  const modules=await runtimeModules(root);
  assert.ok(modules.includes("studio.js"));
+ const phoneModules=await runtimeModules(root,["phone/main.js"]);
+ assert.ok(phoneModules.includes("phone/main.js"));
+ assert.ok(phoneModules.includes("schema.js"));
+ assert.ok(!phoneModules.includes("studio.js"),"phone shell must not bundle desktop DOM host");
+ assert.ok(phoneModules.length<modules.length,"phone shell should cache fewer modules than full website");
  assert.ok(modules.includes("songModel.js"));
  assert.ok(modules.includes("songRecorder.js"));
  assert.ok(modules.includes("synthMatch.js"));
