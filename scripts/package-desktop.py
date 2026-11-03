@@ -1,5 +1,5 @@
 """Collect a complete architecture-specific release set; never upload build trees."""
-import sys,json,hashlib,shutil,zipfile,base64,os
+import sys,json,hashlib,shutil,zipfile,base64,os,subprocess
 from pathlib import Path
 root=Path(__file__).resolve().parent.parent
 version=json.loads((root/'package.json').read_text())['version']
@@ -31,6 +31,7 @@ if platform=='windows':
  name=f'pre-midi-{version}-windows-{arch}-portable.zip'
  with zipfile.ZipFile(out/name,'w',zipfile.ZIP_DEFLATED) as z:
   z.write(build/'pre-midi.exe','pre-midi.exe')
+  z.writestr('version.txt',version)
   z.write(root/'native/THIRD-PARTY-NOTICES.txt','THIRD-PARTY-NOTICES.txt')
   for notice in sorted((root/'native/licenses').glob('*.txt')):z.write(notice,'licenses/'+notice.name)
   z.writestr('portable.txt','pre-midi portable edition\n')
@@ -51,10 +52,13 @@ can save outside it. A read-only portable folder produces an error, with no
 fallback to AppData. WebView2 Runtime is an OS dependency, normally on Windows
 11; Windows may maintain its own runtime, temporary files and system records.
 
-Update: close pre-midi, back up this folder, and replace only pre-midi.exe,
-portable.txt, README.txt, THIRD-PARTY-NOTICES.txt and licenses/ from the newer ZIP. KEEP data/, projects/ and
-exports/. Do not delete your folder to upgrade. Open pre-midi again manually.
-Automatic installation is unavailable in the portable edition.
+Updates: select Settings > updates > preview (or stable) > check for updates.
+With a signed build, the portable updater verifies the release, closes pre-midi,
+replaces only application files and automatically restores the previous version
+if installation or startup fails. KEEP data/, projects/ and exports/.
+Unsigned historical releases require a manual one-time ZIP replacement.
+Manual updates: close pre-midi and back up this folder, then replace only
+pre-midi.exe, portable.txt, README.txt, THIRD-PARTY-NOTICES.txt and licenses/.
 
 Migrating from preview.1 or preview.2: close all pre-midi windows first.
 Those versions saved data in %LOCALAPPDATA%/app.premidi.studio/webview.
@@ -63,7 +67,15 @@ Do not copy a live WebView profile. The original is left untouched. Alternativel
 export music ZIPs in the old edition and import them here (presets/settings
 need the profile copy). A plain .premidi file does not include recorded WAVs.
 ''')
- data=(out/name).read_bytes();artifacts.append(dict(name=name,platform=platform,arch=arch,kind='portable',size=len(data),sha256=hashlib.sha256(data).hexdigest(),signature=None))
+ signature=None
+ if os.environ.get('TAURI_SIGNING_PRIVATE_KEY') and os.environ.get('TAURI_UPDATER_PUBLIC_KEY'):
+  subprocess.run(['node','node_modules/@tauri-apps/cli/tauri.js','signer','sign','--app-version',version,str(out/name)],cwd=root,check=True)
+  sig=out/(name+'.sig')
+  if not sig.exists():raise RuntimeError('Portable update signature missing')
+  signature=sig.read_text().strip()
+  decoded=base64.b64decode(signature).decode('utf8')
+  if 'version:'+version not in decoded:raise RuntimeError('Portable update signature lacks version binding')
+ data=(out/name).read_bytes();artifacts.append(dict(name=name,platform=platform,arch=arch,kind='portable',size=len(data),sha256=hashlib.sha256(data).hexdigest(),signature=signature))
 elif platform=='darwin':
  collect('dmg/*.dmg','installer','dmg')
  if list(bundle.glob('macos/*.app.tar.gz')):collect('macos/*.app.tar.gz','updater','app.tar.gz')

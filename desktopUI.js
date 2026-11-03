@@ -30,7 +30,7 @@ export function installDesktopUI({flush}) {
    if(!update.installable){const url=update.portable_url||update.release_url;const action=update.portable_url?'open portable ZIP download':'open release page';if(await prompt('pre-midi '+update.version+' is available',detail,[action,'later'])===0)await invoke('open_release_url',{url});return;}
    if(await prompt('pre-midi '+update.version+' is available',detail,['download update','cancel'])!==0)return;
    check.textContent='downloading…';await invoke('download_update');
-   if(await prompt('update verified','pre-midi will close to install the update. When installation finishes, open pre-midi again to continue.',['close and install','later'])!==0)return;
+   if(await prompt('update verified','pre-midi will close, install the signed update, and reopen. If startup fails, your previous version will be restored. Your projects and recordings stay in this folder.',['close and install','later'])!==0)return;
    await flush();await invoke('install_update');
   }catch(error){await prompt('could not update pre-midi',String(error)+'\nYour project data has not been removed. You can retry the update.');}
   finally{busy=false;check.disabled=false;check.textContent='check for updates';}
@@ -43,7 +43,12 @@ export function installDesktopUI({flush}) {
  label.append(channel);
  const check=element('button','check for updates');check.type='button';check.id='check-for-updates';check.onclick=()=>checkUpdates(channel.value);
  list.append(version);installAudioSettings(list,{element,prompt,menu});list.append(label,check);menu.append(toggle,list);document.querySelector('header nav').append(menu);
- window.premidiDesktop.info().then(info=>{version.textContent='pre-midi '+info.version;channel.value=localStorage.getItem('premidi-update-channel')||info.channel;})
+ window.premidiDesktop.info().then(info=>{
+  version.textContent='pre-midi '+info.version;
+  channel.value=localStorage.getItem('premidi-update-channel')||info.channel;
+  if(info.updateRecovery)prompt('portable update recovery',info.updateRecovery+'\nYour projects and recordings were not removed.');
+  invoke('portable_update_ready').catch(error=>console.error('Portable update readiness:',error));
+ })
   .catch(error=>prompt('could not read desktop version',String(error)));
  channel.onchange=()=>localStorage.setItem('premidi-update-channel',channel.value);
  tauri.event.listen('desktop:close-request',async()=>{

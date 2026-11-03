@@ -46,25 +46,21 @@ Folder locality covers application-managed profile, music and cache data. WebVie
 
 The close/update path awaits the existing IndexedDB save transaction. Normal shutdown closes the WebView window/controller before requesting process exit, so profile writes can complete. The Windows relocation test also waits for WebView2 browser processes to release the profile before moving/copying it, following [Microsoft's user-data-folder lifetime guidance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/user-data-folder). An unfinished microphone session prevents closing until it is used or cancelled. Failed saves leave the app open with an error. Cancelling a native save dialog is reported as cancelled, not exported.
 
-## Update behavior
+## Windows portable updates and release channels
 
-Settings queries only natanai/pre-midi's GitHub Releases API over HTTPS. Stable excludes GitHub prereleases and SemVer prerelease versions; preview can advance to a newer preview or stable version. Drafts and downgrades are excluded. The available version and notes are shown before downloading.
+The studio's Settings menu offers **preview** and **stable** GitHub Releases channels. Stable ignores prereleases; preview accepts newer prereleases or stable versions. Drafts, downgrades and unexpected release URLs are rejected. The app never treats an arbitrary URL as authorization to install an executable.
 
-Automatic installation requires a trusted public key embedded at build time and a complete release with desktop-updates.json. Tauri verifies the downloaded package against that key and requires its signed version to match the advertised version. The install call verifies the package again. A forged manifest cannot authorize an unsigned executable or relabel an old signed package as a newer one. Download/verification failures show an error and leave current data intact.
+A signed portable release contains the Windows ZIP, its Tauri/Minisign detached signature, and a `desktop-updates.json` manifest keyed by `windows-x86_64-portable`. The signing command uses `--app-version` to bind the signature to the release version. The Windows client embeds the corresponding public key and verifies the downloaded ZIP and signed version with Tauri's updater. Unsigned historical releases cannot automatically update. If signing is unavailable, Settings links to the manual GitHub ZIP instead.
 
-Before installation the UI saves local work and displays exactly:
+On **portable Windows**, the updater stages only allowlisted application files inside `.premidi-update/`; it rejects unexpected ZIP members, traversal paths, symlinks and excessive expanded size. It copies its running executable to a separate `runner.exe`, then closes the studio cleanly. The helper waits for the original process to exit, rechecks the staged archive checksum, backs up the old executable/portable marker/README/notices/licenses, and installs their replacements. It never replaces `data/`, `projects/`, or `exports/`.
 
-> pre-midi will close to install the update. When installation finishes, open pre-midi again to continue.
+After replacement, the helper starts the new studio and requires the UI to acknowledge its expected version within 75 seconds. On replacement failure or failed startup, it restores the old application files and attempts to relaunch the prior edition. If restoration itself fails, the backup is retained for manual recovery, with details in `failure.txt`. This is a rollback on detected installation/startup failure, not a guarantee against power loss mid-operation. Keep independent music project backups.
 
-| Edition | Implemented behavior when signing is configured |
-| --- | --- |
-| Windows installer | Tauri launches the per-user NSIS updater and exits; restart_after_install(false) omits the relaunch flags. No requested elevation. Successful completion still requires installed-upgrade qualification. |
-| Windows portable ZIP | Automatic installation is disabled; close the app, replace release files while retaining `data`, `projects` and `exports`, then reopen manually. |
-| macOS .app | Tauri verifies and stages the .app replacement with its backup/restore flow, then pre-midi exits without relaunching. Apple signing/notarization and quarantine behavior require separate qualification. |
-| Linux AppImage | Tauri verifies and replaces the AppImage with framework backup/restore on errors, then exits without relaunching. Interruption/power-loss recovery is not guaranteed. |
-| Linux DEB | Automatic installation is disabled; use the system package manager. The app does not request unnecessary root privileges. |
+Older unsigned previews (including preview.13) need **one manual ZIP upgrade** to the first signed version. After that, the new update mechanism can advance the portable client when future releases are signed by the same trusted key. The updater does not use NSIS, modify Windows registry settings, or relocate the portable profile.
 
-The no-relaunch API and signed-version behavior are from the pinned [tauri-plugin-updater 2.14.0 source](https://docs.rs/crate/tauri-plugin-updater/2.14.0/source/src/updater.rs). This is implementation evidence; it does not substitute for a completed update on physical Windows/macOS/Linux devices. Cached updates are kept only for the running session; after an interruption, check and download again. No universal rollback promise is made.
+On nonportable editions, the existing Tauri installer pathway remains separate. Only the portable Windows ZIP is distributed during prototyping. Preview publication is blocked without signed ZIP assets, and stable publication requires both signing and a deliberate, qualified `workflow_dispatch` with `publish_stable=true`. Normal main commits do not reuse existing version tags; version tags are created only after a successful signed build and release verification.
+
+Rust tests cover archive allowlisting and failed replacement rollback; GitHub Actions runs packaged Windows portable storage/relocation and audio smoke checks. These are Windows Server 2022 checks, not a substitute for a physical Windows 11 hardware update trial.
 
 ## Signing setup
 
@@ -76,7 +72,7 @@ A maintainer with GitHub CLI repository-secret access can run, from the checkout
 node scripts/setup-desktop-signing.mjs
 ```
 
-The script creates a Tauri keypair, stores the private key via GitHub CLI stdin in `TAURI_SIGNING_PRIVATE_KEY`, and stores the public key as the repository variable `TAURI_UPDATER_PUBLIC_KEY`. It preserves a private backup under the maintainer's user configuration directory and prints only that path. It never commits the private key. GitHub CLI authentication and secret-management permission are required; the connected repository tools in this session do not expose secret writes. Keep the backup private. If using a password-protected key instead, also configure `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+The script must be run with an authenticated GitHub CLI by the maintainer; this repository does not presently expose secret management through the connected GitHub integration. The script creates a Tauri keypair, stores the private key via GitHub CLI stdin in `TAURI_SIGNING_PRIVATE_KEY`, and stores the public key as the repository variable `TAURI_UPDATER_PUBLIC_KEY`. It preserves a private backup under the maintainer's user configuration directory and prints only that path. It never commits the private key. GitHub CLI authentication and secret-management permission are required; the connected repository tools in this session do not expose secret writes. Keep the backup private. If using a password-protected key instead, also configure `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 
 Publish a new preview after setting the keys. Existing previews built without the public key require one manual replacement before automatic updates can be trusted. Key rotation requires retaining an established trust path; do not overwrite a key casually.
 
