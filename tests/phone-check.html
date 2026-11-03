@@ -170,6 +170,16 @@ try{
  volume.value=".45";volume.dispatchEvent(new Event("change",{bubbles:true}));
  if(Number(doc.querySelector('[aria-label="instrument level"]')?.value)!==.45)
   throw Error("phone Instrument volume did not commit");
+ const more=doc.querySelector("#phone-sound-content .phone-sound-more");
+ if(!more)throw Error("phone Sound has no Instrument/Rack More actions");
+ more.open=true;
+ const rowName=doc.querySelector('[aria-label="Selected sound name"]');
+ if(!rowName||!more.textContent.includes("delete instrument")||!more.textContent.includes("convert to rack"))
+  throw Error("shared Instrument and conversion commands unreachable on phone");
+ rowName.value="Phone sound";
+ rowName.dispatchEvent(new Event("change",{bubbles:true}));
+ if(doc.querySelector('[aria-label="Selected sound name"]')?.value!=="Phone sound")
+  throw Error("selected sound was not renamed through shared session");
  doc.querySelector('[aria-label="Save selected sound preset"]').click();
  await wait(()=>doc.querySelector("#preset-dialog").open,"save sound preset");
  doc.querySelector("#preset-name").value="Phone Favorite";
@@ -187,6 +197,8 @@ try{
  doc.querySelector('[data-workspace="notes"]').click();
  doc.querySelector("#instrument-picker").click();
  await wait(()=>doc.querySelector("#instruments-dialog").open,"phone instrument sheet");
+ if(!doc.querySelector('#instrument-options .phone-instrument-row button[aria-label^="Delete"]'))
+  throw Error("Instrument picker cannot delete Instruments directly");
  doc.querySelector("#add-instrument").click();
  await wait(()=>doc.querySelector("#catalog-dialog").open,"unified factory catalog");
  const mine=[...doc.querySelectorAll("#catalog-filters button")].find(button=>button.textContent==="Mine");
@@ -274,7 +286,17 @@ try{
  await wait(()=>doc.querySelector("#chunk-picker").options.length===3,"duplicate phone Chunk");
  if(!doc.querySelector("#chunk-location").textContent.includes("bar 3"))
   throw Error("duplicated Chunk lacks Beat placement");
+ const bars=doc.querySelector("#beat-bars");bars.value="10";
+ bars.dispatchEvent(new Event("change",{bubbles:true}));
+ if(doc.querySelector("#bar-index").options.length!==10)
+  throw Error("phone Beat bars change did not extend timeline");
  doc.querySelector("#chunks-close").click();
+ doc.querySelector("#project-actions").click();
+ const title=doc.querySelector("#beat-title");title.value="Mobile Beat";
+ title.dispatchEvent(new Event("change",{bubbles:true}));
+ if(doc.querySelector("#beat-title").value!=="Mobile Beat")
+  throw Error("phone Beat name could not be edited");
+ doc.querySelector("#project-close").click();
  await result("PASS","notes, isolated effects, preset saves, Song Clips, offline cache, mic entry, Files and playable Chunks");
 }catch(error){
  await result("FAIL",error.stack||String(error));

@@ -20,6 +20,7 @@ import {makeRecordingAsset} from "../recordingAssets.js";
 import {renderNoteExpression} from "../expressionUI.js";
 import {placementFor,defaultPlacement} from "../arrangement.js";
 import {makeTransferFile,canShareFile,shareFile} from "./fileDelivery.js";
+import {nextRackPreview} from "../rackPreview.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
@@ -29,6 +30,7 @@ let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 let activeSoundId=null,catalogMode="add",catalogCategory="All",sampleRecorder=null,voiceTake=null,voiceToken=0;
 const savedSounds=loadUserSounds();
+const phoneRackPreviewPositions=new Map();
 let presetScope=null,transferFile=null,activePlacementBar=0;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
@@ -242,6 +244,7 @@ function openNoteEditor(){
 function paintChunkSheet(){
  if(!session)return;
  const inst=session.getInstrument(),beat=session.getBeat(),selected=session.getChunk();
+ $("beat-bars").value=String(beat.bars);
  $("chunk-name").value=selected.name;
  for(const [id,disabled] of [["chunk-new",inst.chunks.length>=32],
   ["chunk-duplicate",inst.chunks.length>=32],["chunk-remove",inst.chunks.length<=1]])
@@ -624,6 +627,15 @@ async function saveSelectedPreset(){
  $("preset-dialog").close();presetScope=null;
  status("saved "+item.name+" · browse Mine to reuse · export a ZIP to back up recordings");
 }
+function mutatePhoneInstrument(action,label,{preserveSound=false}={}){
+ try{
+  const changed=action();
+  if(!changed){status("action is unavailable for this sound",true);return;}
+  if(!preserveSound)activeSoundId=null;
+  selectedNoteId=null;render(false);
+  status(label+" · saved locally");
+ }catch(error){status("instrument edit: "+error.message,true);paintSound();}
+}
 function paintSound(){
  if(!session)return;
  const container=$("phone-sound-content"),viewport=$("view-sound"),scrolled=viewport.scrollTop;
@@ -643,13 +655,31 @@ function paintSound(){
   },
   onBrowse:mode=>openCatalog(mode),
   onSave:(wholeRack,soundId)=>openPresetSave(wholeRack,soundId),
+  onRenameSound:(soundId,name)=>mutatePhoneInstrument(()=>session.renameSound(soundId,name),"renamed sound",{preserveSound:true}),
+  onRemoveInstrument:()=>{
+   const inst=session.getInstrument();
+   if(!confirm("Delete "+(inst.layout==="rack"?"rack":"instrument")+" “"+inst.name+"” and its Chunks?"))return;
+   mutatePhoneInstrument(()=>session.removeInstrument(inst.id),"deleted instrument");
+  },
+  onRemoveSound:soundId=>{
+   const inst=session.getInstrument(),row=inst.sounds.find(item=>item.id===soundId);
+   if(!row||!confirm("Remove “"+row.name+"” and its hit notes?"))return;
+   mutatePhoneInstrument(()=>session.removeRackSound(soundId),"removed rack sound");
+  },
+  onExtractSound:soundId=>mutatePhoneInstrument(()=>session.extractRackSound(soundId),
+   "moved rack sound to piano roll"),
+  onConvertToRack:()=>mutatePhoneInstrument(()=>session.convertSelectedToRack(),"converted to rack"),
   onNameChange(value){
    try{if(session.renameInstrument(value)){renderContext();paintSound();}}
    catch(error){status("rename rejected: "+error.message,true);paintSound();}
   },
   onPreview(soundId){
-   const inst=session.getInstrument(),row=inst.sounds.find(sound=>sound.id===soundId)||inst.sounds[0];
+   const inst=session.getInstrument();
+   const choice=inst.layout==="rack"?
+    nextRackPreview(phoneRackPreviewPositions,"phone-instrument:"+inst.id,inst.sounds):null;
+   const row=choice?.sound||inst.sounds.find(sound=>sound.id===soundId)||inst.sounds[0];
    void audition(inst,row.referencePitch,session.getBeat(),{soundId:row.id,velocity:.9,duration:.45})
+    .then(()=>{if(choice)status("preview "+row.name+" · "+(choice.index+1)+"/"+choice.total);})
     .catch(error=>status("preview error: "+error.message,true));
   },
   onError:message=>status(message,true)
@@ -738,6 +768,7 @@ function initializeControls(){
   const root=$("instrument-options");root.replaceChildren();
   const beat=session.getBeat();
   for(const inst of beat.instruments){
+   const row=document.createElement("div");row.className="phone-instrument-row";
    const btn=document.createElement("button");
    btn.type="button";btn.textContent=inst.name;
    btn.setAttribute("aria-pressed",String(inst.id===session.getInstrument().id));
@@ -745,7 +776,18 @@ function initializeControls(){
     cancelActiveGesture();session.selectInstrument(inst.id);selectedNoteId=null;
     $("instruments-dialog").close();render();
    });
-   root.append(btn);
+   const remove=document.createElement("button");remove.type="button";remove.textContent="×";
+   remove.setAttribute("aria-label","Delete "+inst.name);
+   remove.addEventListener("click",()=>{
+    if(!confirm("Delete "+(inst.layout==="rack"?"rack":"instrument")+" “"+inst.name+"” and its Chunks?"))return;
+    try{
+     if(session.removeInstrument(inst.id)){
+      selectedNoteId=null;$("instruments-dialog").close();render();
+      status("deleted "+inst.name+" · undo is available");
+     }
+    }catch(error){status("could not delete instrument: "+error.message,true);}
+   });
+   row.append(btn,remove);root.append(row);
   }
   $("add-instrument").disabled=beat.instruments.length>=12;
   $("instruments-dialog").showModal();
@@ -759,6 +801,14 @@ function initializeControls(){
  });
  $("chunk-actions").addEventListener("click",openChunkSheet);
  $("chunks-close").addEventListener("click",()=>$("chunks-dialog").close());
+ $("beat-bars").addEventListener("change",event=>{
+  const target=Number(event.target.value),current=session.getBeat();
+  if(target<current.bars&&current.instruments.some(inst=>inst.timeline.slice(target).some(Boolean))&&
+   !confirm("Shortening the Beat removes the later bar assignments. Their Chunks will still exist. Continue?")){
+   event.target.value=String(current.bars);return;
+  }
+  commitChunkEdit(()=>session.setBeatBars(target),"updated Beat bars");
+ });
  $("chunk-new").addEventListener("click",()=>commitChunkEdit(()=>{
   const changed=session.addChunk();
   if(changed){const inst=session.getInstrument();const index=inst.timeline.indexOf(session.getChunk().id);
@@ -828,10 +878,17 @@ function initializeControls(){
  });
  $("project-actions").addEventListener("click",()=>{
   cancelActiveGesture();
+  $("beat-title").value=session.getBeat().title;
   $("export-song").hidden=session.getDocument().kind!=="song";
   $("project-dialog").showModal();
  });
  $("project-close").addEventListener("click",()=>$("project-dialog").close());
+ $("beat-title").addEventListener("change",event=>{
+  try{
+   if(session.renameBeat(event.target.value)){render(true);status("renamed Beat · saved locally");}
+   else event.target.value=session.getBeat().title;
+  }catch(error){event.target.value=session.getBeat().title;status("Beat title: "+error.message,true);}
+ });
  $("cache-factory").addEventListener("click",async()=>{
   const button=$("cache-factory");
   if(!("serviceWorker" in navigator)){status("this browser cannot cache offline sounds",true);return;}

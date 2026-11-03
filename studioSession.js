@@ -1,7 +1,8 @@
 // DOM-free Beat/Song editing session. One command and history contract for every host.
 import {clone,create,makeInstrument,makeSound,makeChunk,id,validate,upgradeBeatFeatures} from "./schema.js";
 import {placementFor,defaultPlacement} from "./arrangement.js";
-import {selectionOperation,MAX_SOUNDS} from "./soundModel.js";
+import {selectionOperation,MAX_SOUNDS,canConvertToRack,convertToRack} from "./soundModel.js";
+import {deleteInstrumentFromBeat,deleteSoundFromBeat,moveRackSoundToPianoRoll} from "./entityActions.js";
 import {validateSong,upgradeSongFeatures,createSong,addBeat,addSongTrack,addBeatClip,editBeatClip,addVocalTake} from "./songModel.js";
 import {applyNoteCommand} from "./studioCommands.js";
 import {assignSoundEdit} from "./soundEditPath.js";
@@ -261,6 +262,31 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    track.clips=track.clips.filter(clip=>clip.id!==clipId);return true;
   });
  }
+ function renameBeat(name){
+  if(typeof name!=="string"||!name.trim()||name.length>100)return false;
+  return editInstrument(()=>{
+   const current=beat();
+   if(current.title===name.trim())return false;
+   current.title=name.trim();return true;
+  });
+ }
+ function setBeatBars(count){
+  if(!Number.isInteger(count)||count<1||count>16)return false;
+  return editInstrument(()=>{
+   const current=beat();
+   if(current.bars===count)return false;
+   current.bars=count;
+   for(const inst of current.instruments){
+    while(inst.timeline.length<count)inst.timeline.push(null);
+    inst.timeline.length=count;
+    if(inst.placements){
+     while(inst.placements.length<count)inst.placements.push(null);
+     inst.placements.length=count;
+    }
+   }
+   return true;
+  });
+ }
  function addChunk({duplicate=false}={}){
   return editInstrument(inst=>{
    if(inst.chunks.length>=32)return false;
@@ -319,6 +345,46 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    return true;
   });
  }
+ function renameSound(soundId,name){
+  if(typeof name!=="string"||!name.trim()||name.length>60)return false;
+  return editInstrument(inst=>{
+   const row=inst.sounds.find(item=>item.id===soundId);
+   if(!row||row.name===name.trim())return false;
+   row.name=name.trim();return true;
+  });
+ }
+ function removeInstrument(instrumentId=instrument().id){
+  return editInstrument(()=>{
+   const beforeId=activeInstrumentId;
+   const selected=deleteInstrumentFromBeat(beat(),instrumentId);
+   if(!selected)return false;
+   activeInstrumentId=beforeId!==instrumentId&&
+    beat().instruments.some(item=>item.id===beforeId)?beforeId:selected;
+   return true;
+  });
+ }
+ function removeRackSound(soundId){
+  return editInstrument(inst=>{
+   if(inst.layout!=="rack")return false;
+   const selected=deleteSoundFromBeat(beat(),inst.id,soundId);
+   if(!selected)return false;
+   activeInstrumentId=selected;return true;
+  });
+ }
+ function convertSelectedToRack(){
+  return editInstrument(inst=>{
+   if(!canConvertToRack(inst))return false;
+   convertToRack(inst);return true;
+  });
+ }
+ function extractRackSound(soundId){
+  return editInstrument(inst=>{
+   if(inst.layout!=="rack")return false;
+   const added=moveRackSoundToPianoRoll(beat(),inst.id,soundId);
+   if(!added)return false;
+   activeInstrumentId=added;return true;
+  });
+ }
  function addInstrument(){
   if(preview||beat().instruments.length>=12)return false;
   const before=clone(document),current=beat();
@@ -345,8 +411,9 @@ export function createStudioSession(initial=create(),onCommit=()=>{}){
    chunks.set(instrument().id,value);return true;
   },
   beginPreview,applyPreview,finishPreview,dispatch,replace,addInstrument,setBpm,
-   addChunk,renameChunk,removeChunk,setBarChunk,setBarPlacement,
+   addChunk,renameChunk,removeChunk,setBarChunk,setBarPlacement,renameBeat,setBeatBars,
   renameInstrument,changeInstrumentVolume,changeSoundGain,changeSoundPatch,selectCatalogSound,
+   renameSound,removeInstrument,removeRackSound,convertSelectedToRack,extractRackSound,
   convertBeatToSong,changeSong,setSongBpm,renameSong,addSongBeat,addTrack,renameTrack,appendSongClip,changeSongClip,removeSongClip,
   attachVocalRecording,
   undo:()=>stepBack(history,future),redo:()=>stepBack(future,history),

@@ -2,6 +2,7 @@
 // and sampler editors/descriptors as desktop. Never import the desktop studio.
 import {renderPatchEditor} from "../../instrumentUI.js";
 import {renderSamplerEditor} from "../../samplerUI.js";
+import {canConvertToRack} from "../../soundModel.js";
 
 const element=(tag,name)=>{const node=document.createElement(tag);if(name)node.className=name;return node;};
 function namedSlider(label,value,{min=0,max=1,step=.01}={},onCommit){
@@ -16,7 +17,7 @@ function namedSlider(label,value,{min=0,max=1,step=.01}={},onCommit){
  group.append(text,slider,output);return group;
 }
 
-export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSound,onPatchChange,onLevelChange,onNameChange,onBrowse,onPreview,onSave,onError}){
+export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSound,onPatchChange,onLevelChange,onNameChange,onBrowse,onPreview,onSave,onRenameSound,onRemoveInstrument,onRemoveSound,onExtractSound,onConvertToRack,onError}){
  root.replaceChildren();
  const inst=session.getInstrument(),beat=session.getBeat();
  const heading=element("div","phone-sound-heading");
@@ -27,7 +28,8 @@ export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSoun
  name.addEventListener("change",()=>onNameChange(name.value));
  title.append(name);heading.append(title);
  const audition=element("button","phone-sound-audition");
- audition.type="button";audition.textContent="▶";audition.setAttribute("aria-label","Preview selected sound");
+ audition.type="button";audition.textContent="▶";audition.setAttribute("aria-label",inst.layout==="rack"?"Preview next rack sound":"Preview selected sound");
+ audition.title=inst.layout==="rack"?"each tap plays the next rack sound":"preview selected sound";
  audition.addEventListener("click",()=>onPreview(selectedSoundId));
  heading.append(audition);
  const save=element("button","phone-sound-save");
@@ -62,6 +64,30 @@ export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSoun
   replace.textContent="replace selected rack row";replace.addEventListener("click",()=>onBrowse("replace-row"));
   root.append(replace);
  }
+ const more=element("details","phone-sound-more");
+ const summary=element("summary");summary.textContent="more · instrument and rack";
+ more.append(summary);
+ const actions=element("div","phone-sound-more-actions");
+ const rowName=element("label","phone-sound-row-name");rowName.textContent="selected sound name";
+ const rowInput=element("input");rowInput.type="text";rowInput.value=active.name;rowInput.maxLength=60;
+ rowInput.setAttribute("aria-label","Selected sound name");
+ rowInput.addEventListener("change",()=>onRenameSound(active.id,rowInput.value));
+ rowName.append(rowInput);actions.append(rowName);
+ if(inst.layout==="pitched"){
+  const convert=element("button");convert.type="button";convert.textContent="convert to rack";
+  convert.disabled=!canConvertToRack(inst);
+  if(convert.disabled)convert.title="conversion would change pitches, zones or simultaneous notes";
+  convert.addEventListener("click",onConvertToRack);actions.append(convert);
+ }else{
+  const extract=element("button");extract.type="button";extract.textContent="move sound to piano roll";
+  extract.addEventListener("click",()=>onExtractSound(active.id));actions.append(extract);
+  const remove=element("button");remove.type="button";remove.textContent="remove selected rack sound";
+  remove.addEventListener("click",()=>onRemoveSound(active.id));actions.append(remove);
+ }
+ const del=element("button","phone-destructive");del.type="button";
+ del.textContent=inst.layout==="rack"?"delete rack":"delete instrument";
+ del.addEventListener("click",onRemoveInstrument);actions.append(del);
+ more.append(actions);root.append(more);
  const info=element("p","phone-sound-info");
  info.textContent=active.patch.type==="sample"?"recorded sample · mapped to external audio":"native synthesizer · full parameter editor";
  root.append(info);

@@ -273,3 +273,21 @@ button:active{background:#252525}
 .phone-chunks-dialog #bar-timing{margin-top:8px}
 .phone-chunks-dialog #bar-timing p{padding:6px 10px;margin:0;line-height:1.4}
 .phone-chunks-dialog .phone-chunk-timing{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px}
+
+/* Safe instrument/Rack management lives in Sound's contextual More section. */
+.phone-sound-more{border:1px solid #373737;padding:0 10px}
+.phone-sound-more summary{display:list-item;list-style-position:inside;padding:12px 2px;min-height:39px;font-size:12px;cursor:pointer;color:var(--sub)}
+.phone-sound-more-actions{display:flex;flex-direction:column;gap:7px;padding:8px 0 12px}
+.phone-sound-row-name{display:flex;flex-direction:column;gap:6px;color:var(--sub);font-size:11px}
+.phone-sound-row-name input{height:40px;padding:6px 9px;color:var(--ink)}
+.phone-sound-more-actions button{width:100%;text-align:left;font-size:11px;padding:6px 10px}
+.phone-sound-more-actions .phone-destructive{color:#ffb9c6}
+
+#instrument-options .phone-instrument-row{display:flex;gap:6px;align-items:center;margin:7px 0}
+#instrument-options .phone-instrument-row button:first-child{flex:1;min-width:0;text-align:left;padding:6px 12px}
+#instrument-options .phone-instrument-row button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+#instrument-options .phone-instrument-row button:last-child{min-width:38px;color:#ffb9c6}
+
+.phone-project-title{display:flex;flex-direction:column;gap:6px;margin:12px 0;font-size:11px;color:var(--sub)}
+.phone-project-title input{height:40px;padding:6px 9px;color:var(--ink)}
+.phone-chunks-dialog #beat-bars{max-width:145px}
