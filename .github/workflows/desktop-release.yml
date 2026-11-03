@@ -1,4 +1,4 @@
-name: Windows portable preview
+name: Windows signed portable release
 on:
   pull_request:
     branches: [main]
@@ -11,6 +11,10 @@ on:
     inputs:
       publish_preview:
         description: Publish a prerelease from this exact commit
+        type: boolean
+        default: false
+      publish_stable:
+        description: Explicitly qualify and publish a signed stable Windows portable release
         type: boolean
         default: false
 permissions:
@@ -27,6 +31,7 @@ jobs:
       commit: ${{ steps.resolve.outputs.commit }}
       tag: ${{ steps.resolve.outputs.tag }}
       publish: ${{ steps.resolve.outputs.publish }}
+      build: ${{ steps.resolve.outputs.build }}
     steps:
       - uses: actions/checkout@v4
       - id: resolve
@@ -40,21 +45,40 @@ jobs:
             const preview = version.includes('-');
             const tagged = context.ref.startsWith('refs/tags/');
             if (tagged && context.ref !== 'refs/tags/' + tag) throw Error('Tag/package version mismatch');
-            const publish = context.eventName !== 'pull_request' && (tagged || context.eventName === 'push' || context.payload.inputs?.publish_preview === 'true');
-            if (publish && !preview) throw Error('Stable publication requires documented installed-app and update qualification; this workflow currently permits prereleases only');
-            const commit = require('child_process').execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
-            if (publish) {
-              try {
-                const ref = await github.rest.git.getRef({...context.repo,ref:'tags/'+tag});
-                if(ref.data.object.sha !== commit) throw Error('Version tag already points to another commit; bump package.json');
-              } catch(error) {
-                if(error.status !== 404) throw error;
-                await github.rest.git.createRef({...context.repo,ref:'refs/tags/'+tag,sha:commit});
-              }
+            const inputs = context.payload.inputs || {};
+            const requested = context.eventName !== 'pull_request' &&
+              (tagged || context.eventName === 'push' || inputs.publish_preview === 'true' || inputs.publish_stable === 'true');
+            if (requested && !preview && inputs.publish_stable !== 'true') {
+              throw Error('Stable publication requires an explicit qualified workflow_dispatch publish_stable=true');
             }
-            core.setOutput('commit',commit); core.setOutput('tag',tag); core.setOutput('publish',String(publish));
+            if (requested && preview && inputs.publish_stable === 'true') throw Error('Stable publication requires a stable version');
+            const commit = require('child_process').execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+            let publish = requested;
+            let build = context.eventName === 'pull_request' || context.eventName === 'workflow_dispatch';
+            try {
+              const ref = await github.rest.git.getRef({...context.repo,ref:'tags/'+tag});
+              if(ref.data.object.sha !== commit) {
+                if(context.eventName === 'push' && !tagged) {
+                  // Normal merges can change the studio without bumping its
+                  // public desktop version. Do not reuse an immutable tag.
+                  core.notice('Skipping desktop publication: '+tag+' already refers to another commit. Bump package.json for the next release.');
+                  publish = false;
+                } else throw Error('Version tag already points to another commit; bump package.json');
+              } else if(context.eventName === 'push' && !tagged) {
+                // An already published source commit does not need rebuilding.
+                publish = false;
+              }
+            } catch(error) {
+              if(error.status !== 404) throw error;
+            }
+            build = build || publish;
+            core.setOutput('commit',commit);
+            core.setOutput('tag',tag);
+            core.setOutput('publish',String(publish));
+            core.setOutput('build',String(build));
   build:
     needs: source
+    if: needs.source.outputs.build == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -71,7 +95,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.source.outputs.publish == 'true' && needs.source.outputs.tag || needs.source.outputs.commit }}
+          ref: ${{ needs.source.outputs.commit }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.1'
@@ -137,7 +161,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.source.outputs.tag }}
+          ref: ${{ needs.source.outputs.commit }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.1'
@@ -146,8 +170,23 @@ jobs:
           pattern: desktop-*
           merge-multiple: true
           path: release
-      - name: Verify Windows portable preview only
+      - name: Verify signed Windows portable release
+        env:
+          ALLOW_STABLE_RELEASE: ${{ inputs.publish_stable }}
         run: node scripts/publish-desktop.mjs release --windows-portable-only
+      - name: Create immutable tag only after signed build verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.source.outputs.tag }}
+          SOURCE_COMMIT: ${{ needs.source.outputs.commit }}
+        shell: bash
+        run: |
+          existing="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha' 2>/dev/null || true)"
+          if [ -n "$existing" ]; then
+            test "$existing" = "$SOURCE_COMMIT" || { echo 'Release tag collision'; exit 1; }
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" -f "ref=refs/tags/${RELEASE_TAG}" -f "sha=${SOURCE_COMMIT}"
+          fi
       - name: Publish complete prerelease
         env:
           GH_TOKEN: ${{ github.token }}
