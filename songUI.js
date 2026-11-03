@@ -1,5 +1,5 @@
 // Song arrangement UI. Beat editor remains the existing studio underneath.
-import {songDurationSteps} from "./songModel.js";
+import {songDurationSteps,removeSongClip,removeEmptyVocalTrack} from "./songModel.js";
 import {id} from "./schema.js";
 // All Song lanes and the bar ruler use the same scale; only the viewport
 // determines how much empty timeline is visible. There is no fixed song end.
@@ -65,6 +65,42 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   setStartStep(seekStep+(event.key==="ArrowRight"?BAR_STEPS:-BAR_STEPS));
  });
  const selected=()=>getSong()?.tracks.flatMap(t=>t.clips.map(c=>({track:t,clip:c}))).find(x=>x.clip.id===selectedClipId);
+ // Vocal takes are rigid audio clips; moving their start never stretches audio.
+ function enableVocalDrag(block,clip){
+  block.addEventListener("pointerdown",event=>{
+   if(event.button!==0&&event.pointerType==="mouse")return;
+   const pointerId=event.pointerId,startX=event.clientX,original=clip.startStep;
+   let moved=false,next=original;
+   block.setPointerCapture(pointerId);
+   const move=e=>{
+    if(e.pointerId!==pointerId)return;
+    if(Math.abs(e.clientX-startX)>5)moved=true;
+    if(!moved)return;
+    next=Math.max(0,original+Math.round((e.clientX-startX)/BAR_PX)*BAR_STEPS);
+    block.style.left=(next/BAR_STEPS*BAR_PX)+"px";
+   };
+   const clear=()=>{
+    block.removeEventListener("pointermove",move);
+    block.removeEventListener("pointerup",finish);
+    block.removeEventListener("pointercancel",cancel);
+   };
+   const finish=e=>{
+    if(e.pointerId!==pointerId)return;
+    clear();
+    if(!moved)return;
+    ignoreClick=true;setTimeout(()=>{ignoreClick=false;},0);
+    if(next!==original)apply(()=>{clip.startStep=next;});
+    else render();
+   };
+   const cancel=e=>{
+    if(e.pointerId!==pointerId)return;
+    clear();render();
+   };
+   block.addEventListener("pointermove",move);
+   block.addEventListener("pointerup",finish);
+   block.addEventListener("pointercancel",cancel);
+  });
+ }
  function vocalClipButton(track,clip){
   const recording=getSong()?.recordings?.find(item=>item.id===clip.recordingId);
   const block=document.createElement("button");
@@ -73,8 +109,8 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   block.dataset.clipId=clip.id;
   block.style.left=(clip.startStep/BAR_STEPS*BAR_PX)+"px";
   block.style.width=(clip.lengthSteps/BAR_STEPS*BAR_PX)+"px";
-  block.title="Listen / adjust "+(recording?.name||track.name);
-  block.setAttribute("aria-label","Select vocal recording "+(recording?.name||track.name));
+  block.title="move "+(recording?.name||track.name)+" · bar "+(Math.floor(clip.startStep/BAR_STEPS)+1);
+  block.setAttribute("aria-label","vocal recording "+(recording?.name||track.name)+"; drag or use left/right arrows to move by bar");
   block.setAttribute("aria-pressed",String(clip.id===selectedClipId));
   const peaks=recording?.waveform||[];
   if(peaks.length){
@@ -90,7 +126,19 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const label=document.createElement("span");
   label.className="song-vocal-caption";label.textContent=recording?.name||"Voice";
   block.append(label);
-  block.addEventListener("click",()=>select(clip.id));
+  block.addEventListener("click",()=>{
+   if(ignoreClick){ignoreClick=false;return;}
+   select(clip.id);
+  });
+  block.addEventListener("keydown",event=>{
+   if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;
+   event.preventDefault();
+   const delta=event.key==="ArrowRight"?BAR_STEPS:-BAR_STEPS;
+   const next=Math.max(0,clip.startStep+delta);
+   if(next!==clip.startStep)apply(()=>{clip.startStep=next;});
+   tracks.querySelector('[data-clip-id="'+clip.id+'"]')?.focus({preventScroll:true});
+  });
+  enableVocalDrag(block,clip);
   return block;
  }
  function select(clipId){
@@ -228,6 +276,16 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
     edit.setAttribute("aria-pressed",String(getSelectedBeatId()===first.beatId));
     edit.addEventListener("click",()=>select(first.id));
     head.append(edit);
+   }else if(track.kind==="vocal"&&!track.clips.length){
+    // Previously removed recordings may have left an empty legacy lane.
+    const name=document.createElement("span");name.textContent=track.name;
+    name.className="song-track-name";
+    const remove=document.createElement("button");remove.type="button";
+    remove.className="song-track-remove";remove.textContent="×";
+    remove.title="remove empty "+track.name.toLowerCase();
+    remove.setAttribute("aria-label","remove empty vocal track "+track.name);
+    remove.addEventListener("click",()=>apply(()=>removeEmptyVocalTrack(song,track.id)));
+    head.append(name,remove);
    }else head.textContent=track.name;
    const lane=document.createElement("div");lane.className="song-track-lane";
    lane.style.width=width+"px";
@@ -259,14 +317,12 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   settings.hidden=!selection;
   if(selection){
    const {clip,track}=selection,isVoice=track.kind==="vocal";
-   $("song-beat-start-field").hidden=isVoice;
+   $("song-beat-start-field").hidden=false;
    $("song-beat-length-field").hidden=isVoice;
    $("song-vocal-level-field").hidden=!isVoice;
+   $("song-clip-start").value=String(Math.floor(clip.startStep/BAR_STEPS)+1);
    if(isVoice)$("song-vocal-level").value=String(clip.gain??1);
-   else{
-    $("song-clip-start").value=String(Math.floor(clip.startStep/BAR_STEPS)+1);
-    $("song-clip-length").value=String(Math.max(1,clip.lengthSteps/BAR_STEPS));
-   }
+   else $("song-clip-length").value=String(Math.max(1,clip.lengthSteps/BAR_STEPS));
   }
  }
  beatMenuToggle.addEventListener("click",toggleBeatMenu);
@@ -328,7 +384,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
  });
  $("song-clip-remove").addEventListener("click",()=>{
   const item=selected();if(!item)return;
-  apply(()=>{item.track.clips=item.track.clips.filter(c=>c.id!==item.clip.id);selectedClipId=null;});
+  apply(()=>{removeSongClip(getSong(),item.clip.id);selectedClipId=null;});
  });
  $("song-title").addEventListener("change",event=>{
   const value=event.target.value.trim()||"Untitled song";

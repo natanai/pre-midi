@@ -47,8 +47,11 @@ export function addBeat(song,sourceBeat,{independent=false}={}){
 export function addSongTrack(song,kind="beat"){
  if(!isObject(song)||!Array.isArray(song.tracks)||!["beat","vocal"].includes(kind))
   throw Error("Invalid Song Track type.");
- const nth=song.tracks.filter(track=>track.kind===kind).length+1;
- const track={id:id(),kind,name:(kind==="beat"?"Beat ":"Voice ")+nth,clips:[]};
+ const prefix=kind==="beat"?"Beat ":"Voice ";
+ const names=new Set(song.tracks.map(track=>track.name));
+ let nth=song.tracks.filter(track=>track.kind===kind).length+1;
+ while(names.has(prefix+nth))nth++;
+ const track={id:id(),kind,name:prefix+nth,clips:[]};
  if(kind==="vocal"){
   const firstBeat=song.tracks.findIndex(entry=>entry.kind==="beat");
   song.tracks.splice(firstBeat<0?song.tracks.length:firstBeat,0,track);
@@ -76,6 +79,32 @@ export function editBeatClip(song,clipId,changes){
  if(!nonnegative(next.startStep)||!positive(next.lengthSteps))throw Error("Invalid Beat Clip timing.");
  Object.assign(clip,next);
  return clip;
+}
+// A removed take should not leave a phantom lane or an unused audio asset
+// reference in Song exports. Asset bytes remain in the registry for Undo.
+function pruneUnusedRecordings(song){
+ const used=new Set(song.tracks.filter(track=>track.kind==="vocal")
+  .flatMap(track=>track.clips.map(clip=>clip.recordingId)));
+ song.recordings=(song.recordings||[]).filter(recording=>used.has(recording.id));
+}
+export function removeEmptyVocalTrack(song,trackId){
+ const track=song?.tracks?.find(item=>item.id===trackId);
+ if(!track||track.kind!=="vocal"||track.clips.length)
+  throw Error("Only an empty vocal track can be removed.");
+ song.tracks=song.tracks.filter(item=>item.id!==trackId);
+ pruneUnusedRecordings(song);
+ return track;
+}
+export function removeSongClip(song,clipId){
+ const track=song?.tracks?.find(item=>item.clips.some(clip=>clip.id===clipId));
+ if(!track)throw Error("Song Clip does not exist.");
+ const index=track.clips.findIndex(clip=>clip.id===clipId);
+ const [removed]=track.clips.splice(index,1);
+ if(track.kind==="vocal"){
+  if(!track.clips.length)song.tracks=song.tracks.filter(item=>item.id!==track.id);
+  pruneUnusedRecordings(song);
+ }
+ return removed;
 }
 export const MAX_VOCAL_SECONDS=300;
 export function addVocalTake(song,recording,{startStep=0}={}){
