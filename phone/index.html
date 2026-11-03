@@ -111,6 +111,14 @@
  <button type="button" data-use disabled>use sound</button>
  <p class="dialog-hint">your audio stays in a separate WAV asset · export a ZIP backup to keep it</p>
 </dialog>
+<dialog id="voice-dialog" class="phone-dialog" aria-label="Record Song vocal">
+ <header><h2>voice</h2><button id="voice-close" type="button" aria-label="Cancel and close voice recorder">×</button></header>
+ <p class="dialog-hint">play the Song and record into a Vocal Track · microphone permission is requested only when you begin</p>
+ <label class="phone-sample-field">start bar <input id="voice-bar" type="number" min="1" max="1000" value="1" inputmode="numeric"></label>
+ <label class="phone-sample-field">take name <input id="voice-name" type="text" maxlength="100" value="Voice"></label>
+ <div class="phone-sample-actions"><button id="voice-start" type="button">▶ play + record</button><button id="voice-stop" type="button" disabled>■ stop &amp; save</button></div>
+ <output id="voice-status" class="phone-sample-status" role="status" aria-live="polite">ready</output>
+</dialog>
 <script type="module" src="./main.js"></script>
 </body>
 </html>
