@@ -199,3 +199,16 @@ button:active{background:#252525}
 .phone-song-remove{width:36px;color:#f5b5bc}
 .phone-song-playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:5;pointer-events:none;box-shadow:0 0 6px #08e4ec99}
 .phone-song-playhead[hidden]{display:none}
+
+/* Phone audio capture uses an explicit modal and never acquires a mic on load. */
+#sample-dialog{max-height:min(90dvh,690px)}
+#sample-dialog .phone-sample-field{display:flex;flex-direction:column;gap:5px;margin:10px 0;font-size:11px;color:var(--sub)}
+#sample-dialog .phone-sample-field input,#sample-dialog .phone-sample-field select{min-height:39px;padding:5px 8px;color:var(--ink)}
+#sample-dialog .phone-sample-actions{display:flex;gap:8px}
+#sample-dialog .phone-sample-actions button{flex:1;padding:0 8px;font-size:12px}
+#sample-dialog audio{display:block;width:100%;margin-top:12px;max-height:54px}
+#sample-dialog [data-use]{width:100%;color:var(--accent);padding:6px 10px}
+.phone-sample-status{display:block;color:var(--sub);font-size:11px;line-height:1.5;margin:11px 0}
+.phone-sample-status[data-error="true"]{color:#ff6a8a}
+.phone-catalog-import{position:sticky;top:0;z-index:2;background:#090909;padding:6px 0;border-bottom:1px solid #444}
+.phone-catalog-import button{width:100%;color:var(--accent);font-size:11px}
