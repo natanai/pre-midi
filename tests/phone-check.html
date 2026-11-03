@@ -286,7 +286,17 @@ try{
  await wait(()=>doc.querySelector("#chunk-picker").options.length===3,"duplicate phone Chunk");
  if(!doc.querySelector("#chunk-location").textContent.includes("bar 3"))
   throw Error("duplicated Chunk lacks Beat placement");
+ const bars=doc.querySelector("#beat-bars");bars.value="10";
+ bars.dispatchEvent(new Event("change",{bubbles:true}));
+ if(doc.querySelector("#bar-index").options.length!==10)
+  throw Error("phone Beat bars change did not extend timeline");
  doc.querySelector("#chunks-close").click();
+ doc.querySelector("#project-actions").click();
+ const title=doc.querySelector("#beat-title");title.value="Mobile Beat";
+ title.dispatchEvent(new Event("change",{bubbles:true}));
+ if(doc.querySelector("#beat-title").value!=="Mobile Beat")
+  throw Error("phone Beat name could not be edited");
+ doc.querySelector("#project-close").click();
  await result("PASS","notes, isolated effects, preset saves, Song Clips, offline cache, mic entry, Files and playable Chunks");
 }catch(error){
  await result("FAIL",error.stack||String(error));
