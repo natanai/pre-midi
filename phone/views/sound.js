@@ -45,8 +45,14 @@ export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSoun
  selectLabel.append(picker);controls.append(selectLabel);
  controls.append(namedSlider("sound level",active.gain,{min:0,max:2},value=>onLevelChange("sound",value,active.id)));
  root.append(controls);
- const browse=element("button","phone-sound-browse");browse.type="button";browse.textContent="browse sounds";
- browse.addEventListener("click",()=>onBrowse(active.id));root.append(browse);
+ const browse=element("button","phone-sound-browse");browse.type="button";browse.textContent=inst.layout==="rack"?"+ add sound":"browse sounds";
+ browse.addEventListener("click",()=>onBrowse("replace"));
+ root.append(browse);
+ if(inst.layout==="rack"){
+  const replace=element("button","phone-sound-browse");replace.type="button";
+  replace.textContent="replace selected rack row";replace.addEventListener("click",()=>onBrowse("replace-row"));
+  root.append(replace);
+ }
  const info=element("p","phone-sound-info");
  info.textContent=active.patch.type==="sample"?"recorded sample · mapped to external audio":"native synthesizer · full parameter editor";
  root.append(info);
