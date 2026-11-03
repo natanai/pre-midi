@@ -141,3 +141,29 @@ button:active{background:#252525}
 .phone-patch-editor .sampler-description{padding:8px;color:var(--sub);font-size:12px}
 .floating-help{position:fixed;z-index:1000;max-width:min(275px,calc(100vw - 20px));padding:10px;background:#181818;color:var(--ink);border:1px solid #777;font:12px/1.45 ui-monospace,monospace}
 @media(max-width:345px){.phone-patch-editor .synth-fields{grid-template-columns:1fr}}
+
+/* Notes viewport: keep secondary configuration reachable without displacing keys. */
+.phone-fold{border-bottom:1px solid #292929}
+.phone-fold summary{min-height:30px;display:flex;align-items:center;padding:5px 10px;color:var(--sub);font-size:11px;cursor:pointer;list-style:none;white-space:nowrap}
+.phone-fold summary::-webkit-details-marker{display:none}
+.phone-fold summary::before{content:"›";margin-right:8px;font-size:16px}
+.phone-fold[open] summary::before{content:"⌄"}
+.phone-fold .scale-tools{border-bottom:0;padding-top:4px;padding-bottom:8px}
+.phone-navigation .grid-navigation{border-top:1px solid #242424}
+
+/* Unified factory selector is shared across Add instrument and Browse. */
+.phone-catalog-dialog{height:min(85dvh,780px);display:flex;flex-direction:column;gap:9px}
+.phone-catalog-dialog:not([open]){display:none}
+.phone-catalog-dialog header{flex-shrink:0}
+.phone-catalog-dialog .dialog-hint{margin:0}
+.phone-catalog-filters{display:flex;gap:5px;overflow-x:auto;flex-shrink:0;padding:5px 0;scrollbar-width:thin}
+.phone-catalog-filters button{white-space:nowrap;padding:0 9px;font-size:11px;min-height:34px}
+.phone-catalog-filters button[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.phone-catalog-sounds{display:flex;flex-direction:column;gap:7px;overflow-y:auto;min-height:0}
+.phone-catalog-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border-bottom:1px solid #333;padding:8px 0}
+.phone-catalog-meta{display:flex;flex-direction:column;gap:5px;min-width:0}
+.phone-catalog-meta strong{font-size:12px;font-weight:400}
+.phone-catalog-meta span{font-size:10px;color:var(--sub);line-height:1.35}
+.phone-catalog-actions{display:flex;gap:5px}
+.phone-catalog-actions button{font-size:11px;min-width:36px;padding:4px 7px}
+.phone-sound-browse{width:100%;min-height:39px;font-size:12px;text-align:left;padding:0 10px}
