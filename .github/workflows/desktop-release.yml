@@ -5,7 +5,6 @@ on:
     paths: ['desktop/**', 'native/**', 'desktopUI.js', 'scripts/*desktop*', 'scripts/test-windows-portable.ps1', '.github/workflows/desktop-release.yml', 'package*.json', 'tests/song-check.html']
   push:
     branches: [main]
-    tags: ['v*']
     paths: ['package.json', '.github/workflows/desktop-release.yml']
   workflow_dispatch:
     inputs:
@@ -58,10 +57,10 @@ jobs:
             try {
               const ref = await github.rest.git.getRef({...context.repo,ref:'tags/'+tag});
               if(ref.data.object.sha !== commit) {
-                if(context.eventName === 'push' && !tagged) {
+                if(context.eventName === 'pull_request' || (context.eventName === 'push' && !tagged)) {
                   // Normal merges can change the studio without bumping its
                   // public desktop version. Do not reuse an immutable tag.
-                  core.notice('Skipping desktop publication: '+tag+' already refers to another commit. Bump package.json for the next release.');
+                  if(context.eventName === 'push') core.notice('Skipping desktop publication: '+tag+' already refers to another commit. Bump package.json for the next release.');
                   publish = false;
                 } else throw Error('Version tag already points to another commit; bump package.json');
               } else if(context.eventName === 'push' && !tagged) {
