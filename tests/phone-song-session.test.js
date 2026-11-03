@@ -1,0 +1,55 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {create,validate} from "../schema.js";
+import {createStudioSession} from "../studioSession.js";
+import {validateSong,eventsAtSongStep,songDurationSteps} from "../songModel.js";
+
+test("phone Song conversion retains all Beat notes, sounds and project identity",()=>{
+ const beat=create(),session=createStudioSession(beat);
+ session.dispatch({type:"note.add",note:{pitch:60,start:0,duration:3,velocity:.9}});
+ assert.equal(session.convertBeatToSong(),true);
+ const song=session.getDocument();
+ assert.equal(song.kind,"song");
+ assert.equal(song.beats[0].id,beat.id);
+ assert.equal(song.beats[0].instruments[0].chunks[0].notes.length,1);
+ assert.equal(eventsAtSongStep(song,0).length,1);
+ assert.deepEqual(validateSong(song),[]);
+ assert.equal(session.undo(),true);
+ assert.equal(session.getDocument().kind,undefined);
+ assert.deepEqual(validate(session.getBeat()),[]);
+ assert.equal(session.redo(),true);
+ assert.equal(session.getDocument().kind,"song");
+});
+test("phone Song Track and Clip actions preserve offset, overlap, beat source and undo",()=>{
+ const session=createStudioSession(create());session.convertBeatToSong();
+ const song=session.getDocument(),beatId=song.beats[0].id;
+ assert.equal(session.addTrack("beat"),true);
+ const track=song.tracks.at(-1);
+ assert.equal(session.appendSongClip(track.id,beatId,3,24),true);
+ const clip=track.clips[0];
+ assert.equal(session.changeSongClip(clip.id,{startStep:7,lengthSteps:40}),true);
+ assert.equal(track.clips[0].startStep,7);
+ assert.equal(session.appendSongClip(track.id,beatId,10,18),true);
+ assert.ok(songDurationSteps(song)>=48);
+ assert.equal(session.addTrack("vocal"),true);
+ assert.equal(song.tracks[0].kind,"vocal");
+ assert.deepEqual(validateSong(song),[]);
+ assert.equal(session.removeSongClip(clip.id),true);
+ assert.equal(session.undo(),true);
+ assert.ok(session.getDocument().tracks.some(t=>t.clips.some(c=>c.id===clip.id)));
+});
+test("invalid Song start/length rejects without editing or saving",()=>{
+ let commits=0;const session=createStudioSession(create(),()=>commits++);
+ session.convertBeatToSong();
+ const song=session.getDocument(),clip=song.tracks[0].clips[0];
+ const before=JSON.stringify(song),writes=commits;
+ assert.throws(()=>session.changeSongClip(clip.id,{startStep:-1}));
+ assert.throws(()=>session.changeSongClip(clip.id,{lengthSteps:0}));
+ assert.equal(JSON.stringify(session.getDocument()),before);
+ assert.equal(commits,writes);
+ assert.equal(session.addSongBeat(),true);
+ const extra=session.getBeat();
+ assert.notEqual(extra.id,song.beats[0].id);
+ assert.equal(session.selectBeat(song.beats[0].id),true);
+ assert.deepEqual(validateSong(session.getDocument()),[]);
+});
