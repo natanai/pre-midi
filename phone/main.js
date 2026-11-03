@@ -341,7 +341,7 @@ function render(preserveScroll=false){
 function openCatalog(mode){
  cancelActiveGesture();
  catalogMode=mode;catalogCategory="All";
- $("instruments-dialog").close();
+ if($("instruments-dialog").open)$("instruments-dialog").close();
  $("catalog-context").textContent=mode==="add"?"add a new Instrument or Rack":
   mode==="replace-row"?"replace the selected Rack row":"replace the current sound or choose a Rack";
  paintCatalog();
@@ -394,7 +394,7 @@ function paintSound(){
     if(changed)paintSound();
    }catch(error){status("volume change rejected: "+error.message,true);paintSound();}
   },
-  onBrowse:()=>openCatalog(session.getInstrument().layout==="rack"?"replace-row":"replace"),
+  onBrowse:mode=>openCatalog(mode),
   onNameChange(value){
    try{if(session.renameInstrument(value)){renderContext();paintSound();}}
    catch(error){status("rename rejected: "+error.message,true);paintSound();}
@@ -454,7 +454,7 @@ function initializeControls(){
  });
  $("instruments-close").addEventListener("click",()=>$("instruments-dialog").close());
  $("add-instrument").addEventListener("click",()=>openCatalog("add"));
- $("browse-sounds").addEventListener("click",()=>openCatalog(session.getInstrument().layout==="rack"?"replace-row":"replace"));
+ $("browse-sounds").addEventListener("click",()=>openCatalog("replace"));
  $("catalog-close").addEventListener("click",()=>$("catalog-dialog").close());
  $("chunk-picker").addEventListener("change",event=>{
   cancelActiveGesture();session.selectChunk(event.target.value);selectedNoteId=null;renderGrid(true);
