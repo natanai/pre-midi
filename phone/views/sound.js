@@ -16,7 +16,7 @@ function namedSlider(label,value,{min=0,max=1,step=.01}={},onCommit){
  group.append(text,slider,output);return group;
 }
 
-export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSound,onPatchChange,onLevelChange,onNameChange,onPreview,onError}){
+export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSound,onPatchChange,onLevelChange,onNameChange,onBrowse,onPreview,onError}){
  root.replaceChildren();
  const inst=session.getInstrument(),beat=session.getBeat();
  const heading=element("div","phone-sound-heading");
@@ -45,6 +45,8 @@ export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSoun
  selectLabel.append(picker);controls.append(selectLabel);
  controls.append(namedSlider("sound level",active.gain,{min:0,max:2},value=>onLevelChange("sound",value,active.id)));
  root.append(controls);
+ const browse=element("button","phone-sound-browse");browse.type="button";browse.textContent="browse sounds";
+ browse.addEventListener("click",()=>onBrowse(active.id));root.append(browse);
  const info=element("p","phone-sound-info");
  info.textContent=active.patch.type==="sample"?"recorded sample · mapped to external audio":"native synthesizer · full parameter editor";
  root.append(info);
