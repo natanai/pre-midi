@@ -47,7 +47,7 @@ function attachClipGesture(node,clip,commit){
  node.addEventListener("pointercancel",end);
  node.addEventListener("lostpointercapture",event=>{if(edit)end(event);});
 }
-export function renderPhoneSong(root,{session,onCreateSong,onAddBeat,onSelectBeat,onAddTrack,onAddClip,onEditClip,onRemoveClip,onRenameTrack,onRenameSong,onEditBeat,onError}){
+export function renderPhoneSong(root,{session,onCreateSong,onAddBeat,onSelectBeat,onAddTrack,onAddClip,onEditClip,onRemoveClip,onRenameTrack,onRenameSong,onEditBeat,onRecordVocal,onError}){
  root.replaceChildren();
  const doc=session.getDocument();
  if(doc.kind!=="song"){
@@ -73,7 +73,7 @@ export function renderPhoneSong(root,{session,onCreateSong,onAddBeat,onSelectBea
  root.append(header);
  const tools=el("div","phone-song-actions");
  tools.append(button("+ beat",onAddBeat),button("+ beat track",()=>onAddTrack("beat")),
-  button("+ vocal track",()=>onAddTrack("vocal")),button("edit beat",onEditBeat));
+  button("+ vocal track",()=>onAddTrack("vocal")),button("● voice",onRecordVocal),button("edit beat",onEditBeat));
  root.append(tools);
  const hint=el("p","phone-song-hint");hint.textContent="Drag a Clip to move it · drag its right edge to resize · or edit steps below";
  root.append(hint);
@@ -118,7 +118,7 @@ export function renderPhoneSong(root,{session,onCreateSong,onAddBeat,onSelectBea
    clipDetails.append(row);
   }
   if(track.kind==="vocal"&&!track.clips.length){
-   const label=el("p","phone-song-hint");label.textContent="record a vocal to place a take here · recording is not yet available on phone";
+   const label=el("p","phone-song-hint");label.textContent="tap ● voice above to capture a take with Song playback";
    clipDetails.append(label);
   }
   section.append(clipDetails);scroll.append(section);
