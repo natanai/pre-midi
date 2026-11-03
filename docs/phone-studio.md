@@ -1,6 +1,6 @@
 # pre-midi phone studio — canonical architecture, rebuild and parity gates
 
-Status: **Phase 1 inventory implemented; first Phase 2 phone Notes prototype under qualification** (2026-11-02).
+Status: **Phase 0 retired, Phase 1 source inventory gated, Phase 2 Notes editing partially Safari-qualified, Phases 3–5 feature slices in browser qualification; Phase 6 real-device parity still open** (2026-11-02).
 Owner document: **this file**. Do not create a second phone/mobile roadmap or parity matrix. Synthesizer/DSP work remains in `docs/synthesis-roadmap.json`; Song/game-engine integration remains in `docs/song-rollout.md`; naming follows `docs/terminology.json`.
 
 ## Intended result
@@ -57,7 +57,7 @@ A user-confirmed real Safari session successfully placed and deleted notes, drag
 
 ### Phase 2 first composer slice (under qualification)
 
-The dedicated phone entry now has an initial Notes screen with shared Beat/Chunk selection, basic Instrument sheet, pitched and Rack steps, scale guide, pointer-based tap/paint/move/resize selection, explicit deletion, undo/redo, navigation controls, basic Beat transport, local IndexedDB saves, Beat project import/export and a preliminary standalone web manifest. Sound and Song are clearly marked **unfinished**, not approximated by desktop UI. The phase is still **in progress**: no actual iPhone tap gate has passed, two-finger panning/pinch, granular note effects, complete Rack/preset selection, robust iOS Files, install/update/offline caching, recording and all deep module controls remain outstanding. Browser synthetic pointer/click tests must not be represented as physical iOS qualification.
+At this historical Phase 2 milestone, the dedicated phone entry had an initial Notes screen with shared Beat/Chunk selection, basic Instrument sheet, pitched and Rack steps, scale guide, pointer-based tap/paint/move/resize selection, explicit deletion, undo/redo, navigation controls, basic Beat transport, local IndexedDB saves, Beat project import/export and a preliminary standalone web manifest. At this point Sound and Song were unfinished; subsequent milestones below add their editors. The phase is still **in progress**: no actual iPhone tap gate has passed, two-finger panning/pinch, granular note effects, complete Rack/preset selection, robust iOS Files, install/update/offline caching, recording and all deep module controls remain outstanding. Browser synthetic pointer/click tests must not be represented as physical iOS qualification.
 
 ### Early PWA host feasibility slice (under browser qualification)
 
@@ -82,6 +82,12 @@ Phone **Record / import my sound** uses the same 44.1 kHz mono WAV encoder, pitc
 ### Phase 5 sampled audio offline opt-in
 
 GitHub Pages now stages a separate canonical factory-sample cache manifest generated from `SAMPLE_ASSETS` (not embedded in Beat or Song JSON). The initial service worker install remains **small and atomic**: editor HTML, CSS and all JS modules only. The phone Project menu offers **make factory sounds available offline**; the already-active service worker downloads verified static factory sample URLs one by one into its versioned cache, emits progress and permits retries after network errors without breaking the offline editor shell. Its fetch scope intercepts only the allowlisted local sample files, so cached factory sounds play without network access when downloaded. This optional factory cache is **not equivalent to offline microphone permission, Apple Files/iCloud access, or indefinite browser storage retention**. User recordings remain in IndexedDB and should be exported to ZIP for durability. Real-device installation, interrupted downloads, storage-quota and standalone audio recovery are not yet accepted.
+
+### Phone isolated note effects and shared user preset library
+
+Selected notes expose an explicit **note effects** button next to Delete in Notes. It opens the **same** note-expression component used by desktop: per-note level, pitch-bend shape, bend amount/rate, waveform visualization, preview and Delete. A visible **use instrument bend** action deletes the per-note override using the shared validated `note.bend` command, with a distinct undo step and no fabricated Rack pitch. Node and staged Chrome fixtures test the editor, velocity, bend and reset.
+
+Phone Sound now offers **save selected sound preset** and (for Rack instruments) **save whole Rack preset**. The shared `userSoundLibrary.js` defines the desktop and phone preset reading/writing rules and existing `premidi-user-sounds-v2` key, with legacy key fallback, normal validation and the 100-preset limit. The unified browser offers a **Mine** category with reuse and deletion. Sample Asset bytes are persisted through IndexedDB separately from localStorage preset metadata; a missing sample cannot silently be treated as loaded. There is no cross-device account sync. Browser-local presets are **not** a durable backup: a project ZIP carrying required samples remains necessary for exported musical work. Desktop and phone are still separate storage containers when the browser/installed Home Screen context differs. End-to-end iPhone storage and preset migration remain open.
 
 ## Long-term code layout
 
