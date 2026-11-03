@@ -147,7 +147,7 @@ try{
  if(applied?.value!=="square")throw Error("phone Wave patch change did not survive re-render");
  const volume=doc.querySelector('[aria-label="instrument level"]');
  volume.value=".45";volume.dispatchEvent(new Event("change",{bubbles:true}));
- if(doc.querySelector('[aria-label="instrument level"]')?.value!==".45")
+ if(Number(doc.querySelector('[aria-label="instrument level"]')?.value)!==.45)
   throw Error("phone Instrument volume did not commit");
  doc.querySelector('[data-workspace="notes"]').click();
  if(!doc.querySelector("#instrument-picker").textContent.includes("Phone synth"))
