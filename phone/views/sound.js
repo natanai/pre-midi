@@ -16,7 +16,7 @@ function namedSlider(label,value,{min=0,max=1,step=.01}={},onCommit){
  group.append(text,slider,output);return group;
 }
 
-export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSound,onPatchChange,onLevelChange,onNameChange,onBrowse,onPreview,onError}){
+export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSound,onPatchChange,onLevelChange,onNameChange,onBrowse,onPreview,onSave,onError}){
  root.replaceChildren();
  const inst=session.getInstrument(),beat=session.getBeat();
  const heading=element("div","phone-sound-heading");
@@ -30,6 +30,15 @@ export function renderPhoneSound(root,{session,selectedSoundId=null,onSelectSoun
  audition.type="button";audition.textContent="▶";audition.setAttribute("aria-label","Preview selected sound");
  audition.addEventListener("click",()=>onPreview(selectedSoundId));
  heading.append(audition);
+ const save=element("button","phone-sound-save");
+ save.type="button";save.textContent="▣";save.setAttribute("aria-label","Save selected sound preset");
+ save.title="save sound preset locally";save.addEventListener("click",()=>onSave(false,selectedSoundId));
+ heading.append(save);
+ if(inst.layout==="rack"){
+  const rack=element("button","phone-sound-save");rack.type="button";
+  rack.textContent="▣ rack";rack.setAttribute("aria-label","Save whole rack preset");
+  rack.addEventListener("click",()=>onSave(true));heading.append(rack);
+ }
  root.append(heading);
  const controls=element("div","phone-sound-head-controls");
  controls.append(namedSlider("instrument level",inst.volume,{},value=>onLevelChange("instrument",value)));

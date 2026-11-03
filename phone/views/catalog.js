@@ -7,11 +7,13 @@ import {loadLibrarySample} from "../../sampler.js";
 import {makeInstrument,makeSound} from "../../schema.js";
 import {audition} from "../../audio.js";
 import {nextRackPreview} from "../../rackPreview.js";
+import {getAsset} from "../../assetRegistry.js";
 
 const assetRequests=new Map(),previewPositions=new Map();
 const categoryOf=preset=>preset.category||"Other";
-export const catalogCategories=()=>["All",...new Set(FACTORY_SOUND_CATALOG.map(categoryOf))];
-export const catalogEntries=category=>FACTORY_SOUND_CATALOG.filter(preset=>
+export const catalogCategories=(userPresets=[])=>["All",...new Set(
+ [...FACTORY_SOUND_CATALOG,...userPresets].map(categoryOf))];
+export const catalogEntries=(category,userPresets=[])=>[...FACTORY_SOUND_CATALOG,...userPresets].filter(preset=>
  category==="All"||categoryOf(preset)===category);
 export const factorySpec=preset=>{
  const patch=preset.sounds?patchCopy(preset.sounds[0].patch):
@@ -30,8 +32,8 @@ export async function resolveFactoryAssets(preset,beat){
   patch.zones.map(zone=>zone.assetId):[]))];
  return Promise.all(ids.map(id=>{
   const saved=(preset.samples||[]).find(item=>item.id===id)||beat.samples.find(item=>item.id===id);
-  if(saved)return saved;
-  if(!sampleAsset(id))throw Error("Missing imported recording "+id);
+  if(saved&&getAsset(id))return saved;
+  if(!sampleAsset(id))throw Error("Missing audio data for "+id+". Import a backed-up project ZIP.");
   if(!assetRequests.has(id))assetRequests.set(id,loadLibrarySample(id).catch(error=>{assetRequests.delete(id);throw error;}));
   return assetRequests.get(id);
  }));
@@ -53,9 +55,9 @@ export async function previewFactoryPreset(preset,beat){
  await audition(inst,row.referencePitch,{samples:assets},{soundId:row.id,duration:.5});
  return null;
 }
-export function renderPhoneCatalog({filters,list,category,mode,beat,onCategory,onUse,onPreview,onRecord}){
+export function renderPhoneCatalog({filters,list,category,mode,beat,userPresets=[],onCategory,onUse,onPreview,onRecord,onRemoveSaved=()=>{}}){
  filters.replaceChildren();list.replaceChildren();
- for(const name of catalogCategories()){
+ for(const name of catalogCategories(userPresets)){
   const button=document.createElement("button");button.type="button";button.textContent=name;
   button.setAttribute("aria-pressed",String(category===name));
   button.addEventListener("click",()=>onCategory(name));filters.append(button);
@@ -63,7 +65,7 @@ export function renderPhoneCatalog({filters,list,category,mode,beat,onCategory,o
  const personal=document.createElement("div");personal.className="phone-catalog-import";
  const record=document.createElement("button");record.type="button";record.textContent="● record / import my sound";
  record.addEventListener("click",onRecord);personal.append(record);list.append(personal);
- for(const preset of catalogEntries(category).filter(p=>mode!=="replace-row"||!p.sounds)){
+ for(const preset of catalogEntries(category,userPresets).filter(p=>mode!=="replace-row"||!p.sounds)){
   const card=document.createElement("article");card.className="phone-catalog-item";
   card.dataset.presetId=preset.id;
   const desc=document.createElement("div");desc.className="phone-catalog-meta";
@@ -79,6 +81,13 @@ export function renderPhoneCatalog({filters,list,category,mode,beat,onCategory,o
   choose.textContent=preset.sounds?"add rack":mode==="add"?"add":"use";
   choose.setAttribute("aria-label",choose.textContent+" "+preset.name);
   choose.addEventListener("click",()=>onUse(preset,choose));
-  buttons.append(preview,choose);card.append(desc,buttons);list.append(card);
+  buttons.append(preview,choose);
+  if(preset.category==="Mine"){
+   const remove=document.createElement("button");remove.type="button";
+   remove.textContent="×";remove.setAttribute("aria-label","Remove saved preset "+preset.name);
+   remove.addEventListener("click",()=>onRemoveSaved(preset));
+   buttons.append(remove);
+  }
+  card.append(desc,buttons);list.append(card);
  }
 }

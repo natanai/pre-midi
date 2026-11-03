@@ -20,6 +20,23 @@ try{
  one().click();
  await wait(()=>one().classList.contains("filled"),"tap creates pitched note");
  if(doc.querySelector("#delete-note").disabled)throw Error("note selection not exposed");
+ if(doc.querySelector("#note-effects").disabled)throw Error("selected note effects not accessible");
+ doc.querySelector("#note-effects").click();
+ await wait(()=>doc.querySelector("#note-effects-dialog").open,"selected note effects");
+ const bend=doc.querySelector('#phone-note-editor [aria-label="Held note bend shape"]');
+ if(!bend)throw Error("canonical per-note bend controls missing");
+ bend.value="wave";bend.dispatchEvent(new Event("change",{bubbles:true}));
+ if(doc.querySelector('#phone-note-editor [aria-label="Held note bend shape"]')?.value!=="wave")
+  throw Error("isolated note bend edit failed");
+ const dynamic=doc.querySelector('#phone-note-editor [aria-label="Note level"]');
+ dynamic.value=".55";dynamic.dispatchEvent(new Event("change",{bubbles:true}));
+ if(Number(doc.querySelector('#phone-note-editor [aria-label="Note level"]')?.value)!==.55)
+  throw Error("isolated note level change failed");
+ doc.querySelector("#note-bend-default").click();
+ if(!doc.querySelector("#note-bend-default").disabled)
+  throw Error("return to instrument default bend did not remove note override");
+ doc.querySelector("#note-effects-close").click();
+ if(doc.querySelector("#note-effects-dialog").open)throw Error("note expression dialog refused to close");
  doc.querySelector("#delete-note").click();
  await wait(()=>!one().classList.contains("filled"),"explicit delete");
  doc.querySelector("#undo").click();
@@ -153,6 +170,14 @@ try{
  volume.value=".45";volume.dispatchEvent(new Event("change",{bubbles:true}));
  if(Number(doc.querySelector('[aria-label="instrument level"]')?.value)!==.45)
   throw Error("phone Instrument volume did not commit");
+ doc.querySelector('[aria-label="Save selected sound preset"]').click();
+ await wait(()=>doc.querySelector("#preset-dialog").open,"save sound preset");
+ doc.querySelector("#preset-name").value="Phone Favorite";
+ doc.querySelector("#preset-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+ await wait(()=>!doc.querySelector("#preset-dialog").open,"preset saved");
+ const saved=JSON.parse(frame.contentWindow.localStorage.getItem("premidi-user-sounds-v2")||"[]");
+ if(!saved.some(entry=>entry.name==="Phone Favorite"))
+  throw Error("phone saved preset not persisted at desktop library key");
  doc.querySelector('[data-workspace="notes"]').click();
  if(!doc.querySelector("#instrument-picker").textContent.includes("Phone synth"))
   throw Error("phone Sound rename did not propagate to Notes");
@@ -164,6 +189,13 @@ try{
  await wait(()=>doc.querySelector("#instruments-dialog").open,"phone instrument sheet");
  doc.querySelector("#add-instrument").click();
  await wait(()=>doc.querySelector("#catalog-dialog").open,"unified factory catalog");
+ const mine=[...doc.querySelectorAll("#catalog-filters button")].find(button=>button.textContent==="Mine");
+ if(!mine)throw Error("saved sounds missing from phone catalog filters");
+ mine.click();
+ if(!doc.querySelector("#catalog-sounds [data-preset-id='"+saved.find(entry=>entry.name==="Phone Favorite").id+"']"))
+  throw Error("saved sound unavailable for reuse");
+ const all=[...doc.querySelectorAll("#catalog-filters button")].find(button=>button.textContent==="All");
+ all.click();
  const entries=doc.querySelectorAll("#catalog-sounds .phone-catalog-item");
  if(entries.length<15)throw Error("factory Sound catalog was not fully offered on phone");
  const item=doc.querySelector('#catalog-sounds [data-preset-id="init"]');

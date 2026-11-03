@@ -2,7 +2,8 @@
 import {create,parse,validate} from "../schema.js";
 import {parseSong,exportSongProject,importSongProject} from "../songIO.js";
 import {createStudioSession} from "../studioSession.js";
-import {loadDraft,saveDraft} from "../storage.js";
+import {loadDraft,saveDraft,savePresetAssets} from "../storage.js";
+import {loadUserSounds,writeUserSounds,presetFromInstrument} from "../userSoundLibrary.js";
 import {exportProject,importProject} from "../packageIO.js";
 import {play,audition,wav} from "../audio.js";
 import {SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,isPitchInScaleAtStep} from "../scaleGuide.js";
@@ -16,6 +17,7 @@ import {makeSampleAsset} from "../sampler.js";
 import {id} from "../schema.js";
 import {prepareSongTake} from "../songRecorder.js";
 import {makeRecordingAsset} from "../recordingAssets.js";
+import {renderNoteExpression} from "../expressionUI.js";
 
 const $=id=>document.getElementById(id);
 const MIN_PITCH=36,MAX_PITCH=96,ROW=36;
@@ -24,6 +26,8 @@ const CACHE="premidi-scale-guide-v1";
 let session=null,selectedNoteId=null,gesture=null,playing=null,pendingPlay=false,playbackPosition=null,playbackScope="beat";
 let activeWorkspace="notes",zoom=42,editGeneration=0,panMode=false,navigation=null;
 let activeSoundId=null,catalogMode="add",catalogCategory="All",sampleRecorder=null,voiceTake=null,voiceToken=0;
+const savedSounds=loadUserSounds();
+let presetScope=null;
 const contacts=new Map();
 let lastPointerCell=null,lastPointerAt=0,lastNavigationAt=-Infinity;
 const cellMap=new Map();
@@ -68,6 +72,7 @@ function refreshSelection(){
  const selected=session.getChunk().notes.find(note=>note.id===selectedNoteId);
  if(!selected)selectedNoteId=null;
  $("delete-note").disabled=!selected;
+ $("note-effects").disabled=!selected;
  $("undo").disabled=!session.canUndo();
  $("redo").disabled=!session.canRedo();
 }
@@ -197,6 +202,40 @@ function activateCell(row,step){
   selectedNoteId=result.noteId;
   paintCells();void hear(row);
  }
+}
+function paintNoteEditor(){
+ const dialog=$("note-effects-dialog");
+ if(!dialog.open||!session)return;
+ const note=session.getChunk().notes.find(entry=>entry.id===selectedNoteId);
+ if(!note){dialog.close();return;}
+ const inst=session.getInstrument(),beat=session.getBeat();
+ const row=inst.layout==="rack"?inst.sounds.find(item=>item.id===note.soundId):inst.sounds[0];
+ const pitch=inst.layout==="rack"?row?.referencePitch:note.pitch;
+ const seconds=note.duration*60/beat.bpm/4;
+ const preview=()=>{
+  void audition(inst,pitch,beat,{soundId:row?.id,velocity:note.velocity,bend:note.bend,
+   duration:seconds}).catch(error=>status("note preview: "+error.message,true));
+ };
+ const apply=(command)=>{
+  try{
+   const result=session.dispatch({noteId:note.id,...command});
+   if(result.changed){paintCells();paintNoteEditor();}
+  }catch(error){status("note effects: "+error.message,true);paintNoteEditor();}
+ };
+ renderNoteExpression($("phone-note-editor"),note,inst.layout==="rack"?row?.name:nameOf(note.pitch),seconds,
+  bend=>apply({type:"note.bend",bend}),
+  ()=>{apply({type:"note.delete"});selectedNoteId=null;dialog.close();paintCells();},
+  preview,row?.patch?.bend,
+  velocity=>{apply({type:"note.level",velocity});preview();}
+ );
+ $("note-bend-default").disabled=!note.bend;
+}
+function openNoteEditor(){
+ if(!selectedNoteId)return;
+ cancelActiveGesture();
+ const dialog=$("note-effects-dialog");
+ if(!dialog.open)dialog.showModal();
+ paintNoteEditor();
 }
 function currentRect(){
  const viewport=$("roll-scroll"),rect=viewport.getBoundingClientRect();
@@ -358,9 +397,17 @@ function openCatalog(mode){
 function paintCatalog(){
  renderPhoneCatalog({
   filters:$("catalog-filters"),list:$("catalog-sounds"),
-  category:catalogCategory,mode:catalogMode,beat:session.getBeat(),
+  category:catalogCategory,mode:catalogMode,beat:session.getBeat(),userPresets:savedSounds,
   onCategory:name=>{catalogCategory=name;paintCatalog();},
   onRecord:()=>sampleRecorder.open(),
+  onRemoveSaved:preset=>{
+   if(!confirm("Remove saved preset “"+preset.name+"” from this browser?"))return;
+   try{
+    const remaining=savedSounds.filter(item=>item.id!==preset.id);
+    writeUserSounds(remaining);savedSounds.splice(0,savedSounds.length,...remaining);
+    paintCatalog();status("removed preset · existing project sounds are unchanged");
+   }catch(error){status("could not remove preset: "+error.message,true);}
+  },
   onUse:async(preset,button)=>{
    button.disabled=true;
    status("loading "+preset.name+"…");
@@ -509,6 +556,28 @@ function updateSongPlayhead(){
  line.hidden=current===null;
  if(current)line.style.left=(current.bar*16+current.step)*3+"px";
 }
+function openPresetSave(wholeRack=false,soundId=null){
+ const inst=session.getInstrument(),sound=inst.sounds.find(item=>item.id===soundId)||inst.sounds[0];
+ presetScope={wholeRack,soundId:sound.id,instrumentId:inst.id};
+ $("preset-name").value=wholeRack?inst.name:sound.name;
+ $("preset-scope").textContent=wholeRack?"save the complete Rack with "+inst.sounds.length+" sounds":
+  "save "+sound.name+" as a reusable Sound";
+ if(!$("preset-dialog").open)$("preset-dialog").showModal();
+}
+async function saveSelectedPreset(){
+ if(!presetScope)return;
+ const {wholeRack,soundId,instrumentId}=presetScope;
+ const inst=session.getBeat().instruments.find(item=>item.id===instrumentId);
+ if(!inst)throw Error("The instrument changed. Open Save again.");
+ if(savedSounds.length>=100)throw Error("This browser already has 100 saved presets.");
+ const item=presetFromInstrument(inst,session.getBeat(),{
+  name:$("preset-name").value.trim(),wholeRack,soundId
+ });
+ await savePresetAssets(item.samples);
+ writeUserSounds([...savedSounds,item]);savedSounds.push(item);
+ $("preset-dialog").close();presetScope=null;
+ status("saved "+item.name+" · browse Mine to reuse · export a ZIP to back up recordings");
+}
 function paintSound(){
  if(!session)return;
  const container=$("phone-sound-content"),viewport=$("view-sound"),scrolled=viewport.scrollTop;
@@ -527,6 +596,7 @@ function paintSound(){
    }catch(error){status("volume change rejected: "+error.message,true);paintSound();}
   },
   onBrowse:mode=>openCatalog(mode),
+  onSave:(wholeRack,soundId)=>openPresetSave(wholeRack,soundId),
   onNameChange(value){
    try{if(session.renameInstrument(value)){renderContext();paintSound();}}
    catch(error){status("rename rejected: "+error.message,true);paintSound();}
@@ -556,6 +626,14 @@ function exportCurrent(scope="beat"){
  }catch(error){status("export failed: "+error.message,true);}
 }
 function initializeControls(){
+ $("preset-close").addEventListener("click",()=>$("preset-dialog").close());
+ $("preset-form").addEventListener("submit",event=>{
+  event.preventDefault();
+  const button=$("preset-save");if(button.disabled)return;button.disabled=true;
+  void saveSelectedPreset().catch(error=>status("could not save sound preset: "+error.message,true))
+   .finally(()=>{button.disabled=false;});
+ });
+
  sampleRecorder=createPhoneSampleRecorder({
   dialog:$("sample-dialog"),
   output:$("sample-dialog").querySelector(".phone-sample-status"),
@@ -605,6 +683,15 @@ function initializeControls(){
  viewport.addEventListener("pointercancel",endTouch);
  viewport.addEventListener("lostpointercapture",endTouch);
  $("pan-mode").addEventListener("click",()=>setPanMode(!panMode));
+ $("note-effects").addEventListener("click",openNoteEditor);
+ $("note-effects-close").addEventListener("click",()=>$("note-effects-dialog").close());
+ $("note-bend-default").addEventListener("click",()=>{
+  if(!selectedNoteId)return;
+  try{
+   session.dispatch({type:"note.bend",noteId:selectedNoteId,bend:null});
+   paintCells();paintNoteEditor();
+  }catch(error){status("note bend reset: "+error.message,true);}
+ });
  $("delete-note").addEventListener("click",()=>{
   cancelActiveGesture();if(!selectedNoteId)return;
   session.dispatch({type:"note.delete",noteId:selectedNoteId});

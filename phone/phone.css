@@ -218,3 +218,39 @@ button:active{background:#252525}
 #voice-dialog .phone-sample-actions{display:flex;gap:8px;margin-top:12px}
 #voice-dialog .phone-sample-actions button{flex:1;padding:7px 8px}
 #voice-dialog #voice-stop:not(:disabled){border-color:var(--accent);color:var(--accent)}
+
+/* The note dialog is an intentional, accessible action rather than long-press-only. */
+#note-effects:not(:disabled){color:var(--accent)}
+.phone-note-dialog{width:min(calc(100% - 20px),440px);max-height:86dvh}
+#phone-note-editor{display:flex;flex-direction:column;gap:15px;padding:12px 2px 7px}
+.phone-note-dialog .expression-title{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.phone-note-dialog .expression-note{width:100%;font-size:12px;color:var(--accent);font-weight:400}
+.phone-note-dialog .expression-hear,.phone-note-dialog .expression-delete{flex:1;padding:4px 8px;font-size:11px}
+.phone-note-dialog .expression-delete{color:#ffb9c6}
+.phone-note-dialog .expression-level{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--sub)}
+.phone-note-dialog .expression-level-row{display:flex;align-items:center;gap:9px}
+.phone-note-dialog .expression-level-row input{flex:1;min-width:0;min-height:34px;accent-color:var(--accent)}
+.phone-note-dialog .expression-level-row output{min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+.phone-note-dialog .expression-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.phone-note-dialog .expression-controls>label{display:flex;flex-direction:column;gap:6px;grid-column:1/-1;color:var(--sub);font-size:12px}
+.phone-note-dialog .expression-controls select{width:100%;min-height:40px;padding:5px;color:var(--ink)}
+.phone-note-dialog .dial-field{display:flex;align-items:center;flex-direction:column;gap:5px;min-height:104px;border:1px solid #333;padding:7px}
+.phone-note-dialog .dial-disabled{opacity:.4}
+.phone-note-dialog .dial-label{font-size:11px;text-align:center;color:var(--sub);min-height:24px}
+.phone-note-dialog .dial-knob{width:54px;height:54px;touch-action:none;cursor:ns-resize}
+.phone-note-dialog .dial-knob svg{width:100%;height:100%;display:block}
+.phone-note-dialog .dial-ring,.phone-note-dialog .dial-amount{fill:none;stroke-width:4}
+.phone-note-dialog .dial-ring{stroke:#555}
+.phone-note-dialog .dial-amount{stroke:var(--accent)}
+.phone-note-dialog .dial-pointer{stroke:#e9f9fb;stroke-width:3;stroke-linecap:round;transform-origin:32px 32px}
+.phone-note-dialog .dial-value{font-size:11px;font-variant-numeric:tabular-nums}
+.phone-note-dialog .expression-visual{width:100%;color:var(--accent)}
+.phone-note-dialog .expression-visual svg{display:block;width:100%;height:74px}
+#note-bend-default{width:100%;font-size:11px;margin-top:6px}
+
+/* Saved sounds share the desktop user library; controls stay phone-owned. */
+.phone-sound-save{min-width:37px;min-height:40px;padding:0 6px;color:var(--accent);font-size:12px;white-space:nowrap}
+#preset-dialog .phone-sample-field{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--sub);margin:12px 0}
+#preset-dialog .phone-sample-field input{height:40px;padding:6px 9px;color:var(--ink)}
+#preset-dialog #preset-save{width:100%;color:var(--accent);margin-top:12px}
+.phone-catalog-actions button[aria-label^="Remove saved"]{color:#ffb9c6}
