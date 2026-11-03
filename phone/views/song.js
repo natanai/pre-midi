@@ -23,7 +23,7 @@ function attachClipGesture(node,clip,commit){
   const rect=node.getBoundingClientRect();
   const resize=event.clientX>rect.right-Math.min(23,rect.width*.3);
   edit={id:event.pointerId,x:event.clientX,start:clip.startStep,length:clip.lengthSteps,resize};
-  node.setPointerCapture(event.pointerId);
+  try{node.setPointerCapture(event.pointerId);}catch{}
   event.preventDefault();
  });
  node.addEventListener("pointermove",event=>{
