@@ -282,3 +282,8 @@ button:active{background:#252525}
 .phone-sound-row-name input{height:40px;padding:6px 9px;color:var(--ink)}
 .phone-sound-more-actions button{width:100%;text-align:left;font-size:11px;padding:6px 10px}
 .phone-sound-more-actions .phone-destructive{color:#ffb9c6}
+
+#instrument-options .phone-instrument-row{display:flex;gap:6px;align-items:center;margin:7px 0}
+#instrument-options .phone-instrument-row button:first-child{flex:1;min-width:0;text-align:left;padding:6px 12px}
+#instrument-options .phone-instrument-row button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+#instrument-options .phone-instrument-row button:last-child{min-width:38px;color:#ffb9c6}
