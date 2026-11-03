@@ -63,14 +63,17 @@ export function createPhoneSampleRecorder({dialog,output,onUse,onError}){
    return info("microphone unavailable · import a WAV instead",true);
   const issued=++token;$("[data-use]").disabled=true;recording=true;$("[data-record]").disabled=true;
   const mime=chooseMime(),chunks=[];
+  let localStream=null,localRecorder=null;
   try{
    info("requesting microphone permission…");
-   activeStream=await navigator.mediaDevices.getUserMedia({
+   localStream=await navigator.mediaDevices.getUserMedia({
     audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false
    });
    if(issued!==token)throw STOP;
-   activeRecorder=new MediaRecorder(activeStream,mime?{mimeType:mime}:undefined);
-   const recorder=activeRecorder;
+   activeStream=localStream;
+   localRecorder=new MediaRecorder(localStream,mime?{mimeType:mime}:undefined);
+   activeRecorder=localRecorder;
+   const recorder=localRecorder;
    const complete=new Promise((resolve,reject)=>{
     recorder.ondataavailable=event=>{if(event.data?.size)chunks.push(event.data);};
     recorder.onerror=event=>reject(event.error||Error("microphone capture failed"));
@@ -91,7 +94,14 @@ export function createPhoneSampleRecorder({dialog,output,onUse,onError}){
     $("[data-kind]").value==="hit"?"My hit":"My note");
   }catch(error){if(issued===token&&error!==STOP)info(error.name==="NotAllowedError"?
    "microphone permission denied":error.message,true);}
-  finally{stopStream();}
+  finally{
+   localStream?.getTracks().forEach(track=>track.stop());
+   if(issued===token)stopStream();
+   else{
+    if(activeStream===localStream)activeStream=null;
+    if(activeRecorder===localRecorder)activeRecorder=null;
+   }
+  }
  }
  $("[data-record]").addEventListener("click",()=>void record());
  $("[data-import]").addEventListener("click",()=>$("[data-file]").click());
