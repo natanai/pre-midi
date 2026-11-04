@@ -1,5 +1,5 @@
 import {renderModulationEditor} from "./modulationUI.js";
-import {illustrateSoundPanel} from "./soundIllustrations.js";
+import {illustrateSoundPanel,bindSoundIllustrationLinks} from "./soundIllustrations.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 // Controls are generated from the same patch keys validated by synth.js.
 // All edits go through the caller's one canonical beat mutation pathway.
@@ -117,12 +117,16 @@ function renderField(field,patch,onChange,onPreview){
   patch.filter.type==="lowpass"?"turn it down to muffle the high stuff":
   patch.filter.type==="highpass"?"turn it up to shave off the bass":
   patch.filter.type==="bandpass"?"move the little window of sound up or down":null:null;
- if(!field.options)return createDial({...field,disabled,help:cutoffHint??field.help,
-  disabledReason:disabled?"Adjust "+parent+" first.":undefined},value,
-  next=>onChange(field.path,next),
-  next=>onPreview(field.path,next));
+ if(!field.options){
+  const dial=createDial({...field,disabled,help:cutoffHint??field.help,
+   disabledReason:disabled?"Adjust "+parent+" first.":undefined},value,
+   next=>onChange(field.path,next),next=>onPreview(field.path,next));
+  dial.dataset.soundPath=JSON.stringify(field.path);
+  return dial;
+ }
  const label=document.createElement("label");
  label.className="synth-field";
+ label.dataset.soundPath=JSON.stringify(field.path);
  const title=document.createElement("span");title.textContent=field.label.toLowerCase();
  explainLabel(title,field.label);label.append(title);
  const input=document.createElement("select");
@@ -168,6 +172,7 @@ function harmonicControls(patch,index,onChange,preview,expanded){
    value=>onChange(["oscillators",index,"harmonics",n],value),
    value=>preview(["oscillators",index,"harmonics",n],value));
   dial.querySelector('[role="slider"]').setAttribute("aria-label","Oscillator "+(index+1)+" harmonic "+(n+1));
+  dial.dataset.soundPath=JSON.stringify(["oscillators",index,"harmonics",n]);
   (n<8?first:rest).append(dial);
  }
  more.append(heading,rest);section.append(first,more);
@@ -240,4 +245,5 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
   "modulation",patch,onChange,preview,0);
  panels.push(modulation);grid.append(modulation.element);
  root.append(grid);
+ bindSoundIllustrationLinks(root,panels);
 }
