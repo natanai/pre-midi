@@ -123,6 +123,52 @@
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="stop song","Unpacked Song plays",9000);
   get("play").click();
+  // Replace a freeform synth with a real companion WAV and verify the same
+  // sampler editor, package format and Song audio transport still work.
+  doc.querySelector(".song-freeform-toggle").click();
+  await wait(()=>!doc.querySelector(".song-freeform-editor").hidden,
+   "Freeform opens again for sample editing");
+  doc.querySelector(".freeform-sound-summary").click();
+  await wait(()=>!!doc.querySelector(".freeform-sound-host input[type=file]"),
+   "Freeform sampler import is available");
+  const frames=2205,bytes=new Uint8Array(44+frames*2),view=new DataView(bytes.buffer);
+  const str=(offset,value)=>{for(let i=0;i<value.length;i++)bytes[offset+i]=value.charCodeAt(i);};
+  str(0,"RIFF");view.setUint32(4,bytes.length-8,true);str(8,"WAVE");
+  str(12,"fmt ");view.setUint32(16,16,true);view.setUint16(20,1,true);
+  view.setUint16(22,1,true);view.setUint32(24,44100,true);
+  view.setUint32(28,88200,true);view.setUint16(32,2,true);
+  view.setUint16(34,16,true);str(36,"data");view.setUint32(40,frames*2,true);
+  for(let n=0;n<frames;n++)view.setInt16(44+n*2,Math.round(Math.sin(n*.1)*11000),true);
+  const soundFile=new win.File([bytes],"freeform-test.wav",{type:"audio/wav"});
+  const transfer=new win.DataTransfer();transfer.items.add(soundFile);
+  const fileControl=doc.querySelector(".freeform-sound-host input[type=file]");
+  fileControl.files=transfer.files;fileControl.dispatchEvent(new Event("change",{bubbles:true}));
+  await wait(()=>!!doc.querySelector(".freeform-sound-modules .sample-zones"),
+   "Canonical sampler editor opens after importing audio");
+  const filter=doc.querySelector('.freeform-sound-modules [aria-label="Recorded sound filter type"]');
+  assert(filter,"Freeform sample has existing filter and distortion settings");
+  filter.value="highpass";filter.dispatchEvent(new Event("change",{bubbles:true}));
+  await wait(()=>doc.querySelector(
+   '.freeform-sound-modules [aria-label="Recorded sound filter type"]'
+  )?.value==="highpass","Sample tone change is saved");
+  project=null;
+  get("export").click();get("export-form").dispatchEvent(
+   new Event("submit",{bubbles:true,cancelable:true}));
+  await wait(()=>!!project&&project.size>44,"Freeform sample exports as portable Song");
+  const {readZip}=await import("/zip.js"),entries=await readZip(project);
+  const manifestEntry=[...entries].find(([key])=>key.endsWith(".premidi"));
+  assert(manifestEntry,"ZIP includes canonical Song .premidi manifest");
+  const packaged=JSON.parse(new TextDecoder().decode(manifestEntry[1]));
+  const edited=packaged.tracks[0].freeform.instruments[0].sounds[0].patch;
+  assert(edited.type==="sample"&&edited.filter.type==="highpass",
+   "Imported sample and Sound filter survive Song export");
+  assert(entries.has(packaged.tracks[0].freeform.samples[0].path),
+   "Imported audio remains external, alongside the .premidi manifest");
+  await wait(()=>!get("export-dialog").open,"Portable Song export closes");
+  get("play").click();
+  await wait(()=>get("play").getAttribute("aria-label")==="stop song",
+   "Imported freeform audio plays as part of Song",9000);
+  get("play").click();
   assert(!issues.length,"No runtime browser errors: "+issues.join("; "));
   await report("PASS","Freeform empty editing, notes, unpack, versioned export and playback");
  }catch(error){
