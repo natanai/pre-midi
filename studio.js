@@ -1252,6 +1252,9 @@ function renderSound() {
  placeDial("primary-brightness-dial","filter");
  placeDial("primary-attack-dial",patch.type==="sample"?"sample":"envelope");
  placeDial("primary-release-dial",patch.type==="sample"?"sample":"envelope");
+ $("primary-brightness-dial").dataset.soundPath="filter.cutoff";
+ $("primary-attack-dial").dataset.soundPath=patch.type==="sample"?"attack":"envelope.attack";
+ $("primary-release-dial").dataset.soundPath=patch.type==="sample"?"release":"envelope.release";
  $("remove-instrument").disabled=false;
   $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }
