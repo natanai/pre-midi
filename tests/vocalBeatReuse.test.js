@@ -115,9 +115,12 @@ test("identity collisions, unversioned slices, overlong excerpts and incompatibl
  collision.beats[0].samples[0].sourceRecordingId="unrelated-id";
  assert.match(validateSong(collision).join(" "),/Conflicting Beat audio asset ID/);
  assert.equal(linkedVocalSample({...rec,mime:"audio/webm"},clip,getAsset(rec.id)),null);
- const overlong=structuredClone(clip);
- overlong.trimStartSeconds=-.08;
- assert.equal(linkedVocalSample(rec,overlong,getAsset(rec.id)),null);
+ const tooLongBytes=wav(4.5);
+ const tooLong=makeRecordingAsset("voice-too-long","Long voice","audio/wav",tooLongBytes,
+  {durationSeconds:4.5,trimSeconds:0});
+ assert.equal(linkedVocalSample(tooLong,{recordingId:tooLong.id,trimStartSeconds:0},tooLongBytes),null);
+ assert.throws(()=>linkedVocalSample(rec,{...clip,trimStartSeconds:-.08},getAsset(rec.id)),
+  /Invalid vocal trim/);
  const bad=structuredClone(beat);
  bad.instruments[0].sounds[0].patch.zones[0].durationSeconds=4.2;
  assert.match(validateBeat(bad).join(" "),/excerpt/);
