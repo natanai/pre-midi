@@ -12,6 +12,10 @@ This is the Song-specific historical rollout and integration plan; the active sy
 4. **Transport and export:** expanded view plays Song; collapsed view plays selected Beat. Song playhead can seek from a selected bar. Export Beat or Song as native `.premidi` or WAV. Audio assets travel beside native JSON in portable ZIPs, not inside it.
 5. **Voice foundation:** ● voice dialog, explicit play + record, start bar, optional count-in, visible statuses and recording permission handling. External MediaRecorder assets, waveform, basic level/delete, multiple vocal takes and local draft persistence. Web limits remain 5 minutes / 48 MB per take / 64 MB per ZIP.
 
+### Shared recording editing (Song v16)
+
+Vocal Clips may share a voice Track, move between voice Tracks, duplicate by reference, and trim their recorded lead-in without rewriting audio. Clicking a Song vocal Clip opens the existing lower editing workspace with sampler-style gain, pan, filter, distortion, pitch, vibrato, tremolo and envelopes, plus the shared synth delay bus. The original bytes remain in external assets; Clip-specific effects and trim metadata live in the `.premidi` Song instructions. Legacy Songs continue to load unmodified. The existing native sampler executes the same processing with a versioned sample packet for delay. Short trimmed vocal phrases (up to four seconds) can become a Beat rack instrument via explicit conversion to a separate WAV sample asset, subject to the Beat sample size limit. This is distinct from live Song vocals; the Beat sampler does not yet support delay. The manual trim offset is millisecond precision, with optional approximate sound-onset detection. Timing can be set by bar and sixteenth-note step. Later advances such as formant-preserving pitch, time stretching and automation remain separate work.
+
 ## Immediate acceptance work: Stage 5 reliability
 
 - Verify real microphones on iOS, Android and desktop; measure and compensate capture/playback latency at selected Song positions.
