@@ -70,6 +70,18 @@
   await wait(()=>Number(doc.querySelector(
    '.freeform-sound-modules [data-sound-path="effects.drive"] [role="slider"]'
   )?.getAttribute("aria-valuenow"))>.05,"Sound effects persist after adjustment");
+  const save=doc.querySelector(".freeform-sound-save");
+  assert(save,"Freeform uses the existing Save preset dialog");
+  save.click();
+  await wait(()=>get("save-preset-dialog").open,"Shared preset dialog opens");
+  get("save-preset-name").value="Freeform preset test";
+  get("save-preset-form").dispatchEvent(new Event("submit",{
+   bubbles:true,cancelable:true
+  }));
+  await wait(()=>!get("save-preset-dialog").open,"Freeform preset saves locally");
+  assert(JSON.parse(win.localStorage.getItem("premidi-user-sounds-v2")||"[]")
+   .some(preset=>preset.name==="Freeform preset test"),
+   "Freeform preset appears in the one user Sound library");
   const soundPreview=doc.querySelector(".freeform-sound-play");
   assert(soundPreview?.textContent==="▶","Freeform Sound has a native-aware preview");
   soundPreview.click();

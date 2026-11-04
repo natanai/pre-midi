@@ -4,6 +4,7 @@ import {create,clone,makeSound,id} from "../schema.js";
 import {makePatch} from "../synth.js";
 import {createFreeform,addFreeformInstrument,addFreeformNote,validateFreeform} from "../freeformModel.js";
 import {applyFreeformPreset} from "../freeformPresets.js";
+import {presetFromInstrument,validUserSound} from "../userSoundLibrary.js";
 import {makeSampleAsset} from "../sampler.js";
 import {encodeMonoWav} from "../recording.js";
 import {createSong,validateSong,upgradeSongFeatures} from "../songModel.js";
@@ -114,4 +115,25 @@ test("sample preset Assets deduplicate, remain external, and round-trip inside a
  assert.throws(()=>applyFreeformPreset(layer,{mode:"add"},{
   name:"lost audio",patch:sample({id:"missing-sample"}),trigger:"pitched",assets:[]
  }),/missing sample Asset/);
+});
+
+test("freeform Sounds and whole racks save using the canonical user preset factory",()=>{
+ const layer=createFreeform();
+ const rack=applyFreeformPreset(layer,{mode:"add"},{
+  name:"saved rack",patch:makePatch(),trigger:"hit",rackSounds:[
+   makeSound("kick",makePatch(),"hit"),makeSound("snare",makePatch(),"hit")
+  ]
+ });
+ const inst=layer.instruments.find(entry=>entry.id===rack.instrumentId);
+ const row=presetFromInstrument(inst,layer,{
+  name:"saved hit",soundId:inst.sounds[0].id
+ });
+ const whole=presetFromInstrument(inst,layer,{
+  name:"all drums",wholeRack:true
+ });
+ assert.equal(row.sounds,undefined);
+ assert.equal(whole.sounds.length,2);
+ assert.equal(whole.layout,"rack");
+ assert.ok(validUserSound(row));
+ assert.ok(validUserSound(whole));
 });
