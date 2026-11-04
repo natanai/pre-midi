@@ -22,21 +22,21 @@ const server=createServer(async(request,response)=>{
 });
 await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
 try{
- for(const [width,height] of [[1440,900],[780,900]]){
+ for(const suite of ["song-check","freeform-check"])for(const [width,height] of [[1440,900],[780,900]]){
   const port=server.address().port,chrome=process.env.CHROME_BIN||"google-chrome";
   const result=new Promise(resolve=>{receive=resolve;});
   const child=spawn(chrome,["--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
    "--autoplay-policy=no-user-gesture-required","--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream",
    "--window-size="+width+","+height,
    "--no-first-run","--user-data-dir=/tmp/premidi-song-"+width+"-"+process.pid,
-   "http://127.0.0.1:"+port+"/tests/song-check.html"],{stdio:"ignore"});
+   "http://127.0.0.1:"+port+"/tests/"+suite+".html"],{stdio:"ignore"});
   let timer;
   try{
    const done=await Promise.race([result,
     new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error("Song browser test timed out")),65000);}),
     new Promise((_,reject)=>{child.once("error",reject);child.once("exit",code=>reject(Error("Chrome exited "+code)));})]);
    assert.equal(done?.status,"PASS",done?.details);
-   console.log("PASS Song UI",width+"x"+height,done.details);
+   console.log("PASS "+suite,width+"x"+height,done.details);
   }finally{
    clearTimeout(timer);receive=null;child.kill("SIGKILL");
   }
