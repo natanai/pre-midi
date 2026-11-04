@@ -205,6 +205,19 @@
    "Voice edits replace the Beat grid without adding a separate editor");
   assert(frame.contentWindow.getComputedStyle(frame.contentDocument.querySelector(".beat-header")).display!=="none",
    "Playback transport stays visible during vocal editing");
+  const visualKinds=new Set([...frame.contentDocument.querySelectorAll("#vocal-editor .visual-sound-panel")].map(node=>node.dataset.visualKind));
+  for(const kind of ["sample","filter","movement","delay"])
+   assert(visualKinds.has(kind),"Vocal Sound shares the sampler's "+kind+" interactive illustration");
+  const filterOff=frame.contentDocument.querySelector('#vocal-editor select[aria-label="Recorded sound filter type"]');
+  assert(filterOff.value==="off","An unfiltered vocal clearly shows that its filter is off");
+  const graphOff=frame.contentDocument.querySelector('#vocal-editor [data-visual-kind="filter"]');
+  assert(graphOff.querySelectorAll(".visual-graph-point").length===0,
+   "The bypassed filter must not pretend to have an active frequency handle");
+  filterOff.value="lowpass";filterOff.dispatchEvent(new Event("change",{bubbles:true}));
+  assert(frame.contentDocument.querySelector('#vocal-editor [data-sound-path="filter.cutoff"]'),
+   "Enabling filter reveals the same brightness control used for sampled sounds");
+  assert(frame.contentDocument.querySelector('#vocal-editor [data-visual-kind="filter"] .visual-graph-point'),
+   "Enabling the vocal filter makes the shared response graph interactive");
   get("song-vocal-level").value="1.3";
   get("song-vocal-level").dispatchEvent(new Event("change",{bubbles:true}));
   get("export").click();
