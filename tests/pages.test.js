@@ -71,7 +71,7 @@ test("Pages stages nested DSP modules and both stylesheets without development f
   await mkdir(new URL("phone/",root));
   await mkdir(new URL("desktop/icons/",root),{recursive:true});
   const files={"studio.js":'import {value} from "./src/dsp/value.js";',
-   "src/dsp/value.js":'export const value=1;',"src/dsp/phone-value.js":'export const phoneValue=1;',"src/dsp/phone-extra.js":'export const extra=true;',"style.css":"body{}","studioAlignment.css":".row{}",
+   "src/dsp/value.js":'export const value=1;',"src/dsp/phone-value.js":'export const phoneValue=1;',"src/dsp/phone-extra.js":'export const extra=true;',"style.css":"body{}","studioAlignment.css":".row{}","freeform.css":".freeform{}",
    "phone/index.html":'<head><link rel="stylesheet" href="./phone.css"></head><script type="module" src="./main.js"></script>',"phone/phone.css":"body{}",
    "phone/main.js":'import {phoneValue} from "../src/dsp/phone-value.js"; export const phoneReady=phoneValue; export const load=()=>import("../src/dsp/phone-extra.js");',"phone/manifest.webmanifest":"{}",
     "phone/sw.js":'const build="__BUILD__"; const assets=__ASSETS__; const factory=__FACTORY_SAMPLES__;',
@@ -82,6 +82,7 @@ test("Pages stages nested DSP modules and both stylesheets without development f
   await preparePages(root,"abcdef123456");
   assert.equal(await readFile(new URL("dist/src/dsp/value.js",root),"utf8"),files["src/dsp/value.js"]);
   assert.equal(await readFile(new URL("dist/studioAlignment.css",root),"utf8"),files["studioAlignment.css"]);
+  assert.equal(await readFile(new URL("dist/freeform.css",root),"utf8"),files["freeform.css"]);
   assert.equal(await readFile(new URL("dist/favicon.svg",root),"utf8"),files["favicon.svg"]);
   assert.equal(await readFile(new URL("dist/phone/phone.css",root),"utf8"),files["phone/phone.css"]);
   assert.equal(await readFile(new URL("dist/phone/main.js",root),"utf8"),files["phone/main.js"]);

@@ -152,3 +152,18 @@ test("selecting a Song vocal reuses the Beat workspace with sample effect dials"
  assert.match(native,/vocalEffects\(clip\)/);
  assert.match(read("style.css"),/main\.editing-vocal > \.work\{display:none\}/);
 });
+
+test("attached freeform lanes retain parent ownership and offer direct Song-time note editing",()=>{
+ const songUI=read("songUI.js"),freeform=read("freeformUI.js"),css=read("freeform.css"),html=read("index.html");
+ assert.match(songUI,/freeformUI\.renderAttached\(track,width\)/);
+ assert.match(songUI,/unpackBeatClip\(getSong\(\),clip\.id\)/);
+ assert.match(songUI,/song-unpack-action/);
+ assert.match(songUI,/song-freeform-row/);
+ assert.match(freeform,/ensureFreeform\(chosen\)/);
+ assert.match(freeform,/addFreeformNote\(/);
+ assert.match(freeform,/moveFreeformPassage\(/);
+ assert.match(freeform,/addFreeformChunkPlacement\(/);
+ assert.match(css,/\.song-freeform-label/);
+ assert.match(css,/main\.editing-freeform/);
+ assert.match(html,/href="\.\/freeform\.css"/);
+});

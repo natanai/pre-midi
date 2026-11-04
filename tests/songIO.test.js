@@ -8,6 +8,7 @@ import {encodeMonoWav} from "../recording.js";
 import {readZip} from "../zip.js";
 import {clearAssets,getAsset} from "../assetRegistry.js";
 import {unpackBeatClip} from "../freeformModel.js";
+import {unpackBeatClip} from "../freeformModel.js";
 
 test("unrecorded native Songs roundtrip as plain .premidi instructions",async()=>{
  const beat=create(),song=createSong(beat);
@@ -70,4 +71,27 @@ test("freeform notes survive a Song instruction export/reimport",async()=>{
  const file=exportSongProject(song);
  assert.match(file.name,/\.premidi$/);
  assert.deepEqual(parseSong(await file.blob.text()),song);
+});
+
+test("sample assets stay external after Song freeform unpack and portable round trip",async()=>{
+ const bytes=encodeMonoWav(Float32Array.from({length:4410},(_,i)=>Math.sin(i*.04)*.3));
+ const beat=create(),asset=makeSampleAsset("unpack-external-wav","Unpacked sample","audio/wav",bytes,"test");
+ beat.samples=[asset];
+ beat.instruments[0].sounds[0].patch={
+  type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:60}],
+  followPitch:true,transpose:0,gain:1,attack:.01,release:.1,pan:0
+ };
+ beat.instruments[0].chunks[0].notes=[{id:"sample-hit",pitch:60,start:2,duration:2,velocity:.8}];
+ const song=createSong(beat);
+ unpackBeatClip(song,song.tracks[0].clips[0].id);
+ const manifest=exportSongProject(song);
+ assert.match(manifest.name,/\.zip$/);
+ const entries=await readZip(manifest.blob);
+ assert.deepEqual(entries.get(asset.path),bytes);
+ clearAssets();
+ const restored=await importSongProject({
+  name:manifest.name,size:manifest.blob.size,arrayBuffer:()=>manifest.blob.arrayBuffer()
+ });
+ assert.deepEqual(restored,song);
+ assert.deepEqual(getAsset(asset.id),bytes);
 });
