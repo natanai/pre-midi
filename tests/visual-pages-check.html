@@ -1,7 +1,7 @@
 <!doctype html><meta charset="utf-8">
 <style>body{margin:0;background:#080808;color:#ddd;font:12px monospace}
 .mount{max-width:680px;margin:8px auto}button{cursor:pointer}</style>
-<div id="sample" class="mount"></div><div id="synth" class="mount"></div><div id="harmonics" class="mount"></div><div id="note" class="mount"></div>
+<div id="sample" class="mount"></div><div id="synth" class="mount"></div><div id="harmonics" class="mount"></div><div id="routes" class="mount"></div><div id="note" class="mount"></div>
 <pre id="result"></pre>
 <script type="module">
 import {renderSamplerEditor} from "../samplerUI.js";
@@ -89,6 +89,30 @@ try{
  h32.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true,cancelable:true}));
  pass("harmonic 32 point edits existing oscillator partial",
   harmonicsEdits.some(([path,value])=>path.join(".")==="oscillators.0.harmonics.31"&&value>0));
+ const routePatch=makePatch("init");
+ routePatch.version=2;
+ routePatch.modulation={version:1,routes:["lfo","envelope","keytrack"].map((kind,i)=>({
+  id:"coverage-"+i,source:defaultSource(kind),target:"filter.cutoff",
+  unit:"octaves",depth:1,polarity:"bipolar",smoothing:.005
+ }))};
+ renderPatchEditor(document.querySelector("#routes"),routePatch,()=>{},()=>{},"visual-route-coverage");
+ const routeEditor=document.querySelector("#routes");
+ for(const path of [
+  "modulation.routes.0.smoothing",
+  ...["attack","decay","sustain","release"].map(k=>"modulation.routes.1.source.envelope."+k),
+  "modulation.routes.2.source.root","modulation.routes.2.source.span"
+ ])pass("modulation diagram has a matching control for "+path,
+  !!routeEditor.querySelector('[data-sound-path="'+path+'"] [role="slider"]'));
+ const routesVisual=routeEditor.querySelector('.visual-sound-panel[data-visual-kind="modulation"]');
+ routesVisual.querySelector("details").open=true;
+ const nextRoute=routesVisual.querySelector('button[aria-label="next modulation page"]');
+ nextRoute.click();nextRoute.click();
+ pass("envelope route shows two-axis controls",routesVisual.querySelectorAll(
+  '.visual-graph-point[aria-description*="left/right"][aria-description*="up/down"]').length>=2);
+ nextRoute.click();
+ pass("key tracking root and span share a two-axis handle",
+  [...routesVisual.querySelectorAll(".visual-graph-point")].some(point=>
+   point.getAttribute("aria-label")==="key tracking center / spread"));
  let noteLevel=null,noteBend=null;
  renderNoteExpression(document.querySelector("#note"),{
   velocity:.8,bend:{shape:"wave",amount:2,rate:4}
