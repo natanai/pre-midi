@@ -8,6 +8,7 @@
     "songUI.js",
     "freeformUI.js",
     "vocalEditor.js",
+    "audioControlUI.js",
     "audioWaveform.js",
     "instrumentUI.js",
     "samplerUI.js",
@@ -24,6 +25,30 @@
     "soundScope.js"
   ],
   "actions": [
+    {
+      "id": "event:audioControlUI:select-change:1",
+      "source": "audioControlUI.js",
+      "anchor": "select",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "audioControlUI.js select.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "sound",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:audioControlUI:select-change:2",
+      "source": "audioControlUI.js",
+      "anchor": "select",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "audioControlUI.js select.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "sound",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
     {
       "id": "event:audioWaveform:hit-keydown:1",
       "source": "audioWaveform.js",
@@ -1345,18 +1370,6 @@
       "proof": "not-qualified"
     },
     {
-      "id": "event:samplerUI:filterselect-change:1",
-      "source": "samplerUI.js",
-      "anchor": "filterSelect",
-      "kind": "listener",
-      "event": "change",
-      "desktopRoute": "samplerUI.js filterSelect.change",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
       "id": "event:samplerUI:mapdetails-toggle:1",
       "source": "samplerUI.js",
       "anchor": "mapDetails",
@@ -1382,18 +1395,6 @@
     },
     {
       "id": "event:samplerUI:select-change:1",
-      "source": "samplerUI.js",
-      "anchor": "select",
-      "kind": "listener",
-      "event": "change",
-      "desktopRoute": "samplerUI.js select.change",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:samplerUI:select-change:2",
       "source": "samplerUI.js",
       "anchor": "select",
       "kind": "listener",
@@ -3121,36 +3122,12 @@
       "proof": "not-qualified"
     },
     {
-      "id": "event:vocalEditor:bendselect-change:1",
-      "source": "vocalEditor.js",
-      "anchor": "bendSelect",
-      "kind": "listener",
-      "event": "change",
-      "desktopRoute": "vocalEditor.js bendSelect.change",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "song",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
       "id": "event:vocalEditor:input-change:1",
       "source": "vocalEditor.js",
       "anchor": "input",
       "kind": "listener",
       "event": "change",
       "desktopRoute": "vocalEditor.js input.change",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "song",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:vocalEditor:select-change:1",
-      "source": "vocalEditor.js",
-      "anchor": "select",
-      "kind": "listener",
-      "event": "change",
-      "desktopRoute": "vocalEditor.js select.change",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "song",
       "phoneStatus": "todo",
