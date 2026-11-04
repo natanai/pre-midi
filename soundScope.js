@@ -62,7 +62,7 @@ export function scopeWaveformData(buffer,referencePitch=60,count=620,atSeconds=n
  // A slow attack or plucked transient should not leave a mostly empty wave.
  // Select one genuinely audible slice in the first held second, using the
  // identical timing and sample indices for the left and right channels.
- const latest=Math.max(0,Math.min(buffer.length-size,Math.round(rate*1.08)));
+ const latest=Math.max(0,atSeconds===null?Math.min(buffer.length-size,Math.round(rate*1.08)):buffer.length-size);
  let start=atSeconds===null?0:Math.round(rate*clamp(atSeconds,0,latest/rate)),best=-1;
  if(atSeconds===null)for(let k=0;k<15;k++){
   const candidate=Math.min(latest,Math.round(rate*(.02+k*.072)));
