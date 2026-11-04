@@ -6,7 +6,7 @@ import {renderEvents} from "../audio.js";
 import {createSong} from "../songModel.js";
 import {createFreeform,addFreeformInstrument,addFreeformNote,
  addFreeformChunkPlacement,eventsAtFreeformStep,freeformEndStep,
- moveFreeformPassage,unpackBeatClip,createBeatFromFreeformSelection,validateFreeform,FREEFORM_SONG_VERSION} from "../freeformModel.js";
+ moveFreeformPassage,unpackBeatClip,createBeatFromFreeformSelection,soundingFreeformPitches,validateFreeform,FREEFORM_SONG_VERSION} from "../freeformModel.js";
 
 test("empty freeform supports long notes and independent reusable Chunks",()=>{
  const layer=createFreeform(),instrument=addFreeformInstrument(layer);
@@ -150,4 +150,21 @@ test("Create Beat from selection supports non-bar-aligned Song positions",()=>{
  assert.equal(beat.bars,1);
  assert.deepEqual(beat.instruments[0].chunks[0].notes.map(note=>note.start).sort((a,b)=>a-b),[2,14]);
  assert.deepEqual(validateBeat(beat),[]);
+});
+
+test("freeform keys light for independent sustained notes and repeated placed Chunks",()=>{
+ const layer=createFreeform(),first=addFreeformInstrument(layer),second=addFreeformInstrument(layer);
+ addFreeformNote(first,{pitch:64,start:16,duration:48,velocity:.8});
+ first.chunks[0].notes=[{id:id(),pitch:72,start:12,duration:4,velocity:.8}];
+ addFreeformChunkPlacement(first,first.chunks[0].id,0,{length:16,every:16,repeats:3});
+ addFreeformNote(second,{pitch:79,start:16,duration:1,velocity:.8});
+ assert.deepEqual([...soundingFreeformPitches(layer,first.id,12)].sort((a,b)=>a-b),[72]);
+ assert.deepEqual([...soundingFreeformPitches(layer,first.id,28)].sort((a,b)=>a-b),[64,72]);
+ assert.deepEqual([...soundingFreeformPitches(layer,first.id,44)].sort((a,b)=>a-b),[64,72]);
+ assert.deepEqual([...soundingFreeformPitches(layer,first.id,63)],[64]);
+ assert.deepEqual([...soundingFreeformPitches(layer,first.id,64)],[]);
+ assert.deepEqual([...soundingFreeformPitches(layer,first.id,16)],[64]);
+ assert.deepEqual([...soundingFreeformPitches(layer,second.id,16)],[79]);
+ assert.deepEqual([...soundingFreeformPitches(layer,"missing",16)],[]);
+ assert.deepEqual([...soundingFreeformPitches(layer,first.id,-1)],[]);
 });
