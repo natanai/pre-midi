@@ -55,7 +55,7 @@ test("MediaRecorder snapshots alignment before permission and preserves original
   take.begin({startTime:1.05,context:{currentTime:1},onLimit:()=>{}});
   clock=1000;
   const result=await take.finish();
-  assert.equal(result.trimSeconds,.125);
+  assert.ok(Math.abs(result.trimSeconds-.125)<1e-9);
   assert.equal(result.durationSeconds,1);
   assert.equal(result.bytes.length,64,"Recorded bytes remain unchanged");
   assert.equal(stops,1);
