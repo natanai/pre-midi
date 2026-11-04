@@ -1,11 +1,11 @@
 // Song arrangement UI. Beat editor remains the existing studio underneath.
-import {songDurationSteps,removeSongClip,removeEmptyVocalTrack} from "./songModel.js";
+import {songDurationSteps,removeSongClip,removeEmptyVocalTrack,moveVocalClip} from "./songModel.js";
 import {id} from "./schema.js";
 // All Song lanes and the bar ruler use the same scale; only the viewport
 // determines how much empty timeline is visible. There is no fixed song end.
 const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
 const integer=(value,fallback)=>Number.isFinite(value)?Math.max(0,Math.round(value)):fallback;
-export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{}}){
+export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{},onSelectionChange=()=>{}}){
  const $=id=>root.querySelector("#"+id);
  const viewport=$("song-scroll"),tracks=$("song-tracks"),ruler=$("song-ruler"),footer=$("song-timeline-footer");
  let selectedClipId=null,dragging=false,ignoreClick=false,playPosition=-1,seekStep=0;
@@ -76,7 +76,8 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
     if(e.pointerId!==pointerId)return;
     if(Math.abs(e.clientX-startX)>5)moved=true;
     if(!moved)return;
-    next=Math.max(0,original+Math.round((e.clientX-startX)/BAR_PX)*BAR_STEPS);
+    const grid=e.shiftKey?1:4;
+    next=Math.max(0,original+Math.round((e.clientX-startX)/(BAR_PX/BAR_STEPS*grid))*grid);
     block.style.left=(next/BAR_STEPS*BAR_PX)+"px";
    };
    const clear=()=>{
@@ -89,7 +90,10 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
     clear();
     if(!moved)return;
     ignoreClick=true;setTimeout(()=>{ignoreClick=false;},0);
-    if(next!==original)apply(()=>{clip.startStep=next;});
+    const destination=document.elementFromPoint(e.clientX,e.clientY)?.closest(".song-track-row")?.dataset.trackId;
+    const nextTrack=getSong().tracks.find(track=>track.id===destination&&track.kind==="vocal");
+    if(next!==original||(nextTrack&&!nextTrack.clips.includes(clip)))
+     apply(()=>{clip.startStep=next;if(nextTrack)moveVocalClip(getSong(),clip.id,nextTrack.id);});
     else render();
    };
    const cancel=e=>{
@@ -131,11 +135,18 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
    select(clip.id);
   });
   block.addEventListener("keydown",event=>{
-   if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;
+   if(!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key))return;
    event.preventDefault();
-   const delta=event.key==="ArrowRight"?BAR_STEPS:-BAR_STEPS;
-   const next=Math.max(0,clip.startStep+delta);
-   if(next!==clip.startStep)apply(()=>{clip.startStep=next;});
+   if(event.key==="ArrowUp"||event.key==="ArrowDown"){
+    const lanes=getSong().tracks.filter(item=>item.kind==="vocal");
+    const index=lanes.findIndex(item=>item.id===track.id);
+    const dest=lanes[index+(event.key==="ArrowUp"?-1:1)];
+    if(dest)apply(()=>moveVocalClip(getSong(),clip.id,dest.id));
+   }else{
+    const delta=(event.shiftKey?1:4)*(event.key==="ArrowRight"?1:-1);
+    const next=Math.max(0,clip.startStep+delta);
+    if(next!==clip.startStep)apply(()=>{clip.startStep=next;});
+   }
    tracks.querySelector('[data-clip-id="'+clip.id+'"]')?.focus({preventScroll:true});
   });
   enableVocalDrag(block,clip);
@@ -145,7 +156,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   selectedClipId=clipId;
   const found=selected();
   if(found?.clip.beatId)onSelectBeat(found.clip.beatId);
-  render();
+  render();onSelectionChange();
  }
  function clipButton(track,clip){
   const beat=localBeat(clip.beatId);
@@ -320,7 +331,9 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
    $("song-beat-start-field").hidden=false;
    $("song-beat-length-field").hidden=isVoice;
    $("song-vocal-level-field").hidden=!isVoice;
+   $("song-vocal-step-field").hidden=!isVoice;
    $("song-clip-start").value=String(Math.floor(clip.startStep/BAR_STEPS)+1);
+   if(isVoice)$("song-vocal-step").value=String(clip.startStep%BAR_STEPS+1);
    if(isVoice)$("song-vocal-level").value=String(clip.gain??1);
    else $("song-clip-length").value=String(Math.max(1,clip.lengthSteps/BAR_STEPS));
   }
@@ -374,8 +387,14 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
  });
  $("song-clip-start").addEventListener("change",event=>{
   const item=selected();if(!item)return;
-  const next=integer(Number(event.target.value)-1,0)*BAR_STEPS;
+  const next=integer(Number(event.target.value)-1,0)*BAR_STEPS+
+   (item.track.kind==="vocal"?item.clip.startStep%BAR_STEPS:0);
   apply(()=>{item.clip.startStep=next;});
+ });
+ $("song-vocal-step").addEventListener("change",event=>{
+  const item=selected();if(!item||item.track.kind!=="vocal")return;
+  const step=Math.max(1,Math.min(BAR_STEPS,integer(Number(event.target.value),1)));
+  apply(()=>{item.clip.startStep=Math.floor(item.clip.startStep/BAR_STEPS)*BAR_STEPS+step-1;});
  });
  $("song-clip-length").addEventListener("change",event=>{
   const item=selected();if(!item)return;
@@ -390,7 +409,10 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const value=event.target.value.trim()||"Untitled song";
   apply(()=>{getSong().title=value;});
  });
- return {render,select,getStartStep:selectedStart,setStartStep,setPosition(bar){
+ return {render,select,getSelectedVocal(){
+  const found=selected();if(!found||found.track.kind!=="vocal")return null;
+  return {...found,recording:getSong()?.recordings?.find(item=>item.id===found.clip.recordingId)};
+ },getStartStep:selectedStart,setStartStep,setPosition(bar){
   playPosition=bar;
   updateCursor();
  }};
