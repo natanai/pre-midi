@@ -51,8 +51,19 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   return sound?{inst,sound,layer:getLayer(),song:getSong()}:null;
  };
  const context=ctx=>({samples:ctx.layer.samples,bpm:ctx.song.bpm,bars:1,instruments:[ctx.inst]});
- const visualize=(ctx,patch=ctx.sound.patch,level=ctx.inst.volume*ctx.sound.gain)=>
-  createSignalDisplay(scope,patch,context(ctx),"#86c6a7",level,ctx.sound.referencePitch,null,ctx.sound.id);
+ let scopeUpdate=null,scopeKey="";
+ const visualize=(ctx,patch=ctx.sound.patch,level=ctx.inst.volume*ctx.sound.gain)=>{
+  // The existing scope is the real PCM measurement. Keep its SVG and A/B
+  // state during dial previews, but recreate it when the sound identity,
+  // sample asset set or reference pitch changes.
+  const key=ctx.sound.id+"|"+ctx.sound.patch.type+"|"+
+   ctx.sound.referencePitch+"|"+ctx.layer.samples.map(asset=>asset.id).join(",");
+  if(scopeKey!==key||!scopeUpdate){
+   scopeUpdate=createSignalDisplay(scope,patch,context(ctx),"#86c6a7",
+    level,ctx.sound.referencePitch,null,ctx.sound.id);
+   scopeKey=key;
+  }else scopeUpdate(patch,level);
+ };
  const mutateSelected=(callback,expectedId=null)=>mutate(()=>{
   const ctx=current();
   if(!ctx||expectedId&&ctx.sound.id!==expectedId)throw Error("Sound selection changed.");
