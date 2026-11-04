@@ -1580,3 +1580,13 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .note-expression .expression-visual .visual-panel-graph:focus-visible {
  outline:1px dotted var(--signal-mauve);outline-offset:-2px
 }
+
+/* Shared source-time waveform controls. No media/phone overrides. */
+.audio-waveform-editor{display:grid;gap:5px;min-width:0}
+.audio-waveform-editor .vocal-waveform{display:block;height:110px;width:100%;min-width:0}
+.audio-trim-handle{cursor:ew-resize;touch-action:none;pointer-events:all}
+.audio-trim-handle:focus-visible{stroke:var(--bright);stroke-width:1.5px;outline:none}
+.audio-waveform-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
+.audio-waveform-tools label{display:flex;align-items:center;gap:6px}
+.audio-waveform-tools select{background:var(--panel);color:var(--bright);border:1px solid var(--line);padding:4px 7px;min-height:29px}
+.audio-trim-readout{min-width:75px;text-align:right;color:var(--bright)}
