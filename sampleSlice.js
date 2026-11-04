@@ -29,3 +29,10 @@ export function requiresSampleSliceFormat(document){
  return document?.instruments?.some(inst=>inst?.sounds?.some(sound=>
   sound?.patch?.type==="sample"&&sound.patch.zones?.some(hasSampleSlice)))||false;
 }
+
+export function isRecordingSampleAlias(recording,sample){
+ return !!recording&&!!sample&&sample.sourceRecordingId===recording.id&&
+  sample.id===recording.id&&sample.name===recording.name&&
+  sample.mime==="audio/wav"&&recording.mime==="audio/wav"&&
+  sample.path===recording.path;
+}
