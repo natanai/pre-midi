@@ -7,6 +7,7 @@ import {addBeat} from "./songModel.js";
 import {makeChunk,id} from "./schema.js";
 import {referencedSampleIds} from "./soundModel.js";
 import {installFreeformSoundUI} from "./freeformSoundUI.js";
+import {overlappingFreeformNotes,layoutFreeformNoteRow} from "./freeformLayerUIModel.js";
 
 const BAR_STEPS=16,SONG_BAR_PIXELS=54,STEP_WIDTH=8,ROW_HEIGHT=20,VIEW_BARS=8;
 const PITCH_MIN=36,PITCH_MAX=96;
@@ -165,6 +166,25 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    movement.title="This note retains its source Beat cutoff curve and phase, even when moved in the Song.";
    section.append(movement);
   }
+  const overlaps=overlappingFreeformNotes(instrument(),note);
+  if(overlaps.length){
+   const other=el("label","freeform-field freeform-layer-choice");
+   const select=el("select");
+   select.setAttribute("aria-label","Choose overlapping freeform note");
+   const choices=[note,...overlaps].sort((a,b)=>a.start-b.start||
+    String(a.id).localeCompare(String(b.id)));
+   for(const entry of choices){
+    const label="bar "+(Math.floor(entry.start/16)+1)+" · step "+
+     (entry.start%16+1)+" · "+entry.duration+" steps";
+    const option=el("option","",label);option.value=entry.id;select.append(option);
+   }
+   select.value=note.id;
+   select.addEventListener("change",()=>{selectedNoteId=select.value;render();});
+   other.append(el("span","","overlapping notes · "+choices.length),select);
+   section.append(other);
+   section.append(el("span","freeform-layer-help",
+    "These notes play together. Choose one to edit without changing the others."));
+  }
   section.append(field("bar",input("number",Math.floor(position/16)+1,1,4096,v=>{
    if(Number.isInteger(v))changeNote(note.id,{start:(v-1)*16+position%16});
   })));
@@ -180,6 +200,13 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   section.append(field("level",input("range",note.velocity,0,1,v=>{
    if(Number.isFinite(v))changeNote(note.id,{velocity:v});
   })));
+  section.append(action("+ layer note",()=>{
+   const duplicate=structuredClone(note);
+   duplicate.id=id();
+   if(mutate(()=>addFreeformNote(instrument(),duplicate))){
+    selectedNoteId=duplicate.id;render();
+   }
+  },"freeform-duplicate-note"));
   section.append(action("delete note",()=>mutate(()=>{
    const inst=instrument();inst.notes=inst.notes.filter(item=>item.id!==note.id);
    selectedNoteId=null;
@@ -319,15 +346,26 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
     " at Song bar "+(barStart+1)+" or a clicked position");
    const rowNotes=inst.notes.filter(note=>rowData.pitch!==null?
     note.pitch===rowData.pitch:note.soundId===rowData.soundId);
+   const stacks=layoutFreeformNoteRow(rowNotes);
    for(const note of rowNotes){
-    if(note.start+note.duration<viewStep()||note.start>=viewStep()+VIEW_BARS*16)continue;
+    const visibleStart=Math.max(note.start,viewStep());
+    const visibleEnd=Math.min(note.start+note.duration,viewStep()+VIEW_BARS*16);
+    if(visibleEnd<=visibleStart)continue;
+    const position=stacks.get(note.id);
     const n=action("",()=>{selectedNoteId=note.id;render();},"freeform-roll-note");
-    n.title="note at bar "+(Math.floor(note.start/16)+1)+", step "+(note.start%16+1);
+    n.title="note at bar "+(Math.floor(note.start/16)+1)+", step "+(note.start%16+1)+
+     (position.voices>1?"; up to "+position.voices+" layered notes on this row":"");
     n.setAttribute("aria-label",n.title+"; select to edit");
     n.classList.toggle("selected",selectedNoteId===note.id);
-    n.style.left=Math.max(0,note.start-viewStep())*STEP_WIDTH+"px";
-    n.style.width=Math.max(6,Math.min(note.duration*STEP_WIDTH,
-     width-Math.max(0,note.start-viewStep())*STEP_WIDTH))+"px";
+    n.classList.toggle("layered",position.voices>1);
+    n.classList.toggle("layer-overflow",position.overflow);
+    n.style.left=(visibleStart-viewStep())*STEP_WIDTH+"px";
+    n.style.width=Math.max(3,(visibleEnd-visibleStart)*STEP_WIDTH)+"px";
+    if(position.voices>1){
+     n.style.top=(2+position.slot*(position.voices===2?8:5))+"px";
+     n.style.height=(position.voices===2?7:4)+"px";
+     n.style.zIndex=String(note.id===selectedNoteId?9:position.slot+2);
+    }
     n.addEventListener("pointerdown",event=>{
      if(event.button!==0)return;event.stopPropagation();
      const firstX=event.clientX,firstY=event.clientY;
