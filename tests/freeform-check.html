@@ -68,6 +68,9 @@
   get("play").click();
   assert(!issues.length,"No runtime browser errors: "+issues.join("; "));
   await report("PASS","Freeform empty editing, notes, unpack, versioned export and playback");
- }catch(error){await report("FAIL",String(error.stack||error)+" "+issues.join("; "));}
+ }catch(error){
+  const info={play:frame.contentDocument?.getElementById("play")?.getAttribute("aria-label"),status:frame.contentDocument?.getElementById("status")?.textContent,songHidden:frame.contentDocument?.getElementById("song-panel")?.hidden,clipCount:frame.contentDocument?.querySelectorAll(".song-beat-clip").length,freeformNotes:frame.contentDocument?.querySelectorAll(".freeform-roll-note").length};
+  await report("FAIL",String(error.stack||error)+" "+JSON.stringify(info)+" "+issues.join("; "));
+ }
 })();
 </script>
