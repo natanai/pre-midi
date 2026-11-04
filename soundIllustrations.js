@@ -258,6 +258,36 @@ export const diagram=(patch,type)=>{
  }
  return {paths,handles,labels,color};
 };
+// A nested parameter names the same control family as its parent. All
+// diagrams use this exact association rather than textual knob labels.
+export function soundPathsRelated(left,right){
+ if(!Array.isArray(left)||!Array.isArray(right)||!left.length||!right.length)return false;
+ const common=Math.min(left.length,right.length);
+ return left.slice(0,common).every((part,i)=>part===right[i]);
+}
+const linkState=new WeakMap();
+export function bindSoundIllustrationLinks(root,panels){
+ linkState.get(root)?.abort();
+ const controller=new AbortController();linkState.set(root,controller);
+ const highlight=path=>panels.forEach(panel=>panel.highlight(path));
+ const parse=target=>{
+  const field=target?.closest?.("[data-sound-path]");
+  if(!field||!root.contains(field))return null;
+  try{return JSON.parse(field.dataset.soundPath);}catch{return null;}
+ };
+ root.addEventListener("pointerover",event=>{
+  const path=parse(event.target);if(path)highlight(path);
+ },{signal:controller.signal});
+ root.addEventListener("pointerout",event=>{
+  if(parse(event.target)&&!parse(event.relatedTarget))highlight(null);
+ },{signal:controller.signal});
+ root.addEventListener("focusin",event=>{
+  const path=parse(event.target);if(path)highlight(path);
+ },{signal:controller.signal});
+ root.addEventListener("focusout",event=>{
+  if(parse(event.target)&&!parse(event.relatedTarget))highlight(null);
+ },{signal:controller.signal});
+}
 let zoomId=null;
 const idFor=(kind,index)=>kind+"-"+index;
 function setZoom(wrapper,id,enabled){
@@ -295,7 +325,44 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  const summary=details.querySelector("summary");
  if(summary)summary.after(area);else details.prepend(area);
  wrapper.append(details);
- let active=null,latestPatch=patch,visibleHandles=[];
+ let active=null,latestPatch=patch,visibleHandles=[],linked=null;
+ const related=paths=>linked&&paths.some(path=>soundPathsRelated(path,linked));
+ function updateLink(){
+  let matched=false;
+  for(const element of graphic.querySelectorAll("[data-affects]")){
+   let affects=[];
+   try{affects=JSON.parse(element.dataset.affects);}catch{}
+   const yes=related(affects);
+   element.classList.toggle("visual-graph-linked",!!yes);matched ||=!!yes;
+  }
+  for(const point of handlesRoot.children){
+   const handle=visibleHandles[Number(point.dataset.handle)];
+   const yes=!!handle&&related(handle.axes.map(a=>a.path));
+   point.classList.toggle("visual-point-linked",yes);matched ||=yes;
+  }
+  area.classList.toggle("visual-panel-linked",matched);
+ }
+ const highlight=path=>{linked=Array.isArray(path)&&path.length?path:null;updateLink();};
+ function findControl(path){
+  const root=wrapper.closest("#synth-editor")||wrapper.parentElement;
+  const candidates=[...root.querySelectorAll("[data-sound-path]")];
+  const exact=candidates.find(el=>el.dataset.soundPath===JSON.stringify(path));
+  return exact||candidates.find(el=>{
+   try{return soundPathsRelated(JSON.parse(el.dataset.soundPath),path);}catch{return false;}
+  });
+ }
+ function focusControl(path){
+  const control=findControl(path);
+  if(!control)return false;
+  details.open=true;
+  const nested=control.closest("details");
+  if(nested)nested.open=true;
+  const focus=control.querySelector("[role=slider],input,select,button")||control;
+  focus.focus({preventScroll:true});
+  focus.scrollIntoView?.({block:"nearest"});
+  highlight(path);
+  return true;
+ }
  const setValue=(next,path,value)=>{
   const ownerPath=path.slice(0,-1);let owner=next;
   for(const key of ownerPath)owner=owner[key]??={};
@@ -308,7 +375,10 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   graphic.replaceChildren();handlesRoot.replaceChildren();
   graphic.style.setProperty("--visual-color",color);
   for(const path of paths)graphic.append(svgNode("path",{
-   d:path.d,class:path.secondary?"visual-graph-secondary":"visual-graph-line",fill:"none"}));
+   d:path.d,
+   class:(path.secondary?"visual-graph-secondary":"visual-graph-line")+
+    (path.role==="mix"?" visual-graph-mix":""),
+   "data-affects":JSON.stringify(path.affects||[]),fill:"none"}));
   for(const {x,y,value} of labels)graphic.append(svgNode("text",{x,y,
    class:"visual-graph-label"},value));
   handles.forEach((point,i)=>{
@@ -317,6 +387,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    button.style.left=(point.x/360*100)+"%";
    button.style.top=(point.y/112*100)+"%";
    button.dataset.handle=String(i);
+   button.dataset.soundPath=JSON.stringify(point.axes[0]?.path||[]);
    button.setAttribute("aria-label",point.label);
    // A two-dimensional handle is a button, not an inaccurately labelled slider.
    if(point.axes.length===1){
@@ -327,6 +398,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    }
    handlesRoot.append(button);
   });
+  updateLink();
  }
  const coord=event=>{
   const rect=graphic.getBoundingClientRect();
@@ -361,7 +433,14 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   apply(point,coord(event),false);
  });
  area.addEventListener("pointermove",event=>{
-  if(active)apply(active.point,coord(event),false);
+  if(active){apply(active.point,coord(event),false);return;}
+  if(event.pointerType==="touch")return;
+  const point=visibleHandles.reduce((best,item)=>{
+   const position=coord(event),distance=(position.x-item.x)**2+(position.y-item.y)**2;
+   return distance<best.distance?{item,distance}:best;
+  },{item:null,distance:Infinity});
+  if(point.distance<1250&&point.item)highlight(point.item.axes[0]?.path);
+  else if(!event.target.closest?.("[data-sound-path]"))highlight(null);
  });
  area.addEventListener("pointerup",event=>{
   if(!active)return;
@@ -369,6 +448,36 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   apply(point,coord(event),true);
   if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
  });
+ area.addEventListener("click",event=>{
+  if(event.target.closest?.(".visual-panel-expand,.visual-graph-point"))return;
+  if(!visibleHandles.length){
+   const routeRows=[...details.querySelectorAll(".modulation-route")];
+   if(!routeRows.length){details.open=true;return;}
+   const position=coord(event),index=Math.max(0,Math.min(routeRows.length-1,
+    Math.round((position.y-30)/21)));
+   details.open=true;
+   const control=routeRows[index].querySelector('[role="slider"],select');
+   control?.focus({preventScroll:true});
+   control?.scrollIntoView?.({block:"nearest"});
+   return;
+  }
+  const position=coord(event);
+  const selected=visibleHandles.reduce((best,item)=>{
+   const distance=(position.x-item.x)**2+(position.y-item.y)**2;
+   return distance<best.distance?{item,distance}:best;
+  },{item:null,distance:Infinity}).item;
+  if(selected)focusControl(selected.axes[0].path);
+ });
+ graphic.setAttribute("tabindex","0");
+ graphic.setAttribute("role","button");
+ graphic.setAttribute("aria-label",kind+" controls");
+ graphic.addEventListener("keydown",event=>{
+  if(!["Enter"," "].includes(event.key))return;
+  event.preventDefault();
+  if(visibleHandles.length)focusControl(visibleHandles[0].axes[0].path);
+  else details.open=true;
+ });
+ area.addEventListener("pointerleave",()=>{if(!active)highlight(null);});
  area.addEventListener("pointercancel",()=>{
   if(!active)return;
   const paths=active.point.axes.map(a=>a.path);
@@ -392,5 +501,5 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  });
  if(zoomId===id){wrapper.classList.add("zoomed");expand.textContent="−";}
  draw(patch);wrapper.drawSoundIllustration=draw;
- return {element:wrapper,draw};
+ return {element:wrapper,draw,highlight,focusControl};
 }
