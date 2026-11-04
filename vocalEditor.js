@@ -8,6 +8,7 @@ import {recordingBytes} from "./recordingAssets.js";
 import {nativeEnabled} from "./src/hosts/native/session.js";
 import {decodeNativeAudio} from "./src/hosts/native/capture.js";
 import {suggestVocalOnset} from "./songRecorder.js";
+import {renderAudioWaveform,decodedWaveformAsset,maxTrimSeconds} from "./audioWaveform.js";
 
 const el=(tag,name,className)=>{
  const node=document.createElement(tag);if(name!==undefined)node.textContent=name;
@@ -29,28 +30,6 @@ function labelledNumber(root,label,value,min,max,step,change){
  input.value=String(value);input.addEventListener("change",()=>change(Number(input.value)));
  wrap.append(input);root.append(wrap);return input;
 }
-function waveform(recording,clip){
- const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
- svg.classList.add("vocal-waveform");svg.setAttribute("viewBox","0 0 480 100");
- svg.setAttribute("role","img");svg.setAttribute("aria-label","Recording waveform with trimmed start marker");
- const peaks=recording.waveform||[];
- const fraction=Math.min(1,(recording.trimSeconds+(clip.trimStartSeconds??0))/recording.durationSeconds);
- const trim=document.createElementNS("http://www.w3.org/2000/svg","rect");
- trim.setAttribute("x","0");trim.setAttribute("y","0");trim.setAttribute("width",String(fraction*480));trim.setAttribute("height","100");
- trim.setAttribute("fill","#666");trim.setAttribute("fill-opacity",".25");svg.append(trim);
- const path=document.createElementNS("http://www.w3.org/2000/svg","path");
- path.setAttribute("d",peaks.map((v,i)=>{
-  const x=(i+.5)/peaks.length*480,h=Math.max(.5,v*43);
-  return "M"+x.toFixed(2)+","+(50-h).toFixed(2)+"V"+(50+h).toFixed(2);
- }).join(" "));
- path.setAttribute("stroke","#9bc3b8");path.setAttribute("fill","none");path.setAttribute("stroke-width","2");
- svg.append(path);
- const cursor=document.createElementNS("http://www.w3.org/2000/svg","line");
- cursor.setAttribute("x1",String(fraction*480));cursor.setAttribute("x2",String(fraction*480));
- cursor.setAttribute("y1","0");cursor.setAttribute("y2","100");
- cursor.setAttribute("stroke","#ddd");cursor.setAttribute("stroke-width","1.5");svg.append(cursor);
- return svg;
-}
 export async function decodeVocalRecording(recording){
  const bytes=recordingBytes(recording);
  let audio;
@@ -64,7 +43,7 @@ export async function decodeVocalRecording(recording){
  return audio;
 }
 async function autoTrim(recording){
- return suggestVocalOnset(await decodeVocalRecording(recording),recording.trimSeconds);
+ return suggestVocalOnset(await decodedWaveformAsset(recording,()=>decodeVocalRecording(recording)),recording.trimSeconds);
 }
 export function renderVocalEditor(root,selection,{onEffect,onLevel,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo}){
  root.hidden=!selection;
@@ -79,10 +58,14 @@ export function renderVocalEditor(root,selection,{onEffect,onLevel,onTrim,onDupl
   button("duplicate",()=>onDuplicate(clipId)),button("use in beat",()=>onUseInBeat(clipId)),
   button("back to beat",onBack));
  heading.append(identity,actions);root.append(heading);
- root.append(waveform(recording,clip));
+ let trimInput=null;
+ root.append(renderAudioWaveform({recording,trimStart:clip.trimStartSeconds??0,
+  onTrim:value=>onTrim(clipId,value),
+  onPreview:value=>{if(trimInput)trimInput.value=value.toFixed(3);},
+  loadDecoded:()=>decodeVocalRecording(recording)}));
  const timing=el("div",undefined,"vocal-timing");
- labelledNumber(timing,"trim start (seconds)",clip.trimStartSeconds??0,0,
-  Math.max(0,recording.durationSeconds-recording.trimSeconds-.01),.001,
+ trimInput=labelledNumber(timing,"trim start (seconds)",clip.trimStartSeconds??0,0,
+  maxTrimSeconds(recording.durationSeconds-recording.trimSeconds),.001,
   value=>onTrim(clipId,value));
  const suggest=button("trim to sound",async()=>{
   suggest.disabled=true;
