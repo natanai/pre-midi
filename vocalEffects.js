@@ -23,7 +23,7 @@ export function validateVocalEffects(fx){
   ["delayMix",0,1],["delayTime",.05,1],["delayFeedback",0,.8]
  ])value(name,min,max);
  errors.push(...validateMovement(fx.movement),...validateBend(fx.bend));
- const tone=validateSampleTone(fx);if(tone)errors.push(tone);
+ const tone=validateSampleTone({...fx,filter:fx.filter??undefined});if(tone)errors.push(tone);
  const allowed=new Set(["pan","transpose","attack","release","drive","delayMix","delayTime","delayFeedback","filter","movement","bend"]);
  for(const key of Object.keys(fx))if(!allowed.has(key))errors.push("Unknown vocal effect "+key+".");
  return errors;
