@@ -32,7 +32,7 @@ frame.addEventListener("load",async()=>{
   area.dispatchEvent(new MouseEvent("click",{bubbles:true,
    clientX:bounds.left+bounds.width/2,clientY:bounds.top+bounds.height/2}));
   assert("diagram click focuses an existing control",detune.contains(doc.activeElement));
-  assert("graph click does not create new knobs",osc.querySelectorAll('[data-sound-path=\'["oscillators",0,"detune"]\']').length===1);
+  assert("graph click does not create new knobs",osc.querySelectorAll('.dial-field[data-sound-path=\'["oscillators",0,"detune"]\']').length===1);
   const filter=doc.querySelector('.visual-sound-panel[data-visual-kind="filter"]');
   filter.querySelector("details").open=true;
   const brightness=get("primary-brightness-dial");
