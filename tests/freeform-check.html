@@ -39,6 +39,22 @@
   assert(row,"C4 has an editable Song row");
   row.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));
   await wait(()=>doc.querySelectorAll(".freeform-roll-note").length===1,"Direct freeform note created");
+  const soundSummary=doc.querySelector(".freeform-sound-summary");
+  assert(soundSummary,"Freeform Sound editor shares the existing workspace");
+  soundSummary.click();
+  await wait(()=>!!doc.querySelector(".freeform-sound-modules .synth-grid"),"Canonical synth editor visible");
+  assert(doc.querySelector(".freeform-sound-scope .signal-scope"),"Measured sound waveform is present");
+  const distortion=doc.querySelector('.freeform-sound-modules [data-sound-path="effects.drive"] [role="slider"]');
+  assert(distortion,"Canonical distortion knob is available on freeform Sound");
+  distortion.dispatchEvent(new KeyboardEvent("keydown",{
+   key:"PageUp",bubbles:true,cancelable:true
+  }));
+  await wait(()=>Number(doc.querySelector(
+   '.freeform-sound-modules [data-sound-path="effects.drive"] [role="slider"]'
+  )?.getAttribute("aria-valuenow"))>.05,"Sound effects persist after adjustment");
+  const soundPreview=doc.querySelector(".freeform-sound-play");
+  assert(soundPreview?.textContent==="▶","Freeform Sound has a native-aware preview");
+  soundPreview.click();
   const controls=doc.querySelector(".freeform-editor-tools");
   assert(controls.querySelector(".freeform-follow")?.getAttribute("aria-pressed")==="false",
    "Follow is optional, not forced during editing");
@@ -99,6 +115,8 @@
   const saved=JSON.parse(await project.text());
   assert(saved.kind==="song"&&saved.version===22,"Freeform exported as Song v22");
   assert(saved.tracks[0].freeform.instruments.length===2,"Song retains both Instruments");
+  assert(saved.tracks[0].freeform.instruments[0].sounds[0].patch.effects.drive>.05,
+   "Freeform Sound changes export in canonical synth patch fields");
   assert(saved.tracks[0].freeform.passages.length===1,"Song retains converted passage");
   assert(saved.beats.length===2,"New Beat saved as an independent reusable Song Beat");
   assert(saved.tracks[0].clips.length===0,"New Beat stays unplaced until explicitly requested");

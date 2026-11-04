@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {create,clone,resizeBeatBars,EXTENDED_BEAT_VERSION} from "../schema.js";
 import {unpackBeatClip,ensureFreeform,addFreeformInstrument,addFreeformNote,createBeatFromFreeformSelection} from "../freeformModel.js";
 import {renderEvents} from "../audio.js";
+import {parseSong} from "../songIO.js";
 import {createSong,addBeat,addSongTrack,addBeatClip,editBeatClip,eventsAtSongStep,songDurationSteps,validateSong,SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,upgradeSongFeatures} from "../songModel.js";
 const withNote=()=>{
  const beat=create();
@@ -127,4 +128,25 @@ test("Creating a reusable Beat leaves Song audio unchanged until placed in a Cli
  assert.deepEqual(renderEvents(song).map(item=>[item.at,item.note.pitch]),audible,
   "The Beat is reusable but must not automatically double the Song audio");
  assert.deepEqual(validateSong(song),[]);
+});
+
+test("freeform Sound patch settings persist without a separate effects format",()=>{
+ const song=createSong(withNote()),track=song.tracks[0];
+ const free=ensureFreeform(track),inst=addFreeformInstrument(free);
+ const note=addFreeformNote(inst,{pitch:62,start:16,duration:4,velocity:.8});
+ const before=renderEvents(song).find(item=>item.note.pitch===62);
+ assert.equal(before?.instrument?.sounds?.[0]?.patch?.effects?.drive,0);
+ inst.sounds[0].patch.effects.drive=.43;
+ inst.sounds[0].patch.envelope.attack=.17;
+ inst.sounds[0].patch.filter.cutoff=950;
+ inst.volume=.64;inst.sounds[0].gain=.72;
+ upgradeSongFeatures(song);
+ assert.deepEqual(validateSong(song),[]);
+ const after=renderEvents(song).find(item=>item.note.pitch===62);
+ assert.equal(after.instrument.sounds[0].patch.effects.drive,.43);
+ assert.equal(after.instrument.sounds[0].patch.envelope.attack,.17);
+ assert.equal(after.instrument.sounds[0].patch.filter.cutoff,950);
+ assert.equal(after.instrument.volume,.64);
+ assert.equal(after.note.id,note.id);
+ assert.deepEqual(parseSong(JSON.stringify(song)),song);
 });
