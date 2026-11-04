@@ -44,6 +44,27 @@
   soundSummary.click();
   await wait(()=>!!doc.querySelector(".freeform-sound-modules .synth-grid"),"Canonical synth editor visible");
   assert(doc.querySelector(".freeform-sound-scope .signal-scope"),"Measured sound waveform is present");
+  for(const path of ["filter.cutoff","envelope.attack","envelope.release"]){
+   assert(doc.querySelector('.freeform-sound-primary [data-sound-path="'+path+'"] [role="slider"]'),
+    "Freeform exposes the canonical primary "+path+" control");
+  }
+  const filterGraphic=doc.querySelector('.freeform-sound-modules .visual-sound-panel[data-visual-kind="filter"]');
+  const brightnessHit=[...filterGraphic.querySelectorAll(".visual-graph-hit")]
+   .find(item=>item.dataset.soundLinks.split("|").includes("filter.cutoff"));
+  assert(brightnessHit,"Freeform illustration links to primary brightness");
+  brightnessHit.dispatchEvent(new win.MouseEvent("click",{bubbles:true}));
+  assert(doc.activeElement.closest("[data-sound-path]")?.dataset.soundPath==="filter.cutoff",
+   "Selecting the filter illustration focuses the promoted brightness control");
+  const brightness=doc.querySelector(
+   '.freeform-sound-primary [data-sound-path="filter.cutoff"] [role="slider"]');
+  const originalBrightness=Number(brightness.getAttribute("aria-valuenow"));
+  brightness.dispatchEvent(new win.KeyboardEvent("keydown",{
+   key:"PageDown",bubbles:true,cancelable:true
+  }));
+  await wait(()=>Number(doc.querySelector(
+   '.freeform-sound-primary [data-sound-path="filter.cutoff"] [role="slider"]'
+  )?.getAttribute("aria-valuenow"))<originalBrightness,
+   "Freeform brightness is editable and persisted");
   const distortion=doc.querySelector('.freeform-sound-modules [data-sound-path="effects.drive"] [role="slider"]');
   assert(distortion,"Canonical distortion knob is available on freeform Sound");
   distortion.dispatchEvent(new KeyboardEvent("keydown",{
@@ -152,6 +173,18 @@
   await wait(()=>doc.querySelector(
    '.freeform-sound-modules [aria-label="Recorded sound filter type"]'
   )?.value==="highpass","Sample tone change is saved");
+  for(const path of ["filter.cutoff","attack","release"])
+   assert(doc.querySelector('.freeform-sound-primary [data-sound-path="'+path+'"] [role="slider"]'),
+    "Freeform sampled sound exposes "+path);
+  const recordedBrightness=doc.querySelector(
+   '.freeform-sound-primary [data-sound-path="filter.cutoff"] [role="slider"]');
+  const sampleCutoff=Number(recordedBrightness.getAttribute("aria-valuenow"));
+  recordedBrightness.dispatchEvent(new win.KeyboardEvent("keydown",{
+   key:"PageDown",bubbles:true,cancelable:true
+  }));
+  await wait(()=>Number(doc.querySelector(
+   '.freeform-sound-primary [data-sound-path="filter.cutoff"] [role="slider"]'
+  )?.getAttribute("aria-valuenow"))<sampleCutoff,"Freeform sampled brightness is editable");
   project=null;
   get("export").click();get("export-form").dispatchEvent(
    new Event("submit",{bubbles:true,cancelable:true}));
@@ -161,8 +194,9 @@
   assert(manifestEntry,"ZIP includes canonical Song .premidi manifest");
   const packaged=JSON.parse(new TextDecoder().decode(manifestEntry[1]));
   const edited=packaged.tracks[0].freeform.instruments[0].sounds[0].patch;
-  assert(edited.type==="sample"&&edited.filter.type==="highpass",
-   "Imported sample and Sound filter survive Song export");
+  assert(edited.type==="sample"&&edited.filter.type==="highpass"&&
+   edited.filter.cutoff<sampleCutoff,
+   "Imported sample and promoted Sound brightness survive Song export");
   assert(entries.has(packaged.tracks[0].freeform.samples[0].path),
    "Imported audio remains external, alongside the .premidi manifest");
   await wait(()=>!get("export-dialog").open,"Portable Song export closes");
