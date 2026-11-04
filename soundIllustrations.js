@@ -514,6 +514,10 @@ if(typeof document!=="undefined")document.addEventListener("keydown",event=>{
  }
 });
 export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index=0){
+ // The Beat's primary brightness/rise/fade dials sit above the accordion.
+ // Capture their common owner before the accordion is moved into its wrapper.
+ // Song/freeform Sound also nests its diagram and controls in one content root.
+ const controlOwner=details.closest(".sound-section,.freeform-sound-content")??details;
  const id=idFor(kind,index);
  let page=pageState.get(id)??0;
  const paginated=diagramPageCount(patch,kind)>1;
@@ -648,7 +652,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   highlight(activeLink);
  }
  function targetFields(keys){
-  const fields=[...details.querySelectorAll("[data-sound-path]")];
+  const fields=[...controlOwner.querySelectorAll("[data-sound-path]")];
   return fields.filter(field=>keys.some(key=>{
    const path=field.dataset.soundPath;
    return path===key||path.startsWith(key+".")||key.startsWith(path+".");
@@ -656,8 +660,9 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  }
  function highlight(keys){
   activeLink=keys?.length?keys:null;
-  for(const field of details.querySelectorAll("[data-sound-path]"))
-   field.classList.toggle("sound-link-active",!!activeLink&&targetFields(activeLink).includes(field));
+  const linked=activeLink?targetFields(activeLink):[];
+  for(const field of controlOwner.querySelectorAll("[data-sound-path]"))
+   field.classList.toggle("sound-link-active",linked.includes(field));
   for(const item of graphic.querySelectorAll("[data-sound-links]")){
    const connected=item.dataset.soundLinks.split("|");
    item.classList.toggle("visual-linked",!!activeLink&&connected.some(key=>
@@ -701,19 +706,19 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  graphic.addEventListener("pointerout",event=>{
   if(!event.relatedTarget?.closest?.(".visual-graph-hit"))highlight(null);
  });
- details.addEventListener("pointerover",event=>{
+ controlOwner.addEventListener("pointerover",event=>{
   const control=event.target.closest?.("[data-sound-path]");
-  if(control&&details.contains(control))highlight([control.dataset.soundPath]);
+  if(control&&controlOwner.contains(control))highlight([control.dataset.soundPath]);
  });
- details.addEventListener("pointerout",event=>{
+ controlOwner.addEventListener("pointerout",event=>{
   if(!event.relatedTarget?.closest?.("[data-sound-path]"))highlight(null);
  });
- details.addEventListener("focusin",event=>{
+ controlOwner.addEventListener("focusin",event=>{
   const control=event.target.closest?.("[data-sound-path]");
   if(control)highlight([control.dataset.soundPath]);
  });
- details.addEventListener("focusout",event=>{
-  if(!details.contains(event.relatedTarget))highlight(null);
+ controlOwner.addEventListener("focusout",event=>{
+  if(!controlOwner.contains(event.relatedTarget))highlight(null);
  });
  const coord=event=>{
   const rect=graphic.getBoundingClientRect();
