@@ -14,6 +14,13 @@ const obj=value=>value!==null&&typeof value==="object"&&!Array.isArray(value);
 const whole=value=>Number.isSafeInteger(value)&&value>=0;
 const positive=value=>Number.isSafeInteger(value)&&value>0;
 const distinct=items=>new Set(items.map(item=>item?.id)).size===items.length;
+// Chunk placement length gates note-ons, not the release tails of their notes.
+const chunkTail=(chunk,length)=>{
+ let end=length;
+ for(const note of chunk?.notes??[])if(note.start<length)
+  end=Math.max(end,note.start+note.duration);
+ return end;
+};
 
 export function createFreeform(){return {version:1,instruments:[],samples:[],passages:[]};}
 export function ensureFreeform(track){
@@ -49,8 +56,9 @@ export function addFreeformNote(instrument,raw){
 }
 export function addFreeformChunkPlacement(instrument,chunkId,startStep,{length=16,every=16,repeats=1,passageId}={}){
  if(!instrument.chunks.some(chunk=>chunk.id===chunkId))throw Error("Missing freeform Chunk.");
+ const source=instrument.chunks.find(chunk=>chunk.id===chunkId);
  if(!whole(startStep)||!positive(length)||length>16||!positive(every)||every>64||
-  !positive(repeats)||repeats>32||startStep+(repeats-1)*every+length>FREEFORM_LIMIT_STEPS)
+  !positive(repeats)||repeats>32||startStep+(repeats-1)*every+chunkTail(source,length)>FREEFORM_LIMIT_STEPS)
   throw Error("Invalid freeform Chunk placement.");
  const placement={id:id(),chunkId,startStep,length,every,repeats};
  if(passageId!==undefined)placement.passageId=passageId;
@@ -63,8 +71,11 @@ export function freeformEndStep(layer){
  for(const passage of layer.passages)end=Math.max(end,passage.startStep+passage.lengthSteps);
  for(const inst of layer.instruments){
   for(const note of inst.notes)end=Math.max(end,note.start+note.duration);
-  for(const item of inst.chunkPlacements)
-   end=Math.max(end,item.startStep+(item.repeats-1)*item.every+item.length);
+  for(const item of inst.chunkPlacements){
+   const chunk=inst.chunks.find(source=>source.id===item.chunkId);
+   end=Math.max(end,item.startStep+(item.repeats-1)*item.every+
+    chunkTail(chunk,item.length));
+  }
  }
  return end;
 }
@@ -241,7 +252,8 @@ export function moveFreeformPassage(layer,passageId,nextStartStep){
    throw Error("Note would move outside freeform.");
   for(const placement of instrument.chunkPlacements)if(placement.passageId===passageId&&
    (placement.startStep+shift<0||
-    placement.startStep+shift+(placement.repeats-1)*placement.every+placement.length>FREEFORM_LIMIT_STEPS))
+    placement.startStep+shift+(placement.repeats-1)*placement.every+
+     chunkTail(instrument.chunks.find(source=>source.id===placement.chunkId),placement.length)>FREEFORM_LIMIT_STEPS))
    throw Error("Chunk would move outside freeform.");
  }
  for(const instrument of layer.instruments){
@@ -317,7 +329,8 @@ export function validateFreeform(layer){
     !positive(placement.length)||placement.length>16||
     !positive(placement.every)||placement.every>64||
     !positive(placement.repeats)||placement.repeats>32||
-    placement.startStep+(placement.repeats-1)*placement.every+placement.length>FREEFORM_LIMIT_STEPS||
+    placement.startStep+(placement.repeats-1)*placement.every+
+     chunkTail(instrument.chunks.find(source=>source.id===placement.chunkId),placement.length)>FREEFORM_LIMIT_STEPS||
     (placement.passageId!==undefined&&!passageIds.has(placement.passageId)))
     errors.push("Invalid freeform Chunk placement.");
  }
