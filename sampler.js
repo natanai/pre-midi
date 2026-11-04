@@ -4,6 +4,7 @@ import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
 import {putAsset,getAsset,MAX_ASSET_BYTES} from "./assetRegistry.js";
 import { validateMovement, validateBend, movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
 import {configureDriveShaper,validateSampleTone} from "./audioEffects.js";
+import {validateSampleSlice,sampleSourceRegion} from "./sampleSlice.js";
 // The only durable sample asset representation is the beat's samples array.
 // Browser library URLs are staging inputs; .premidi files hold relative audio paths.
 export const MAX_SAMPLE_BYTES=MAX_ASSET_BYTES;
@@ -17,6 +18,8 @@ export function validateSampleAsset(asset){
   return "Sample must reference its canonical relative audio path.";
  if(asset.data!==undefined)return "Audio bytes must be separate from .premidi.";
  if(typeof asset.source!=="string"||asset.source.length>500)return "Invalid sample provenance.";
+ if(asset.sourceRecordingId!==undefined&&
+  (asset.sourceRecordingId!==asset.id||asset.mime!=="audio/wav"))return "Invalid shared Recording reference.";
  return null;
 }
 export function inspectAudioBytes(bytes,mime){
@@ -78,7 +81,8 @@ export function validateSamplerPatch(patch){
    patch.zones.some(zone=>typeof zone?.assetId!=="string"||!zone.assetId||
     !Number.isInteger(zone.root)||zone.root<0||zone.root>127||
     (zone.velocity!==undefined && (!Number.isFinite(zone.velocity)||zone.velocity<0||zone.velocity>1))||
-    (zone.string!==undefined && (typeof zone.string!=="string"||zone.string.length>20))))errors.push("Invalid sample key mapping.");
+    (zone.string!==undefined && (typeof zone.string!=="string"||zone.string.length>20))||
+    validateSampleSlice(zone)))errors.push("Invalid sample key mapping or source excerpt.");
  if(patch.oneShot!==undefined&&typeof patch.oneShot!=="boolean")errors.push("Invalid one-shot playback mode.");
  if(typeof patch.followPitch!=="boolean")errors.push("Invalid pitch-follow mode.");
  errors.push(...validateMovement(patch.movement));
@@ -163,8 +167,8 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
  src.buffer=buffer;src.playbackRate.value=playbackRate;
  const motion=movement(patch);
  pan.pan.value=patch.pan;
- const length=buffer.duration/playbackRate;
- const life=patch.oneShot?length:Math.min(length,Math.max(.015,duration+patch.release));
+ const region=sampleSourceRegion(zone,buffer.duration,playbackRate);
+ const life=patch.oneShot?region.length:Math.min(region.length,Math.max(.015,duration+patch.release));
  // The whole recording keeps pitch modulation, not only the short grid note.
  schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,life),0,owner,{controlRate:'k'});
  const at=start+Math.min(patch.attack,life*.5);
@@ -195,7 +199,7 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
  }
  signal.connect(amp);amp.connect(pulse);pulse.connect(gate);gate.connect(pan);pan.connect(out);
  owner.nodes.push(pulse,...toneNodes);
- src.start(start);src.stop(start+life+.01);
+ src.start(start,region.offset,region.sourceLength);src.stop(start+life+.01);
  const voice=ownVoice(context,{...owner,gate,start,release:Math.max(start,Math.min(start+life,releaseStart)),end:start+life+.01});
  return session?session.adopt(voice):voice;
 }
