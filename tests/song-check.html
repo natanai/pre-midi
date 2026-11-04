@@ -172,9 +172,6 @@
    throw Error(error.message+"; "+JSON.stringify(detail));
   });
   assert(get("song-title").value==="Arrangement check","Song title persisted");
-  get("song-record").click();
-  assert(get("voice-offset-ms").value==="55.5","Recording alignment survives browser reload");
-  get("voice-close").click();
   assert(frame.contentDocument.querySelectorAll(".song-beat-clip").length===3,"All Song clips persisted");
   assert(!get("song-panel").hidden,"Song remains expanded on reload");
   assert(get("song-ruler").getAttribute("aria-valuenow")==="1","Ruler start resets to bar one on a new load");
@@ -242,6 +239,9 @@
    "recorded Vocal Clip restored after reload",9000);
   assert(frame.contentDocument.querySelector(".song-track-row .song-vocal-clip"),
    "restored Vocal Track is still above Beats");
+  get("song-record").click();
+  assert(get("voice-offset-ms").value==="55.5","Recording alignment survives browser reload");
+  get("voice-close").click();
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="stop song",
    "restored Vocal Clip decodes and plays",9000);
