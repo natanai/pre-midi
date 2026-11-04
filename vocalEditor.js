@@ -8,7 +8,7 @@ import {recordingBytes} from "./recordingAssets.js";
 import {nativeEnabled} from "./src/hosts/native/session.js";
 import {decodeNativeAudio} from "./src/hosts/native/capture.js";
 import {suggestVocalOnset} from "./songRecorder.js";
-import {renderAudioWaveform,decodedWaveformAsset} from "./audioWaveform.js";
+import {renderAudioWaveform,decodedWaveformAsset,maxTrimSeconds} from "./audioWaveform.js";
 
 const el=(tag,name,className)=>{
  const node=document.createElement(tag);if(name!==undefined)node.textContent=name;
@@ -65,7 +65,7 @@ export function renderVocalEditor(root,selection,{onEffect,onLevel,onTrim,onDupl
   loadDecoded:()=>decodeVocalRecording(recording)}));
  const timing=el("div",undefined,"vocal-timing");
  trimInput=labelledNumber(timing,"trim start (seconds)",clip.trimStartSeconds??0,0,
-  Math.max(0,recording.durationSeconds-recording.trimSeconds-.01),.001,
+  maxTrimSeconds(recording.durationSeconds-recording.trimSeconds),.001,
   value=>onTrim(clipId,value));
  const suggest=button("trim to sound",async()=>{
   suggest.disabled=true;
