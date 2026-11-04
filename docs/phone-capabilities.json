@@ -974,6 +974,18 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:freeformUI:select-change:1",
+      "source": "freeformUI.js",
+      "anchor": "select",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "freeformUI.js select.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:freeformUI:sourcename-change:1",
       "source": "freeformUI.js",
       "anchor": "sourceName",
