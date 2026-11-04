@@ -44,13 +44,23 @@
   soundSummary.click();
   await wait(()=>!!doc.querySelector(".freeform-sound-modules .synth-grid"),"Canonical synth editor visible");
   assert(doc.querySelector(".freeform-sound-scope .signal-scope"),"Measured sound waveform is present");
-  const readDraft=()=>{
-   try{return JSON.parse(win.localStorage.getItem("premidi-v5-draft")||"null");}
-   catch{return null;}
+  const {loadDraft}=await import("/storage.js");
+  const readDraft=async()=>{
+   const raw=await loadDraft();
+   return raw?JSON.parse(raw):null;
   };
-  await wait(()=>readDraft()?.tracks?.[0]?.freeform?.instruments?.[0]?.notes?.length===1,
-   "Draft saves the independent freeform note",12000);
-  const firstId=readDraft().tracks[0].freeform.instruments[0].notes[0].id;
+  const waitForDraft=async(predicate,label)=>{
+   const deadline=Date.now()+12000;
+   while(Date.now()<deadline){
+    const saved=await readDraft();
+    if(predicate(saved))return saved;
+    await pause(50);
+   }
+   throw Error("Timed out: "+label);
+  };
+  const firstId=(await waitForDraft(saved=>
+   saved?.tracks?.[0]?.freeform?.instruments?.[0]?.notes?.length===1,
+   "Draft saves the independent freeform note")).tracks[0].freeform.instruments[0].notes[0].id;
   const browse=doc.querySelector(".freeform-sound-browse");
   assert(browse,"Freeform opens the existing Sound catalog");
   browse.click();
@@ -59,10 +69,9 @@
   assert(preset,"Factory synth presets remain accessible from freeform");
   preset.querySelector(".preset-choose").click();
   await wait(()=>!get("instrument-dialog").open,"Preset selection closes shared library");
-  await wait(()=>readDraft()?.tracks?.[0]?.freeform?.instruments?.[0]
-   ?.sounds?.[0]?.patch?.presetId==="init",
-   "Freeform preset selection persists to Song",12000);
-  const selected=readDraft().tracks[0].freeform.instruments[0];
+  const selected=(await waitForDraft(saved=>
+   saved?.tracks?.[0]?.freeform?.instruments?.[0]?.sounds?.[0]?.patch?.presetId==="init",
+   "Freeform preset selection persists to Song")).tracks[0].freeform.instruments[0];
   assert(selected.notes.length===1&&selected.notes[0].id===firstId,
    "Choosing a freeform Sound retains previously placed notes");
   assert(selected.sounds[0].patch.presetId==="init",
