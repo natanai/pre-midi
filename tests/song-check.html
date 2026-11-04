@@ -200,6 +200,11 @@
    "Vocal Clip starts at the selected third bar");
   frame.contentDocument.querySelector(".song-vocal-clip").click();
   assert(!get("song-vocal-level-field").hidden,"Vocal level control available");
+  assert(!get("vocal-editor").hidden,"Vocal Clip opens the lower shared editing workspace");
+  assert(doc.defaultView.getComputedStyle(doc.querySelector(".work")).display==="none",
+   "Voice edits replace the Beat grid without adding a separate editor");
+  assert(doc.defaultView.getComputedStyle(doc.querySelector(".beat-header")).display!=="none",
+   "Playback transport stays visible during vocal editing");
   get("song-vocal-level").value="1.3";
   get("song-vocal-level").dispatchEvent(new Event("change",{bubbles:true}));
   get("export").click();
@@ -229,6 +234,10 @@
   const voiceId=recordedVoice.dataset.clipId;
   recordedVoice.click();
   assert(!get("song-beat-start-field").hidden,"Voice clips can edit their start bar");
+  assert(!get("song-vocal-step-field").hidden,"Voice timing includes sixteenth-note step placement");
+  const trim=doc.querySelector("#vocal-editor .vocal-timing input");
+  trim.value="0.02";trim.dispatchEvent(new Event("change",{bubbles:true}));
+  assert(doc.querySelector("#vocal-editor .vocal-timing input").value==="0.02","Voice trim is editable in seconds");
   get("song-clip-start").value="5";
   get("song-clip-start").dispatchEvent(new Event("change",{bubbles:true}));
   let shifted=frame.contentDocument.querySelector('[data-clip-id="'+voiceId+'"]');
@@ -238,8 +247,16 @@
   assert(Math.abs(parseFloat(shifted.style.left)-108)<1,"Vocal timing can be undone");
   shifted.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true}));
   shifted=frame.contentDocument.querySelector('[data-clip-id="'+voiceId+'"]');
-  assert(Math.abs(parseFloat(shifted.style.left)-162)<1,"ArrowRight advances a vocal one bar");
+  assert(Math.abs(parseFloat(shifted.style.left)-121.5)<1,"ArrowRight advances a vocal one beat");
   shifted.click();
+  const duplicate=[...doc.querySelectorAll("#vocal-editor .vocal-editor-actions button")].find(b=>b.textContent==="duplicate");
+  assert(!!duplicate,"Vocal editor provides Clip duplication");
+  duplicate.click();
+  assert(doc.querySelectorAll(".song-vocal-clip").length===2,"Duplicate creates another Clip");
+  assert(doc.querySelectorAll(".song-track-row").length===4,"Duplicate stays on the same voice track");
+  get("song-clip-remove").click();
+  assert(doc.querySelectorAll(".song-vocal-clip").length===1,"Remove duplicate without removing the original");
+  doc.querySelector('[data-clip-id="'+voiceId+'"]').click();
   get("song-clip-remove").click();
   assert(frame.contentDocument.querySelectorAll(".song-vocal-clip").length===0,"Vocal clip removed");
   assert(frame.contentDocument.querySelectorAll(".song-track-row").length===3,
