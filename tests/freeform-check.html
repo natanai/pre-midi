@@ -39,6 +39,26 @@
   assert(row,"C4 has an editable Song row");
   row.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));
   await wait(()=>doc.querySelectorAll(".freeform-roll-note").length===1,"Direct freeform note created");
+  const controls=doc.querySelector(".freeform-editor-tools");
+  assert(controls.querySelector(".freeform-follow")?.getAttribute("aria-pressed")==="false",
+   "Follow is optional, not forced during editing");
+  controls.querySelector(".freeform-follow").click();
+  assert(doc.querySelector(".freeform-follow").getAttribute("aria-pressed")==="true",
+   "Song playback follow can be enabled");
+  doc.querySelector(".freeform-nav").click();
+  assert(doc.querySelector(".freeform-follow").getAttribute("aria-pressed")==="false",
+   "Manual bar navigation pauses playback follow");
+  doc.querySelector(".freeform-roll-note").click();
+  const lengthField=[...doc.querySelectorAll(".freeform-note-details .freeform-field")]
+   .find(item=>item.textContent.includes("length"));
+  assert(lengthField,"Selected note has an editable length");
+  lengthField.querySelector("input").value="16";
+  lengthField.querySelector("input").dispatchEvent(new Event("change",{bubbles:true}));
+  get("play").click();
+  await wait(()=>get("play").getAttribute("aria-label")==="stop song","Freeform Song starts");
+  await wait(()=>doc.querySelector(".freeform-key.sounding")&&
+   !doc.querySelector(".freeform-playhead").hidden,"Held note lights its piano key and scan line");
+  get("play").click();
   assert(doc.querySelectorAll(".song-freeform-preview-note").length===1,"Song lane shows direct note");
   const original=doc.querySelector(".song-beat-clip");
   original.click();

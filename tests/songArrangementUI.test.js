@@ -187,3 +187,13 @@ test("freeform Beat selection highlights the Song lane at absolute Song time",()
  assert.match(ui,/selectionLengthSteps\/BAR_STEPS\*SONG_BAR_PIXELS/);
  assert.match(css,/\.song-freeform-selected-range/);
 });
+
+test("freeform key illumination is event-driven and playback follow yields to bar navigation",()=>{
+ const ui=read("freeformUI.js"),model=read("freeformModel.js"),css=read("freeform.css");
+ assert.match(model,/export function soundingFreeformPitches/);
+ assert.match(ui,/soundingFreeformPitches\(layer\(\),inst\?\.id,playStep\)/);
+ assert.match(ui,/followPlayback=false;barStart=/);
+ assert.match(ui,/follow\.setAttribute\("aria-pressed"/);
+ assert.match(ui,/playStep>=viewStep\(\)\+VIEW_BARS\*BAR_STEPS/);
+ assert.match(css,/\.freeform-key\.sounding/);
+});

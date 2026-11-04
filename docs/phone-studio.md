@@ -5,7 +5,7 @@ Owner document: **this file**. Do not create a second phone/mobile roadmap or pa
 
 ## Approved Song/freeform parity boundary (2026-11-04)
 
-The Song design in docs/song-rollout.md includes an attached freeform lane under each Beat Track. Phone must support empty freeform authoring, full/partial move-and-unpack, Instruments, direct Song-position notes, linked Chunks, passage movement, create Beat from selection, and a shared musical playhead. A labeled action must exist wherever desktop uses dragging or double-clicking. The phone host reuses the same .premidi schema and music commands, never a phone-only freeform implementation. The desktop implementation in PR #120 is not a phone equivalent. Every freeform action remains unqualified on iOS until the phone host implements and tests it.
+The Song design in docs/song-rollout.md includes an attached freeform lane under each Beat Track. Phone must support empty freeform authoring, full/partial move-and-unpack, Instruments, direct Song-position notes, linked Chunks, passage movement, create Beat from selection, and a shared musical playhead. A labeled action must exist wherever desktop uses dragging or double-clicking. The phone host reuses the same .premidi schema and music commands, never a phone-only freeform implementation. The desktop implementation in PR #120 is not a phone equivalent. Every freeform action remains unqualified on iOS until the phone host implements and tests it. The desktop-only freeform key illumination and playback-follow controls from PR #126 are separate phone-parity items, not phone implementations.
 
 ## Intended result
 
