@@ -5,6 +5,7 @@ import {createFreeform,ensureFreeform,addFreeformInstrument,addFreeformNote,
 import {addBeat} from "./songModel.js";
 import {makeChunk,id} from "./schema.js";
 import {referencedSampleIds} from "./soundModel.js";
+import {installFreeformSoundUI} from "./freeformSoundUI.js";
 
 const BAR_STEPS=16,SONG_BAR_PIXELS=54,STEP_WIDTH=8,ROW_HEIGHT=20,VIEW_BARS=8;
 const PITCH_MIN=36,PITCH_MAX=96;
@@ -48,6 +49,9 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   render();
   return true;
  }
+ const soundUI=installFreeformSoundUI({
+  getSong,getLayer:layer,getInstrument:instrument,mutate,onError
+ });
  function close(){
   const wasActive=activeTrackId!==null;
   activeTrackId=null;activeInstrumentId=null;selectedNoteId=null;
@@ -264,6 +268,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    panel.append(el("p","freeform-empty","Add an Instrument to draw notes directly into this Song."));
    return;
   }
+  panel.append(soundUI.render());
   const chunkControls=el("div","freeform-chunk-tools");
   chunkControls.append(action("make Chunk from this bar",makeChunkAtBar));
   const chunkPicker=el("select");chunkPicker.setAttribute("aria-label","Reusable Chunk");

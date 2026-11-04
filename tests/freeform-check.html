@@ -39,6 +39,22 @@
   assert(row,"C4 has an editable Song row");
   row.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));
   await wait(()=>doc.querySelectorAll(".freeform-roll-note").length===1,"Direct freeform note created");
+  const soundSummary=doc.querySelector(".freeform-sound-summary");
+  assert(soundSummary,"Freeform Sound editor shares the existing workspace");
+  soundSummary.click();
+  await wait(()=>!!doc.querySelector(".freeform-sound-modules .synth-grid"),"Canonical synth editor visible");
+  assert(doc.querySelector(".freeform-sound-scope .signal-scope"),"Measured sound waveform is present");
+  const distortion=doc.querySelector('.freeform-sound-modules [data-sound-path="effects.drive"] [role="slider"]');
+  assert(distortion,"Canonical distortion knob is available on freeform Sound");
+  distortion.dispatchEvent(new KeyboardEvent("keydown",{
+   key:"PageUp",bubbles:true,cancelable:true
+  }));
+  await wait(()=>Number(doc.querySelector(
+   '.freeform-sound-modules [data-sound-path="effects.drive"] [role="slider"]'
+  )?.getAttribute("aria-valuenow"))>.05,"Sound effects persist after adjustment");
+  const soundPreview=doc.querySelector(".freeform-sound-play");
+  assert(soundPreview?.textContent==="▶","Freeform Sound has a native-aware preview");
+  soundPreview.click();
   const controls=doc.querySelector(".freeform-editor-tools");
   assert(controls.querySelector(".freeform-follow")?.getAttribute("aria-pressed")==="false",
    "Follow is optional, not forced during editing");
@@ -99,17 +115,78 @@
   const saved=JSON.parse(await project.text());
   assert(saved.kind==="song"&&saved.version===22,"Freeform exported as Song v22");
   assert(saved.tracks[0].freeform.instruments.length===2,"Song retains both Instruments");
+  assert(saved.tracks[0].freeform.instruments[0].sounds[0].patch.effects.drive>.05,
+   "Freeform Sound changes export in canonical synth patch fields");
   assert(saved.tracks[0].freeform.passages.length===1,"Song retains converted passage");
   assert(saved.beats.length===2,"New Beat saved as an independent reusable Song Beat");
   assert(saved.tracks[0].clips.length===0,"New Beat stays unplaced until explicitly requested");
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="stop song","Unpacked Song plays",9000);
   get("play").click();
+  // Replace a freeform synth with a real companion WAV and verify the same
+  // sampler editor, package format and Song audio transport still work.
+  doc.querySelector(".song-freeform-toggle").click();
+  await wait(()=>!doc.querySelector(".song-freeform-editor").hidden,
+   "Freeform opens again for sample editing");
+  const soundToggle=doc.querySelector(".freeform-sound-summary");
+  if(soundToggle.getAttribute("aria-expanded")!=="true")soundToggle.click();
+  await wait(()=>!!doc.querySelector(".freeform-sound-host input[type=file]"),
+   "Freeform sampler import is available");
+  const frames=2205,bytes=new Uint8Array(44+frames*2),view=new DataView(bytes.buffer);
+  const str=(offset,value)=>{for(let i=0;i<value.length;i++)bytes[offset+i]=value.charCodeAt(i);};
+  str(0,"RIFF");view.setUint32(4,bytes.length-8,true);str(8,"WAVE");
+  str(12,"fmt ");view.setUint32(16,16,true);view.setUint16(20,1,true);
+  view.setUint16(22,1,true);view.setUint32(24,44100,true);
+  view.setUint32(28,88200,true);view.setUint16(32,2,true);
+  view.setUint16(34,16,true);str(36,"data");view.setUint32(40,frames*2,true);
+  for(let n=0;n<frames;n++)view.setInt16(44+n*2,Math.round(Math.sin(n*.1)*11000),true);
+  const soundFile=new win.File([bytes],"freeform-test.wav",{type:"audio/wav"});
+  const transfer=new win.DataTransfer();transfer.items.add(soundFile);
+  const fileControl=doc.querySelector(".freeform-sound-host input[type=file]");
+  fileControl.files=transfer.files;fileControl.dispatchEvent(new Event("change",{bubbles:true}));
+  await wait(()=>!!doc.querySelector(".freeform-sound-modules .sample-zones"),
+   "Canonical sampler editor opens after importing audio");
+  const filter=doc.querySelector('.freeform-sound-modules [aria-label="Recorded sound filter type"]');
+  assert(filter,"Freeform sample has existing filter and distortion settings");
+  filter.value="highpass";filter.dispatchEvent(new Event("change",{bubbles:true}));
+  await wait(()=>doc.querySelector(
+   '.freeform-sound-modules [aria-label="Recorded sound filter type"]'
+  )?.value==="highpass","Sample tone change is saved");
+  project=null;
+  get("export").click();get("export-form").dispatchEvent(
+   new Event("submit",{bubbles:true,cancelable:true}));
+  await wait(()=>!!project&&project.size>44,"Freeform sample exports as portable Song");
+  const {readZip}=await import("/zip.js"),entries=await readZip(project);
+  const manifestEntry=[...entries].find(([key])=>key.endsWith(".premidi"));
+  assert(manifestEntry,"ZIP includes canonical Song .premidi manifest");
+  const packaged=JSON.parse(new TextDecoder().decode(manifestEntry[1]));
+  const edited=packaged.tracks[0].freeform.instruments[0].sounds[0].patch;
+  assert(edited.type==="sample"&&edited.filter.type==="highpass",
+   "Imported sample and Sound filter survive Song export");
+  assert(entries.has(packaged.tracks[0].freeform.samples[0].path),
+   "Imported audio remains external, alongside the .premidi manifest");
+  await wait(()=>!get("export-dialog").open,"Portable Song export closes");
+  get("play").click();
+  await wait(()=>get("play").getAttribute("aria-label")==="stop song",
+   "Imported freeform audio plays as part of Song",9000);
+  get("play").click();
   assert(!issues.length,"No runtime browser errors: "+issues.join("; "));
   await report("PASS","Freeform empty editing, notes, unpack, versioned export and playback");
  }catch(error){
   const info={play:frame.contentDocument?.getElementById("play")?.getAttribute("aria-label"),status:frame.contentDocument?.getElementById("status")?.textContent,songHidden:frame.contentDocument?.getElementById("song-panel")?.hidden,clipCount:frame.contentDocument?.querySelectorAll(".song-beat-clip").length,freeformNotes:frame.contentDocument?.querySelectorAll(".freeform-roll-note").length};
-  await report("FAIL",String(error.stack||error)+" "+JSON.stringify(info)+" "+issues.join("; "));
+  let debug={};
+  try{
+   const stored=JSON.parse(frame.contentWindow.localStorage.getItem("premidi-v5-draft")||"null");
+   const free=stored?.tracks?.[0]?.freeform;
+   debug={storedType:free?.instruments?.[0]?.sounds?.[0]?.patch?.type,
+    assetCount:free?.samples?.length,
+    detailsOpen:frame.contentDocument?.querySelector(".freeform-sound-details")?.open,
+    moduleChildren:frame.contentDocument?.querySelector(".freeform-sound-modules")?.children?.length,
+    moduleStart:frame.contentDocument?.querySelector(".freeform-sound-modules")?.innerHTML?.slice(0,200),
+    sampleUploadNode:!!frame.contentDocument?.querySelector(".freeform-sound-host input[type=file]"),
+    msg:frame.contentDocument?.querySelector("#notice,#message,#status")?.textContent};
+  }catch{}
+  await report("FAIL",String(error.stack||error)+" "+JSON.stringify(info)+" "+JSON.stringify(debug)+" "+issues.join("; "));
  }
 })();
 </script>

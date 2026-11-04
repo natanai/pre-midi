@@ -197,3 +197,18 @@ test("freeform key illumination is event-driven and playback follow yields to ba
  assert.match(ui,/playStep>=viewStep\(\)\+VIEW_BARS\*BAR_STEPS/);
  assert.match(css,/\.freeform-key\.sounding/);
 });
+
+test("freeform Sound editor reuses canonical controls instead of duplicating effects definitions",()=>{
+ const ui=read("freeformUI.js"),shared=read("freeformSoundUI.js"),css=read("freeform.css");
+ assert.match(ui,/installFreeformSoundUI/);
+ assert.match(ui,/panel\.append\(soundUI\.render\(\)\)/);
+ assert.match(shared,/renderPatchEditor\(modules/);
+ assert.match(shared,/renderSamplerEditor\(modules/);
+ assert.match(shared,/createSignalDisplay\(scope/);
+ assert.match(shared,/assignSoundEdit\(sound\.patch,path,value\)/);
+ assert.match(shared,/await audition\(ctx\.inst/);
+ assert.match(shared,/makeSampleAsset\(/);
+ assert.match(shared,/referencedSampleIds\(layer\.instruments\)/);
+ assert.match(css,/\.freeform-sound-details/);
+ assert.doesNotMatch(shared,/new AudioContext\(/);
+});
