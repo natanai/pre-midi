@@ -1827,11 +1827,15 @@ $("import-as-synth").addEventListener("click",()=>{
 });
 $("cancel-audio-kind").addEventListener("click",()=>{$("audio-kind-dialog").close();pendingImport=null;});
 async function savePreset(name,wholeRack=false){
- const inst=instrument(),entry=sound();
+ const freeLayer=presetSource?.kind==="freeform"?
+  song?.tracks.find(track=>track.id===presetSource.trackId)?.freeform:null;
+ const inst=presetSource?freeLayer?.instruments.find(item=>item.id===presetSource.instrumentId):instrument();
+ const entry=presetSource?inst?.sounds.find(item=>item.id===presetSource.soundId):sound();
+ if(!inst||!entry){message("That Sound was removed. Open Save preset again.",true);return false;}
  if(!name||name.length>60){message("Preset name must be 1–60 characters.",true);return false;}
  if(savedSounds.length>=100){message("Your sound library contains 100 presets.",true);return false;}
  try{
-  const item=presetFromInstrument(inst,beat,{name,wholeRack,soundId:entry.id});
+  const item=presetFromInstrument(inst,freeLayer??beat,{name,wholeRack,soundId:entry.id});
   await savePresetAssets(item.samples);
   writeUserSounds([...savedSounds,item]);savedSounds.push(item);
   message("Saved "+name+" locally.");
@@ -1839,11 +1843,17 @@ async function savePreset(name,wholeRack=false){
  }catch(error){message("Could not save preset: "+error.message+". Export your beat to keep it.",true);return false;}
 }
 const presetDialog=$("save-preset-dialog"),presetForm=$("save-preset-form");
-let presetRack=false,presetSaving=false;
-function openPresetSave(wholeRack=false){
+let presetRack=false,presetSaving=false,presetSource=null;
+function openPresetSave(wholeRack=false,sourceOverride=null){
+ const freeLayer=sourceOverride?.kind==="freeform"?
+  song?.tracks.find(track=>track.id===sourceOverride.trackId)?.freeform:null;
+ const inst=sourceOverride?freeLayer?.instruments.find(item=>item.id===sourceOverride.instrumentId):instrument();
+ const entry=sourceOverride?inst?.sounds.find(item=>item.id===sourceOverride.soundId):sound();
+ if(!inst||!entry){message("Choose a Sound before saving its preset.",true);return;}
+ presetSource=sourceOverride; 
  presetRack=wholeRack;
  $("save-preset-title").textContent=wholeRack?"save rack preset":"save preset";
- $("save-preset-name").value=(wholeRack?instrument().name:sound().name)+" variation";
+ $("save-preset-name").value=(wholeRack?inst.name:entry.name)+" variation";
  $("save-preset-confirm").disabled=false;
  presetDialog.showModal();
  $("save-preset-name").select();
@@ -2194,6 +2204,7 @@ songUI=installSongUI({
  onError:error=>message(error,true),
  onFreeformBeatCreated:created=>message("Created \""+created.title+"\". Select + on a Beat Track to place it; your freeform notes are unchanged."),
  onBrowseFreeform:selection=>openLibrary(selection.mode,{...selection,kind:"freeform"}),
+ onSaveFreeform:selection=>openPresetSave(selection.wholeRack,{...selection,kind:"freeform"}),
  onFreeformActiveChange:active=>{
   const main=document.querySelector("main");
   main?.classList.toggle("editing-freeform",active);
