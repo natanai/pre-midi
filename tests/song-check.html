@@ -238,6 +238,19 @@
   const trim=frame.contentDocument.querySelector("#vocal-editor .vocal-timing input");
   trim.value="0.02";trim.dispatchEvent(new Event("change",{bubbles:true}));
   assert(frame.contentDocument.querySelector("#vocal-editor .vocal-timing input").value==="0.02","Voice trim is editable in seconds");
+  const wave=frame.contentDocument.querySelector("#vocal-editor .audio-waveform-editor");
+  assert(!!wave,"Vocal editor has a reusable waveform editing surface");
+  const handle=wave.querySelector('[role="slider"][aria-label="trim start"]');
+  assert(!!handle,"Waveform trim marker is accessible by keyboard and pointer");
+  assert(Math.abs(Number(handle.getAttribute("aria-valuenow"))-.02)<.0005,"Waveform marker reflects saved clip trim");
+  const zoom=wave.querySelector('select[aria-label="waveform zoom"]');
+  const initialViewport=wave.querySelector(".audio-waveform-tools").textContent;
+  zoom.value="8";zoom.dispatchEvent(new Event("change",{bubbles:true}));
+  assert(zoom.value==="8"&&wave.querySelector(".audio-waveform-tools").textContent!==initialViewport,
+   "Waveform zoom changes the displayed source-time window");
+  handle.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true}));
+  assert(Math.abs(Number(frame.contentDocument.querySelector("#vocal-editor .vocal-timing input").value)-.021)<.0005,
+   "Keyboard trimming commits a one-millisecond edit");
   get("song-clip-start").value="5";
   get("song-clip-start").dispatchEvent(new Event("change",{bubbles:true}));
   let shifted=frame.contentDocument.querySelector('[data-clip-id="'+voiceId+'"]');
