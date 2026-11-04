@@ -107,7 +107,7 @@ export function editBeatClip(song,clipId,changes){
 }
 // A removed take should not leave a phantom lane or an unused audio asset
 // reference in Song exports. Asset bytes remain in the registry for Undo.
-function pruneUnusedRecordings(song){
+export function pruneUnusedRecordings(song){
  const used=new Set(song.tracks.filter(track=>track.kind==="vocal")
   .flatMap(track=>track.clips.map(clip=>clip.recordingId)));
  for(const beat of song.beats)for(const asset of beat.samples??[])if(asset.sourceRecordingId)used.add(asset.sourceRecordingId);
