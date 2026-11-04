@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {create} from "../schema.js";
-import {createSong,addVocalTake,setSongTempo,trimVocalClip,validateSong} from "../songModel.js";
+import {createSong,addVocalTake,setSongTempo,trimVocalClip,upgradeSongFeatures,validateSong} from "../songModel.js";
 import {recordingEventsAtStep} from "../songAudio.js";
 import {vocalSourceRange} from "../vocalEffects.js";
 import {makeRecordingAsset} from "../recordingAssets.js";
@@ -31,6 +31,7 @@ test("tempo changes update vocal step lengths without changing beat placement or
  const {clip}=addVocalTake(song,recording,{startStep:40});
  trimVocalClip(song,clip.id,.125);
  clip.effects={transpose:12}; // Twice normal playback speed, no time-stretching.
+ upgradeSongFeatures(song);
  const originalBytes=getAsset(recording.id).slice();
  const start=clip.startStep;
  const source=(recording.durationSeconds-recording.trimSeconds-.125)/2;
@@ -55,6 +56,7 @@ test("seeking after onset and after trims maps audible position in real source t
  const song=createSong(create()),recording=rec("seek-voice",4,.1);
  const {clip}=addVocalTake(song,recording,{startStep:10});
  trimVocalClip(song,clip.id,.15);
+ upgradeSongFeatures(song);
  const unit=60/song.bpm/4;
  const late=recordingEventsAtStep(song,18,{includeOverlapping:true});
  assert.equal(late.length,1);
