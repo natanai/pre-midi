@@ -1519,3 +1519,16 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .vocal-effect-sections .synth-group{margin:0;min-width:0}
 .vocal-effect-sections .synth-fields{min-width:0}
 @media(max-width:850px){.vocal-effect-sections{grid-template-columns:minmax(0,1fr)}}
+
+/* The diagram and its controls share focus; no duplicate setting widgets. */
+.visual-panel-graph{pointer-events:auto}
+.visual-graph-label{pointer-events:none}
+.visual-graph-hit{fill:none;stroke:transparent;stroke-width:14px;
+ vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:pointer;outline:none}
+.visual-graph-line.visual-linked,.visual-graph-secondary.visual-linked{
+ stroke:var(--track-accent,#08e4ec);stroke-width:2.8;opacity:1;
+ filter:drop-shadow(0 0 2px var(--track-accent,#08e4ec))}
+.visual-graph-hit:focus-visible{stroke:#ffffff24}
+.visual-sound-panel .sound-link-active{outline:1px solid var(--track-accent,#08e4ec);
+ outline-offset:2px}
+.visual-sound-panel .sound-link-active .dial-amount{stroke:var(--track-accent,#08e4ec)}
