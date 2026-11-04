@@ -52,6 +52,22 @@
   picker.value=picker.options[1].value;
   picker.dispatchEvent(new Event("change",{bubbles:true}));
   await wait(()=>doc.querySelectorAll(".freeform-roll-note").length>0,"Unpacked source notes editable");
+  const madeCount=doc.querySelectorAll(".song-beat-clip").length;
+  const create=doc.querySelector(".freeform-create-beat");
+  assert(create&&doc.querySelector('.freeform-selection-tools input[aria-label="Selection length in bars"]'),
+   "Song selection has an explicit reusable Beat creation control");
+  create.click();
+  await wait(()=>get("title").value==="Beat 1 selection","New reusable Beat opens in the shared Beat editor");
+  assert(doc.querySelector(".song-freeform-editor").hidden,
+   "Beat editor replaces freeform editor after successful creation");
+  assert(doc.querySelectorAll(".song-beat-clip").length===madeCount,
+   "New Beat does not double Song playback by placing itself");
+  assert(doc.querySelectorAll(".song-freeform-preview-note").length>=2,
+   "Creating a Beat preserves the original freeform music");
+  get("undo").click();
+  await wait(()=>get("title").value==="Untitled beat","Creating Beat is undoable");
+  get("redo").click();
+  await wait(()=>get("title").value==="Beat 1 selection","Creating Beat is redoable");
   let project;
   win.URL.createObjectURL=(original=>blob=>{project=blob;return original.call(win.URL,blob);})(win.URL.createObjectURL);
   win.HTMLAnchorElement.prototype.click=function(){};
@@ -64,6 +80,8 @@
   assert(saved.kind==="song"&&saved.version===22,"Freeform exported as Song v22");
   assert(saved.tracks[0].freeform.instruments.length===2,"Song retains both Instruments");
   assert(saved.tracks[0].freeform.passages.length===1,"Song retains converted passage");
+  assert(saved.beats.length===2,"New Beat saved as an independent reusable Song Beat");
+  assert(saved.tracks[0].clips.length===0,"New Beat stays unplaced until explicitly requested");
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="stop song","Unpacked Song plays",9000);
   get("play").click();

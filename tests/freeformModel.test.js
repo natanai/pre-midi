@@ -80,7 +80,7 @@ test("Create Beat from freeform selection preserves pitched and rack sounds, tim
  const song=createSong(create()),track=song.tracks[0];
  const free=createFreeform();track.freeform=free;
  const keys=addFreeformInstrument(free);
- addFreeformNote(keys,{pitch:61,start:16,duration:3,velocity:.82,bend:{points:[{time:0,value:0}]}});
+ addFreeformNote(keys,{pitch:61,start:16,duration:3,velocity:.82,bend:{shape:"rise",amount:1,rate:5}});
  addFreeformNote(keys,{pitch:64,start:33,duration:3,velocity:.64});
  keys.chunks[0].notes.push({id:id(),pitch:72,start:4,duration:2,velocity:.55});
  addFreeformChunkPlacement(keys,keys.chunks[0].id,16,{length:16,repeats:2,every:16});
