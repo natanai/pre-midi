@@ -31,7 +31,7 @@ import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
-import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,pruneUnusedRecordings,validateSong} from "./songModel.js";
+import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,setSongTempo,pruneUnusedRecordings,validateSong} from "./songModel.js";
 import {renderVocalEditor,decodeVocalRecording} from "./vocalEditor.js";
 import {vocalEffects} from "./vocalEffects.js";
 import {encodeMonoWav,RECORDING_RATE} from "./recording.js";
@@ -1686,7 +1686,7 @@ $("voice-start").addEventListener("click",async()=>{
 $("title").addEventListener("change", event => modify(() => beat.title = event.target.value.trim() || "Untitled beat"));
 $("bpm").addEventListener("change",event=>{
  const next=Math.round(Number(event.target.value));
- if(song&&songExpanded)modifySong(()=>{song.bpm=next;});
+ if(song&&songExpanded)modifySong(()=>setSongTempo(song,next));
  else modify(()=>{beat.bpm=next;});
 });
 attachNumberScrub($("bars"));
