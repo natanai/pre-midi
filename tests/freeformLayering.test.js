@@ -89,3 +89,15 @@ test("dense or invalid preview never asserts no overlap without a complete scan"
  assert.throws(()=>previewFreeformPassageLayering(layer,"missing",32),/Missing freeform passage/);
  assert.throws(()=>previewFreeformPassageLayering(layer,passage.id,-1),/outside freeform/);
 });
+
+test("layering preview includes a long Chunk tail whose onset is outside the move window",()=>{
+ const {layer,inst,passage}=fixture();
+ passage.startStep=96;
+ addFreeformNote(inst,{pitch:72,start:100,duration:4,velocity:.8,passageId:passage.id});
+ inst.chunks[0].notes=[{id:id(),pitch:72,start:1,duration:120,velocity:.8}];
+ addFreeformChunkPlacement(inst,inst.chunks[0].id,16,{length:16});
+ const before=clone(layer),result=previewFreeformPassageLayering(layer,passage.id,96);
+ assert.equal(result.noteOverlapCount,1);
+ assert.equal(result.incomplete,false);
+ assert.deepEqual(layer,before,"Preview must not move or edit the source.");
+});
