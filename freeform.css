@@ -70,8 +70,12 @@ main.editing-freeform .beat-identity > label{display:none}
 /* Desktop freeform Sounds reuse the Beat's existing synth/sampler/visualizer modules. */
 .freeform-sound-host{margin:9px 0 11px}
 .freeform-sound-details{border:1px solid var(--line);background:#0b100f;padding:0 9px 8px}
-.freeform-sound-summary{cursor:pointer;min-height:28px;padding:6px 0;
- font-size:11px;color:var(--bright);list-style-position:inside}
+.freeform-sound-summary{display:block;width:100%;cursor:pointer;min-height:28px;
+ padding:6px 0;text-align:left;border:0;background:transparent;
+ font-size:11px;color:var(--bright)}
+.freeform-sound-summary::before{content:"›";display:inline-block;width:14px;color:var(--muted)}
+.freeform-sound-summary[aria-expanded="true"]::before{content:"⌄"}
+.freeform-sound-summary:focus-visible{outline:1px solid var(--bright)}
 .freeform-sound-tools,.freeform-sound-levels,.freeform-sound-actions{
  display:flex;align-items:end;flex-wrap:wrap;gap:9px;margin:8px 0}
 .freeform-sound-tools button,.freeform-sound-actions button{min-height:28px;font-size:11px;padding:3px 7px}

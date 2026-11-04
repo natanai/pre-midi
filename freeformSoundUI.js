@@ -114,15 +114,15 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   const ctx=current();
   if(!ctx){host.hidden=true;host.replaceChildren();return host;}
   host.hidden=false;host.replaceChildren();
-  const details=el("details","freeform-sound-details");details.open=expanded;
-  details.append(el("summary","freeform-sound-summary","sound · "+ctx.sound.name));
-  details.addEventListener("toggle",()=>{
-   // Re-rendering a Sound removes the old <details>. Browsers may dispatch a
-   // queued toggle from that detached node after the replacement is mounted.
-   // Only the currently mounted control may change the remembered open state.
-   if(!details.isConnected)return;
-   if(expanded!==details.open){expanded=details.open;render();}
-  });
+  // Use an explicit disclosure button: sound edits rebuild this subtree, and
+  // HTML <details> dispatches delayed toggle events on replaced elements.
+  const details=el("section","freeform-sound-details");
+  const disclosure=button("sound · "+ctx.sound.name,()=>{
+   expanded=!expanded;render();
+  },"freeform-sound-summary");
+  disclosure.setAttribute("aria-expanded",String(expanded));
+  disclosure.setAttribute("aria-controls","freeform-sound-content");
+  details.append(disclosure);
   host.append(details);
   if(!expanded)return host;
   const tools=el("div","freeform-sound-tools");
@@ -183,7 +183,10 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    },ctx.sound.id),"freeform-sound-remove"));
    tools.append(actions);
   }
-  details.append(tools,dials,scope,modules,input);
+  const content=el("div","freeform-sound-content");
+  content.id="freeform-sound-content";
+  content.append(tools,dials,scope,modules,input);
+  details.append(content);
   visualize(ctx);
   if(ctx.sound.patch.type==="sample"){
    const names=ctx.sound.patch.zones.map(zone=>
