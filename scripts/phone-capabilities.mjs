@@ -8,6 +8,7 @@ const SOURCE_FILES=[
  "songUI.js",
  "freeformUI.js",
  "vocalEditor.js",
+ "audioControlUI.js",
  "audioWaveform.js",
  "instrumentUI.js",
  "samplerUI.js",
@@ -85,9 +86,14 @@ function buildInventory(sources){
     desktopRoute:path+" harmonicControls",contract:"each oscillator's 32 independently editable harmonic partials"});
   }
   if(path==="samplerUI.js"){
-   for(const group of ["movements","configs"]){
-    const matcher=group==="movements"?/const movements=\[([\s\S]*?)\];/:/const configs=\[([\s\S]*?)\];/;
-    const body=src.match(matcher)?.[1]||"";
+   // Existing sample IDs now derive from shared Beat / vocal UI definitions.
+   const definitions=sources["audioControlUI.js"];
+   for(const matcher of [
+    /export const AUDIO_MOVEMENT_CONTROLS=Object\.freeze\(\[([\s\S]*?)\]\.map\(Object\.freeze\)\)/,
+    /export const AUDIO_COMMON_CONTROLS=Object\.freeze\(\[([\s\S]*?)\]\.map\(Object\.freeze\)\)/,
+    /export const AUDIO_SAMPLE_EXTRA_CONTROLS=Object\.freeze\(\[([\s\S]*?)\]\.map\(Object\.freeze\)\)/
+   ]){
+    const body=definitions.match(matcher)?.[1]||"";
     for(const m of body.matchAll(/\[\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']/g)){
      push({id:"sample:"+m[1],source:path,anchor:m[1],kind:"parameter",event:"set",desktopRoute:path+" "+m[2],
       contract:"canonical sampler parameter "+m[1]});
