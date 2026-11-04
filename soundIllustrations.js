@@ -377,11 +377,15 @@ export const diagram=(patch,type,page=0)=>{
   const pulse=m.tremolo??0,pulseRate=m.tremoloRate??5;
   const tone=m.tone??0,toneRate=m.toneRate??2;
   line(pathRange(150,t=>[18+t*324,86-8*pulse*Math.sin(2*Math.PI*t*1.5*pulseRate)]),true,["movement.tremolo","movement.tremoloRate"]);
-  line(pathRange(150,t=>[18+t*324,100-7*tone*Math.sin(2*Math.PI*t*1.5*toneRate)]),true,["movement.tone","movement.toneRate"]);
+  if(p.type==="synth")
+   line(pathRange(150,t=>[18+t*324,100-7*tone*Math.sin(2*Math.PI*t*1.5*toneRate)]),
+    true,["movement.tone","movement.toneRate"]);
   const pan=clamp(p.pan??0,-1,1);
   line("M22 109 H"+(22+22*(1-pan)).toFixed(2),true,["pan"]);
   line("M294 109 H"+(294+22*(1+pan)).toFixed(2),true,["pan"]);
-  tag(20,79,"level");tag(20,96,"tone");tag(260,110,"l / r");
+  tag(20,79,"level");
+  if(p.type==="synth")tag(20,96,"tone");
+  tag(260,110,"l / r");
  }else if(type==="distortion"){
   const drive=p.effects.drive||0,transfer=driveCurve(drive);
   line("M18 96 H344 M180 17 V97",true);
