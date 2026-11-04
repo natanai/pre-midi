@@ -44,3 +44,21 @@ export function automationValueAt(block,time,base){
  for(let i=1;i<points.length;i++)if(time<points[i].time){const a=points[i-1],b=points[i];return a.value*(b.value/a.value)**((time-a.time)/(b.time-a.time));}
  return points.at(-1).value;
 }
+
+// One resolver for browser transport, WAV export, and the native voice host.
+// Captured source phase belongs to the note, not to its Song Track.
+export function noteCutoffAutomation(instrument,note,timeline){
+ const captured=note?.cutoffAutomation;
+ if(!captured)return {automation:instrument?.automation,timeline};
+ return {automation:captured.block,timeline:{
+  ...timeline,step:captured.step,limitStep:captured.limitStep
+ }};
+}
+export function validateCapturedCutoffAutomation(captured){
+ if(!keys(captured,['version','block','step','limitStep'])||
+  captured.version!==1||
+  !Number.isSafeInteger(captured.step)||captured.step<0||
+  !Number.isSafeInteger(captured.limitStep)||captured.limitStep<=captured.step||
+  captured.limitStep>64*16)return ["Invalid captured note cutoff movement."];
+ return validateCutoffAutomation(captured.block,null,64);
+}
