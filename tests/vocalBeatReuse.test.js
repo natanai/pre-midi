@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {create,upgradeBeatFeatures,validate as validateBeat,parse as parseBeat,
  SAMPLE_SLICE_BEAT_VERSION} from "../schema.js";
-import {createSong,addVocalTake,removeSongClip,upgradeSongFeatures,validateSong,
+import {createSong,addVocalTake,removeSongClip,pruneUnusedRecordings,upgradeSongFeatures,validateSong,
  SAMPLE_SLICE_SONG_VERSION} from "../songModel.js";
 import {linkedVocalSample} from "../vocalBeatReuse.js";
 import {makeRecordingAsset} from "../recordingAssets.js";
@@ -114,6 +114,18 @@ test("a Beat keeps its shared WAV alive after the original voice clip is removed
  assert.equal(song.beats[0].samples[0].id,rec.id);
  assert.deepEqual(getAsset(rec.id),original);
  assert.equal(exportSongProject(song).blob.size>0,true);
+});
+test("removing the final Beat sound reference prunes unused recording metadata",()=>{
+ const {song,clip,rec,original}=fixture();
+ removeSongClip(song,clip.id);
+ assert.equal(song.recordings.length,1);
+ const beat=song.beats[0];
+ beat.instruments[0].sounds[0].patch={type:"synth"};
+ beat.samples=[];
+ pruneUnusedRecordings(song);
+ assert.deepEqual(song.recordings,[]);
+ assert.equal(song.version,SAMPLE_SLICE_SONG_VERSION,"Version remains stable for project compatibility");
+ assert.deepEqual(getAsset(rec.id),original,"Binary survives for Song Undo");
 });
 test("identity collisions, unversioned slices, overlong excerpts and incompatible codecs are rejected",()=>{
  const {song,beat,rec,clip,link}=fixture();
