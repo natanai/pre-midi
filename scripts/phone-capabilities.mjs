@@ -8,6 +8,7 @@ const SOURCE_FILES=[
  "songUI.js",
  "freeformUI.js",
  "vocalEditor.js",
+ "audioControlUI.js",
  "audioWaveform.js",
  "instrumentUI.js",
  "samplerUI.js",
@@ -32,7 +33,7 @@ function buildInventory(sources){
   if(path==="keyboardPiano.js")return "notes/external-keyboard";
   if(path==="songUI.js"||path==="freeformUI.js"||path==="vocalEditor.js"||path==="audioWaveform.js"||/\b(song|voice|vocal|clip|track)\b/.test(k))return "song";
   if(path==="microphoneUI.js"||/\b(mic|record|sample|sampling)\b/.test(k))return "sound/recording";
-  if(["instrumentUI.js","samplerUI.js","modulationUI.js","automationUI.js","soundIllustrations.js","soundScope.js","dial.js"].includes(path))return "sound";
+  if(["instrumentUI.js","samplerUI.js","audioControlUI.js","modulationUI.js","automationUI.js","soundIllustrations.js","soundScope.js","dial.js"].includes(path))return "sound";
   if(/\b(export|import|file|new|examples|save-preset|library|close-library|close-examples)\b/.test(k))return "project";
   if(/\b(sound|synth|preset|change-sound|instrument-volume|convert|rack|remove-instrument)\b/.test(k))return "sound";
   if(/\b(instrument|add-instrument|library-sounds|library-filters)\b/.test(k))return "notes/instrument-sheet";
@@ -85,9 +86,14 @@ function buildInventory(sources){
     desktopRoute:path+" harmonicControls",contract:"each oscillator's 32 independently editable harmonic partials"});
   }
   if(path==="samplerUI.js"){
-   for(const group of ["movements","configs"]){
-    const matcher=group==="movements"?/const movements=\[([\s\S]*?)\];/:/const configs=\[([\s\S]*?)\];/;
-    const body=src.match(matcher)?.[1]||"";
+   // Existing sample IDs now derive from shared Beat / vocal UI definitions.
+   const definitions=sources["audioControlUI.js"];
+   for(const matcher of [
+    /export const AUDIO_MOVEMENT_CONTROLS=Object\.freeze\(\[([\s\S]*?)\]\.map\(Object\.freeze\)\)/,
+    /export const AUDIO_COMMON_CONTROLS=Object\.freeze\(\[([\s\S]*?)\]\.map\(Object\.freeze\)\)/,
+    /export const AUDIO_SAMPLE_EXTRA_CONTROLS=Object\.freeze\(\[([\s\S]*?)\]\.map\(Object\.freeze\)\)/
+   ]){
+    const body=definitions.match(matcher)?.[1]||"";
     for(const m of body.matchAll(/\[\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']/g)){
      push({id:"sample:"+m[1],source:path,anchor:m[1],kind:"parameter",event:"set",desktopRoute:path+" "+m[2],
       contract:"canonical sampler parameter "+m[1]});

@@ -144,7 +144,11 @@ test("selecting a Song vocal reuses the Beat workspace with sample effect dials"
  assert.match(studio,/songUI\?\.getSelectedVocal\(\)/);
  assert.match(ui,/onSelectionChange/);
  assert.match(model,/trimVocalClip/);
- assert.match(editor,/createDial/);
+ assert.match(editor,/renderAudioToneControls/);
+ assert.match(editor,/renderAudioMovementControls/);
+ assert.match(editor,/renderAudioArticulationControls/);
+ assert.match(editor,/illustrateSoundPanel/);
+ assert.match(studio,/onApply:\(clipId,changes\)=>/);
  assert.match(editor,/sample & articulation/);
  assert.match(editor,/pitch & movement/);
  assert.match(editor,/tone · filter & distortion/);

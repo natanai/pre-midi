@@ -1,9 +1,9 @@
 // Vocal clips share the same sampler tone, pitch and movement controls.
 // This is the Song context for the existing lower Beat editing workspace.
-import {createDial} from "./dial.js";
-import {SAMPLE_FILTERS,DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
-import {movement,BEND_SHAPES} from "./expression.js";
-import {vocalEffects} from "./vocalEffects.js";
+import {renderAudioToneControls,renderAudioMovementControls,renderAudioArticulationControls,renderAudioDelayControls} from "./audioControlUI.js";
+import {illustrateSoundPanel} from "./soundIllustrations.js";
+import {assignSoundEdit} from "./soundEditPath.js";
+import {vocalDisplayPatch,vocalChangesFromControl} from "./vocalAudioView.js";
 import {recordingBytes} from "./recordingAssets.js";
 import {nativeEnabled} from "./src/hosts/native/session.js";
 import {decodeNativeAudio} from "./src/hosts/native/capture.js";
@@ -16,8 +16,6 @@ const el=(tag,name,className)=>{
  return node;
 };
 const button=(label,fn)=>{const b=el("button",label);b.type="button";b.addEventListener("click",fn);return b;};
-const dial=(root,label,value,min,max,step,display,change)=>root.append(createDial(
- {label,min,max,step,display},value,change,()=>{}));
 function section(root,title){
  const details=el("details",undefined,"synth-group"),summary=el("summary",title);
  details.open=true;const fields=el("div",undefined,"synth-fields dial-grid");
@@ -45,10 +43,10 @@ export async function decodeVocalRecording(recording){
 async function autoTrim(recording){
  return suggestVocalOnset(await decodedWaveformAsset(recording,()=>decodeVocalRecording(recording)),recording.trimSeconds);
 }
-export function renderVocalEditor(root,selection,{onEffect,onLevel,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo}){
+export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo}){
  root.hidden=!selection;
  if(!selection){root.replaceChildren();return;}
- const {clip,track,recording}=selection,fx=vocalEffects(clip),clipId=clip.id;
+ const {clip,track,recording}=selection,clipId=clip.id;
  root.replaceChildren();
  const heading=el("div",undefined,"vocal-editor-heading");
  const identity=el("div",undefined,"vocal-editor-identity");
@@ -77,56 +75,31 @@ export function renderVocalEditor(root,selection,{onEffect,onLevel,onTrim,onDupl
  suggest.title="Find the first audible onset; keep the original recording";
  timing.append(suggest);root.append(timing);
  const sections=el("div",undefined,"vocal-effect-sections");
+ const patch=vocalDisplayPatch(clip,recording),visuals=[];
+ const apply=(path,value)=>onApply(clipId,vocalChangesFromControl(patch,path,value));
+ const preview=(path,value)=>{
+  const next=structuredClone(patch);
+  assignSoundEdit(next,path,value);
+  next.audioFilterBypassed=next.filter===null;
+  for(const visual of visuals)visual.draw(next);
+ };
  const shape=section(sections,"sample & articulation");
- dial(shape,"Level",clip.gain??1,0,2,.01,"percent",v=>onLevel(clipId,v));
- for(const [key,label,lo,hi,step,display] of [
-  ["transpose","Transpose",-24,24,1,"semitones"],
-  ["pan","Pan",-1,1,.01,"pan"],
-  ["attack","Rise",0,2,.005,"seconds"],
-  ["release","Fade",0,3,.005,"seconds"]
- ])dial(shape,label,fx[key],lo,hi,step,display,v=>onEffect(clipId,key,v));
+ renderAudioArticulationControls(shape,patch,apply,preview,{context:"vocal"});
  const tone=section(sections,"tone · filter & distortion");
- const wrap=el("label",undefined,"vocal-number"),select=el("select");
- wrap.append(el("span","filter type"));
- for(const type of ["off",...SAMPLE_FILTERS]){
-  const option=el("option",type);option.value=type;select.append(option);
- }
- select.value=fx.filter?.type??"off";
- select.addEventListener("change",()=>onEffect(clipId,"filter",
-  select.value==="off"?null:{...(fx.filter||DEFAULT_SAMPLE_FILTER),type:select.value}));
- wrap.append(select);tone.append(wrap);
- if(fx.filter){
-  dial(tone,"Cutoff",fx.filter.cutoff,50,14000,1,"hz",
-   v=>onEffect(clipId,"filter",{...fx.filter,cutoff:v}));
-  dial(tone,"Resonance",fx.filter.resonance,.1,16,.1,"number",
-   v=>onEffect(clipId,"filter",{...fx.filter,resonance:v}));
- }
- dial(tone,"Distortion",fx.drive,0,1,.01,"percent",v=>onEffect(clipId,"drive",v));
- const pitch=section(sections,"pitch & movement"),motion=movement(fx);
- for(const [key,label,lo,hi,step,display] of [
-  ["glide","Glide from",-12,12,.1,"semitones"],
-  ["glideTime","Glide time",.01,3,.01,"seconds"],
-  ["depth","Vibrato",0,100,1,"cents"],
-  ["rate","Vibrato speed",.1,20,.1,"hz"],
-  ["delay","Vibrato waits",0,3,.05,"seconds"],
-  ["tremolo","Pulse",0,1,.01,"percent"],
-  ["tremoloRate","Pulse speed",.1,20,.1,"hz"]
- ])dial(pitch,label,motion[key],lo,hi,step,display,
-  value=>onEffect(clipId,"movement",{...motion,[key]:value}));
- const bend=el("label",undefined,"vocal-number"),bendSelect=el("select");
- bend.append(el("span","bend shape"));
- for(const [value,label] of BEND_SHAPES){const option=el("option",label);option.value=value;bendSelect.append(option);}
- bendSelect.value=fx.bend.shape;bendSelect.addEventListener("change",()=>onEffect(clipId,"bend",{...fx.bend,shape:bendSelect.value}));
- bend.append(bendSelect);pitch.append(bend);
- dial(pitch,"Bend amount",fx.bend.amount,0,12,.25,"semitones",
-  v=>onEffect(clipId,"bend",{...fx.bend,amount:v}));
- dial(pitch,"Wave speed",fx.bend.rate,.1,12,.1,"hz",
-  v=>onEffect(clipId,"bend",{...fx.bend,rate:v}));
+ renderAudioToneControls(tone,patch,apply,preview,{allowBypass:true,showCutoff:true});
+ const pitch=section(sections,"pitch & movement");
+ renderAudioMovementControls(pitch,patch,apply,preview);
  const delay=section(sections,"delay");
- for(const [key,label,lo,hi,step,display] of [
-  ["delayMix","Delay",0,1,.01,"percent"],
-  ["delayTime","Delay time",.05,1,.01,"seconds"],
-  ["delayFeedback","Feedback",0,.8,.01,"percent"]
- ])dial(delay,label,fx[key],lo,hi,step,display,v=>onEffect(clipId,key,v));
+ renderAudioDelayControls(delay,patch,apply,preview);
  root.append(sections);
+ // Exact same graph, gestures, and label linking used by the sampler Sound
+ // inspector. Vocal-only source and trigger options are deliberately absent.
+ for(const [details,kind] of [[shape.closest("details"),"sample"],
+  [tone.closest("details"),"filter"],[pitch.closest("details"),"movement"],
+  [delay.closest("details"),"delay"]]){
+  const anchor=document.createComment("audio visual position");
+  details.before(anchor);
+  const visual=illustrateSoundPanel(details,kind,patch,apply,preview,clipId);
+  visuals.push(visual);anchor.replaceWith(visual.element);
+ }
 }

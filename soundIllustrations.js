@@ -83,7 +83,12 @@ export const diagram=(patch,type,page=0)=>{
   ],"detune / level");
   tag(14,14,"detune →");tag(294,14,"level ↑");
  }else if(type==="filter"){
-  const f=p.filter||(p.type==="sample"?DEFAULT_SAMPLE_FILTER:{type:"lowpass",cutoff:8000,resonance:1});
+  if(p.type==="vocal"&&p.audioFilterBypassed){
+   line("M18 95 H344 M18 22 V95",true);
+   line("M18 35 H342",false,["filter.type"]);
+   tag(18,14,"off");tag(304,110,"dry");
+  }else{
+  const f=p.filter||((p.type==="sample"||p.type==="vocal")?DEFAULT_SAMPLE_FILTER:{type:"lowpass",cutoff:8000,resonance:1});
   const freq=x=>50*280**((x-18)/324);
   const cutoff=clamp(Math.log(Math.max(50,f.cutoff)/50)/Math.log(280));
   const x=18+cutoff*324,r=clamp((f.resonance-.1)/15.9);
@@ -103,7 +108,7 @@ export const diagram=(patch,type,page=0)=>{
    axis(["filter","resonance"],.1,16,"linearY",{from:95-60*base,to:95-60*base-25,step:.1})
   ],"cutoff / resonance");
   tag(18,15,"low");tag(308,15,"high");
-  if(p.type==="sample"){
+  if(p.type==="sample"||p.type==="vocal"){
    const transfer=driveCurve(p.drive??0);
    line(pathRange(121,t=>[205+t*123,99-13*transfer[Math.round(t*(transfer.length-1))]]),true,["drive"]);
    tag(217,110,"drive");
@@ -125,6 +130,7 @@ export const diagram=(patch,type,page=0)=>{
      (1-t)**(1.5+6*(1-decay))*Math.sin(t*67)*Math.cos(t*17)]),true,["noise","noiseDecay"]);
     tag(18,111,"noise");
    }
+  }
   }
  }else if(type==="envelope"||type==="sample"){
   const sample=type==="sample",e=sample?
@@ -149,16 +155,18 @@ export const diagram=(patch,type,page=0)=>{
   tag(18,14,"on");tag(248,14,"off");
   if(sample){
    const gain=clamp(p.gain??.9,0,2),transpose=p.transpose??0,pan=p.pan??0;
-   const strum=p.strumMs??0,root=p.zones?.[0]?.root??60;
+   const vocal=p.type==="vocal",strum=p.strumMs??0,root=p.zones?.[0]?.root??60;
    const pitchFollow=p.followPitch!==false,oneShot=!!p.oneShot,dynamics=!!p.preserveDynamics;
    line("M20 "+(112-9*gain).toFixed(2)+" H150",true,["gain"]);
-   line("M173 "+(105-6*transpose/12).toFixed(2)+" H252",true,["transpose","followPitch"]);
+   line("M173 "+(105-6*transpose/12).toFixed(2)+" H252",true,vocal?["transpose"]:["transpose","followPitch"]);
    line("M274 104 H340 M"+(307+30*pan).toFixed(2)+" 98 V110",true,["pan"]);
-   tag(19,110,"level");tag(171,110,(pitchFollow?"pitch ":"root ")+root);
+   tag(19,110,"level");tag(171,110,vocal?"voice":(pitchFollow?"pitch ":"root ")+root);
    tag(290,95,"pan");
-   line("M"+(18+(strum+25)/50*52).toFixed(2)+" 94 V102",true,["strumMs"]);
-   if(oneShot)line("M344 40 V91",true,["oneShot"]);
-   if(dynamics)line("M331 41 L338 35 L345 41",true,["preserveDynamics"]);
+   if(!vocal){
+    line("M"+(18+(strum+25)/50*52).toFixed(2)+" 94 V102",true,["strumMs"]);
+    if(oneShot)line("M344 40 V91",true,["oneShot"]);
+    if(dynamics)line("M331 41 L338 35 L345 41",true,["preserveDynamics"]);
+   }
   }
  }else if(type==="movement"){
   const m=movement(p);

@@ -1266,18 +1266,18 @@ function renderVocalWorkspace(){
  if(!active){root.hidden=true;root.replaceChildren();return;}
  const target=clipId=>{const entry=songUI?.getSelectedVocal();return entry?.clip.id===clipId?entry:null;};
  renderVocalEditor(root,selected,{
-  onEffect:(clipId,key,value)=>{
+  onApply:(clipId,changes)=>{
    const entry=target(clipId);if(!entry)return;
    modifySong(()=>{
-    entry.clip.effects={...(entry.clip.effects||{}),[key]:value};
-    if(key==="transpose"){
+    if(Object.hasOwn(changes,"gain"))entry.clip.gain=changes.gain;
+    const effects=Object.fromEntries(Object.entries(changes).filter(([key])=>key!=="gain"));
+    if(Object.keys(effects).length)
+     entry.clip.effects={...(entry.clip.effects||{}),...effects};
+    if(Object.hasOwn(changes,"transpose")){
      const remaining=entry.recording.durationSeconds-entry.recording.trimSeconds-(entry.clip.trimStartSeconds??0);
-     entry.clip.lengthSteps=Math.max(1,Math.ceil(remaining/Math.pow(2,value/12)*song.bpm*4/60));
+     entry.clip.lengthSteps=Math.max(1,Math.ceil(remaining/Math.pow(2,changes.transpose/12)*song.bpm*4/60));
     }
    });
-  },
-  onLevel:(clipId,value)=>{
-   const entry=target(clipId);if(entry)modifySong(()=>{entry.clip.gain=value;});
   },
   onTrim:(clipId,value)=>{
    const entry=target(clipId);if(!entry)return;
