@@ -734,6 +734,30 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:freeformUI:box-focus:1",
+      "source": "freeformUI.js",
+      "anchor": "box",
+      "kind": "listener",
+      "event": "focus",
+      "desktopRoute": "freeformUI.js box.focus",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:freeformUI:box-keydown:1",
+      "source": "freeformUI.js",
+      "anchor": "box",
+      "kind": "listener",
+      "event": "keydown",
+      "desktopRoute": "freeformUI.js box.keydown",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:freeformUI:box-pointercancel:1",
       "source": "freeformUI.js",
       "anchor": "box",
@@ -752,6 +776,18 @@
       "kind": "listener",
       "event": "pointerdown",
       "desktopRoute": "freeformUI.js box.pointerdown",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:freeformUI:box-pointerenter:1",
+      "source": "freeformUI.js",
+      "anchor": "box",
+      "kind": "listener",
+      "event": "pointerenter",
+      "desktopRoute": "freeformUI.js box.pointerenter",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "song",
       "phoneStatus": "todo",
