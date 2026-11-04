@@ -1297,9 +1297,6 @@ function renderSound() {
   });
   else scope(next,instrumentLevel*soundLevel);
  };
- // Attach the source details before illustration construction so its
- // feature links can discover the same outer Sound controls as the knobs.
- $("sound-visualizer").append(stageDetails);
  stagePanel=illustrateSoundPanel(stageDetails,"stage",stageState(),
   (path,value)=>stageEdit(path,value,true),
   (path,value)=>stageEdit(path,value,false),entry.id);
