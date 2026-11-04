@@ -7,7 +7,7 @@ import {makeSampleAsset} from "../sampler.js";
 import {encodeMonoWav} from "../recording.js";
 import {readZip} from "../zip.js";
 import {clearAssets,getAsset} from "../assetRegistry.js";
-import {unpackBeatClip} from "../freeformModel.js";
+import {unpackBeatClip,ensureFreeform,addFreeformInstrument,addFreeformNote,createBeatFromFreeformSelection} from "../freeformModel.js";
 
 test("unrecorded native Songs roundtrip as plain .premidi instructions",async()=>{
  const beat=create(),song=createSong(beat);
@@ -93,4 +93,34 @@ test("sample assets stay external after Song freeform unpack and portable round 
  });
  assert.deepEqual(restored,song);
  assert.deepEqual(getAsset(asset.id),bytes);
+});
+
+test("new reusable Beat from freeform sample retains exactly one external audio Asset",async()=>{
+ const wave=encodeMonoWav(Float32Array.from({length:4410},(_,i)=>Math.sin(i*.02)*.2));
+ const original=create(),song=createSong(original),track=song.tracks[0];
+ const free=ensureFreeform(track);
+ const asset=makeSampleAsset("new-beat-selection-wav","Selected WAV","audio/wav",wave,"test");
+ free.samples.push(asset);
+ const inst=addFreeformInstrument(free);
+ inst.sounds[0].patch={
+  type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:60}],
+  followPitch:true,transpose:0,gain:1,attack:.01,release:.1,pan:0
+ };
+ addFreeformNote(inst,{pitch:60,start:16,duration:2,velocity:.8});
+ const beat=createBeatFromFreeformSelection(song,track.id,16,32,{title:"Sample excerpt"});
+ const attached=addBeat(song,beat);
+ assert.equal(attached.samples.length,1);
+ assert.equal(attached.samples[0].id,asset.id);
+ assert.equal(track.freeform.samples.length,1,"Freeform source retained");
+ const file=exportSongProject(song);
+ assert.match(file.name,/\.zip$/);
+ const assets=await readZip(file.blob);
+ assert.equal(assets.size,2,"Asset is packaged only once even if Beat and freeform reference it");
+ assert.deepEqual(assets.get(asset.path),wave);
+ clearAssets();
+ const restored=await importSongProject({
+  name:file.name,size:file.blob.size,arrayBuffer:()=>file.blob.arrayBuffer()
+ });
+ assert.deepEqual(restored,song);
+ assert.deepEqual(getAsset(asset.id),wave);
 });

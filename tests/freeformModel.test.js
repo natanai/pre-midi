@@ -139,3 +139,15 @@ test("Create Beat from selection refuses unrepresentable unique Chunk counts",()
  assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,33*16),/32 unique Chunks/);
  assert.deepEqual(song,before);
 });
+
+test("Create Beat from selection supports non-bar-aligned Song positions",()=>{
+ const song=createSong(create()),track=song.tracks[0],free=createFreeform();
+ track.freeform=free;
+ const inst=addFreeformInstrument(free);
+ addFreeformNote(inst,{pitch:60,start:6,duration:2,velocity:.8});
+ addFreeformNote(inst,{pitch:64,start:18,duration:1,velocity:.7});
+ const beat=createBeatFromFreeformSelection(song,track.id,4,20);
+ assert.equal(beat.bars,1);
+ assert.deepEqual(beat.instruments[0].chunks[0].notes.map(note=>note.start).sort((a,b)=>a-b),[2,14]);
+ assert.deepEqual(validateBeat(beat),[]);
+});
