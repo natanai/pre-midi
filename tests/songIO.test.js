@@ -8,7 +8,6 @@ import {encodeMonoWav} from "../recording.js";
 import {readZip} from "../zip.js";
 import {clearAssets,getAsset} from "../assetRegistry.js";
 import {unpackBeatClip} from "../freeformModel.js";
-import {unpackBeatClip} from "../freeformModel.js";
 
 test("unrecorded native Songs roundtrip as plain .premidi instructions",async()=>{
  const beat=create(),song=createSong(beat);
