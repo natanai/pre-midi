@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { create, makeInstrument, makeChunk, id, validate, parse, clone } from "../schema.js";
+import { create, makeInstrument, makeChunk, id, validate, parse, clone, resizeBeatBars, EXTENDED_BEAT_VERSION } from "../schema.js";
 import { stepEvents } from "../audio.js";
 import { PRESETS, getPreset, makePatch, validatePatch } from "../synth.js";
 
@@ -62,4 +62,30 @@ test("fresh compositions have no arranged demo notes or looping opening",()=>{
  assert.equal(score.instruments[0].timeline.filter(Boolean).length,1);
  assert.equal(stepEvents(score,0).length,0);
  assert.deepEqual(validate(score),[]);
+});
+
+test("Beat lengths include every integer through 64 with an explicit format version",()=>{
+ for(const bars of [1,3,5,7,15,16,17,31,64]){
+  const beat=create();resizeBeatBars(beat,bars);
+  assert.equal(beat.bars,bars);
+  assert.equal(beat.instruments[0].timeline.length,bars);
+  assert.equal(beat.instruments[0].placements.length,bars);
+  assert.equal(beat.version,bars>16?EXTENDED_BEAT_VERSION:7);
+  assert.deepEqual(validate(beat),[]);
+  assert.deepEqual(parse(JSON.stringify(beat)),beat);
+ }
+ const invalid=create();invalid.bars=65;assert.match(validate(invalid).join(" "),/1–64 bars/);
+ const wronglyVersioned=create();wronglyVersioned.bars=17;
+ assert.match(validate(wronglyVersioned).join(" "),/v17/);
+});
+test("shortening a Beat does not silently discard placed Chunks",()=>{
+ const beat=create(),inst=beat.instruments[0],chunk=inst.chunks[0];
+ resizeBeatBars(beat,64);inst.timeline[63]=chunk.id;
+ const before=clone(beat);
+ assert.throws(()=>resizeBeatBars(beat,7),/Move or remove placed Chunks/);
+ assert.deepEqual(beat,before);
+ inst.timeline[63]=null;
+ resizeBeatBars(beat,7);
+ assert.equal(beat.bars,7);
+ assert.deepEqual(validate(beat),[]);
 });

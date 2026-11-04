@@ -61,7 +61,7 @@
       "parents": [
         "song"
       ],
-      "definition": "Standalone 1–16-bar arrangement containing Instruments, Chunks, and their musical placements. May exist without a Song."
+      "definition": "Standalone 1–64-bar arrangement containing Instruments, Chunks, and their musical placements. May exist without a Song."
     },
     {
       "id": "song",

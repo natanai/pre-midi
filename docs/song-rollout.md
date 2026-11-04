@@ -4,9 +4,33 @@ Status: **Stage 5 (vocal recording) implemented, reliability work ongoing**. Sta
 
 This is the Song-specific historical rollout and integration plan; the active synthesis and native-host task register is [docs/synthesis-roadmap.json](synthesis-roadmap.json). [Terminology](terminology.json) is authoritative for data, UI and code; [pre-programmed issue #235](https://github.com/natanai/pre-programmed/issues/235) tracks the game-side migration.
 
+## Approved attached freeform architecture (2026-11-04)
+
+**Approved design, staged implementation.** Only the 64-bar Beat foundation is in the initial code phase; freeform editing is not yet shipped.
+
+- Each Beat Track owns an attached child freeform lane, collapsed when empty. It is not an independently reorderable Song Track; its parent moves and reorders with it.
+- A freeform lane can begin empty and contains multiple Instruments with ordinary Sound, Rack, note-expression and sample capabilities. It supports Song-position independent notes together with reusable Chunk placements.
+- Move and unpack a Beat Clip into its attached lane by drag or an accessible action. Resolve source phase, repetitions, offsets, notes, instruments, expression, automation and external Assets. The original Beat remains reusable elsewhere, while the unpacked music becomes fully independent. No duplicate audio.
+- Partial conversion splits a Beat Clip, preserving original source phase at the two unaffected sides. Notes crossing boundaries cannot be silently chopped. Convert to independent instructions, never a WAV bounce.
+- Freeform passages can move horizontally with their contained events while remaining attached to their parent Track. Passage edges are organizing aids, not limits on where notes may be authored.
+- A selected freeform range can create a new independent Beat; leave the freeform notes intact. Beat selections over 64 bars require explicit splitting.
+- A single Song clock drives Song and freeform piano-roll views. Zoom and scroll are independent. Optional playback-follow yields to manual navigation. Pitched keys can illuminate when sounding.
+- Editing the source Beat updates only linked Beat Clips, not already unpacked material. Every transform is undoable and round-trips through a versioned .premidi schema.
+
+### Staged delivery gates
+
+1. **Beat length:** accept every integer from 1 through 64, protect against destructive shortening, and version extended Beats as v17 and containing Songs as v18.
+2. **Song time:** canonical musical position, clip source-phase offsets and correct split/repeat/seek/export semantics.
+3. **Model:** define freeform child ownership, Instruments, notes, Chunks, passages, asset references, validation and undo/redo in the existing Song schema.
+4. **Commands:** empty editing, full/partial unpack, horizontal movement, collisions, linked Chunks and create Beat from selection.
+5. **Desktop UI:** linked row treatment, accessible drag/action conversion, single Song-position piano roll, multiple Instrument sublanes and piano-key playback feedback.
+6. **Qualification:** native/browser event and audio equivalence, bounded long-Song scheduling, iPhone touch equivalents and pre-programmed migration.
+
+Do not simply raise native player limits to claim complete freeform support: sessions currently have bounded event counts and duration. Retain the canonical phone requirements in docs/phone-studio.md.
+
 ## Implemented
 
-1. **Beat-first architecture:** 1–16-bar Beat editor with Sound, Rack, Instrument and reusable one-bar Chunk definitions. Canonical Beat naming in active code. Legacy Beat schema v7 and supported older migrations; newer v9 modulation and v11 automation Beats are versioned separately.
+1. **Beat-first architecture:** 1–64-bar Beat editor with Sound, Rack, Instrument and reusable one-bar Chunk definitions. Canonical Beat naming in active code. Legacy Beat schema v7 and supported older migrations; newer v9 modulation and v11 automation Beats are versioned separately.
 2. **Native Song model:** legacy schema v8 (newer v10 modulation and v12 automation Songs are versioned separately) with referenced Beats, Song Tracks, Beat Clips and Recordings. Beat Clips repeat, crop and overlap without flattening Sounds or Chunks. Song and Beat BPM are separate editing contexts.
 3. **Song interface:** subtle ↑ Song affordance; multiple Beat Tracks; add/import Beats; drag, resize, reorder and select Clips; vocal lanes always precede Beat lanes, with the Beat editor beneath.
 4. **Transport and export:** expanded view plays Song; collapsed view plays selected Beat. Song playhead can seek from a selected bar. Export Beat or Song as native `.premidi` or WAV. Audio assets travel beside native JSON in portable ZIPs, not inside it.

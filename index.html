@@ -77,7 +77,7 @@ if (!window.__TAURI_INTERNALS__ && matchMedia("(max-width: 600px), (max-height: 
     <button id="native-pause" type="button" hidden disabled>pause</button>
    </div>
    <label class="transport-field">bpm <input id="bpm" type="number" min="40" max="240"></label>
-   <label class="transport-field">bars <select id="bars"><option>2</option><option>4</option><option>8</option><option>16</option></select></label>
+   <label class="transport-field">bars <input id="bars" type="number" min="1" max="64" step="1" value="8" inputmode="numeric" aria-label="Beat length in bars"></label>
    <label class="transport-field transport-loop"><span>loop</span><span class="loop-box"><input id="loop" type="checkbox" checked></span></label>
    <div class="transport-position" aria-label="Playback position"><span>bar : beat</span><output id="position" aria-label="bar 1, beat 1">1:1</output></div>
   </div>

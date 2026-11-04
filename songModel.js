@@ -1,7 +1,7 @@
 // Native Song domain model. No file I/O or browser dependencies.
 // Legacy Songs use v8 with v7 Beats; modulation explicitly requires v10/v9.
 // pre-programmed reader compatibility remains separately qualified.
-import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
+import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
 import {validateVocalEffects,vocalEffects} from "./vocalEffects.js";
 export const SONG_VERSION=8;
@@ -9,9 +9,11 @@ export const MODULATION_SONG_VERSION=10;
 export const AUTOMATION_SONG_VERSION=12;
 export const PCM_SONG_VERSION=14;
 export const VOCAL_FX_SONG_VERSION=16;
+export const EXTENDED_SONG_VERSION=18;
 export function upgradeSongFeatures(song){
  song.beats.forEach(upgradeBeatFeatures);
- if(song.tracks?.some(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.effects!==undefined||clip.trimStartSeconds!==undefined)))song.version=VOCAL_FX_SONG_VERSION;
+ if(song.beats.some(beat=>beat.version===EXTENDED_BEAT_VERSION)||song.version===EXTENDED_SONG_VERSION)song.version=EXTENDED_SONG_VERSION;
+ else if(song.tracks?.some(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.effects!==undefined||clip.trimStartSeconds!==undefined)))song.version=VOCAL_FX_SONG_VERSION;
  else if(song.recordings?.some(recording=>recording.mime==='audio/wav')&&song.version<PCM_SONG_VERSION)song.version=PCM_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===AUTOMATION_BEAT_VERSION)&&song.version<AUTOMATION_SONG_VERSION)song.version=AUTOMATION_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===MODULATION_BEAT_VERSION)&&song.version<MODULATION_SONG_VERSION)song.version=MODULATION_SONG_VERSION;
@@ -31,7 +33,7 @@ export function createSong(sourceBeat=create()){
  ensureBeat(sourceBeat);
  const beat=clone(sourceBeat),trackId=id();
  return {
-  format:FORMAT,kind:"song",version:beat.version===AUTOMATION_BEAT_VERSION?AUTOMATION_SONG_VERSION:beat.version===MODULATION_BEAT_VERSION?MODULATION_SONG_VERSION:SONG_VERSION,id:id(),title:"Untitled song",
+  format:FORMAT,kind:"song",version:beat.version===EXTENDED_BEAT_VERSION?EXTENDED_SONG_VERSION:beat.version===AUTOMATION_BEAT_VERSION?AUTOMATION_SONG_VERSION:beat.version===MODULATION_BEAT_VERSION?MODULATION_SONG_VERSION:SONG_VERSION,id:id(),title:"Untitled song",
   bpm:beat.bpm,beats:[beat],recordings:[],
   tracks:[{id:trackId,kind:"beat",name:"Beat 1",clips:[
    {id:id(),beatId:beat.id,startStep:0,lengthSteps:beatLength(beat)}
@@ -206,7 +208,7 @@ export function eventsAtSongStep(song,step){
 }
 export function validateSong(song){
  const errors=[];
- if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION].includes(song.version))
+ if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION].includes(song.version))
   return ["Unsupported Song format."];
  if(typeof song.id!=="string"||!song.id.trim()||typeof song.title!=="string"||!song.title.trim())
   errors.push("Song identity or title is missing.");
@@ -229,7 +231,8 @@ export function validateSong(song){
  for(const beat of song.beats){
   const issues=validateBeat(beat);
   if(issues.length)errors.push("Invalid Beat "+(beat?.id||"unknown")+": "+issues[0]);
-  if(song.version<AUTOMATION_SONG_VERSION&&beat?.version===AUTOMATION_BEAT_VERSION)errors.push("Automated Beats require Song v12.");
+  if(song.version!==EXTENDED_SONG_VERSION&&beat?.version===EXTENDED_BEAT_VERSION)errors.push('Extended Beats require Song v18.');
+   if(song.version<AUTOMATION_SONG_VERSION&&beat?.version===AUTOMATION_BEAT_VERSION)errors.push("Automated Beats require Song v12.");
   if(song.version===SONG_VERSION&&beat?.version===MODULATION_BEAT_VERSION)errors.push("Modulated Beats require Song v10.");
   if(!BEAT_VERSIONS.includes(beat?.version))errors.push("Embedded Beat must use the current Beat format.");
  }
