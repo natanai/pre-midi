@@ -3,18 +3,20 @@ import {validatePatch} from '../../../synth.js';
 import {movement,planPitch} from '../../dsp/expression.js';
 import {vocalEffects,vocalSourceRange} from '../../../vocalEffects.js';
 import {delayTailSeconds} from '../../dsp/effect-tail.js';
+import {sampleSourceRegion} from '../../../sampleSlice.js';
 
 export function planNativeSample(instrument,note,start,duration,assets){
  const patch=instrument.patch,errors=validatePatch(patch);if(errors.length)throw Error(errors.join('; '));
  const zone=sampleForNote(patch,note.pitch,note.velocity),asset=zone&&assets.get(zone.assetId);
  if(!asset)throw Error('Native audio asset is not prepared: '+(zone?.assetId??'missing sample zone'));
  const rate=patch.followPitch?2**((note.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12);
- const length=asset.duration/rate,life=patch.oneShot?length:Math.min(length,Math.max(.015,duration+patch.release));
+ const region=sampleSourceRegion(zone,asset.duration,rate);
+ const life=patch.oneShot?region.length:Math.min(region.length,Math.max(.015,duration+patch.release));
  const motion=movement(patch),peak=Math.min(2,instrument.volume*patch.gain*note.velocity*.7*(patch.preserveDynamics?3.5:asset.normalization));
  const at=start+Math.min(patch.attack,life*.5)+.001;
  const releaseStart=patch.oneShot?start+Math.max(0,life-patch.release):patch.followPitch?Math.min(start+duration,start+life-.01):start+life-.01;
  return {contract:'pre-midi-sample-voice',version:1,kind:1,asset:asset.id,start,duration:Math.max(.02,life),off:Math.max(start,releaseStart),end:start+life+.01,graphEnd:start+life+.01,
-  playbackRate:rate,offset:0,pan:patch.pan,filter:patch.filter??null,drive:patch.drive??0,movement:motion,
+  playbackRate:rate,offset:region.offset,pan:patch.pan,filter:patch.filter??null,drive:patch.drive??0,movement:motion,
   pitch:planPitch({...note,bend:note.bend??patch.bend},motion,start,Math.max(.02,life)),
   events:[{kind:0,time:start,value:0},{kind:1,time:at,value:peak},{kind:0,time:Math.max(at,releaseStart),value:peak},{kind:1,time:start+life,value:0}].sort((a,b)=>a.time-b.time)};
 }
