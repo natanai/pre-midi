@@ -38,6 +38,7 @@ import {encodeMonoWav,RECORDING_RATE} from "./recording.js";
 import {makeRecordingAsset} from "./recordingAssets.js";
 import {linkedVocalSample} from "./vocalBeatReuse.js";
 import {prepareSongTake,waveformForTake,songCountIn} from "./songRecorder.js";
+import {readRecordingAlignment,saveRecordingAlignment} from "./recordingAlignment.js";
 import {exportSongProject,importSongProject,parseSong} from "./songIO.js";
 import {readZip} from "./zip.js";
 import {installSongUI} from "./songUI.js";
@@ -251,6 +252,7 @@ function showVocalState(active=false){
  control.textContent=active?"■ stop + save":"▶ ● play + record";
  control.setAttribute("aria-pressed",String(active));
  control.disabled=vocalFinalizing;
+ $("voice-offset-ms").disabled=active||vocalFinalizing||vocalRequest;
 }
 function cancelVoiceCountdown(){
  voiceToken++;voiceCountAbort?.abort();voiceCountAbort=null;
@@ -1585,6 +1587,8 @@ $("song-record").addEventListener("click",()=>{
  if(!song||!songExpanded)return;
  $("voice-start-bar").value=String(Math.floor((songUI?.getStartStep()||0)/16)+1);
  $("voice-count-in").value="0";
+ try{$("voice-offset-ms").value=String(readRecordingAlignment());}
+ catch{$("voice-offset-ms").value="0";saveRecordingAlignment(0);}
  const choice=$("voice-track"),selected=songUI?.getSelectedVocal();
  choice.replaceChildren();
  for(const track of song.tracks.filter(item=>item.kind==="vocal")){
@@ -1618,6 +1622,8 @@ $("voice-start").addEventListener("click",async()=>{
  if(vocalRequest){cancelVoiceCountdown();voiceStatus("Count-in cancelled.");return;}
  if(vocalFinalizing||!song||!songExpanded)return;
  if(playback||pendingPlay)stop();
+ try{saveRecordingAlignment($("voice-offset-ms").value);}
+ catch(error){voiceStatus(error.message,true);return;}
  const token=++voiceToken,originalId=song.id;
  const chosenBar=Math.max(1,Math.floor(Number($("voice-start-bar").value)||1));
  const requestedStep=songUI?.setStartStep((chosenBar-1)*16)??0;
