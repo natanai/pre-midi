@@ -51,7 +51,7 @@ function waveform(recording,clip){
  cursor.setAttribute("stroke","#ddd");cursor.setAttribute("stroke-width","1.5");svg.append(cursor);
  return svg;
 }
-async function autoTrim(recording){
+export async function decodeVocalRecording(recording){
  const bytes=recordingBytes(recording);
  let audio;
  if(nativeEnabled())audio=await decodeNativeAudio(bytes,{mono:false});
@@ -61,7 +61,10 @@ async function autoTrim(recording){
    audio=await ctx.decodeAudioData(raw);}
   finally{await ctx.close();}
  }
- return suggestVocalOnset(audio,recording.trimSeconds);
+ return audio;
+}
+async function autoTrim(recording){
+ return suggestVocalOnset(await decodeVocalRecording(recording),recording.trimSeconds);
 }
 export function renderVocalEditor(root,selection,{onEffect,onLevel,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo}){
  root.hidden=!selection;
