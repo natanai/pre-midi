@@ -1,7 +1,8 @@
 // Attached freeform Song lane and Song-position piano roll.
 // Every mutation passes through the studio's existing Song undo/history boundary.
 import {createFreeform,ensureFreeform,addFreeformInstrument,addFreeformNote,
- addFreeformChunkPlacement,moveFreeformPassage} from "./freeformModel.js";
+ addFreeformChunkPlacement,moveFreeformPassage,createBeatFromFreeformSelection} from "./freeformModel.js";
+import {addBeat} from "./songModel.js";
 import {makeChunk,id} from "./schema.js";
 import {referencedSampleIds} from "./soundModel.js";
 
@@ -29,11 +30,12 @@ const input=(type,value,min,max,onChange)=>{
 const field=(label,control)=>{
  const box=el("label","freeform-field");box.append(el("span","",label),control);return box;
 };
-export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActiveChange=()=>{}}){
+export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActiveChange=()=>{},onBeatCreated=()=>{}}){
  const panel=el("section","song-freeform-editor");panel.hidden=true;
  panel.setAttribute("aria-label","Freeform Song notes");
  root.append(panel);
  let activeTrackId=null,activeInstrumentId=null,selectedNoteId=null,barStart=0,playStep=null;
+ let selectionStartStep=0,selectionLengthSteps=16;
  let editorScrollTop=null,editorScrollLeft=null;
 
  const track=()=>getSong()?.tracks.find(item=>item.kind==="beat"&&item.id===activeTrackId);
@@ -51,14 +53,18 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   activeTrackId=null;activeInstrumentId=null;selectedNoteId=null;
   panel.hidden=true;panel.replaceChildren();if(wasActive)onActiveChange(false);
  }
- function open(trackId){
+ function open(trackId,passageId=null){
   const chosen=getSong()?.tracks.find(item=>item.kind==="beat"&&item.id===trackId);
   if(!chosen)return;
   if(!chosen.freeform&&!mutate(()=>ensureFreeform(chosen)))return;
   activeTrackId=chosen.id;
   activeInstrumentId=chosen.freeform?.instruments[0]?.id??null;
   selectedNoteId=null;
-  barStart=Math.floor((chosen.freeform?.passages[0]?.startStep??0)/BAR_STEPS);
+  const selectedPassage=chosen.freeform?.passages.find(p=>p.id===passageId);
+  const anchor=selectedPassage?.startStep??chosen.freeform?.passages[0]?.startStep??0;
+  barStart=Math.floor(anchor/BAR_STEPS);
+  selectionStartStep=selectedPassage?.startStep??barStart*BAR_STEPS;
+  selectionLengthSteps=selectedPassage?.lengthSteps??BAR_STEPS;
   editorScrollTop=null;editorScrollLeft=null;
   panel.hidden=false;onActiveChange(true);render();
  }
@@ -94,6 +100,18 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    {id:newId,pitch,start:step,duration,velocity:.85}))){
    selectedNoteId=newId;render();
   }
+ }
+ function createBeatFromSelection(){
+  const current=track(),song=getSong();
+  if(!current||!song)return;
+  let made=null;
+  const saved=mutate(()=>{
+   const beat=createBeatFromFreeformSelection(song,current.id,
+    selectionStartStep,selectionStartStep+selectionLengthSteps,
+    {title:current.name+" selection"});
+   made=addBeat(song,beat);
+  });
+  if(saved&&made)onBeatCreated(made);
  }
  function makeChunkAtBar(){
   const inst=instrument();if(!inst)return;
@@ -197,6 +215,31 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   barControl.setAttribute("aria-label","First visible Song bar");
   tools.append(previous,field("from bar",barControl),next);
   header.append(tools);panel.append(header);
+  const selection=el("div","freeform-selection-tools");
+  const selectionTitle=el("span","freeform-selection-title","create Beat from selection");
+  const startBar=input("number",Math.floor(selectionStartStep/16)+1,1,4096,v=>{
+   if(Number.isInteger(v)&&v>0){
+    selectionStartStep=(v-1)*16+selectionStartStep%16;
+   }
+  });
+  startBar.setAttribute("aria-label","Selection start bar");
+  const startStep=input("number",selectionStartStep%16+1,1,16,v=>{
+   if(Number.isInteger(v)&&v>=1&&v<=16){
+    selectionStartStep=Math.floor(selectionStartStep/16)*16+v-1;
+   }
+  });
+  startStep.setAttribute("aria-label","Selection start step");
+  const length=input("number",selectionLengthSteps/16,1/16,64,v=>{
+   const steps=Math.round(v*16);
+   if(Number.isFinite(v)&&steps>=1&&steps<=1024)selectionLengthSteps=steps;
+  });
+  length.step="0.0625";
+  length.setAttribute("aria-label","Selection length in bars");
+  const createButton=action("create Beat",createBeatFromSelection,"freeform-create-beat");
+  createButton.title="Create a reusable Beat; keep the freeform notes untouched";
+  selection.append(selectionTitle,field("bar",startBar),field("step",startStep),
+   field("length · bars",length),createButton);
+  panel.append(selection);
   if(!inst){
    panel.append(el("p","freeform-empty","Add an Instrument to draw notes directly into this Song."));
    return;
@@ -329,7 +372,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   if(layer){
    const passageLimit=Math.min(200,layer.passages.length);
    for(const passage of layer.passages.slice(0,passageLimit)){
-    const box=action("",()=>open(track.id),"song-freeform-passage");
+    const box=action("",()=>open(track.id,passage.id),"song-freeform-passage");
     box.title="Freeform from "+(Math.floor(passage.startStep/16)+1)+"; drag horizontally to move";
     box.setAttribute("aria-label",box.title);
     box.style.left=passage.startStep/16*SONG_BAR_PIXELS+"px";

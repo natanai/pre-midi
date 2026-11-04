@@ -2155,6 +2155,7 @@ songUI=installSongUI({
  getSelectedBeatId:()=>selectedBeatId,
  onSelectBeat:selectBeat,onChange:modifySong,onSelectionChange:renderVocalWorkspace,
  onError:error=>message(error,true),
+ onFreeformBeatCreated:created=>message("Created \""+created.title+"\". Select + on a Beat Track to place it; your freeform notes are unchanged."),
  onFreeformActiveChange:active=>{
   const main=document.querySelector("main");
   main?.classList.toggle("editing-freeform",active);
