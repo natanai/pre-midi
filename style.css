@@ -1519,3 +1519,19 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .vocal-effect-sections .synth-group{margin:0;min-width:0}
 .vocal-effect-sections .synth-fields{min-width:0}
 @media(max-width:850px){.vocal-effect-sections{grid-template-columns:minmax(0,1fr)}}
+
+/* Sound diagrams and existing controls share one unobtrusive focus language. */
+.visual-sound-panel .visual-panel-area {cursor:pointer}
+.visual-panel-graph:focus-visible {outline:1px dotted var(--bright);outline-offset:-2px}
+.visual-graph-line.visual-graph-linked,.visual-graph-secondary.visual-graph-linked {
+ stroke:var(--track-accent,#08e4ec);stroke-width:2.6;opacity:1;
+}
+.visual-graph-mix {stroke:var(--track-accent,#08e4ec);stroke-width:2;opacity:.92}
+.visual-panel-area.visual-panel-linked {background:#050b0c}
+.visual-graph-point.visual-point-linked::after {
+ transform:scale(1.5);background:var(--track-accent,#08e4ec);
+ border-color:var(--bright)
+}
+.visual-sound-panel [data-sound-path]:focus-within {
+ outline:1px dotted var(--bright);outline-offset:2px
+}
