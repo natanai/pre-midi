@@ -7,6 +7,7 @@ import {makeSampleAsset} from "../sampler.js";
 import {encodeMonoWav} from "../recording.js";
 import {readZip} from "../zip.js";
 import {clearAssets,getAsset} from "../assetRegistry.js";
+import {unpackBeatClip} from "../freeformModel.js";
 
 test("unrecorded native Songs roundtrip as plain .premidi instructions",async()=>{
  const beat=create(),song=createSong(beat);
@@ -60,4 +61,13 @@ test("versioned source-phase Beat Clips survive Song export and reimport",async(
  const restored=parseSong(await exported.blob.text());
  assert.deepEqual(restored,song);
  assert.equal(restored.tracks[0].clips[0].sourceOffsetSteps,23);
+});
+
+test("freeform notes survive a Song instruction export/reimport",async()=>{
+ const song=createSong(create()),inst=song.beats[0].instruments[0];
+ inst.chunks[0].notes=[{id:"freeform-test-note",pitch:63,start:2,duration:3,velocity:.8}];
+ unpackBeatClip(song,song.tracks[0].clips[0].id);
+ const file=exportSongProject(song);
+ assert.match(file.name,/\.premidi$/);
+ assert.deepEqual(parseSong(await file.blob.text()),song);
 });

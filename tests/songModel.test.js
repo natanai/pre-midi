@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {create,clone,resizeBeatBars,EXTENDED_BEAT_VERSION} from "../schema.js";
+import {unpackBeatClip,ensureFreeform,addFreeformInstrument,addFreeformNote} from "../freeformModel.js";
+import {renderEvents} from "../audio.js";
 import {createSong,addBeat,addSongTrack,addBeatClip,editBeatClip,eventsAtSongStep,songDurationSteps,validateSong,SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,upgradeSongFeatures} from "../songModel.js";
 const withNote=()=>{
  const beat=create();
@@ -95,4 +97,19 @@ test("source-phase offsets preserve Beat timing independently of Song placement"
  assert.match(validateSong(downgraded).join(" "),/v20/);
  const invalid=clone(song);invalid.tracks[0].clips[0].sourceOffsetSteps=-1;
  assert.match(validateSong(invalid).join(" "),/source phase/);
+});
+
+test("Song playback and offline rendering preserve note timing on full unpack",()=>{
+ const song=createSong(withNote()),clip=song.tracks[0].clips[0];
+ const before=renderEvents(song);
+ unpackBeatClip(song,clip.id);
+ const after=renderEvents(song);
+ assert.deepEqual(after.map(e=>[e.kind,e.at,e.note.pitch,e.note.velocity]),
+  before.map(e=>[e.kind,e.at,e.note.pitch,e.note.velocity]));
+ assert.deepEqual(validateSong(song),[]);
+ const layer=ensureFreeform(song.tracks[0]),inst=addFreeformInstrument(layer);
+ addFreeformNote(inst,{pitch:72,start:135,duration:24,velocity:.8});
+ assert.equal(songDurationSteps(song),159);
+ assert.equal(eventsAtSongStep(song,135).length,1);
+ assert.deepEqual(validateSong(song),[]);
 });

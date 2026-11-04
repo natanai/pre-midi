@@ -21,6 +21,10 @@ export {nativeEnabled,cancelNativeTransport} from './src/hosts/native/session.js
 // Canonical plans are shared by native desktop playback and the web adapter.
 // Everything audible comes from the resolved sound patch stored in the beat.
 export const secondsPerStep = doc => 60/doc.bpm/4;
+// Song-owned freeform instruments use existing sample asset decoding.
+const musicSampleContexts=doc=>doc.kind==="song"?
+ [...doc.beats,...doc.tracks.filter(track=>track.kind==="beat"&&track.freeform)
+  .map(track=>({samples:track.freeform.samples}))]:[doc];
 export const frequency = noteFrequency;
 const noiseBuffers=new WeakMap();
 const sampleCaches=new WeakMap();
@@ -236,7 +240,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  const ctx=context,out=ctx.createGain(),read=typeof beat==="function"?beat:()=>beat;
- await Promise.all((read().kind==="song"?read().beats:[read()]).map(entry=>decodeSamples(ctx,entry,bufferCache(ctx))));
+ await Promise.all(musicSampleContexts(read()).map(entry=>decodeSamples(ctx,entry,bufferCache(ctx))));
  const vocalBuffers=await decodeSongRecordings(ctx,read());
  const loops=()=>typeof loop==="function"?loop():loop;
  out.gain.value=.85;out.connect(ctx.destination);
@@ -263,7 +267,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    if(cycle===0){stop();return;}
    if(!loops()&&scheduled>=cycle)break;
    const step=scheduled%Math.max(1,cycle),barIndex=Math.floor(step/16),unit=secondsPerStep(current);
-   if(step%16===0)for(const entry of (current.kind==="song"?current.beats:[current]))
+   if(step%16===0)for(const entry of musicSampleContexts(current)
     void decodeSamples(ctx,entry,bufferCache(ctx)).catch(console.warn);
    const events=current.kind==="song"?eventsAtSongStep(current,step):stepEvents(current,scheduled);
    if(current.kind==="song")for(const event of recordingEventsAtStep(current,step,{
@@ -273,7 +277,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    for(const event of events)
     scheduleNote(ctx,out,event.instrument,event.note,
      nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),
-     event.note.duration*unit,event.beat||current,session,{step:event.beatStep??step,unit,limitStep:event.clip?Math.min(event.beat.bars*16,(event.beatStep??step)+event.clip.startStep+event.clip.lengthSteps-step):current.bars*16});
+     event.note.duration*unit,event.beat||current,session,{step:event.beatStep??step,unit,limitStep:event.clip?Math.min(event.beat.bars*16,(event.beatStep??step)+event.clip.startStep+event.clip.lengthSteps-step):cycle});
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
   }
@@ -334,7 +338,7 @@ export function renderEvents(document){
    events.push({kind:"vocal",at:step*unit,event});
   for(const event of (song?eventsAtSongStep(document,step):stepEvents(document,step)))
    events.push({kind:"note",at:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
-    instrument:event.instrument,note:event.note,duration:event.note.duration*unit,beat:event.beat||document,timeline:{step:event.beatStep??step,unit,limitStep:event.clip?Math.min(event.beat.bars*16,event.beatStep+event.clip.startStep+event.clip.lengthSteps-step):document.bars*16}});
+    instrument:event.instrument,note:event.note,duration:event.note.duration*unit,beat:event.beat||document,timeline:{step:event.beatStep??step,unit,limitStep:event.clip?Math.min(event.beat.bars*16,event.beatStep+event.clip.startStep+event.clip.lengthSteps-step):length}});
  }
  return events.sort((a,b)=>a.at-b.at);
 }
@@ -371,7 +375,7 @@ export async function wav(document){
   const plans=nativePlans(events,assets,secondsPerStep(document)),cycle=(document.kind==='song'?songDurationSteps(document):document.bars*16)*secondsPerStep(document);
   const bytes=await renderNative(plans,{rate,frames:Math.ceil(seconds*rate),cycle,wav:true});return new Blob([bytes],{type:'audio/wav'});
  }
- const beats=document.kind==="song"?document.beats:[document];
+ const beats=musicSampleContexts(document);
  const decoder=new OfflineAudioContext(2,1,44100),decoded=new Map();
  for(const beat of beats)await decodeSamples(decoder,beat,decoded);
  const events=renderEvents(document),seconds=renderEndSeconds(document,events,decoded);

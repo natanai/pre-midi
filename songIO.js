@@ -29,6 +29,17 @@ const relevantAssets=song=>{
    assets.set(asset.id,asset);
   }
  }
+ for(const track of song.tracks){
+  if(track.kind!=="beat"||!track.freeform)continue;
+  const needed=referencedSampleIds(track.freeform.instruments);
+  for(const asset of track.freeform.samples){
+   if(!needed.has(asset.id))continue;
+   const previous=assets.get(asset.id);
+   if(previous&&JSON.stringify(previous)!==JSON.stringify(asset))
+    throw Error("Conflicting audio Asset identity.");
+   assets.set(asset.id,asset);
+  }
+ }
  for(const recording of song.recordings||[]){
   if(assets.has(recording.id))throw Error("Recording and Beat sample IDs must not collide.");
   assets.set(recording.id,recording);
@@ -48,6 +59,10 @@ export function exportSongProject(song){
  for(const beat of manifest.beats){
   const used=referencedSampleIds(beat.instruments);
   beat.samples=beat.samples.filter(asset=>used.has(asset.id));
+ }
+ for(const track of manifest.tracks)if(track.kind==="beat"&&track.freeform){
+  const used=referencedSampleIds(track.freeform.instruments);
+  track.freeform.samples=track.freeform.samples.filter(asset=>used.has(asset.id));
  }
  const raw=encoder.encode(JSON.stringify(manifest));
  if(raw.length>MAX_SONG_DOCUMENT_BYTES)throw Error("Song instructions exceed 8 MB.");
