@@ -8,6 +8,7 @@
     "songUI.js",
     "freeformUI.js",
     "vocalEditor.js",
+    "audioWaveform.js",
     "instrumentUI.js",
     "samplerUI.js",
     "automationUI.js",
@@ -23,6 +24,78 @@
     "soundScope.js"
   ],
   "actions": [
+    {
+      "id": "event:audioWaveform:hit-keydown:1",
+      "source": "audioWaveform.js",
+      "anchor": "hit",
+      "kind": "listener",
+      "event": "keydown",
+      "desktopRoute": "audioWaveform.js hit.keydown",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:audioWaveform:hit-pointercancel:1",
+      "source": "audioWaveform.js",
+      "anchor": "hit",
+      "kind": "listener",
+      "event": "pointercancel",
+      "desktopRoute": "audioWaveform.js hit.pointercancel",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:audioWaveform:hit-pointerdown:1",
+      "source": "audioWaveform.js",
+      "anchor": "hit",
+      "kind": "listener",
+      "event": "pointerdown",
+      "desktopRoute": "audioWaveform.js hit.pointerdown",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:audioWaveform:hit-pointermove:1",
+      "source": "audioWaveform.js",
+      "anchor": "hit",
+      "kind": "listener",
+      "event": "pointermove",
+      "desktopRoute": "audioWaveform.js hit.pointermove",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:audioWaveform:hit-pointerup:1",
+      "source": "audioWaveform.js",
+      "anchor": "hit",
+      "kind": "listener",
+      "event": "pointerup",
+      "desktopRoute": "audioWaveform.js hit.pointerup",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:audioWaveform:select-change:1",
+      "source": "audioWaveform.js",
+      "anchor": "select",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "audioWaveform.js select.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
     {
       "id": "event:automationUI:input-change:1",
       "source": "automationUI.js",
