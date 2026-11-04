@@ -226,3 +226,16 @@ test("moving each numeric knob to an extreme visibly changes its linked illustra
   }
  assert.ok(checked>=100,"expected the complete set of control/diagram relationships");
 });
+
+test("instrument volume is never knob-only; stereo and rack gain use two-axis illustrations",()=>{
+ const pitched={type:"stage",layout:"pitched",volume:.7,pan:-.3,gain:.85};
+ const rack={type:"stage",layout:"rack",volume:.7,pan:-.3,gain:.85};
+ requirePaths(axes(pitched,"stage"),["volume","pan"],"stereo level");
+ requirePaths(axes(rack,"stage"),["volume","gain"],"rack gain staging");
+ assert.equal(pairs(pitched,"stage").length,1);
+ assert.equal(pairs(rack,"stage").length,1);
+ const current=diagram(rack,"stage"),next=diagram({...rack,volume:.3},"stage");
+ assert.notDeepEqual(current.handles,next.handles,"rack output level responds to the actual rack-volume knob");
+ assert.ok(next.labels.some(label=>label.value==="total "+Math.round(100*.3*.85)+"%"),
+  "gain illustration teaches that rack and Sound levels multiply");
+});
