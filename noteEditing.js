@@ -3,17 +3,18 @@
  * Keeping grid math outside DOM handlers makes drag, keyboard and future
  * MIDI editing share the same constraints.
  */
-export function noteDurationLimit(chunk, note) {
- const next = chunk.notes
-  .filter(other => other.id !== note.id && other.pitch === note.pitch && other.start > note.start)
-  .reduce((start, other) => Math.min(start, other.start), 16);
- return Math.max(1, next - note.start);
+export function noteDurationLimit(chunk, note, {allowSustain=false}={}) {
+ const end=allowSustain?note.start+1024:16;
+ const next=chunk.notes
+  .filter(other=>other.id!==note.id&&other.pitch===note.pitch&&other.start>note.start)
+  .reduce((start,other)=>Math.min(start,other.start),end);
+ return Math.max(1,next-note.start);
 }
-export function resizeNote(chunk, noteId, requestedDuration) {
+export function resizeNote(chunk, noteId, requestedDuration, {allowSustain=false}={}) {
  const note = chunk.notes.find(item => item.id === noteId);
  if (!note) return null;
  const proposed = Number.isFinite(requestedDuration) ? Math.round(requestedDuration) : note.duration;
- note.duration = Math.max(1, Math.min(noteDurationLimit(chunk, note), proposed));
+ note.duration = Math.max(1, Math.min(noteDurationLimit(chunk, note, {allowSustain}), proposed));
  return note.duration;
 }
 
@@ -22,11 +23,11 @@ export function resizeNote(chunk, noteId, requestedDuration) {
  * identity, duration, velocity and expression, and may never overlap another
  * event at the same pitch. Pitch bounds are supplied by the visible editor.
  */
-export function moveNote(chunk, noteId, requestedStart, requestedPitch, {minPitch=0,maxPitch=127}={}) {
+export function moveNote(chunk, noteId, requestedStart, requestedPitch, {minPitch=0,maxPitch=127,allowSustain=false}={}) {
  const note=chunk.notes.find(item=>item.id===noteId);
  if(!note)return null;
  if(!Number.isFinite(requestedStart)||!Number.isFinite(requestedPitch))return false;
- const start=Math.max(0,Math.min(16-note.duration,Math.round(requestedStart)));
+ const start=Math.max(0,Math.min(allowSustain?15:16-note.duration,Math.round(requestedStart)));
  const pitch=Math.max(minPitch,Math.min(maxPitch,Math.round(requestedPitch)));
  if(chunk.notes.some(other=>other.id!==noteId && other.pitch===pitch &&
   start<other.start+other.duration && other.start<start+note.duration))return false;
