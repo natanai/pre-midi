@@ -180,10 +180,23 @@ jobs:
           SOURCE_COMMIT: ${{ needs.source.outputs.commit }}
         shell: bash
         run: |
-          existing="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" --jq '.object.sha' 2>/dev/null || true)"
-          if [ -n "$existing" ]; then
-            test "$existing" = "$SOURCE_COMMIT" || { echo 'Release tag collision'; exit 1; }
+          tag_record="$RUNNER_TEMP/immutable-tag.json"
+          tag_error="$RUNNER_TEMP/immutable-tag-error.txt"
+          # Only a verified 404 permits creation. Do not turn an API/network
+          # failure or malformed response into a purported missing tag.
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" >"$tag_record" 2>"$tag_error"; then
+            existing="$(jq -er '.object.sha | select(type == "string" and length == 40)' "$tag_record")" ||
+              { echo 'Tag API returned no valid SHA; refusing to overwrite'; exit 1; }
+            if [ "$existing" != "$SOURCE_COMMIT" ]; then
+              echo "Release tag collision: ${RELEASE_TAG} points to ${existing:0:12}; expected ${SOURCE_COMMIT:0:12}"
+              exit 1
+            fi
           else
+            if ! grep -q 'HTTP 404' "$tag_error"; then
+              cat "$tag_error"
+              echo 'Tag lookup failed without a confirmed 404; refusing to publish'
+              exit 1
+            fi
             gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" -f "ref=refs/tags/${RELEASE_TAG}" -f "sha=${SOURCE_COMMIT}"
           fi
       - name: Publish complete prerelease
