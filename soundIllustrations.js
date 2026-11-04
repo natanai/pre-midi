@@ -866,6 +866,14 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const point=visibleHandles[Number(button.dataset.handle)];if(!point)return;
   const horizontal=event.key==="ArrowLeft"||event.key==="ArrowRight";
   const selected=point.axes.find(a=>horizontal?a.mode.endsWith("X"):a.mode.endsWith("Y"));
+  if(!selected&&horizontal&&kind.startsWith("harmonics")){
+   // Horizontal arrows select the neighboring harmonic; vertical arrows
+   // change its amplitude while preserving all 32 original knobs.
+   const i=Number(button.dataset.handle)+(event.key==="ArrowRight"?1:-1);
+   const neighbor=handlesRoot.querySelector('.visual-graph-point[data-handle="'+i+'"]');
+   if(neighbor){event.preventDefault();neighbor.focus();}
+   return;
+  }
   if(!selected)return;event.preventDefault();
   const dir=event.key==="ArrowUp"||event.key==="ArrowRight"?1:-1;
   const current=axisValue(latestPatch,selected.path);
