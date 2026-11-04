@@ -9,7 +9,7 @@ export const NOTE_COMMAND_TYPES=Object.freeze([
 const isInt=Number.isInteger;
 const find=(chunk,noteId)=>chunk.notes.find(item=>item.id===noteId);
 
-export function applyNoteCommand(chunk,command,{layout=null,sounds=null,minPitch=36,maxPitch=96}={}){
+export function applyNoteCommand(chunk,command,{layout=null,sounds=null,minPitch=36,maxPitch=96,allowSustain=false}={}){
  if(!chunk||!Array.isArray(chunk.notes)||!command)return {changed:false};
  const type=command.type;
  if(type==="note.add"){
@@ -20,7 +20,7 @@ export function applyNoteCommand(chunk,command,{layout=null,sounds=null,minPitch
   if(typeof note.id!=="string"||!note.id||note.id.length>128||
    chunk.notes.some(other=>other.id===note.id)||
    !isInt(note.start)||note.start<0||note.start>15||
-   !isInt(note.duration)||note.duration<1||note.start+note.duration>16||
+   !isInt(note.duration)||note.duration<1||note.duration>(allowSustain?1024:16-note.start)||
    !Number.isFinite(note.velocity)||note.velocity<0||note.velocity>1)
    return {changed:false};
   if(rack){
@@ -46,7 +46,7 @@ export function applyNoteCommand(chunk,command,{layout=null,sounds=null,minPitch
  if(type==="note.resize"){
   if(!Number.isFinite(command.duration)||note.soundId!==undefined)return {changed:false};
   const before=note.duration;
-  resizeNote(chunk,note.id,command.duration);
+  resizeNote(chunk,note.id,command.duration,{allowSustain});
   return {changed:before!==note.duration,noteId:note.id,note};
  }
  if(type==="note.move"){
@@ -58,7 +58,7 @@ export function applyNoteCommand(chunk,command,{layout=null,sounds=null,minPitch
    note.start=start;return {changed:before!==start,noteId:note.id,note};
   }
   const before=[note.start,note.pitch];
-  const ok=moveNote(chunk,note.id,command.start,command.pitch,{minPitch,maxPitch});
+  const ok=moveNote(chunk,note.id,command.start,command.pitch,{minPitch,maxPitch,allowSustain});
   return {changed:ok===true&&(before[0]!==note.start||before[1]!==note.pitch),noteId:note.id,note};
  }
  if(type==="note.level"){
