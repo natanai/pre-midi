@@ -34,30 +34,37 @@ const pathRange=(count,fn)=>pathFrom(Array.from({length:count},(_,i)=>fn(i/(coun
 export const diagram=(patch,type)=>{
  const color=type==="movement"?"var(--signal-mauve)":"var(--track-accent,#08e4ec)";
  const paths=[],handles=[],labels=[];
- const line=(d,secondary=false)=>paths.push({d,secondary});
+ const line=(d,secondary=false,links=[])=>paths.push({d,secondary,links});
  const tag=(x,y,value)=>labels.push({x,y,value});
  const handle=(x,y,axes,label)=>handles.push({x,y,axes,label});
  const axis=(path,min,max,mode,options={})=>({path,min,max,mode,...options});
  const p=patch;
  if(type==="oscillators"){
-  const second=Number(p.oscillators?.[1]?.level)>0||
+  const slots=p.oscillators;
+  const second=Number(slots?.[1]?.level)>0||
    (p.modulation?.routes??[]).some(route=>route.target==="oscillators.1.level");
-  for(const index of second?[0,1]:[0]){
-   const o=p.oscillators[index],center=index===0?(second?34:59):87;
+  const enabled=second?[0,1]:[0];
+  const voice=(i,t)=>{const o=slots[i],phase=t*10*Math.PI*2**o.octave*2**(o.detune/1200);
+   return (o.level||0)*waveAt(o.wave,phase,o.harmonics);};
+  const sourceKeys=i=>["wave","octave","detune","harmonics","level"].map(k=>"oscillators."+i+"."+k);
+  const norm=Math.max(1,enabled.reduce((sum,i)=>sum+Math.max(0,slots[i].level),0));
+  line("M18 29 H342",true);
+  line(pathRange(320,t=>[18+324*t,29-16*enabled.reduce((sum,i)=>sum+voice(i,t),0)/norm]),
+   false,enabled.flatMap(sourceKeys));
+  tag(18,12,"mix");
+  for(const index of enabled){
+   const o=slots[index],center=second?(index===0?62:95):79,amplitude=11;
    line("M18 "+center+" H342",true);
-   const gain=clamp(o.level);
-   line(pathRange(280,t=>{
-    const phase=t*10*Math.PI*2**(o.octave*.32)*2**(o.detune/1200);
-    return [18+t*324,center-20*gain*waveAt(o.wave,phase,o.harmonics)];
-   }),index===1);
-   const bottom=center+(index===0&&second?20:22),top=center-20;
-   handle(38+clamp((o.detune+100)/200)*278,bottom-(bottom-top)*gain,[
+   line(pathRange(280,t=>[18+324*t,center-amplitude*voice(index,t)]),
+    index===1,sourceKeys(index));
+   const bottom=center+amplitude,top=center-amplitude;
+   handle(38+clamp((o.detune+100)/200)*278,bottom-(bottom-top)*clamp(o.level),[
     axis(["oscillators",index,"detune"],-100,100,"linearX",{from:38,to:316,step:1}),
     axis(["oscillators",index,"level"],0,1,"linearY",{from:bottom,to:top,step:.01})
    ],"oscillator "+(index+1)+" detune / level");
-   tag(18,index===0?11:70,"osc "+(index+1));
+   tag(18,center-14,"osc "+(index+1));
   }
-  tag(294,11,"detune →");
+  tag(296,12,"detune");
  }else if(type.startsWith("oscillator")){
   const index=Number(type.slice(-1))-1,o=p.oscillators[index];
   const cutoff=clamp(Math.log(Math.max(50,p.filter.cutoff)/50)/Math.log(280));
@@ -89,7 +96,7 @@ export const diagram=(patch,type)=>{
    return clamp(level+Math.exp(-delta*delta*4)*r*(25/60),0,1.5);
   };
   line("M18 95 H344 M18 22 V95",true);
-  line(pathRange(300,t=>{const px=18+t*324;return [px,95-60*response(px)];}));
+  line(pathRange(300,t=>{const px=18+t*324;return [px,95-60*response(px)];}),false,["filter.cutoff","filter.resonance","filter.type"]);
   line("M"+x.toFixed(2)+" 97 V19",true);
   handle(x,95-60*base-25*r,[
    axis(["filter","cutoff"],50,14000,"logX",{from:18,to:342,step:1}),
@@ -108,14 +115,14 @@ export const diagram=(patch,type)=>{
    const timeY=26+clamp(sweepTime/3)*54;
    // The line represents the cutoff's actual start/end and sweep duration.
    if(sweep!==0){
-    line(pathFrom([[startX,26],[startX+(stopX-startX)*.5,timeY*.65+14],[stopX,timeY]]),true);
+    line(pathFrom([[startX,26],[startX+(stopX-startX)*.5,timeY*.65+14],[stopX,timeY]]),true,["filter.sweep","filter.sweepTime"]);
     tag(clamp(startX+5,24,295),23,"sweep");
    }
    // Noise is unpitched, so show a decaying irregular signal.
    const noise=clamp(p.noise??0),decay=clamp((p.noiseDecay??0)/4);
    if(noise>0){
     line(pathRange(110,t=>[18+140*t,99-14*noise*
-     (1-t)**(1.5+6*(1-decay))*Math.sin(t*67)*Math.cos(t*17)]),true);
+     (1-t)**(1.5+6*(1-decay))*Math.sin(t*67)*Math.cos(t*17)]),true,["noise","noiseDecay"]);
     tag(18,111,"noise");
    }
   }
@@ -128,7 +135,7 @@ export const diagram=(patch,type)=>{
   const sustainY=88-65*clamp(e.sustain);
   const releaseX=248+clamp(e.release/releaseMax)*95;
   line("M18 90 H348 M248 18 V96",true);
-  line(pathFrom([[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]]));
+  line(pathFrom([[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]]),false,sample?["attack","release"]:["envelope.attack","envelope.decay","envelope.sustain","envelope.release"]);
   const prefix=sample?[]:["envelope"];
   handle(attackX,23,[axis([...prefix,"attack"],0,attackMax,"linearX",{from:25,to:103,step:.01})],"attack");
   if(!sample){
@@ -161,7 +168,7 @@ export const diagram=(patch,type)=>{
    const cents=pitchCents({bend:p.bend},m,Math.min(time,1.25),1.25)/100;
    const vibrato=time>=m.delay?m.depth/100*Math.sin(time*2*Math.PI*m.rate):0;
    return [15+t*330,62-clamp((cents+vibrato)*5,-43,43)];
-  }));
+  }),false,["bend.shape","bend.amount","bend.rate","movement.glide","movement.glideTime","movement.depth","movement.rate","movement.delay"]);
   handle(27,62-clamp(m.glide*5,-43,43),[
    axis(["movement","glide"],-12,12,"linearY",{from:104,to:20,step:.1})
   ],"glide");
@@ -173,11 +180,11 @@ export const diagram=(patch,type)=>{
   // Separate amplitude and timbre motion cannot be seen on a pitch plot.
   const pulse=m.tremolo??0,pulseRate=m.tremoloRate??5;
   const tone=m.tone??0,toneRate=m.toneRate??2;
-  line(pathRange(150,t=>[18+t*324,86-8*pulse*Math.sin(2*Math.PI*t*1.5*pulseRate)]),true);
-  line(pathRange(150,t=>[18+t*324,100-7*tone*Math.sin(2*Math.PI*t*1.5*toneRate)]),true);
+  line(pathRange(150,t=>[18+t*324,86-8*pulse*Math.sin(2*Math.PI*t*1.5*pulseRate)]),true,["movement.tremolo","movement.tremoloRate"]);
+  line(pathRange(150,t=>[18+t*324,100-7*tone*Math.sin(2*Math.PI*t*1.5*toneRate)]),true,["movement.tone","movement.toneRate"]);
   const pan=clamp(p.pan??0,-1,1);
-  line("M22 109 H"+(22+22*(1-pan)).toFixed(2),true);
-  line("M294 109 H"+(294+22*(1+pan)).toFixed(2),true);
+  line("M22 109 H"+(22+22*(1-pan)).toFixed(2),true,["pan"]);
+  line("M294 109 H"+(294+22*(1+pan)).toFixed(2),true,["pan"]);
   tag(20,79,"level");tag(20,96,"tone");tag(260,110,"l / r");
  }else if(type==="distortion"){
   const drive=p.effects.drive||0,transfer=driveCurve(drive);
@@ -185,7 +192,7 @@ export const diagram=(patch,type)=>{
   line(pathRange(300,t=>{
    const output=transfer[Math.round(t*(transfer.length-1))];
    return [24+t*312,58-output*37];
-  }));
+  }),false,["effects.drive"]);
   handle(306,88-60*drive,[
    axis(["effects","drive"],0,1,"linearY",{from:88,to:28,step:.01})
   ],"drive");
@@ -199,7 +206,7 @@ export const diagram=(patch,type)=>{
   for(let i=0;i<4;i++){
    const x=origin+i*space;
    const level=i===0?1:mix*feedback**(i-1);
-   line("M"+x.toFixed(2)+" 100 V"+(100-72*level).toFixed(2),i>0);
+   line("M"+x.toFixed(2)+" 100 V"+(100-72*level).toFixed(2),i>0,["effects.delayTime","effects.delayMix","effects.delayFeedback"]);
    if(i>0)tag(x+4,Math.max(18,94-72*level),String(i));
   }
   handle(origin+space,100-72*mix,[
@@ -226,7 +233,7 @@ export const diagram=(patch,type)=>{
     const value=routeValueAt(route,{elapsed:seconds,gate:1,velocity:.7,pitch:65});
     const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
     return [67+223*t,center-9*Math.tanh(value/visualScale)];
-   }));
+   }),false,["modulation.routes."+i]);
    const source=route.source.kind==="lfo"?"lfo":route.source.kind==="keytrack"?"keys":
     route.source.kind==="velocity"?"touch":"env";
    const target=MOD_TARGETS.find(item=>item.id===route.target);
