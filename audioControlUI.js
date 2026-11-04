@@ -22,6 +22,9 @@ export const AUDIO_COMMON_CONTROLS=Object.freeze([
  ["transpose","Transpose",-24,24,1,"semitones"],
  ["pan","Pan",-1,1,.01,"pan"]
 ].map(Object.freeze));
+export const AUDIO_SAMPLE_EXTRA_CONTROLS=Object.freeze([
+ ["strumMs","Strum",-25,25,1,"number"]
+].map(Object.freeze));
 export const AUDIO_VOCAL_ENVELOPE_CONTROLS=Object.freeze([
  ["attack","Rise",0,2,.005,"seconds"],
  ["release","Fade",0,3,.005,"seconds"]
@@ -102,8 +105,7 @@ export function renderAudioMovementControls(root,patch,onChange,onPreview=()=>{}
 export function renderAudioArticulationControls(root,patch,onChange,onPreview=()=>{},
  {context="sample"}={}){
  const common=AUDIO_COMMON_CONTROLS;
- const extras=context==="vocal"?AUDIO_VOCAL_ENVELOPE_CONTROLS:
-  [["strumMs","Strum",-25,25,1,"number"]];
+ const extras=context==="vocal"?AUDIO_VOCAL_ENVELOPE_CONTROLS:AUDIO_SAMPLE_EXTRA_CONTROLS;
  for(const item of [...common,...extras]){
   const [key]=item;
   slider(root,item,patch[key]??0,[key],onChange,onPreview,{
