@@ -135,6 +135,7 @@ export function validateFreeform(layer){
   // Validate the existing sound/rack/chunk definition against the Beat schema,
   // rather than introducing a second synthesizer format.
   const shell=create();
+  shell.bars=1;
   shell.samples=layer.samples;
   shell.instruments=[{...instrument,timeline:[null],placements:[null]}];
   upgradeBeatFeatures(shell);
