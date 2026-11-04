@@ -8,18 +8,24 @@ export const EXTENDED_BEAT_VERSION=17;
 export const SAMPLE_SLICE_BEAT_VERSION=23;
 // v25 preserves one note-on with a release across reusable Chunk bar lines.
 export const SUSTAIN_BEAT_VERSION=25;
+// v27 stores source-phase cutoff curves on individual reusable Chunk notes.
+export const CAPTURED_AUTOMATION_BEAT_VERSION=27;
 export const MAX_BEAT_BARS=64;
-import {validateCutoffAutomation} from "./src/dsp/automation.js";
+import {validateCutoffAutomation,validateCapturedCutoffAutomation} from "./src/dsp/automation.js";
 import {requiresSampleSliceFormat} from "./sampleSlice.js";
 export const requiresAutomationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>inst?.automation!==undefined);
-export const BEAT_VERSIONS=[VERSION,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION];
+export const BEAT_VERSIONS=[VERSION,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION];
+export const requiresCapturedAutomationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>
+ Array.isArray(inst?.chunks)&&inst.chunks.some(chunk=>Array.isArray(chunk?.notes)&&
+  chunk.notes.some(note=>note?.cutoffAutomation!==undefined)));
 export const requiresSustainFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>
  Array.isArray(inst?.chunks)&&inst.chunks.some(chunk=>Array.isArray(chunk?.notes)&&
   chunk.notes.some(note=>Number.isInteger(note?.start)&&Number.isInteger(note?.duration)&&
    note.duration>16-note.start)));
 export const requiresModulationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>Array.isArray(inst?.sounds)&&inst.sounds.some(sound=>sound?.patch?.version===2||sound?.patch?.modulation!==undefined));
 export function upgradeBeatFeatures(doc){
- if(requiresSustainFormat(doc)||doc.version===SUSTAIN_BEAT_VERSION)doc.version=SUSTAIN_BEAT_VERSION;
+ if(requiresCapturedAutomationFormat(doc)||doc.version===CAPTURED_AUTOMATION_BEAT_VERSION)doc.version=CAPTURED_AUTOMATION_BEAT_VERSION;
+  else if(requiresSustainFormat(doc)||doc.version===SUSTAIN_BEAT_VERSION)doc.version=SUSTAIN_BEAT_VERSION;
   else if(requiresSampleSliceFormat(doc)||doc.version===SAMPLE_SLICE_BEAT_VERSION)doc.version=SAMPLE_SLICE_BEAT_VERSION;
  else if(doc.bars>16||doc.version===EXTENDED_BEAT_VERSION)doc.version=EXTENDED_BEAT_VERSION;
  else if(requiresAutomationFormat(doc))doc.version=AUTOMATION_BEAT_VERSION;
@@ -78,18 +84,18 @@ const text=(x,max)=>typeof x==="string"&&!!x.trim()&&x.length<=max;
 const within=(x,low,high)=>typeof x==="number"&&Number.isFinite(x)&&x>=low&&x<=high;
 export function validate(doc) {
  const errors=[];
- if(![AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION].includes(doc?.version)&&requiresAutomationFormat(doc))errors.push("Timeline automation requires Beat v11.");
+ if(![AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(doc?.version)&&requiresAutomationFormat(doc))errors.push("Timeline automation requires Beat v11.");
  if(doc?.version===VERSION&&requiresModulationFormat(doc))errors.push("Modulated sounds require Beat v9.");
  if(!object(doc)||doc.format!==FORMAT||!BEAT_VERSIONS.includes(doc.version))
-  return ["Unsupported .premidi file. Supported Beat formats are pre-midi v7, v9, v11, v17, v23 and v25."];
+  return ["Unsupported .premidi file. Supported Beat formats are pre-midi v7, v9, v11, v17, v23, v25 and v27."];
  if(!text(doc.id,128)||!text(doc.title,100))errors.push("Beat needs an ID and title.");
  if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
  if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
  if(!Number.isInteger(doc.bars)||!within(doc.bars,1,MAX_BEAT_BARS))errors.push("Timeline must have 1–64 bars.");
- if(doc.bars>16&&![EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION].includes(doc.version))errors.push("Beats longer than 16 bars require Beat v17.");
- if(requiresSampleSliceFormat(doc)&&![SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION].includes(doc.version))
+ if(doc.bars>16&&![EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(doc.version))errors.push("Beats longer than 16 bars require Beat v17.");
+ if(requiresSampleSliceFormat(doc)&&![SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(doc.version))
    errors.push("Sample source excerpts require Beat v23 or v25.");
-  if(requiresSustainFormat(doc)&&doc.version!==SUSTAIN_BEAT_VERSION)
+  if(requiresSustainFormat(doc)&&![SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(doc.version))
    errors.push("Notes sustaining across a Chunk bar require Beat v25.");
  if(!Array.isArray(doc.samples)||doc.samples.length>160)return [...errors,"Invalid sample asset list."];
  const sampleIds=new Set();
@@ -146,7 +152,7 @@ export function validate(doc) {
         (!Number.isInteger(note.pitch)||!within(note.pitch,36,96)||note.soundId!==undefined))||
        !Number.isInteger(note.start)||!within(note.start,0,15)||
        !Number.isSafeInteger(note.duration)||!within(note.duration,1,
-         doc.version===SUSTAIN_BEAT_VERSION?MAX_BEAT_BARS*STEPS_PER_BAR:16-note.start)||
+         [SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(doc.version)?MAX_BEAT_BARS*STEPS_PER_BAR:16-note.start)||
        !within(note.velocity,0,1)) errors.push("Invalid chunk note.");
     else notes.add(note.id);
     if(instrument.layout==="rack"&&object(note)){
@@ -155,6 +161,13 @@ export function validate(doc) {
      steps.add(key);
     }
     errors.push(...validateBend(note?.bend));
+     if(note?.cutoffAutomation!==undefined){
+      if(doc.version!==CAPTURED_AUTOMATION_BEAT_VERSION)
+       errors.push("Captured cutoff movement on Chunk notes requires Beat v27.");
+      if(instrument.layout!=="pitched"||instrument.sounds?.[0]?.patch?.type!=="synth")
+       errors.push("Captured cutoff movement requires a pitched synthesizer.");
+      errors.push(...validateCapturedCutoffAutomation(note.cutoffAutomation));
+     }
    }
   }
   if(!Array.isArray(instrument.timeline)||instrument.timeline.length!==doc.bars||
