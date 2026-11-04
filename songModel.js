@@ -43,13 +43,13 @@ const unique=(items,key="id")=>new Set(items.map(item=>item?.[key])).size===item
 export function createSong(sourceBeat=create()){
  ensureBeat(sourceBeat);
  const beat=clone(sourceBeat),trackId=id();
- return {
-  format:FORMAT,kind:"song",version:beat.version===EXTENDED_BEAT_VERSION?EXTENDED_SONG_VERSION:beat.version===AUTOMATION_BEAT_VERSION?AUTOMATION_SONG_VERSION:beat.version===MODULATION_BEAT_VERSION?MODULATION_SONG_VERSION:SONG_VERSION,id:id(),title:"Untitled song",
+ return upgradeSongFeatures({
+  format:FORMAT,kind:"song",version:beat.version===SAMPLE_SLICE_BEAT_VERSION?SAMPLE_SLICE_SONG_VERSION:beat.version===EXTENDED_BEAT_VERSION?EXTENDED_SONG_VERSION:beat.version===AUTOMATION_BEAT_VERSION?AUTOMATION_SONG_VERSION:beat.version===MODULATION_BEAT_VERSION?MODULATION_SONG_VERSION:SONG_VERSION,id:id(),title:"Untitled song",
   bpm:beat.bpm,beats:[beat],recordings:[],
   tracks:[{id:trackId,kind:"beat",name:"Beat 1",clips:[
    {id:id(),beatId:beat.id,startStep:0,lengthSteps:beatLength(beat)}
   ]}]
- };
+ });
 }
 export function addBeat(song,sourceBeat,{independent=false}={}){
  ensureBeat(sourceBeat);
