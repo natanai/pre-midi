@@ -40,8 +40,14 @@ frame.addEventListener("load",async()=>{
   compare.click();
   assert("reference held",compare.getAttribute("aria-pressed")==="true"&&
    !!scope.querySelector(".signal-scope-reference").getAttribute("d"));
-  compare.click();
-  assert("reference cleared",compare.getAttribute("aria-pressed")==="false"&&
+  const brightness=get("primary-brightness-dial").querySelector('[role="slider"]');
+  brightness.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{key:"ArrowLeft",bubbles:true}));
+  await wait(()=>scope.querySelector(".signal-scope-compare")!==compare,"scope recreated after sound edit");
+  const restored=scope.querySelector(".signal-scope-compare");
+  assert("a/b hold survives committed knob edit",restored.getAttribute("aria-pressed")==="true");
+  await wait(()=>!!scope.querySelector(".signal-scope-reference")?.getAttribute("d"),"held waveform repainted");
+  restored.click();
+  assert("reference cleared",restored.getAttribute("aria-pressed")==="false"&&
    !scope.querySelector(".signal-scope-reference").getAttribute("d"));
   status="PASS";
  }catch(error){checks.error=String(error.stack||error)}
