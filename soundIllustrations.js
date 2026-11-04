@@ -337,20 +337,24 @@ export const diagram=(patch,type,page=0)=>{
   line("M18 47 H170 M190 47 H342 M83 103 H277",true);
   line(pathRange(145,t=>[18+152*t,47-15*pulse*Math.sin(2*Math.PI*t*1.3*(m.tremoloRate??5))]),
    false,["movement.tremolo","movement.tremoloRate"]);
-  line(pathRange(145,t=>[190+152*t,47-15*tone*Math.sin(2*Math.PI*t*1.3*(m.toneRate??2))]),
-   false,["movement.tone","movement.toneRate"]);
   handle(22+clamp(((m.tremoloRate??5)-.1)/19.9)*143,47-22*pulse,[
    axis(["movement","tremoloRate"],.1,20,"linearX",{from:22,to:165,step:.1}),
    axis(["movement","tremolo"],0,1,"linearY",{from:47,to:25,step:.01})
   ],"volume pulse speed / depth");
-  handle(194+clamp(((m.toneRate??2)-.1)/19.9)*143,47-22*tone,[
-   axis(["movement","toneRate"],.1,20,"linearX",{from:194,to:337,step:.1}),
-   axis(["movement","tone"],0,1,"linearY",{from:47,to:25,step:.01})
-  ],"tone movement speed / depth");
+  // Only the synth has tone movement knobs. A recorded Sound must not gain
+  // an illustration-only control that its native renderer cannot mirror.
+  if(p.type==="synth"){
+   line(pathRange(145,t=>[190+152*t,47-15*tone*Math.sin(2*Math.PI*t*1.3*(m.toneRate??2))]),
+    false,["movement.tone","movement.toneRate"]);
+   handle(194+clamp(((m.toneRate??2)-.1)/19.9)*143,47-22*tone,[
+    axis(["movement","toneRate"],.1,20,"linearX",{from:194,to:337,step:.1}),
+    axis(["movement","tone"],0,1,"linearY",{from:47,to:25,step:.01})
+   ],"tone movement speed / depth");
+  }
   handle(83+(pan+1)*97,103,[
    axis(["pan"],-1,1,"linearX",{from:83,to:277,step:.01})
   ],"stereo pan");
-  tag(20,16,"volume pulse");tag(196,16,"tone movement");tag(107,89,"left ←  stereo  → right");
+  tag(20,16,"volume pulse");if(p.type==="synth")tag(196,16,"tone movement");tag(107,89,"left ←  stereo  → right");
  }else if(type==="movement"){
   const m=movement(p);
   line("M15 62 H345",true);
