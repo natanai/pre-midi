@@ -4,6 +4,7 @@ import {MAX_RECORDING_BYTES} from "./assetRegistry.js";
 import {preferredRecordingMime,normalizeRecordingMime} from "./recordingAssets.js";
 import {nativeEnabled} from './src/hosts/native/session.js';
 import {prepareNativeTake,decodeNativeAudio} from './src/hosts/native/capture.js';
+import {readRecordingAlignment,browserRecordingLeadIn} from './recordingAlignment.js';
 const closeStream=stream=>stream?.getTracks().forEach(track=>track.stop());
 export async function prepareSongTake(){
  if(nativeEnabled())return prepareNativeTake();
@@ -11,6 +12,8 @@ export async function prepareSongTake(){
   throw Error("Microphone recording is unavailable in this browser.");
  const mime=preferredRecordingMime();
  if(!mime)throw Error("This browser cannot capture WebM, MP4 or OGG audio.");
+ // Snapshot before asking permission so the setting cannot change mid-take.
+ const offsetMs=readRecordingAlignment();
  const stream=await navigator.mediaDevices.getUserMedia({
   audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false
  });
@@ -29,7 +32,7 @@ export async function prepareSongTake(){
  return {
   begin({context,startTime,onLimit}){
    if(done||begun)throw Error("Microphone take cannot start twice.");
-   trimSeconds=Math.max(0,startTime-context.currentTime);
+   trimSeconds=browserRecordingLeadIn(startTime,context.currentTime,offsetMs);
    recorder.start(250);
    begun=true;beginMs=performance.now();
    timeLimit=setTimeout(()=>onLimit?.(),MAX_VOCAL_SECONDS*1000);
