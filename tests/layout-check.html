@@ -268,6 +268,15 @@ async function checkLayout(frame){
  }
  checks.noteBendApplied=!!doc.querySelector("#piano .note.bent.selected");
  checks.noteShapePreview=!!doc.querySelector("#note-expression svg polyline[points]");
+ const bendDot=doc.querySelector("#note-expression .expression-visual .visual-graph-point");
+ checks.noteVisualGrab=!!bendDot&&getComputedStyle(bendDot).display!=="none";
+ checks.noteVisualLevel=!!doc.querySelector("#note-expression .visual-graph-level[d]");
+ const amountBefore=Number(doc.querySelector("#note-expression .dial-knob[aria-label='Amount']")?.getAttribute("aria-valuenow"));
+ bendDot?.focus();
+ bendDot?.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true}));
+ const amountAfter=Number(doc.querySelector("#note-expression .dial-knob[aria-label='Amount']")?.getAttribute("aria-valuenow"));
+ checks.noteVisualKeyboardEditsBend=Number.isFinite(amountBefore)&&amountAfter>amountBefore;
+ checks.noteShapeStillPreviewsAfterEdit=!!doc.querySelector("#note-expression svg polyline[points]");
  get("note-effects-done").click();
  checks.noteModeExits=get("note-mode").getAttribute("aria-pressed")==="false" &&
   !doc.querySelector(".work").classList.contains("editing-note-effects") &&
