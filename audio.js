@@ -1,4 +1,4 @@
-import {validateAutomationPlan} from "./src/dsp/automation.js";
+import {validateAutomationPlan,noteCutoffAutomation} from "./src/dsp/automation.js";
 import {prepareOscillator} from "./src/hosts/web/oscillator.js";
 import {validateModulation} from "./src/dsp/modulation.js";
 import {resolveEvent} from "./soundModel.js";
@@ -45,7 +45,9 @@ function noiseBuffer(ctx) {
 }
 export const stepEvents = eventsAtStep;
 export function scheduleNote(ctx,destination,instrument,event,start,duration,beat,session=null,timeline=null) {
- const automation=timeline?instrument.automation:undefined;
+ const selected=timeline?noteCutoffAutomation(instrument,event,timeline):
+  {automation:undefined,timeline};
+ const {automation,timeline:effectiveTimeline}=selected;
  if(instrument.sounds){
   const resolved=resolveEvent(instrument,event);
   if(!resolved)return;
@@ -56,7 +58,7 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
  if(instrument.patch.type==="sample"){
   return scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx),session);
  }
- return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline}),session);
+ return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline:effectiveTimeline}),session);
 }
 export function scheduleSynthPlan(ctx,destination,plan,session=null){
  if(plan.contract!=="pre-midi-synth-voice"||![1,2,3].includes(plan.version))throw Error("Unsupported synth voice plan");

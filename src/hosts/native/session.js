@@ -1,6 +1,7 @@
 import {encodeNativePlan} from './plan.js';
 import {resolveEvent} from '../../../soundModel.js';
 import {planSynthVoice} from '../../dsp/synth-voice.js';
+import {noteCutoffAutomation} from '../../dsp/automation.js';
 import {sampleForNote} from '../../../sampler.js';
 import {getAsset} from '../../../assetRegistry.js';
 import {validatePatch} from '../../../synth.js';
@@ -37,7 +38,8 @@ export function nativePlans(events,assets=new Map(),unit=.125){
   if(unsupported.length)throw Error(`${event.instrument.name||'Sound'}: native playback does not yet support ${unsupported.join(', ')}.`);
   if(voice.patch.type==='sample')return planNativeSample(voice,note,event.at,event.duration,assets);
   const duration=event.instrument.layout==='rack'?Math.max(.015,voice.patch.envelope.attack+voice.patch.envelope.decay):event.duration;
-  return planSynthVoice(voice,note,event.at,duration,{automation:event.instrument.automation,timeline:event.timeline});
+  return planSynthVoice(voice,note,event.at,duration,
+    noteCutoffAutomation(event.instrument,event.note,event.timeline));
  }).filter(Boolean);
 }
 const assetCache=new Map();let assetGeneration;
