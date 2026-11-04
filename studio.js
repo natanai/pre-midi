@@ -1601,6 +1601,16 @@ $("song-record").addEventListener("click",()=>{
  showVocalState(!!vocalTake);
  if(!voiceDialog.open)voiceDialog.showModal();
 });
+$("voice-offset-ms").addEventListener("change",event=>{
+ try{
+  const ms=saveRecordingAlignment(event.target.value);
+  event.target.value=String(ms);
+  window.dispatchEvent(new Event("premidi-recording-alignment-change"));
+ }catch(error){
+  event.target.value=String(readRecordingAlignment());
+  voiceStatus(error.message,true);
+ }
+});
 $("voice-start-bar").addEventListener("change",event=>{
  if(!song||vocalRequest||vocalTake)return;
  const bar=Math.max(1,Math.floor(Number(event.target.value)||1));
@@ -1629,6 +1639,7 @@ $("voice-start").addEventListener("click",async()=>{
  const requestedStep=songUI?.setStartStep((chosenBar-1)*16)??0;
  const countBars=Number($("voice-count-in").value);
  vocalRequest=true;
+ $("voice-offset-ms").disabled=true;
  $("voice-start").textContent="cancel";
  voiceStatus("Requesting microphone permission…");
  let prepared;
