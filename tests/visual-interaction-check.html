@@ -1,0 +1,60 @@
+<!doctype html><meta charset="utf-8">
+<style>body{margin:0}iframe{width:100%;height:100vh;border:0}</style>
+<iframe title="Visual sound controls"></iframe><pre id="result"></pre>
+<script>
+const frame=document.querySelector("iframe"),checks={};
+const assert=(name,value)=>{checks[name]=!!value;if(!value)throw Error(name);};
+const wait=async(check,label,limit=12000)=>{
+ for(let i=0;i<limit/40;i++){if(check())return;await new Promise(r=>setTimeout(r,40));}
+ throw Error("Timed out: "+label);
+};
+frame.addEventListener("load",async()=>{
+ const doc=frame.contentDocument,win=frame.contentWindow;
+ const get=id=>doc.getElementById(id);
+ let status="FAIL";
+ try{
+  await wait(()=>!!get("synth-editor")?.querySelector(".visual-sound-panel"),"sound panels");
+  if(get("sound-toggle")?.getAttribute("aria-expanded")==="false")get("sound-toggle").click();
+  const osc=doc.querySelector('.visual-sound-panel[data-visual-kind="oscillators"]');
+  assert("oscillator panel exists",!!osc);
+  osc.querySelector("details").open=true;
+  const level=osc.querySelector('[data-sound-path=\'["oscillators",0,"level"]\']');
+  const detune=osc.querySelector('[data-sound-path=\'["oscillators",0,"detune"]\']');
+  assert("existing oscillator controls are associated",!!level&&!!detune);
+  level.dispatchEvent(new PointerEvent("pointerover",{bubbles:true,pointerType:"mouse"}));
+  assert("knob hover links the oscillator trace",!!osc.querySelector(".visual-graph-linked"));
+  assert("knob hover highlights the associated grab point",!!osc.querySelector(".visual-point-linked"));
+  level.dispatchEvent(new PointerEvent("pointerout",{bubbles:true,pointerType:"mouse",relatedTarget:null}));
+  assert("highlight clears on exit",!osc.querySelector(".visual-panel-linked"));
+  const area=osc.querySelector(".visual-panel-area");
+  const handle=osc.querySelector(".visual-graph-point");
+  const bounds=handle.getBoundingClientRect();
+  area.dispatchEvent(new MouseEvent("click",{bubbles:true,
+   clientX:bounds.left+bounds.width/2,clientY:bounds.top+bounds.height/2}));
+  assert("diagram click focuses an existing control",detune.contains(doc.activeElement));
+  assert("graph click does not create new knobs",osc.querySelectorAll('[data-sound-path=\'["oscillators",0,"detune"]\']').length===1);
+  const filter=doc.querySelector('.visual-sound-panel[data-visual-kind="filter"]');
+  filter.querySelector("details").open=true;
+  const brightness=get("primary-brightness-dial");
+  brightness.dispatchEvent(new PointerEvent("pointerover",{bubbles:true,pointerType:"mouse"}));
+  assert("primary brightness links the filter response",!!filter.querySelector(".visual-graph-linked"));
+  brightness.dispatchEvent(new PointerEvent("pointerout",{bubbles:true,pointerType:"mouse",relatedTarget:null}));
+  const graph=get("sound-visualizer")?.querySelector(".signal-scope-graph");
+  const lane=graph?.querySelector('[aria-label="Waveform position"]');
+  assert("measured waveform has a time position control",!!lane&&lane.getAttribute("role")==="slider");
+  await wait(()=>Number(lane.getAttribute("aria-valuemax"))>2,"measured waveform render",20000);
+  const rect=graph.getBoundingClientRect();
+  lane.dispatchEvent(new MouseEvent("click",{bubbles:true,clientX:rect.left+rect.width*.6}));
+  const clicked=Number(lane.getAttribute("aria-valuenow"));
+  assert("click selects a later waveform instant",clicked>1);
+  assert("cursor moves with selected time",!!graph.querySelector(".signal-scope-position")?.getAttribute("d"));
+  lane.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true}));
+  assert("keyboard moves the waveform instant",Number(lane.getAttribute("aria-valuenow"))>clicked);
+  assert("waveform caption stays readable",get("sound-visualizer").querySelector(".signal-chart-wave").textContent.includes("s"));
+  status="PASS";
+ }catch(error){checks.error=String(error.stack||error);}
+ get("result");document.getElementById("result").textContent=JSON.stringify(checks);
+ await fetch("/__visual_interaction_result?status="+status+"&details="+encodeURIComponent(JSON.stringify(checks)));
+},{once:true});
+frame.src="../index.html";
+</script>
