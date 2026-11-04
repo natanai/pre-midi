@@ -1,7 +1,8 @@
 import {ownVoice} from "./src/hosts/web/voice-session.js";
 import {vocalEffects,vocalSourceRange} from "./vocalEffects.js";
 import {configureDriveShaper} from "./audioEffects.js";
-import {schedulePitch,scheduleMovementLfo,movement,planPitch} from "./expression.js";
+import {schedulePitchPlan,scheduleMovementLfo,movement} from "./expression.js";
+import {planPitch} from "./src/dsp/expression.js";
 import {delayTailSeconds} from "./src/dsp/effect-tail.js";
 // Native timeline audio for continuous vocal takes.
 import {recordingBytes} from "./recordingAssets.js";
@@ -40,7 +41,7 @@ export function scheduleVocal(context,destination,event,startTime,unit,decoded,{
  const nodes=[source,level,gate,pan],sources=[source],owner={sources,nodes};
  source.buffer=buffer;source.playbackRate.value=rate;
  const motion=movement(fx);
- schedulePitch(context,source.detune,planPitch({bend:fx.bend},motion,startTime,duration),owner);
+ schedulePitchPlan(context,source.detune,planPitch({bend:fx.bend},motion,startTime,duration),owner);
  const gain=clip.gain??1,end=startTime+duration;
  if(clip.effects===undefined)level.gain.setValueAtTime(gain,startTime);
  else{
