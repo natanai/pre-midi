@@ -97,17 +97,22 @@ export function validateSamplerPatch(patch){
 // without decoding all of their long natural tails into RAM on every Play.
 export function usedSampleIds(beat){
  const used=new Set();
+ const visit=(inst,note)=>{
+  const resolved=resolveEvent(inst,note);
+  if(resolved?.voice.patch.type!=="sample")return;
+  const zone=sampleForNote(resolved.voice.patch,resolved.note.pitch,note.velocity);
+  if(zone)used.add(zone.assetId);
+ };
  for(const inst of beat.instruments||[]){
-  const placed=new Set(inst.timeline.filter(Boolean));
+  // A reusable Beat uses its bar timeline; a Song-owned freeform Instrument
+  // instead has independent notes and explicitly placed reusable Chunks.
+  const placed=new Set(Array.isArray(inst.timeline)?
+   inst.timeline.filter(Boolean):(inst.chunkPlacements||[]).map(item=>item.chunkId));
   for(const chunk of inst.chunks||[]){
    if(!placed.has(chunk.id))continue;
-   for(const note of chunk.notes){
-    const resolved=resolveEvent(inst,note);
-    if(resolved?.voice.patch.type!=="sample")continue;
-    const zone=sampleForNote(resolved.voice.patch,resolved.note.pitch,note.velocity);
-    if(zone)used.add(zone.assetId);
-   }
+   for(const note of chunk.notes)visit(inst,note);
   }
+  for(const note of inst.notes||[])visit(inst,note);
  }
  return used;
 }

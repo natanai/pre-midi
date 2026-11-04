@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {create,validate,parse,clone} from "../schema.js";
 import {validatePatch} from "../synth.js";
 import {SAMPLE_LIBRARY,SAMPLE_ASSETS,makeSamplerPatch} from "../samples.js";
-import {validateSampleAsset,makeSampleAsset,sampleForNote,MAX_BEAT_BYTES} from "../sampler.js";
+import {validateSampleAsset,makeSampleAsset,sampleForNote,usedSampleIds,MAX_BEAT_BYTES} from "../sampler.js";
 import {getAsset} from "../assetRegistry.js";
 test("CC0 sample presets span recorded instruments and multiple percussion voices",()=>{
  assert.ok(SAMPLE_LIBRARY.length>=10);
@@ -57,4 +57,23 @@ test("optional sample tone controls remain compatible and reject malformed value
  assert.ok(validatePatch(patch).some(s=>/distortion/.test(s)));
  delete patch.filter;delete patch.drive;
  assert.deepEqual(validatePatch(patch),[],"Optional tone settings can be omitted");
+});
+
+test("sample preparation uses direct freeform notes and only placed freeform Chunks",()=>{
+ const beat=create(),inst=beat.instruments[0];
+ inst.sounds[0].patch={
+  type:"sample",zones:[{assetId:"low",root:48},{assetId:"high",root:72}],
+  followPitch:true,transpose:0,gain:1,attack:.01,release:.1,pan:0
+ };
+ inst.timeline=[inst.chunks[0].id,...Array(beat.bars-1).fill(null)];
+ inst.chunks[0].notes=[{id:"low-beat",pitch:48,start:0,duration:1,velocity:.8}];
+ assert.deepEqual([...usedSampleIds(beat)],["low"],"legacy Beat references stay unchanged");
+ const freeformInst={...inst,timeline:undefined,chunkPlacements:[],notes:[
+  {id:"direct",pitch:72,start:128,duration:32,velocity:.8}
+ ]};
+ assert.deepEqual([...usedSampleIds({instruments:[freeformInst]})],["high"],
+  "direct notes prime their own samples without a Beat timeline");
+ freeformInst.chunkPlacements=[{id:"phrase",chunkId:inst.chunks[0].id,startStep:48,length:16,every:16,repeats:1}];
+ assert.deepEqual(new Set(usedSampleIds({instruments:[freeformInst]})),new Set(["high","low"]),
+  "freeform Chunks and direct notes both prime audible assets");
 });
