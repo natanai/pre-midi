@@ -142,10 +142,13 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  const mapping=document.createElement("div");mapping.className="sample-zones";
  const mapGroup=document.createElement("details");
  mapGroup.className="synth-group sample-map-details";
- mapGroup.open=expanded.has("mapping")||(!expanded.has("mapping")&&patch.zones.length<=8);
+ mapGroup.open=expanded.has("mapping")||(patch.zones.length<=8&&!expanded.has("mappingClosed"));
  mapGroup.addEventListener("toggle",()=>{
-  if(mapGroup.open){expanded.add("mapping");populateMapping();}
-  else expanded.delete("mapping");
+  if(mapGroup.open){
+   expanded.add("mapping");expanded.delete("mappingClosed");populateMapping();
+  }else{
+   expanded.delete("mapping");expanded.add("mappingClosed");
+  }
  });
  const mapTitle=document.createElement("summary");
  const pitchCount=new Set(patch.zones.map(zone=>zone.root)).size;
