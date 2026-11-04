@@ -9,7 +9,7 @@ import {noteCutoffAutomation} from "../src/dsp/automation.js";
 import {planSynthVoice} from "../src/dsp/synth-voice.js";
 import {createFreeform,addFreeformInstrument,addFreeformNote,
  addFreeformChunkPlacement,eventsAtFreeformStep,freeformEndStep,
- moveFreeformPassage,unpackBeatClip,createBeatFromFreeformSelection,soundingFreeformPitches,validateFreeform,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION} from "../freeformModel.js";
+ moveFreeformPassage,unpackBeatClip,suggestSafeUnpackRange,createBeatFromFreeformSelection,soundingFreeformPitches,validateFreeform,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION} from "../freeformModel.js";
 
 test("empty freeform supports long notes and independent reusable Chunks",()=>{
  const layer=createFreeform(),instrument=addFreeformInstrument(layer);
@@ -286,4 +286,43 @@ test("linked Beat Clip cutoff continuation is versioned, moves and resets on exp
  assert.equal(left.automationTailSteps,undefined,
   "Explicit Clip resizing redefines the cutoff boundary");
  assert.deepEqual(validateSong(song),[]);
+});
+
+test("partial Beat selection safely expands around overlapping sustained notes",()=>{
+ const beat=create(),inst=beat.instruments[0];
+ inst.chunks[0].notes=[
+  {id:"sustain-a",pitch:60,start:2,duration:12,velocity:.8},
+  {id:"sustain-b",pitch:64,start:10,duration:6,velocity:.7}
+ ];
+ const song=createSong(beat),clip=song.tracks[0].clips[0],before=clone(song);
+ const suggested=suggestSafeUnpackRange(song,clip.id,6,12);
+ assert.deepEqual([suggested.fromStep,suggested.toStep],[2,16]);
+ assert.equal(suggested.adjusted,true);
+ assert.equal(suggested.crossingNoteCount,2);
+ assert.deepEqual(song,before,"Suggesting safe boundaries cannot mutate the Song");
+ assert.throws(()=>unpackBeatClip(song,clip.id,{fromStep:6,toStep:12}),/sustained note crosses/);
+ assert.deepEqual(song,before);
+ const nativeBefore=nativePlans(renderEvents(song));
+ unpackBeatClip(song,clip.id,{fromStep:suggested.fromStep,toStep:suggested.toStep});
+ assert.deepEqual(validateSong(song),[]);
+ const signature=plans=>plans.map(plan=>[
+  plan.start,plan.duration,plan.expression.pitch,
+  plan.automation?.points.map(point=>[point.time,point.value])
+ ]);
+ assert.deepEqual(signature(nativePlans(renderEvents(song))),signature(nativeBefore),
+  "Expanded partial unpack must preserve native note onset, duration and movement");
+});
+test("safe partial unpack handles Clip source offsets and repetitions",()=>{
+ const beat=create(),inst=beat.instruments[0];
+ inst.chunks[0].notes=[{id:"held",pitch:70,start:7,duration:9,velocity:.8}];
+ inst.timeline[1]=inst.chunks[0].id;
+ const song=createSong(beat),clip=song.tracks[0].clips[0];
+ editBeatClip(song,clip.id,{sourceOffsetSteps:16,lengthSteps:48});
+ const original=clone(song);
+ const hint=suggestSafeUnpackRange(song,clip.id,8,12);
+ assert.deepEqual([hint.fromStep,hint.toStep],[7,16]);
+ assert.deepEqual(song,original);
+ const clean=suggestSafeUnpackRange(song,clip.id,16,24);
+ assert.equal(clean.adjusted,false);
+ assert.throws(()=>suggestSafeUnpackRange(song,clip.id,0,49),/inside the Beat Clip/);
 });
