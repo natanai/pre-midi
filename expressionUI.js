@@ -54,22 +54,108 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  const rate=createDial({label:"Wave speed",min:.1,max:12,step:.1,display:"hz"},bend.rate,
   value=>onChange({...bend,rate:value}),value=>{current.rate=value;draw();});
  controls.append(amount,rate);
- const graph=svg("svg",{viewBox:"0 0 320 64","aria-label":"Pitch movement preview",role:"img",preserveAspectRatio:"none"});
- const center=svg("line",{x1:0,x2:320,y1:32,y2:32,stroke:"#484848","stroke-dasharray":"3 4"});
- const shape=svg("polyline",{fill:"none",stroke:"currentColor","stroke-width":2});
- graph.append(center,shape);
+ const graph=svg("svg",{viewBox:"0 0 320 112",
+  "aria-label":"Bend and note level",role:"button",tabindex:"0",
+  preserveAspectRatio:"none"});
+ graph.classList.add("visual-panel-graph");
+ const center=svg("path",{d:"M0 32 H320 M0 91 H320",class:"visual-graph-secondary"});
+ const shape=svg("polyline",{fill:"none",class:"visual-graph-line"});
+ const levelBar=svg("path",{fill:"none",class:"visual-graph-level"});
+ const levelLabel=svg("text",{x:"13",y:"107",class:"visual-graph-label"});
+ levelLabel.textContent="level";
+ graph.append(center,shape,levelBar,levelLabel);
  const visual=make("div",undefined,"expression-visual");
- visual.append(graph);
+ const area=make("div",undefined,"visual-panel-area");
+ const points=make("div",undefined,"visual-graph-points");
+ const dot=make("button",undefined,"visual-graph-point");
+ dot.type="button";dot.setAttribute("aria-label","bend amount");
+ points.append(dot);area.append(graph,points);visual.append(area);
+ let noteLevel=note.velocity,dragging=null;
+ const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+ const focusAmount=()=>amount.querySelector('[role="slider"]')?.focus();
  function draw(){
   current.shape=select.value;
   rate.hidden=current.shape!=="wave";
   const total=durationSeconds;
-  const points=Array.from({length:81},(_,i)=>{
-   const x=i/80,value=bendSemitones(current,x,x*total);
+  const values=Array.from({length:121},(_,i)=>{
+   const x=i/120,value=bendSemitones(current,x,x*total);
    return Math.round(x*320)+","+Math.round(32-value*2.1);
   });
-  shape.setAttribute("points",points.join(" "));
+  shape.setAttribute("points",values.join(" "));
+  levelBar.setAttribute("d","M14 91 H"+(14+290*noteLevel).toFixed(1));
+  dot.hidden=current.shape==="straight";
+  dot.style.left=(current.shape==="wave"?15+clamp((current.rate-.1)/11.9,0,1)*70:74)+"%";
+  dot.style.top=(32-2.1*current.amount)/112*100+"%";
+  dot.setAttribute("aria-label",current.shape==="wave"?"bend amount and speed":"bend amount");
+  dot.setAttribute("aria-valuetext",current.amount.toFixed(2)+" semitones"+
+   (current.shape==="wave"?", "+current.rate.toFixed(2)+" hertz":""));
  }
+ levelInput.addEventListener("input",()=>{
+  noteLevel=Number(levelInput.value);
+  levelBar.setAttribute("d","M14 91 H"+(14+290*noteLevel).toFixed(1));
+ });
+ function setLink(enabled){
+  area.classList.toggle("visual-panel-linked",enabled);
+  shape.classList.toggle("visual-graph-linked",enabled);
+  dot.classList.toggle("visual-point-linked",enabled);
+ }
+ for(const dial of [amount,rate]){
+  dial.addEventListener("pointerenter",()=>setLink(true));
+  dial.addEventListener("pointerleave",()=>setLink(false));
+  dial.addEventListener("focusin",()=>setLink(true));
+  dial.addEventListener("focusout",()=>setLink(false));
+ }
+ dot.addEventListener("pointerenter",()=>setLink(true));
+ dot.addEventListener("pointerleave",()=>{if(!dragging)setLink(false);});
+ function position(event){
+  const bounds=graph.getBoundingClientRect();
+  return {x:(event.clientX-bounds.left)/bounds.width*320,
+   y:(event.clientY-bounds.top)/bounds.height*112};
+ }
+ function edit(event,commit=false){
+  const pos=position(event);
+  const next={...current,
+   amount:Math.round(clamp((32-pos.y)/2.1,0,12)*4)/4};
+  if(current.shape==="wave")
+   next.rate=Math.round((.1+clamp((pos.x/320-.15)/.7,0,1)*11.9)*10)/10;
+  current.amount=next.amount;current.rate=next.rate;
+  draw();
+  if(commit)onChange({...bend,amount:next.amount,rate:next.rate,shape:current.shape});
+ }
+ dot.addEventListener("pointerdown",event=>{
+  if(event.button!==0)return;
+  dragging={id:event.pointerId,amount:current.amount,rate:current.rate};
+  area.setPointerCapture(event.pointerId);event.preventDefault();
+  setLink(true);
+ });
+ area.addEventListener("pointermove",event=>{
+  if(dragging?.id===event.pointerId)edit(event);
+ });
+ area.addEventListener("pointerup",event=>{
+  if(dragging?.id!==event.pointerId)return;
+  dragging=null;edit(event,true);
+  if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
+  setLink(false);
+ });
+ area.addEventListener("pointercancel",event=>{
+  if(dragging?.id!==event.pointerId)return;
+  current.amount=dragging.amount;current.rate=dragging.rate;dragging=null;
+  draw();setLink(false);
+ });
+ dot.addEventListener("keydown",event=>{
+  if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.key))return;
+  event.preventDefault();
+  if(event.key==="ArrowUp"||event.key==="ArrowDown")
+   current.amount=clamp(current.amount+(event.key==="ArrowUp"?.25:-.25),0,12);
+  else if(current.shape==="wave")
+   current.rate=clamp(Math.round((current.rate+(event.key==="ArrowRight"?.1:-.1))*10)/10,.1,12);
+  else return;
+  draw();onChange({...bend,amount:current.amount,rate:current.rate,shape:current.shape});
+ });
+ graph.addEventListener("click",focusAmount);
+ graph.addEventListener("keydown",event=>{
+  if(event.key==="Enter"||event.key===" "){event.preventDefault();focusAmount();}
+ });
  root.append(caption,level,controls,visual);
  draw();
 }
