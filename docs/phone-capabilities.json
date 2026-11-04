@@ -1922,54 +1922,6 @@
       "proof": "not-qualified"
     },
     {
-      "id": "event:soundIllustrations:controlowner-focusin:1",
-      "source": "soundIllustrations.js",
-      "anchor": "controlOwner",
-      "kind": "listener",
-      "event": "focusin",
-      "desktopRoute": "soundIllustrations.js controlOwner.focusin",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:soundIllustrations:controlowner-focusout:1",
-      "source": "soundIllustrations.js",
-      "anchor": "controlOwner",
-      "kind": "listener",
-      "event": "focusout",
-      "desktopRoute": "soundIllustrations.js controlOwner.focusout",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:soundIllustrations:controlowner-pointerout:1",
-      "source": "soundIllustrations.js",
-      "anchor": "controlOwner",
-      "kind": "listener",
-      "event": "pointerout",
-      "desktopRoute": "soundIllustrations.js controlOwner.pointerout",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:soundIllustrations:controlowner-pointerover:1",
-      "source": "soundIllustrations.js",
-      "anchor": "controlOwner",
-      "kind": "listener",
-      "event": "pointerover",
-      "desktopRoute": "soundIllustrations.js controlOwner.pointerover",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
       "id": "event:soundIllustrations:document-keydown:1",
       "source": "soundIllustrations.js",
       "anchor": "document",
