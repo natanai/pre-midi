@@ -43,7 +43,7 @@ async function reportedTest(file,endpoint,width=1440,height=900,microphone=false
 }
 try{
  await reportedTest("visual-links-check","/__visual_links_result",1440,900);
- await reportedTest("visual-links-check","/__visual_links_result",390,844);
+ await reportedTest("visual-links-check","/__visual_links_result",780,900);
  await reportedTest("scope-check","/__scope_result");
  await reportedTest("automation-check","/__automation_result",1440,900);
  await reportedTest("modulation-check","/__modulation_result",1440,900);
