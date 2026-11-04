@@ -75,7 +75,7 @@ export function scopeWaveformData(buffer,referencePitch=60,count=620,atSeconds=n
   if(energy*preference>best){best=energy*preference;start=candidate;}
  }
  if(Number.isFinite(atSeconds)&&atSeconds!==null)
-  start=Math.round(clamp(atSeconds,0,latest/rate)*rate);
+  start=Math.round(clamp(atSeconds,0,Math.max(0,buffer.length-size)/rate)*rate);
  const countPoints=Math.max(2,count);
  const channels=channelData.map(data=>Array.from({length:countPoints},(_,i)=>
   data[start+Math.round((size-1)*i/(countPoints-1))]));
@@ -183,7 +183,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
  title.textContent="waveform";
  const legend=document.createElement("span");legend.className="signal-scope-legend";legend.textContent="rendering";
  head.append(title,legend);
- const svg=node("svg",{viewBox:"0 0 720 264",preserveAspectRatio:"none",role:"img",
+ const svg=node("svg",{viewBox:"0 0 720 264",preserveAspectRatio:"none",role:"group",
   "aria-label":"Measured audio waveform, stereo amplitude over time, and pitch movement"});
  svg.classList.add("signal-scope-graph");
  const guides=node("path",{d:"M0 76 H720 M0 132 H720 M0 172 H720 M0 198 H720 M0 232 H720",class:"signal-scope-guides"});
