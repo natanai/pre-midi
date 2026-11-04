@@ -194,6 +194,18 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:desktopAudioUI:window-premidi-recording-alignment-change:1",
+      "source": "desktopAudioUI.js",
+      "anchor": "window",
+      "kind": "listener",
+      "event": "premidi-recording-alignment-change",
+      "desktopRoute": "desktopAudioUI.js window.premidi-recording-alignment-change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "settings/host-equivalent",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:desktopUI:dialog-cancel:1",
       "source": "desktopUI.js",
       "anchor": "dialog",
@@ -3038,6 +3050,18 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:studio:voice-offset-ms-change:1",
+      "source": "studio.js",
+      "anchor": "$(\"voice-offset-ms\")",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "studio.js $(\"voice-offset-ms\").change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:studio:voice-start-bar-change:1",
       "source": "studio.js",
       "anchor": "$(\"voice-start-bar\")",
@@ -4425,6 +4449,18 @@
       "event": "open/close",
       "desktopRoute": "index.html#voice-dialog",
       "contract": "dialog accessibility and dismiss",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "html:voice-offset-ms",
+      "source": "index.html",
+      "anchor": "voice-offset-ms",
+      "kind": "input",
+      "event": "number",
+      "desktopRoute": "index.html#voice-offset-ms",
+      "contract": "user control; canonical project/UI state",
       "phoneRoute": "song",
       "phoneStatus": "todo",
       "proof": "not-qualified"

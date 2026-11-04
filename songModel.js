@@ -167,6 +167,23 @@ export function moveVocalClip(song,clipId,targetTrackId){
  if(!source.clips.length)song.tracks=song.tracks.filter(item=>item.id!==source.id);
  return target;
 }
+// The Song tempo changes musical placement, not the recording's real-time
+// duration. Recompute each vocal tail in sixteenth-steps instead of silently
+// cutting off previously recorded syllables when BPM increases.
+export function setSongTempo(song,bpm){
+ if(!isObject(song)||!Array.isArray(song.tracks))throw Error("Invalid Song.");
+ song.bpm=bpm;
+ if(!Number.isInteger(bpm)||bpm<40||bpm>240)return song;
+ const recordings=new Map((song.recordings??[]).map(recording=>[recording.id,recording]));
+ for(const track of song.tracks)if(track.kind==="vocal")for(const clip of track.clips){
+  const recording=recordings.get(clip.recordingId);
+  if(!recording)continue;
+  const remaining=recording.durationSeconds-recording.trimSeconds-(clip.trimStartSeconds??0);
+  const rate=Math.pow(2,vocalEffects(clip).transpose/12);
+  clip.lengthSteps=Math.max(1,Math.ceil(remaining/rate*bpm*4/60));
+ }
+ return song;
+}
 export const MAX_VOCAL_SECONDS=300;
 export function addVocalTake(song,recording,{startStep=0,trackId=null}={}){
  if(!isObject(song)||!Array.isArray(song.tracks))throw Error("Invalid Song.");

@@ -1225,6 +1225,11 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .voice-setup{padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .voice-field{display:grid;gap:7px;min-width:0;font-size:11px;color:var(--muted)}
 .voice-field input,.voice-field select{width:100%;min-height:36px;color:var(--bright)}
+.voice-alignment{grid-column:1/-1;min-width:0;border-top:1px solid var(--line);padding-top:8px}
+.voice-alignment summary{font-size:11px;color:var(--muted);cursor:pointer}
+.voice-alignment .voice-field{max-width:250px;margin-top:10px}
+.voice-alignment p{margin:7px 0 2px;color:var(--muted);font-size:10px;line-height:1.5}
+.voice-alignment input:disabled{opacity:.55}
 .voice-start-button{grid-column:1/-1;min-height:52px;border:1px solid #ff416d!important;color:#ff416d!important;font-size:13px;text-align:center}
 .voice-start-button:hover,.voice-start-button:focus-visible{background:#211018}
 .voice-start-button[aria-pressed="true"]{background:#47111d;color:#fff!important}
