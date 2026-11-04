@@ -1275,6 +1275,9 @@ function renderSound() {
  const stageSummary=document.createElement("summary");
  stageSummary.textContent=inst.layout==="rack"?"gain staging":"stereo & volume";
  stageDetails.append(stageSummary);
+ // Attach before wrapping so the diagram can find and link the real dials
+ // outside its own disclosure, including rack gain and stereo pan.
+ $("sound-visualizer").append(stageDetails);
  const stageEdit=(path,value,commit)=>{
   const edits=Array.isArray(path?.[0])?path.map((keys,i)=>[keys,value[i]]):[[path,value]];
   const next=patchCopy(patch);let instrumentLevel=inst.volume,soundLevel=entry.gain;
