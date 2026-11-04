@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { create, id, clone, validate } from "../schema.js";
+import { create, id, clone, validate, upgradeBeatFeatures, SUSTAIN_BEAT_VERSION } from "../schema.js";
+import {applyNoteCommand} from "../studioCommands.js";
 import { resizeNote, noteDurationLimit, moveNote } from "../noteEditing.js";
 import { stepEvents } from "../audio.js";
 const withNotes=()=>{
@@ -101,4 +102,23 @@ test("piano-roll pointer handler keeps simple clicks and commits drags only once
  assert.match(source,/mode==="paint"[\s\S]*?applyNoteCommand\(chunk,\{type:"note.add",note\}\)/);
  assert.match(source,/if\(changed\)\{\s*ignoreClick=true;[\s\S]*?setTimeout\(\(\)=>commitChange\(before\),0\)/);
  assert.match(source,/if\s*\(ignoreClick\)\s*return;/);
+});
+
+test("v25 sustained Chunk notes remain editable without legacy one-bar clamping",()=>{
+ const score=create(),chunk=score.instruments[0].chunks[0];
+ const note={id:id(),pitch:60,start:14,duration:40,velocity:.8};
+ chunk.notes.push(note);upgradeBeatFeatures(score);
+ assert.equal(score.version,SUSTAIN_BEAT_VERSION);
+ assert.equal(applyNoteCommand(chunk,{type:"note.resize",noteId:note.id,duration:64},
+  {allowSustain:true}).changed,true);
+ assert.equal(note.duration,64);
+ assert.equal(applyNoteCommand(chunk,{type:"note.move",noteId:note.id,start:8,pitch:62},
+  {allowSustain:true}).changed,true);
+ assert.deepEqual([note.start,note.pitch,note.duration],[8,62,64]);
+ assert.deepEqual(validate(score),[]);
+ const legacy=create(),legacyChunk=legacy.instruments[0].chunks[0];
+ const oldNote={id:id(),pitch:60,start:14,duration:2,velocity:.8};
+ legacyChunk.notes.push(oldNote);
+ assert.equal(applyNoteCommand(legacyChunk,{type:"note.resize",noteId:oldNote.id,duration:50}).changed,false);
+ assert.equal(oldNote.duration,2,"Legacy v7 notes cannot cross Chunk boundaries");
 });
