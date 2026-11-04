@@ -167,3 +167,23 @@ test("attached freeform lanes retain parent ownership and offer direct Song-time
  assert.match(css,/main\.editing-freeform/);
  assert.match(html,/href="\.\/freeform\.css"/);
 });
+
+test("freeform selections create independent reusable Beats without auto-placing Clips",()=>{
+ const model=read("freeformModel.js"),ui=read("freeformUI.js"),
+  songUI=read("songUI.js"),studio=read("studio.js");
+ assert.match(model,/export function createBeatFromFreeformSelection/);
+ assert.match(ui,/createBeatFromFreeformSelection\(song,current\.id/);
+ assert.match(ui,/made=addBeat\(song,beat\)/);
+ assert.match(ui,/onBeatCreated\(made\)/);
+ assert.match(songUI,/onSelectBeat\(created\.id\)/);
+ assert.match(studio,/onFreeformBeatCreated/);
+ assert.doesNotMatch(ui,/addBeatClip\(/);
+});
+
+test("freeform Beat selection highlights the Song lane at absolute Song time",()=>{
+ const ui=read("freeformUI.js"),css=read("freeform.css");
+ assert.match(ui,/function paintSelectionRange\(\)/);
+ assert.match(ui,/selectionStartStep\/BAR_STEPS\*SONG_BAR_PIXELS/);
+ assert.match(ui,/selectionLengthSteps\/BAR_STEPS\*SONG_BAR_PIXELS/);
+ assert.match(css,/\.song-freeform-selected-range/);
+});

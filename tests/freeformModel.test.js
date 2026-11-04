@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {create,id,clone,makeInstrument} from "../schema.js";
+import {create,id,clone,makeInstrument,makeSound,validate as validateBeat} from "../schema.js";
+import {makePatch} from "../synth.js";
+import {renderEvents} from "../audio.js";
 import {createSong} from "../songModel.js";
 import {createFreeform,addFreeformInstrument,addFreeformNote,
  addFreeformChunkPlacement,eventsAtFreeformStep,freeformEndStep,
- moveFreeformPassage,unpackBeatClip,validateFreeform,FREEFORM_SONG_VERSION} from "../freeformModel.js";
+ moveFreeformPassage,unpackBeatClip,createBeatFromFreeformSelection,validateFreeform,FREEFORM_SONG_VERSION} from "../freeformModel.js";
 
 test("empty freeform supports long notes and independent reusable Chunks",()=>{
  const layer=createFreeform(),instrument=addFreeformInstrument(layer);
@@ -72,4 +74,80 @@ test("partial unpack rejects cuts through sustained notes without mutating sourc
  assert.deepEqual(song,before);
  assert.throws(()=>unpackBeatClip(song,clip.id,{fromStep:0,toStep:6}),/sustained note crosses/);
  assert.deepEqual(song,before);
+});
+
+test("Create Beat from freeform selection preserves pitched and rack sounds, timing, and source",()=>{
+ const song=createSong(create()),track=song.tracks[0];
+ const free=createFreeform();track.freeform=free;
+ const keys=addFreeformInstrument(free);
+ addFreeformNote(keys,{pitch:61,start:16,duration:3,velocity:.82,bend:{shape:"rise",amount:1,rate:5}});
+ addFreeformNote(keys,{pitch:64,start:33,duration:3,velocity:.64});
+ keys.chunks[0].notes.push({id:id(),pitch:72,start:4,duration:2,velocity:.55});
+ addFreeformChunkPlacement(keys,keys.chunks[0].id,16,{length:16,repeats:2,every:16});
+ const drumSource=makeInstrument(2,1,makeSound("Snare",makePatch(),"hit"));
+ const drums=addFreeformInstrument(free,drumSource);
+ addFreeformNote(drums,{soundId:drums.sounds[0].id,start:24,duration:1,velocity:.91});
+ song.version=22;
+ const snapshot=clone(song);
+ const beat=createBeatFromFreeformSelection(song,track.id,16,48,{title:"Chorus variation"});
+ assert.deepEqual(song,snapshot,"Creating a Beat cannot change the Song or its notes");
+ assert.equal(beat.title,"Chorus variation");
+ assert.equal(beat.bars,2);
+ assert.equal(beat.bpm,song.bpm);
+ assert.equal(beat.instruments.length,2);
+ assert.equal(beat.instruments[1].layout,"rack");
+ assert.deepEqual(validateBeat(beat),[]);
+ const before=[];
+ for(let step=16;step<48;step++)
+  for(const event of eventsAtFreeformStep(free,step))
+   before.push([step-16,event.instrument.name,event.note.pitch??"hit",event.note.velocity]);
+ const after=renderEvents(beat).map(event=>[
+  Math.round(event.at/(60/beat.bpm/4)),event.instrument.name,
+  event.note.pitch??"hit",event.note.velocity
+ ]);
+ assert.deepEqual(after.sort((a,b)=>a[0]-b[0]),before.sort((a,b)=>a[0]-b[0]));
+});
+test("Create Beat from selection deduplicates repeating one-bar patterns",()=>{
+ const song=createSong(create()),track=song.tracks[0],free=createFreeform();
+ track.freeform=free;
+ const inst=addFreeformInstrument(free);
+ for(let bar=0;bar<40;bar++)addFreeformNote(inst,{pitch:60,start:bar*16,duration:4,velocity:.8});
+ const beat=createBeatFromFreeformSelection(song,track.id,0,640);
+ assert.equal(beat.bars,40);
+ assert.equal(beat.version,17);
+ assert.equal(beat.instruments[0].chunks.length,1,"identical bars reuse the same Chunk");
+ assert.equal(new Set(beat.instruments[0].timeline).size,1);
+ assert.deepEqual(validateBeat(beat),[]);
+});
+test("Create Beat from selection refuses lossy boundaries and format overflows",()=>{
+ const song=createSong(create()),track=song.tracks[0],free=createFreeform();
+ track.freeform=free;const inst=addFreeformInstrument(free);
+ addFreeformNote(inst,{pitch:60,start:15,duration:3,velocity:.8});
+ song.version=22;
+ const before=clone(song);
+ assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,16),/beyond the selection/);
+ assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,32),/crosses a Beat bar boundary/);
+ assert.throws(()=>createBeatFromFreeformSelection(song,track.id,16,32),/sustains into the selection/);
+ assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,65*16),/at most 64 bars/);
+ assert.deepEqual(song,before);
+});
+test("Create Beat from selection refuses unrepresentable unique Chunk counts",()=>{
+ const song=createSong(create()),track=song.tracks[0],free=createFreeform();
+ track.freeform=free;const inst=addFreeformInstrument(free);
+ for(let bar=0;bar<33;bar++)addFreeformNote(inst,{pitch:36+bar,start:bar*16,duration:2,velocity:.8});
+ const before=clone(song);
+ assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,33*16),/32 unique Chunks/);
+ assert.deepEqual(song,before);
+});
+
+test("Create Beat from selection supports non-bar-aligned Song positions",()=>{
+ const song=createSong(create()),track=song.tracks[0],free=createFreeform();
+ track.freeform=free;
+ const inst=addFreeformInstrument(free);
+ addFreeformNote(inst,{pitch:60,start:6,duration:2,velocity:.8});
+ addFreeformNote(inst,{pitch:64,start:18,duration:1,velocity:.7});
+ const beat=createBeatFromFreeformSelection(song,track.id,4,20);
+ assert.equal(beat.bars,1);
+ assert.deepEqual(beat.instruments[0].chunks[0].notes.map(note=>note.start).sort((a,b)=>a-b),[2,14]);
+ assert.deepEqual(validateBeat(beat),[]);
 });

@@ -6,7 +6,7 @@ This is the Song-specific historical rollout and integration plan; the active sy
 
 ## Approved attached freeform architecture (2026-11-04)
 
-**Approved design, staged implementation.** The initial freeform slice in PR #120 includes Song v22 note/Instrument data, whole/partial unpack commands, transport/export, a parent-attached desktop lane and direct Song-time note editing. Automation conversion, full Sound editor reuse, Create Beat from selection, long-Song performance and phone parity remain open.
+**Approved design, staged implementation.** The initial freeform slice in PR #120 includes Song v22 note/Instrument data, whole/partial unpack commands, transport/export, a parent-attached desktop lane and direct Song-time note editing. Automation conversion, full Sound editor reuse, long-Song performance and phone parity remain open. Freeform → reusable Beat from a selected 1–64-bar range is implemented in PR #124; it leaves source notes intact and does not automatically place the new Beat in the Song.
 
 - Each Beat Track owns an attached child freeform lane, collapsed when empty. It is not an independently reorderable Song Track; its parent moves and reorders with it.
 - A freeform lane can begin empty and contains multiple Instruments with ordinary Sound, Rack, note-expression and sample capabilities. It supports Song-position independent notes together with reusable Chunk placements.
@@ -22,8 +22,8 @@ This is the Song-specific historical rollout and integration plan; the active sy
 1. **Beat length:** accept every integer from 1 through 64, protect against destructive shortening, and version extended Beats as v17 and containing Songs as v18.
 2. **Song time:** canonical musical position, clip source-phase offsets and correct split/repeat/seek/export semantics.
 3. **Model:** freeform child ownership, multiple Instruments, direct notes, reusable Chunks, passages and external sample references implemented in Song v22; regression and undo/redo checks remain required for each new operation.
-4. **Commands:** empty freeform editing, whole/partial unpack and horizontal passage movement implemented; collision UX and Create Beat from selection remain incomplete.
-5. **Desktop UI:** attached lane, drag/context unpack, Song-position piano roll, simple multi-Instrument access and Chunk placement implemented; full Sound editing, follow-playback and accurate key illumination need follow-up.
+4. **Commands:** empty freeform editing, whole/partial unpack, horizontal passage movement, and Create Beat from selection are implemented. Beat creation preserves Sounds, Rack mapping, Chunks, expression and referenced Assets, and refuses note tails crossing Beat bar or selection boundaries, more than 12 contributing Instruments, more than 32 unique one-bar Chunks per Instrument, or over 64 bars. Collision UX and broader long-note format compatibility remain open.
+5. **Desktop UI:** attached lane, drag/context unpack, Song-position piano roll, multi-Instrument access, Chunk placement and explicit freeform range → reusable Beat controls are implemented. A passage sets the range automatically; start bar/step and length can be adjusted. The created Beat is saved in Song's Beat collection but not placed automatically, avoiding doubled playback. Full Sound editor reuse, follow-playback and accurate key illumination need follow-up.
 6. **Qualification:** native/browser event and audio equivalence, bounded long-Song scheduling, iPhone touch equivalents and pre-programmed migration.
 
 Do not simply raise native player limits to claim complete freeform support: sessions currently have bounded event counts and duration. Retain the canonical phone requirements in docs/phone-studio.md.
