@@ -1491,8 +1491,9 @@ body.keyboard-piano-active .piano-scroll {pointer-events:none}
 
 
 /* One shared lower editing space for a selected Song vocal Clip. */
-main.editing-vocal > .beat-header,
 main.editing-vocal > .work{display:none}
+main.editing-vocal .beat-identity > label{display:none}
+main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .vocal-editor[hidden]{display:none!important}
 .vocal-editor{
  border-top:1px solid var(--line);padding:12px 14px 20px;
