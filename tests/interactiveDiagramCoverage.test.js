@@ -193,3 +193,36 @@ test("vocal illustrations expose every common clip knob without sample-only cont
  assert.ok(axes(clip,"filter").has("drive"),
   "drive stays visually editable when the filter is bypassed");
 });
+
+test("moving each numeric knob to an extreme visibly changes its linked illustration",()=>{
+ const synthPatch=synth(),samplePatch=sample();
+ synthPatch.modulation={version:1,routes:[
+  {id:"sweep",source:defaultSource("lfo"),target:"filter.cutoff",
+   unit:"octaves",depth:1,polarity:"unipolar",smoothing:.005},
+  {id:"env",source:defaultSource("envelope"),target:"filter.cutoff",
+   unit:"octaves",depth:1,polarity:"unipolar",smoothing:.005},
+  {id:"keys",source:defaultSource("keytrack"),target:"filter.cutoff",
+   unit:"octaves",depth:1,polarity:"unipolar",smoothing:.005}
+ ]};
+ const cases=[[synthPatch,["oscillators","harmonics0","harmonics1",
+  "envelope","filter","movement","distortion","delay","modulation"]],
+  [samplePatch,["filter","sample","movement","mapping"]]];
+ let checked=0;
+ for(const [patch,kinds] of cases)for(const kind of kinds)
+  for(let page=0;page<diagramPageCount(patch,kind);page++){
+   const initial=diagram(patch,kind,page);
+   for(const point of initial.handles)for(const axis of point.axes){
+    const current=axis.path.reduce((object,key)=>object?.[key],patch);
+    if(typeof current!=="number")continue;
+    const next=Math.abs(current-axis.min)>Math.abs(current-axis.max)?axis.min:axis.max;
+    const edited=structuredClone(patch);assignSoundEdit(edited,axis.path,next);
+    const updated=diagram(edited,kind,page);
+    const before=JSON.stringify({paths:initial.paths,handles:initial.handles});
+    const after=JSON.stringify({paths:updated.paths,handles:updated.handles});
+    assert.notEqual(after,before,kind+" page "+page+
+     " does not respond visually to "+axis.path.join("."));
+    checked++;
+   }
+  }
+ assert.ok(checked>=100,"expected the complete set of control/diagram relationships");
+});
