@@ -94,7 +94,7 @@ export function validate(doc) {
  if(!Number.isInteger(doc.bars)||!within(doc.bars,1,MAX_BEAT_BARS))errors.push("Timeline must have 1–64 bars.");
  if(doc.bars>16&&![EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(doc.version))errors.push("Beats longer than 16 bars require Beat v17.");
  if(requiresSampleSliceFormat(doc)&&![SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(doc.version))
-   errors.push("Sample source excerpts require Beat v23 or v25.");
+   errors.push("Sample source excerpts require Beat v23, v25 or v27.");
   if(requiresSustainFormat(doc)&&![SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(doc.version))
    errors.push("Notes sustaining across a Chunk bar require Beat v25.");
  if(!Array.isArray(doc.samples)||doc.samples.length>160)return [...errors,"Invalid sample asset list."];
