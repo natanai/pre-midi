@@ -89,6 +89,9 @@ try{
  h32.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true,cancelable:true}));
  pass("harmonic 32 point edits existing oscillator partial",
   harmonicsEdits.some(([path,value])=>path.join(".")==="oscillators.0.harmonics.31"&&value>0));
+ h32.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowLeft",bubbles:true,cancelable:true}));
+ pass("horizontal keyboard motion selects neighboring harmonic without discarding a knob",
+  document.activeElement.getAttribute("aria-label")==="harmonic 31 level");
  // Two-dimensional harmonic painting changes neighboring source partials
  // through one canonical edit rather than creating a parallel parameter model.
  const harmonicArea=spectrum.querySelector(".visual-panel-area");
