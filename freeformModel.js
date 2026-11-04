@@ -517,7 +517,8 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
   sourceOffsetSteps:((clip.sourceOffsetSteps??0)+to-clip.startStep)%cycle});
  track.clips=track.clips.filter(item=>item.id!==clipId).concat(keep);
  track.freeform=layer;
- song.version=layer.version===2||song.version===FREEFORM_AUTOMATION_SONG_VERSION?
-  FREEFORM_AUTOMATION_SONG_VERSION:FREEFORM_SONG_VERSION;
+ // Unpacking must never downgrade a Song with newer, already-required features.
+ song.version=Math.max(song.version,layer.version===2?
+  FREEFORM_AUTOMATION_SONG_VERSION:FREEFORM_SONG_VERSION);
  return passage;
 }
