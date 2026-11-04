@@ -11,8 +11,8 @@ export function linkedVocalSample(recording,clip,bytes=getAsset(recording?.id)){
   bytes.byteLength>MAX_ASSET_BYTES)return null;
  if(!Number.isFinite(clip.trimStartSeconds??0)||(clip.trimStartSeconds??0)<0)
   throw Error("Invalid vocal trim start");
- const start=recording.trimSeconds+(clip.trimStartSeconds??0);
- const length=recording.durationSeconds-start;
+ const start=Math.round((recording.trimSeconds+(clip.trimStartSeconds??0))*10000)/10000;
+ const length=Math.round((recording.durationSeconds-start)*10000)/10000;
  if(!(length>.01)||length>MAX_SAMPLE_SLICE_SECONDS)return null;
  const zone={assetId:recording.id,root:60,startSeconds:start,durationSeconds:length};
  const issue=validateSampleSlice(zone);if(issue)throw Error(issue);
