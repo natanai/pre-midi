@@ -224,25 +224,29 @@ export const diagram=(patch,type)=>{
   tag(17,13,"source");tag(291,13,"target");
   if(!routes.length)line("M24 57 H336",true);
   // Modulation amplitudes come from the actual source and route math.
-  const shown=routes.slice(0,4),centers=[30,51,73,95];
-  shown.forEach((route,i)=>{
-   const center=centers[i],limit=MOD_TARGETS.find(t=>t.id===route.target)?.limit||1;
+  const shortTarget=id=>{
+   if(id==="filter.cutoff")return "cutoff";
+   if(id==="pan")return "pan";
+   const match=/^oscillators\\.([01])\\.(detune|level)$/.exec(id||"");
+   return match?"osc "+(Number(match[1])+1)+" "+(match[2]==="detune"?"pitch":"level"):"target";
+  };
+  routes.forEach((route,i)=>{
+   const center=30+i*21;
    line("M67 "+center+" H290",true);
    line(pathRange(130,t=>{
     const seconds=1.25*t;
     const value=routeValueAt(route,{elapsed:seconds,gate:1,velocity:.7,pitch:65});
+    // Normalize the diagram only, not the authored modulation depth.
     const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
     return [67+223*t,center-9*Math.tanh(value/visualScale)];
    }),false,["modulation.routes."+i]);
    const source=route.source.kind==="lfo"?"lfo":route.source.kind==="keytrack"?"keys":
     route.source.kind==="velocity"?"touch":"env";
-   const target=MOD_TARGETS.find(item=>item.id===route.target);
-   tag(18,center+3,source);tag(294,center+3,target?.name.replace("oscillator ","osc ")||"target");
+   tag(18,center+3,source);tag(294,center+3,shortTarget(route.target));
   });
-  if(routes.length>4)tag(18,111,"+"+(routes.length-4)+" routes");
-
  }
- return {paths,handles,labels,color};
+ const height=type==="modulation"?Math.max(112,45+(p.modulation?.routes?.length??0)*21):112;
+ return {paths,handles,labels,color,height};
 };
 let zoomId=null;
 const idFor=(kind,index)=>kind+"-"+index;
@@ -289,8 +293,10 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  };
  function draw(current=latestPatch){
   latestPatch=current;
-  const {paths,handles,labels,color}=diagram(current,kind);
+  const {paths,handles,labels,color,height=112}=diagram(current,kind);
   visibleHandles=handles;
+  graphic.setAttribute("viewBox","0 0 360 "+height);
+  area.style.setProperty("--visual-panel-height",kind==="modulation"&&height>112?Math.max(160,height)+"px":"160px");
   graphic.replaceChildren();handlesRoot.replaceChildren();
   graphic.style.setProperty("--visual-color",color);
   for(const path of paths){
