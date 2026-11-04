@@ -41,6 +41,7 @@ import {prepareSongTake,waveformForTake,songCountIn} from "./songRecorder.js";
 import {exportSongProject,importSongProject,parseSong} from "./songIO.js";
 import {readZip} from "./zip.js";
 import {installSongUI} from "./songUI.js";
+import {applyFreeformPreset} from "./freeformPresets.js";
 import {installDesktopUI} from "./desktopUI.js";
 
 const $ = key => document.getElementById(key);
@@ -1878,23 +1879,30 @@ $("hear-sound").addEventListener("click",()=>{
 $("save-sound").addEventListener("click",()=>openPresetSave(instrument().layout==="rack"));
 $("save-row-sound").addEventListener("click",()=>openPresetSave(false));
 function allSounds(){return [...FACTORY_SOUND_CATALOG,...savedSounds];}
-function openLibrary(mode) {
+function openLibrary(mode,contextOverride=null) {
  closePicker();
- if(mode==="add"&&beat.instruments.length>=12)return;
- libraryMode=mode;libraryContext=currentContext(mode);
+ if(!contextOverride&&mode==="add"&&beat.instruments.length>=12)return;
+ libraryMode=mode;libraryContext=contextOverride??currentContext(mode);
  libraryCategory="All";
- $("library-description").textContent=mode==="add"?"new instrument":mode==="replace-row"?"replace this rack sound":"choose a sound or add a rack";
+ $("library-description").textContent=libraryContext.kind==="freeform"?
+  mode==="add"?"new freeform instrument":mode==="replace-row"?
+   "replace this freeform rack sound":"choose a sound or add a rack":
+  mode==="add"?"new instrument":mode==="replace-row"?
+   "replace this rack sound":"choose a sound or add a rack";
  renderLibrary();
  const dialog=$("instrument-dialog");
  if(!dialog.open)dialog.showModal();
 }
 const builtinCache=new Map();
-async function resolveSamples(preset) {
+async function resolveSamples(preset,selection=libraryContext) {
  await assetsReady;
  const ids=new Set(preset.sounds?preset.sounds.flatMap(sound=>sound.patch.type==="sample"?sound.patch.zones.map(zone=>zone.assetId):[]):
   preset.patch?.type==="sample"?preset.patch.zones.map(zone=>zone.assetId):preset.assets||[]);
  return Promise.all([...ids].map(async assetId=>{
-  const existing=(preset.samples||[]).find(asset=>asset.id===assetId)||beat.samples.find(asset=>asset.id===assetId);
+  const freeformAssets=selection?.kind==="freeform"?
+   song?.tracks.find(track=>track.id===selection.trackId)?.freeform?.samples||[]:[];
+  const existing=(preset.samples||[]).find(asset=>asset.id===assetId)||
+   freeformAssets.find(asset=>asset.id===assetId)||beat.samples.find(asset=>asset.id===assetId);
   if(existing)return existing;
   if(!sampleAsset(assetId))throw Error("Saved sample is missing its audio: "+assetId);
   if(!builtinCache.has(assetId))builtinCache.set(assetId,loadLibrarySample(assetId).catch(error=>{builtinCache.delete(assetId);throw error;}));
@@ -1909,23 +1917,36 @@ async function chooseSound(preset) {
  const dialog=$("instrument-dialog");
  message("Loading "+preset.name+"...");
  try {
-  const assets=await resolveSamples(preset);
+  const assets=await resolveSamples(preset,context);
   const patch=preset.sounds?patchCopy(preset.sounds[0].patch):getPreset(preset.id)?makePatch(preset.id):preset.patch?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
   // Example-derived patches retain their underlying factory identity, while
   // a selected saved variation must identify its own user preset in .premidi.
   if(preset.category==="Mine" || (!preset.patch && !preset.sounds))patch.presetId=preset.id;
   const trigger=presetTrigger(preset);
-  const selected=beat.instruments.find(item=>item.id===context.instrumentId);
-  if(context.mode!=="add"&&selected?.automation&&patch.type!=="synth"&&trigger==="pitched"&&!preset.sounds){
+  const selected=context.kind==="freeform"?
+   song?.tracks.find(track=>track.id===context.trackId)?.freeform?.instruments
+    .find(item=>item.id===context.instrumentId):
+   beat.instruments.find(item=>item.id===context.instrumentId);
+  if(context.kind!=="freeform"&&context.mode!=="add"&&selected?.automation&&patch.type!=="synth"&&trigger==="pitched"&&!preset.sounds){
    message("Remove cutoff movement before replacing this instrument with a recording.",true);return;
   }
- const ok=applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,
-   (preset.sounds||preset.patch||preset.category==="Mine")?preset:null);
+ const settings=(preset.sounds||preset.patch||preset.category==="Mine")?preset:null;
+  let chosen=null;
+  const ok=context.kind==="freeform"?modifySong(()=>{
+   const layer=song?.tracks.find(track=>track.id===context.trackId)?.freeform;
+   if(!layer)throw Error("The freeform lane was removed. Open the Sound library again.");
+   chosen=applyFreeformPreset(layer,context,{
+    name:preset.name,patch,trigger,assets,rackSounds:preset.sounds,settings
+   });
+  }):applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,settings);
   if(ok) {
    dialog.close();
-   // A new sample can be introduced while the transport is running.
-   if(playback)void primeSamples(beat).catch(error=>message("Sample decode failed: "+error.message,true));
+   if(chosen)songUI?.focusFreeformInstrument(context.trackId,chosen.instrumentId,chosen.soundId);
+   const audioContext=context.kind==="freeform"?
+    song?.tracks.find(track=>track.id===context.trackId)?.freeform:beat;
+   if(playback&&audioContext)void primeSamples(audioContext)
+    .catch(error=>message("Sample decode failed: "+error.message,true));
    message("Loaded "+preset.name);
   }
  }catch(error){message("Couldn't load "+preset.name+": "+error.message,true);}
@@ -1983,7 +2004,7 @@ function renderLibrary() {
   control.setAttribute("aria-pressed",String(libraryCategory===category));
   filters.append(control);
  }
- if(["add","replace","replace-row"].includes(libraryMode)) {
+ if(libraryContext?.kind!=="freeform"&&["add","replace","replace-row"].includes(libraryMode)) {
   const record=button("● Record a sound",()=>openRecorder(libraryMode),"library-import library-record");
   const personal=button("＋ Import audio file",()=>$("sample-file").click(),"library-import");
   list.append(record,personal);
@@ -2010,7 +2031,10 @@ function renderLibrary() {
   const preview=button("▶",()=>{void auditionPreset(preset,preview);},"preset-preview");
   preview.title=preset.sounds?"Preview rack sounds one at a time":"Preview "+preset.name;
   preview.setAttribute("aria-label",preview.title);
-  const target=beat.instruments.find(entry=>entry.id===libraryContext?.instrumentId);
+  const freeLayer=libraryContext?.kind==="freeform"?
+   song?.tracks.find(track=>track.id===libraryContext.trackId)?.freeform:null;
+  const target=(freeLayer?.instruments||beat.instruments)
+   .find(entry=>entry.id===libraryContext?.instrumentId);
   const willCreate=libraryMode==="add" || !!preset.sounds ||
    (libraryMode!=="replace-row" && target &&
     selectionOperation(target.layout,presetTrigger(preset),false).startsWith("create-"));
@@ -2018,8 +2042,10 @@ function renderLibrary() {
    willCreate?"add instrument":target?.layout==="rack"?"add sound":"use";
   const use=button(label,()=>{void chooseSound(preset);},"preset-choose");
   use.setAttribute("aria-label",label+" "+preset.name);
-  use.disabled=!!willCreate && beat.instruments.length>=12;
-  if(use.disabled)use.title="maximum 12 instruments";
+  const limit=freeLayer?64:12;
+  const instrumentCount=freeLayer?.instruments.length??beat.instruments.length;
+  use.disabled=!!willCreate && instrumentCount>=limit;
+  if(use.disabled)use.title="maximum "+limit+" instruments";
   actions.append(preview,use);
   card.append(info,actions);
   list.append(card);
@@ -2167,6 +2193,7 @@ songUI=installSongUI({
  onSelectBeat:selectBeat,onChange:modifySong,onSelectionChange:renderVocalWorkspace,
  onError:error=>message(error,true),
  onFreeformBeatCreated:created=>message("Created \""+created.title+"\". Select + on a Beat Track to place it; your freeform notes are unchanged."),
+ onBrowseFreeform:selection=>openLibrary(selection.mode,{...selection,kind:"freeform"}),
  onFreeformActiveChange:active=>{
   const main=document.querySelector("main");
   main?.classList.toggle("editing-freeform",active);
