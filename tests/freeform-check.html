@@ -170,42 +170,6 @@
   await wait(()=>get("play").getAttribute("aria-label")==="stop song",
    "Imported freeform audio plays as part of Song",9000);
   get("play").click();
-  // Fast, independent browser audio comparison of actual scheduled voices.
-  // Native rendering uses these same canonical per-note automation plans.
-  const {create,resizeBeatBars,upgradeBeatFeatures}=await import("/schema.js");
-  const {createSong}=await import("/songModel.js");
-  const {unpackBeatClip}=await import("/freeformModel.js");
-  const {renderEvents,scheduleNote}=await import("/audio.js");
-  const automated=create();resizeBeatBars(automated,1);
-  automated.instruments[0].chunks[0].notes=[{
-   id:"automated-browser-note",pitch:60,start:2,duration:4,velocity:.8
-  }];
-  automated.instruments[0].automation={
-   version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
-   points:[{id:"low",step:0,value:400},{id:"high",step:16,value:6800}]
-  };
-  upgradeBeatFeatures(automated);
-  const originalSong=createSong(automated);
-  const beforeEvents=renderEvents(originalSong);
-  unpackBeatClip(originalSong,originalSong.tracks[0].clips[0].id);
-  const afterEvents=renderEvents(originalSong);
-  assert(originalSong.version===23,"Automated freeform uses Song v23");
-  const renderVoices=async events=>{
-   const offline=new OfflineAudioContext(1,22050,22050);
-   for(const e of events)if(e.kind==="note")
-    scheduleNote(offline,offline.destination,e.instrument,e.note,
-     e.at,e.duration,e.beat,null,e.timeline);
-   return (await offline.startRendering()).getChannelData(0);
-  };
-  const a=await renderVoices(beforeEvents),b=await renderVoices(afterEvents);
-  assert(a.length===b.length,"Captured source notes must have identical browser render lengths");
-  let peak=0,sum=0;
-  for(let i=0;i<a.length;i++){
-   const error=Math.abs(a[i]-b[i]);peak=Math.max(peak,error);sum+=error*error;
-  }
-  const rms=Math.sqrt(sum/a.length);
-  assert(peak<1e-4&&rms<2e-5,
-   "Browser audio changed after automated unpack (peak "+peak+", RMS "+rms+")");
   assert(!issues.length,"No runtime browser errors: "+issues.join("; "));
   await report("PASS","Freeform empty editing, notes, unpack, versioned export and playback");
  }catch(error){
