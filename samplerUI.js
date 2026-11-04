@@ -140,39 +140,42 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  addToggle("Keep recorded dynamics","preserveDynamics",!!patch.preserveDynamics);
  details.append(summary,fields,toggles);root.append(details);
  const mapping=document.createElement("div");mapping.className="sample-zones";
- const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
- const populateMapping=()=>patch.zones.forEach((zone,index)=>{
-  const label=document.createElement("label");label.className="synth-field";
-  const name=document.createElement("span");name.textContent="Sample "+(index+1)+" · recorded pitch";
-  const select=document.createElement("select");
-  select.setAttribute("aria-label","Sample "+(index+1)+" recorded note");
-  for(let midi=36;midi<=96;midi++){
-   const option=document.createElement("option");
-   option.value=String(midi);
-   option.textContent=notes[midi%12]+(Math.floor(midi/12)-1);
-   select.append(option);
-  }
-  select.value=String(zone.root);
-  select.addEventListener("change",()=>onChange(["zones",index,"root"],Number(select.value)));
-  label.dataset.soundPath="zones."+index+".root";
-   label.append(name,select);mapping.append(label);
+ const mapGroup=document.createElement("details");
+ mapGroup.className="synth-group sample-map-details";
+ mapGroup.open=expanded.has("mapping")||(!expanded.has("mapping")&&patch.zones.length<=8);
+ mapGroup.addEventListener("toggle",()=>{
+  if(mapGroup.open){expanded.add("mapping");populateMapping();}
+  else expanded.delete("mapping");
  });
- if(patch.zones.length>8) {
-  const details=document.createElement("details");details.className="sample-map-details";
-  const summary=document.createElement("summary");
-  const uniquePitches=new Set(patch.zones.map(zone=>zone.root));
-  const dynamicLayers=new Set(patch.zones.map(zone=>zone.velocity).filter(x=>x!==undefined));
-  summary.textContent="Recorded notes · "+uniquePitches.size+" pitches"+(
-   dynamicLayers.size>1?" · "+dynamicLayers.size+" dynamics":"")+" · Edit mapping";
-  details.append(summary,mapping);
-  details.addEventListener("toggle",()=>{
-   if(details.open && !mapping.childElementCount)populateMapping();
+ const mapTitle=document.createElement("summary");
+ const pitchCount=new Set(patch.zones.map(zone=>zone.root)).size;
+ const layerCount=new Set(patch.zones.map(zone=>zone.velocity).filter(v=>v!==undefined)).size;
+ mapTitle.textContent="Recorded pitches · "+pitchCount+
+  (layerCount>1?" · "+layerCount+" velocity layers":"");
+ mapGroup.append(mapTitle,mapping);
+ const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+ const populateMapping=()=>{
+  if(mapping.childElementCount)return;
+  patch.zones.forEach((zone,index)=>{
+   const label=document.createElement("label");label.className="synth-field";
+   const name=document.createElement("span");name.textContent="Sample "+(index+1)+" · recorded pitch";
+   const select=document.createElement("select");
+   select.setAttribute("aria-label","Sample "+(index+1)+" recorded note");
+   for(let midi=36;midi<=96;midi++){
+    const option=document.createElement("option");
+    option.value=String(midi);
+    option.textContent=notes[midi%12]+(Math.floor(midi/12)-1);
+    select.append(option);
+   }
+   select.value=String(zone.root);
+   select.addEventListener("change",()=>onChange(["zones",index,"root"],Number(select.value)));
+   label.dataset.soundPath="zones."+index+".root";
+   label.append(name,select);mapping.append(label);
   });
-  root.append(details);
- } else {
-  populateMapping();
-  root.append(mapping);
- }
+ };
+ mapGroup.ensureSampleMap=populateMapping;
+ if(mapGroup.open)populateMapping();
+ root.append(mapGroup);
  // Keep the same diagrams and direct manipulation for recorded instruments.
  // These wrappers leave the actual sampler dials and mapping controls intact.
  const visuals=[];
@@ -183,7 +186,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   assignSoundEdit(next,path,value);
   for(const visual of visuals)visual.draw(next);
  };
- for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"]]){
+ for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"],[mapGroup,"sample-map"]]){
   // illustrateSoundPanel moves section inside its new wrapper. Anchor the
   // original position *before* wrapping; replacing section afterward would
   // attempt to insert the wrapper into its own child.
