@@ -171,8 +171,10 @@ export async function renderScopeAudio(patch,beat,level=1,pitch=60,automation=nu
  // Native mode must not silently render a Web Audio substitute.
  return nativeEnabled()?nativeAudio(patch,beat,level,pitch,automation):webAudio(patch,beat,level,pitch,automation);
 }
-export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,referencePitch=60,automation=null){
- mounted.get(root)?.dispose();
+export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,referencePitch=60,automation=null,soundId=null){
+ const previous=mounted.get(root);
+ const previousState=previous?.soundId===soundId?previous.snapshot?.():null;
+ previous?.dispose();
  root.replaceChildren();
  const wrapper=document.createElement("div");wrapper.className="signal-scope";
  wrapper.style.setProperty("--scope-accent",accent);
@@ -213,7 +215,12 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
   label("signal-chart-pitch","pitch"),end);
  wrapper.append(head,chart);root.append(wrapper);
  let revision=0,disposed=false,timer=null,currentLevel=initialLevel;
- let latestBuffer=null,latestSeconds=0,seekSeconds=null,referenceBuffer=null;
+ let latestBuffer=null,latestSeconds=0;
+ let seekSeconds=previousState?.seekSeconds??null,referenceBuffer=previousState?.referenceBuffer??null;
+ if(referenceBuffer){
+  compare.setAttribute("aria-pressed","true");
+  compare.setAttribute("aria-label","Clear waveform comparison");
+ }
  function paintWave(){
   if(!latestBuffer)return;
   const wave=scopeWaveformData(latestBuffer,referencePitch,620,seekSeconds);
@@ -300,7 +307,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
    });
   },token===1?0:70);
  }
- mounted.set(root,{dispose(){disposed=true;revision++;clearTimeout(timer);}});
+ mounted.set(root,{soundId,snapshot:()=>({seekSeconds,referenceBuffer}),dispose(){disposed=true;revision++;clearTimeout(timer);}});
  update(patch,initialLevel);
  return update;
 }
