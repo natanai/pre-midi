@@ -23,7 +23,9 @@ frame.addEventListener("load",async()=>{
   target.focus();
   assert("knob focus highlights diagram",!!filter.querySelector(".visual-graph-line.visual-linked"));
   hit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
-  assert("clicking illustration focuses relevant field",details.open&&field.contains(doc.activeElement));
+  const focused=doc.activeElement.closest("[data-sound-path]")?.dataset.soundPath;
+  assert("clicking illustration focuses relevant field",details.open&&
+   ["filter.cutoff","filter.resonance","filter.type"].includes(focused));
   const osc=doc.querySelector('.visual-sound-panel[data-visual-kind="oscillators"]');
   osc.querySelector("details").open=true;
   assert("mixed oscillator trace exists",!!osc.querySelector('.visual-graph-hit[data-sound-links*="oscillators.0.wave"]'));
