@@ -8,7 +8,7 @@ const terminology=JSON.parse(read("docs/terminology.json"));
 test("canonical names and ownership relationships are unambiguous",()=>{
  const ids=terminology.entities.map(entity=>entity.id);
  assert.equal(new Set(ids).size,ids.length);
- assert.deepEqual(ids.slice().sort(),["asset","beat","chunk","clip","instrument","rack","recording","song","sound","track"].sort());
+ assert.deepEqual(ids.slice().sort(),["asset","beat","chunk","clip","freeform","instrument","passage","rack","recording","song","sound","track"].sort());
  for(const entity of terminology.entities){
   assert.equal(entity.code,entity.id);
   assert.ok(entity.definition.length>20);
