@@ -1198,6 +1198,7 @@ function renderSound() {
  const topNodes=["primary-brightness-dial","primary-attack-dial","primary-release-dial"];
  topFields.forEach((field,index)=>{
   const root=$(topNodes[index]);root.replaceChildren();
+  root.dataset.soundPath=JSON.stringify(patch.type==="sample"&&index===0?["filter","cutoff"]:field.path);
   const filter=patch.type==="sample"&&index===0;
   const current=filter?sampleTone(patch).filter.cutoff:
    field.path.reduce((value,key)=>value?.[key],patch);
