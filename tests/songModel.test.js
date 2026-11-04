@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {create,clone,resizeBeatBars,EXTENDED_BEAT_VERSION} from "../schema.js";
-import {unpackBeatClip,ensureFreeform,addFreeformInstrument,addFreeformNote} from "../freeformModel.js";
+import {unpackBeatClip,ensureFreeform,addFreeformInstrument,addFreeformNote,createBeatFromFreeformSelection} from "../freeformModel.js";
 import {renderEvents} from "../audio.js";
 import {createSong,addBeat,addSongTrack,addBeatClip,editBeatClip,eventsAtSongStep,songDurationSteps,validateSong,SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,upgradeSongFeatures} from "../songModel.js";
 const withNote=()=>{
@@ -111,5 +111,20 @@ test("Song playback and offline rendering preserve note timing on full unpack",(
  addFreeformNote(inst,{pitch:72,start:135,duration:24,velocity:.8});
  assert.equal(songDurationSteps(song),159);
  assert.equal(eventsAtSongStep(song,135).length,1);
+ assert.deepEqual(validateSong(song),[]);
+});
+
+test("Creating a reusable Beat leaves Song audio unchanged until placed in a Clip",()=>{
+ const song=createSong(withNote()),track=song.tracks[0],free=ensureFreeform(track);
+ const inst=addFreeformInstrument(free);
+ addFreeformNote(inst,{pitch:64,start:32,duration:3,velocity:.8});
+ upgradeSongFeatures(song);
+ const audible=renderEvents(song).map(item=>[item.at,item.note.pitch]);
+ const beat=createBeatFromFreeformSelection(song,track.id,32,48,{title:"Bridge"});
+ const saved=addBeat(song,beat);
+ assert.equal(saved.title,"Bridge");
+ assert.equal(song.beats.length,2);
+ assert.deepEqual(renderEvents(song).map(item=>[item.at,item.note.pitch]),audible,
+  "The Beat is reusable but must not automatically double the Song audio");
  assert.deepEqual(validateSong(song),[]);
 });
