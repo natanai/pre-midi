@@ -117,12 +117,17 @@ function renderField(field,patch,onChange,onPreview){
   patch.filter.type==="lowpass"?"turn it down to muffle the high stuff":
   patch.filter.type==="highpass"?"turn it up to shave off the bass":
   patch.filter.type==="bandpass"?"move the little window of sound up or down":null:null;
- if(!field.options)return createDial({...field,disabled,help:cutoffHint??field.help,
-  disabledReason:disabled?"Adjust "+parent+" first.":undefined},value,
-  next=>onChange(field.path,next),
-  next=>onPreview(field.path,next));
+ if(!field.options){
+  const control=createDial({...field,disabled,help:cutoffHint??field.help,
+   disabledReason:disabled?"Adjust "+parent+" first.":undefined},value,
+   next=>onChange(field.path,next),
+   next=>onPreview(field.path,next));
+  control.dataset.soundPath=field.path.join(".");
+  return control;
+ }
  const label=document.createElement("label");
  label.className="synth-field";
+ label.dataset.soundPath=field.path.join(".");
  const title=document.createElement("span");title.textContent=field.label.toLowerCase();
  explainLabel(title,field.label);label.append(title);
  const input=document.createElement("select");
@@ -168,6 +173,7 @@ function harmonicControls(patch,index,onChange,preview,expanded){
    value=>onChange(["oscillators",index,"harmonics",n],value),
    value=>preview(["oscillators",index,"harmonics",n],value));
   dial.querySelector('[role="slider"]').setAttribute("aria-label","Oscillator "+(index+1)+" harmonic "+(n+1));
+  dial.dataset.soundPath=["oscillators",index,"harmonics",n].join(".");
   (n<8?first:rest).append(dial);
  }
  more.append(heading,rest);section.append(first,more);
