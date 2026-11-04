@@ -22,7 +22,11 @@ const server=createServer(async(request,response)=>{
 });
 await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
 try{
- for(const suite of ["song-check","freeform-check"])for(const [width,height] of [[1440,900],[780,900]]){
+ for(const [suite,width,height] of [
+ ...["song-check","freeform-check"].flatMap(suite=>
+  [[1440,900],[780,900]].map(([width,height])=>[suite,width,height])),
+ ["automation-freeform-check",1440,900]
+]){
   const port=server.address().port,chrome=process.env.CHROME_BIN||"google-chrome";
   const result=new Promise(resolve=>{receive=resolve;});
   const child=spawn(chrome,["--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
@@ -33,7 +37,8 @@ try{
   let timer;
   try{
    const done=await Promise.race([result,
-    new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error("Song browser test timed out")),65000);}),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(suite+" browser test timed out")),
+      suite==="automation-freeform-check"?180000:65000);}),
     new Promise((_,reject)=>{child.once("error",reject);child.once("exit",code=>reject(Error("Chrome exited "+code)));})]);
    assert.equal(done?.status,"PASS",done?.details);
    console.log("PASS "+suite,width+"x"+height,done.details);

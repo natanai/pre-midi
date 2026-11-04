@@ -4,7 +4,7 @@
 import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
 import {validateVocalEffects,vocalEffects} from "./vocalEffects.js";
-import {FREEFORM_SONG_VERSION,freeformEndStep,eventsAtFreeformStep,validateFreeform} from "./freeformModel.js";
+import {FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION,freeformEndStep,eventsAtFreeformStep,validateFreeform} from "./freeformModel.js";
 export const SONG_VERSION=8;
 export const MODULATION_SONG_VERSION=10;
 export const AUTOMATION_SONG_VERSION=12;
@@ -14,7 +14,10 @@ export const EXTENDED_SONG_VERSION=18;
 export const CLIP_PHASE_SONG_VERSION=20;
 export function upgradeSongFeatures(song){
  song.beats.forEach(upgradeBeatFeatures);
- if(song.tracks?.some(track=>track.kind==="beat"&&track.freeform!==undefined)||song.version===FREEFORM_SONG_VERSION)
+ if(song.tracks?.some(track=>track.kind==="beat"&&(
+    track.freeform?.version===2||track.clips?.some(clip=>clip.automationTailSteps!==undefined)))||
+  song.version===FREEFORM_AUTOMATION_SONG_VERSION) song.version=FREEFORM_AUTOMATION_SONG_VERSION;
+ else if(song.tracks?.some(track=>track.kind==="beat"&&track.freeform!==undefined)||song.version===FREEFORM_SONG_VERSION)
   song.version=FREEFORM_SONG_VERSION;
  else if(song.tracks?.some(track=>track.kind==="beat"&&track.clips.some(clip=>clip.sourceOffsetSteps>0))||song.version===CLIP_PHASE_SONG_VERSION)
   song.version=CLIP_PHASE_SONG_VERSION;
@@ -87,9 +90,13 @@ export function editBeatClip(song,clipId,changes){
  for(const key of Object.keys(changes))
   if(!["startStep","lengthSteps","sourceOffsetSteps"].includes(key))throw Error("Only Beat Clip placement, length and source phase may be edited.");
  const next={...clip,...changes};
+ // Resizing the Clip explicitly defines a new cutoff boundary.
+ if(changes.lengthSteps!==undefined&&changes.lengthSteps!==clip.lengthSteps)
+  delete next.automationTailSteps;
  if(!nonnegative(next.startStep)||!positive(next.lengthSteps)||
   (next.sourceOffsetSteps!==undefined&&!nonnegative(next.sourceOffsetSteps)))throw Error("Invalid Beat Clip timing or source phase.");
  Object.assign(clip,next);
+ if(next.automationTailSteps===undefined)delete clip.automationTailSteps;
  upgradeSongFeatures(song);
  return clip;
 }
@@ -234,7 +241,7 @@ export function eventsAtSongStep(song,step){
 }
 export function validateSong(song){
  const errors=[];
- if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,FREEFORM_SONG_VERSION].includes(song.version))
+ if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION].includes(song.version))
   return ["Unsupported Song format."];
  if(typeof song.id!=="string"||!song.id.trim()||typeof song.title!=="string"||!song.title.trim())
   errors.push("Song identity or title is missing.");
@@ -272,6 +279,8 @@ export function validateSong(song){
   if(track.kind==="vocal"&&track.freeform!==undefined)errors.push("Vocal Tracks cannot own freeform.");
   if(track.kind==="beat"&&track.freeform!==undefined){
    if(song.version<FREEFORM_SONG_VERSION)errors.push("Freeform requires Song v22.");
+   if(track.freeform?.version===2&&song.version<FREEFORM_AUTOMATION_SONG_VERSION)
+    errors.push("Captured freeform cutoff movement requires Song v23.");
    errors.push(...validateFreeform(track.freeform).map(error=>track.name+": "+error));
   }
   for(const clip of track.clips){
@@ -288,6 +297,13 @@ export function validateSong(song){
      errors.push("Invalid Beat Clip source phase.");
     else if(clip.sourceOffsetSteps>0&&song.version<CLIP_PHASE_SONG_VERSION)
      errors.push("Beat Clip source phase requires Song v20.");
+   }
+   if(track.kind==="beat"&&clip.automationTailSteps!==undefined){
+    if(!nonnegative(clip.automationTailSteps)||
+     !Number.isSafeInteger(clip.lengthSteps+clip.automationTailSteps))
+     errors.push("Invalid Beat Clip cutoff continuation.");
+    if(song.version<FREEFORM_AUTOMATION_SONG_VERSION)
+     errors.push("Beat Clip cutoff continuation requires Song v23.");
    }
    if(track.kind==="vocal"){
     if(!knownRecordings.has(clip.recordingId))errors.push("Vocal Clip references a missing Recording.");

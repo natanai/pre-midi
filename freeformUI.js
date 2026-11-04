@@ -142,9 +142,9 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   mutate(()=>{
    const chunk=makeChunk("Chunk "+(inst.chunks.length+1));
    chunk.notes=picked.map(note=>{
-    const basic={id:id(),start:note.start-start,duration:note.duration,velocity:note.velocity};
-    if(inst.layout==="rack")basic.soundId=note.soundId;else basic.pitch=note.pitch;
-    if(note.bend!==undefined)basic.bend=structuredClone(note.bend);
+    const basic=structuredClone(note);
+    basic.id=id();basic.start=note.start-start;
+    delete basic.passageId;delete basic.strumGroup;delete basic.strumKey;
     return basic;
    });
    inst.chunks.push(chunk);
@@ -159,6 +159,12 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   const section=el("div","freeform-note-details");
   const position=note.start;
   section.append(el("span","freeform-detail-title","selected note"));
+  if(note.cutoffAutomation){
+   const movement=el("span","freeform-automation-label",
+    "cutoff movement · preserved from source Beat");
+   movement.title="This note retains its source Beat cutoff curve and phase, even when moved in the Song.";
+   section.append(movement);
+  }
   section.append(field("bar",input("number",Math.floor(position/16)+1,1,4096,v=>{
    if(Number.isInteger(v))changeNote(note.id,{start:(v-1)*16+position%16});
   })));

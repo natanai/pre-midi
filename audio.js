@@ -1,4 +1,4 @@
-import {validateAutomationPlan} from "./src/dsp/automation.js";
+import {validateAutomationPlan,noteCutoffAutomation} from "./src/dsp/automation.js";
 import {prepareOscillator} from "./src/hosts/web/oscillator.js";
 import {validateModulation} from "./src/dsp/modulation.js";
 import {resolveEvent} from "./soundModel.js";
@@ -21,6 +21,15 @@ export {nativeEnabled,cancelNativeTransport} from './src/hosts/native/session.js
 // Canonical plans are shared by native desktop playback and the web adapter.
 // Everything audible comes from the resolved sound patch stored in the beat.
 export const secondsPerStep = doc => 60/doc.bpm/4;
+// The untouched linked Clip segments retain their original cutoff continuation
+// when the middle passage was unpacked. Use one timeline for both audio hosts.
+export function noteTimeline(event,step,unit,cycle){
+ const sourceStep=event.beatStep??step;
+ return {step:sourceStep,unit,limitStep:event.clip?
+  Math.min(event.beat.bars*16,
+   sourceStep+event.clip.startStep+event.clip.lengthSteps+
+   (event.clip.automationTailSteps??0)-step):cycle};
+}
 // Song-owned freeform instruments use existing sample asset decoding.
 const musicSampleContexts=doc=>doc.kind==="song"?
  [...doc.beats,...doc.tracks.filter(track=>track.kind==="beat"&&track.freeform)
@@ -45,7 +54,9 @@ function noiseBuffer(ctx) {
 }
 export const stepEvents = eventsAtStep;
 export function scheduleNote(ctx,destination,instrument,event,start,duration,beat,session=null,timeline=null) {
- const automation=timeline?instrument.automation:undefined;
+ const selected=timeline?noteCutoffAutomation(instrument,event,timeline):
+  {automation:undefined,timeline};
+ const {automation,timeline:effectiveTimeline}=selected;
  if(instrument.sounds){
   const resolved=resolveEvent(instrument,event);
   if(!resolved)return;
@@ -56,7 +67,7 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
  if(instrument.patch.type==="sample"){
   return scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx),session);
  }
- return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline}),session);
+ return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline:effectiveTimeline}),session);
 }
 export function scheduleSynthPlan(ctx,destination,plan,session=null){
  if(plan.contract!=="pre-midi-synth-voice"||![1,2,3].includes(plan.version))throw Error("Unsupported synth voice plan");
@@ -277,7 +288,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    for(const event of events)
     scheduleNote(ctx,out,event.instrument,event.note,
      nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),
-     event.note.duration*unit,event.beat||current,session,{step:event.beatStep??step,unit,limitStep:event.clip?Math.min(event.beat.bars*16,(event.beatStep??step)+event.clip.startStep+event.clip.lengthSteps-step):cycle});
+     event.note.duration*unit,event.beat||current,session,noteTimeline(event,step,unit,cycle));
    queue.push({time:nextTime,barIndex,step:step%16,absolute:scheduled,unit});
    nextTime+=unit;scheduled++;
   }
@@ -338,7 +349,8 @@ export function renderEvents(document){
    events.push({kind:"vocal",at:step*unit,event});
   for(const event of (song?eventsAtSongStep(document,step):stepEvents(document,step)))
    events.push({kind:"note",at:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
-    instrument:event.instrument,note:event.note,duration:event.note.duration*unit,beat:event.beat||document,timeline:{step:event.beatStep??step,unit,limitStep:event.clip?Math.min(event.beat.bars*16,event.beatStep+event.clip.startStep+event.clip.lengthSteps-step):length}});
+    instrument:event.instrument,note:event.note,duration:event.note.duration*unit,beat:event.beat||document,
+     timeline:noteTimeline(event,step,unit,length)});
  }
  return events.sort((a,b)=>a.at-b.at);
 }
