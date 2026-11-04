@@ -44,6 +44,24 @@
   soundSummary.click();
   await wait(()=>!!doc.querySelector(".freeform-sound-modules .synth-grid"),"Canonical synth editor visible");
   assert(doc.querySelector(".freeform-sound-scope .signal-scope"),"Measured sound waveform is present");
+  const firstId=JSON.parse(win.localStorage.getItem("premidi-v5-draft"))
+   .tracks[0].freeform.instruments[0].notes[0].id;
+  const browse=doc.querySelector(".freeform-sound-browse");
+  assert(browse,"Freeform opens the existing Sound catalog");
+  browse.click();
+  await wait(()=>get("instrument-dialog").open,"Shared Sound library opens");
+  const preset=doc.querySelector('.preset-card[data-preset-id="init"]');
+  assert(preset,"Factory synth presets remain accessible from freeform");
+  preset.querySelector(".preset-choose").click();
+  await wait(()=>!get("instrument-dialog").open,"Preset selection closes shared library");
+  const selected=JSON.parse(win.localStorage.getItem("premidi-v5-draft"))
+   .tracks[0].freeform.instruments[0];
+  assert(selected.notes.length===1&&selected.notes[0].id===firstId,
+   "Choosing a freeform Sound retains previously placed notes");
+  assert(selected.sounds[0].patch.presetId==="init",
+   "Factory preset writes the canonical patch in freeform Song data");
+  await wait(()=>!!doc.querySelector(".freeform-sound-modules .synth-grid"),
+   "Shared synth editor stays available after preset selection");
   const distortion=doc.querySelector('.freeform-sound-modules [data-sound-path="effects.drive"] [role="slider"]');
   assert(distortion,"Canonical distortion knob is available on freeform Sound");
   distortion.dispatchEvent(new KeyboardEvent("keydown",{
