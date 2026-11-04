@@ -1150,7 +1150,7 @@ function renderSound() {
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
- const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst),inst.volume*entry.gain,entry.referencePitch,inst.automation);
+ const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst),inst.volume*entry.gain,entry.referencePitch,inst.automation,entry.id);
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
   const next=patchCopy(sound().patch);
@@ -1252,6 +1252,9 @@ function renderSound() {
  placeDial("primary-brightness-dial","filter");
  placeDial("primary-attack-dial",patch.type==="sample"?"sample":"envelope");
  placeDial("primary-release-dial",patch.type==="sample"?"sample":"envelope");
+ $("primary-brightness-dial").dataset.soundPath="filter.cutoff";
+ $("primary-attack-dial").dataset.soundPath=patch.type==="sample"?"attack":"envelope.attack";
+ $("primary-release-dial").dataset.soundPath=patch.type==="sample"?"release":"envelope.release";
  $("remove-instrument").disabled=false;
   $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }

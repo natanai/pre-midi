@@ -1,0 +1,61 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden}iframe{border:0;width:100%;height:100%}</style>
+<iframe title="Visual controls"></iframe><pre id="result"></pre>
+<script>
+const frame=document.querySelector("iframe"),checks={};
+const assert=(name,ok)=>{checks[name]=!!ok;if(!ok)throw Error(name)};
+const wait=async(fn,label)=>{for(let i=0;i<240;i++){if(fn())return;await new Promise(r=>setTimeout(r,35))}throw Error("Timed out: "+label)};
+frame.addEventListener("load",async()=>{
+ let status="FAIL";
+ const doc=frame.contentDocument,get=id=>doc.getElementById(id);
+ try{
+  await wait(()=>get("synth-editor")?.querySelector('.visual-sound-panel[data-visual-kind="filter"]'),"sound editor");
+  const toggle=get("sound-toggle");
+  if(toggle?.getAttribute("aria-expanded")==="false")toggle.click();
+  const filter=doc.querySelector('.visual-sound-panel[data-visual-kind="filter"]');
+  const details=filter.querySelector("details");details.open=true;
+  const field=filter.querySelector('[data-sound-path="filter.resonance"]');
+  assert("filter control has path",!!field);
+  const hit=filter.querySelector('.visual-graph-hit[data-sound-links*="filter.resonance"]');
+  assert("filter illustration has control hit",!!hit);
+  hit.dispatchEvent(new frame.contentWindow.PointerEvent("pointerover",{bubbles:true}));
+  assert("diagram hover highlights dial",field.classList.contains("sound-link-active"));
+  const target=field.querySelector('[role="slider"],select,input');
+  target.focus();
+  assert("knob focus highlights diagram",!!filter.querySelector(".visual-graph-line.visual-linked"));
+  hit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
+  const focused=doc.activeElement.closest("[data-sound-path]")?.dataset.soundPath;
+  assert("clicking illustration focuses relevant field",details.open&&
+   ["filter.cutoff","filter.resonance","filter.type"].includes(focused));
+  const osc=doc.querySelector('.visual-sound-panel[data-visual-kind="oscillators"]');
+  osc.querySelector("details").open=true;
+  assert("mixed oscillator trace exists",!!osc.querySelector('.visual-graph-hit[data-sound-links*="oscillators.0.wave"]'));
+  assert("mix lane caption exists",[...osc.querySelectorAll(".visual-graph-label")].some(el=>el.textContent==="mix"));
+  const scope=get("sound-visualizer");
+  await wait(()=>scope.querySelector(".signal-waveform-left")?.getAttribute("d"),"measured wave");
+  const wave=scope.querySelector(".signal-waveform-left"),before=wave.getAttribute("d");
+  const probe=scope.querySelector(".signal-scope-seek");
+  assert("time selector accessible",probe?.getAttribute("role")==="slider");
+  probe.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{key:"End",bubbles:true}));
+  assert("time selector changes waveform",wave.getAttribute("d")!==before);
+  assert("time selector displays measured time",Number(probe.getAttribute("aria-valuenow"))>0);
+  const compare=scope.querySelector(".signal-scope-compare");
+  compare.click();
+  assert("reference held",compare.getAttribute("aria-pressed")==="true"&&
+   !!scope.querySelector(".signal-scope-reference").getAttribute("d"));
+  const brightness=get("primary-brightness-dial").querySelector('[role="slider"]');
+  brightness.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{key:"ArrowLeft",bubbles:true}));
+  await wait(()=>scope.querySelector(".signal-scope-compare")!==compare,"scope recreated after sound edit");
+  const restored=scope.querySelector(".signal-scope-compare");
+  assert("a/b hold survives committed knob edit",restored.getAttribute("aria-pressed")==="true");
+  await wait(()=>!!scope.querySelector(".signal-scope-reference")?.getAttribute("d"),"held waveform repainted");
+  restored.click();
+  assert("reference cleared",restored.getAttribute("aria-pressed")==="false"&&
+   !scope.querySelector(".signal-scope-reference").getAttribute("d"));
+  status="PASS";
+ }catch(error){checks.error=String(error.stack||error)}
+ doc.documentElement.dataset.visualLinks=status;
+ document.getElementById("result").textContent=JSON.stringify(checks);
+ void fetch("/__visual_links_result?status="+status+"&details="+encodeURIComponent(JSON.stringify(checks)));
+},{once:true});
+frame.src="../index.html";
+</script>

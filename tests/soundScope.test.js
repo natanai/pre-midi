@@ -64,3 +64,18 @@ test("full-width waveform uses genuine stereo samples without hiding volume or p
  assert.ok(peak(quieter.channels[0])<peak(waveform.channels[0])*.51,
   "waveform should preserve actual gain changes, not auto-normalize");
 });
+
+test("manual waveform inspection selects real samples at requested time without changing gain",()=>{
+ const rate=1000,length=3000;
+ const channels=[Float32Array.from({length},(_,i)=>Math.sin(2*Math.PI*(i<1000?6:i<2000?19:31)*i/rate)*.6),
+  Float32Array.from({length},(_,i)=>Math.sin(2*Math.PI*6*i/rate)*.2)];
+ const buffer={sampleRate:rate,length,numberOfChannels:2,getChannelData:c=>channels[c]};
+ const early=scopeWaveformData(buffer,60,180,.2);
+ const later=scopeWaveformData(buffer,60,180,2.1);
+ assert.ok(Math.abs(early.startSeconds-.2)<.002);
+ assert.ok(Math.abs(later.startSeconds-2.1)<.002);
+ assert.notDeepEqual(early.channels[0],later.channels[0]);
+ assert.deepEqual(early.channels[1].length,later.channels[1].length);
+ const end=scopeWaveformData(buffer,60,180,200);
+ assert.ok(end.startSeconds<=3 && end.startSeconds>2.8);
+});
