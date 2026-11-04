@@ -52,7 +52,7 @@ async function run(){
   assert(!get("microphone-dialog").open,"Use synth failed");
   assert(doc.querySelectorAll(".instrument-card").length===2,"Conversion did not create a new instrument");
   assert(doc.querySelector(".instrument-card.active").textContent.includes(generatedName),"Generated name was lost");
-  assert(doc.querySelectorAll('.harmonic-editor [role="slider"]').length===32,"Native harmonic dials missing");
+  assert(doc.querySelectorAll('.harmonic-editor .dial-field [role="slider"]').length===32,"Native harmonic dials missing");
   let saved;
   const url=w.URL.createObjectURL.bind(w.URL);w.URL.createObjectURL=blob=>{if(blob.type==="application/json")saved=blob;return url(blob);};
   w.HTMLAnchorElement.prototype.click=function(){};

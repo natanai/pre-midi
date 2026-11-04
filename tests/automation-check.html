@@ -10,6 +10,18 @@ frame.addEventListener('load',async()=>{
  let status='FAIL';try{
   w.confirm=()=>true;get('new').click();capture();get('add-instrument').click();d.querySelector('[data-preset-id="touch-keys"] .preset-choose').click();await wait(()=>!get('instrument-dialog').open,'choose');if(get('sound-toggle').getAttribute('aria-expanded')!=='true')get('sound-toggle').click();
   check('no automation workstation initially',!d.querySelector('.cutoff-automation'));d.querySelector('[aria-label="Automate cutoff"]').click();check('control opens its own movement',d.querySelector('.cutoff-automation').open);
+  const drawing=d.querySelector('.cutoff-automation .visual-sound-panel[data-visual-kind="automation"]');
+  check('cutoff movement has a reusable illustrated graph',!!drawing);
+  const endpoints=[...drawing.querySelectorAll('.visual-graph-point')];
+  check('both automation endpoints have independent two-axis handles',
+   endpoints.length===2&&endpoints.every(point=>
+    point.getAttribute('aria-description')?.includes('left/right')&&
+    point.getAttribute('aria-description')?.includes('up/down')));
+  endpoints[0].dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+  await wait(()=>Number(d.querySelector('[aria-label="Begin beat"]')?.value)>1,
+   'keyboard editing the start point updates the original beat input');
+  check('direct curve editing commits whole integer beat steps',
+   Number.isInteger((await exported()).instruments.at(-1).automation.points[0].step));
   const end=d.querySelector('[aria-label="End bar"]');end.value=3;end.dispatchEvent(new w.Event('change',{bubbles:true}));const cutoff=d.querySelector('[aria-label="End cutoff"]');cutoff.value=180;cutoff.dispatchEvent(new w.Event('change',{bubbles:true}));
   const beat=await exported(),inst=beat.instruments.at(-1);check('explicit Beat v11 export',beat.version===11&&parse(JSON.stringify(beat)).version===11);check('editable endpoints persist',inst.automation.target==='filter.cutoff'&&inst.automation.points[1].step===32&&inst.automation.points[1].value===180);
   d.querySelectorAll('#instrument-list .instrument-card').item(beat.instruments.length-1).click();const note=d.querySelector('#piano .note[aria-label^="C4, step 1,"]');note.click();

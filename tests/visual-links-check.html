@@ -30,6 +30,14 @@ frame.addEventListener("load",async()=>{
   osc.querySelector("details").open=true;
   assert("mixed oscillator trace exists",!!osc.querySelector('.visual-graph-hit[data-sound-links*="oscillators.0.wave"]'));
   assert("mix lane caption exists",[...osc.querySelectorAll(".visual-graph-label")].some(el=>el.textContent==="mix"));
+  const waveHit=osc.querySelector('.visual-graph-hit[data-sound-links*="oscillators.0.wave"]');
+  waveHit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
+  const activeAfterWave=doc.activeElement;
+  assert("oscillator trace focuses the real wave selector: "+activeAfterWave.tagName+
+   " / "+activeAfterWave.getAttribute("aria-label")+" / "+
+   activeAfterWave.closest("[data-sound-path]")?.dataset.soundPath,
+   activeAfterWave.tagName==="SELECT"&&
+   activeAfterWave.closest("[data-sound-path]")?.dataset.soundPath==="oscillators.0.wave");
   const scope=get("sound-visualizer");
   await wait(()=>scope.querySelector(".signal-waveform-left")?.getAttribute("d"),"measured wave");
   const wave=scope.querySelector(".signal-waveform-left"),before=wave.getAttribute("d");
