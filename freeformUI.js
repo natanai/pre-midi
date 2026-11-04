@@ -138,9 +138,6 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   const start=viewStep();
   const picked=inst.notes.filter(note=>note.start>=start&&note.start<start+16);
   if(!picked.length){onError("No independent notes in this bar to make a Chunk.");return;}
-  if(picked.some(note=>note.start+note.duration>start+16)){
-   onError("A note crosses the bar boundary. Split or shorten it before making a one-bar Chunk.");return;
-  }
   if(inst.chunks.length>=32){onError("This Instrument already has 32 Chunks.");return;}
   mutate(()=>{
    const chunk=makeChunk("Chunk "+(inst.chunks.length+1));
