@@ -84,6 +84,11 @@ main.editing-freeform .beat-identity > label{display:none}
 .freeform-sound-field input[type=number]{width:76px}
 .freeform-sound-field select{max-width:160px}
 .freeform-sound-levels .dial-field{min-width:86px}
+.freeform-sound-primary{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px;
+ padding:8px 0;border-top:1px solid var(--faint)}
+.freeform-sound-primary .dial-field{min-width:86px}
+.freeform-sound-primary .sound-link-active{outline:1px solid var(--track-accent,#08e4ec);
+ outline-offset:3px}
 .freeform-sound-scope{width:100%;min-height:120px;margin:7px 0}
 .freeform-sound-modules{width:100%}
 .freeform-sound-modules .synth-grid{width:100%}
