@@ -96,10 +96,21 @@ test('signed manifest selects the AppImage even when a DEB also has a signature'
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 
-test('portable release publication fails closed when the signing key is unavailable',async()=>{
+test('unsigned portable ZIP is published for manual updates without an auto-install manifest',async()=>{
  const {dir}=await setup([['windows','x86_64','portable']]);
- try{assert.throws(()=>runPortable(dir),error=>error.stderr.toString().includes('Refusing to publish unsigned portable release'));}
- finally{await rm(dir,{recursive:true,force:true});}
+ try{
+  runPortable(dir);
+  const metadata=JSON.parse(await readFile(join(dir,'desktop-release.json'),'utf8'));
+  assert.equal(metadata.artifacts.length,1);
+  assert.equal(metadata.signedUpdates,false);
+  assert.equal(metadata.channel,'preview');
+  await assert.rejects(readFile(join(dir,'desktop-updates.json')),{code:'ENOENT'});
+  await assert.rejects(readFile(join(dir,'windows-x86_64-portable.bin.sig')),{code:'ENOENT'});
+  const sums=await readFile(join(dir,'SHA256SUMS.txt'),'utf8');
+  assert.equal(sums.trim().split('\n').length,2);
+  const notes=await readFile(join(dir,'release-notes.md'),'utf8');
+  assert.match(notes,/Unsigned manual-update ZIP: automatic installation is disabled/);
+ }finally{await rm(dir,{recursive:true,force:true});}
 });
 test('portable release rejects mismatched detached signature metadata',async()=>{
  const {dir,artifacts}=await setup([['windows','x86_64','portable']]);
