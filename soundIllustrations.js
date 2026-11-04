@@ -574,11 +574,15 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  // The Beat's primary brightness/rise/fade dials sit above the accordion.
  // Capture their common owner before the accordion is moved into its wrapper.
  // Song/freeform Sound also nests its diagram and controls in one content root.
- const controlOwner=details.closest(".sound-section,.freeform-sound-content")??details;
+ // Modules are frequently constructed off-DOM and inserted after the
+ // illustration wrapper exists. Resolve its final owner when handling input.
+ const initiallyAttachedOwner=details.closest(".sound-section,.freeform-sound-content")??details;
  const id=idFor(kind,index);
  let page=pageState.get(id)??0;
  const paginated=diagramPageCount(patch,kind)>1;
  const wrapper=document.createElement("section");wrapper.className="visual-sound-panel";
+ const controlOwner=()=>wrapper.closest(".sound-section,.freeform-sound-content")??
+  initiallyAttachedOwner;
  wrapper.dataset.visualKind=kind;
  const area=document.createElement("div");area.className="visual-panel-area";
  const graphic=svgNode("svg",{viewBox:"0 0 360 112",preserveAspectRatio:"none",
@@ -714,7 +718,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   highlight(activeLink);
  }
  function targetFields(keys){
-  const fields=[...controlOwner.querySelectorAll("[data-sound-path]")];
+  const fields=[...controlOwner().querySelectorAll("[data-sound-path]")];
   return fields.filter(field=>keys.some(key=>{
    const path=field.dataset.soundPath;
    return path===key||path.startsWith(key+".")||key.startsWith(path+".");
@@ -723,7 +727,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  function highlight(keys){
   activeLink=keys?.length?keys:null;
   const linked=activeLink?targetFields(activeLink):[];
-  for(const field of controlOwner.querySelectorAll("[data-sound-path]"))
+  for(const field of controlOwner().querySelectorAll("[data-sound-path]"))
    field.classList.toggle("sound-link-active",linked.includes(field));
   for(const item of graphic.querySelectorAll("[data-sound-links]")){
    const connected=item.dataset.soundLinks.split("|");
@@ -770,19 +774,34 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  graphic.addEventListener("pointerout",event=>{
   if(!event.relatedTarget?.closest?.(".visual-graph-hit"))highlight(null);
  });
- controlOwner.addEventListener("pointerover",event=>{
-  const control=event.target.closest?.("[data-sound-path]");
-  if(control&&controlOwner.contains(control))highlight([control.dataset.soundPath]);
- });
- controlOwner.addEventListener("pointerout",event=>{
-  if(!event.relatedTarget?.closest?.("[data-sound-path]"))highlight(null);
- });
- controlOwner.addEventListener("focusin",event=>{
-  const control=event.target.closest?.("[data-sound-path]");
-  if(control)highlight([control.dataset.soundPath]);
- });
- controlOwner.addEventListener("focusout",event=>{
-  if(!controlOwner.contains(event.relatedTarget))highlight(null);
+ const ownerListeners={
+  pointerover:event=>{
+   const control=event.target.closest?.("[data-sound-path]");
+   if(control&&controlOwner().contains(control))highlight([control.dataset.soundPath]);
+  },
+  pointerout:event=>{
+   if(!event.relatedTarget?.closest?.("[data-sound-path]"))highlight(null);
+  },
+  focusin:event=>{
+   const control=event.target.closest?.("[data-sound-path]");
+   if(control)highlight([control.dataset.soundPath]);
+  },
+  focusout:event=>{
+   if(!controlOwner().contains(event.relatedTarget))highlight(null);
+  }
+ };
+ const listen=(root,operation)=>Object.entries(ownerListeners).forEach(([name,handler])=>
+  root[operation](name,handler));
+ const initialListenerOwner=controlOwner();
+ listen(initialListenerOwner,"addEventListener");
+ // Keep immediate interactions working for detached test mounts, but move
+ // listeners to the shared editor once the caller finishes inserting the DOM.
+ queueMicrotask(()=>{
+  const finalOwner=controlOwner();
+  if(finalOwner!==initialListenerOwner){
+   listen(initialListenerOwner,"removeEventListener");
+   listen(finalOwner,"addEventListener");
+  }
  });
  const coord=event=>{
   const rect=graphic.getBoundingClientRect();
