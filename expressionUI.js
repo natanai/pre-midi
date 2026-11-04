@@ -69,8 +69,15 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  const points=make("div",undefined,"visual-graph-points");
  const dot=make("button",undefined,"visual-graph-point");
  dot.type="button";dot.setAttribute("aria-label","bend amount");
- points.append(dot);area.append(graph,points);visual.append(area);
- let noteLevel=note.velocity,dragging=null;
+ const levelDot=make("button",undefined,"visual-graph-point visual-note-level-point");
+ levelDot.type="button";levelDot.setAttribute("role","slider");
+ levelDot.setAttribute("aria-label","note level");
+ levelDot.setAttribute("aria-valuemin","0");levelDot.setAttribute("aria-valuemax","1");
+ const shapeButton=make("button",undefined,"visual-graph-action expression-shape-choice");
+ shapeButton.type="button";shapeButton.style.left="78%";shapeButton.style.top="77%";
+ shapeButton.setAttribute("aria-label","change bend shape");
+ points.append(dot,levelDot,shapeButton);area.append(graph,points);visual.append(area);
+ let noteLevel=note.velocity,dragging=null,levelDragging=null;
  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
  const focusAmount=()=>amount.querySelector('[role="slider"]')?.focus();
  function draw(){
@@ -83,6 +90,11 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
   });
   shape.setAttribute("points",values.join(" "));
   levelBar.setAttribute("d","M14 91 H"+(14+290*noteLevel).toFixed(1));
+  levelDot.style.left=((14+290*noteLevel)/320*100)+"%";
+  levelDot.style.top=(91/112*100)+"%";
+  levelDot.setAttribute("aria-valuenow",String(Number(noteLevel.toFixed(2))));
+  shapeButton.textContent="shape: "+current.shape;
+  shapeButton.setAttribute("aria-label","bend shape "+current.shape+"; next choice");
   dot.hidden=current.shape==="straight";
   dot.style.left=(current.shape==="wave"?15+clamp((current.rate-.1)/11.9,0,1)*70:74)+"%";
   dot.style.top=(32-2.1*current.amount)/112*100+"%";
@@ -91,8 +103,13 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
    (current.shape==="wave"?", "+current.rate.toFixed(2)+" hertz":""));
  }
  levelInput.addEventListener("input",()=>{
-  noteLevel=Number(levelInput.value);
-  levelBar.setAttribute("d","M14 91 H"+(14+290*noteLevel).toFixed(1));
+  noteLevel=Number(levelInput.value);draw();
+ });
+ shapeButton.addEventListener("click",()=>{
+  const index=BEND_SHAPES.findIndex(([id])=>id===current.shape);
+  current.shape=BEND_SHAPES[(index+1)%BEND_SHAPES.length][0];
+  select.value=current.shape;draw();
+  onChange({...bend,shape:current.shape,amount:current.amount,rate:current.rate});
  });
  function setLink(enabled){
   area.classList.toggle("visual-panel-linked",enabled);
@@ -123,24 +140,56 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
   if(commit)onChange({...bend,amount:next.amount,rate:next.rate,shape:current.shape});
  }
  dot.addEventListener("pointerdown",event=>{
-  if(event.button!==0)return;
+  if(event.button!==0||levelDragging)return;
   dragging={id:event.pointerId,amount:current.amount,rate:current.rate};
   area.setPointerCapture(event.pointerId);event.preventDefault();
   setLink(true);
  });
+ levelDot.addEventListener("pointerdown",event=>{
+  if(event.button!==0||dragging)return;
+  levelDragging={id:event.pointerId,initial:noteLevel};
+  area.setPointerCapture(event.pointerId);event.preventDefault();
+ });
+ const levelFromPointer=event=>{
+  const pos=position(event);
+  noteLevel=clamp(Math.round((pos.x-14)/290*100)/100,0,1);
+  levelInput.value=String(noteLevel);
+  levelValue.value=Math.round(noteLevel*100)+"%";
+  draw();
+ };
  area.addEventListener("pointermove",event=>{
-  if(dragging?.id===event.pointerId)edit(event);
+  if(levelDragging?.id===event.pointerId)levelFromPointer(event);
+  else if(dragging?.id===event.pointerId)edit(event);
  });
  area.addEventListener("pointerup",event=>{
+  if(levelDragging?.id===event.pointerId){
+   levelFromPointer(event);levelDragging=null;
+   if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
+   onLevelChange?.(noteLevel);
+   return;
+  }
   if(dragging?.id!==event.pointerId)return;
   dragging=null;edit(event,true);
   if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
   setLink(false);
  });
  area.addEventListener("pointercancel",event=>{
+  if(levelDragging?.id===event.pointerId){
+   noteLevel=levelDragging.initial;levelDragging=null;
+   levelInput.value=String(noteLevel);draw();return;
+  }
   if(dragging?.id!==event.pointerId)return;
   current.amount=dragging.amount;current.rate=dragging.rate;dragging=null;
   draw();setLink(false);
+ });
+ levelDot.addEventListener("keydown",event=>{
+  if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
+  event.preventDefault();
+  noteLevel=event.key==="Home"?0:event.key==="End"?1:
+   clamp(Math.round((noteLevel+(event.key==="ArrowRight"?.01:-.01))*100)/100,0,1);
+  levelInput.value=String(noteLevel);
+  levelValue.value=Math.round(noteLevel*100)+"%";
+  draw();onLevelChange?.(noteLevel);
  });
  dot.addEventListener("keydown",event=>{
   if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.key))return;

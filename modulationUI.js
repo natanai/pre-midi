@@ -23,6 +23,10 @@ export function renderModulationEditor(patch,onChange,soundId=null){
    const speed=createDial({label:"Movement speed",min:.05,max:20,step:.05,display:"hz"},route.source.rate,value=>update(index,{source:{...route.source,rate:value}}));
    speed.dataset.soundPath="modulation.routes."+index+".source.rate";row.append(speed);
   }
+  const smoothing=createDial({label:"Smoothing",min:0,max:.1,step:.001,display:"seconds"},
+   route.smoothing,value=>update(index,{smoothing:value}));
+  smoothing.dataset.soundPath="modulation.routes."+index+".smoothing";
+  row.append(smoothing);
   const settings=document.createElement("details"),heading=document.createElement("summary");heading.textContent="routing";settings.className="modulation-routing";settings.append(heading);
   const select=(label,values,current,apply)=>{
    const field=document.createElement("label"),title=document.createElement("span"),input=document.createElement("select");title.textContent=label;explainLabel(title,label);field.className="synth-field";
@@ -34,7 +38,19 @@ export function renderModulationEditor(patch,onChange,soundId=null){
   select("movement source",MOD_SOURCES.map(kind=>[kind,kind==="keytrack"?"key tracking":kind]),route.source.kind,kind=>update(index,{source:defaultSource(kind)}));
   select("movement target",MOD_TARGETS.map(target=>[target.id,target.name]),route.target,id=>{const next=MOD_TARGETS.find(t=>t.id===id);update(index,{target:id,unit:next.unit,depth:Math.max(-next.limit,Math.min(next.limit,route.depth))});});
   select("movement range",[["unipolar","one way"],["bipolar","both ways"]],route.polarity,polarity=>update(index,{polarity}));
-  if(route.source.kind==="envelope")for(const [field,max] of [["attack",3],["decay",3],["sustain",1],["release",4]])settings.append(createDial({label:"Move "+field,min:field==="release"?.01:0,max,step:.01,display:field==="sustain"?"percent":"seconds"},route.source.envelope[field],value=>update(index,{source:{...route.source,envelope:{...route.source.envelope,[field]:value}}})));
+  if(route.source.kind==="envelope")for(const [field,max] of [["attack",3],["decay",3],["sustain",1],["release",4]]){
+   const dial=createDial({label:"Move "+field,min:field==="release"?.01:0,max,step:.01,display:field==="sustain"?"percent":"seconds"},
+    route.source.envelope[field],value=>update(index,{source:{...route.source,envelope:{...route.source.envelope,[field]:value}}}));
+   dial.dataset.soundPath="modulation.routes."+index+".source.envelope."+field;
+   settings.append(dial);
+  }
+  if(route.source.kind==="keytrack")for(const [field,min,max,step] of
+   [["root",0,127,1],["span",1,127,1]]){
+   const dial=createDial({label:field==="root"?"Tracking center":"Tracking spread",min,max,step,display:"number"},
+    route.source[field],value=>update(index,{source:{...route.source,[field]:value}}));
+   dial.dataset.soundPath="modulation.routes."+index+".source."+field;
+   settings.append(dial);
+  }
   const remove=document.createElement("button");remove.type="button";remove.textContent="remove movement";remove.addEventListener("click",()=>change(routes.filter((_,i)=>i!==index)));settings.append(remove);row.append(settings);details.append(row);
  }
  const add=document.createElement("button");add.type="button";add.textContent="add movement";add.disabled=routes.length>=16;

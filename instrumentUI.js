@@ -149,7 +149,7 @@ function renderField(field,patch,onChange,onPreview){
  label.append(input);
  return label;
 }
-function harmonicControls(patch,index,onChange,preview,expanded){
+function harmonicControls(patch,index,onChange,preview,expanded,panels,soundId){
  const section=document.createElement("section");
  section.className="harmonic-editor";
  section.setAttribute("aria-label","Oscillator "+(index+1)+" harmonics");
@@ -161,11 +161,20 @@ function harmonicControls(patch,index,onChange,preview,expanded){
   recipes.append(button);
  }
  section.append(recipes);
+ // All 32 existing knobs remain; their pages now offer a direct-edit
+ // spectral drawing using exactly the same persisted harmonic values.
+ const details=document.createElement("details");details.className="synth-group";
+ details.open=true;
+ const heading=document.createElement("summary");heading.textContent="harmonic spectrum";
+ details.append(heading);
+ const illustration=illustrateSoundPanel(details,"harmonics"+index,patch,onChange,preview,(soundId??"sound")+"-"+index);
+ panels.push(illustration);
+ section.prepend(illustration.element);
  const first=document.createElement("div");first.className="synth-fields harmonic-fields";
  const more=document.createElement("details");more.className="harmonic-more";
  const key="Harmonics "+index;more.open=expanded.has(key);
  more.addEventListener("toggle",()=>more.open?expanded.add(key):expanded.delete(key));
- const heading=document.createElement("summary");heading.textContent="harmonics 9–32";
+ const extraHeading=document.createElement("summary");extraHeading.textContent="harmonics 9–32";
  const rest=document.createElement("div");rest.className="synth-fields harmonic-fields";
  for(let n=0;n<HARMONIC_COUNT;n++){
   const field={label:n===0?"H1 · Root":"H"+(n+1),min:0,max:1,step:.01,display:"percent",defaultValue:n===0?1:0};
@@ -176,7 +185,10 @@ function harmonicControls(patch,index,onChange,preview,expanded){
   dial.dataset.soundPath=["oscillators",index,"harmonics",n].join(".");
   (n<8?first:rest).append(dial);
  }
- more.append(heading,rest);section.append(first,more);
+ more.append(extraHeading,rest);
+ // Controls belong to their own diagram disclosure, so focusing a spectrum
+ // bar can reveal and focus its original dial (including H9–H32).
+ details.append(recipes,first,more);
  return section;
 }
 export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=null) {
@@ -220,7 +232,7 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
     for(const field of oscillatorFields(index))fields.append(renderField(field,patch,onChange,preview));
     block.append(head,fields);
     if(patch.oscillators[index].wave==="harmonic")
-     block.append(harmonicControls(patch,index,onChange,preview,expanded));
+     block.append(harmonicControls(patch,index,onChange,preview,expanded,panels,soundId));
     container.append(block);
    }
    if(!activeSecond){
@@ -239,7 +251,7 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
    group.name==="Envelope"?"envelope":group.name==="Filter & noise"?"filter":
    group.name==="Pitch & movement"?"movement":
    group.name==="Distortion"?"distortion":"delay";
-  const panel=illustrateSoundPanel(details,kind,patch,onChange,preview,0);
+  const panel=illustrateSoundPanel(details,kind,patch,onChange,preview,soundId??0);
   panels.push(panel);grid.append(panel.element);
  }
  const modulation=illustrateSoundPanel(renderModulationEditor(patch,onChange,soundId),

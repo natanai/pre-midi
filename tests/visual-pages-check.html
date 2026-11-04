@@ -1,12 +1,14 @@
 <!doctype html><meta charset="utf-8">
 <style>body{margin:0;background:#080808;color:#ddd;font:12px monospace}
 .mount{max-width:680px;margin:8px auto}button{cursor:pointer}</style>
-<div id="sample" class="mount"></div><div id="synth" class="mount"></div>
+<div id="sample" class="mount"></div><div id="synth" class="mount"></div><div id="harmonics" class="mount"></div><div id="routes" class="mount"></div><div id="note" class="mount"></div>
 <pre id="result"></pre>
 <script type="module">
 import {renderSamplerEditor} from "../samplerUI.js";
 import {renderPatchEditor} from "../instrumentUI.js";
 import {makePatch} from "../synth.js";
+import {harmonicRecipe} from "../harmonics.js";
+import {renderNoteExpression} from "../expressionUI.js";
 import {defaultSource} from "../src/dsp/modulation.js";
 const checks={},pass=(label,value)=>{checks[label]=!!value;if(!value)throw Error(label);};
 let status="FAIL";
@@ -14,7 +16,8 @@ try{
  const patch={type:"sample",zones:Array.from({length:10},(_,i)=>({assetId:"z"+i,root:40+i*4})),
   gain:.9,transpose:0,pan:0,strumMs:0,attack:.005,release:.17,
   followPitch:true,oneShot:false,preserveDynamics:false};
- renderSamplerEditor(document.querySelector("#sample"),patch,()=>{},null,()=>{},()=>{},"visual-page-sample");
+ const sampleEdits=[];
+ renderSamplerEditor(document.querySelector("#sample"),patch,(path,value)=>sampleEdits.push([path,value]),null,()=>{},()=>{},"visual-page-sample");
  const samplePanel=document.querySelector('#sample .visual-sound-panel[data-visual-kind="mapping"]');
  pass("mapping module exists",!!samplePanel);
  samplePanel.querySelector("details").open=true;
@@ -35,7 +38,8 @@ try{
   id:"visual-route-"+i,source:defaultSource("lfo"),target:"filter.cutoff",
   unit:"octaves",depth:1,polarity:"unipolar",smoothing:.005
  }))};
- renderPatchEditor(document.querySelector("#synth"),synth,()=>{},()=>{},"visual-page-synth");
+ const synthEdits=[];
+ renderPatchEditor(document.querySelector("#synth"),synth,(path,value)=>synthEdits.push([path,value]),()=>{},"visual-page-synth");
  const mod=document.querySelector('#synth .visual-sound-panel[data-visual-kind="modulation"]');
  pass("modulation module exists",!!mod);
  mod.querySelector("details").open=true;
@@ -49,6 +53,100 @@ try{
  routeHit.dispatchEvent(new MouseEvent("click",{bubbles:true}));
  pass("modulation click opens ninth route",
   document.activeElement.closest("[data-sound-path]")?.dataset.soundPath.startsWith("modulation.routes.8"));
+ // The same diagrams are input surfaces, not merely parameter-linked images.
+ const movement=document.querySelector('#synth .visual-sound-panel[data-visual-kind="movement"]');
+ movement.querySelector("details").open=true;
+ const movementNext=movement.querySelector('button[aria-label="next movement page"]');
+ movementNext.click();movementNext.click();
+ const pulsePoint=[...movement.querySelectorAll(".visual-graph-point")]
+  .find(item=>item.getAttribute("aria-label")==="volume pulse speed / depth");
+ pass("two-axis volume pulse handle exists",!!pulsePoint&&
+  pulsePoint.getAttribute("aria-description").includes("left/right")&&
+  pulsePoint.getAttribute("aria-description").includes("up/down"));
+ pulsePoint.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true,cancelable:true}));
+ pass("illustrated pulse edits canonical knob parameter",
+  synthEdits.some(([path,value])=>path.join(".")==="movement.tremolo"&&value>0));
+ const sampleShape=document.querySelector('#sample .visual-sound-panel[data-visual-kind="sample"]');
+ sampleShape.querySelector("details").open=true;
+ sampleShape.querySelector('button[aria-label="next sample page"]').click();
+ const sampleToggle=sampleShape.querySelector('.visual-graph-action[data-sound-path="followPitch"]');
+ pass("sample playback switch lives in illustration",!!sampleToggle);
+ sampleToggle.click();
+ pass("sample illustration toggles actual sampler property",
+  sampleEdits.some(([path,value])=>path.join(".")==="followPitch"&&value===false));
+ const harmonics=makePatch("init");
+ harmonics.oscillators[0].wave="harmonic";harmonics.oscillators[0].harmonics=harmonicRecipe();
+ const harmonicsEdits=[];
+ renderPatchEditor(document.querySelector("#harmonics"),harmonics,
+  (path,value)=>harmonicsEdits.push([path,value]),()=>{},"visual-page-harmonics");
+ const spectrum=document.querySelector('#harmonics .visual-sound-panel[data-visual-kind="harmonics0"]');
+ pass("harmonic spectrum has its own editable diagram",!!spectrum);
+ spectrum.querySelector("details").open=true;
+ for(let i=0;i<3;i++)spectrum.querySelector('button[aria-label="next harmonics0 page"]').click();
+ const h32=[...spectrum.querySelectorAll(".visual-graph-point")].find(x=>
+  x.getAttribute("aria-label")==="harmonic 32 level");
+ pass("harmonic 32 is accessible on its own page",!!h32);
+ h32.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true,cancelable:true}));
+ pass("harmonic 32 point edits existing oscillator partial",
+  harmonicsEdits.some(([path,value])=>path.join(".")==="oscillators.0.harmonics.31"&&value>0));
+ h32.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowLeft",bubbles:true,cancelable:true}));
+ pass("horizontal keyboard motion selects neighboring harmonic without discarding a knob",
+  document.activeElement.getAttribute("aria-label")==="harmonic 31 level");
+ // Two-dimensional harmonic painting changes neighboring source partials
+ // through one canonical edit rather than creating a parallel parameter model.
+ const harmonicArea=spectrum.querySelector(".visual-panel-area");
+ const harmonicSvg=spectrum.querySelector(".visual-panel-graph");
+ harmonicSvg.getBoundingClientRect=()=>({left:0,top:0,width:360,height:112});
+ harmonicArea.setPointerCapture=()=>{};
+ harmonicArea.hasPointerCapture=()=>false;
+ harmonicArea.releasePointerCapture=()=>{};
+ const harmonic25=[...spectrum.querySelectorAll(".visual-graph-point")]
+  .find(x=>x.getAttribute("aria-label")==="harmonic 25 level");
+ const pointer=(target,type,x,y)=>target.dispatchEvent(new PointerEvent(type,{
+  bubbles:true,cancelable:true,pointerId:15,pointerType:"mouse",button:0,
+  clientX:x,clientY:y
+ }));
+ pointer(harmonic25,"pointerdown",37,69);
+ pointer(harmonicArea,"pointermove",160,85);
+ pointer(harmonicArea,"pointerup",160,85);
+ pass("two-dimensional harmonic painting edits adjacent partials atomically",
+  harmonicsEdits.some(([paths,values])=>Array.isArray(paths[0])&&
+   paths.length>=4&&paths.every(keys=>keys[0]==="oscillators"&&keys[3]>=24&&keys[3]<=27)&&
+   values.every(value=>value>=0&&value<=1)));
+ const routePatch=makePatch("init");
+ routePatch.version=2;
+ routePatch.modulation={version:1,routes:["lfo","envelope","keytrack"].map((kind,i)=>({
+  id:"coverage-"+i,source:defaultSource(kind),target:"filter.cutoff",
+  unit:"octaves",depth:1,polarity:"bipolar",smoothing:.005
+ }))};
+ renderPatchEditor(document.querySelector("#routes"),routePatch,()=>{},()=>{},"visual-route-coverage");
+ const routeEditor=document.querySelector("#routes");
+ for(const path of [
+  "modulation.routes.0.smoothing",
+  ...["attack","decay","sustain","release"].map(k=>"modulation.routes.1.source.envelope."+k),
+  "modulation.routes.2.source.root","modulation.routes.2.source.span"
+ ])pass("modulation diagram has a matching control for "+path,
+  !!routeEditor.querySelector('[data-sound-path="'+path+'"] [role="slider"]'));
+ const routesVisual=routeEditor.querySelector('.visual-sound-panel[data-visual-kind="modulation"]');
+ routesVisual.querySelector("details").open=true;
+ const nextRoute=routesVisual.querySelector('button[aria-label="next modulation page"]');
+ nextRoute.click();nextRoute.click();
+ pass("envelope route shows two-axis controls",routesVisual.querySelectorAll(
+  '.visual-graph-point[aria-description*="left/right"][aria-description*="up/down"]').length>=2);
+ nextRoute.click();
+ pass("key tracking root and span share a two-axis handle",
+  [...routesVisual.querySelectorAll(".visual-graph-point")].some(point=>
+   point.getAttribute("aria-label")==="key tracking center / spread"));
+ let noteLevel=null,noteBend=null;
+ renderNoteExpression(document.querySelector("#note"),{
+  velocity:.8,bend:{shape:"wave",amount:2,rate:4}
+ },"C4",.8,value=>noteBend=value,()=>{},()=>{},null,value=>noteLevel=value);
+ const notePoint=document.querySelector("#note .visual-note-level-point");
+ pass("note level has an independently draggable graph point",!!notePoint);
+ notePoint.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true,cancelable:true}));
+ pass("note velocity point commits a real level change",noteLevel===.81);
+ document.querySelector("#note .expression-shape-choice").click();
+ pass("note shape changes without the select knob",noteBend&&noteBend.shape!=="wave");
  status="PASS";
 }catch(error){checks.error=String(error.stack||error);}
 document.querySelector("#result").textContent=JSON.stringify(checks);

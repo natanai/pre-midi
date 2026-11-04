@@ -26,10 +26,24 @@ frame.addEventListener("load",async()=>{
   const focused=doc.activeElement.closest("[data-sound-path]")?.dataset.soundPath;
   assert("clicking illustration focuses relevant field",details.open&&
    ["filter.cutoff","filter.resonance","filter.type"].includes(focused));
+  assert("filter trace takes user to the real primary brightness dial",
+   doc.activeElement.closest("#primary-brightness-dial")!==null);
+  const primaryBrightness=get("primary-brightness-dial");
+  primaryBrightness.querySelector('[role="slider"]').focus();
+  assert("primary brightness knob highlights filter illustration",!!filter.querySelector(
+   '.visual-graph-line.visual-linked[data-sound-links*="filter.cutoff"]'));
   const osc=doc.querySelector('.visual-sound-panel[data-visual-kind="oscillators"]');
   osc.querySelector("details").open=true;
   assert("mixed oscillator trace exists",!!osc.querySelector('.visual-graph-hit[data-sound-links*="oscillators.0.wave"]'));
   assert("mix lane caption exists",[...osc.querySelectorAll(".visual-graph-label")].some(el=>el.textContent==="mix"));
+  const waveHit=osc.querySelector('.visual-graph-hit[data-sound-links*="oscillators.0.wave"]');
+  waveHit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
+  const activeAfterWave=doc.activeElement;
+  assert("oscillator trace focuses the real wave selector: "+activeAfterWave.tagName+
+   " / "+activeAfterWave.getAttribute("aria-label")+" / "+
+   activeAfterWave.closest("[data-sound-path]")?.dataset.soundPath,
+   activeAfterWave.tagName==="SELECT"&&
+   activeAfterWave.closest("[data-sound-path]")?.dataset.soundPath==="oscillators.0.wave");
   const scope=get("sound-visualizer");
   await wait(()=>scope.querySelector(".signal-waveform-left")?.getAttribute("d"),"measured wave");
   const wave=scope.querySelector(".signal-waveform-left"),before=wave.getAttribute("d");
@@ -51,6 +65,25 @@ frame.addEventListener("load",async()=>{
   restored.click();
   assert("reference cleared",restored.getAttribute("aria-pressed")==="false"&&
    !scope.querySelector(".signal-scope-reference").getAttribute("d"));
+  const stage=scope.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
+  assert("instrument level and stereo have their own educational field",!!stage);
+  stage.querySelector("details").open=true;
+  const point=stage.querySelector(".visual-graph-point");
+  assert("stereo stage is truly two-dimensional",point?.getAttribute("aria-description")
+   ?.includes("left/right")&&point.getAttribute("aria-description").includes("up/down"));
+  const oldVolume=Number(get("instrument-volume-dial").querySelector('[role="slider"]')
+   .getAttribute("aria-valuenow"));
+  point.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{
+   key:"ArrowDown",bubbles:true,cancelable:true
+  }));
+  await wait(()=>Number(get("instrument-volume-dial").querySelector('[role="slider"]')
+   .getAttribute("aria-valuenow"))<oldVolume,"stage level commit");
+  const stageAfter=scope.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
+  assert("stage remains expanded after a real instrument edit",stageAfter.querySelector("details").open);
+  const stageHit=stageAfter.querySelector('.visual-graph-hit[data-sound-links*="volume"]');
+  stageHit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
+  assert("stage illustration focuses original instrument volume knob",
+   !!doc.activeElement.closest("#instrument-volume-dial"));
   status="PASS";
  }catch(error){checks.error=String(error.stack||error)}
  doc.documentElement.dataset.visualLinks=status;

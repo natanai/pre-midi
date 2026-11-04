@@ -70,7 +70,10 @@ test("delay repeats track mix, spacing, and feedback rather than arbitrary ticks
  const later=synth();later.effects.delayTime=.8;
  assert.ok(diagram(later,"delay").handles[1].x>first.handles[1].x);
  const quieter=synth();quieter.effects.delayMix=.1;
- assert.ok(diagram(quieter,"delay").handles[1].y>first.handles[1].y);
+ assert.ok(diagram(quieter,"delay").handles[0].y>first.handles[0].y,
+  "delay mix moves the first echo handle");
+ assert.equal(diagram(quieter,"delay").handles[1].y,first.handles[1].y,
+  "feedback remains independently editable when mix is reduced");
  const fading=synth();fading.effects.delayFeedback=.08;
  assert.notEqual(diagram(fading,"delay").paths[3].d,first.paths[3].d);
 });
