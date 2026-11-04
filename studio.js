@@ -27,6 +27,7 @@ import {loadUserSounds,writeUserSounds,presetFromInstrument} from "./userSoundLi
 import { renderNoteExpression } from "./expressionUI.js";
 import {createDial} from "./dial.js";
 import {createSignalDisplay} from "./soundScope.js";
+import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
@@ -1152,12 +1153,19 @@ function renderSound() {
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
+ const stageWasOpen=$("sound-visualizer").querySelector(
+  '.visual-sound-panel[data-visual-kind="stage"] details')?.open??false;
  const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst),inst.volume*entry.gain,entry.referencePitch,inst.automation,entry.id);
+ let stagePanel=null;
+ const stageState=(pan=patch.pan??0,volume=inst.volume,gain=entry.gain)=>({
+  type:"stage",layout:inst.layout,pan,volume,gain
+ });
  const preview=(path,value)=>{
   // Construct a temporary sound-definition view, not an alternate mutable draft.
   const next=patchCopy(sound().patch);
   assignSoundEdit(next,path,value);
   scope(next);
+  stagePanel?.draw(stageState(next.pan??0));
   for(const panel of $("synth-editor").querySelectorAll(".visual-sound-panel"))
    panel.drawSoundIllustration?.(next);
  };
@@ -1185,7 +1193,8 @@ function renderSound() {
  volume.replaceChildren();
  volume.append(createDial({label:inst.layout==="rack"?"rack volume":"volume",min:0,max:1,step:.01,display:"percent"},
   inst.volume,value=>modify(()=>{instrument().volume=value;}),
-  value=>scope(patch,value*entry.gain)));
+  value=>{scope(patch,value*entry.gain);stagePanel?.draw(stageState(patch.pan??0,value));}));
+ volume.dataset.soundPath="volume";
  const topFields=patch.type==="synth"?PRIMARY_SYNTH_FIELDS:[
   {label:"brightness",path:["filter"],min:50,max:14000,step:1,display:"hz",log:true},
   {label:"attack",path:["attack"],min:0,max:2,step:.005,display:"seconds"},
@@ -1224,7 +1233,9 @@ function renderSound() {
  $("save-sound").setAttribute("aria-label",inst.layout==="rack"?"Save rack preset":"Save preset");
  const level=$("sound-volume-dial");level.replaceChildren();
  level.append(createDial({label:"Sound level",min:0,max:1,step:.01,display:"percent"},entry.gain,
-  value=>modify(()=>{sound().gain=value;})));
+  value=>modify(()=>{sound().gain=value;}),
+  value=>{scope(patch,inst.volume*value);stagePanel?.draw(stageState(patch.pan??0,inst.volume,value));}));
+ level.dataset.soundPath="gain";
  $("sound-reference").value=String(entry.referencePitch);
  $("convert-rack").hidden=inst.layout==="rack";
  $("convert-rack").disabled=!!inst.automation||!canConvertToRack(inst);
@@ -1257,6 +1268,36 @@ function renderSound() {
  $("primary-brightness-dial").dataset.soundPath="filter.cutoff";
  $("primary-attack-dial").dataset.soundPath=patch.type==="sample"?"attack":"envelope.attack";
  $("primary-release-dial").dataset.soundPath=patch.type==="sample"?"release":"envelope.release";
+ // Gain staging is an educational illustration, not a second mixer. It edits
+ // the same instrument, Sound, and pan values as their existing knobs.
+ const stageDetails=document.createElement("details");stageDetails.className="synth-group";
+ stageDetails.open=stageWasOpen;
+ const stageSummary=document.createElement("summary");
+ stageSummary.textContent=inst.layout==="rack"?"gain staging":"stereo & volume";
+ stageDetails.append(stageSummary);
+ const stageEdit=(path,value,commit)=>{
+  const edits=Array.isArray(path?.[0])?path.map((keys,i)=>[keys,value[i]]):[[path,value]];
+  const next=patchCopy(patch);let instrumentLevel=inst.volume,soundLevel=entry.gain;
+  for(const [keys,amount] of edits){
+   if(keys[0]==="volume")instrumentLevel=amount;
+   else if(keys[0]==="gain")soundLevel=amount;
+   else if(keys[0]==="pan")next.pan=amount;
+  }
+  if(commit)modify(()=>{
+   for(const [keys,amount] of edits){
+    if(keys[0]==="volume")instrument().volume=amount;
+    else if(keys[0]==="gain")sound().gain=amount;
+    else if(keys[0]==="pan"){
+     sound().patch.pan=amount;sound().patch.presetId="custom";
+    }
+   }
+  });
+  else scope(next,instrumentLevel*soundLevel);
+ };
+ stagePanel=illustrateSoundPanel(stageDetails,"stage",stageState(),
+  (path,value)=>stageEdit(path,value,true),
+  (path,value)=>stageEdit(path,value,false),entry.id);
+ $("sound-visualizer").append(stagePanel.element);
  $("remove-instrument").disabled=false;
   $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }
