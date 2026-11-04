@@ -89,6 +89,27 @@ try{
  h32.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true,cancelable:true}));
  pass("harmonic 32 point edits existing oscillator partial",
   harmonicsEdits.some(([path,value])=>path.join(".")==="oscillators.0.harmonics.31"&&value>0));
+ // Two-dimensional harmonic painting changes neighboring source partials
+ // through one canonical edit rather than creating a parallel parameter model.
+ const harmonicArea=spectrum.querySelector(".visual-panel-area");
+ const harmonicSvg=spectrum.querySelector(".visual-panel-graph");
+ harmonicSvg.getBoundingClientRect=()=>({left:0,top:0,width:360,height:112});
+ harmonicArea.setPointerCapture=()=>{};
+ harmonicArea.hasPointerCapture=()=>false;
+ harmonicArea.releasePointerCapture=()=>{};
+ const harmonic25=[...spectrum.querySelectorAll(".visual-graph-point")]
+  .find(x=>x.getAttribute("aria-label")==="harmonic 25 level");
+ const pointer=(target,type,x,y)=>target.dispatchEvent(new PointerEvent(type,{
+  bubbles:true,cancelable:true,pointerId:15,pointerType:"mouse",button:0,
+  clientX:x,clientY:y
+ }));
+ pointer(harmonic25,"pointerdown",37,69);
+ pointer(harmonicArea,"pointermove",160,85);
+ pointer(harmonicArea,"pointerup",160,85);
+ pass("two-dimensional harmonic painting edits adjacent partials atomically",
+  harmonicsEdits.some(([paths,values])=>Array.isArray(paths[0])&&
+   paths.length>=4&&paths.every(keys=>keys[0]==="oscillators"&&keys[3]>=24&&keys[3]<=27)&&
+   values.every(value=>value>=0&&value<=1)));
  const routePatch=makePatch("init");
  routePatch.version=2;
  routePatch.modulation={version:1,routes:["lfo","envelope","keytrack"].map((kind,i)=>({
