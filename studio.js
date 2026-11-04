@@ -1145,6 +1145,11 @@ function renderChunkEditor() {
  renderNotes();
 }
 function renderSound() {
+ // Every Sound redraw replaces its visualizer DOM, but the surrounding
+ // Sound section persists. Release delegated diagram listeners first.
+ for(const panel of document.querySelectorAll(
+  "#synth-editor .visual-sound-panel,#sound-visualizer .visual-sound-panel"
+ ))panel.disposeSoundIllustration?.();
  const inst=instrument(),entry=sound(inst),patch=entry.patch;
  const hear=$("hear-sound");
  hear.textContent="▶";
