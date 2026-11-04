@@ -170,6 +170,102 @@ export function validateFreeform(layer){
  }
  return errors.slice(0,20);
 }
+// Extract a reusable Beat without moving or silencing the source freeform music.
+// The Beat format is intentionally narrower than the freeform note model. Refuse
+// unrepresentable selections rather than retriggering/splitting sustained notes.
+export function createBeatFromFreeformSelection(song,trackId,startStep,endStep,{title="Freeform selection"}={}){
+ const track=song?.tracks?.find(item=>item.id===trackId&&item.kind==="beat");
+ const layer=track?.freeform;
+ if(!layer)throw Error("Choose a Beat Track with freeform music.");
+ if(!whole(startStep)||!positive(endStep)||endStep<=startStep||
+  endStep>FREEFORM_LIMIT_STEPS)throw Error("Choose a valid freeform selection.");
+ const span=endStep-startStep,bars=Math.ceil(span/STEPS_PER_BAR);
+ if(bars>64)throw Error("A reusable Beat can have at most 64 bars. Select a shorter passage.");
+ const beat=create();
+ beat.id=id();beat.title=String(title).trim()||"Freeform selection";
+ beat.bpm=song.bpm;beat.bars=bars;beat.instruments=[];
+ // Events are collected by occurrence rather than by note identity, because
+ // placing a Chunk more than once creates independent sounding occurrences.
+ for(const source of layer.instruments){
+  const events=[];
+  const collect=(note,at)=>{
+   const end=at+note.duration;
+   if(at<startStep){
+    if(end>startStep)throw Error("A note sustains into the selection. Move its start boundary.");
+    return;
+   }
+   if(at>=endStep)return;
+   if(end>endStep)throw Error("A note sustains beyond the selection. Extend its end boundary.");
+   const relative=at-startStep,local=relative%STEPS_PER_BAR;
+   if(note.duration>STEPS_PER_BAR-local)
+    throw Error("A note crosses a Beat bar boundary. Move or shorten it before creating a Beat.");
+   events.push({at:relative,note});
+  };
+  for(const note of source.notes)collect(note,note.start);
+  for(const placement of source.chunkPlacements){
+   const chunk=source.chunks.find(item=>item.id===placement.chunkId);
+   if(!chunk)throw Error("Freeform Chunk placement is missing its source.");
+   for(let occurrence=0;occurrence<placement.repeats;occurrence++){
+    const start=placement.startStep+occurrence*placement.every;
+    for(const note of chunk.notes){
+     if(note.start>=placement.length)continue;
+     collect(note,start+note.start);
+    }
+   }
+  }
+  if(!events.length)continue;
+  if(beat.instruments.length===12)
+   throw Error("A reusable Beat supports at most 12 Instruments. Use a shorter selection or separate Beats.");
+  const output={
+   id:id(),name:source.name,layout:source.layout,volume:source.volume,
+   sounds:clone(source.sounds),chunks:[],
+   timeline:Array(bars).fill(null),placements:Array(bars).fill(null)
+  };
+  const soundIds=new Map();
+  for(const sound of output.sounds){
+   const original=sound.id;
+   sound.id=id();soundIds.set(original,sound.id);
+  }
+  const byBar=Array.from({length:bars},()=>[]);
+  for(const {at,note} of events){
+   const copy=clone(note);
+   delete copy.passageId;delete copy.strumGroup;
+   copy.id=id();copy.start=at%STEPS_PER_BAR;
+   if(copy.soundId!==undefined)copy.soundId=soundIds.get(copy.soundId);
+   byBar[Math.floor(at/STEPS_PER_BAR)].push(copy);
+  }
+  const signatures=new Map();
+  for(let bar=0;bar<bars;bar++){
+   if(!byBar[bar].length)continue;
+   const notes=byBar[bar].sort((a,b)=>
+    a.start-b.start||String(a.pitch??a.soundId).localeCompare(String(b.pitch??b.soundId))||
+    a.duration-b.duration||a.velocity-b.velocity);
+   // Exclude generated IDs; retain expressive ordering/parameters so distinct
+   // articulations are never incorrectly collapsed into one reusable Chunk.
+   const signature=JSON.stringify(notes.map(({id:ignored,...other})=>other));
+   let chunk=signatures.get(signature);
+   if(!chunk){
+    if(output.chunks.length===32)
+     throw Error("A Beat Instrument supports at most 32 unique Chunks. Use a shorter selection or separate Beats.");
+    chunk=makeChunk("Chunk "+(output.chunks.length+1));
+    chunk.notes=notes;
+    output.chunks.push(chunk);signatures.set(signature,chunk);
+   }
+   output.timeline[bar]=chunk.id;
+  }
+  if(!output.chunks.length)output.chunks=[makeChunk()];
+  beat.instruments.push(output);
+ }
+ if(!beat.instruments.length)
+  throw Error("There are no freeform notes or placed Chunks in this selection.");
+ const needed=referencedSampleIds(beat.instruments);
+ beat.samples=layer.samples.filter(asset=>needed.has(asset.id)).map(clone);
+ upgradeBeatFeatures(beat);
+ const errors=validateBeat(beat);
+ if(errors.length)throw Error("Cannot make this reusable Beat: "+errors[0]);
+ return beat;
+}
+
 // Unpack an entire Beat Clip, or a selected absolute Song range within it.
 // Build and validate a new layer *before* editing the original track. A partial
 // conversion leaves two source-phase-aware Beat Clips at the unaffected edges.
