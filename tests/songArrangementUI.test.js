@@ -212,3 +212,11 @@ test("freeform Sound editor reuses canonical controls instead of duplicating eff
  assert.match(css,/\.freeform-sound-details/);
  assert.doesNotMatch(shared,/new AudioContext\(/);
 });
+
+test("freeform note-to-Chunk conversion retains cutoff movement without new effects controls",()=>{
+ const source=read("freeformUI.js");
+ assert.match(source,/const basic=structuredClone\(note\)/);
+ assert.match(source,/delete basic\.passageId/);
+ assert.match(source,/cutoff movement · preserved from source Beat/);
+ assert.doesNotMatch(source,/delete basic\.cutoffAutomation/);
+});

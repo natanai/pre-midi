@@ -7,7 +7,7 @@ import {makeSampleAsset} from "../sampler.js";
 import {encodeMonoWav} from "../recording.js";
 import {readZip} from "../zip.js";
 import {clearAssets,getAsset} from "../assetRegistry.js";
-import {unpackBeatClip,ensureFreeform,addFreeformInstrument,addFreeformNote,createBeatFromFreeformSelection} from "../freeformModel.js";
+import {unpackBeatClip,ensureFreeform,addFreeformInstrument,addFreeformNote,createBeatFromFreeformSelection,FREEFORM_AUTOMATION_SONG_VERSION} from "../freeformModel.js";
 
 test("unrecorded native Songs roundtrip as plain .premidi instructions",async()=>{
  const beat=create(),song=createSong(beat);
@@ -123,4 +123,28 @@ test("new reusable Beat from freeform sample retains exactly one external audio 
  });
  assert.deepEqual(restored,song);
  assert.deepEqual(getAsset(asset.id),wave);
+});
+
+test("Song v23 preserves per-note cutoff movement through portable .premidi export",async()=>{
+ const beat=create();
+ beat.instruments[0].automation={version:1,target:"filter.cutoff",unit:"hz",
+  interpolation:"exponential",points:[
+   {id:"a",step:0,value:500},{id:"b",step:128,value:6000}
+  ]};
+ beat.instruments[0].chunks[0].notes=[
+  {id:"a",pitch:60,start:2,duration:4,velocity:.8}
+ ];
+ const song=createSong(beat);
+ unpackBeatClip(song,song.tracks[0].clips[0].id);
+ assert.equal(song.version,FREEFORM_AUTOMATION_SONG_VERSION);
+ assert.deepEqual(validateSong(song),[]);
+ const pkg=exportSongProject(song);
+ assert.match(pkg.name,/\.premidi$/);
+ const parsed=await importSongProject({
+  name:pkg.name,size:pkg.blob.size,text:()=>pkg.blob.text()
+ });
+ assert.deepEqual(parsed,song);
+ const corrupt=clone(song);corrupt.version=22;
+ assert.throws(()=>parseSong(JSON.stringify(corrupt)),/requires Song v23/);
+ const old=createSong(create());assert.deepEqual(parseSong(JSON.stringify(old)),old);
 });

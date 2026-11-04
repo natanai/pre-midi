@@ -3,10 +3,13 @@ import assert from "node:assert/strict";
 import {create,id,clone,makeInstrument,makeSound,validate as validateBeat} from "../schema.js";
 import {makePatch} from "../synth.js";
 import {renderEvents} from "../audio.js";
-import {createSong} from "../songModel.js";
+import {createSong,editBeatClip,upgradeSongFeatures,validateSong} from "../songModel.js";
+import {nativePlans} from "../src/hosts/native/session.js";
+import {noteCutoffAutomation} from "../src/dsp/automation.js";
+import {planSynthVoice} from "../src/dsp/synth-voice.js";
 import {createFreeform,addFreeformInstrument,addFreeformNote,
  addFreeformChunkPlacement,eventsAtFreeformStep,freeformEndStep,
- moveFreeformPassage,unpackBeatClip,createBeatFromFreeformSelection,soundingFreeformPitches,validateFreeform,FREEFORM_SONG_VERSION} from "../freeformModel.js";
+ moveFreeformPassage,unpackBeatClip,createBeatFromFreeformSelection,soundingFreeformPitches,validateFreeform,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION} from "../freeformModel.js";
 
 test("empty freeform supports long notes and independent reusable Chunks",()=>{
  const layer=createFreeform(),instrument=addFreeformInstrument(layer);
@@ -167,4 +170,94 @@ test("freeform keys light for independent sustained notes and repeated placed Ch
  assert.deepEqual([...soundingFreeformPitches(layer,second.id,16)],[79]);
  assert.deepEqual([...soundingFreeformPitches(layer,"missing",16)],[]);
  assert.deepEqual([...soundingFreeformPitches(layer,first.id,-1)],[]);
+});
+
+const cutoffCurve=()=>({version:1,target:"filter.cutoff",unit:"hz",
+ interpolation:"exponential",points:[
+  {id:"low",step:0,value:400},{id:"high",step:128,value:6400}
+ ]});
+const automatedSong=({offset=0,length=256}={})=>{
+ const beat=create(),inst=beat.instruments[0];
+ inst.automation=cutoffCurve();
+ inst.chunks[0].notes=[
+  {id:"low-source",pitch:60,start:4,duration:6,velocity:.8},
+  {id:"top-source",pitch:67,start:12,duration:4,velocity:.75}
+ ];
+ inst.timeline[1]=inst.chunks[0].id;
+ const song=createSong(beat),clip=song.tracks[0].clips[0];
+ editBeatClip(song,clip.id,{lengthSteps:length,sourceOffsetSteps:offset});
+ return song;
+};
+const signature=plan=>({
+ at:plan.start,pitch:plan.expression.pitch,duration:plan.duration,
+ cutoff:plan.automation?.points.map(point=>[point.time,point.value])
+});
+test("unpacking automated repetitions gives exactly matching native voice timelines",()=>{
+ const song=automatedSong({offset:16,length:256}),clip=song.tracks[0].clips[0];
+ const original=clone(song.beats[0]),before=nativePlans(renderEvents(song)).map(signature);
+ const passage=unpackBeatClip(song,clip.id);
+ assert.equal(song.version,FREEFORM_AUTOMATION_SONG_VERSION);
+ assert.equal(song.tracks[0].freeform.version,2);
+ assert.deepEqual(song.beats[0],original);
+ assert.equal(song.tracks[0].clips.length,0);
+ assert.deepEqual(validateSong(song),[]);
+ const after=nativePlans(renderEvents(song)).map(signature);
+ assert.deepEqual(after,before,"Automated cutoff envelopes, starts, and note durations must match");
+ const captured=song.tracks[0].freeform.instruments[0].notes;
+ assert.ok(captured.length>2);
+ assert.ok(captured.every(note=>note.cutoffAutomation?.version===1));
+ const unchanged=after.map(({cutoff})=>cutoff.map(([time,value])=>value));
+ moveFreeformPassage(song.tracks[0].freeform,passage.id,passage.startStep+16);
+ const shifted=nativePlans(renderEvents(song)).map(signature);
+ assert.deepEqual(shifted.map(({cutoff})=>cutoff.map(([time,value])=>value)),unchanged,
+  "Moving the passage cannot change the source automation phase");
+ assert.deepEqual(shifted.map(x=>x.at),after.map(x=>x.at+16*60/song.bpm/4));
+ assert.deepEqual(validateSong(song),[]);
+});
+test("partial automated unpack preserves remaining Beat Clips and exact cutoff plans",()=>{
+ const song=automatedSong({length:256}),clip=song.tracks[0].clips[0];
+ const before=nativePlans(renderEvents(song)).map(signature);
+ // Convert the middle, leaving both neighboring Clips linked to the source.
+ unpackBeatClip(song,clip.id,{fromStep:32,toStep:96});
+ const [left,right]=song.tracks[0].clips;
+ assert.equal(left.lengthSteps,32);
+ assert.equal(right.startStep,96);
+ assert.equal(right.sourceOffsetSteps,96);
+ const after=nativePlans(renderEvents(song)).map(signature);
+ assert.deepEqual(after,before);
+ assert.deepEqual(validateSong(song),[]);
+});
+test("captured cutoff movement is validated, versioned, and never silently discarded",()=>{
+ const song=automatedSong(),clip=song.tracks[0].clips[0];
+ unpackBeatClip(song,clip.id);
+ const before=clone(song),track=song.tracks[0],inst=track.freeform.instruments[0];
+ assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,128),/captured cutoff movement/);
+ assert.deepEqual(song,before,"Beat conversion must not erase a saved cutoff curve");
+ song.version=FREEFORM_SONG_VERSION;
+ assert.match(validateSong(song).join(" "),/requires Song v23/);
+ song.version=FREEFORM_AUTOMATION_SONG_VERSION;
+ track.freeform.version=1;
+ assert.match(validateSong(song).join(" "),/requires freeform v2/);
+ track.freeform.version=2;
+ const note=inst.notes[0],savedStep=note.cutoffAutomation.step;
+ note.cutoffAutomation.step=-1;
+ assert.match(validateSong(song).join(" "),/Invalid captured note cutoff movement/);
+ note.cutoffAutomation.step=savedStep;
+ assert.deepEqual(validateSong(song),[]);
+});
+test("freeform Chunk creation may retain a captured note cutoff curve",()=>{
+ const song=automatedSong(),clip=song.tracks[0].clips[0];
+ unpackBeatClip(song,clip.id);
+ const layer=song.tracks[0].freeform,inst=layer.instruments[0],note=inst.notes[0];
+ const cloneNote=clone(note);cloneNote.id=id();cloneNote.start=4;
+ delete cloneNote.passageId;delete cloneNote.strumGroup;delete cloneNote.strumKey;
+ inst.chunks[0].notes.push(cloneNote);
+ assert.deepEqual(validateFreeform(layer),[]);
+ const placed=addFreeformChunkPlacement(inst,inst.chunks[0].id,400);
+ const at=placed.startStep+cloneNote.start;
+ const event=eventsAtFreeformStep(layer,at).find(entry=>entry.note.id===cloneNote.id);
+ assert.ok(event?.note.cutoffAutomation);
+ const resolved=noteCutoffAutomation(event.instrument,event.note,{step:at,unit:.125,limitStep:512});
+ const preview=planSynthVoice({patch:inst.sounds[0].patch,volume:inst.volume},{...cloneNote,pitch:60},0,.4,resolved);
+ assert.equal(preview.version,3);
 });
