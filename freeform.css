@@ -66,3 +66,21 @@ main.editing-freeform .beat-identity > label{display:none}
  box-shadow:inset 3px 0 0 #d1e9d9;transform:translateX(1px)}
 .freeform-follow{padding:4px 7px;border:1px solid transparent;color:var(--muted)}
 .freeform-follow[aria-pressed="true"]{border-color:#48745f;color:#b6dfc6}
+
+/* Desktop freeform Sounds reuse the Beat's existing synth/sampler/visualizer modules. */
+.freeform-sound-host{margin:9px 0 11px}
+.freeform-sound-details{border:1px solid var(--line);background:#0b100f;padding:0 9px 8px}
+.freeform-sound-summary{cursor:pointer;min-height:28px;padding:6px 0;
+ font-size:11px;color:var(--bright);list-style-position:inside}
+.freeform-sound-tools,.freeform-sound-levels,.freeform-sound-actions{
+ display:flex;align-items:end;flex-wrap:wrap;gap:9px;margin:8px 0}
+.freeform-sound-tools button,.freeform-sound-actions button{min-height:28px;font-size:11px;padding:3px 7px}
+.freeform-sound-field{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--muted)}
+.freeform-sound-field input[type=text]{width:145px;max-width:100%}
+.freeform-sound-field input[type=number]{width:76px}
+.freeform-sound-field select{max-width:160px}
+.freeform-sound-levels .dial-field{min-width:86px}
+.freeform-sound-scope{width:100%;min-height:120px;margin:7px 0}
+.freeform-sound-modules{width:100%}
+.freeform-sound-modules .synth-grid{width:100%}
+.freeform-sound-modules .sample-replace-action{min-height:30px}
