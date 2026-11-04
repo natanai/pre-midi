@@ -121,3 +121,29 @@ export async function songCountIn(bpm,bars,{signal,onBeat=()=>{}}={}){
   }
  }finally{if(context)void context.close().catch(()=>{});}
 }
+
+// Advisory onset detector for the trim-to-sound button. It never changes the
+// source audio or the clip unless the user explicitly chooses the suggestion.
+export function suggestVocalOnset(buffer,sourceTrimSeconds=0){
+ if(!buffer?.numberOfChannels||!buffer.length||!Number.isFinite(buffer.sampleRate))return null;
+ const rate=buffer.sampleRate,start=Math.max(0,Math.floor(sourceTrimSeconds*rate));
+ const end=Math.min(buffer.length,start+Math.ceil(rate*12));
+ const size=Math.max(1,Math.round(rate*.005)),levels=[];
+ for(let at=start;at<end;at+=size){
+  const count=Math.min(size,end-at);let sum=0;
+  for(let c=0;c<buffer.numberOfChannels;c++){
+   const pcm=buffer.getChannelData(c);
+   for(let j=0;j<count;j++){const value=pcm[at+j]||0;sum+=value*value;}
+  }
+  levels.push(Math.sqrt(sum/(count*buffer.numberOfChannels)));
+ }
+ if(!levels.length)return null;
+ const peak=Math.max(...levels);
+ if(peak<.008)return null;
+ const threshold=Math.max(.008,peak*.085);
+ for(let i=0;i<levels.length-1;i++){
+  if(levels[i]>=threshold&&levels[i+1]>=threshold)
+   return Math.max(0,Math.round(((i*size/rate)-.012)*1000)/1000);
+ }
+ return null;
+}

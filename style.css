@@ -1489,3 +1489,33 @@ body.keyboard-piano-active .piano-scroll {pointer-events:none}
 .keyboard-piano-binding button {min-width:48px;padding:4px;font-size:12px}
 .keyboard-piano-dialog-actions {display:flex;justify-content:space-between;gap:10px;margin-top:18px}
 
+
+/* One shared lower editing space for a selected Song vocal Clip. */
+main.editing-vocal > .work{display:none}
+main.editing-vocal .beat-identity > label{display:none}
+main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
+.vocal-editor[hidden]{display:none!important}
+.vocal-editor{
+ border-top:1px solid var(--line);padding:12px 14px 20px;
+ display:grid;gap:13px;max-width:100%;min-width:0;
+}
+.vocal-editor-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.vocal-editor-identity{display:flex;align-items:center;gap:6px;min-width:0;font-size:12px}
+.vocal-editor-identity strong{color:var(--bright);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vocal-editor-identity span{font-size:11px;color:var(--muted)}
+.vocal-editor-actions{display:flex;gap:6px;flex-wrap:wrap}
+.vocal-editor-actions button,.vocal-timing button{
+ border:1px solid var(--line);padding:7px 10px;min-height:32px;color:var(--bright);
+}
+.vocal-editor-actions button:hover,.vocal-timing button:hover{border-color:var(--bright)}
+.vocal-waveform{height:110px;width:100%;max-width:100%;border:1px solid var(--faint);background:#080a09}
+.vocal-timing{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.vocal-number{display:grid;gap:5px;color:var(--muted);font-size:11px;min-width:95px}
+.vocal-number input,.vocal-number select{
+ min-height:32px;padding:6px 7px;border:1px solid var(--line);background:#0b0b0b;
+ color:var(--bright);max-width:100%;width:140px;
+}
+.vocal-effect-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.vocal-effect-sections .synth-group{margin:0;min-width:0}
+.vocal-effect-sections .synth-fields{min-width:0}
+@media(max-width:850px){.vocal-effect-sections{grid-template-columns:minmax(0,1fr)}}

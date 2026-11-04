@@ -3,13 +3,16 @@
 // pre-programmed reader compatibility remains separately qualified.
 import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
+import {validateVocalEffects,vocalEffects} from "./vocalEffects.js";
 export const SONG_VERSION=8;
 export const MODULATION_SONG_VERSION=10;
 export const AUTOMATION_SONG_VERSION=12;
 export const PCM_SONG_VERSION=14;
+export const VOCAL_FX_SONG_VERSION=16;
 export function upgradeSongFeatures(song){
  song.beats.forEach(upgradeBeatFeatures);
- if(song.recordings?.some(recording=>recording.mime==='audio/wav'))song.version=PCM_SONG_VERSION;
+ if(song.tracks?.some(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.effects!==undefined||clip.trimStartSeconds!==undefined)))song.version=VOCAL_FX_SONG_VERSION;
+ else if(song.recordings?.some(recording=>recording.mime==='audio/wav')&&song.version<PCM_SONG_VERSION)song.version=PCM_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===AUTOMATION_BEAT_VERSION)&&song.version<AUTOMATION_SONG_VERSION)song.version=AUTOMATION_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===MODULATION_BEAT_VERSION)&&song.version<MODULATION_SONG_VERSION)song.version=MODULATION_SONG_VERSION;
  return song;
@@ -106,15 +109,51 @@ export function removeSongClip(song,clipId){
  }
  return removed;
 }
+// A take is an immutable external asset; trim and grouping belong to each Clip.
+export function duplicateVocalClip(song,clipId){
+ const track=song?.tracks?.find(item=>item.kind==="vocal"&&item.clips.some(clip=>clip.id===clipId));
+ if(!track)throw Error("Vocal Clip does not exist.");
+ const original=track.clips.find(clip=>clip.id===clipId);
+ const copy={...clone(original),id:id(),startStep:original.startStep+original.lengthSteps};
+ track.clips.push(copy);
+ return copy;
+}
+export function trimVocalClip(song,clipId,seconds){
+ const track=song?.tracks?.find(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.id===clipId));
+ if(!track)throw Error("Vocal Clip does not exist.");
+ const clip=track.clips.find(item=>item.id===clipId);
+ const recording=song.recordings?.find(item=>item.id===clip.recordingId);
+ if(!recording)throw Error("Vocal Clip references a missing Recording.");
+ const remaining=recording.durationSeconds-recording.trimSeconds;
+ if(!Number.isFinite(seconds)||seconds<0||seconds>=remaining-.01)
+  throw Error("Trim must leave at least 0.01 seconds of audio.");
+ clip.trimStartSeconds=Math.round(seconds*10000)/10000;
+ clip.lengthSteps=Math.max(1,Math.ceil((remaining-clip.trimStartSeconds)/Math.pow(2,vocalEffects(clip).transpose/12)*song.bpm*4/60));
+ return clip;
+}
+export function moveVocalClip(song,clipId,targetTrackId){
+ const source=song?.tracks?.find(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.id===clipId));
+ const target=song?.tracks?.find(track=>track.kind==="vocal"&&track.id===targetTrackId);
+ if(!source||!target)throw Error("Select an existing vocal track.");
+ if(source===target)return target;
+ const clip=source.clips.find(item=>item.id===clipId);
+ source.clips=source.clips.filter(item=>item.id!==clipId);
+ target.clips.push(clip);
+ if(!source.clips.length)song.tracks=song.tracks.filter(item=>item.id!==source.id);
+ return target;
+}
 export const MAX_VOCAL_SECONDS=300;
-export function addVocalTake(song,recording,{startStep=0}={}){
+export function addVocalTake(song,recording,{startStep=0,trackId=null}={}){
  if(!isObject(song)||!Array.isArray(song.tracks))throw Error("Invalid Song.");
  song.recordings??=[];
  const error=validateRecording(recording);
  if(error)throw Error(error);
  if(song.recordings.some(item=>item.id===recording.id))throw Error("Duplicate Recording ID.");
  if(!nonnegative(startStep))throw Error("Invalid vocal start step.");
- const track=addSongTrack(song,"vocal");
+ const track=trackId!==null
+  ?song.tracks.find(item=>item.kind==="vocal"&&item.id===trackId)
+  :song.tracks.find(item=>item.kind==="vocal")||addSongTrack(song,"vocal");
+ if(!track)throw Error("Choose a valid vocal track.");
  const unit=60/song.bpm/4;
  const clip={
   id:id(),recordingId:recording.id,startStep,
@@ -167,7 +206,7 @@ export function eventsAtSongStep(song,step){
 }
 export function validateSong(song){
  const errors=[];
- if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION].includes(song.version))
+ if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION].includes(song.version))
   return ["Unsupported Song format."];
  if(typeof song.id!=="string"||!song.id.trim()||typeof song.title!=="string"||!song.title.trim())
   errors.push("Song identity or title is missing.");
@@ -211,6 +250,13 @@ export function validateSong(song){
    if(track.kind==="beat"&&!known.has(clip.beatId))errors.push("Beat Clip references a missing Beat.");
    if(track.kind==="vocal"){
     if(!knownRecordings.has(clip.recordingId))errors.push("Vocal Clip references a missing Recording.");
+    const recording=recordings.find(item=>item.id===clip.recordingId);
+    if(clip.trimStartSeconds!==undefined&&(!Number.isFinite(clip.trimStartSeconds)||clip.trimStartSeconds<0||
+      !recording||clip.trimStartSeconds>=recording.durationSeconds-recording.trimSeconds-.01))
+     errors.push("Vocal Clip trim must leave audible audio.");
+    if((clip.trimStartSeconds!==undefined||clip.effects!==undefined)&&song.version<VOCAL_FX_SONG_VERSION)
+     errors.push("Edited vocal clips require Song v16.");
+    errors.push(...validateVocalEffects(clip.effects));
     if(!Number.isFinite(clip.gain)||clip.gain<0||clip.gain>2)
      errors.push("Vocal Clip gain must be between 0 and 2.");
    }

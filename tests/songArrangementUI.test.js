@@ -99,7 +99,7 @@ test("Song records vocals above Beats and keeps their bytes external",()=>{
   assert.ok(html.includes('id="'+id+'"'),"Missing vocal control "+id);
  assert.match(studio,/prepareSongTake\(\)/);
  assert.match(studio,/makeRecordingAsset/);
- assert.match(studio,/addVocalTake\(song,asset,\{startStep:vocalStartStep\}\)/);
+ assert.match(studio,/addVocalTake\(song,asset,\{startStep:vocalStartStep,trackId:vocalTargetTrackId\}\)/);
  assert.match(ui,/song-vocal-clip/);
  assert.match(ui,/track\.kind==="vocal"/);
  const model=read("songModel.js");
@@ -116,7 +116,7 @@ test("Voice setup is explicit and recording starts at the selected Song bar",()=
  assert.match(studio,/voiceDialog\.showModal\(\)/);
  assert.match(studio,/await songCountIn\(/);
  assert.match(studio,/startStep:requestedStep/);
- assert.match(studio,/addVocalTake\(song,asset,\{startStep:vocalStartStep\}\)/);
+ assert.match(studio,/addVocalTake\(song,asset,\{startStep:vocalStartStep,trackId:vocalTargetTrackId\}\)/);
  assert.match(ui,/getStartStep:selectedStart/);
  assert.match(ui,/ruler\.addEventListener\("click"/);
  assert.match(audio,/startStep=0/);
@@ -128,9 +128,27 @@ test("voice clips share Song placement controls and empty legacy lanes stay remo
  assert.match(ui,/enableVocalDrag\(block,clip\)/);
  assert.match(ui,/block\.setPointerCapture\(pointerId\)/);
  assert.match(ui,/clip\.startStep=next/);
- assert.match(ui,/event\.key==="ArrowRight"\?BAR_STEPS:-BAR_STEPS/);
+ assert.match(ui,/event\.shiftKey\?1:4/);
  assert.match(ui,/\$\("song-beat-start-field"\)\.hidden=false/);
  assert.match(ui,/removeSongClip\(getSong\(\),item\.clip\.id\)/);
  assert.match(ui,/removeEmptyVocalTrack\(song,track\.id\)/);
  assert.match(css,/\.song-vocal-clip\s*\{[^}]*touch-action:none/s);
+});
+
+test("selecting a Song vocal reuses the Beat workspace with sample effect dials",()=>{
+ const studio=read("studio.js"),ui=read("songUI.js"),html=read("index.html");
+ const editor=read("vocalEditor.js"),model=read("songModel.js"),native=read("src/hosts/native/sample-plan.js");
+ for(const id of ["vocal-editor","song-vocal-step","voice-track"])
+  assert.ok(html.includes('id="'+id+'"'),"Missing shared vocal editor control "+id);
+ assert.match(studio,/renderVocalWorkspace\(\)/);
+ assert.match(studio,/songUI\?\.getSelectedVocal\(\)/);
+ assert.match(ui,/onSelectionChange/);
+ assert.match(model,/trimVocalClip/);
+ assert.match(editor,/createDial/);
+ assert.match(editor,/sample & articulation/);
+ assert.match(editor,/pitch & movement/);
+ assert.match(editor,/tone · filter & distortion/);
+ assert.match(editor,/trim to sound/);
+ assert.match(native,/vocalEffects\(clip\)/);
+ assert.match(read("style.css"),/main\.editing-vocal > \.work\{display:none\}/);
 });

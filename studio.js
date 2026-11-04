@@ -31,7 +31,10 @@ import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
-import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,validateSong} from "./songModel.js";
+import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,validateSong} from "./songModel.js";
+import {renderVocalEditor,decodeVocalRecording} from "./vocalEditor.js";
+import {vocalEffects} from "./vocalEffects.js";
+import {encodeMonoWav,RECORDING_RATE} from "./recording.js";
 import {makeRecordingAsset} from "./recordingAssets.js";
 import {prepareSongTake,waveformForTake,songCountIn} from "./songRecorder.js";
 import {exportSongProject,importSongProject,parseSong} from "./songIO.js";
@@ -65,7 +68,7 @@ let editingNoteEffects = false;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
 let history = [], future = [], playback = null, pendingPlay = false, playbackGeneration=0;
-let vocalTake=null,vocalRequest=false,vocalFinalizing=false,vocalStartStep=0;
+let vocalTake=null,vocalRequest=false,vocalFinalizing=false,vocalStartStep=0,vocalTargetTrackId=null;
 let voiceCountAbort=null,voiceToken=0;
 let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
@@ -266,7 +269,7 @@ async function finalizeVocalTake(){
    take.mime,take.bytes,{durationSeconds:take.durationSeconds,trimSeconds:take.trimSeconds});
   if(!song)throw Error("No Song is available for this take.");
   // Persist the recording reference immediately; waveform decoding is optional.
-  const saved=modifySong(()=>addVocalTake(song,asset,{startStep:vocalStartStep}));
+  const saved=modifySong(()=>addVocalTake(song,asset,{startStep:vocalStartStep,trackId:vocalTargetTrackId}));
   if(saved){
    message("Saved "+asset.name+" · export Song to keep its audio asset.");
    voiceStatus("Saved "+asset.name+" at bar "+(Math.floor(vocalStartStep/16)+1)+".");
@@ -279,7 +282,7 @@ async function finalizeVocalTake(){
   voiceStatus("Could not save vocal take: "+error.message,true);
   message("Could not save vocal take: "+error.message,true);
  }
- finally{vocalFinalizing=false;showVocalState(false);}
+ finally{vocalFinalizing=false;vocalTargetTrackId=null;showVocalState(false);}
 }
 function stop() {
  playbackGeneration++;
@@ -1252,6 +1255,74 @@ function renderSound() {
  $("remove-instrument").disabled=false;
   $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }
+// Song clips use the existing lower Beat editing space, not a second window.
+function renderVocalWorkspace(){
+ const selected=songExpanded? songUI?.getSelectedVocal():null;
+ const active=!!selected?.recording,root=$("vocal-editor");
+ document.querySelector("main")?.classList.toggle("editing-vocal",active);
+ if(!active){root.hidden=true;root.replaceChildren();return;}
+ const target=clipId=>{const entry=songUI?.getSelectedVocal();return entry?.clip.id===clipId?entry:null;};
+ renderVocalEditor(root,selected,{
+  onEffect:(clipId,key,value)=>{
+   const entry=target(clipId);if(!entry)return;
+   modifySong(()=>{
+    entry.clip.effects={...(entry.clip.effects||{}),[key]:value};
+    if(key==="transpose"){
+     const remaining=entry.recording.durationSeconds-entry.recording.trimSeconds-(entry.clip.trimStartSeconds??0);
+     entry.clip.lengthSteps=Math.max(1,Math.ceil(remaining/Math.pow(2,value/12)*song.bpm*4/60));
+    }
+   });
+  },
+  onLevel:(clipId,value)=>{
+   const entry=target(clipId);if(entry)modifySong(()=>{entry.clip.gain=value;});
+  },
+  onTrim:(clipId,value)=>{
+   const entry=target(clipId);if(!entry)return;
+   const remaining=entry.recording.durationSeconds-entry.recording.trimSeconds;
+   if(!Number.isFinite(value)||value<0||value>=remaining-.01){
+    message("Trim must leave some audible recording.",true);return;
+   }
+   modifySong(()=>trimVocalClip(song,clipId,value));
+  },
+  onDuplicate:clipId=>{
+   if(!target(clipId))return;
+   let copied=null;
+   if(modifySong(()=>{copied=duplicateVocalClip(song,clipId);}))songUI.select(copied.id);
+  },
+  onUseInBeat:async clipId=>{
+   const entry=target(clipId);if(!entry)return;
+   const {clip,recording}=entry,remaining=recording.durationSeconds-recording.trimSeconds-(clip.trimStartSeconds??0);
+   if(remaining>4){message("Beat samples support up to four seconds. Trim this phrase first.",true);return;}
+   if(beat.instruments.length>=12){message("Maximum 12 instruments.",true);return;}
+   try{
+    const decoded=await decodeVocalRecording(recording);
+    const from=recording.trimSeconds+(clip.trimStartSeconds??0);
+    const frames=Math.round(remaining*RECORDING_RATE),input=new Float32Array(frames);
+    const channels=Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i));
+    for(let n=0;n<frames;n++){
+     const pos=(from+n/RECORDING_RATE)*decoded.sampleRate,lo=Math.floor(pos),hi=Math.min(decoded.length-1,lo+1),frac=pos-lo;
+     if(lo<0||lo>=decoded.length)continue;
+     for(const channel of channels)input[n]+=(channel[lo]*(1-frac)+channel[hi]*frac)/channels.length;
+    }
+    const wav=encodeMonoWav(input);
+    const name=recording.name.slice(0,60),asset=makeSampleAsset("voice-sample-"+id(),name,"audio/wav",wav,"Excerpt from Song vocal "+recording.id);
+    const fx=vocalEffects(clip);
+    const patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:60}],
+     followPitch:false,oneShot:true,transpose:fx.transpose,gain:clip.gain,
+     attack:fx.attack,release:Math.max(.01,fx.release),pan:fx.pan,drive:fx.drive,
+     movement:fx.movement,bend:fx.bend};
+    if(fx.filter)patch.filter=fx.filter;
+    const ok=applySoundSelection(patch,name,"hit",[asset],{mode:"add",instrumentId:instrument().id,soundId:sound().id});
+    if(ok){
+     songUI.select(null);message("Added "+name+" as a Beat rack sound. Place its hits in Notes.");
+     if(fx.delayMix>0)message("Vocal delay remains on its Song clip; Beat sample delay is not yet available.");
+    }
+   }catch(error){message("Could not use vocal in Beat: "+error.message,true);}
+  },
+  onBack:()=>songUI.select(null),
+  onUndo:undo,onRedo:redo
+ });
+}
 function render() {
  repairSelection();
  syncInspector();
@@ -1265,6 +1336,7 @@ function render() {
  $("bpm").value = String(song&&songExpanded?song.bpm:beat.bpm);
  $("bars").value = String(beat.bars);
  songUI?.render();
+ renderVocalWorkspace();
  $("song-expand").textContent=songExpanded?"↓ Beat":"↑ Song";
  setPlaybackButton(!!playback);
  $("play").title=playback?"stop playback":song&&songExpanded?"play song":"play beat";
@@ -1499,6 +1571,14 @@ $("song-record").addEventListener("click",()=>{
  if(!song||!songExpanded)return;
  $("voice-start-bar").value=String(Math.floor((songUI?.getStartStep()||0)/16)+1);
  $("voice-count-in").value="0";
+ const choice=$("voice-track"),selected=songUI?.getSelectedVocal();
+ choice.replaceChildren();
+ for(const track of song.tracks.filter(item=>item.kind==="vocal")){
+  const option=document.createElement("option");option.value=track.id;option.textContent=track.name;
+  choice.append(option);
+ }
+ const fresh=document.createElement("option");fresh.value="new";fresh.textContent="+ new voice track";choice.append(fresh);
+ choice.value=selected?.track.id||song.tracks.find(item=>item.kind==="vocal")?.id||"new";
  voiceStatus("Play the Song and record your microphone from this bar.");
  showVocalState(!!vocalTake);
  if(!voiceDialog.open)voiceDialog.showModal();
@@ -1549,7 +1629,9 @@ $("voice-start").addEventListener("click",async()=>{
   if(token!==voiceToken||!voiceDialog.open||!songExpanded||song?.id!==originalId){
    prepared.cancel();return;
   }
-  vocalStartStep=requestedStep;vocalTake=prepared;
+  vocalStartStep=requestedStep;
+  vocalTargetTrackId=$("voice-track").value==="new"?null:$("voice-track").value;
+  vocalTake=prepared;
   showVocalState(true);
   voiceStatus("Recording from bar "+(Math.floor(requestedStep/16)+1)+". Stop to save.");
   await startTransport({recording:true,startStep:requestedStep,countIn:nativeEnabled()?countBars:0,captureOwner:prepared.captureOwner??null,
@@ -2060,7 +2142,7 @@ document.addEventListener("keydown", event => {
 songUI=installSongUI({
  root:$("song-panel"),getSong:()=>songExpanded?song:null,
  getSelectedBeatId:()=>selectedBeatId,
- onSelectBeat:selectBeat,onChange:modifySong,
+ onSelectBeat:selectBeat,onChange:modifySong,onSelectionChange:renderVocalWorkspace,
  onSeek:step=>{
   if(playback?.seek)void playback.seek(step).catch(error=>message('Native seek: '+String(error),true));
   if(voiceDialog.open&&!vocalRequest&&!vocalTake)

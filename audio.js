@@ -5,6 +5,8 @@ import {resolveEvent} from "./soundModel.js";
 import {eventsAtStep} from "./arrangement.js";
 import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
 import {decodeSongRecordings,recordingEventsAtStep,scheduleVocal} from "./songAudio.js";
+import {vocalSourceRange} from "./vocalEffects.js";
+import {delayTailSeconds} from "./src/dsp/effect-tail.js";
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
 import { schedulePitchPlan, scheduleMovementLfo } from "./expression.js";
@@ -340,6 +342,11 @@ export function renderEndSeconds(document,events,decoded){
  const length=document.kind==="song"?songDurationSteps(document):document.bars*16;
  let end=length*secondsPerStep(document)+.02;
  for(const event of events){
+  if(event.kind==="vocal"){
+   const {duration,fx}=vocalSourceRange(event.event.recording,event.event.clip,secondsPerStep(document));
+   end=Math.max(end,event.at+duration+delayTailSeconds(fx)+.02);
+   continue;
+  }
   if(event.kind!=="note")continue;
   const resolved=resolveEvent(event.instrument,event.note);if(!resolved)continue;
   const {patch}=resolved.voice;

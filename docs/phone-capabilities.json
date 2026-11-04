@@ -6,6 +6,7 @@
     "index.html",
     "studio.js",
     "songUI.js",
+    "vocalEditor.js",
     "instrumentUI.js",
     "samplerUI.js",
     "automationUI.js",
@@ -1318,6 +1319,18 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:songUI:song-vocal-step-change:1",
+      "source": "songUI.js",
+      "anchor": "$(\"song-vocal-step\")",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "songUI.js $(\"song-vocal-step\").change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:songUI:viewport-scroll:1",
       "source": "songUI.js",
       "anchor": "viewport",
@@ -2442,6 +2455,54 @@
       "desktopRoute": "studio.js window.premidi-native-pause",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "notes",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:vocalEditor:b-click:1",
+      "source": "vocalEditor.js",
+      "anchor": "b",
+      "kind": "listener",
+      "event": "click",
+      "desktopRoute": "vocalEditor.js b.click",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:vocalEditor:bendselect-change:1",
+      "source": "vocalEditor.js",
+      "anchor": "bendSelect",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "vocalEditor.js bendSelect.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:vocalEditor:input-change:1",
+      "source": "vocalEditor.js",
+      "anchor": "input",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "vocalEditor.js input.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:vocalEditor:select-change:1",
+      "source": "vocalEditor.js",
+      "anchor": "select",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "vocalEditor.js select.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
       "phoneStatus": "todo",
       "proof": "not-qualified"
     },
@@ -3622,6 +3683,18 @@
       "proof": "not-qualified"
     },
     {
+      "id": "html:song-vocal-step",
+      "source": "index.html",
+      "anchor": "song-vocal-step",
+      "kind": "input",
+      "event": "number",
+      "desktopRoute": "index.html#song-vocal-step",
+      "contract": "user control; canonical project/UI state",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "html:sound-close",
       "source": "index.html",
       "anchor": "sound-close",
@@ -3748,6 +3821,18 @@
       "kind": "input",
       "event": "number",
       "desktopRoute": "index.html#voice-start-bar",
+      "contract": "user control; canonical project/UI state",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "html:voice-track",
+      "source": "index.html",
+      "anchor": "voice-track",
+      "kind": "select",
+      "event": "activate",
+      "desktopRoute": "index.html#voice-track",
       "contract": "user control; canonical project/UI state",
       "phoneRoute": "song",
       "phoneStatus": "todo",
