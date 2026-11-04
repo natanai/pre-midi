@@ -259,6 +259,7 @@ test("captured cutoff movement is validated, versioned, and never silently disca
  track.freeform.version=1;
  assert.match(validateSong(song).join(" "),/requires freeform v2/);
  track.freeform.version=2;
+ song.version=CAPTURED_AUTOMATION_SONG_VERSION;
  const note=inst.notes[0],savedStep=note.cutoffAutomation.step;
  note.cutoffAutomation.step=-1;
  assert.match(validateSong(song).join(" "),/Invalid captured note cutoff movement/);
