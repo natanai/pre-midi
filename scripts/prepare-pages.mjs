@@ -41,6 +41,7 @@ export function versionPage(html,files,revision){
   .replace("</head>",map+"\n</head>")
   .replace(/href="\.\/style\.css(?:\?build=[a-f0-9]+)?"/i,'href="./style.css?build='+token+'"')
   .replace(/href="\.\/studioAlignment\.css(?:\?build=[a-f0-9]+)?"/i,'href="./studioAlignment.css?build='+token+'"')
+  .replace(/href="\.\/freeform\.css(?:\?build=[a-f0-9]+)?"/i,'href="./freeform.css?build='+token+'"')
   .replace(/src="\.\/studio\.js(?:\?build=[a-f0-9]+)?"/i,'src="./studio.js?build='+token+'"');
 }
 export async function preparePages(root,revision=process.env.GITHUB_SHA,output=new URL("dist/",root)){
@@ -48,7 +49,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  const phoneModules=await runtimeModules(root,["phone/main.js"]);
  if(!revision){
   const hash=createHash("sha256");
-  for(const file of [...modules,"style.css","studioAlignment.css","index.html","phone/index.html","phone/phone.css","phone/manifest.webmanifest","phone/sw.js"])hash.update(await readFile(new URL(file,root)));
+  for(const file of [...modules,"style.css","studioAlignment.css","freeform.css","index.html","phone/index.html","phone/phone.css","phone/manifest.webmanifest","phone/sw.js"])hash.update(await readFile(new URL(file,root)));
   revision=hash.digest("hex");
  }
  const html=versionPage(await readFile(new URL("index.html",root),"utf8"),modules,revision);
@@ -74,7 +75,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
   .replace("__FACTORY_SAMPLES__",JSON.stringify(SAMPLE_ASSETS.map(asset=>"samples/"+asset.id+"."+(asset.mime==="audio/ogg"?"ogg":"wav"))));
  if(worker.includes("__BUILD__")||worker.includes("__ASSETS__")||worker.includes("__FACTORY_SAMPLES__"))throw Error("Unversioned phone worker");
  await writeFile(new URL("sw.js",output),worker);
- for(const file of [...modules,"style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg"]){
+ for(const file of [...modules,"style.css","studioAlignment.css","freeform.css","THIRD_PARTY_NOTICES.md","favicon.svg"]){
   await mkdir(new URL("./",new URL(file,output)),{recursive:true});
   await copyFile(new URL(file,root),new URL(file,output));
  }
@@ -84,7 +85,7 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  for(const filename of required)
   await copyFile(new URL("samples/"+filename,root),new URL(filename,samples));
  const listed=await readdir(output);
- const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","THIRD_PARTY_NOTICES.md","favicon.svg","samples","phone","desktop","sw.js"]);
+ const allowed=new Set([...modules.map(file=>file.split("/")[0]),"index.html","style.css","studioAlignment.css","freeform.css","THIRD_PARTY_NOTICES.md","favicon.svg","samples","phone","desktop","sw.js"]);
  if(listed.some(name=>!allowed.has(name)))
   throw Error("Unexpected files in published artifact.");
  console.log("Staged",modules.length,"runtime modules and",required.size,"verified samples; no tests or development files.");

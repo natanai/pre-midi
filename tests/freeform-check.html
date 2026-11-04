@@ -1,0 +1,77 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Attached freeform interaction check</title>
+<iframe id="studio" title="Studio" style="width:100vw;height:100vh;border:0"></iframe>
+<script>
+(async()=>{
+ const frame=document.getElementById("studio"),issues=[];
+ const assert=(yes,label)=>{if(!yes)throw Error(label);};
+ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+ const wait=async(fn,label,max=8000)=>{const end=Date.now()+max;
+  while(Date.now()<end){if(fn())return;await pause(35);}
+  throw Error("Timed out: "+label);
+ };
+ const report=(status,details)=>fetch("/__song_result?status="+status+"&details="+encodeURIComponent(details)).catch(()=>{});
+ try{
+  frame.src="/index.html";
+  await new Promise((resolve,reject)=>{frame.onload=resolve;frame.onerror=()=>reject(Error("Studio did not load"));});
+  const win=frame.contentWindow,doc=frame.contentDocument,get=id=>doc.getElementById(id);
+  win.addEventListener("error",e=>issues.push(String(e.message||e.error)));
+  win.addEventListener("unhandledrejection",e=>issues.push(String(e.reason)));
+  await wait(()=>doc.querySelectorAll(".instrument-card").length>0,"Beat initialized");
+  get("bars").value="2";get("bars").dispatchEvent(new Event("change",{bubbles:true}));
+  const note=doc.querySelector('#piano .note[aria-label^="C4, step 1,"]');
+  assert(note,"A standard Beat note is editable");
+  note.click();
+  assert(doc.querySelectorAll("#piano .note.filled").length>0,"Beat note exists");
+  get("song-expand").click();
+  await wait(()=>doc.querySelectorAll(".song-beat-clip").length===1,"Song created");
+  assert(doc.querySelectorAll(".song-freeform-row").length===1,"One attached lane per Beat Track");
+  assert(!doc.querySelector(".song-freeform-row").classList.contains("expanded"),"Initially collapsed");
+  doc.querySelector(".song-freeform-toggle").click();
+  await wait(()=>!doc.querySelector(".song-freeform-editor").hidden,"Empty freeform editor opens");
+  assert(doc.querySelector("main").classList.contains("editing-freeform"),"Freeform owns lower editor space");
+  const add=[...doc.querySelectorAll(".freeform-editor-tools button")].find(b=>b.textContent.includes("instrument"));
+  assert(add,"Add freeform Instrument control exists");
+  add.click();
+  await wait(()=>doc.querySelector(".freeform-roll-content"),"Freeform piano roll available");
+  const row=[...doc.querySelectorAll(".freeform-note-row")].find(r=>(r.getAttribute("aria-label")||"").includes("pitch 60 "));
+  assert(row,"C4 has an editable Song row");
+  row.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));
+  await wait(()=>doc.querySelectorAll(".freeform-roll-note").length===1,"Direct freeform note created");
+  assert(doc.querySelectorAll(".song-freeform-preview-note").length===1,"Song lane shows direct note");
+  const original=doc.querySelector(".song-beat-clip");
+  original.click();
+  await wait(()=>!doc.querySelector(".song-unpack-action").hidden,"Accessible unpack action");
+  doc.querySelector(".song-unpack-action").click();
+  await wait(()=>doc.querySelectorAll(".song-beat-clip").length===0,"Beat Clip replaced by freeform");
+  assert(doc.querySelectorAll(".song-freeform-passage").length===1,"Converted passage remains attached");
+  assert(doc.querySelectorAll(".song-freeform-preview-note").length>=2,"Original and direct note are independent");
+  const picker=doc.querySelector(".freeform-editor-tools select");
+  assert(picker&&picker.options.length===2,"Both Instruments remain available in freeform");
+  picker.value=picker.options[1].value;
+  picker.dispatchEvent(new Event("change",{bubbles:true}));
+  await wait(()=>doc.querySelectorAll(".freeform-roll-note").length>0,"Unpacked source notes editable");
+  let project;
+  win.URL.createObjectURL=(original=>blob=>{project=blob;return original.call(win.URL,blob);})(win.URL.createObjectURL);
+  win.HTMLAnchorElement.prototype.click=function(){};
+  get("export").click();
+  assert(get("export-dialog").open,"Song export available");
+  get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+  await wait(()=>!!project,"Song export completed");
+  await wait(()=>!get("export-dialog").open,"Song export dialog has closed");
+  const saved=JSON.parse(await project.text());
+  assert(saved.kind==="song"&&saved.version===22,"Freeform exported as Song v22");
+  assert(saved.tracks[0].freeform.instruments.length===2,"Song retains both Instruments");
+  assert(saved.tracks[0].freeform.passages.length===1,"Song retains converted passage");
+  get("play").click();
+  await wait(()=>get("play").getAttribute("aria-label")==="stop song","Unpacked Song plays",9000);
+  get("play").click();
+  assert(!issues.length,"No runtime browser errors: "+issues.join("; "));
+  await report("PASS","Freeform empty editing, notes, unpack, versioned export and playback");
+ }catch(error){
+  const info={play:frame.contentDocument?.getElementById("play")?.getAttribute("aria-label"),status:frame.contentDocument?.getElementById("status")?.textContent,songHidden:frame.contentDocument?.getElementById("song-panel")?.hidden,clipCount:frame.contentDocument?.querySelectorAll(".song-beat-clip").length,freeformNotes:frame.contentDocument?.querySelectorAll(".freeform-roll-note").length};
+  await report("FAIL",String(error.stack||error)+" "+JSON.stringify(info)+" "+issues.join("; "));
+ }
+})();
+</script>

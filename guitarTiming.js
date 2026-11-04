@@ -5,7 +5,7 @@ export function strumOffset(instrument,note,notes){
  const ms=instrument.layout==="rack"?0:patch?.type==="sample"?patch.strumMs??0:0;
  if(!ms)return 0;
  const chord=notes.filter(entry=>entry.start===note.start)
-   .sort((a,b)=>Math.sign(ms)*(a.pitch-b.pitch) || String(a.id).localeCompare(String(b.id)));
+   .sort((a,b)=>Math.sign(ms)*(a.pitch-b.pitch) || String(a.strumKey??a.id).localeCompare(String(b.strumKey??b.id)));
  const index=chord.findIndex(entry=>entry.id===note.id);
  return Math.max(0,index)*Math.abs(ms)/1000;
 }

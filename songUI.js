@@ -1,11 +1,13 @@
 // Song arrangement UI. Beat editor remains the existing studio underneath.
 import {songDurationSteps,removeSongClip,removeEmptyVocalTrack,moveVocalClip} from "./songModel.js";
 import {id} from "./schema.js";
+import {unpackBeatClip} from "./freeformModel.js";
+import {installFreeformUI} from "./freeformUI.js";
 // All Song lanes and the bar ruler use the same scale; only the viewport
 // determines how much empty timeline is visible. There is no fixed song end.
 const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
 const integer=(value,fallback)=>Number.isFinite(value)?Math.max(0,Math.round(value)):fallback;
-export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{},onSelectionChange=()=>{}}){
+export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{},onSelectionChange=()=>{},onError=()=>{},onFreeformActiveChange=()=>{}}){
  const $=id=>root.querySelector("#"+id);
  const viewport=$("song-scroll"),tracks=$("song-tracks"),ruler=$("song-ruler"),footer=$("song-timeline-footer");
  let selectedClipId=null,dragging=false,ignoreClick=false,playPosition=-1,seekStep=0;
@@ -29,9 +31,23 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   }
  }
  function apply(action){
-  onChange(action);
-  render();
+  try{
+   const changed=onChange(action);
+   if(changed===false)return false;
+   render();return true;
+  }catch(error){
+   onError(error?.message||String(error));
+   render();return false;
+  }
  }
+ const freeformUI=installFreeformUI({
+  root,getSong,onChange:apply,onError,
+  onActiveChange:active=>{
+   if(active)selectedClipId=null;
+   onFreeformActiveChange(active);
+   onSelectionChange();
+  }
+ });
  const localBeat=id=>getSong()?.beats.find(beat=>beat.id===id);
  const selectedStart=()=>seekStep;
  function updateCursor(){
@@ -154,6 +170,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
  }
  function select(clipId){
   selectedClipId=clipId;
+  freeformUI.close();
   const found=selected();
   if(found?.clip.beatId)onSelectBeat(found.clip.beatId);
   render();onSelectionChange();
@@ -217,7 +234,14 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
     block.removeEventListener("pointercancel",cancel);
     if(dragging){
      ignoreClick=true;setTimeout(()=>{ignoreClick=false;},0);
-     const destination=resizing?null:document.elementFromPoint(e.clientX,e.clientY)?.closest(".song-track-row")?.dataset.trackId;
+     const under=document.elementFromPoint(e.clientX,e.clientY);
+     const target=!resizing?under?.closest(".song-freeform-row"):null;
+     if(target?.dataset.parentTrackId===track.id){
+      const unpacked=apply(()=>unpackBeatClip(getSong(),clip.id));
+      if(unpacked){selectedClipId=null;freeformUI.open(track.id);}
+      dragging=false;return;
+     }
+     const destination=resizing?null:under?.closest(".song-track-row")?.dataset.trackId;
      const dest=getSong().tracks.find(item=>item.id===destination&&item.kind==="beat");
      const moved=dest&&dest.id!==track.id;
      const changes=resizing?{lengthSteps:steps}:{startStep:steps};
@@ -245,7 +269,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
  function render(){
   const song=getSong();
   root.hidden=!song;
-  if(!song)return;
+  if(!song){freeformUI.close();return;}
   const view=$("song-title");if(document.activeElement!==view)view.value=song.title;
   const viewportBars=Math.ceil(Math.max(0,viewport.clientWidth-LABEL_PX)/BAR_PX);
   const songBars=Math.ceil(songDurationSteps(song)/BAR_STEPS);
@@ -320,12 +344,14 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
     lane.append(add);
    }
    row.append(head,lane);tracks.append(row);
+   if(track.kind==="beat")tracks.append(freeformUI.renderAttached(track,width));
   }
   tracks.style.width=totalWidth+"px";
   footer.style.width=totalWidth+"px";
   updateVisibleBars();
   const selection=selected(),settings=$("song-clip-settings");
   settings.hidden=!selection;
+  unpackAction.hidden=!selection||selection.track.kind!=="beat";
   if(selection){
    const {clip,track}=selection,isVoice=track.kind==="vocal";
    $("song-beat-start-field").hidden=false;
@@ -337,7 +363,20 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
    if(isVoice)$("song-vocal-level").value=String(clip.gain??1);
    else $("song-clip-length").value=String(Math.max(1,clip.lengthSteps/BAR_STEPS));
   }
+  freeformUI.render();
  }
+ const unpackAction=document.createElement("button");
+ unpackAction.type="button";unpackAction.className="song-unpack-action";
+ unpackAction.textContent="unpack to freeform";
+ unpackAction.title="Move this Beat occurrence into its attached editable freeform lane";
+ unpackAction.addEventListener("click",()=>{
+  const found=selected();if(!found||found.track.kind!=="beat")return;
+  const targetId=found.track.id;
+  if(apply(()=>unpackBeatClip(getSong(),found.clip.id))){
+   selectedClipId=null;freeformUI.open(targetId);
+  }
+ });
+ $("song-clip-settings").append(unpackAction);
  beatMenuToggle.addEventListener("click",toggleBeatMenu);
  $("song-new-beat").addEventListener("click",()=>{
   closeBeatMenu();onAddBeat();
@@ -409,13 +448,12 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const value=event.target.value.trim()||"Untitled song";
   apply(()=>{getSong().title=value;});
  });
- return {render,select,getSelectedBeatClip(){
-  const found=selected();return found?.track.kind==="beat"?found.clip:null;
- },getSelectedVocal(){
+ return {render,select,getSelectedVocal(){
   const found=selected();if(!found||found.track.kind!=="vocal")return null;
   return {...found,recording:getSong()?.recordings?.find(item=>item.id===found.clip.recordingId)};
  },getStartStep:selectedStart,setStartStep,setPosition(bar){
   playPosition=bar;
   updateCursor();
+  freeformUI.setPosition(bar);
  }};
 }

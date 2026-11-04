@@ -80,6 +80,24 @@
       "definition": "Horizontal Song lane containing Clips of one media type. Vocal Tracks visually precede every Beat Track."
     },
     {
+      "id": "freeform",
+      "name": "Freeform lane",
+      "code": "freeform",
+      "parents": [
+        "track"
+      ],
+      "definition": "Non-detachable child lane of a Beat Track, containing independent Song-position notes, reusable Chunks and multiple Instruments."
+    },
+    {
+      "id": "passage",
+      "name": "Freeform passage",
+      "code": "passage",
+      "parents": [
+        "freeform"
+      ],
+      "definition": "Moveable organizational range of freeform musical events, with boundaries that do not restrict note authoring."
+    },
+    {
       "id": "clip",
       "name": "Clip",
       "code": "clip",
@@ -102,7 +120,6 @@
     "composition": "Deprecated name for the Beat document. Do not introduce new uses.",
     "score": "Deprecated variable name for a Beat document. Existing identifiers must be migrated deliberately.",
     "songStep": "Legacy Beat-timeline step; use beatStep for Beat-local timing.",
-    "sourceOffsetSteps": "Optional Beat Clip phase offset in sixteenth-note steps; absent means begin at source Beat step zero. Independent of the Clip Song startStep.",
     "versioning": "Existing .premidi v5/v6/v7 inputs must remain readable through migrations; never silently reinterpret old serialized fields."
   },
   "invariants": [

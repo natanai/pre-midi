@@ -8,7 +8,7 @@ import { play, audition, auditionChord, auditionHeld, wav, primeSamples, nativeE
 import { installKeyboardPiano } from "./keyboardPiano.js";
 import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
-import { chunkIsPlaying, pianoScrubberX, songBeatEditorPosition } from "./pianoPlayhead.js";
+import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
@@ -1532,11 +1532,9 @@ async function startTransport({onStart=null,recording=false,startStep=null,count
     }
    },
    onProgress: (bar, step) => {
-    pianoProgress=playingSong?
-     songBeatEditorPosition(song,beat.id,songUI?.getSelectedBeatClip()?.id??null,bar*16+step):
-     {bar,step};
+    pianoProgress=playingSong?null:{bar,step};
     if(playingSong)songUI?.setPosition(bar+step/16);
-    paintPianoPlayhead();
+    else paintPianoPlayhead();
    },
    onStop: () => {
     playback = null;
@@ -2153,6 +2151,12 @@ songUI=installSongUI({
  root:$("song-panel"),getSong:()=>songExpanded?song:null,
  getSelectedBeatId:()=>selectedBeatId,
  onSelectBeat:selectBeat,onChange:modifySong,onSelectionChange:renderVocalWorkspace,
+ onError:error=>message(error,true),
+ onFreeformActiveChange:active=>{
+  const main=document.querySelector("main");
+  main?.classList.toggle("editing-freeform",active);
+  if(active)main?.classList.remove("editing-vocal");
+ },
  onSeek:step=>{
   if(playback?.seek)void playback.seek(step).catch(error=>message('Native seek: '+String(error),true));
   if(voiceDialog.open&&!vocalRequest&&!vocalTake)

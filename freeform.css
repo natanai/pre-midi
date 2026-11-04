@@ -1,0 +1,49 @@
+/* Beat-owned, non-detachable freeform lanes and their Song-time note editor. */
+.song-freeform-row{display:flex;min-height:26px;border-bottom:1px solid var(--faint);background:#080d0d;position:relative}
+.song-freeform-label{position:sticky;left:0;z-index:3;width:105px;min-width:105px;display:flex;align-items:center;padding:3px 5px 3px 14px;border-left:2px solid #567a71;border-right:1px solid var(--line);background:#09100f}
+.song-freeform-toggle{font-size:10px;color:#a1bdb3;white-space:nowrap;min-height:23px;text-align:left;padding:1px 3px}
+.song-freeform-toggle:hover,.song-freeform-toggle:focus-visible{color:var(--bright);text-decoration:underline}
+.song-freeform-lane{position:relative;min-height:26px;background-image:linear-gradient(90deg,transparent calc(100% - 1px),#25302d calc(100% - 1px));background-size:var(--song-bar-px,54px) 100%;cursor:crosshair}
+.song-freeform-row.expanded{min-height:40px}
+.song-freeform-row.expanded .song-freeform-lane{min-height:40px}
+.song-freeform-row.active{background:#0c1715}
+.song-freeform-row.active .song-freeform-label{border-left-color:#83cfad}
+.song-freeform-passage{position:absolute;inset-block:3px;border:1px solid #547e71;background:rgba(60,109,92,.12);cursor:ew-resize;min-width:9px;padding:0;touch-action:none}
+.song-freeform-preview-note{position:absolute;height:5px;min-width:2px;border-radius:1px;background:#83c6a9;pointer-events:none}
+.song-freeform-editor[hidden]{display:none!important}
+.song-freeform-editor{padding:11px 0 8px;background:#070909;border-top:1px solid #34574a;margin-top:10px}
+.freeform-editor-header{display:flex;gap:12px;justify-content:space-between;align-items:start;flex-wrap:wrap}
+.freeform-editor-title{font-size:12px;color:var(--bright);padding:8px 0;font-weight:600}
+.freeform-close{min-width:30px;min-height:30px;margin-left:auto}
+.freeform-editor-tools,.freeform-chunk-tools{display:flex;gap:7px;align-items:end;flex-wrap:wrap}
+.freeform-editor-tools{flex:1}
+.freeform-editor-tools>select{max-width:170px}
+.freeform-editor-tools>input[type=text]{max-width:140px}
+.freeform-field{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--muted)}
+.freeform-field input[type=number]{width:77px}
+.freeform-editor-tools button,.freeform-chunk-tools button{font-size:11px;min-height:29px}
+.freeform-chunk-tools{margin:9px 0 7px;justify-content:flex-start}
+.freeform-chunk-tools select{max-width:160px}
+.freeform-empty{font-size:11px;color:var(--muted)}
+.freeform-roll-scroll{max-height:360px;overflow:auto;border:1px solid var(--line);background:#060808;scrollbar-width:thin}
+.freeform-roll-grid{width:max-content;min-width:100%}
+.freeform-roll-ruler{display:flex;height:21px;position:sticky;top:0;z-index:5;background:#111}
+.freeform-key-space{width:53px;min-width:53px;padding:3px 7px;border-right:1px solid #444;font-size:10px;color:var(--muted)}
+.freeform-ruler-ticks{position:relative;font-size:10px;color:var(--muted)}
+.freeform-ruler-ticks span{position:absolute;top:3px}
+.freeform-roll-content{display:flex;align-items:start}
+.freeform-key-column{position:sticky;left:0;z-index:4;width:53px;min-width:53px;background:#101515}
+.freeform-key{height:20px;line-height:19px;overflow:hidden;text-overflow:ellipsis;padding:0 4px;border-right:1px solid #555;border-bottom:1px solid #333;font-size:10px;color:#cbd4d0}
+.freeform-key.sounding{background:#82c5a1;color:#14281e}
+.freeform-plot{position:relative;background:#050b09}
+.freeform-note-row{height:20px;position:relative;box-sizing:border-box;cursor:crosshair;border-bottom:1px solid #1b2420;background-image:linear-gradient(90deg,transparent calc(100% - 1px),#344039 calc(100% - 1px)),linear-gradient(90deg,transparent calc(100% - 1px),#16231b calc(100% - 1px));background-size:128px 100%,8px 100%}
+.freeform-note-row:focus-visible{outline:1px dotted #8dd0af;outline-offset:-2px}
+.freeform-roll-note{position:absolute;top:3px;height:13px;border-radius:2px;border:1px solid #2a7760;background:#7fc59f;padding:0;z-index:2;cursor:grab;touch-action:none}
+.freeform-roll-note.selected{background:#c7f0da;outline:1px solid white}
+.freeform-playhead{position:absolute;top:0;bottom:0;left:0;border-left:2px solid #e5846e;z-index:3;pointer-events:none}
+.freeform-playhead[hidden]{display:none!important}
+.freeform-note-details{display:flex;flex-wrap:wrap;align-items:end;gap:7px;margin-top:8px;padding-top:8px;border-top:1px solid var(--faint)}
+.freeform-detail-title{font-size:10px;color:var(--muted);align-self:center;margin-right:7px}
+.freeform-delete{min-height:30px}
+main.editing-freeform > .work{display:none}
+main.editing-freeform .beat-identity > label{display:none}

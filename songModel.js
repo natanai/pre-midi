@@ -4,6 +4,7 @@
 import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
 import {validateVocalEffects,vocalEffects} from "./vocalEffects.js";
+import {FREEFORM_SONG_VERSION,freeformEndStep,eventsAtFreeformStep,validateFreeform} from "./freeformModel.js";
 export const SONG_VERSION=8;
 export const MODULATION_SONG_VERSION=10;
 export const AUTOMATION_SONG_VERSION=12;
@@ -13,7 +14,9 @@ export const EXTENDED_SONG_VERSION=18;
 export const CLIP_PHASE_SONG_VERSION=20;
 export function upgradeSongFeatures(song){
  song.beats.forEach(upgradeBeatFeatures);
- if(song.tracks?.some(track=>track.kind==="beat"&&track.clips.some(clip=>clip.sourceOffsetSteps>0))||song.version===CLIP_PHASE_SONG_VERSION)
+ if(song.tracks?.some(track=>track.kind==="beat"&&track.freeform!==undefined)||song.version===FREEFORM_SONG_VERSION)
+  song.version=FREEFORM_SONG_VERSION;
+ else if(song.tracks?.some(track=>track.kind==="beat"&&track.clips.some(clip=>clip.sourceOffsetSteps>0))||song.version===CLIP_PHASE_SONG_VERSION)
   song.version=CLIP_PHASE_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===EXTENDED_BEAT_VERSION)||song.version===EXTENDED_SONG_VERSION)song.version=EXTENDED_SONG_VERSION;
  else if(song.tracks?.some(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.effects!==undefined||clip.trimStartSeconds!==undefined)))song.version=VOCAL_FX_SONG_VERSION;
@@ -191,7 +194,10 @@ export function validateRecording(entry){
  return null;
 }
 export function songDurationSteps(song){
- return Math.max(0,...song.tracks.flatMap(track=>track.clips.map(clip=>clip.startStep+clip.lengthSteps)));
+ return Math.max(0,...song.tracks.flatMap(track=>[
+  ...track.clips.map(clip=>clip.startStep+clip.lengthSteps),
+  ...(track.kind==="beat"?[freeformEndStep(track.freeform)]:[])
+ ]));
 }
 // Project an occurrence's absolute Song step onto its source Beat phase.
 // Existing Clips without a phase field retain their original behavior.
@@ -216,12 +222,19 @@ export function eventsAtSongStep(song,step){
    for(const event of eventsAtStep(beat,localStep))
     events.push({...event,beat,track,clip,songStep:step,beatStep:localStep});
   }
+  if(track.freeform){
+   const source={id:track.id+"-freeform",bpm:song.bpm,
+    bars:Math.max(1,Math.ceil(songDurationSteps(song)/STEPS_PER_BAR)),
+    samples:track.freeform.samples};
+   for(const event of eventsAtFreeformStep(track.freeform,step))
+    events.push({...event,beat:source,track,songStep:step,beatStep:step});
+  }
  }
  return events;
 }
 export function validateSong(song){
  const errors=[];
- if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION].includes(song.version))
+ if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,FREEFORM_SONG_VERSION].includes(song.version))
   return ["Unsupported Song format."];
  if(typeof song.id!=="string"||!song.id.trim()||typeof song.title!=="string"||!song.title.trim())
   errors.push("Song identity or title is missing.");
@@ -256,6 +269,11 @@ export function validateSong(song){
     !track.name.trim()||!Array.isArray(track.clips)){errors.push("Invalid Song Track.");continue;}
   if(track.kind==="beat")seenBeat=true;
   if(track.kind==="vocal"&&seenBeat)errors.push("Vocal Tracks must precede Beat Tracks.");
+  if(track.kind==="vocal"&&track.freeform!==undefined)errors.push("Vocal Tracks cannot own freeform.");
+  if(track.kind==="beat"&&track.freeform!==undefined){
+   if(song.version<FREEFORM_SONG_VERSION)errors.push("Freeform requires Song v22.");
+   errors.push(...validateFreeform(track.freeform).map(error=>track.name+": "+error));
+  }
   for(const clip of track.clips){
    if(!isObject(clip)||typeof clip.id!=="string"||!clip.id||clipIds.has(clip.id)||
     !nonnegative(clip.startStep)||!positive(clip.lengthSteps)||
