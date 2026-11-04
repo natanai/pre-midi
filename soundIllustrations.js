@@ -1,6 +1,6 @@
 // Reusable illustrations for the existing sound controls. These are teaching
 // diagrams, not an alternate audio engine or a second source of patch state.
-import {movement,pitchCents} from "./expression.js";
+import {movement,pitchCents,bendSemitones} from "./expression.js";
 import {harmonicWave} from "./harmonics.js";
 import {DEFAULT_SAMPLE_FILTER,driveCurve} from "./audioEffects.js";
 import {routeValueAt,MOD_TARGETS} from "./src/dsp/modulation.js";
@@ -219,6 +219,27 @@ export const diagram=(patch,type)=>{
     {from:100,to:100-72*mix*.8,step:.01})
   ],"feedback");
   tag(18,13,"mix ↑");tag(287,13,"time →");tag(30,112,"dry");
+ }else if(type==="note-bend"){
+  const bend=p.bend||{shape:"straight",amount:2,rate:4};
+  const duration=Math.max(.01,p.durationSeconds??.5);
+  const level=clamp(p.velocity??1);
+  line("M18 62 H344",true);
+  line(pathRange(160,t=>{
+   const value=bendSemitones(bend,t,t*duration);
+   return [18+t*324,62-clamp(value*3,-42,42)];
+  }),false,["bend.shape","bend.amount","bend.rate"]);
+  line("M18 106 H"+(18+326*level).toFixed(2),true,["velocity"]);
+  tag(18,14,"pitch");tag(300,14,"time");
+  tag(18,99,"level");
+  if(bend.shape!=="straight"){
+   const x=bend.shape==="wave"?40+clamp((bend.rate-.1)/11.9)*272:306;
+   const y=62-3*clamp(bend.amount,0,12);
+   const axes=bend.shape==="wave"?[
+    axis(["bend","rate"],.1,12,"linearX",{from:40,to:312,step:.1}),
+    axis(["bend","amount"],0,12,"linearY",{from:62,to:26,step:.25})
+   ]:[axis(["bend","amount"],0,12,"linearY",{from:62,to:26,step:.25})];
+   handle(x,y,axes,"note bend");
+  }
  }else if(type==="sample-map"){
   const zones=p.zones??[];
   const layered=zones.some(zone=>zone.velocity!==undefined);
