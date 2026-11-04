@@ -219,6 +219,26 @@ export const diagram=(patch,type)=>{
     {from:100,to:100-72*mix*.8,step:.01})
   ],"feedback");
   tag(18,13,"mix ↑");tag(287,13,"time →");tag(30,112,"dry");
+ }else if(type==="sample-map"){
+  const zones=p.zones??[];
+  const layered=zones.some(zone=>zone.velocity!==undefined);
+  line("M18 98 H342 M18 20 V98",true);
+  for(const midi of [36,48,60,72,84,96]){
+   const x=18+(midi-36)/60*324;
+   line("M"+x.toFixed(2)+" 20 V98",true);
+   tag(x-6,111,String(midi));
+  }
+  zones.forEach((zone,i)=>{
+   const x=18+clamp((zone.root-36)/60)*324;
+   const velocity=typeof zone.velocity==="number"?zone.velocity:.5;
+   const y=layered?95-velocity*66:61;
+   const d="M"+(x-4).toFixed(2)+" "+y.toFixed(2)+" a4 4 0 1 0 8 0 a4 4 0 1 0 -8 0";
+   line(d,false,["zones."+i+".root"]);
+   handle(x,y,[axis(["zones",i,"root"],36,96,"linearX",
+    {from:18,to:342,step:1})],"sample "+(i+1)+" recorded pitch");
+  });
+  tag(18,13,"pitch");
+  if(layered)tag(271,13,"velocity");
  }else if(type==="modulation"){
   const routes=p.modulation?.routes??[];
   tag(17,13,"source");tag(291,13,"target");
@@ -349,6 +369,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  }
  function focusFeature(keys){
   details.open=true;
+  if(kind==="sample-map")details.ensureSampleMap?.();
   const field=targetFields(keys)[0]??details.querySelector("[data-sound-path]");
   if(!field)return;
   const nested=field.closest("details.modulation-routing");
