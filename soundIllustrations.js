@@ -281,7 +281,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  const summary=details.querySelector("summary");
  if(summary)summary.after(area);else details.prepend(area);
  wrapper.append(details);
- let active=null,latestPatch=patch,visibleHandles=[];
+ let active=null,latestPatch=patch,visibleHandles=[],activeLink=null;
  const setValue=(next,path,value)=>{
   const ownerPath=path.slice(0,-1);let owner=next;
   for(const key of ownerPath)owner=owner[key]??={};
@@ -293,8 +293,17 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   visibleHandles=handles;
   graphic.replaceChildren();handlesRoot.replaceChildren();
   graphic.style.setProperty("--visual-color",color);
-  for(const path of paths)graphic.append(svgNode("path",{
-   d:path.d,class:path.secondary?"visual-graph-secondary":"visual-graph-line",fill:"none"}));
+  for(const path of paths){
+   const visible=svgNode("path",{d:path.d,
+    class:path.secondary?"visual-graph-secondary":"visual-graph-line",fill:"none"});
+   if(path.links?.length){
+    visible.dataset.soundLinks=path.links.join("|");
+    const hit=svgNode("path",{d:path.d,class:"visual-graph-hit",fill:"none",
+     tabindex:"0",role:"button","aria-label":"edit "+path.links[0].split(".").at(-1)});
+    hit.dataset.soundLinks=path.links.join("|");
+    graphic.append(visible,hit);
+   }else graphic.append(visible);
+  }
   for(const {x,y,value} of labels)graphic.append(svgNode("text",{x,y,
    class:"visual-graph-label"},value));
   handles.forEach((point,i)=>{
@@ -313,7 +322,68 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    }
    handlesRoot.append(button);
   });
+  highlight(activeLink);
  }
+ function targetFields(keys){
+  const fields=[...details.querySelectorAll("[data-sound-path]")];
+  return fields.filter(field=>keys.some(key=>{
+   const path=field.dataset.soundPath;
+   return path===key||path.startsWith(key+".")||key.startsWith(path+".");
+  }));
+ }
+ function highlight(keys){
+  activeLink=keys?.length?keys:null;
+  for(const field of details.querySelectorAll("[data-sound-path]"))
+   field.classList.toggle("sound-link-active",!!activeLink&&targetFields(activeLink).includes(field));
+  for(const item of graphic.querySelectorAll("[data-sound-links]")){
+   const connected=item.dataset.soundLinks.split("|");
+   item.classList.toggle("visual-linked",!!activeLink&&connected.some(key=>
+    activeLink.some(selected=>key===selected||key.startsWith(selected+".")||selected.startsWith(key+"."))));
+  }
+ }
+ function focusFeature(keys){
+  details.open=true;
+  const field=targetFields(keys)[0]??details.querySelector("[data-sound-path]");
+  if(!field)return;
+  const nested=field.closest("details.modulation-routing");
+  if(nested)nested.open=true;
+  highlight([field.dataset.soundPath]);
+  const focus=field.matches("button,select,input,[tabindex]")?field:
+   field.querySelector('[role="slider"],select,input,button,[tabindex]');
+  if(focus){focus.focus();focus.scrollIntoView?.({block:"nearest"});}
+ }
+ graphic.addEventListener("click",event=>{
+  const hit=event.target.closest?.(".visual-graph-hit");
+  const keys=hit?.dataset.soundLinks?.split("|")??[];
+  focusFeature(keys);
+ });
+ graphic.addEventListener("keydown",event=>{
+  if(!["Enter"," "].includes(event.key))return;
+  const hit=event.target.closest?.(".visual-graph-hit");
+  if(!hit)return;
+  event.preventDefault();focusFeature(hit.dataset.soundLinks.split("|"));
+ });
+ graphic.addEventListener("pointerover",event=>{
+  const hit=event.target.closest?.(".visual-graph-hit");
+  if(hit)highlight(hit.dataset.soundLinks.split("|"));
+ });
+ graphic.addEventListener("pointerout",event=>{
+  if(!event.relatedTarget?.closest?.(".visual-graph-hit"))highlight(null);
+ });
+ details.addEventListener("pointerover",event=>{
+  const control=event.target.closest?.("[data-sound-path]");
+  if(control&&details.contains(control))highlight([control.dataset.soundPath]);
+ });
+ details.addEventListener("pointerout",event=>{
+  if(!event.relatedTarget?.closest?.("[data-sound-path]"))highlight(null);
+ });
+ details.addEventListener("focusin",event=>{
+  const control=event.target.closest?.("[data-sound-path]");
+  if(control)highlight([control.dataset.soundPath]);
+ });
+ details.addEventListener("focusout",event=>{
+  if(!details.contains(event.relatedTarget))highlight(null);
+ });
  const coord=event=>{
   const rect=graphic.getBoundingClientRect();
   return {x:(event.clientX-rect.left)/rect.width*360,
