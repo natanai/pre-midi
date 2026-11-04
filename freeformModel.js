@@ -363,8 +363,6 @@ export function createBeatFromFreeformSelection(song,trackId,startStep,endStep,{
    if(at>=endStep)return;
    if(end>endStep)throw Error("A note sustains beyond the selection. Extend its end boundary.");
    const relative=at-startStep;
-   if(note.cutoffAutomation!==undefined)
-    throw Error("This selection contains captured cutoff movement. Creating a reusable Beat with that movement is not yet supported; keep the freeform passage.");
    events.push({at:relative,note});
   };
   for(const note of source.notes)collect(note,note.start);
@@ -493,7 +491,7 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
     strumGroup:event.instrument.id+":"+event.chunk.id+":"+event.sourceBar+":"+step,
     strumKey:source.id};
    if(note.soundId!==undefined)note.soundId=soundMap.get(note.soundId);
-   if(event.instrument.automation!==undefined){
+   if(event.instrument.automation!==undefined&&note.cutoffAutomation===undefined){
     // Match the original Beat/Clip automation limit, including partial Clips.
     // The movement follows this note when its passage moves in the Song.
     note.cutoffAutomation={version:1,block:clone(event.instrument.automation),
@@ -503,7 +501,9 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
   }
  }
  layer.passages.push(passage);
- if(beat.instruments.some(inst=>inst.automation!==undefined))layer.version=2;
+ if(beat.instruments.some(inst=>inst.automation!==undefined||
+   inst.chunks.some(chunk=>chunk.notes.some(note=>note.cutoffAutomation!==undefined))))
+  layer.version=2;
  const errors=validateFreeform(layer);
  if(errors.length)throw Error("Could not unpack: "+errors[0]);
  const keep=[];

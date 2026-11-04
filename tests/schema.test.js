@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { create, makeInstrument, makeChunk, id, validate, parse, clone, resizeBeatBars, EXTENDED_BEAT_VERSION, SUSTAIN_BEAT_VERSION, upgradeBeatFeatures } from "../schema.js";
+import { create, makeInstrument, makeChunk, id, validate, parse, clone, resizeBeatBars, EXTENDED_BEAT_VERSION, SUSTAIN_BEAT_VERSION, CAPTURED_AUTOMATION_BEAT_VERSION, upgradeBeatFeatures } from "../schema.js";
 import { stepEvents } from "../audio.js";
 import { PRESETS, getPreset, makePatch, validatePatch } from "../synth.js";
 
@@ -102,4 +102,24 @@ test("a sustained Chunk note requires v25 and round-trips without retriggering",
  assert.equal(stepEvents(beat,16).length,0);
  const invalid=clone(beat);invalid.instruments[0].chunks[0].notes[0].duration=1025;
  assert.match(validate(invalid).join(" "),/Invalid chunk note/);
+});
+
+test("captured cutoff movement uses v27 and rejects invalid curves and unsupported layouts",()=>{
+ const beat=create(),chunk=beat.instruments[0].chunks[0];
+ chunk.notes=[{id:id(),pitch:60,start:12,duration:25,velocity:.8,
+  cutoffAutomation:{version:1,step:4,limitStep:128,block:{version:1,
+   target:"filter.cutoff",unit:"hz",interpolation:"exponential",points:[
+    {id:"lo",step:0,value:450},{id:"hi",step:128,value:5200}
+   ]}}}];
+ assert.match(validate(beat).join(" "),/Beat v27/);
+ upgradeBeatFeatures(beat);
+ assert.equal(beat.version,CAPTURED_AUTOMATION_BEAT_VERSION);
+ assert.deepEqual(validate(beat),[]);
+ assert.deepEqual(parse(JSON.stringify(beat)),beat);
+ const broken=clone(beat);broken.instruments[0].chunks[0].notes[0].cutoffAutomation.step=-1;
+ assert.match(validate(broken).join(" "),/Invalid captured note cutoff movement/);
+ const wrongLayout=clone(beat);wrongLayout.instruments[0].sounds[0].patch.type="sample";
+ assert.match(validate(wrongLayout).join(" "),/pitched synthesizer/);
+ const downgraded=clone(beat);downgraded.version=SUSTAIN_BEAT_VERSION;
+ assert.match(validate(downgraded).join(" "),/Beat v27/);
 });
