@@ -1,4 +1,5 @@
 import {nativeRequest} from './src/hosts/native/session.js';
+import {readRecordingAlignment,saveRecordingAlignment} from './recordingAlignment.js';
 export function installAudioSettings(list,{element,prompt,menu}){
  const label=element('label','audio '),engine=element('select');engine.id='audio-backend';engine.setAttribute('aria-label','audio engine');
  for(const [value,text]of [['native','native C++'],['web','web audio']]){const option=element('option',text);option.value=value;engine.append(option);}
@@ -10,8 +11,12 @@ export function installAudioSettings(list,{element,prompt,menu}){
  const advanced=element('details'),summary=element('summary','audio performance');advanced.append(summary);
  const rateLabel=element('label','sample rate '),rate=element('select');rate.setAttribute('aria-label','native sample rate');
  const bufferLabel=element('label','buffer '),buffer=element('select');buffer.setAttribute('aria-label','native buffer size');
- const offsetLabel=element('label','recording offset (ms) '),offset=element('input');offset.type='number';offset.min='0';offset.max='500';offset.step='.1';offset.value=localStorage.getItem('premidi-recording-offset-ms')||'0';offset.setAttribute('aria-label','recording offset in milliseconds');offsetLabel.title='moves microphone audio earlier by your measured round-trip delay';offsetLabel.append(offset);
- offset.onchange=()=>{const value=Number(offset.value);if(!Number.isFinite(value)||value<0||value>500){offset.value=localStorage.getItem('premidi-recording-offset-ms')||'0';return;}localStorage.setItem('premidi-recording-offset-ms',String(value));};
+ const offsetLabel=element('label','recording alignment (ms) '),offset=element('input');offset.type='number';offset.min='0';offset.max='500';offset.step='.1';offset.value=String(readRecordingAlignment());offset.setAttribute('aria-label','recording offset in milliseconds');offsetLabel.title='move new microphone recordings earlier by your measured delay; old recordings stay unchanged';offsetLabel.append(offset);
+ offset.onchange=()=>{
+  try{offset.value=String(saveRecordingAlignment(offset.value));window.dispatchEvent(new Event('premidi-recording-alignment-change'));}
+  catch{offset.value=String(readRecordingAlignment());}
+ };
+ window.addEventListener('premidi-recording-alignment-change',()=>{offset.value=String(readRecordingAlignment());});
  for(const [value,text]of [[0,'automatic'],[44100,'44.1 khz'],[48000,'48 khz'],[96000,'96 khz']]){const option=element('option',text);option.value=value;rate.append(option);}
  for(const value of [0,128,256,512,1024]){const option=element('option',value?value+' frames':'automatic');option.value=value;buffer.append(option);}
  let saved;try{saved=JSON.parse(localStorage.getItem('premidi-native-output')||'null');}catch{}
