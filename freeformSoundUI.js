@@ -35,7 +35,7 @@ const initialSample=(assetId,root,layout)=>({
  gain:.9,attack:.005,release:.17,pan:0,strumMs:0,preserveDynamics:false,
  movement:{...movementDefaults},bend:{shape:"straight",amount:2,rate:4}
 });
-export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,onError}){
+export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,onError,onBrowseSound=()=>{}}){
  const host=el("div","freeform-sound-host");
  const scope=el("div","freeform-sound-scope");
  const modules=el("div","freeform-sound-modules synth-editor");
@@ -143,7 +143,12 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   }
   const listen=button("▶",preview,"freeform-sound-play");
   listen.title="Hear this Sound using the active desktop audio host";
-  tools.append(listen,button("use audio",()=>input.click(),"freeform-sound-load"));
+  tools.append(listen,
+   button("browse sounds",()=>onBrowseSound({
+    mode:ctx.inst.layout==="rack"?"replace-row":"replace",
+    instrumentId:ctx.inst.id,soundId:ctx.sound.id
+   }),"freeform-sound-browse"),
+   button("use audio",()=>input.click(),"freeform-sound-load"));
   const dials=el("div","freeform-sound-levels");
   dials.append(createDial({label:"volume",min:0,max:1,step:.01,display:"percent"},
    ctx.inst.volume,value=>mutateSelected(({inst})=>{inst.volume=value;},ctx.sound.id),
@@ -195,5 +200,10 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   }else renderPatchEditor(modules,ctx.sound.patch,patchChange,patchPreview,ctx.sound.id);
   return host;
  }
- return {render,getSelectedSound:()=>current()?.sound};
+ return {render,getSelectedSound:()=>current()?.sound,
+  selectSound(instrumentId,soundId){
+   selected.set(instrumentId,soundId);
+   render();
+  }
+ };
 }
