@@ -90,9 +90,10 @@
   // check the physical native playback/export path, plus reopen with one file.
   const {linkedVocalSample}=await load('vocalBeatReuse.js');
   const entry=reopenedTake.tracks.find(track=>track.kind==='vocal').clips[0];
+  entry.trimStartSeconds=.04;
   const shared=linkedVocalSample(reopenedTake.recordings[0],entry,getAsset(vocalAsset.id));
-  assert(shared?.asset.id===vocalAsset.id&&shared.zone.durationSeconds>0,
-   'native WAV vocal converts to a source-time sample reference without new bytes');
+  assert(shared?.asset.id===vocalAsset.id&&shared.zone.startSeconds===.04&&shared.zone.durationSeconds>0,
+   'native WAV vocal reuses a trimmed source-time region without new bytes');
   const linkedBeat=reopenedTake.beats[0];
   linkedBeat.samples.push(shared.asset);
   linkedBeat.instruments[0].sounds[0].patch={
