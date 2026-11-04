@@ -128,7 +128,8 @@
   doc.querySelector(".song-freeform-toggle").click();
   await wait(()=>!doc.querySelector(".song-freeform-editor").hidden,
    "Freeform opens again for sample editing");
-  doc.querySelector(".freeform-sound-summary").click();
+  const soundToggle=doc.querySelector(".freeform-sound-summary");
+  if(soundToggle.getAttribute("aria-expanded")!=="true")soundToggle.click();
   await wait(()=>!!doc.querySelector(".freeform-sound-host input[type=file]"),
    "Freeform sampler import is available");
   const frames=2205,bytes=new Uint8Array(44+frames*2),view=new DataView(bytes.buffer);
