@@ -109,7 +109,8 @@ export function soundingFreeformPitches(layer,instrumentId,step){
   if(!chunk)continue;
   for(let n=0;n<placement.repeats;n++){
    const relative=step-placement.startStep-n*placement.every;
-   if(relative<0||relative>=placement.length+16)continue;
+   const reach=chunk.notes.reduce((max,note)=>Math.max(max,note.start+note.duration),16);
+    if(relative<0||relative>=placement.length+reach)continue;
    for(const note of chunk.notes)
     if(note.start<placement.length&&note.start<=relative&&relative<note.start+note.duration)
      result.add(note.pitch);
@@ -148,9 +149,10 @@ export function previewFreeformPassageLayering(layer,passageId,nextStartStep,
    const chunk=instrument.chunks.find(item=>item.id===placement.chunkId);
    if(!chunk)continue;
    const anchor=placement.startStep+(owned?shift:0);
-   // Each Chunk note is at most one bar long. Skip repeat instances whose
-   // potential note intervals cannot intersect the prospective move window.
-   const first=Math.max(0,Math.ceil((windowStart-anchor-16)/placement.every));
+   // Sustains may continue many bars beyond their Chunk onsets. Never drop an
+   // overlapping repetition merely because its note-on preceded the window.
+   const reach=chunk.notes.reduce((max,note)=>Math.max(max,note.start+note.duration),16);
+   const first=Math.max(0,Math.ceil((windowStart-anchor-reach)/placement.every));
    const last=Math.min(placement.repeats-1,Math.floor((windowEnd-anchor)/placement.every));
    for(let n=first;n<=last;n++){
     const start=anchor+n*placement.every;
@@ -322,8 +324,8 @@ export function validateFreeform(layer){
  return errors.slice(0,20);
 }
 // Extract a reusable Beat without moving or silencing the source freeform music.
-// The Beat format is intentionally narrower than the freeform note model. Refuse
-// unrepresentable selections rather than retriggering/splitting sustained notes.
+// Preserve the original note-on and duration. Beat v25 explicitly supports
+// sustained notes crossing a Chunk bar; never re-trigger them at each bar.
 export function createBeatFromFreeformSelection(song,trackId,startStep,endStep,{title="Freeform selection"}={}){
  const track=song?.tracks?.find(item=>item.id===trackId&&item.kind==="beat");
  const layer=track?.freeform;
@@ -347,9 +349,7 @@ export function createBeatFromFreeformSelection(song,trackId,startStep,endStep,{
    }
    if(at>=endStep)return;
    if(end>endStep)throw Error("A note sustains beyond the selection. Extend its end boundary.");
-   const relative=at-startStep,local=relative%STEPS_PER_BAR;
-   if(note.duration>STEPS_PER_BAR-local)
-    throw Error("A note crosses a Beat bar boundary. Move or shorten it before creating a Beat.");
+   const relative=at-startStep;
    if(note.cutoffAutomation!==undefined)
     throw Error("This selection contains captured cutoff movement. Creating a reusable Beat with that movement is not yet supported; keep the freeform passage.");
    events.push({at:relative,note});
@@ -441,8 +441,11 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
  // boundary before separating the two instruction scopes.
  if(from>clip.startStep||to<end){
   const cycle=beat.bars*STEPS_PER_BAR;
+  let longest=1;
+  for(const inst of beat.instruments)for(const chunk of inst.chunks)
+   for(const note of chunk.notes)longest=Math.max(longest,note.duration);
   const crosses=cut=>{
-   for(let step=Math.max(clip.startStep,cut-16);step<cut;step++){
+   for(let step=Math.max(clip.startStep,cut-longest+1);step<cut;step++){
     const local=(step-clip.startStep+(clip.sourceOffsetSteps??0))%cycle;
     if(eventsAtStep(beat,local).some(event=>step+event.note.duration>cut))return true;
    }
