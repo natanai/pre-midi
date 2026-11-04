@@ -24,7 +24,7 @@ export const secondsPerStep = doc => 60/doc.bpm/4;
 // Song-owned freeform instruments use existing sample asset decoding.
 const musicSampleContexts=doc=>doc.kind==="song"?
  [...doc.beats,...doc.tracks.filter(track=>track.kind==="beat"&&track.freeform)
-  .map(track=>({samples:track.freeform.samples}))]:[doc];
+  .map(track=>({samples:track.freeform.samples,instruments:track.freeform.instruments}))]:[doc];
 export const frequency = noteFrequency;
 const noiseBuffers=new WeakMap();
 const sampleCaches=new WeakMap();

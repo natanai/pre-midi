@@ -2151,6 +2151,12 @@ songUI=installSongUI({
  root:$("song-panel"),getSong:()=>songExpanded?song:null,
  getSelectedBeatId:()=>selectedBeatId,
  onSelectBeat:selectBeat,onChange:modifySong,onSelectionChange:renderVocalWorkspace,
+ onError:error=>message(error,true),
+ onFreeformActiveChange:active=>{
+  const main=document.querySelector("main");
+  main?.classList.toggle("editing-freeform",active);
+  if(active)main?.classList.remove("editing-vocal");
+ },
  onSeek:step=>{
   if(playback?.seek)void playback.seek(step).catch(error=>message('Native seek: '+String(error),true));
   if(voiceDialog.open&&!vocalRequest&&!vocalTake)
