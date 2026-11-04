@@ -185,6 +185,21 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
  if(!whole(from)||!positive(to)||from<clip.startStep||to>end||from>=to||
   to>FREEFORM_LIMIT_STEPS)
   throw Error("Unpack range must be inside the Beat Clip.");
+ // A note whose onset belongs to one side of a split must not become
+ // implicitly dependent on a neighboring passage. Require an audible note
+ // boundary before separating the two instruction scopes.
+ if(from>clip.startStep||to<end){
+  const cycle=beat.bars*STEPS_PER_BAR;
+  const crosses=cut=>{
+   for(let step=Math.max(clip.startStep,cut-16);step<cut;step++){
+    const local=(step-clip.startStep+(clip.sourceOffsetSteps??0))%cycle;
+    if(eventsAtStep(beat,local).some(event=>step+event.note.duration>cut))return true;
+   }
+   return false;
+  };
+  if((from>clip.startStep&&crosses(from))||(to<end&&crosses(to)))
+   throw Error("A sustained note crosses the selection boundary. Move the selection edge past the note before unpacking.");
+ }
  const layer=clone(track.freeform??createFreeform()),passage={
   id:id(),startStep:from,lengthSteps:to-from,sourceBeatId:beat.id
  };

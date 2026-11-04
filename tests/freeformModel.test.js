@@ -61,3 +61,15 @@ test("unsupported automation never mutates the source Song",()=>{
  assert.throws(()=>unpackBeatClip(song,song.tracks[0].clips[0].id),/automation/);
  assert.deepEqual(song,before);
 });
+
+test("partial unpack rejects cuts through sustained notes without mutating source",()=>{
+ const beat=create();
+ beat.instruments[0].chunks[0].notes=[{
+  id:"sustain",pitch:65,start:2,duration:12,velocity:.8
+ }];
+ const song=createSong(beat),clip=song.tracks[0].clips[0],before=clone(song);
+ assert.throws(()=>unpackBeatClip(song,clip.id,{fromStep:6,toStep:16}),/sustained note crosses/);
+ assert.deepEqual(song,before);
+ assert.throws(()=>unpackBeatClip(song,clip.id,{fromStep:0,toStep:6}),/sustained note crosses/);
+ assert.deepEqual(song,before);
+});
