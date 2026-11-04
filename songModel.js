@@ -3,7 +3,7 @@
 // pre-programmed reader compatibility remains separately qualified.
 import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
-import {validateVocalEffects} from "./vocalEffects.js";
+import {validateVocalEffects,vocalEffects} from "./vocalEffects.js";
 export const SONG_VERSION=8;
 export const MODULATION_SONG_VERSION=10;
 export const AUTOMATION_SONG_VERSION=12;
@@ -128,7 +128,7 @@ export function trimVocalClip(song,clipId,seconds){
  if(!Number.isFinite(seconds)||seconds<0||seconds>=remaining-.01)
   throw Error("Trim must leave at least 0.01 seconds of audio.");
  clip.trimStartSeconds=Math.round(seconds*10000)/10000;
- clip.lengthSteps=Math.max(1,Math.ceil((remaining-clip.trimStartSeconds)*song.bpm*4/60));
+ clip.lengthSteps=Math.max(1,Math.ceil((remaining-clip.trimStartSeconds)/Math.pow(2,vocalEffects(clip).transpose/12)*song.bpm*4/60));
  return clip;
 }
 export function moveVocalClip(song,clipId,targetTrackId){
