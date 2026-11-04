@@ -176,3 +176,20 @@ test("delay feedback stays a full-height editing axis when the effect is dry",()
   key(a.path)==="effects.delayFeedback")).y+40);
  assert.ok(strong.paths.some(path=>path.links.includes("effects.delayFeedback")));
 });
+
+test("vocal illustrations expose every common clip knob without sample-only controls",()=>{
+ const clip={...sample(),type:"vocal",audioFilterBypassed:true};
+ delete clip.strumMs;delete clip.followPitch;delete clip.oneShot;delete clip.preserveDynamics;
+ assert.equal(diagramPageCount(clip,"sample"),2);
+ requirePaths(axes(clip,"sample"),["gain","transpose","pan","attack","release"],
+  "vocal audio");
+ assert.ok(pairs(clip,"sample").length>=1,"vocal pitch and gain have a true two-axis handle");
+ const vocalActions=choices(clip,"sample");
+ for(const extra of ["strumMs","followPitch","oneShot","preserveDynamics"])
+  assert.ok(!vocalActions.has(extra),"vocal sound editor should not offer sample-only setting "+extra);
+ const filter=diagram(clip,"filter",0);
+ assert.ok(filter.actions.some(action=>action.path.join(".")==="audioFilterBypassed"),
+  "vocal bypass must have a direct illustration control");
+ assert.ok(axes(clip,"filter").has("drive"),
+  "drive stays visually editable when the filter is bypassed");
+});
