@@ -267,7 +267,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    if(cycle===0){stop();return;}
    if(!loops()&&scheduled>=cycle)break;
    const step=scheduled%Math.max(1,cycle),barIndex=Math.floor(step/16),unit=secondsPerStep(current);
-   if(step%16===0)for(const entry of musicSampleContexts(current)
+   if(step%16===0)for(const entry of musicSampleContexts(current))
     void decodeSamples(ctx,entry,bufferCache(ctx)).catch(console.warn);
    const events=current.kind==="song"?eventsAtSongStep(current,step):stepEvents(current,scheduled);
    if(current.kind==="song")for(const event of recordingEventsAtStep(current,step,{
