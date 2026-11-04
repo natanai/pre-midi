@@ -774,6 +774,37 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const snapped=Math.round(raw/axis.step)*axis.step;
   return clamp(Number(snapped.toFixed(4)),axis.hardMin??axis.min,axis.hardMax??axis.max);
  };
+ // A spectral drawing can be painted in two dimensions: moving horizontally
+ // selects neighboring harmonics while vertical movement changes their levels.
+ // Consecutive partials are interpolated so fast strokes do not leave holes.
+ const paintHarmonics=(stroke,position,commit)=>{
+  const local=clamp(Math.round((position.x-37)/41),0,7);
+  const index=stroke.base+local;
+  const level=clamp(Math.round((100-position.y)/41*100)/100);
+  if(stroke.last){
+   const first=stroke.last.index,span=index-first;
+   if(span!==0)for(let n=Math.min(first,index);n<=Math.max(first,index);n++){
+    const portion=(n-first)/span;
+    stroke.values.set(n,Number((stroke.last.level+
+     (level-stroke.last.level)*portion).toFixed(2)));
+   }
+  }
+  stroke.values.set(index,level);stroke.last={index,level};
+  const paths=[...stroke.values.keys()].sort((a,b)=>a-b).map(n=>
+   ["oscillators",stroke.oscillator,"harmonics",n]);
+  const values=paths.map(keys=>stroke.values.get(keys[3]));
+  const updated=structuredClone(patch);
+  assignSoundEdit(updated,paths,values);
+  draw(updated);
+  dragReadout.textContent="harmonics "+(stroke.base+1)+"–"+(stroke.base+8)+
+   " · h"+(index+1)+" "+Math.round(level*100)+"%";
+  dragReadout.style.left=(clamp(position.x,24,336)/360*100)+"%";
+  dragReadout.style.top=(clamp(position.y,14,91)/112*100)+"%";
+  dragReadout.hidden=commit;
+  const key=paths.length===1?paths[0]:paths;
+  const value=paths.length===1?values[0]:values;
+  if(commit)onChange(key,value);else onPreview(key,value);
+ };
  const apply=(point,position,commit)=>{
   const next=structuredClone(patch);
   const paths=point.axes.map(a=>a.path);
@@ -792,29 +823,42 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  };
  area.addEventListener("pointerdown",event=>{
   const button=event.target.closest(".visual-graph-point");
-  if(!button){return;}
+  if(!button||event.button!==0||active)return;
   const point=visibleHandles[Number(button.dataset.handle)];
   if(!point)return;
-  active={point};
+  if(kind.startsWith("harmonics")){
+   const oscillator=Number(kind.slice("harmonics".length));
+   active={pointerId:event.pointerId,stroke:{
+    oscillator,base:page*8,values:new Map(),last:null
+   }};
+  }else active={pointerId:event.pointerId,point};
   area.setPointerCapture(event.pointerId);event.preventDefault();
-  apply(point,coord(event),false);
+  if(active.stroke)paintHarmonics(active.stroke,coord(event),false);
+  else apply(point,coord(event),false);
  });
  area.addEventListener("pointermove",event=>{
-  if(active)apply(active.point,coord(event),false);
+  if(!active||active.pointerId!==event.pointerId)return;
+  if(active.stroke)paintHarmonics(active.stroke,coord(event),false);
+  else apply(active.point,coord(event),false);
  });
  area.addEventListener("pointerup",event=>{
-  if(!active)return;
-  const point=active.point;active=null;
-  apply(point,coord(event),true);
+  if(!active||active.pointerId!==event.pointerId)return;
+  const gesture=active;active=null;
+  if(gesture.stroke)paintHarmonics(gesture.stroke,coord(event),true);
+  else apply(gesture.point,coord(event),true);
   if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
  });
- area.addEventListener("pointercancel",()=>{
-  dragReadout.hidden=true;
-  if(!active)return;
-  const paths=active.point.axes.map(a=>a.path);
-  active=null;draw(patch);
+ area.addEventListener("pointercancel",event=>{
+  if(!active||active.pointerId!==event.pointerId)return;
+  const gesture=active;active=null;
+  dragReadout.hidden=true;draw(patch);
+  const paths=gesture.stroke?[...gesture.stroke.values.keys()].map(index=>
+   ["oscillators",gesture.stroke.oscillator,"harmonics",index]):
+   gesture.point.axes.map(a=>a.path);
   const values=paths.map(path=>at(patch,path));
-  onPreview(paths.length===1?paths[0]:paths,paths.length===1?values[0]:values);
+  if(paths.length)onPreview(paths.length===1?paths[0]:paths,
+   paths.length===1?values[0]:values);
+  if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
  });
  area.addEventListener("keydown",event=>{
   if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.key))return;
