@@ -60,11 +60,13 @@ if (!window.__TAURI_INTERNALS__ && matchMedia("(max-width: 600px), (max-height: 
   <input id="song-import-file" type="file" accept=".premidi,.zip" hidden>
   <div id="song-clip-settings" class="song-clip-settings" hidden>
    <label id="song-beat-start-field">Start bar <input id="song-clip-start" type="number" min="1" step="1" value="1"></label>
+   <label id="song-vocal-step-field" hidden>Step (1–16) <input id="song-vocal-step" type="number" min="1" max="16" step="1" value="1"></label>
    <label id="song-beat-length-field">Length (bars) <input id="song-clip-length" type="number" min="1" step="1" value="8"></label>
    <label id="song-vocal-level-field" hidden>Level <input id="song-vocal-level" type="range" min="0" max="2" step="0.05" value="1" aria-label="Vocal level"></label>
    <button id="song-clip-remove" type="button">Remove clip</button>
   </div>
  </section>
+ <section id="vocal-editor" class="vocal-editor" aria-label="Selected vocal recording editor" hidden></section>
  <section class="beat-header">
   <div class="beat-identity">
    <button id="song-expand" type="button" aria-expanded="false" aria-controls="song-panel" title="Open Song timeline">↑ Song</button>
@@ -194,6 +196,9 @@ if (!window.__TAURI_INTERNALS__ && matchMedia("(max-width: 600px), (max-height: 
  <div class="voice-setup">
   <label class="voice-field">start at bar
    <input id="voice-start-bar" type="number" min="1" step="1" value="1">
+  </label>
+  <label class="voice-field">track
+   <select id="voice-track" aria-label="Vocal track"></select>
   </label>
   <label class="voice-field">count-in
    <select id="voice-count-in" aria-label="Count-in">
