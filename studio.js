@@ -31,7 +31,7 @@ import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
-import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,validateSong} from "./songModel.js";
+import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,pruneUnusedRecordings,validateSong} from "./songModel.js";
 import {renderVocalEditor,decodeVocalRecording} from "./vocalEditor.js";
 import {vocalEffects} from "./vocalEffects.js";
 import {encodeMonoWav,RECORDING_RATE} from "./recording.js";
@@ -317,7 +317,7 @@ function modify(change){
  change();
  const referenced=referencedSampleIds(beat.instruments);
  beat.samples=beat.samples.filter(asset=>referenced.has(asset.id));
- if(song)upgradeSongFeatures(song);else upgradeBeatFeatures(beat);
+ if(song){pruneUnusedRecordings(song);upgradeSongFeatures(song);}else upgradeBeatFeatures(beat);
  const errors=validate(beat);
  if(song)errors.push(...validateSong(song));
  if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
@@ -328,6 +328,7 @@ function modifySong(change){
  const before=snapshot(song);
  if(change==="add-track")addSongTrack(song);
  else change();
+ pruneUnusedRecordings(song);
  upgradeSongFeatures(song);
  const errors=validateSong(song);
  if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
