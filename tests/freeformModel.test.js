@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {create,id,clone,makeInstrument,makeSound,upgradeBeatFeatures,validate as validateBeat} from "../schema.js";
+import {create,id,clone,makeInstrument,makeSound,upgradeBeatFeatures,validate as validateBeat,SUSTAIN_BEAT_VERSION} from "../schema.js";
 import {makePatch} from "../synth.js";
 import {renderEvents} from "../audio.js";
-import {createSong,editBeatClip,upgradeSongFeatures,validateSong} from "../songModel.js";
+import {createSong,addBeat,editBeatClip,upgradeSongFeatures,validateSong,SUSTAIN_SONG_VERSION} from "../songModel.js";
 import {nativePlans} from "../src/hosts/native/session.js";
 import {noteCutoffAutomation} from "../src/dsp/automation.js";
 import {planSynthVoice} from "../src/dsp/synth-voice.js";
@@ -129,7 +129,9 @@ test("Create Beat from selection refuses lossy boundaries and format overflows",
  song.version=22;
  const before=clone(song);
  assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,16),/beyond the selection/);
- assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,32),/crosses a Beat bar boundary/);
+ const sustained=createBeatFromFreeformSelection(song,track.id,0,32);
+  assert.equal(sustained.version,SUSTAIN_BEAT_VERSION);
+  assert.deepEqual(validateBeat(sustained),[]);
  assert.throws(()=>createBeatFromFreeformSelection(song,track.id,16,32),/sustains into the selection/);
  assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,65*16),/at most 64 bars/);
  assert.deepEqual(song,before);
@@ -286,4 +288,48 @@ test("linked Beat Clip cutoff continuation is versioned, moves and resets on exp
  assert.equal(left.automationTailSteps,undefined,
   "Explicit Clip resizing redefines the cutoff boundary");
  assert.deepEqual(validateSong(song),[]);
+});
+
+test("multi-bar freeform sustains convert to one-onset reusable Beats and versioned Songs",()=>{
+ const song=createSong(create()),track=song.tracks[0],free=createFreeform();
+ track.freeform=free;
+ const instrument=addFreeformInstrument(free);
+ addFreeformNote(instrument,{pitch:60,start:15,duration:32,velocity:.81});
+ addFreeformNote(instrument,{pitch:67,start:49,duration:20,velocity:.72});
+ upgradeSongFeatures(song);
+ const originally=renderEvents(song).filter(event=>event.kind==="note")
+  .map(event=>[event.at,event.duration,event.note.pitch,event.note.velocity]);
+ const beat=createBeatFromFreeformSelection(song,track.id,0,80);
+ assert.equal(beat.version,SUSTAIN_BEAT_VERSION);
+ assert.equal(beat.bars,5);
+ assert.deepEqual(validateBeat(beat),[]);
+ const extracted=renderEvents(beat).map(event=>[event.at,event.duration,event.note.pitch,event.note.velocity]);
+ assert.deepEqual(extracted,originally,"A multi-bar sustain must never be retriggered at its bar line.");
+ const saved=addBeat(song,beat);
+ assert.equal(saved.id,beat.id);
+ assert.equal(song.version,SUSTAIN_SONG_VERSION);
+ assert.deepEqual(validateSong(song),[]);
+ assert.equal(JSON.parse(JSON.stringify(song)).beats.at(-1).version,SUSTAIN_BEAT_VERSION);
+});
+test("unpacking a v25 Beat protects selections through long tails and preserves onset",()=>{
+ const source=create(),chunk=source.instruments[0].chunks[0];
+ chunk.notes=[{id:id(),pitch:63,start:5,duration:42,velocity:.8}];
+ upgradeBeatFeatures(source);
+ const song=createSong(source),clip=song.tracks[0].clips[0];
+ const before=renderEvents(song).map(event=>[event.at,event.duration,event.note.pitch]);
+ const original=clone(song);
+ assert.throws(()=>unpackBeatClip(song,clip.id,{fromStep:36,toStep:64}),
+  /sustained note crosses/);
+ assert.deepEqual(song,original,"A failed partial unpack cannot damage Song instructions.");
+ unpackBeatClip(song,clip.id);
+ assert.deepEqual(renderEvents(song).map(event=>[event.at,event.duration,event.note.pitch]),before);
+ assert.deepEqual(validateSong(song),[]);
+});
+test("sustained placed Chunks illuminate held notes well beyond their source bar",()=>{
+ const layer=createFreeform(),inst=addFreeformInstrument(layer);
+ inst.chunks[0].notes=[{id:id(),pitch:70,start:1,duration:48,velocity:.85}];
+ addFreeformChunkPlacement(inst,inst.chunks[0].id,16,{length:16});
+ assert.deepEqual(validateFreeform(layer),[]);
+ assert.ok(soundingFreeformPitches(layer,inst.id,60).has(70));
+ assert.ok(!soundingFreeformPitches(layer,inst.id,65).has(70));
 });
