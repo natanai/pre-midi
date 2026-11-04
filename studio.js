@@ -1,5 +1,5 @@
 import {renderCutoffAutomation} from "./automationUI.js";
-import {upgradeBeatFeatures,resizeBeatBars,MAX_BEAT_BARS} from "./schema.js";
+import {upgradeBeatFeatures,resizeBeatBars,MAX_BEAT_BARS,SUSTAIN_BEAT_VERSION} from "./schema.js";
 import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
@@ -963,10 +963,10 @@ function renderNotes() {
      const oldPitch=note.pitch;
      if(mode==="move"){
       applyNoteCommand(chunk,{type:"note.move",noteId:note.id,start:original.start+Math.round(dx/cellWidth),
-       pitch:original.pitch-Math.round(dy/rowHeight)},{minPitch:36,maxPitch:83});
+       pitch:original.pitch-Math.round(dy/rowHeight)},{minPitch:36,maxPitch:83,allowSustain:beat.version===SUSTAIN_BEAT_VERSION});
      }else{
       applyNoteCommand(chunk,{type:"note.resize",noteId:note.id,
-       duration:(original?.duration??1)+Math.round(dx/cellWidth)});
+       duration:(original?.duration??1)+Math.round(dx/cellWidth)},{allowSustain:beat.version===SUSTAIN_BEAT_VERSION});
      }
      paintRows(oldPitch);
     }
@@ -1019,7 +1019,7 @@ function renderNotes() {
     if (!target) return;
     event.preventDefault();
     const delta = event.key === "ArrowRight" ? 1 : -1;
-    modify(() => applyNoteCommand(chunk,{type:"note.resize",noteId:target.id,duration:target.duration+delta}));
+    modify(() => applyNoteCommand(chunk,{type:"note.resize",noteId:target.id,duration:target.duration+delta},{allowSustain:beat.version===SUSTAIN_BEAT_VERSION}));
    });
    row.append(cell);
   }
