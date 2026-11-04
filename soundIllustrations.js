@@ -487,6 +487,14 @@ export const diagram=(patch,type,page=0)=>{
      ...primary,axis([...prefix,"depth"],-limit,limit,"linearY",
       {from:96,to:26,step:target?.unit==="cents"?1:.01})
     ],source.kind==="lfo"?"route speed / depth":"route smoothing / depth");
+    if(source.kind==="lfo"){
+     // Smoothing is independent of the oscillator speed and movement depth.
+     line("M35 104 H317",true,["modulation.routes."+i+".smoothing"]);
+     handle(35+282*clamp((route.smoothing??0)/.1),104,[
+      axis([...prefix,"smoothing"],0,.1,"linearX",{from:35,to:317,step:.001})
+     ],"movement smoothing");
+     tag(254,112,"smooth →");
+    }
     if(source.kind==="envelope"){
      const e=source.envelope;
      handle(39+110*clamp(e.attack/3),99-31*clamp(e.sustain),[
