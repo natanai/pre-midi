@@ -18,6 +18,7 @@ export function activeSamplePanels(patch){
     (patch.attack??.005)!==.005||(patch.release??.17)!==.17||
     !!patch.preserveDynamics)
   active.add("sample");
+ if((patch.zones?.length??0)>1)active.add("mapping");
  return active;
 }
 export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{},soundId=null){
@@ -146,7 +147,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   const name=document.createElement("span");name.textContent="Sample "+(index+1)+" · recorded pitch";
   const select=document.createElement("select");
   select.setAttribute("aria-label","Sample "+(index+1)+" recorded note");
-  for(let midi=36;midi<=96;midi++){
+  for(let midi=0;midi<=127;midi++){
    const option=document.createElement("option");
    option.value=String(midi);
    option.textContent=notes[midi%12]+(Math.floor(midi/12)-1);
@@ -157,22 +158,19 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   label.dataset.soundPath="zones."+index+".root";
    label.append(name,select);mapping.append(label);
  });
- if(patch.zones.length>8) {
-  const details=document.createElement("details");details.className="sample-map-details";
-  const summary=document.createElement("summary");
-  const uniquePitches=new Set(patch.zones.map(zone=>zone.root));
-  const dynamicLayers=new Set(patch.zones.map(zone=>zone.velocity).filter(x=>x!==undefined));
-  summary.textContent="Recorded notes · "+uniquePitches.size+" pitches"+(
-   dynamicLayers.size>1?" · "+dynamicLayers.size+" dynamics":"")+" · Edit mapping";
-  details.append(summary,mapping);
-  details.addEventListener("toggle",()=>{
-   if(details.open && !mapping.childElementCount)populateMapping();
-  });
-  root.append(details);
- } else {
-  populateMapping();
-  root.append(mapping);
- }
+ const mapDetails=document.createElement("details");
+ mapDetails.className="synth-group sample-map-details";
+ mapDetails.open=expanded.has("mapping");
+ mapDetails.addEventListener("toggle",()=>{
+  if(mapDetails.open){expanded.add("mapping");if(!mapping.childElementCount)populateMapping();}
+  else expanded.delete("mapping");
+ });
+ const mapHeading=document.createElement("summary");mapHeading.textContent="sample mapping";
+ mapDetails.append(mapHeading,mapping);
+ // Defer thousands of option nodes for large multisamples until opened.
+ mapDetails.populateMapping=()=>{if(!mapping.childElementCount)populateMapping();};
+ if(mapDetails.open||patch.zones.length<=8)mapDetails.populateMapping();
+ root.append(mapDetails);
  // Keep the same diagrams and direct manipulation for recorded instruments.
  // These wrappers leave the actual sampler dials and mapping controls intact.
  const visuals=[];
@@ -183,13 +181,13 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   assignSoundEdit(next,path,value);
   for(const visual of visuals)visual.draw(next);
  };
- for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"]]){
+ for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"],[mapDetails,"mapping"]]){
   // illustrateSoundPanel moves section inside its new wrapper. Anchor the
   // original position *before* wrapping; replacing section afterward would
   // attempt to insert the wrapper into its own child.
   const anchor=document.createComment("sound visual position");
   section.before(anchor);
-  const visual=illustrateSoundPanel(section,kind,patch,onChange,preview);
+  const visual=illustrateSoundPanel(section,kind,patch,onChange,preview,soundId);
   visuals.push(visual);
   anchor.replaceWith(visual.element);
  }

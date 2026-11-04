@@ -243,7 +243,7 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
   panels.push(panel);grid.append(panel.element);
  }
  const modulation=illustrateSoundPanel(renderModulationEditor(patch,onChange,soundId),
-  "modulation",patch,onChange,preview,0);
+  "modulation",patch,onChange,preview,soundId);
  panels.push(modulation);grid.append(modulation.element);
  root.append(grid);
 }
