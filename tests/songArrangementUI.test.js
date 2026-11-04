@@ -179,3 +179,11 @@ test("freeform selections create independent reusable Beats without auto-placing
  assert.match(studio,/onFreeformBeatCreated/);
  assert.doesNotMatch(ui,/addBeatClip\(/);
 });
+
+test("freeform Beat selection highlights the Song lane at absolute Song time",()=>{
+ const ui=read("freeformUI.js"),css=read("freeform.css");
+ assert.match(ui,/function paintSelectionRange\(\)/);
+ assert.match(ui,/selectionStartStep\/BAR_STEPS\*SONG_BAR_PIXELS/);
+ assert.match(ui,/selectionLengthSteps\/BAR_STEPS\*SONG_BAR_PIXELS/);
+ assert.match(css,/\.song-freeform-selected-range/);
+});

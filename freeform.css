@@ -56,3 +56,7 @@ main.editing-freeform .beat-identity > label{display:none}
 .freeform-selection-tools button{min-height:29px;font-size:11px;color:var(--bright)}
 .freeform-create-beat{border:1px solid var(--line);padding:4px 9px}
 .freeform-create-beat:hover,.freeform-create-beat:focus-visible{border-color:var(--bright)}
+
+/* Song-coordinate feedback for the exact excerpt being made reusable. */
+.song-freeform-selected-range{position:absolute;top:1px;bottom:1px;pointer-events:none;
+ border:1px solid #b5d9c3;background:rgba(135,193,165,.1);z-index:2;box-sizing:border-box}

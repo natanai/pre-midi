@@ -67,6 +67,19 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   selectionLengthSteps=selectedPassage?.lengthSteps??BAR_STEPS;
   editorScrollTop=null;editorScrollLeft=null;
   panel.hidden=false;onActiveChange(true);render();
+  paintSelectionRange();
+ }
+ function paintSelectionRange(){
+  for(const old of root.querySelectorAll(".song-freeform-selected-range"))old.remove();
+  const parent=[...root.querySelectorAll(".song-freeform-row")]
+   .find(row=>row.dataset.parentTrackId===activeTrackId);
+  const lane=parent?.querySelector(".song-freeform-lane");
+  if(!lane||selectionLengthSteps<1)return;
+  const marker=el("span","song-freeform-selected-range");
+  marker.setAttribute("aria-hidden","true");
+  marker.style.left=selectionStartStep/BAR_STEPS*SONG_BAR_PIXELS+"px";
+  marker.style.width=selectionLengthSteps/BAR_STEPS*SONG_BAR_PIXELS+"px";
+  lane.append(marker);
  }
  function viewStep(){return barStart*BAR_STEPS;}
  function addInstrument(){
@@ -220,18 +233,20 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   const startBar=input("number",Math.floor(selectionStartStep/16)+1,1,4096,v=>{
    if(Number.isInteger(v)&&v>0){
     selectionStartStep=(v-1)*16+selectionStartStep%16;
+    paintSelectionRange();
    }
   });
   startBar.setAttribute("aria-label","Selection start bar");
   const startStep=input("number",selectionStartStep%16+1,1,16,v=>{
    if(Number.isInteger(v)&&v>=1&&v<=16){
     selectionStartStep=Math.floor(selectionStartStep/16)*16+v-1;
+    paintSelectionRange();
    }
   });
   startStep.setAttribute("aria-label","Selection start step");
   const length=input("number",selectionLengthSteps/16,1/16,64,v=>{
    const steps=Math.round(v*16);
-   if(Number.isFinite(v)&&steps>=1&&steps<=1024)selectionLengthSteps=steps;
+   if(Number.isFinite(v)&&steps>=1&&steps<=1024){selectionLengthSteps=steps;paintSelectionRange();}
   });
   length.step="0.0625";
   length.setAttribute("aria-label","Selection length in bars");
@@ -240,6 +255,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   selection.append(selectionTitle,field("bar",startBar),field("step",startStep),
    field("length · bars",length),createButton);
   panel.append(selection);
+  paintSelectionRange();
   if(!inst){
    panel.append(el("p","freeform-empty","Add an Instrument to draw notes directly into this Song."));
    return;
