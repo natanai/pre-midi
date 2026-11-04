@@ -105,7 +105,7 @@ export const diagram=(patch,type)=>{
   tag(18,15,"low");tag(308,15,"high");
   if(p.type==="sample"){
    const transfer=driveCurve(p.drive??0);
-   line(pathRange(121,t=>[205+t*123,99-13*transfer[Math.round(t*(transfer.length-1))]]),true);
+   line(pathRange(121,t=>[205+t*123,99-13*transfer[Math.round(t*(transfer.length-1))]]),true,["drive"]);
    tag(217,110,"drive");
   }else{
    const sweep=f.sweep??0,sweepTime=f.sweepTime??.2;
@@ -151,14 +151,14 @@ export const diagram=(patch,type)=>{
    const gain=clamp(p.gain??.9,0,2),transpose=p.transpose??0,pan=p.pan??0;
    const strum=p.strumMs??0,root=p.zones?.[0]?.root??60;
    const pitchFollow=p.followPitch!==false,oneShot=!!p.oneShot,dynamics=!!p.preserveDynamics;
-   line("M20 "+(112-9*gain).toFixed(2)+" H150",true);
-   line("M173 "+(105-6*transpose/12).toFixed(2)+" H252",true);
-   line("M274 104 H340 M"+(307+30*pan).toFixed(2)+" 98 V110",true);
+   line("M20 "+(112-9*gain).toFixed(2)+" H150",true,["gain"]);
+   line("M173 "+(105-6*transpose/12).toFixed(2)+" H252",true,["transpose","followPitch"]);
+   line("M274 104 H340 M"+(307+30*pan).toFixed(2)+" 98 V110",true,["pan"]);
    tag(19,110,"level");tag(171,110,(pitchFollow?"pitch ":"root ")+root);
    tag(290,95,"pan");
-   line("M"+(18+(strum+25)/50*52).toFixed(2)+" 94 V102",true);
-   if(oneShot)line("M344 40 V91",true);
-   if(dynamics)line("M331 41 L338 35 L345 41",true);
+   line("M"+(18+(strum+25)/50*52).toFixed(2)+" 94 V102",true,["strumMs"]);
+   if(oneShot)line("M344 40 V91",true,["oneShot"]);
+   if(dynamics)line("M331 41 L338 35 L345 41",true,["preserveDynamics"]);
   }
  }else if(type==="movement"){
   const m=movement(p);
