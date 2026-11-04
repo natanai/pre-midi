@@ -66,7 +66,6 @@ if (!window.__TAURI_INTERNALS__ && matchMedia("(max-width: 600px), (max-height: 
    <button id="song-clip-remove" type="button">Remove clip</button>
   </div>
  </section>
- <section id="vocal-editor" class="vocal-editor" aria-label="Selected vocal recording editor" hidden></section>
  <section class="beat-header">
   <div class="beat-identity">
    <button id="song-expand" type="button" aria-expanded="false" aria-controls="song-panel" title="Open Song timeline">↑ Song</button>
@@ -83,6 +82,7 @@ if (!window.__TAURI_INTERNALS__ && matchMedia("(max-width: 600px), (max-height: 
    <div class="transport-position" aria-label="Playback position"><span>bar : beat</span><output id="position" aria-label="bar 1, beat 1">1:1</output></div>
   </div>
  </section>
+ <section id="vocal-editor" class="vocal-editor" aria-label="Selected vocal recording editor" hidden></section>
  <div class="work">
   <aside class="instrument-pane" aria-label="Instruments">
    <div class="heading"><h2>Instruments</h2></div>
