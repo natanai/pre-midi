@@ -173,7 +173,19 @@
   await report("PASS","Freeform empty editing, notes, unpack, versioned export and playback");
  }catch(error){
   const info={play:frame.contentDocument?.getElementById("play")?.getAttribute("aria-label"),status:frame.contentDocument?.getElementById("status")?.textContent,songHidden:frame.contentDocument?.getElementById("song-panel")?.hidden,clipCount:frame.contentDocument?.querySelectorAll(".song-beat-clip").length,freeformNotes:frame.contentDocument?.querySelectorAll(".freeform-roll-note").length};
-  await report("FAIL",String(error.stack||error)+" "+JSON.stringify(info)+" "+issues.join("; "));
+  let debug={};
+  try{
+   const stored=JSON.parse(frame.contentWindow.localStorage.getItem("premidi-v5-draft")||"null");
+   const free=stored?.tracks?.[0]?.freeform;
+   debug={storedType:free?.instruments?.[0]?.sounds?.[0]?.patch?.type,
+    assetCount:free?.samples?.length,
+    detailsOpen:frame.contentDocument?.querySelector(".freeform-sound-details")?.open,
+    moduleChildren:frame.contentDocument?.querySelector(".freeform-sound-modules")?.children?.length,
+    moduleStart:frame.contentDocument?.querySelector(".freeform-sound-modules")?.innerHTML?.slice(0,200),
+    sampleUploadNode:!!frame.contentDocument?.querySelector(".freeform-sound-host input[type=file]"),
+    msg:frame.contentDocument?.querySelector("#notice,#message,#status")?.textContent};
+  }catch{}
+  await report("FAIL",String(error.stack||error)+" "+JSON.stringify(info)+" "+JSON.stringify(debug)+" "+issues.join("; "));
  }
 })();
 </script>
