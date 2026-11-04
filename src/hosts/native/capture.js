@@ -1,4 +1,5 @@
 import {nativeRequest,ensureNativeOutput} from './session.js';
+import {readRecordingAlignment} from '../../../recordingAlignment.js';
 const binary=value=>value instanceof ArrayBuffer?value:Uint8Array.from(value).buffer;
 export async function decodeNativeAudio(bytes,{rate=44100,mono=true,maxSeconds=301}={}){
  const data=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
@@ -10,8 +11,7 @@ export async function decodeNativeAudio(bytes,{rate=44100,mono=true,maxSeconds=3
 }
 export async function prepareNativeTake({seconds=300,synchronized=true}={}){
  await ensureNativeOutput();
- const offset=Number(localStorage.getItem('premidi-recording-offset-ms')||0);
- if(!Number.isFinite(offset)||offset<0||offset>500)throw Error('Choose a recording offset from 0 to 500 ms in Settings');
+ const offset=readRecordingAlignment();
  const status=await nativeRequest({action:'capture_prepare',seconds,offset_ms:offset,synchronized}),owner=status.captureOwner;
  let done=false,begun=false,timer,polling=false;
  return {
