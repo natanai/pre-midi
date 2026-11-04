@@ -1519,3 +1519,25 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .vocal-effect-sections .synth-group{margin:0;min-width:0}
 .vocal-effect-sections .synth-fields{min-width:0}
 @media(max-width:850px){.vocal-effect-sections{grid-template-columns:minmax(0,1fr)}}
+
+/* Note expression uses the same illustration and grab-point language as Sound. */
+.note-expression .expression-visual {--track-accent:var(--signal-mauve);color:var(--signal-mauve)}
+.note-expression .expression-visual .visual-panel-area {
+ height:126px;position:relative;min-width:0;background:#07050a;
+ border:1px solid var(--faint);cursor:pointer
+}
+.note-expression .expression-visual .visual-panel-graph {
+ display:block;width:100%;height:100%;pointer-events:auto
+}
+.note-expression .expression-visual .visual-graph-line {stroke:var(--signal-mauve)}
+.note-expression .expression-visual .visual-graph-level {
+ stroke:var(--signal-mauve);stroke-width:2;vector-effect:non-scaling-stroke
+}
+.note-expression .expression-visual .visual-graph-point {
+ --track-accent:var(--signal-mauve)
+}
+.note-expression .expression-visual .visual-graph-point[hidden],
+.note-expression .expression-controls .dial-field[hidden] {display:none!important}
+.note-expression .expression-visual .visual-panel-graph:focus-visible {
+ outline:1px dotted var(--signal-mauve);outline-offset:-2px
+}
