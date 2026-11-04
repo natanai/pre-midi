@@ -8,6 +8,7 @@ import {getAsset,putAsset,MAX_PACKAGE_BYTES} from "./assetRegistry.js";
 import {inspectAudioBytes} from "./sampler.js";
 import {recordingBytes,inspectRecordingBytes} from "./recordingAssets.js";
 import {createZip,readZip} from "./zip.js";
+import {isRecordingSampleAlias} from "./sampleSlice.js";
 
 export const MAX_SONG_DOCUMENT_BYTES=8_000_000;
 const encoder=new TextEncoder();
@@ -41,7 +42,10 @@ const relevantAssets=song=>{
   }
  }
  for(const recording of song.recordings||[]){
-  if(assets.has(recording.id))throw Error("Recording and Beat sample IDs must not collide.");
+  const sample=assets.get(recording.id);
+  if(sample&&!isRecordingSampleAlias(recording,sample))
+   throw Error("Recording and Beat sample IDs must not collide.");
+  // A linked Recording owns the only ZIP entry for its canonical audio path.
   assets.set(recording.id,recording);
  }
  return [...assets.values()];
@@ -67,6 +71,9 @@ export function exportSongProject(song){
  const raw=encoder.encode(JSON.stringify(manifest));
  if(raw.length>MAX_SONG_DOCUMENT_BYTES)throw Error("Song instructions exceed 8 MB.");
  const assets=relevantAssets(manifest);
+ const linked=new Set(manifest.beats.flatMap(beat=>beat.samples??[]).concat(
+  manifest.tracks.flatMap(track=>track.freeform?.samples??[]))
+  .filter(asset=>asset.sourceRecordingId).map(asset=>asset.id));
  if(!assets.length)return {
   name:filename(manifest,".premidi"),
   blob:new Blob([raw],{type:"application/json"})
@@ -79,6 +86,7 @@ export function exportSongProject(song){
   if(song.recordings?.some(recording=>recording.id===asset.id))
    inspectRecordingBytes(bytes,asset.mime);
   else inspectAudioBytes(bytes,asset.mime);
+  if(linked.has(asset.id))inspectAudioBytes(bytes,asset.mime);
   size+=bytes.length;
   if(size>MAX_PACKAGE_BYTES)throw Error("Portable Song exceeds the current 64 MB package limit.");
   entries.push({path:asset.path,data:bytes});
@@ -101,6 +109,9 @@ export async function importSongProject(file){
  if(manifests.length!==1)throw Error("Song package must contain exactly one .premidi.");
  const song=parseSong(decoder.decode(manifests[0][1]));
  const assets=relevantAssets(song);
+ const linked=new Set(song.beats.flatMap(beat=>beat.samples??[]).concat(
+  song.tracks.flatMap(track=>track.freeform?.samples??[]))
+  .filter(asset=>asset.sourceRecordingId).map(asset=>asset.id));
  if(entries.size!==assets.length+1)throw Error("Song package has extra or missing Assets.");
  // Verify the entire archive before changing the global Asset registry.
  const incoming=[];
@@ -110,6 +121,7 @@ export async function importSongProject(file){
   const longForm=song.recordings?.some(recording=>recording.id===asset.id);
   if(longForm)inspectRecordingBytes(bytes,asset.mime);
   else inspectAudioBytes(bytes,asset.mime);
+  if(linked.has(asset.id))inspectAudioBytes(bytes,asset.mime);
   incoming.push([asset.id,bytes,!!longForm]);
  }
  for(const [id,bytes,longForm] of incoming)putAsset(id,bytes,{longForm});
