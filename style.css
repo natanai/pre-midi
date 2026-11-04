@@ -1545,3 +1545,11 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .signal-scope-marker{stroke:var(--scope-accent);stroke-width:1;stroke-dasharray:2 3;opacity:.75}
 .signal-scope-reference{stroke:#aaaaaa;stroke-width:1;opacity:.65;
  stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
+
+/* Each modulation route receives its own readable signal lane, including route 16. */
+.visual-sound-panel[data-visual-kind="modulation"]>.synth-group>.visual-panel-area {
+ height:var(--visual-panel-height,160px)
+}
+.visual-sound-panel[data-visual-kind="modulation"].zoomed>.synth-group>.visual-panel-area {
+ height:var(--visual-panel-height,220px)
+}
