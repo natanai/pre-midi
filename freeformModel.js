@@ -419,6 +419,53 @@ export function createBeatFromFreeformSelection(song,trackId,startStep,endStep,{
  return beat;
 }
 
+// Propose the smallest non-destructive expansion of a partial Beat-Clip cut.
+// The user must explicitly choose the suggested range; no note is split.
+const crossingAt=(beat,clip,cut)=>{
+ const clipEnd=clip.startStep+clip.lengthSteps;
+ if(cut<=clip.startStep||cut>=clipEnd)return [];
+ const result=[],cycle=beat.bars*STEPS_PER_BAR;
+ for(let step=Math.max(clip.startStep,cut-STEPS_PER_BAR);step<cut;step++){
+  const beatStep=(step-clip.startStep+(clip.sourceOffsetSteps??0))%cycle;
+  for(const event of eventsAtStep(beat,beatStep))
+   if(step+event.note.duration>cut)
+    result.push({start:step,end:step+event.note.duration,
+     key:event.instrument.id+":"+event.note.id+":"+step});
+ }
+ return result;
+};
+export function suggestSafeUnpackRange(song,clipId,fromStep,toStep){
+ const track=song?.tracks?.find(item=>item.kind==="beat"&&
+  item.clips.some(clip=>clip.id===clipId));
+ if(!track)throw Error("Choose a Beat Clip to unpack.");
+ const clip=track.clips.find(item=>item.id===clipId);
+ const beat=song.beats.find(item=>item.id===clip.beatId);
+ if(!beat)throw Error("Beat Clip references a missing Beat.");
+ const clipEnd=clip.startStep+clip.lengthSteps;
+ if(!whole(fromStep)||!positive(toStep)||fromStep<clip.startStep||
+  toStep>clipEnd||fromStep>=toStep||toStep>FREEFORM_LIMIT_STEPS)
+  throw Error("Unpack range must be inside the Beat Clip.");
+ let from=fromStep,to=toStep;
+ const crossing=new Set();
+ for(let i=0;i<=clip.lengthSteps;i++){
+  let nextFrom=from,nextTo=to;
+  for(const note of crossingAt(beat,clip,from)){
+   nextFrom=Math.min(nextFrom,note.start);crossing.add(note.key);
+  }
+  for(const note of crossingAt(beat,clip,to)){
+   nextTo=Math.max(nextTo,Math.min(clipEnd,note.end));
+   crossing.add(note.key);
+  }
+  if(nextFrom===from&&nextTo===to)return {
+   requestedFromStep:fromStep,requestedToStep:toStep,
+   fromStep:from,toStep:to,adjusted:from!==fromStep||to!==toStep,
+   crossingNoteCount:crossing.size
+  };
+  from=nextFrom;to=nextTo;
+ }
+ throw Error("Could not find an intact note boundary around this selection.");
+}
+
 // Unpack an entire Beat Clip, or a selected absolute Song range within it.
 // Build and validate a new layer *before* editing the original track. A partial
 // conversion leaves two source-phase-aware Beat Clips at the unaffected edges.
@@ -436,21 +483,10 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
  if(!whole(from)||!positive(to)||from<clip.startStep||to>end||from>=to||
   to>FREEFORM_LIMIT_STEPS)
   throw Error("Unpack range must be inside the Beat Clip.");
- // A note whose onset belongs to one side of a split must not become
- // implicitly dependent on a neighboring passage. Require an audible note
- // boundary before separating the two instruction scopes.
- if(from>clip.startStep||to<end){
-  const cycle=beat.bars*STEPS_PER_BAR;
-  const crosses=cut=>{
-   for(let step=Math.max(clip.startStep,cut-16);step<cut;step++){
-    const local=(step-clip.startStep+(clip.sourceOffsetSteps??0))%cycle;
-    if(eventsAtStep(beat,local).some(event=>step+event.note.duration>cut))return true;
-   }
-   return false;
-  };
-  if((from>clip.startStep&&crosses(from))||(to<end&&crosses(to)))
-   throw Error("A sustained note crosses the selection boundary. Move the selection edge past the note before unpacking.");
- }
+ const safe=suggestSafeUnpackRange(song,clipId,from,to);
+ if(safe.adjusted)throw Error("A sustained note crosses the selection boundary. "+
+  "Expand the selection to Song steps "+safe.fromStep+"–"+safe.toStep+
+  " to keep the original notes intact.");
  const layer=clone(track.freeform??createFreeform()),passage={
   id:id(),startStep:from,lengthSteps:to-from,sourceBeatId:beat.id
  };
