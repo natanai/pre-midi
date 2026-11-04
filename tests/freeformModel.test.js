@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {create,id,clone,makeInstrument,makeSound,upgradeBeatFeatures,validate as validateBeat,SUSTAIN_BEAT_VERSION} from "../schema.js";
+import {create,id,clone,makeInstrument,makeSound,upgradeBeatFeatures,validate as validateBeat,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION} from "../schema.js";
 import {makePatch} from "../synth.js";
 import {renderEvents} from "../audio.js";
 import {parseSong} from "../songIO.js";
-import {createSong,addBeat,editBeatClip,upgradeSongFeatures,validateSong,SUSTAIN_SONG_VERSION} from "../songModel.js";
+import {createSong,addBeat,editBeatClip,upgradeSongFeatures,validateSong,SUSTAIN_SONG_VERSION,CAPTURED_AUTOMATION_SONG_VERSION} from "../songModel.js";
 import {nativePlans} from "../src/hosts/native/session.js";
 import {noteCutoffAutomation} from "../src/dsp/automation.js";
 import {planSynthVoice} from "../src/dsp/synth-voice.js";
@@ -238,8 +238,21 @@ test("captured cutoff movement is validated, versioned, and never silently disca
  const song=automatedSong(),clip=song.tracks[0].clips[0];
  unpackBeatClip(song,clip.id);
  const before=clone(song),track=song.tracks[0],inst=track.freeform.instruments[0];
- assert.throws(()=>createBeatFromFreeformSelection(song,track.id,0,128),/captured cutoff movement/);
- assert.deepEqual(song,before,"Beat conversion must not erase a saved cutoff curve");
+ const selectionEvents=renderEvents(song).filter(event=>event.at<128*60/song.bpm/4);
+ const expected=nativePlans(selectionEvents).map(signature);
+ const beat=createBeatFromFreeformSelection(song,track.id,0,128);
+ assert.equal(beat.version,CAPTURED_AUTOMATION_BEAT_VERSION);
+ assert.deepEqual(validateBeat(beat),[]);
+ assert.deepEqual(nativePlans(renderEvents(beat)).map(signature),expected,
+  "Reusable Beat cutoff curves must retain every native automation point and source phase");
+ assert.deepEqual(song,before,"Extracting a reusable Beat cannot alter source freeform music");
+ const reused=addBeat(song,beat);
+ assert.equal(reused.version,CAPTURED_AUTOMATION_BEAT_VERSION);
+ assert.equal(song.version,CAPTURED_AUTOMATION_SONG_VERSION);
+ assert.deepEqual(validateSong(song),[]);
+ assert.deepEqual(parseSong(JSON.stringify(song)),song);
+ const downgraded=clone(song);downgraded.version=26;
+ assert.match(validateSong(downgraded).join(" "),/Song v28/);
  song.version=FREEFORM_SONG_VERSION;
  assert.match(validateSong(song).join(" "),/requires Song v23/);
  song.version=FREEFORM_AUTOMATION_SONG_VERSION;
@@ -337,4 +350,19 @@ test("sustained placed Chunks illuminate held notes well beyond their source bar
  assert.equal(freeformEndStep(layer),65,"Song duration includes the release tail past its Chunk bar.");
  assert.ok(soundingFreeformPitches(layer,inst.id,60).has(70));
  assert.ok(!soundingFreeformPitches(layer,inst.id,65).has(70));
+});
+
+test("reusable automated Beats unpack back to freeform without losing per-note source phase",()=>{
+ const original=automatedSong({offset:16,length:256}),clip=original.tracks[0].clips[0];
+ unpackBeatClip(original,clip.id);
+ const reusable=createBeatFromFreeformSelection(original,original.tracks[0].id,0,128);
+ assert.equal(reusable.version,CAPTURED_AUTOMATION_BEAT_VERSION);
+ const before=nativePlans(renderEvents(reusable)).map(signature);
+ const song=createSong(reusable);
+ assert.equal(song.version,CAPTURED_AUTOMATION_SONG_VERSION);
+ unpackBeatClip(song,song.tracks[0].clips[0].id);
+ assert.equal(song.version,CAPTURED_AUTOMATION_SONG_VERSION);
+ assert.equal(song.tracks[0].freeform.version,2);
+ assert.deepEqual(nativePlans(renderEvents(song)).map(signature),before);
+ assert.deepEqual(validateSong(song),[]);
 });
