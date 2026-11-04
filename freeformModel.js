@@ -90,6 +90,32 @@ export function eventsAtFreeformStep(layer,step){
  }
  return result;
 }
+
+// Which keys are physically held at one Song step? Direct notes may sustain
+// across many bars; a placed Chunk can repeat and its last note can ring past
+// its placement length. The answer uses the same note-onset semantics as
+// eventsAtFreeformStep, without needing to enumerate earlier Song steps.
+export function soundingFreeformPitches(layer,instrumentId,step){
+ const result=new Set();
+ if(!layer||!Number.isFinite(step)||step<0)return result;
+ const instrument=layer.instruments.find(item=>item.id===instrumentId);
+ if(!instrument||instrument.layout!=="pitched")return result;
+ for(const note of instrument.notes)
+  if(note.start<=step&&step<note.start+note.duration)result.add(note.pitch);
+ for(const placement of instrument.chunkPlacements){
+  const chunk=instrument.chunks.find(item=>item.id===placement.chunkId);
+  if(!chunk)continue;
+  for(let n=0;n<placement.repeats;n++){
+   const relative=step-placement.startStep-n*placement.every;
+   if(relative<0||relative>=placement.length+16)continue;
+   for(const note of chunk.notes)
+    if(note.start<placement.length&&note.start<=relative&&relative<note.start+note.duration)
+     result.add(note.pitch);
+  }
+ }
+ return result;
+}
+
 export function moveFreeformPassage(layer,passageId,nextStartStep){
  const passage=layer.passages.find(p=>p.id===passageId);
  if(!passage)throw Error("Missing freeform passage.");
