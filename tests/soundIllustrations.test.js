@@ -114,3 +114,41 @@ test("illustrated sound features expose parameter links without changing user-fa
  assert.ok(diagram(patch,"distortion").paths.some(p=>p.links?.includes("effects.drive")));
  assert.ok(diagram(patch,"delay").paths.some(p=>p.links?.includes("effects.delayTime")));
 });
+
+test("all sixteen modulation routes receive independently linked, readable visual lanes",()=>{
+ const patch=synth();
+ patch.modulation={version:1,routes:Array.from({length:16},(_,i)=>({
+  id:"route-"+i,
+  source:{kind:"lfo",shape:"sine",rate:.5+i*.05},
+  target:i%2?"pan":"filter.cutoff",
+  unit:i%2?"pan":"octaves",depth:1,polarity:"bipolar",smoothing:.005
+ }))};
+ const map=diagram(patch,"modulation");
+ assert.equal(map.paths.filter(path=>path.links?.some(link=>link.startsWith("modulation.routes."))).length,16);
+ assert.ok(map.height>=16*21+45);
+ for(let i=0;i<16;i++)
+  assert.ok(map.paths.some(path=>path.links?.includes("modulation.routes."+i)),"route "+i+" missing");
+ assert.equal(map.labels.filter(label=>label.value==="+"+12+" routes").length,0);
+});
+
+test("each recorded sample zone has an independent editable pitch mapping point",()=>{
+ const patch={type:"sample",zones:[
+  {assetId:"a",root:48,velocity:.25},{assetId:"b",root:60,velocity:.55},
+  {assetId:"c",root:72,velocity:.9}
+ ]};
+ const map=diagram(patch,"sample-map");
+ assert.equal(map.handles.length,3);
+ const xs=map.handles.map(p=>p.x);
+ assert.ok(xs[0]<xs[1]&&xs[1]<xs[2]);
+ const ys=map.handles.map(p=>p.y);
+ assert.ok(ys[0]>ys[1]&&ys[1]>ys[2]);
+ for(let i=0;i<3;i++){
+  assert.deepEqual(map.handles[i].axes[0].path,["zones",i,"root"]);
+  assert.ok(map.paths.some(path=>path.links?.includes("zones."+i+".root")));
+ }
+ const edited=structuredClone(patch);
+ edited.zones[2].root=80;
+ const after=diagram(edited,"sample-map");
+ assert.ok(after.handles[2].x>map.handles[2].x);
+ assert.equal(after.handles[0].x,map.handles[0].x);
+});
