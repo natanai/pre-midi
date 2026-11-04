@@ -40,7 +40,8 @@ test("every sample zone, including zones past the first four, appears on its own
  changed.zones[9].root+=12;
  const after=diagram(changed,"mapping",2);
  assert.ok(after.handles[1].x>before.handles[1].x+25);
- assert.notEqual(after.paths[5].d,before.paths[5].d);
+ assert.notEqual(after.paths.find(p=>p.links.includes("zones.9.root")).d,
+  before.paths.find(p=>p.links.includes("zones.9.root")).d);
  assert.ok(activeSamplePanels(patch).has("mapping"));
 });
 test("a single recorded sample does not open extra mapping controls by default",()=>{
