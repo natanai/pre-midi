@@ -1,6 +1,7 @@
 // Freeform uses the canonical Beat synth, sampler, sound illustration and DSP patches.
 // This is a desktop panel, not a second sound-engine implementation.
-import {renderPatchEditor} from "./instrumentUI.js";
+import {renderPatchEditor,PRIMARY_SYNTH_FIELDS} from "./instrumentUI.js";
+import {sampleTone} from "./audioEffects.js";
 import {renderSamplerEditor} from "./samplerUI.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {createSignalDisplay} from "./soundScope.js";
@@ -81,6 +82,9 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   const ctx=current();if(!ctx)return;
   const next=clone(ctx.sound.patch);assignSoundEdit(next,path,value);
   visualize(ctx,next);
+  // Prominent controls outside the collapsible modules still drive their diagrams.
+  for(const panel of modules.querySelectorAll(".visual-sound-panel"))
+   panel.drawSoundIllustration?.(next);
  };
  const preview=async()=>{
   const ctx=current();if(!ctx)return;
@@ -159,6 +163,23 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    if(Number.isInteger(value))mutateSelected(({sound})=>{sound.referencePitch=value;},ctx.sound.id);
   });
   dials.append(field("reference pitch",pitch));
+  // The freeform inspector shares the Beat's primary Sound control paths.
+  // These are absent from the deeper synth/sampler modules by design.
+  const primary=el("div","freeform-sound-primary");
+  const primaryFields=ctx.sound.patch.type==="synth"?PRIMARY_SYNTH_FIELDS:[
+   {path:["filter","cutoff"],label:"brightness",min:50,max:14000,step:1,display:"hz",log:true},
+   {path:["attack"],label:"attack",min:0,max:2,step:.005,display:"seconds"},
+   {path:["release"],label:"release",min:.01,max:3,step:.01,display:"seconds"}
+  ];
+  for(const config of primaryFields){
+   const value=config.path.reduce((item,key)=>item?.[key],ctx.sound.patch) ??
+    (config.path[0]==="filter"?sampleTone(ctx.sound.patch).filter.cutoff:0);
+   const dial=createDial(config,value,
+    next=>patchChange(config.path,next),
+    next=>patchPreview(config.path,next));
+   dial.dataset.soundPath=config.path.join(".");
+   primary.append(dial);
+  }
   if(ctx.inst.layout==="rack"){
    const actions=el("div","freeform-sound-actions");
    actions.append(button("+ sound",()=>mutateSelected(({inst})=>{
@@ -185,7 +206,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   }
   const content=el("div","freeform-sound-content");
   content.id="freeform-sound-content";
-  content.append(tools,dials,scope,modules,input);
+  content.append(tools,dials,primary,scope,modules,input);
   details.append(content);
   visualize(ctx);
   if(ctx.sound.patch.type==="sample"){
