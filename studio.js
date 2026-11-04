@@ -31,11 +31,12 @@ import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
-import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,validateSong} from "./songModel.js";
+import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,pruneUnusedRecordings,validateSong} from "./songModel.js";
 import {renderVocalEditor,decodeVocalRecording} from "./vocalEditor.js";
 import {vocalEffects} from "./vocalEffects.js";
 import {encodeMonoWav,RECORDING_RATE} from "./recording.js";
 import {makeRecordingAsset} from "./recordingAssets.js";
+import {linkedVocalSample} from "./vocalBeatReuse.js";
 import {prepareSongTake,waveformForTake,songCountIn} from "./songRecorder.js";
 import {exportSongProject,importSongProject,parseSong} from "./songIO.js";
 import {readZip} from "./zip.js";
@@ -316,7 +317,7 @@ function modify(change){
  change();
  const referenced=referencedSampleIds(beat.instruments);
  beat.samples=beat.samples.filter(asset=>referenced.has(asset.id));
- if(song)upgradeSongFeatures(song);else upgradeBeatFeatures(beat);
+ if(song){pruneUnusedRecordings(song);upgradeSongFeatures(song);}else upgradeBeatFeatures(beat);
  const errors=validate(beat);
  if(song)errors.push(...validateSong(song));
  if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
@@ -327,6 +328,7 @@ function modifySong(change){
  const before=snapshot(song);
  if(change==="add-track")addSongTrack(song);
  else change();
+ pruneUnusedRecordings(song);
  upgradeSongFeatures(song);
  const errors=validateSong(song);
  if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
@@ -1298,26 +1300,35 @@ function renderVocalWorkspace(){
    if(remaining>4){message("Beat samples support up to four seconds. Trim this phrase first.",true);return;}
    if(beat.instruments.length>=12){message("Maximum 12 instruments.",true);return;}
    try{
-    const decoded=await decodeVocalRecording(recording);
-    const from=recording.trimSeconds+(clip.trimStartSeconds??0);
-    const frames=Math.round(remaining*RECORDING_RATE),input=new Float32Array(frames);
-    const channels=Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i));
-    for(let n=0;n<frames;n++){
-     const pos=(from+n/RECORDING_RATE)*decoded.sampleRate,lo=Math.floor(pos),hi=Math.min(decoded.length-1,lo+1),frac=pos-lo;
-     if(lo<0||lo>=decoded.length)continue;
-     for(const channel of channels)input[n]+=(channel[lo]*(1-frac)+channel[hi]*frac)/channels.length;
+    // Compatible PCM WAV voices keep one canonical external asset in Song,
+    // Beat, Undo and portable ZIP. WebM/MP4 or oversized files still convert.
+    const reference=linkedVocalSample(recording,clip,getAsset(recording.id));
+    let asset=reference?.asset,zone=reference?.zone;
+    if(!reference){
+     const decoded=await decodeVocalRecording(recording);
+     const from=recording.trimSeconds+(clip.trimStartSeconds??0);
+     const frames=Math.round(remaining*RECORDING_RATE),input=new Float32Array(frames);
+     const channels=Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i));
+     for(let n=0;n<frames;n++){
+      const pos=(from+n/RECORDING_RATE)*decoded.sampleRate,lo=Math.floor(pos),hi=Math.min(decoded.length-1,lo+1),frac=pos-lo;
+      if(lo<0||lo>=decoded.length)continue;
+      for(const channel of channels)input[n]+=(channel[lo]*(1-frac)+channel[hi]*frac)/channels.length;
+     }
+     const wav=encodeMonoWav(input);
+     asset=makeSampleAsset("voice-sample-"+id(),recording.name.slice(0,60),"audio/wav",wav,
+      "Excerpt from Song vocal "+recording.id);
+     zone={assetId:asset.id,root:60};
     }
-    const wav=encodeMonoWav(input);
-    const name=recording.name.slice(0,60),asset=makeSampleAsset("voice-sample-"+id(),name,"audio/wav",wav,"Excerpt from Song vocal "+recording.id);
     const fx=vocalEffects(clip);
-    const patch={type:"sample",presetId:"custom",zones:[{assetId:asset.id,root:60}],
+    const patch={type:"sample",presetId:"custom",zones:[zone],
      followPitch:false,oneShot:true,transpose:fx.transpose,gain:clip.gain,
      attack:fx.attack,release:Math.max(.01,fx.release),pan:fx.pan,drive:fx.drive,
      movement:fx.movement,bend:fx.bend};
     if(fx.filter)patch.filter=fx.filter;
-    const ok=applySoundSelection(patch,name,"hit",[asset],{mode:"add",instrumentId:instrument().id,soundId:sound().id});
+    const ok=applySoundSelection(patch,recording.name.slice(0,60),"hit",[asset],
+      {mode:"add",instrumentId:instrument().id,soundId:sound().id});
     if(ok){
-     songUI.select(null);message("Added "+name+" as a Beat rack sound. Place its hits in Notes.");
+     songUI.select(null);message(reference?"Linked vocal to Beat without copying audio.":"Added a vocal excerpt to Beat.");
      if(fx.delayMix>0)message("Vocal delay remains on its Song clip; Beat sample delay is not yet available.");
     }
    }catch(error){message("Could not use vocal in Beat: "+error.message,true);}

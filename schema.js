@@ -5,13 +5,16 @@ export const VERSION = 7;
 export const MODULATION_BEAT_VERSION=9;
 export const AUTOMATION_BEAT_VERSION=11;
 export const EXTENDED_BEAT_VERSION=17;
+export const SAMPLE_SLICE_BEAT_VERSION=23;
 export const MAX_BEAT_BARS=64;
 import {validateCutoffAutomation} from "./src/dsp/automation.js";
+import {requiresSampleSliceFormat} from "./sampleSlice.js";
 export const requiresAutomationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>inst?.automation!==undefined);
-export const BEAT_VERSIONS=[VERSION,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION];
+export const BEAT_VERSIONS=[VERSION,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION];
 export const requiresModulationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>Array.isArray(inst?.sounds)&&inst.sounds.some(sound=>sound?.patch?.version===2||sound?.patch?.modulation!==undefined));
 export function upgradeBeatFeatures(doc){
- if(doc.bars>16||doc.version===EXTENDED_BEAT_VERSION)doc.version=EXTENDED_BEAT_VERSION;
+ if(requiresSampleSliceFormat(doc)||doc.version===SAMPLE_SLICE_BEAT_VERSION)doc.version=SAMPLE_SLICE_BEAT_VERSION;
+ else if(doc.bars>16||doc.version===EXTENDED_BEAT_VERSION)doc.version=EXTENDED_BEAT_VERSION;
  else if(requiresAutomationFormat(doc))doc.version=AUTOMATION_BEAT_VERSION;
  else if(requiresModulationFormat(doc)&&doc.version<MODULATION_BEAT_VERSION)doc.version=MODULATION_BEAT_VERSION;
  return doc;
@@ -68,15 +71,16 @@ const text=(x,max)=>typeof x==="string"&&!!x.trim()&&x.length<=max;
 const within=(x,low,high)=>typeof x==="number"&&Number.isFinite(x)&&x>=low&&x<=high;
 export function validate(doc) {
  const errors=[];
- if(doc?.version!==AUTOMATION_BEAT_VERSION&&doc?.version!==EXTENDED_BEAT_VERSION&&requiresAutomationFormat(doc))errors.push("Timeline automation requires Beat v11.");
+ if(![AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION].includes(doc?.version)&&requiresAutomationFormat(doc))errors.push("Timeline automation requires Beat v11.");
  if(doc?.version===VERSION&&requiresModulationFormat(doc))errors.push("Modulated sounds require Beat v9.");
  if(!object(doc)||doc.format!==FORMAT||!BEAT_VERSIONS.includes(doc.version))
-  return ["Unsupported .premidi file. Supported Beat formats are pre-midi v7, v9, v11 and v17."];
+  return ["Unsupported .premidi file. Supported Beat formats are pre-midi v7, v9, v11, v17 and v23."];
  if(!text(doc.id,128)||!text(doc.title,100))errors.push("Beat needs an ID and title.");
  if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
  if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
  if(!Number.isInteger(doc.bars)||!within(doc.bars,1,MAX_BEAT_BARS))errors.push("Timeline must have 1–64 bars.");
- if(doc.bars>16&&doc.version!==EXTENDED_BEAT_VERSION)errors.push("Beats longer than 16 bars require Beat v17.");
+ if(doc.bars>16&&![EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION].includes(doc.version))errors.push("Beats longer than 16 bars require Beat v17.");
+ if(requiresSampleSliceFormat(doc)&&doc.version!==SAMPLE_SLICE_BEAT_VERSION)errors.push("Sample source excerpts require Beat v23.");
  if(!Array.isArray(doc.samples)||doc.samples.length>160)return [...errors,"Invalid sample asset list."];
  const sampleIds=new Set();
  for(const asset of doc.samples){

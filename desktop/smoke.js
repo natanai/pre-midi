@@ -86,6 +86,31 @@
   const reopenedTake=await songFiles.importSongProject(new File([recordedExport.blob],recordedExport.name));
   const vocalSession=await play(()=>reopenedTake);await vocalSession.seek(2);await vocalSession.stop();
   const vocalWav=await wav(reopenedTake);assert(vocalWav.size>44,'native vocal survives portable ZIP, seek and native WAV export');
+  // A short native WAV vocal can be a Beat sound without another audio asset:
+  // check the physical native playback/export path, plus reopen with one file.
+  const {linkedVocalSample}=await load('vocalBeatReuse.js');
+  const entry=reopenedTake.tracks.find(track=>track.kind==='vocal').clips[0];
+  entry.trimStartSeconds=.04;
+  const shared=linkedVocalSample(reopenedTake.recordings[0],entry,getAsset(vocalAsset.id));
+  assert(shared?.asset.id===vocalAsset.id&&shared.zone.startSeconds===.04&&shared.zone.durationSeconds>0,
+   'native WAV vocal reuses a trimmed source-time region without new bytes');
+  const linkedBeat=reopenedTake.beats[0];
+  linkedBeat.samples.push(shared.asset);
+  linkedBeat.instruments[0].sounds[0].patch={
+   type:'sample',presetId:'custom',zones:[shared.zone],followPitch:false,oneShot:true,
+   transpose:0,gain:.9,attack:.005,release:.17,pan:0
+  };
+  upgradeBeatFeatures(linkedBeat);
+  (await load('songModel.js')).upgradeSongFeatures(reopenedTake);
+  assert(linkedBeat.version===23&&reopenedTake.version===24&&!validateSong(reopenedTake).length,
+   'source excerpt requires explicit Beat v23 and Song v24');
+  const linkedExport=songFiles.exportSongProject(reopenedTake);
+  const linkedReopen=await songFiles.importSongProject(new File([linkedExport.blob],linkedExport.name));
+  assert(linkedReopen.recordings.length===1&&linkedReopen.beats[0].samples.length===1&&
+   linkedReopen.beats[0].samples[0].id===linkedReopen.recordings[0].id,
+   'portable Song restores one canonical vocal/sample WAV reference');
+  assert((await wav(linkedReopen)).size>44,
+   'native C++ WAV export renders the linked vocal sample alongside the vocal Clip');
   document.getElementById('record-sound').click();document.getElementById('mic-length').value='0.75';document.getElementById('mic-capture').click();
   for(let i=0;i<250&&document.getElementById('mic-use').hidden;i++)await pause(40);
   assert(!document.getElementById('mic-use').hidden,'native short microphone recorder completes');
