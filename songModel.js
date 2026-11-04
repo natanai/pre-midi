@@ -1,9 +1,10 @@
 // Native Song domain model. No file I/O or browser dependencies.
 // Legacy Songs use v8 with v7 Beats; modulation explicitly requires v10/v9.
 // pre-programmed reader compatibility remains separately qualified.
-import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
+import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
 import {validateVocalEffects,vocalEffects} from "./vocalEffects.js";
+import {requiresSampleSliceFormat,isRecordingSampleAlias} from "./sampleSlice.js";
 import {FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION,freeformEndStep,eventsAtFreeformStep,validateFreeform} from "./freeformModel.js";
 export const SONG_VERSION=8;
 export const MODULATION_SONG_VERSION=10;
@@ -12,9 +13,13 @@ export const PCM_SONG_VERSION=14;
 export const VOCAL_FX_SONG_VERSION=16;
 export const EXTENDED_SONG_VERSION=18;
 export const CLIP_PHASE_SONG_VERSION=20;
+export const SAMPLE_SLICE_SONG_VERSION=24;
 export function upgradeSongFeatures(song){
  song.beats.forEach(upgradeBeatFeatures);
- if(song.tracks?.some(track=>track.kind==="beat"&&(
+ if(song.version===SAMPLE_SLICE_SONG_VERSION||song.beats.some(beat=>beat.version===SAMPLE_SLICE_BEAT_VERSION)||
+   song.tracks?.some(track=>track.kind==="beat"&&track.freeform&&requiresSampleSliceFormat(track.freeform)))
+  song.version=SAMPLE_SLICE_SONG_VERSION;
+ else if(song.tracks?.some(track=>track.kind==="beat"&&(
     track.freeform?.version===2||track.clips?.some(clip=>clip.automationTailSteps!==undefined)))||
   song.version===FREEFORM_AUTOMATION_SONG_VERSION) song.version=FREEFORM_AUTOMATION_SONG_VERSION;
  else if(song.tracks?.some(track=>track.kind==="beat"&&track.freeform!==undefined)||song.version===FREEFORM_SONG_VERSION)
@@ -41,13 +46,13 @@ const unique=(items,key="id")=>new Set(items.map(item=>item?.[key])).size===item
 export function createSong(sourceBeat=create()){
  ensureBeat(sourceBeat);
  const beat=clone(sourceBeat),trackId=id();
- return {
-  format:FORMAT,kind:"song",version:beat.version===EXTENDED_BEAT_VERSION?EXTENDED_SONG_VERSION:beat.version===AUTOMATION_BEAT_VERSION?AUTOMATION_SONG_VERSION:beat.version===MODULATION_BEAT_VERSION?MODULATION_SONG_VERSION:SONG_VERSION,id:id(),title:"Untitled song",
+ return upgradeSongFeatures({
+  format:FORMAT,kind:"song",version:beat.version===SAMPLE_SLICE_BEAT_VERSION?SAMPLE_SLICE_SONG_VERSION:beat.version===EXTENDED_BEAT_VERSION?EXTENDED_SONG_VERSION:beat.version===AUTOMATION_BEAT_VERSION?AUTOMATION_SONG_VERSION:beat.version===MODULATION_BEAT_VERSION?MODULATION_SONG_VERSION:SONG_VERSION,id:id(),title:"Untitled song",
   bpm:beat.bpm,beats:[beat],recordings:[],
   tracks:[{id:trackId,kind:"beat",name:"Beat 1",clips:[
    {id:id(),beatId:beat.id,startStep:0,lengthSteps:beatLength(beat)}
   ]}]
- };
+ });
 }
 export function addBeat(song,sourceBeat,{independent=false}={}){
  ensureBeat(sourceBeat);
@@ -105,6 +110,9 @@ export function editBeatClip(song,clipId,changes){
 function pruneUnusedRecordings(song){
  const used=new Set(song.tracks.filter(track=>track.kind==="vocal")
   .flatMap(track=>track.clips.map(clip=>clip.recordingId)));
+ for(const beat of song.beats)for(const asset of beat.samples??[])if(asset.sourceRecordingId)used.add(asset.sourceRecordingId);
+ for(const track of song.tracks)for(const asset of track.freeform?.samples??[])
+  if(asset.sourceRecordingId)used.add(asset.sourceRecordingId);
  song.recordings=(song.recordings||[]).filter(recording=>used.has(recording.id));
 }
 export function removeEmptyVocalTrack(song,trackId){
@@ -241,7 +249,7 @@ export function eventsAtSongStep(song,step){
 }
 export function validateSong(song){
  const errors=[];
- if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION].includes(song.version))
+ if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION,SAMPLE_SLICE_SONG_VERSION].includes(song.version))
   return ["Unsupported Song format."];
  if(typeof song.id!=="string"||!song.id.trim()||typeof song.title!=="string"||!song.title.trim())
   errors.push("Song identity or title is missing.");
@@ -265,6 +273,8 @@ export function validateSong(song){
   const issues=validateBeat(beat);
   if(issues.length)errors.push("Invalid Beat "+(beat?.id||"unknown")+": "+issues[0]);
   if(song.version<EXTENDED_SONG_VERSION&&beat?.version===EXTENDED_BEAT_VERSION)errors.push('Extended Beats require Song v18.');
+  if(song.version<SAMPLE_SLICE_SONG_VERSION&&beat?.version===SAMPLE_SLICE_BEAT_VERSION)
+   errors.push('Beat source excerpts require Song v24.');
    if(song.version<AUTOMATION_SONG_VERSION&&beat?.version===AUTOMATION_BEAT_VERSION)errors.push("Automated Beats require Song v12.");
   if(song.version===SONG_VERSION&&beat?.version===MODULATION_BEAT_VERSION)errors.push("Modulated Beats require Song v10.");
   if(!BEAT_VERSIONS.includes(beat?.version))errors.push("Embedded Beat must use the current Beat format.");
@@ -279,6 +289,8 @@ export function validateSong(song){
   if(track.kind==="vocal"&&track.freeform!==undefined)errors.push("Vocal Tracks cannot own freeform.");
   if(track.kind==="beat"&&track.freeform!==undefined){
    if(song.version<FREEFORM_SONG_VERSION)errors.push("Freeform requires Song v22.");
+   if(song.version<SAMPLE_SLICE_SONG_VERSION&&requiresSampleSliceFormat(track.freeform))
+    errors.push("Freeform source excerpts require Song v24.");
    if(track.freeform?.version===2&&song.version<FREEFORM_AUTOMATION_SONG_VERSION)
     errors.push("Captured freeform cutoff movement requires Song v23.");
    errors.push(...validateFreeform(track.freeform).map(error=>track.name+": "+error));
@@ -319,16 +331,21 @@ export function validateSong(song){
    }
   }
  }
- // Identical asset IDs in separate Beats may only denote the same metadata.
- const assets=new Map();
- for(const recording of recordings){
-  if(assets.has(recording.id))errors.push("Conflicting Recording ID.");
-  assets.set(recording.id,JSON.stringify(recording));
- }
- for(const beat of song.beats)for(const asset of beat.samples||[]){
-  const previous=assets.get(asset.id),serialized=JSON.stringify(asset);
-  if(previous&&previous!==serialized)errors.push("Conflicting Beat audio asset ID.");
-  assets.set(asset.id,serialized);
+ // One physical WAV may be referenced by both a vocal Clip and a Beat sample.
+ // Cross-Beat sample metadata must still be identical for the same asset ID.
+ const recordingsById=new Map(recordings.map(rec=>[rec.id,rec]));
+ const samplesById=new Map();
+ const samples=[...song.beats.flatMap(beat=>beat.samples??[]),
+  ...song.tracks.filter(track=>track.kind==="beat"&&track.freeform)
+   .flatMap(track=>track.freeform.samples??[])];
+ for(const asset of samples){
+  const previous=samplesById.get(asset.id);
+  if(previous&&JSON.stringify(previous)!==JSON.stringify(asset))
+   errors.push("Conflicting Beat audio asset ID.");
+  samplesById.set(asset.id,asset);
+  const recording=recordingsById.get(asset.id);
+  if(recording&&!isRecordingSampleAlias(recording,asset))
+   errors.push("Conflicting Beat audio asset ID.");
  }
  return errors.slice(0,20);
 }
