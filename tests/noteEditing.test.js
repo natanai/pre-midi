@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { create, id, clone, validate, upgradeBeatFeatures, SUSTAIN_BEAT_VERSION } from "../schema.js";
+import { create, id, clone, validate, upgradeBeatFeatures, SUSTAIN_BEAT_VERSION, CAPTURED_AUTOMATION_BEAT_VERSION } from "../schema.js";
 import {applyNoteCommand} from "../studioCommands.js";
 import { resizeNote, noteDurationLimit, moveNote } from "../noteEditing.js";
 import { stepEvents } from "../audio.js";
@@ -121,4 +121,21 @@ test("v25 sustained Chunk notes remain editable without legacy one-bar clamping"
  legacyChunk.notes.push(oldNote);
  assert.equal(applyNoteCommand(legacyChunk,{type:"note.resize",noteId:oldNote.id,duration:50}).changed,false);
  assert.equal(oldNote.duration,2,"Legacy v7 notes cannot cross Chunk boundaries");
+});
+
+test("v27 automated long notes remain resizable from desktop Beat gestures",async()=>{
+ const score=create(),chunk=score.instruments[0].chunks[0];
+ const note={id:id(),pitch:60,start:13,duration:35,velocity:.8,
+  cutoffAutomation:{version:1,step:8,limitStep:128,block:{version:1,
+   target:"filter.cutoff",unit:"hz",interpolation:"exponential",
+   points:[{id:"a",step:0,value:300},{id:"b",step:128,value:5000}]}}};
+ chunk.notes.push(note);upgradeBeatFeatures(score);
+ assert.equal(score.version,CAPTURED_AUTOMATION_BEAT_VERSION);
+ assert.equal(applyNoteCommand(chunk,{type:"note.resize",noteId:note.id,duration:48},
+  {allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(score.version)}).changed,true);
+ assert.equal(note.duration,48);
+ assert.deepEqual(validate(score),[]);
+ const {readFileSync}=await import("node:fs");
+ const source=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ assert.match(source,/allowSustain:\[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION\]\.includes\(beat\.version\)/);
 });
