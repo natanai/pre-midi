@@ -1532,3 +1532,16 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .visual-sound-panel .sound-link-active{outline:1px solid var(--track-accent,#08e4ec);
  outline-offset:2px}
 .visual-sound-panel .sound-link-active .dial-amount{stroke:var(--track-accent,#08e4ec)}
+
+/* Waveform position and held reference: measurements, not simulated curves. */
+.signal-scope-header{align-items:center}
+.signal-scope-header .signal-scope-compare{margin-left:auto;min-width:27px;min-height:23px;
+ padding:1px 5px;border:1px solid var(--line);background:transparent;
+ color:var(--muted);font-size:10px;letter-spacing:.02em}
+.signal-scope-header .signal-scope-compare[aria-pressed="true"]{
+ color:var(--scope-accent);border-color:var(--scope-accent)}
+.signal-scope-seek{cursor:crosshair;touch-action:none}
+.signal-scope-seek:focus-visible{stroke:var(--scope-accent);stroke-width:1;outline:none}
+.signal-scope-marker{stroke:var(--scope-accent);stroke-width:1;stroke-dasharray:2 3;opacity:.75}
+.signal-scope-reference{stroke:#aaaaaa;stroke-width:1;opacity:.65;
+ stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
