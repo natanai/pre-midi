@@ -299,6 +299,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   if(next)details.open=true;setZoom(wrapper,id,next);
  });
  const pages=document.createElement("div");pages.className="visual-panel-pages";
+ pages.setAttribute("aria-label",kind+" pages");
  const previous=document.createElement("button");previous.type="button";
  previous.textContent="‹";previous.setAttribute("aria-label","previous "+kind+" page");
  const range=document.createElement("span");range.className="visual-panel-range";
@@ -388,6 +389,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  }
  function focusFeature(keys){
   details.open=true;
+  details.populateMapping?.();
   const field=targetFields(keys)[0]??details.querySelector("[data-sound-path]");
   if(!field)return;
   const nested=field.closest("details.modulation-routing");
