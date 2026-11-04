@@ -147,7 +147,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   const name=document.createElement("span");name.textContent="Sample "+(index+1)+" · recorded pitch";
   const select=document.createElement("select");
   select.setAttribute("aria-label","Sample "+(index+1)+" recorded note");
-  for(let midi=36;midi<=96;midi++){
+  for(let midi=0;midi<=127;midi++){
    const option=document.createElement("option");
    option.value=String(midi);
    option.textContent=notes[midi%12]+(Math.floor(midi/12)-1);
