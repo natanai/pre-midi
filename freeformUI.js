@@ -404,7 +404,11 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   if(layer){
    const passageLimit=Math.min(200,layer.passages.length);
    for(const passage of layer.passages.slice(0,passageLimit)){
-    const box=action("",()=>open(track.id,passage.id),"song-freeform-passage");
+    let draggedSincePress=false;
+    const box=action("",()=>{
+     if(!draggedSincePress)open(track.id,passage.id);
+     draggedSincePress=false;
+    },"song-freeform-passage");
     box.dataset.passageId=passage.id;
     box.style.left=passage.startStep/16*SONG_BAR_PIXELS+"px";
     box.style.width=Math.max(10,passage.lengthSteps/16*SONG_BAR_PIXELS)+"px";
@@ -452,10 +456,11 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
     box.addEventListener("pointerdown",event=>{
      if(event.button!==0)return;
      const firstX=event.clientX,old=passage.startStep;
+     draggedSincePress=false;
      let moved=false,lastPreview=old;
      box.setPointerCapture(event.pointerId);
      const drag=e=>{if(e.pointerId!==event.pointerId)return;
-      if(Math.abs(e.clientX-firstX)>4)moved=true;
+      if(Math.abs(e.clientX-firstX)>4){moved=true;draggedSincePress=true;}
       if(!moved)return;
       const proposed=clampPosition(old+
        Math.round((e.clientX-firstX)/SONG_BAR_PIXELS)*16);

@@ -183,15 +183,31 @@ export function previewFreeformPassageLayering(layer,passageId,nextStartStep,
  const groups=new Map();
  for(const note of inactive){
   const key=note.instrumentId+"|"+note.key;
-  if(!groups.has(key))groups.set(key,[]);
-  groups.get(key).push(note);
+  if(!groups.has(key))groups.set(key,{notes:[],maxEnds:[]});
+  groups.get(key).notes.push(note);
  }
- for(const group of groups.values())group.sort((a,b)=>a.start-b.start);
+ for(const group of groups.values()){
+  group.notes.sort((a,b)=>a.start-b.start);
+  let maximum=0;
+  for(const note of group.notes){
+   maximum=Math.max(maximum,note.end);
+   group.maxEnds.push(maximum);
+  }
+ }
  let count=0,checked=0;
  const examples=[];
  for(const moving of active){
-  const candidates=groups.get(moving.instrumentId+"|"+moving.key)||[];
-  for(const other of candidates){
+  const group=groups.get(moving.instrumentId+"|"+moving.key);
+  if(!group)continue;
+  // Prefix maximum ends are monotonic. Binary-search past all earlier
+  // notes whose tails cannot reach the moved event, even in a long Song.
+  let low=0,high=group.maxEnds.length;
+  while(low<high){
+   const mid=(low+high)>>>1;
+   if(group.maxEnds[mid]<=moving.start)low=mid+1;else high=mid;
+  }
+  for(let index=low;index<group.notes.length;index++){
+   const other=group.notes[index];
    if(other.start>=moving.end)break;
    if(other.end<=moving.start)continue;
    if(++checked>maxPairs){incomplete=true;break;}
