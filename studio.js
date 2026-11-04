@@ -1265,7 +1265,13 @@ function renderVocalWorkspace(){
  renderVocalEditor(root,selected,{
   onEffect:(clipId,key,value)=>{
    const entry=target(clipId);if(!entry)return;
-   modifySong(()=>{entry.clip.effects={...(entry.clip.effects||{}),[key]:value};});
+   modifySong(()=>{
+    entry.clip.effects={...(entry.clip.effects||{}),[key]:value};
+    if(key==="transpose"){
+     const remaining=entry.recording.durationSeconds-entry.recording.trimSeconds-(entry.clip.trimStartSeconds??0);
+     entry.clip.lengthSteps=Math.max(1,Math.ceil(remaining/Math.pow(2,value/12)*song.bpm*4/60));
+    }
+   });
   },
   onLevel:(clipId,value)=>{
    const entry=target(clipId);if(entry)modifySong(()=>{entry.clip.gain=value;});
