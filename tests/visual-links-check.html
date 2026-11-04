@@ -65,6 +65,25 @@ frame.addEventListener("load",async()=>{
   restored.click();
   assert("reference cleared",restored.getAttribute("aria-pressed")==="false"&&
    !scope.querySelector(".signal-scope-reference").getAttribute("d"));
+  const stage=scope.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
+  assert("instrument level and stereo have their own educational field",!!stage);
+  stage.querySelector("details").open=true;
+  const point=stage.querySelector(".visual-graph-point");
+  assert("stereo stage is truly two-dimensional",point?.getAttribute("aria-description")
+   ?.includes("left/right")&&point.getAttribute("aria-description").includes("up/down"));
+  const oldVolume=Number(get("instrument-volume-dial").querySelector('[role="slider"]')
+   .getAttribute("aria-valuenow"));
+  point.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{
+   key:"ArrowDown",bubbles:true,cancelable:true
+  }));
+  await wait(()=>Number(get("instrument-volume-dial").querySelector('[role="slider"]')
+   .getAttribute("aria-valuenow"))<oldVolume,"stage level commit");
+  const stageAfter=scope.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
+  assert("stage remains expanded after a real instrument edit",stageAfter.querySelector("details").open);
+  const stageHit=stageAfter.querySelector('.visual-graph-hit[data-sound-links*="volume"]');
+  stageHit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
+  assert("stage illustration focuses original instrument volume knob",
+   !!doc.activeElement.closest("#instrument-volume-dial"));
   status="PASS";
  }catch(error){checks.error=String(error.stack||error)}
  doc.documentElement.dataset.visualLinks=status;
