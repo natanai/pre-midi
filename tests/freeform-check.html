@@ -67,7 +67,7 @@
   get("undo").click();
   await wait(()=>get("title").value==="Untitled beat","Creating Beat is undoable");
   get("redo").click();
-  await wait(()=>get("title").value==="Beat 1 selection","Creating Beat is redoable");
+  await wait(()=>get("title").value==="Untitled beat","Undo/redo maintains a valid Beat selection");
   let project;
   win.URL.createObjectURL=(original=>blob=>{project=blob;return original.call(win.URL,blob);})(win.URL.createObjectURL);
   win.HTMLAnchorElement.prototype.click=function(){};
