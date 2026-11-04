@@ -8,7 +8,7 @@ import { play, audition, auditionChord, auditionHeld, wav, primeSamples, nativeE
 import { installKeyboardPiano } from "./keyboardPiano.js";
 import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
-import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
+import { chunkIsPlaying, pianoScrubberX, songBeatEditorPosition } from "./pianoPlayhead.js";
 import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
@@ -1532,9 +1532,11 @@ async function startTransport({onStart=null,recording=false,startStep=null,count
     }
    },
    onProgress: (bar, step) => {
-    pianoProgress=playingSong?null:{bar,step};
+    pianoProgress=playingSong?
+     songBeatEditorPosition(song,beat.id,songUI?.getSelectedBeatClip()?.id??null,bar*16+step):
+     {bar,step};
     if(playingSong)songUI?.setPosition(bar+step/16);
-    else paintPianoPlayhead();
+    paintPianoPlayhead();
    },
    onStop: () => {
     playback = null;

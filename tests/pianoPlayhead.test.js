@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { create, makeChunk } from "../schema.js";
-import { chunkIsPlaying, pianoScrubberX } from "../pianoPlayhead.js";
+import { chunkIsPlaying, pianoScrubberX, songBeatEditorPosition } from "../pianoPlayhead.js";
 import { play } from "../audio.js";
+import {createSong,addBeatClip,editBeatClip} from "../songModel.js";
 import { readFileSync } from "node:fs";
 
 test("scrubber follows only the selected instrument's audible chunk", () => {
@@ -88,4 +89,16 @@ test("piano keys audition the active sound without creating notes",()=>{
  assert.match(css,/#piano \.piano-key:focus-visible/);
  assert.match(source,/onAddBeat:.*inheritScale:true/);
  assert.match(source,/setBeatScaleGuide\(added,inheritedGuide\)/);
+});
+
+test("Song scan line projects through the selected Beat Clip source phase",()=>{
+ const beat=create(),song=createSong(beat),clip=song.tracks[0].clips[0];
+ editBeatClip(song,clip.id,{sourceOffsetSteps:8});
+ assert.deepEqual(songBeatEditorPosition(song,beat.id,clip.id,8),{
+  bar:1,step:0,clipId:clip.id
+ });
+ assert.equal(songBeatEditorPosition(song,beat.id,clip.id,999),null);
+ addBeatClip(song,song.tracks[0].id,beat.id,0,16);
+ assert.equal(songBeatEditorPosition(song,beat.id,null,8),null,"ambiguous Beat occurrences must not jump the editor");
+ assert.equal(songBeatEditorPosition(song,beat.id,clip.id,8)?.bar,1);
 });

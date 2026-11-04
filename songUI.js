@@ -409,7 +409,9 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const value=event.target.value.trim()||"Untitled song";
   apply(()=>{getSong().title=value;});
  });
- return {render,select,getSelectedVocal(){
+ return {render,select,getSelectedBeatClip(){
+  const found=selected();return found?.track.kind==="beat"?found.clip:null;
+ },getSelectedVocal(){
   const found=selected();if(!found||found.track.kind!=="vocal")return null;
   return {...found,recording:getSong()?.recordings?.find(item=>item.id===found.clip.recordingId)};
  },getStartStep:selectedStart,setStartStep,setPosition(bar){

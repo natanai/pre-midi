@@ -10,9 +10,12 @@ export const AUTOMATION_SONG_VERSION=12;
 export const PCM_SONG_VERSION=14;
 export const VOCAL_FX_SONG_VERSION=16;
 export const EXTENDED_SONG_VERSION=18;
+export const CLIP_PHASE_SONG_VERSION=20;
 export function upgradeSongFeatures(song){
  song.beats.forEach(upgradeBeatFeatures);
- if(song.beats.some(beat=>beat.version===EXTENDED_BEAT_VERSION)||song.version===EXTENDED_SONG_VERSION)song.version=EXTENDED_SONG_VERSION;
+ if(song.tracks?.some(track=>track.kind==="beat"&&track.clips.some(clip=>clip.sourceOffsetSteps>0))||song.version===CLIP_PHASE_SONG_VERSION)
+  song.version=CLIP_PHASE_SONG_VERSION;
+ else if(song.beats.some(beat=>beat.version===EXTENDED_BEAT_VERSION)||song.version===EXTENDED_SONG_VERSION)song.version=EXTENDED_SONG_VERSION;
  else if(song.tracks?.some(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.effects!==undefined||clip.trimStartSeconds!==undefined)))song.version=VOCAL_FX_SONG_VERSION;
  else if(song.recordings?.some(recording=>recording.mime==='audio/wav')&&song.version<PCM_SONG_VERSION)song.version=PCM_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===AUTOMATION_BEAT_VERSION)&&song.version<AUTOMATION_SONG_VERSION)song.version=AUTOMATION_SONG_VERSION;
@@ -79,10 +82,12 @@ export function editBeatClip(song,clipId,changes){
  if(!track)throw Error("Beat Clip does not exist.");
  const clip=track.clips.find(item=>item.id===clipId);
  for(const key of Object.keys(changes))
-  if(!["startStep","lengthSteps"].includes(key))throw Error("Only Beat Clip placement and length may be edited.");
+  if(!["startStep","lengthSteps","sourceOffsetSteps"].includes(key))throw Error("Only Beat Clip placement, length and source phase may be edited.");
  const next={...clip,...changes};
- if(!nonnegative(next.startStep)||!positive(next.lengthSteps))throw Error("Invalid Beat Clip timing.");
+ if(!nonnegative(next.startStep)||!positive(next.lengthSteps)||
+  (next.sourceOffsetSteps!==undefined&&!nonnegative(next.sourceOffsetSteps)))throw Error("Invalid Beat Clip timing or source phase.");
  Object.assign(clip,next);
+ upgradeSongFeatures(song);
  return clip;
 }
 // A removed take should not leave a phantom lane or an unused audio asset
@@ -188,6 +193,14 @@ export function validateRecording(entry){
 export function songDurationSteps(song){
  return Math.max(0,...song.tracks.flatMap(track=>track.clips.map(clip=>clip.startStep+clip.lengthSteps)));
 }
+// Project an occurrence's absolute Song step onto its source Beat phase.
+// Existing Clips without a phase field retain their original behavior.
+export function clipBeatStep(clip,beat,songStep){
+ if(!clip||!beat||!Number.isFinite(songStep)||songStep<clip.startStep||
+  songStep>=clip.startStep+clip.lengthSteps)return null;
+ const length=beatLength(beat);
+ return (songStep-clip.startStep+(clip.sourceOffsetSteps??0))%length;
+}
 // No audio is flattened; repeat the referenced Beat's native instructions.
 export function eventsAtSongStep(song,step){
  if(!nonnegative(step))return [];
@@ -199,7 +212,7 @@ export function eventsAtSongStep(song,step){
    if(step<clip.startStep||step>=clip.startStep+clip.lengthSteps)continue;
    const beat=beats.get(clip.beatId);
    if(!beat)continue;
-   const localStep=(step-clip.startStep)%beatLength(beat);
+   const localStep=clipBeatStep(clip,beat,step);
    for(const event of eventsAtStep(beat,localStep))
     events.push({...event,beat,track,clip,songStep:step,beatStep:localStep});
   }
@@ -208,7 +221,7 @@ export function eventsAtSongStep(song,step){
 }
 export function validateSong(song){
  const errors=[];
- if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION].includes(song.version))
+ if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION].includes(song.version))
   return ["Unsupported Song format."];
  if(typeof song.id!=="string"||!song.id.trim()||typeof song.title!=="string"||!song.title.trim())
   errors.push("Song identity or title is missing.");
@@ -231,7 +244,7 @@ export function validateSong(song){
  for(const beat of song.beats){
   const issues=validateBeat(beat);
   if(issues.length)errors.push("Invalid Beat "+(beat?.id||"unknown")+": "+issues[0]);
-  if(song.version!==EXTENDED_SONG_VERSION&&beat?.version===EXTENDED_BEAT_VERSION)errors.push('Extended Beats require Song v18.');
+  if(song.version<EXTENDED_SONG_VERSION&&beat?.version===EXTENDED_BEAT_VERSION)errors.push('Extended Beats require Song v18.');
    if(song.version<AUTOMATION_SONG_VERSION&&beat?.version===AUTOMATION_BEAT_VERSION)errors.push("Automated Beats require Song v12.");
   if(song.version===SONG_VERSION&&beat?.version===MODULATION_BEAT_VERSION)errors.push("Modulated Beats require Song v10.");
   if(!BEAT_VERSIONS.includes(beat?.version))errors.push("Embedded Beat must use the current Beat format.");
@@ -251,6 +264,13 @@ export function validateSong(song){
    }
    clipIds.add(clip.id);
    if(track.kind==="beat"&&!known.has(clip.beatId))errors.push("Beat Clip references a missing Beat.");
+   if(track.kind==="beat"&&clip.sourceOffsetSteps!==undefined){
+    if(!nonnegative(clip.sourceOffsetSteps)||
+     !Number.isSafeInteger(clip.sourceOffsetSteps+clip.lengthSteps))
+     errors.push("Invalid Beat Clip source phase.");
+    else if(clip.sourceOffsetSteps>0&&song.version<CLIP_PHASE_SONG_VERSION)
+     errors.push("Beat Clip source phase requires Song v20.");
+   }
    if(track.kind==="vocal"){
     if(!knownRecordings.has(clip.recordingId))errors.push("Vocal Clip references a missing Recording.");
     const recording=recordings.find(item=>item.id===clip.recordingId);
