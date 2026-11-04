@@ -20,6 +20,16 @@ function wav(seconds){
  for(let i=0;i<frames;i++)pcm[i]=.25*Math.sin(i*2*Math.PI*440/WAV_RATE);
  return encodeMonoWav(pcm);
 }
+function longWav(seconds){
+ // The regular Beat recorder intentionally refuses >4s recordings. Construct
+ // a valid longer Song WAV here to test that the linking threshold rejects it.
+ const original=wav(4),frames=Math.round(seconds*WAV_RATE),data=new Uint8Array(44+frames*2);
+ data.set(original);
+ const view=new DataView(data.buffer);
+ view.setUint32(4,data.length-8,true);
+ view.setUint32(40,data.length-44,true);
+ return data;
+}
 function fixture(){
  const original=wav(2.5),rec=makeRecordingAsset("voice-linked-wav","Voice linked","audio/wav",original,
   {durationSeconds:2.5,trimSeconds:.08});
@@ -115,7 +125,7 @@ test("identity collisions, unversioned slices, overlong excerpts and incompatibl
  collision.beats[0].samples[0].sourceRecordingId="unrelated-id";
  assert.match(validateSong(collision).join(" "),/Conflicting Beat audio asset ID/);
  assert.equal(linkedVocalSample({...rec,mime:"audio/webm"},clip,getAsset(rec.id)),null);
- const tooLongBytes=wav(4.5);
+ const tooLongBytes=longWav(4.5);
  const tooLong=makeRecordingAsset("voice-too-long","Long voice","audio/wav",tooLongBytes,
   {durationSeconds:4.5,trimSeconds:0});
  assert.equal(linkedVocalSample(tooLong,{recordingId:tooLong.id,trimStartSeconds:0},tooLongBytes),null);
