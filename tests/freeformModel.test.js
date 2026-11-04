@@ -334,6 +334,7 @@ test("sustained placed Chunks illuminate held notes well beyond their source bar
  inst.chunks[0].notes=[{id:id(),pitch:70,start:1,duration:48,velocity:.85}];
  addFreeformChunkPlacement(inst,inst.chunks[0].id,16,{length:16});
  assert.deepEqual(validateFreeform(layer),[]);
+ assert.equal(freeformEndStep(layer),65,"Song duration includes the release tail past its Chunk bar.");
  assert.ok(soundingFreeformPitches(layer,inst.id,60).has(70));
  assert.ok(!soundingFreeformPitches(layer,inst.id,65).has(70));
 });
