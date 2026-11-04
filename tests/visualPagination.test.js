@@ -28,8 +28,8 @@ test("every sample zone, including zones past the first four, appears on its own
    assert.equal(handle.axes.length,1);
    assert.equal(handle.axes[0].path[0],"zones");
    assert.equal(handle.axes[0].path[2],"root");
-   assert.equal(handle.axes[0].min,36);
-   assert.equal(handle.axes[0].max,96);
+   assert.equal(handle.axes[0].min,0);
+   assert.equal(handle.axes[0].max,127);
    collected.push(handle.axes[0].path[1]);
    assert.ok(chart.paths.some(path=>path.links.includes("zones."+handle.axes[0].path[1]+".root")));
   }
