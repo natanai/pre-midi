@@ -32,7 +32,7 @@ const input=(type,value,min,max,onChange)=>{
 const field=(label,control)=>{
  const box=el("label","freeform-field");box.append(el("span","",label),control);return box;
 };
-export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActiveChange=()=>{},onBeatCreated=()=>{}}){
+export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActiveChange=()=>{},onBeatCreated=()=>{},onBrowseSound=()=>{},onSaveSound=()=>{}}){
  const panel=el("section","song-freeform-editor");panel.hidden=true;
  panel.setAttribute("aria-label","Freeform Song notes");
  root.append(panel);
@@ -51,7 +51,9 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   return true;
  }
  const soundUI=installFreeformSoundUI({
-  getSong,getLayer:layer,getInstrument:instrument,mutate,onError
+  getSong,getLayer:layer,getInstrument:instrument,mutate,onError,
+  onBrowseSound:context=>onBrowseSound({...context,trackId:activeTrackId}),
+  onSaveSound:context=>onSaveSound({...context,trackId:activeTrackId})
  });
  function close(){
   const wasActive=activeTrackId!==null;
@@ -223,7 +225,11 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   const inst=instrument();
   if(inst){activeInstrumentId=inst.id;picker.value=inst.id;}
   picker.addEventListener("change",()=>{activeInstrumentId=picker.value;selectedNoteId=null;editorScrollTop=null;render();});
-  tools.append(picker,action("+ instrument",addInstrument));
+  tools.append(picker,action("+ instrument",addInstrument),
+   action("browse sounds",()=>onBrowseSound({
+    trackId:activeTrackId,mode:inst?"replace":"add",
+    instrumentId:inst?.id??null,soundId:soundUI.getSelectedSound()?.id??null
+   }),"freeform-instrument-browse"));
   if(inst){
    const sourceName=input("text",inst.name,undefined,undefined,()=>{});
    sourceName.maxLength=60;sourceName.setAttribute("aria-label","Freeform Instrument name");
@@ -497,6 +503,13 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   return row;
  }
  return {renderAttached,render,open,close,getActiveTrackId:()=>activeTrackId,
+  focusInstrument(trackId,instrumentId,soundId=null){
+   if(activeTrackId!==trackId)return;
+   if(!layer()?.instruments.some(inst=>inst.id===instrumentId))return;
+   activeInstrumentId=instrumentId;selectedNoteId=null;
+   if(soundId)soundUI.selectSound(instrumentId,soundId);
+   render();
+  },
   setPosition(bar){
    playStep=bar<0?null:bar*BAR_STEPS;
    if(followPlayback&&activeTrackId&&playStep!==null&&
