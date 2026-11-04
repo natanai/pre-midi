@@ -54,7 +54,7 @@ export function diagramPageCount(patch,type){
  }
  if(type==="filter")return 2;
  if(type==="movement")return 3;
- if(type==="sample")return patch.type==="vocal"?1:2;
+ if(type==="sample")return 2;
  if(type==="automation")return 1;
  if(type.startsWith("harmonics"))return 4;
  return 1;
@@ -192,6 +192,7 @@ export const diagram=(patch,type,page=0)=>{
    line("M18 95 H344 M18 22 V95",true);
    line("M18 35 H342",false,["filter.type"]);
    tag(18,14,"off");tag(304,110,"dry");
+   action(122,61,["audioFilterBypassed"],[true,false],"turn filter on");
   }else{
   const f=p.filter||((p.type==="sample"||p.type==="vocal")?DEFAULT_SAMPLE_FILTER:
    {type:"lowpass",cutoff:8000,resonance:1});
@@ -278,6 +279,24 @@ export const diagram=(patch,type,page=0)=>{
   }
  }else if(type==="sample"&&page===1){
   const gain=clamp(p.gain??.9,0,2),transpose=p.transpose??0,pan=p.pan??0,strum=p.strumMs??0;
+  if(p.type==="vocal"){
+   // Vocal clips do not have the sample's strum/pitch-follow options.
+   // This graph edits the actual three common voice controls instead.
+   line("M18 100 H169 M193 82 H342",true);
+   line(pathRange(190,t=>[18+151*t,
+    73-24*Math.min(1,gain/1.5)*Math.sin(t*2*Math.PI*4*2**(transpose/12))]),
+    false,["transpose","gain"]);
+   handle(19+148*clamp((transpose+24)/48),99-50*gain/2,[
+    axis(["transpose"],-24,24,"linearX",{from:19,to:167,step:1}),
+    axis(["gain"],0,2,"linearY",{from:99,to:49,step:.01})
+   ],"voice pitch / level");
+   const x=202+130*clamp((pan+1)/2);
+   line("M"+x.toFixed(2)+" 64 V100",false,["pan"]);
+   handle(x,82,[
+    axis(["pan"],-1,1,"linearX",{from:202,to:332,step:.01})
+   ],"voice left / right");
+   tag(19,15,"pitch → / level ↑");tag(204,15,"left ← stereo → right");
+  }else{
   line("M18 60 H171 M192 104 H342",true);
   line(pathRange(190,t=>[25+18*strum/25+126*t,
    60-22*Math.sin(2*Math.PI*6*2**(transpose/12)*t)*Math.min(1,gain/1.5)]),
@@ -298,6 +317,7 @@ export const diagram=(patch,type,page=0)=>{
   action(65,107,["followPitch"],[true,false],"follow played note");
   action(190,40,["oneShot"],[false,true],"play entire recording");
   action(299,40,["preserveDynamics"],[false,true],"preserve recorded dynamics");
+  }
  }else if(type==="movement"&&page===1){
   const m=movement(p),bend=p.bend??{shape:"straight",amount:2,rate:4};
   line("M18 61 H344",true);
@@ -623,15 +643,20 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    button.style.top=(entry.y/112*100)+"%";
    const value=at(current,entry.path);
    const display=typeof value==="boolean"?(value?"on":"off"):String(value??entry.choices[0]);
-   button.textContent=({sawtooth:"saw",triangle:"tri",lowpass:"low",highpass:"high",
-    bandpass:"band",straight:"flat"})[display]??display;
+   button.textContent=entry.path[0]==="audioFilterBypassed"?"filter on":
+    (({sawtooth:"saw",triangle:"tri",lowpass:"low",highpass:"high",
+    bandpass:"band",straight:"flat"})[display]??display);
    button.setAttribute("aria-label",entry.label+": "+String(value??entry.choices[0])+"; next choice");
    button.dataset.soundPath=entry.path.join(".");
    button.addEventListener("click",()=>{
     const live=at(latestPatch,entry.path)??entry.choices[0];
     const index=entry.choices.findIndex(choice=>choice===live);
     const next=entry.choices[(index+1)%entry.choices.length];
-    if(entry.path[0]==="oscillators"&&entry.path[2]==="wave"&&next==="harmonic"){
+    if(entry.path[0]==="audioFilterBypassed"){
+     // The vocal display patch uses this read-only bypass flag to render the
+     // neutral curve, but the canonical edit is the actual filter object.
+     onChange(["filter"],{...DEFAULT_SAMPLE_FILTER});
+    }else if(entry.path[0]==="oscillators"&&entry.path[2]==="wave"&&next==="harmonic"){
      const slot=latestPatch.oscillators[entry.path[1]];
      onChange(["oscillators",entry.path[1]],{
       ...slot,wave:"harmonic",harmonics:slot.harmonics||harmonicRecipe()
