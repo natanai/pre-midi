@@ -1,5 +1,5 @@
 import {movement,movementDefaults,BEND_SHAPES} from "./expression.js";
-import {illustrateSoundPanel} from "./soundIllustrations.js";
+import {illustrateSoundPanel,bindSoundIllustrationLinks} from "./soundIllustrations.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {createDial,explainLabel,helpForLabel} from "./dial.js";
 import {sampleTone,SAMPLE_FILTERS,DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
@@ -38,6 +38,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  const toneTitle=document.createElement("summary");toneTitle.textContent="Tone · filter & distortion";
  const toneFields=document.createElement("div");toneFields.className="synth-fields dial-grid";
  const filterLabel=document.createElement("label");filterLabel.className="synth-field";
+ filterLabel.dataset.soundPath=JSON.stringify(["filter","type"]);
  const filterTitle=document.createElement("span");filterTitle.textContent="filter type";
  explainLabel(filterTitle,"filter type");
  const filterSelect=document.createElement("select");filterSelect.setAttribute("aria-label","Recorded sound filter type");
@@ -58,6 +59,9 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   value=>onPreview(["filter"],{...tone.filter,[key]:value})));
  toneFields.append(createDial({label:"Distortion",min:0,max:1,step:.01,display:"percent"},tone.drive,
   value=>onChange(["drive"],value),value=>onPreview(["drive"],value)));
+ const toneDials=toneFields.querySelectorAll(".dial-field");
+ toneDials[0].dataset.soundPath=JSON.stringify(["filter","resonance"]);
+ toneDials[1].dataset.soundPath=JSON.stringify(["drive"]);
  toneGroup.append(toneTitle,toneFields);root.append(toneGroup);
  const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=expanded.has("movement");
  movementGroup.addEventListener("toggle",()=>movementGroup.open?expanded.add("movement"):expanded.delete("movement"));
@@ -83,8 +87,12 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
    value=>onChange(["movement"],{...movement(patch),[key]:value}),
    value=>onPreview(["movement",key],value)));
  }
+ movementFields.querySelectorAll(".dial-field").forEach((dial,i)=>{
+  dial.dataset.soundPath=JSON.stringify(["movement",movements[i][0]]);
+ });
  const bend=patch.bend||{shape:"straight",amount:2,rate:4};
  const shapeLabel=document.createElement("label");shapeLabel.className="synth-field";
+ shapeLabel.dataset.soundPath=JSON.stringify(["bend","shape"]);
  const title=document.createElement("span");title.textContent="bend shape";
  explainLabel(title,"bend shape");shapeLabel.append(title);
  const select=document.createElement("select");select.setAttribute("aria-label","Instrument bend shape");
@@ -100,6 +108,9 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   disabled:bend.shape==="straight",disabledReason:"Choose a bend shape other than Straight first."},bend[key],
   value=>onChange(["bend"],{...bend,[key]:value}),
   value=>onPreview(["bend",key],value)));
+ movementFields.querySelectorAll(".dial-field").forEach((dial,i)=>{
+  if(i>=movements.length)dial.dataset.soundPath=JSON.stringify(["bend",i===movements.length?"amount":"rate"]);
+ });
  movementGroup.append(movementTitle,movementFields);root.append(movementGroup);
  const details=document.createElement("details");details.className="synth-group sample-shaping";details.open=expanded.has("sample");
  details.addEventListener("toggle",()=>details.open?expanded.add("sample"):expanded.delete("sample"));
@@ -117,10 +128,12 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   },patch[key]??0,
    value=>onChange([key],value),
    value=>onPreview([key],value)));
+  fields.lastElementChild.dataset.soundPath=JSON.stringify([key]);
  }
  const toggles=document.createElement("div");toggles.className="sample-toggles";
  const addToggle=(label,path,checked)=>{
   const control=document.createElement("label");control.className="sample-pitch-setting";
+  control.dataset.soundPath=JSON.stringify([path]);
   const box=document.createElement("input");box.type="checkbox";box.checked=checked;
   box.addEventListener("change",()=>onChange([path],box.checked));
   control.append(box,document.createTextNode(label));toggles.append(control);
@@ -133,6 +146,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
  const populateMapping=()=>patch.zones.forEach((zone,index)=>{
   const label=document.createElement("label");label.className="synth-field";
+  label.dataset.soundPath=JSON.stringify(["zones",index,"root"]);
   const name=document.createElement("span");name.textContent="Sample "+(index+1)+" · recorded pitch";
   const select=document.createElement("select");
   select.setAttribute("aria-label","Sample "+(index+1)+" recorded note");
@@ -185,4 +199,5 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
  root.append(action);
+ bindSoundIllustrationLinks(root,visuals);
 }
