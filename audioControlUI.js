@@ -51,7 +51,7 @@ function selectorLabel(title,aria){
 }
 export function renderAudioToneControls(root,patch,onChange,onPreview=()=>{},
  {allowBypass=false,showCutoff=false}={}){
- const tone=sampleTone(patch),off=allowBypass&&patch.filter==null;
+ const tone=sampleTone(patch),off=allowBypass&&(patch.filter==null||patch.audioFilterBypassed===true);
  const {label,select}=selectorLabel("filter type","Recorded sound filter type");
  for(const type of allowBypass?["off",...SAMPLE_FILTERS]:SAMPLE_FILTERS){
   const option=document.createElement("option");option.value=type;option.textContent=type;select.append(option);
