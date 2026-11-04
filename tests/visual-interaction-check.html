@@ -42,7 +42,7 @@ frame.addEventListener("load",async()=>{
   const graph=get("sound-visualizer")?.querySelector(".signal-scope-graph");
   const lane=graph?.querySelector('[aria-label="Waveform position"]');
   assert("measured waveform has a time position control",!!lane&&lane.getAttribute("role")==="slider");
-  await wait(()=>Number(lane.getAttribute("aria-valuemax"))>2,"measured waveform render",20000);
+  await wait(()=>!!graph.querySelector(".signal-waveform-left")?.getAttribute("d")&&!!lane.getAttribute("aria-valuetext"),"measured waveform render",20000);
   const rect=graph.getBoundingClientRect();
   lane.dispatchEvent(new MouseEvent("click",{bubbles:true,clientX:rect.left+rect.width*.6}));
   const clicked=Number(lane.getAttribute("aria-valuenow"));
