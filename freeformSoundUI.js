@@ -117,6 +117,10 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   const details=el("details","freeform-sound-details");details.open=expanded;
   details.append(el("summary","freeform-sound-summary","sound · "+ctx.sound.name));
   details.addEventListener("toggle",()=>{
+   // Re-rendering a Sound removes the old <details>. Browsers may dispatch a
+   // queued toggle from that detached node after the replacement is mounted.
+   // Only the currently mounted control may change the remembered open state.
+   if(!details.isConnected)return;
    if(expanded!==details.open){expanded=details.open;render();}
   });
   host.append(details);
