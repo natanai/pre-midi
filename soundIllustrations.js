@@ -792,15 +792,25 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  };
  const listen=(root,operation)=>Object.entries(ownerListeners).forEach(([name,handler])=>
   root[operation](name,handler));
- const initialListenerOwner=controlOwner();
- listen(initialListenerOwner,"addEventListener");
- // Keep immediate interactions working for detached test mounts, but move
- // listeners to the shared editor once the caller finishes inserting the DOM.
+ let listenerOwner=controlOwner(),linksDisposed=false;
+ listen(listenerOwner,"addEventListener");
+ // Detached wrappers must not leave listeners on the long-lived Sound section.
+ // The caller disposes old diagrams before rebuilding them, keeping one
+ // listener per live illustration instead of accumulating on every knob edit.
+ wrapper.disposeSoundIllustration=()=>{
+  if(linksDisposed)return;
+  linksDisposed=true;
+  listen(listenerOwner,"removeEventListener");
+ };
+ // Keep detached test mounts working, and bind to the shared editor once
+ // the caller finishes inserting the illustration into the live DOM.
  queueMicrotask(()=>{
+  if(linksDisposed)return;
   const finalOwner=controlOwner();
-  if(finalOwner!==initialListenerOwner){
-   listen(initialListenerOwner,"removeEventListener");
-   listen(finalOwner,"addEventListener");
+  if(finalOwner!==listenerOwner){
+   listen(listenerOwner,"removeEventListener");
+   listenerOwner=finalOwner;
+   listen(listenerOwner,"addEventListener");
   }
  });
  const coord=event=>{
