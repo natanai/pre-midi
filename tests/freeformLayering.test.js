@@ -51,8 +51,8 @@ test("Chunk repetitions count sounding-note overlap, not just passage ranges",()
   passageId:passage.id,length:16,repeats:2,every:16
  });
  addFreeformNote(inst,{pitch:72,start:36,duration:6,velocity:.8});
- // Move first onset to 32 and second to 48: overlap stationary 36–42 once.
- const result=previewFreeformPassageLayering(layer,passage.id,20);
+ // Move first onset to 36 and second to 52: overlap stationary 36–42 once.
+ const result=previewFreeformPassageLayering(layer,passage.id,24);
  assert.equal(result.noteOverlapCount,1);
  assert.equal(result.examples[0].startStep,36);
  assert.equal(result.examples[0].endStep,40);
