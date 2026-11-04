@@ -31,7 +31,7 @@ function waveAt(type,phase,harmonics){
 const pathFrom=points=>points.map(([x,y],i)=>(i?"L":"M")+x.toFixed(2)+" "+y.toFixed(2)).join(" ");
 const pathRange=(count,fn)=>pathFrom(Array.from({length:count},(_,i)=>fn(i/(count-1))));
 // Diagrams respond to canonical parameters; the measured scope is separate.
-export const diagram=(patch,type)=>{
+export const diagram=(patch,type,page=0)=>{
  const color=type==="movement"?"var(--signal-mauve)":"var(--track-accent,#08e4ec)";
  const paths=[],handles=[],labels=[];
  const line=(d,secondary=false,links=[])=>paths.push({d,secondary,links});
@@ -219,14 +219,33 @@ export const diagram=(patch,type)=>{
     {from:100,to:100-72*mix*.8,step:.01})
   ],"feedback");
   tag(18,13,"mix ↑");tag(287,13,"time →");tag(30,112,"dry");
+ }else if(type==="mapping"){
+  // Every imported recording can be inspected independently. Four lanes
+  // are shown per page so overlapping source pitches never hide one another.
+  const zones=p.zones??[],start=Math.max(0,page)*4;
+  for(let i=0;i<=5;i++){
+   const x=18+i*324/5;
+   line("M"+x.toFixed(2)+" 14 V101",true);
+   tag(Math.min(331,x+2),111,"c"+(i+2));
+  }
+  for(let j=0;j<Math.min(4,zones.length-start);j++){
+   const index=start+j,zone=zones[index],y=25+j*21;
+   const x=18+324*clamp((zone.root-36)/60);
+   line("M18 "+y+" H342",true);
+   line("M"+x.toFixed(2)+" "+(y-9)+" V"+(y+9),false,["zones."+index+".root"]);
+   handle(x,y,[axis(["zones",index,"root"],36,96,"linearX",
+    {from:18,to:342,step:1})],"sample "+(index+1)+" recorded pitch");
+   tag(23,y-8,String(index+1));
+  }
  }else if(type==="modulation"){
   const routes=p.modulation?.routes??[];
   tag(17,13,"source");tag(291,13,"target");
   if(!routes.length)line("M24 57 H336",true);
   // Modulation amplitudes come from the actual source and route math.
-  const shown=routes.slice(0,4),centers=[30,51,73,95];
-  shown.forEach((route,i)=>{
-   const center=centers[i],limit=MOD_TARGETS.find(t=>t.id===route.target)?.limit||1;
+  const start=Math.max(0,page)*4,shown=routes.slice(start,start+4),centers=[30,51,73,95];
+  shown.forEach((route,j)=>{
+   const i=start+j;
+   const center=centers[j],limit=MOD_TARGETS.find(t=>t.id===route.target)?.limit||1;
    line("M67 "+center+" H290",true);
    line(pathRange(130,t=>{
     const seconds=1.25*t;
@@ -239,11 +258,12 @@ export const diagram=(patch,type)=>{
    const target=MOD_TARGETS.find(item=>item.id===route.target);
    tag(18,center+3,source);tag(294,center+3,target?.name.replace("oscillator ","osc ")||"target");
   });
-  if(routes.length>4)tag(18,111,"+"+(routes.length-4)+" routes");
+
 
  }
  return {paths,handles,labels,color};
 };
+const pageState=new Map();
 let zoomId=null;
 const idFor=(kind,index)=>kind+"-"+index;
 function setZoom(wrapper,id,enabled){
@@ -262,6 +282,8 @@ if(typeof document!=="undefined")document.addEventListener("keydown",event=>{
 });
 export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index=0){
  const id=idFor(kind,index);
+ let page=pageState.get(id)??0;
+ const paginated=kind==="mapping"||kind==="modulation";
  const wrapper=document.createElement("section");wrapper.className="visual-sound-panel";
  wrapper.dataset.visualKind=kind;
  const area=document.createElement("div");area.className="visual-panel-area";
@@ -276,7 +298,21 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const next=!wrapper.classList.contains("zoomed");
   if(next)details.open=true;setZoom(wrapper,id,next);
  });
- area.append(graphic,handlesRoot,expand);
+ const pages=document.createElement("div");pages.className="visual-panel-pages";
+ const previous=document.createElement("button");previous.type="button";
+ previous.textContent="‹";previous.setAttribute("aria-label","previous "+kind+" page");
+ const range=document.createElement("span");range.className="visual-panel-range";
+ const next=document.createElement("button");next.type="button";
+ next.textContent="›";next.setAttribute("aria-label","next "+kind+" page");
+ pages.append(previous,range,next);
+ const turn=delta=>{
+  page=clamp(page+delta,0,Math.max(0,Math.ceil((kind==="mapping"?(latestPatch.zones?.length??0):
+   latestPatch.modulation?.routes?.length??0)/4)-1));
+  pageState.set(id,page);draw(latestPatch);
+ };
+ previous.addEventListener("click",()=>turn(-1));
+ next.addEventListener("click",()=>turn(1));
+ area.append(graphic,handlesRoot,pages,expand);
  // The drawing belongs inside its accordion: closed sections stay compact.
  const summary=details.querySelector("summary");
  if(summary)summary.after(area);else details.prepend(area);
@@ -289,7 +325,16 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  };
  function draw(current=latestPatch){
   latestPatch=current;
-  const {paths,handles,labels,color}=diagram(current,kind);
+  const total=kind==="mapping"?(current.zones?.length??0):
+   kind==="modulation"?(current.modulation?.routes?.length??0):0;
+  if(paginated){
+   const maxPage=Math.max(0,Math.ceil(total/4)-1);
+   page=clamp(page,0,maxPage);
+   pages.hidden=total<=4;
+   previous.disabled=page===0;next.disabled=page===maxPage;
+   range.textContent=(page*4+1)+"–"+Math.min(total,(page+1)*4)+" / "+total;
+  }else pages.hidden=true;
+  const {paths,handles,labels,color}=diagram(current,kind,page);
   visibleHandles=handles;
   graphic.replaceChildren();handlesRoot.replaceChildren();
   graphic.style.setProperty("--visual-color",color);
