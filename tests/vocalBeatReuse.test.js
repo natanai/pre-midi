@@ -59,8 +59,8 @@ test("web and native sample playback use the identical source-time region",()=>{
  const {link,sound,beat}=fixture();
  const region=sampleSourceRegion(link.zone,2.5,1);
  assert.equal(region.offset,.264);
- assert.equal(region.sourceLength,2.236);
- assert.equal(region.length,2.236);
+ assert.ok(Math.abs(region.sourceLength-2.236)<1e-8);
+ assert.ok(Math.abs(region.length-2.236)<1e-8);
  const plan=planNativeSample({patch:sound.patch,volume:.8},{pitch:60,velocity:1},.75,.15,
   new Map([[link.asset.id,{id:7,duration:2.5,normalization:1}]]));
  assert.equal(plan.offset,region.offset);
