@@ -25,7 +25,8 @@ try{
  for(const [suite,width,height] of [
  ...["song-check","freeform-check"].flatMap(suite=>
   [[1440,900],[780,900]].map(([width,height])=>[suite,width,height])),
- ["automation-freeform-check",1440,900]
+ ["automation-freeform-check",1440,900],
+ ["layering-freeform-check",1440,900]
 ]){
   const port=server.address().port,chrome=process.env.CHROME_BIN||"google-chrome";
   const result=new Promise(resolve=>{receive=resolve;});
