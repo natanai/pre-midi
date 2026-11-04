@@ -56,7 +56,7 @@ Updates: select Settings > updates > preview (or stable) > check for updates.
 With a signed build, the portable updater verifies the release, closes pre-midi,
 replaces only application files and automatically restores the previous version
 if installation or startup fails. KEEP data/, projects/ and exports/.
-Unsigned historical releases require a manual one-time ZIP replacement.
+Unsigned builds use manual ZIP updates and never install automatically.
 Manual updates: close pre-midi and back up this folder, then replace only
 pre-midi.exe, portable.txt, README.txt, THIRD-PARTY-NOTICES.txt and licenses/.
 

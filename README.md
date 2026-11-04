@@ -14,7 +14,7 @@ During rapid prototyping, **Windows 11 x64 portable ZIP is the only preview dist
 
 Desktop **Play** and **Hear sound** use the native C++17/miniaudio engine by default. Existing factory synth/sample presets, Song vocals, live edits, WAV export and native microphone recording are implemented, with an explicit Web Audio alternative in Settings. Bounded native multichannel PCM/float WAV and Opus importing is supported; advanced AAC/HE-AAC and extreme-rate importing remain experimental. Physical Windows 11 audio-device latency, dropouts, and recovery are not yet qualified. See [native audio scope](docs/native-audio.md) and [release notes](docs/desktop-release-notes.md).
 
-Signed Windows portable builds support Settings → updates → preview/stable → check for updates. The updater verifies the release signature and bound version, closes pre-midi, replaces only application files, and checks startup before discarding the rollback copy. `data/`, `projects/` and `exports/` are never replaced. Unsigned older previews require one manual upgrade after update signing is provisioned.
+Windows portable ZIPs remain available for manual installation without signing, an installer, or registry changes. Back up and close the studio, then replace only application files while retaining `data/`, `projects/` and `exports/`. Signed builds additionally support Settings → updates → preview/stable → check for updates, with signature verification and rollback. Unsigned builds never auto-install.
 
 ## Use
 
