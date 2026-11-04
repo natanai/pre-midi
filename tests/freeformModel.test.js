@@ -265,3 +265,25 @@ test("freeform Chunk creation may retain a captured note cutoff curve",()=>{
  const preview=planSynthVoice({patch:inst.sounds[0].patch,volume:inst.volume},{...cloneNote,pitch:60},0,.4,resolved);
  assert.equal(preview.version,3);
 });
+
+test("linked Beat Clip cutoff continuation is versioned, moves and resets on explicit length edits",()=>{
+ const song=automatedSong(),clip=song.tracks[0].clips[0];
+ unpackBeatClip(song,clip.id,{fromStep:32,toStep:96});
+ const left=song.tracks[0].clips[0];
+ assert.equal(left.automationTailSteps,224);
+ assert.deepEqual(validateSong(song),[]);
+ const old=left.automationTailSteps;
+ editBeatClip(song,left.id,{startStep:10});
+ assert.equal(left.automationTailSteps,old,
+  "Moving a linked segment should preserve its relative release tail");
+ const bad=clone(song);
+ bad.tracks[0].clips[0].automationTailSteps=-1;
+ assert.match(validateSong(bad).join(" "),/Invalid Beat Clip cutoff continuation/);
+ bad.tracks[0].clips[0].automationTailSteps=old;
+ bad.version=22;
+ assert.match(validateSong(bad).join(" "),/requires Song v23/);
+ editBeatClip(song,left.id,{lengthSteps:16});
+ assert.equal(left.automationTailSteps,undefined,
+  "Explicit Clip resizing redefines the cutoff boundary");
+ assert.deepEqual(validateSong(song),[]);
+});
