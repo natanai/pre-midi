@@ -112,6 +112,6 @@ test("sample preset Assets deduplicate, remain external, and round-trip inside a
  assert.equal(replaced.operation,"replace-pitched");
  assert.equal(layer.samples.length,1,"The second Instrument still uses this Asset.");
  assert.throws(()=>applyFreeformPreset(layer,{mode:"add"},{
-  name:"lost audio",patch:sample(wave),trigger:"pitched",assets:[]
- }),/missing sample Asset|^$/);
+  name:"lost audio",patch:sample({id:"missing-sample"}),trigger:"pitched",assets:[]
+ }),/missing sample Asset/);
 });
