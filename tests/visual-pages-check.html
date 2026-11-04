@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8">
+<style>body{margin:0;background:#080808;color:#ddd;font:12px monospace}
+.mount{max-width:680px;margin:8px auto}button{cursor:pointer}</style>
+<div id="sample" class="mount"></div><div id="synth" class="mount"></div>
+<pre id="result"></pre>
+<script type="module">
+import {renderSamplerEditor} from "../samplerUI.js";
+import {renderPatchEditor} from "../instrumentUI.js";
+import {makePatch} from "../synth.js";
+import {defaultSource} from "../src/dsp/modulation.js";
+const checks={},pass=(label,value)=>{checks[label]=!!value;if(!value)throw Error(label);};
+let status="FAIL";
+try{
+ const patch={type:"sample",zones:Array.from({length:10},(_,i)=>({assetId:"z"+i,root:40+i*4})),
+  gain:.9,transpose:0,pan:0,strumMs:0,attack:.005,release:.17,
+  followPitch:true,oneShot:false,preserveDynamics:false};
+ renderSamplerEditor(document.querySelector("#sample"),patch,()=>{},null,()=>{},()=>{},"visual-page-sample");
+ const samplePanel=document.querySelector('#sample .visual-sound-panel[data-visual-kind="mapping"]');
+ pass("mapping module exists",!!samplePanel);
+ samplePanel.querySelector("details").open=true;
+ const samplePages=samplePanel.querySelector(".visual-panel-pages");
+ pass("mapping shows page controls",!!samplePages&&!samplePages.hidden);
+ pass("page one has first root",!!samplePanel.querySelector('[data-sound-links="zones.0.root"]'));
+ pass("page one omits tenth root",!samplePanel.querySelector('[data-sound-links="zones.9.root"]'));
+ const next=samplePages.querySelector('button[aria-label="next mapping page"]');
+ next.click();next.click();
+ pass("mapping navigates to third page",samplePages.querySelector(".visual-panel-range").textContent==="9–10 / 10");
+ const hit=samplePanel.querySelector('[data-sound-links="zones.9.root"].visual-graph-hit');
+ pass("tenth sample root visible",!!hit);
+ hit.dispatchEvent(new MouseEvent("click",{bubbles:true}));
+ pass("mapping click opens the corresponding sample root",
+  document.activeElement.closest("[data-sound-path]")?.dataset.soundPath==="zones.9.root");
+ const synth=makePatch("init");
+ synth.modulation={version:1,routes:Array.from({length:9},(_,i)=>({
+  id:"visual-route-"+i,source:defaultSource("lfo"),target:"filter.cutoff",
+  unit:"octaves",depth:1,polarity:"unipolar",smoothing:.005
+ }))};
+ renderPatchEditor(document.querySelector("#synth"),synth,()=>{},()=>{},"visual-page-synth");
+ const mod=document.querySelector('#synth .visual-sound-panel[data-visual-kind="modulation"]');
+ pass("modulation module exists",!!mod);
+ mod.querySelector("details").open=true;
+ const modPages=mod.querySelector(".visual-panel-pages");
+ pass("modulation supports paging",!!modPages&&!modPages.hidden);
+ modPages.querySelector('button[aria-label="next modulation page"]').click();
+ modPages.querySelector('button[aria-label="next modulation page"]').click();
+ pass("all routes are reachable",modPages.querySelector(".visual-panel-range").textContent==="9–9 / 9");
+ const routeHit=mod.querySelector('.visual-graph-hit[data-sound-links="modulation.routes.8"]');
+ pass("ninth modulation trace is drawn",!!routeHit);
+ routeHit.dispatchEvent(new MouseEvent("click",{bubbles:true}));
+ pass("modulation click opens ninth route",
+  document.activeElement.closest("[data-sound-path]")?.dataset.soundPath.startsWith("modulation.routes.8"));
+ status="PASS";
+}catch(error){checks.error=String(error.stack||error);}
+document.querySelector("#result").textContent=JSON.stringify(checks);
+fetch("/__visual_pages_result?status="+status+"&details="+encodeURIComponent(JSON.stringify(checks)));
+</script>
