@@ -170,6 +170,38 @@
   await wait(()=>get("play").getAttribute("aria-label")==="stop song",
    "Imported freeform audio plays as part of Song",9000);
   get("play").click();
+  // Acoustic regression: browser export must not change when an automated
+  // Beat becomes editable freeform instructions. Native plans are separately
+  // compared in the model suite against the same source-phase contract.
+  const {create,resizeBeatBars,upgradeBeatFeatures}=await import("/schema.js");
+  const {createSong}=await import("/songModel.js");
+  const {unpackBeatClip}=await import("/freeformModel.js");
+  const {wav}=await import("/audio.js");
+  const automated=create();resizeBeatBars(automated,1);
+  automated.instruments[0].chunks[0].notes=[{
+   id:"automated-browser-note",pitch:60,start:2,duration:4,velocity:.8
+  }];
+  automated.instruments[0].automation={
+   version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
+   points:[{id:"low",step:0,value:400},{id:"high",step:16,value:6800}]
+  };
+  upgradeBeatFeatures(automated);
+  const originalSong=createSong(automated);
+  const rawBefore=new Uint8Array(await (await wav(originalSong)).arrayBuffer());
+  unpackBeatClip(originalSong,originalSong.tracks[0].clips[0].id);
+  const rawAfter=new Uint8Array(await (await wav(originalSong)).arrayBuffer());
+  assert(originalSong.version===23,"Automated freeform uses the versioned Song v23 format");
+  assert(rawBefore.length===rawAfter.length,
+   "Freeform conversion preserves the offline render length and effect tails");
+  const viewBefore=new DataView(rawBefore.buffer),viewAfter=new DataView(rawAfter.buffer);
+  let largest=0,energy=0;
+  for(let frame=44;frame<rawBefore.length;frame+=2){
+   const difference=Math.abs(viewBefore.getInt16(frame,true)-viewAfter.getInt16(frame,true));
+   largest=Math.max(largest,difference);energy+=difference*difference;
+  }
+  const rms=Math.sqrt(energy/Math.max(1,(rawBefore.length-44)/2));
+  assert(largest<=3&&rms<=.5,
+   "Automated source and freeform WAV should match (peak "+largest+", RMS "+rms+")");
   assert(!issues.length,"No runtime browser errors: "+issues.join("; "));
   await report("PASS","Freeform empty editing, notes, unpack, versioned export and playback");
  }catch(error){
