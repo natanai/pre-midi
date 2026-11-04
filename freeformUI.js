@@ -1,7 +1,8 @@
 // Attached freeform Song lane and Song-position piano roll.
 // Every mutation passes through the studio's existing Song undo/history boundary.
 import {createFreeform,ensureFreeform,addFreeformInstrument,addFreeformNote,
- addFreeformChunkPlacement,moveFreeformPassage,createBeatFromFreeformSelection,soundingFreeformPitches} from "./freeformModel.js";
+ addFreeformChunkPlacement,moveFreeformPassage,createBeatFromFreeformSelection,soundingFreeformPitches,
+ previewFreeformPassageLayering,FREEFORM_LIMIT_STEPS} from "./freeformModel.js";
 import {addBeat} from "./songModel.js";
 import {makeChunk,id} from "./schema.js";
 import {referencedSampleIds} from "./soundModel.js";
@@ -404,25 +405,69 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    const passageLimit=Math.min(200,layer.passages.length);
    for(const passage of layer.passages.slice(0,passageLimit)){
     const box=action("",()=>open(track.id,passage.id),"song-freeform-passage");
-    box.title="Freeform from "+(Math.floor(passage.startStep/16)+1)+"; drag horizontally to move";
-    box.setAttribute("aria-label",box.title);
+    box.dataset.passageId=passage.id;
     box.style.left=passage.startStep/16*SONG_BAR_PIXELS+"px";
     box.style.width=Math.max(10,passage.lengthSteps/16*SONG_BAR_PIXELS)+"px";
+    const overlapHint=el("span","song-freeform-layering-hint");
+    overlapHint.setAttribute("aria-hidden","true");box.append(overlapHint);
+    const describe=(position,scan=true)=>{
+     const note=scan?previewFreeformPassageLayering(layer,passage.id,position,{
+      beatClips:track.clips,maxEvents:4000,maxPairs:15000
+     }):{noteOverlapCount:0,beatClipOverlapCount:track.clips.filter(clip=>
+      clip.startStep<position+passage.lengthSteps&&clip.startStep+clip.lengthSteps>position
+     ).length,examples:[],incomplete:false};
+     const labels=[];
+     if(note.noteOverlapCount)labels.push(note.noteOverlapCount+" same-pitch/Sound overlap"+
+      (note.noteOverlapCount===1?"":"s")+"; both notes will sound");
+     if(note.beatClipOverlapCount)labels.push("under "+note.beatClipOverlapCount+
+      " linked Beat Clip"+(note.beatClipOverlapCount===1?"":"s")+"; layers may play together");
+     if(note.incomplete)labels.push("dense passage: overlap scan incomplete");
+     box.classList.toggle("song-freeform-layered",!!note.beatClipOverlapCount);
+     box.classList.toggle("song-freeform-note-overlap",!!note.noteOverlapCount);
+     box.classList.toggle("song-freeform-scan-incomplete",!!note.incomplete);
+     overlapHint.textContent=note.incomplete?"scan":note.noteOverlapCount?
+      "≈ "+note.noteOverlapCount:note.beatClipOverlapCount?"＋ beat":"";
+     const positionLabel="freeform · bar "+(Math.floor(position/16)+1);
+     const info=labels.length?labels.join("; "):
+      "no matching note overlaps detected";
+     box.title=positionLabel+". "+info+". Drag to move; Alt+arrow moves one bar, Shift+Alt+arrow one step.";
+     box.setAttribute("aria-label",box.title);
+    };
+    describe(passage.startStep,false);
+    box.addEventListener("pointerenter",()=>describe(passage.startStep));
+    box.addEventListener("focus",()=>describe(passage.startStep));
+    const clampPosition=next=>Math.max(0,Math.min(
+     FREEFORM_LIMIT_STEPS-passage.lengthSteps,next));
+    box.addEventListener("keydown",event=>{
+     if(!event.altKey||!["ArrowLeft","ArrowRight"].includes(event.key))return;
+     event.preventDefault();event.stopPropagation();
+     const delta=(event.key==="ArrowRight"?1:-1)*(event.shiftKey?1:16);
+     const next=clampPosition(passage.startStep+delta);
+     if(next===passage.startStep)return;
+     mutate(()=>moveFreeformPassage(layer,passage.id,next));
+     const replacement=[...root.querySelectorAll(".song-freeform-passage")]
+      .find(item=>item.dataset.passageId===passage.id);
+     replacement?.focus();
+    });
     box.addEventListener("pointerdown",event=>{
      if(event.button!==0)return;
      const firstX=event.clientX,old=passage.startStep;
-     let moved=false;
+     let moved=false,lastPreview=old;
      box.setPointerCapture(event.pointerId);
      const drag=e=>{if(e.pointerId!==event.pointerId)return;
       if(Math.abs(e.clientX-firstX)>4)moved=true;
-      if(moved)box.style.transform="translateX("+
-       (Math.round((e.clientX-firstX)/SONG_BAR_PIXELS)*SONG_BAR_PIXELS)+"px)";
+      if(!moved)return;
+      const proposed=clampPosition(old+
+       Math.round((e.clientX-firstX)/SONG_BAR_PIXELS)*16);
+      box.style.transform="translateX("+((proposed-old)/16*SONG_BAR_PIXELS)+"px)";
+      if(proposed!==lastPreview){lastPreview=proposed;describe(proposed);}
      };
      const finish=e=>{if(e.pointerId!==event.pointerId)return;
       box.removeEventListener("pointermove",drag);box.removeEventListener("pointerup",finish);
       box.removeEventListener("pointercancel",finish);
       if(moved&&e.type==="pointerup"){
-       const next=Math.max(0,old+Math.round((e.clientX-firstX)/SONG_BAR_PIXELS)*16);
+       const next=clampPosition(old+
+        Math.round((e.clientX-firstX)/SONG_BAR_PIXELS)*16);
        mutate(()=>moveFreeformPassage(layer,passage.id,next));
       }else if(moved)render();
      };
