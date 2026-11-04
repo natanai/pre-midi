@@ -6,6 +6,7 @@ const SOURCE_FILES=[
  "index.html",
  "studio.js",
  "songUI.js",
+ "vocalEditor.js",
  "instrumentUI.js",
  "samplerUI.js",
  "automationUI.js",
@@ -27,7 +28,7 @@ function buildInventory(sources){
   const k=(path+" "+id).toLowerCase();
   if(path==="desktopUI.js"||path==="desktopAudioUI.js")return "settings/host-equivalent";
   if(path==="keyboardPiano.js")return "notes/external-keyboard";
-  if(path==="songUI.js"||/\b(song|voice|vocal|clip|track)\b/.test(k))return "song";
+  if(path==="songUI.js"||path==="vocalEditor.js"||/\b(song|voice|vocal|clip|track)\b/.test(k))return "song";
   if(path==="microphoneUI.js"||/\b(mic|record|sample|sampling)\b/.test(k))return "sound/recording";
   if(["instrumentUI.js","samplerUI.js","modulationUI.js","automationUI.js","soundIllustrations.js","soundScope.js","dial.js"].includes(path))return "sound";
   if(/\b(export|import|file|new|examples|save-preset|library|close-library|close-examples)\b/.test(k))return "project";
