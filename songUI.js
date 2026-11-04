@@ -7,7 +7,7 @@ import {installFreeformUI} from "./freeformUI.js";
 // determines how much empty timeline is visible. There is no fixed song end.
 const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
 const integer=(value,fallback)=>Number.isFinite(value)?Math.max(0,Math.round(value)):fallback;
-export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{},onSelectionChange=()=>{},onError=()=>{},onFreeformActiveChange=()=>{},onFreeformBeatCreated=()=>{},onBrowseFreeform=()=>{}}){
+export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{},onSelectionChange=()=>{},onError=()=>{},onFreeformActiveChange=()=>{},onFreeformBeatCreated=()=>{},onBrowseFreeform=()=>{},onSaveFreeform=()=>{}}){
  const $=id=>root.querySelector("#"+id);
  const viewport=$("song-scroll"),tracks=$("song-tracks"),ruler=$("song-ruler"),footer=$("song-timeline-footer");
  let selectedClipId=null,dragging=false,ignoreClick=false,playPosition=-1,seekStep=0;
@@ -41,7 +41,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   }
  }
  const freeformUI=installFreeformUI({
-  root,getSong,onChange:apply,onError,onBrowseSound:onBrowseFreeform,
+  root,getSong,onChange:apply,onError,onBrowseSound:onBrowseFreeform,onSaveSound:onSaveFreeform,
   onActiveChange:active=>{
    if(active)selectedClipId=null;
    onFreeformActiveChange(active);

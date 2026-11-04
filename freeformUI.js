@@ -31,7 +31,7 @@ const input=(type,value,min,max,onChange)=>{
 const field=(label,control)=>{
  const box=el("label","freeform-field");box.append(el("span","",label),control);return box;
 };
-export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActiveChange=()=>{},onBeatCreated=()=>{},onBrowseSound=()=>{}}){
+export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActiveChange=()=>{},onBeatCreated=()=>{},onBrowseSound=()=>{},onSaveSound=()=>{}}){
  const panel=el("section","song-freeform-editor");panel.hidden=true;
  panel.setAttribute("aria-label","Freeform Song notes");
  root.append(panel);
@@ -51,7 +51,8 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
  }
  const soundUI=installFreeformSoundUI({
   getSong,getLayer:layer,getInstrument:instrument,mutate,onError,
-  onBrowseSound:context=>onBrowseSound({...context,trackId:activeTrackId})
+  onBrowseSound:context=>onBrowseSound({...context,trackId:activeTrackId}),
+  onSaveSound:context=>onSaveSound({...context,trackId:activeTrackId})
  });
  function close(){
   const wasActive=activeTrackId!==null;
