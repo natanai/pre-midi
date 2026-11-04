@@ -69,7 +69,28 @@ export const diagram=(patch,type,page=0)=>{
  const handle=(x,y,axes,label)=>handles.push({x,y,axes,label});
  const axis=(path,min,max,mode,options={})=>({path,min,max,mode,...options});
  const p=patch;
- if(type==="automation"){
+ if(type==="stage"){
+  // The overview's measured waveform remains factual PCM. This separate
+  // explanatory field makes the level knobs directly editable.
+  const rack=p.layout==="rack",volume=clamp(p.volume??1),
+   gain=clamp(p.gain??1),pan=clamp(p.pan??0,-1,1);
+  const x=rack?24+312*volume:24+312*(pan+1)/2;
+  const y=100-70*(rack?gain:volume);
+  line("M24 100 H336 M24 27 H336 M180 22 V100",true);
+  line("M"+x.toFixed(2)+" 25 V100 M24 "+y.toFixed(2)+" H336",
+   true,rack?["volume","gain"]:["pan","volume"]);
+  handle(x,y,rack?[
+   axis(["volume"],0,1,"linearX",{from:24,to:336,step:.01}),
+   axis(["gain"],0,1,"linearY",{from:100,to:30,step:.01})
+  ]:[
+   axis(["pan"],-1,1,"linearX",{from:24,to:336,step:.01}),
+   axis(["volume"],0,1,"linearY",{from:100,to:30,step:.01})
+  ],rack?"rack level / selected sound level":"stereo position / instrument level");
+  tag(18,14,rack?"sound level ↑":"instrument level ↑");
+  tag(18,112,rack?"quiet rack":"left");
+  tag(290,112,rack?"loud rack":"right");
+  if(rack)tag(265,15,"total "+Math.round(100*volume*gain)+"%");
+ }else if(type==="automation"){
   const total=Math.max(1,(p.bars??1)*16);
   const frequencyY=value=>98-72*clamp(Math.log(Math.max(50,value)/50)/Math.log(280));
   line("M18 103 H342 M18 20 V103",true);
@@ -721,6 +742,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   if(!field)return;
   const nested=field.closest("details.modulation-routing,details.harmonic-more");
   if(nested)nested.open=true;
+  const module=field.closest("details.synth-group");
+  if(module)module.open=true;
   highlight([field.dataset.soundPath]);
   // Some knob labels contain a help-text span with tabindex. Prefer the
   // actual editable widget instead of accidentally focusing its tooltip.
