@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {create,id,clone,makeInstrument,makeSound,validate as validateBeat} from "../schema.js";
+import {create,id,clone,makeInstrument,makeSound,upgradeBeatFeatures,validate as validateBeat} from "../schema.js";
 import {makePatch} from "../synth.js";
 import {renderEvents} from "../audio.js";
 import {createSong,editBeatClip,upgradeSongFeatures,validateSong} from "../songModel.js";
@@ -184,6 +184,7 @@ const automatedSong=({offset=0,length=256}={})=>{
   {id:"top-source",pitch:67,start:12,duration:4,velocity:.75}
  ];
  inst.timeline[1]=inst.chunks[0].id;
+ upgradeBeatFeatures(beat);
  const song=createSong(beat),clip=song.tracks[0].clips[0];
  editBeatClip(song,clip.id,{lengthSteps:length,sourceOffsetSteps:offset});
  return song;

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {create,clone} from "../schema.js";
+import {create,clone,upgradeBeatFeatures} from "../schema.js";
 import {createSong,addBeat,validateSong,editBeatClip,CLIP_PHASE_SONG_VERSION} from "../songModel.js";
 import {parseSong,exportSongProject,importSongProject} from "../songIO.js";
 import {makeSampleAsset} from "../sampler.js";
@@ -134,6 +134,7 @@ test("Song v23 preserves per-note cutoff movement through portable .premidi expo
  beat.instruments[0].chunks[0].notes=[
   {id:"a",pitch:60,start:2,duration:4,velocity:.8}
  ];
+ upgradeBeatFeatures(beat);
  const song=createSong(beat);
  unpackBeatClip(song,song.tracks[0].clips[0].id);
  assert.equal(song.version,FREEFORM_AUTOMATION_SONG_VERSION);
