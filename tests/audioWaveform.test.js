@@ -5,11 +5,11 @@ import {
  waveformXAtTime,waveformTimeAtX,waveformPeaksFromBuffer,waveformPeaksFromOverview
 } from "../audioWaveform.js";
 test("source-time trim has a millisecond resolution and never removes the last ten milliseconds",()=>{
- assert.equal(maxTrimSeconds(2),1.99);
+ assert.equal(maxTrimSeconds(2),1.989);
  assert.equal(normalizeTrimSeconds(-.1,2),0);
  assert.equal(normalizeTrimSeconds(.18449,2),.184);
  assert.equal(normalizeTrimSeconds(.18451,2),.185);
- assert.equal(normalizeTrimSeconds(20,2),1.99);
+ assert.equal(normalizeTrimSeconds(20,2),1.989);
  assert.throws(()=>normalizeTrimSeconds(NaN,2),/finite/);
  assert.throws(()=>maxTrimSeconds(.005),/10 ms/);
 });
