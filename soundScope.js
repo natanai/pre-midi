@@ -53,7 +53,7 @@ export function scopeAudioBins(buffer,count=COUNT){
 // Zoom to a few cycles of the real audio, rather than manufacturing a wave
 // from patch parameters. All sound edits use the same fixed amplitude mapping;
 // neither channel nor patch is normalized independently.
-export function scopeWaveformData(buffer,referencePitch=60,count=620){
+export function scopeWaveformData(buffer,referencePitch=60,count=620,atSeconds=null){
  const rate=buffer.sampleRate;
  const fundamental=440*2**((referencePitch-69)/12);
  const size=Math.min(buffer.length,Math.max(2,Math.round(rate*clamp(7/fundamental,.018,.12))));
@@ -63,8 +63,8 @@ export function scopeWaveformData(buffer,referencePitch=60,count=620){
  // Select one genuinely audible slice in the first held second, using the
  // identical timing and sample indices for the left and right channels.
  const latest=Math.max(0,Math.min(buffer.length-size,Math.round(rate*1.08)));
- let start=0,best=-1;
- for(let k=0;k<15;k++){
+ let start=atSeconds===null?0:Math.round(rate*clamp(atSeconds,0,latest/rate)),best=-1;
+ if(atSeconds===null)for(let k=0;k<15;k++){
   const candidate=Math.min(latest,Math.round(rate*(.02+k*.072)));
   let energy=0;
   for(let i=0;i<64;i++){
@@ -180,7 +180,11 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
  const title=document.createElement("span");title.className="signal-scope-title";
  title.textContent="waveform";
  const legend=document.createElement("span");legend.className="signal-scope-legend";legend.textContent="rendering";
- head.append(title,legend);
+ const compare=document.createElement("button");compare.type="button";
+ compare.className="signal-scope-compare";compare.textContent="a/b";
+ compare.setAttribute("aria-label","Hold waveform for comparison");
+ compare.setAttribute("aria-pressed","false");
+ head.append(title,legend,compare);
  const svg=node("svg",{viewBox:"0 0 720 264",preserveAspectRatio:"none",role:"img",
   "aria-label":"Measured audio waveform, stereo amplitude over time, and pitch movement"});
  svg.classList.add("signal-scope-graph");
@@ -199,21 +203,79 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
  };
  const waveLabel=label("signal-chart-wave",""),end=label("signal-chart-end","");
  const gate=node("path",{class:"signal-scope-guides"});
- svg.append(guides,waveRight,waveLeft,left,right,...pitches,gate);
+ const reference=node("path",{class:"signal-scope-reference",fill:"none"});
+ const marker=node("path",{class:"signal-scope-marker",fill:"none"});
+ const seek=node("rect",{x:"0",y:"150",width:"720",height:"47",fill:"transparent",
+  class:"signal-scope-seek",tabindex:"0",role:"slider",
+  "aria-label":"Waveform position","aria-valuemin":"0","aria-valuemax":"0","aria-valuenow":"0"});
+ svg.append(guides,reference,waveRight,waveLeft,left,right,...pitches,gate,marker,seek);
  chart.append(svg,waveLabel,label("signal-chart-time","l / r · time"),
   label("signal-chart-pitch","pitch"),end);
  wrapper.append(head,chart);root.append(wrapper);
  let revision=0,disposed=false,timer=null,currentLevel=initialLevel;
+ let latestBuffer=null,latestSeconds=0,seekSeconds=null,referenceBuffer=null;
+ function paintWave(){
+  if(!latestBuffer)return;
+  const wave=scopeWaveformData(latestBuffer,referencePitch,620,seekSeconds);
+  waveLeft.setAttribute("d",waveformPath(wave.channels[0]));
+  waveRight.setAttribute("d",waveformPath(wave.channels[1]));
+  waveLabel.textContent=Math.round(wave.windowSeconds*1000)+" ms · "+wave.startSeconds.toFixed(2)+"s";
+  if(referenceBuffer){
+   const captured=scopeWaveformData(referenceBuffer,referencePitch,620,wave.startSeconds);
+   reference.setAttribute("d",waveformPath(captured.channels[0]));
+  }else reference.removeAttribute("d");
+  const max=Math.max(0,latestSeconds-wave.windowSeconds);
+  const selected=seekSeconds===null?wave.startSeconds:clamp(seekSeconds,0,max);
+  marker.setAttribute("d","M"+(selected/Math.max(.01,latestSeconds)*720).toFixed(2)+" 150 V197");
+  seek.setAttribute("aria-valuemax",latestSeconds.toFixed(2));
+  seek.setAttribute("aria-valuenow",selected.toFixed(2));
+  seek.setAttribute("aria-valuetext",selected.toFixed(2)+" seconds");
+ }
+ const seekTo=fraction=>{
+  if(!latestBuffer)return;
+  seekSeconds=clamp(fraction,0,1)*latestSeconds;
+  paintWave();
+ };
+ seek.addEventListener("pointerdown",event=>{
+  if(!latestBuffer)return;
+  event.preventDefault();
+  const r=svg.getBoundingClientRect();
+  seekTo((event.clientX-r.left)/r.width);
+  seek.focus({preventScroll:true});
+  seek.setPointerCapture(event.pointerId);
+ });
+ seek.addEventListener("pointermove",event=>{
+  if(!seek.hasPointerCapture(event.pointerId))return;
+  const r=svg.getBoundingClientRect();seekTo((event.clientX-r.left)/r.width);
+ });
+ seek.addEventListener("pointerup",event=>{
+  if(seek.hasPointerCapture(event.pointerId))seek.releasePointerCapture(event.pointerId);
+ });
+ seek.addEventListener("keydown",event=>{
+  if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
+  event.preventDefault();
+  const current=seekSeconds??0;
+  seekSeconds=event.key==="Home"?0:event.key==="End"?latestSeconds:
+   clamp(current+(event.key==="ArrowRight"?.05:-.05),0,latestSeconds);
+  paintWave();
+ });
+ compare.addEventListener("click",()=>{
+  if(!latestBuffer)return;
+  if(referenceBuffer){referenceBuffer=null;compare.setAttribute("aria-pressed","false");
+   compare.setAttribute("aria-label","Hold waveform for comparison");}
+  else{referenceBuffer=latestBuffer;seekSeconds=scopeWaveformData(latestBuffer,referencePitch).startSeconds;
+   compare.setAttribute("aria-pressed","true");compare.setAttribute("aria-label","Clear waveform comparison");}
+  paintWave();
+ });
  function update(nextPatch,level=currentLevel){
   currentLevel=level;const token=++revision;
   clearTimeout(timer);
   timer=setTimeout(()=>{
    void renderScopeAudio(nextPatch,beat,currentLevel,referencePitch,automation).then(({buffer,seconds,clipped})=>{
     if(disposed||token!==revision)return;
-    const wave=scopeWaveformData(buffer,referencePitch);
-    waveLeft.setAttribute("d",waveformPath(wave.channels[0]));
-    waveRight.setAttribute("d",waveformPath(wave.channels[1]));
-    waveLabel.textContent=Math.round(wave.windowSeconds*1000)+" ms";
+    latestBuffer=buffer;latestSeconds=seconds;
+    paintWave();
+    const wave=scopeWaveformData(buffer,referencePitch,620,seekSeconds);
     const [l,r]=scopeAudioBins(buffer);
     left.setAttribute("d",envelopePath(l,0));right.setAttribute("d",envelopePath(r,1));
     pitches[0].setAttribute("d",pitchPath(nextPatch,seconds,referencePitch,0));
@@ -230,6 +292,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
     wrapper.removeAttribute("title");
    }).catch(error=>{
     if(disposed||token!==revision)return;
+    latestBuffer=null;latestSeconds=0;reference.removeAttribute("d");marker.removeAttribute("d");
     waveLeft.removeAttribute("d");waveRight.removeAttribute("d");
     left.removeAttribute("d");right.removeAttribute("d");waveLabel.textContent="";
     pitches.forEach(line=>line.removeAttribute("d"));gate.removeAttribute("d");end.textContent="";
