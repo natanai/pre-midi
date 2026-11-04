@@ -1,7 +1,7 @@
 // Native Song domain model. No file I/O or browser dependencies.
 // Legacy Songs use v8 with v7 Beats; modulation explicitly requires v10/v9.
 // pre-programmed reader compatibility remains separately qualified.
-import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
+import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION,requiresSustainFormat,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
 import {validateVocalEffects,vocalEffects} from "./vocalEffects.js";
 import {requiresSampleSliceFormat,isRecordingSampleAlias} from "./sampleSlice.js";
@@ -14,9 +14,14 @@ export const VOCAL_FX_SONG_VERSION=16;
 export const EXTENDED_SONG_VERSION=18;
 export const CLIP_PHASE_SONG_VERSION=20;
 export const SAMPLE_SLICE_SONG_VERSION=24;
+// v26 explicitly permits v25 multi-bar Chunk sustains inside reusable Beats and freeform.
+export const SUSTAIN_SONG_VERSION=26;
 export function upgradeSongFeatures(song){
  song.beats.forEach(upgradeBeatFeatures);
- if(song.version===SAMPLE_SLICE_SONG_VERSION||song.beats.some(beat=>beat.version===SAMPLE_SLICE_BEAT_VERSION)||
+ if(song.version===SUSTAIN_SONG_VERSION||song.beats.some(beat=>beat.version===SUSTAIN_BEAT_VERSION)||
+    song.tracks?.some(track=>track.kind==="beat"&&track.freeform&&requiresSustainFormat(track.freeform)))
+   song.version=SUSTAIN_SONG_VERSION;
+  else if(song.version===SAMPLE_SLICE_SONG_VERSION||song.beats.some(beat=>beat.version===SAMPLE_SLICE_BEAT_VERSION)||
    song.tracks?.some(track=>track.kind==="beat"&&track.freeform&&requiresSampleSliceFormat(track.freeform)))
   song.version=SAMPLE_SLICE_SONG_VERSION;
  else if(song.tracks?.some(track=>track.kind==="beat"&&(
@@ -47,7 +52,7 @@ export function createSong(sourceBeat=create()){
  ensureBeat(sourceBeat);
  const beat=clone(sourceBeat),trackId=id();
  return upgradeSongFeatures({
-  format:FORMAT,kind:"song",version:beat.version===SAMPLE_SLICE_BEAT_VERSION?SAMPLE_SLICE_SONG_VERSION:beat.version===EXTENDED_BEAT_VERSION?EXTENDED_SONG_VERSION:beat.version===AUTOMATION_BEAT_VERSION?AUTOMATION_SONG_VERSION:beat.version===MODULATION_BEAT_VERSION?MODULATION_SONG_VERSION:SONG_VERSION,id:id(),title:"Untitled song",
+  format:FORMAT,kind:"song",version:beat.version===SUSTAIN_BEAT_VERSION?SUSTAIN_SONG_VERSION:beat.version===SAMPLE_SLICE_BEAT_VERSION?SAMPLE_SLICE_SONG_VERSION:beat.version===EXTENDED_BEAT_VERSION?EXTENDED_SONG_VERSION:beat.version===AUTOMATION_BEAT_VERSION?AUTOMATION_SONG_VERSION:beat.version===MODULATION_BEAT_VERSION?MODULATION_SONG_VERSION:SONG_VERSION,id:id(),title:"Untitled song",
   bpm:beat.bpm,beats:[beat],recordings:[],
   tracks:[{id:trackId,kind:"beat",name:"Beat 1",clips:[
    {id:id(),beatId:beat.id,startStep:0,lengthSteps:beatLength(beat)}
@@ -266,7 +271,7 @@ export function eventsAtSongStep(song,step){
 }
 export function validateSong(song){
  const errors=[];
- if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION,SAMPLE_SLICE_SONG_VERSION].includes(song.version))
+ if(!isObject(song)||song.format!==FORMAT||song.kind!=="song"||![SONG_VERSION,MODULATION_SONG_VERSION,AUTOMATION_SONG_VERSION,PCM_SONG_VERSION,VOCAL_FX_SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION,SAMPLE_SLICE_SONG_VERSION,SUSTAIN_SONG_VERSION].includes(song.version))
   return ["Unsupported Song format."];
  if(typeof song.id!=="string"||!song.id.trim()||typeof song.title!=="string"||!song.title.trim())
   errors.push("Song identity or title is missing.");
@@ -290,6 +295,8 @@ export function validateSong(song){
   const issues=validateBeat(beat);
   if(issues.length)errors.push("Invalid Beat "+(beat?.id||"unknown")+": "+issues[0]);
   if(song.version<EXTENDED_SONG_VERSION&&beat?.version===EXTENDED_BEAT_VERSION)errors.push('Extended Beats require Song v18.');
+  if(song.version<SUSTAIN_SONG_VERSION&&beat?.version===SUSTAIN_BEAT_VERSION)
+   errors.push('Multi-bar Chunk sustains require Song v26.');
   if(song.version<SAMPLE_SLICE_SONG_VERSION&&beat?.version===SAMPLE_SLICE_BEAT_VERSION)
    errors.push('Beat source excerpts require Song v24.');
    if(song.version<AUTOMATION_SONG_VERSION&&beat?.version===AUTOMATION_BEAT_VERSION)errors.push("Automated Beats require Song v12.");
@@ -306,6 +313,8 @@ export function validateSong(song){
   if(track.kind==="vocal"&&track.freeform!==undefined)errors.push("Vocal Tracks cannot own freeform.");
   if(track.kind==="beat"&&track.freeform!==undefined){
    if(song.version<FREEFORM_SONG_VERSION)errors.push("Freeform requires Song v22.");
+   if(song.version<SUSTAIN_SONG_VERSION&&requiresSustainFormat(track.freeform))
+    errors.push("Freeform multi-bar Chunk sustains require Song v26.");
    if(song.version<SAMPLE_SLICE_SONG_VERSION&&requiresSampleSliceFormat(track.freeform))
     errors.push("Freeform source excerpts require Song v24.");
    if(track.freeform?.version===2&&song.version<FREEFORM_AUTOMATION_SONG_VERSION)
