@@ -44,8 +44,13 @@
   soundSummary.click();
   await wait(()=>!!doc.querySelector(".freeform-sound-modules .synth-grid"),"Canonical synth editor visible");
   assert(doc.querySelector(".freeform-sound-scope .signal-scope"),"Measured sound waveform is present");
-  const firstId=JSON.parse(win.localStorage.getItem("premidi-v5-draft"))
-   .tracks[0].freeform.instruments[0].notes[0].id;
+  const readDraft=()=>{
+   try{return JSON.parse(win.localStorage.getItem("premidi-v5-draft")||"null");}
+   catch{return null;}
+  };
+  await wait(()=>readDraft()?.tracks?.[0]?.freeform?.instruments?.[0]?.notes?.length===1,
+   "Draft saves the independent freeform note",12000);
+  const firstId=readDraft().tracks[0].freeform.instruments[0].notes[0].id;
   const browse=doc.querySelector(".freeform-sound-browse");
   assert(browse,"Freeform opens the existing Sound catalog");
   browse.click();
@@ -54,8 +59,10 @@
   assert(preset,"Factory synth presets remain accessible from freeform");
   preset.querySelector(".preset-choose").click();
   await wait(()=>!get("instrument-dialog").open,"Preset selection closes shared library");
-  const selected=JSON.parse(win.localStorage.getItem("premidi-v5-draft"))
-   .tracks[0].freeform.instruments[0];
+  await wait(()=>readDraft()?.tracks?.[0]?.freeform?.instruments?.[0]
+   ?.sounds?.[0]?.patch?.presetId==="init",
+   "Freeform preset selection persists to Song",12000);
+  const selected=readDraft().tracks[0].freeform.instruments[0];
   assert(selected.notes.length===1&&selected.notes[0].id===firstId,
    "Choosing a freeform Sound retains previously placed notes");
   assert(selected.sounds[0].patch.presetId==="init",
