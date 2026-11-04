@@ -14,7 +14,8 @@ export const EXTENDED_SONG_VERSION=18;
 export const CLIP_PHASE_SONG_VERSION=20;
 export function upgradeSongFeatures(song){
  song.beats.forEach(upgradeBeatFeatures);
- if(song.tracks?.some(track=>track.kind==="beat"&&track.freeform?.version===2)||
+ if(song.tracks?.some(track=>track.kind==="beat"&&(
+    track.freeform?.version===2||track.clips?.some(clip=>clip.automationTailSteps!==undefined)))||
   song.version===FREEFORM_AUTOMATION_SONG_VERSION) song.version=FREEFORM_AUTOMATION_SONG_VERSION;
  else if(song.tracks?.some(track=>track.kind==="beat"&&track.freeform!==undefined)||song.version===FREEFORM_SONG_VERSION)
   song.version=FREEFORM_SONG_VERSION;
@@ -89,9 +90,13 @@ export function editBeatClip(song,clipId,changes){
  for(const key of Object.keys(changes))
   if(!["startStep","lengthSteps","sourceOffsetSteps"].includes(key))throw Error("Only Beat Clip placement, length and source phase may be edited.");
  const next={...clip,...changes};
+ // Resizing the Clip explicitly defines a new cutoff boundary.
+ if(changes.lengthSteps!==undefined&&changes.lengthSteps!==clip.lengthSteps)
+  delete next.automationTailSteps;
  if(!nonnegative(next.startStep)||!positive(next.lengthSteps)||
   (next.sourceOffsetSteps!==undefined&&!nonnegative(next.sourceOffsetSteps)))throw Error("Invalid Beat Clip timing or source phase.");
  Object.assign(clip,next);
+ if(next.automationTailSteps===undefined)delete clip.automationTailSteps;
  upgradeSongFeatures(song);
  return clip;
 }
@@ -292,6 +297,13 @@ export function validateSong(song){
      errors.push("Invalid Beat Clip source phase.");
     else if(clip.sourceOffsetSteps>0&&song.version<CLIP_PHASE_SONG_VERSION)
      errors.push("Beat Clip source phase requires Song v20.");
+   }
+   if(track.kind==="beat"&&clip.automationTailSteps!==undefined){
+    if(!nonnegative(clip.automationTailSteps)||
+     !Number.isSafeInteger(clip.lengthSteps+clip.automationTailSteps))
+     errors.push("Invalid Beat Clip cutoff continuation.");
+    if(song.version<FREEFORM_AUTOMATION_SONG_VERSION)
+     errors.push("Beat Clip cutoff continuation requires Song v23.");
    }
    if(track.kind==="vocal"){
     if(!knownRecordings.has(clip.recordingId))errors.push("Vocal Clip references a missing Recording.");

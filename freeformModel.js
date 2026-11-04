@@ -372,7 +372,7 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
     // Match the original Beat/Clip automation limit, including partial Clips.
     // The movement follows this note when its passage moves in the Song.
     note.cutoffAutomation={version:1,block:clone(event.instrument.automation),
-     step:local,limitStep:Math.min(cycle,local+end-step)};
+     step:local,limitStep:Math.min(cycle,local+end+(clip.automationTailSteps??0)-step)};
    }
    addFreeformNote(converted,note);
   }
@@ -382,7 +382,12 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
  const errors=validateFreeform(layer);
  if(errors.length)throw Error("Could not unpack: "+errors[0]);
  const keep=[];
- if(from>clip.startStep)keep.push({...clone(clip),lengthSteps:from-clip.startStep});
+ if(from>clip.startStep){
+  const left={...clone(clip),lengthSteps:from-clip.startStep};
+  if(beat.instruments.some(inst=>inst.automation!==undefined)||clip.automationTailSteps!==undefined)
+   left.automationTailSteps=end-from+(clip.automationTailSteps??0);
+  keep.push(left);
+ }
  if(to<end)keep.push({...clone(clip),id:id(),startStep:to,lengthSteps:end-to,
   sourceOffsetSteps:((clip.sourceOffsetSteps??0)+to-clip.startStep)%cycle});
  track.clips=track.clips.filter(item=>item.id!==clipId).concat(keep);

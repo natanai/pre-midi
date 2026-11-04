@@ -189,9 +189,10 @@ const automatedSong=({offset=0,length=256}={})=>{
  editBeatClip(song,clip.id,{lengthSteps:length,sourceOffsetSteps:offset});
  return song;
 };
+const round=value=>Math.round(value*1e9)/1e9;
 const signature=plan=>({
- at:plan.start,pitch:plan.expression.pitch,duration:plan.duration,
- cutoff:plan.automation?.points.map(point=>[point.time,point.value])
+ at:round(plan.start),pitch:plan.expression.pitch,duration:round(plan.duration),
+ cutoff:plan.automation?.points.map(point=>[round(point.time),round(point.value)])
 });
 test("unpacking automated repetitions gives exactly matching native voice timelines",()=>{
  const song=automatedSong({offset:16,length:256}),clip=song.tracks[0].clips[0];
@@ -212,7 +213,7 @@ test("unpacking automated repetitions gives exactly matching native voice timeli
  const shifted=nativePlans(renderEvents(song)).map(signature);
  assert.deepEqual(shifted.map(({cutoff})=>cutoff.map(([time,value])=>value)),unchanged,
   "Moving the passage cannot change the source automation phase");
- assert.deepEqual(shifted.map(x=>x.at),after.map(x=>x.at+16*60/song.bpm/4));
+ assert.deepEqual(shifted.map(x=>x.at),after.map(x=>round(x.at+16*60/song.bpm/4)));
  assert.deepEqual(validateSong(song),[]);
 });
 test("partial automated unpack preserves remaining Beat Clips and exact cutoff plans",()=>{
@@ -224,6 +225,8 @@ test("partial automated unpack preserves remaining Beat Clips and exact cutoff p
  assert.equal(left.lengthSteps,32);
  assert.equal(right.startStep,96);
  assert.equal(right.sourceOffsetSteps,96);
+ assert.equal(left.automationTailSteps,224,
+  "Retained linked Clip keeps its original cutoff release-tail continuation");
  const after=nativePlans(renderEvents(song)).map(signature);
  assert.deepEqual(after,before);
  assert.deepEqual(validateSong(song),[]);
