@@ -5,7 +5,7 @@ export const WAVEFORM_ZOOMS=Object.freeze([1,2,4,8,16,32,64]);
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
 export function maxTrimSeconds(duration){
  if(!Number.isFinite(duration)||duration<=.01)throw Error("Recording must contain more than 10 ms of audio");
- return Math.max(0,Math.floor((duration-.01)*1000+1e-6)/1000);
+ return Math.max(0,Math.floor((duration-.010001)*1000)/1000);
 }
 export function normalizeTrimSeconds(value,duration){
  if(!Number.isFinite(value))throw Error("Trim must be a finite number");
