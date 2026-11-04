@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {create,clone} from "../schema.js";
-import {createSong,addBeat,addSongTrack,addBeatClip,editBeatClip,eventsAtSongStep,songDurationSteps,validateSong,SONG_VERSION} from "../songModel.js";
+import {create,clone,resizeBeatBars,EXTENDED_BEAT_VERSION} from "../schema.js";
+import {createSong,addBeat,addSongTrack,addBeatClip,editBeatClip,eventsAtSongStep,songDurationSteps,validateSong,SONG_VERSION,EXTENDED_SONG_VERSION,CLIP_PHASE_SONG_VERSION,upgradeSongFeatures} from "../songModel.js";
 const withNote=()=>{
  const beat=create();
  beat.instruments[0].chunks[0].notes.push({id:"demo-note",pitch:60,start:0,duration:1,velocity:.8});
@@ -65,4 +65,34 @@ test("Song refuses broken input and collisions; copying a Beat requires new iden
  assert.deepEqual(validateSong(song),[]);
  assert.throws(()=>addBeatClip(song,song.tracks[0].id,"missing"),/missing Beat/);
  assert.throws(()=>editBeatClip(song,song.tracks[0].clips[0].id,{lengthSteps:0}),/Invalid Beat Clip/);
+});
+
+test("64-bar Beats remain source-linked in explicit Song v18",()=>{
+ const beat=withNote();resizeBeatBars(beat,64);
+ const inst=beat.instruments[0];inst.timeline[63]=inst.chunks[0].id;
+ assert.equal(beat.version,EXTENDED_BEAT_VERSION);
+ const song=createSong(beat);
+ assert.equal(song.version,EXTENDED_SONG_VERSION);
+ assert.equal(song.tracks[0].clips[0].lengthSteps,1024);
+ assert.equal(eventsAtSongStep(song,63*16).length,1);
+ assert.deepEqual(validateSong(song),[]);
+ const oldVersion=clone(song);oldVersion.version=16;
+ assert.match(validateSong(oldVersion).join(" "),/v18/);
+ upgradeSongFeatures(song);
+ assert.equal(song.version,EXTENDED_SONG_VERSION);
+});
+
+test("source-phase offsets preserve Beat timing independently of Song placement",()=>{
+ const song=createSong(withNote()),beat=song.beats[0],clip=song.tracks[0].clips[0];
+ beat.instruments[0].timeline[1]=beat.instruments[0].chunks[0].id;
+ editBeatClip(song,clip.id,{sourceOffsetSteps:8});
+ assert.equal(song.version,CLIP_PHASE_SONG_VERSION);
+ assert.equal(eventsAtSongStep(song,0).length,0);
+ assert.equal(eventsAtSongStep(song,8)[0].beatStep,16);
+ assert.equal(eventsAtSongStep(song,120)[0].beatStep,0);
+ assert.deepEqual(validateSong(song),[]);
+ const downgraded=clone(song);downgraded.version=18;
+ assert.match(validateSong(downgraded).join(" "),/v20/);
+ const invalid=clone(song);invalid.tracks[0].clips[0].sourceOffsetSteps=-1;
+ assert.match(validateSong(invalid).join(" "),/source phase/);
 });

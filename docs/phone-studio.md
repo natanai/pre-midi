@@ -3,6 +3,10 @@
 Status: **Phase 0 retired, Phase 1 source inventory gated, Phase 2 Notes editing partially Safari-qualified, Phases 3–5 feature slices in browser qualification; Phase 6 real-device parity still open** (2026-11-02).
 Owner document: **this file**. Do not create a second phone/mobile roadmap or parity matrix. Synthesizer/DSP work remains in `docs/synthesis-roadmap.json`; Song/game-engine integration remains in `docs/song-rollout.md`; naming follows `docs/terminology.json`.
 
+## Approved Song/freeform parity boundary (2026-11-04)
+
+The Song design in docs/song-rollout.md includes an attached freeform lane under each Beat Track. Phone must support empty freeform authoring, full/partial move-and-unpack, Instruments, direct Song-position notes, linked Chunks, passage movement, create Beat from selection, and a shared musical playhead. A labeled action must exist wherever desktop uses dragging or double-clicking. The phone host reuses the same .premidi schema and music commands, never a phone-only freeform implementation. These features remain unqualified until the actual UI is built and tested in iOS Safari/Home Screen.
+
 ## Intended result
 
 An iPhone user opens the published website in Safari, chooses **Add to Home Screen → Open as Web App**, and launches a local-first, fully functional music studio. Without a computer, they can create Beats and Songs, place and edit notes, design synthesizers, use sample racks, record sounds and vocals, hear playback, save and restore sessions, import/export `.premidi` and asset ZIPs, and render WAVs. Audio and project semantics match desktop, even though navigation and layout are purpose-built for touch.

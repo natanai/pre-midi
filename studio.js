@@ -1,5 +1,5 @@
 import {renderCutoffAutomation} from "./automationUI.js";
-import {upgradeBeatFeatures} from "./schema.js";
+import {upgradeBeatFeatures,resizeBeatBars,MAX_BEAT_BARS} from "./schema.js";
 import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
@@ -8,7 +8,7 @@ import { play, audition, auditionChord, auditionHeld, wav, primeSamples, nativeE
 import { installKeyboardPiano } from "./keyboardPiano.js";
 import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
-import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
+import { chunkIsPlaying, pianoScrubberX, songBeatEditorPosition } from "./pianoPlayhead.js";
 import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
@@ -1532,9 +1532,11 @@ async function startTransport({onStart=null,recording=false,startStep=null,count
     }
    },
    onProgress: (bar, step) => {
-    pianoProgress=playingSong?null:{bar,step};
+    pianoProgress=playingSong?
+     songBeatEditorPosition(song,beat.id,songUI?.getSelectedBeatClip()?.id??null,bar*16+step):
+     {bar,step};
     if(playingSong)songUI?.setPosition(bar+step/16);
-    else paintPianoPlayhead();
+    paintPianoPlayhead();
    },
    onStop: () => {
     playback = null;
@@ -1658,17 +1660,25 @@ $("bpm").addEventListener("change",event=>{
  if(song&&songExpanded)modifySong(()=>{song.bpm=next;});
  else modify(()=>{beat.bpm=next;});
 });
-$("bars").addEventListener("change", event => modify(() => {
- const count = Number(event.target.value);
- beat.bars = count;
- for (const inst of beat.instruments) {
-  while (inst.timeline.length < count) inst.timeline.push(null);
-  inst.timeline.length = count;
-  while(inst.placements.length<count)inst.placements.push(null);
-  inst.placements.length=count;
+attachNumberScrub($("bars"));
+$("bars").addEventListener("change", event => {
+ const count=Number(event.target.value);
+ if(!Number.isInteger(count)||count<1||count>MAX_BEAT_BARS){
+  event.target.value=String(beat.bars);
+  message("Beat length must be 1–64 bars.",true);
+  return;
  }
- selectedSlot.bar = Math.min(selectedSlot.bar, count - 1);
-}));
+ if(count===beat.bars)return;
+ try{
+  modify(()=>{
+   resizeBeatBars(beat,count);
+   selectedSlot.bar=Math.min(selectedSlot.bar,count-1);
+  });
+ }catch(error){
+  event.target.value=String(beat.bars);
+  message(error.message,true);
+ }
+});
 $("add-instrument").addEventListener("click",()=>openLibrary("add"));
 $("change-sound").addEventListener("click",()=>openLibrary("replace"));
 $("close-library").addEventListener("click",()=>$("instrument-dialog").close());

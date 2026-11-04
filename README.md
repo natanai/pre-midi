@@ -18,7 +18,7 @@ Windows portable ZIPs remain available for manual installation without signing, 
 
 ## Use
 
-The **Beat** editor is the default. A Beat contains Instruments and reusable one-measure Chunks, with a maximum of 16 measures. An Instrument can be a pitched piano roll or a Rack of individually triggered Sounds. All synth parameters, note expressions, sample mappings, Chunk offsets and repetitions remain editable.
+The **Beat** editor is the default. A Beat contains Instruments and reusable one-measure Chunks, with a maximum of 64 measures. An Instrument can be a pitched piano roll or a Rack of individually triggered Sounds. All synth parameters, note expressions, sample mappings, Chunk offsets and repetitions remain editable.
 
 Choose **↑ Song** to arrange Beats on a longer timeline. Beat Clips can move, overlap on separate Tracks, repeat, and be trimmed without flattening their source. Selecting a Beat Clip or its lane name opens that Beat below. Use **+ Beat** to create a new Beat or add an existing `.premidi`.
 
@@ -34,11 +34,11 @@ Browser performance mode supports simultaneous key presses and releases through 
 
 ## Native project files
 
-- **Beat:** legacy version 7 remains supported; modulation and automation use newer versioned Beat documents (v9 and v11 respectively). Older supported Beat documents migrate through the versioned parser.
-- **Song:** legacy version 8 remains supported; modulation and automation use newer versioned Song documents (v10 and v12 respectively), referencing Beats, Beat Clips, Vocal Clips and Recordings by stable identities.
+- **Beat:** legacy version 7 remains supported; 17–64-bar extended Beats use version 17; modulation and automation use newer versioned Beat documents (v9 and v11 respectively). Older supported Beat documents migrate through the versioned parser.
+- **Song:** legacy version 8 remains supported; Songs containing extended Beats use version 18; source-phase-offset Clips use Song version 20; modulation and automation use newer versioned Song documents (v10 and v12 respectively), referencing Beats, Beat Clips, Vocal Clips and Recordings by stable identities.
 - **Audio:** audio bytes stay outside `.premidi`. Projects containing recordings or imported samples export as a ZIP with a `.premidi` manifest and an `assets/` directory. Reimport the ZIP to restore all audio.
 - **Browser storage:** local autosave through IndexedDB, with an ordinary browser-storage fallback for smaller projects. Export projects to keep portable backups. There is no account or server-side project storage.
-- **Current web constraints:** Beats have 1–16 measures; short sampler assets have their own smaller limit; Song vocal takes are currently limited to 5 minutes / 48 MB each, with a 64 MB portable ZIP limit. Standalone hosts will need streaming rather than retaining full recordings in memory.
+- **Current web constraints:** Beats have 1–64 measures; short sampler assets have their own smaller limit; Song vocal takes are currently limited to 5 minutes / 48 MB each, with a 64 MB portable ZIP limit. Standalone hosts will need streaming rather than retaining full recordings in memory.
 
 The goal is **one native music format** for the studio and pre-programmed, including game-driven changes to Beat layers and eventually Sound parameters. **Full engine parity is not implemented yet:** pre-programmed still has an older v2 music reader. Track the migration in [pre-programmed issue #235](https://github.com/natanai/pre-programmed/issues/235).
 

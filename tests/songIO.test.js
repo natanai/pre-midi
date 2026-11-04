@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {create,clone} from "../schema.js";
-import {createSong,addBeat,validateSong} from "../songModel.js";
+import {createSong,addBeat,validateSong,editBeatClip,CLIP_PHASE_SONG_VERSION} from "../songModel.js";
 import {parseSong,exportSongProject,importSongProject} from "../songIO.js";
 import {makeSampleAsset} from "../sampler.js";
 import {encodeMonoWav} from "../recording.js";
@@ -50,4 +50,14 @@ test("Song import refuses orphan Assets, missing bundles, and Beat documents",as
  corrupt.tracks[0].clips[0].beatId="absent";
  assert.throws(()=>parseSong(JSON.stringify(corrupt)),/missing Beat/);
  await assert.rejects(importSongProject({name:"x.wav",size:1}),/Open a/);
+});
+
+test("versioned source-phase Beat Clips survive Song export and reimport",async()=>{
+ const song=createSong(create()),clip=song.tracks[0].clips[0];
+ editBeatClip(song,clip.id,{sourceOffsetSteps:23});
+ assert.equal(song.version,CLIP_PHASE_SONG_VERSION);
+ const exported=exportSongProject(song);
+ const restored=parseSong(await exported.blob.text());
+ assert.deepEqual(restored,song);
+ assert.equal(restored.tracks[0].clips[0].sourceOffsetSteps,23);
 });

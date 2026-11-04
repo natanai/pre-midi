@@ -61,7 +61,7 @@
       "parents": [
         "song"
       ],
-      "definition": "Standalone 1–16-bar arrangement containing Instruments, Chunks, and their musical placements. May exist without a Song."
+      "definition": "Standalone 1–64-bar arrangement containing Instruments, Chunks, and their musical placements. May exist without a Song."
     },
     {
       "id": "song",
@@ -102,6 +102,7 @@
     "composition": "Deprecated name for the Beat document. Do not introduce new uses.",
     "score": "Deprecated variable name for a Beat document. Existing identifiers must be migrated deliberately.",
     "songStep": "Legacy Beat-timeline step; use beatStep for Beat-local timing.",
+    "sourceOffsetSteps": "Optional Beat Clip phase offset in sixteenth-note steps; absent means begin at source Beat step zero. Independent of the Clip Song startStep.",
     "versioning": "Existing .premidi v5/v6/v7 inputs must remain readable through migrations; never silently reinterpret old serialized fields."
   },
   "invariants": [

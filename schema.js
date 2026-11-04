@@ -4,11 +4,18 @@ export const FORMAT = "pre-midi";
 export const VERSION = 7;
 export const MODULATION_BEAT_VERSION=9;
 export const AUTOMATION_BEAT_VERSION=11;
+export const EXTENDED_BEAT_VERSION=17;
+export const MAX_BEAT_BARS=64;
 import {validateCutoffAutomation} from "./src/dsp/automation.js";
 export const requiresAutomationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>inst?.automation!==undefined);
-export const BEAT_VERSIONS=[VERSION,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION];
+export const BEAT_VERSIONS=[VERSION,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION];
 export const requiresModulationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>Array.isArray(inst?.sounds)&&inst.sounds.some(sound=>sound?.patch?.version===2||sound?.patch?.modulation!==undefined));
-export function upgradeBeatFeatures(doc){if(requiresAutomationFormat(doc))doc.version=AUTOMATION_BEAT_VERSION;else if(requiresModulationFormat(doc)&&doc.version<MODULATION_BEAT_VERSION)doc.version=MODULATION_BEAT_VERSION;return doc;}
+export function upgradeBeatFeatures(doc){
+ if(doc.bars>16||doc.version===EXTENDED_BEAT_VERSION)doc.version=EXTENDED_BEAT_VERSION;
+ else if(requiresAutomationFormat(doc))doc.version=AUTOMATION_BEAT_VERSION;
+ else if(requiresModulationFormat(doc)&&doc.version<MODULATION_BEAT_VERSION)doc.version=MODULATION_BEAT_VERSION;
+ return doc;
+}
 import {placementFor,STEPS_PER_BAR} from "./arrangement.js";
 import {MAX_SOUNDS,MAX_EVENTS,canConvertToRack,convertToRack} from "./soundModel.js";
 import { makePatch, validatePatch } from "./synth.js";
@@ -39,19 +46,37 @@ export function create() {
  return {format:FORMAT,version:VERSION,id:id(),title:"Untitled beat",
   bpm:120,beatsPerBar:4,stepsPerBeat:4,bars:8,samples:[],instruments:[instrument]};
 }
+// Prevent silently discarding placed music when changing the Beat length.
+export function resizeBeatBars(doc,count){
+ if(!Number.isInteger(count)||count<1||count>MAX_BEAT_BARS)throw Error("Beat length must be 1–64 bars.");
+ if(count<doc.bars&&doc.instruments.some(inst=>
+  inst.timeline.slice(count).some(Boolean)||inst.placements?.slice(count).some(Boolean)))
+  throw Error("Move or remove placed Chunks beyond bar "+count+" before shortening this Beat.");
+ for(const inst of doc.instruments){
+  while(inst.timeline.length<count)inst.timeline.push(null);
+  inst.timeline.length=count;
+  inst.placements??=Array.from({length:doc.bars},()=>null);
+  while(inst.placements.length<count)inst.placements.push(null);
+  inst.placements.length=count;
+ }
+ doc.bars=count;
+ upgradeBeatFeatures(doc);
+ return doc;
+}
 const object=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
 const text=(x,max)=>typeof x==="string"&&!!x.trim()&&x.length<=max;
 const within=(x,low,high)=>typeof x==="number"&&Number.isFinite(x)&&x>=low&&x<=high;
 export function validate(doc) {
  const errors=[];
- if(doc?.version!==AUTOMATION_BEAT_VERSION&&requiresAutomationFormat(doc))errors.push("Timeline automation requires Beat v11.");
+ if(doc?.version!==AUTOMATION_BEAT_VERSION&&doc?.version!==EXTENDED_BEAT_VERSION&&requiresAutomationFormat(doc))errors.push("Timeline automation requires Beat v11.");
  if(doc?.version===VERSION&&requiresModulationFormat(doc))errors.push("Modulated sounds require Beat v9.");
  if(!object(doc)||doc.format!==FORMAT||!BEAT_VERSIONS.includes(doc.version))
-  return ["Unsupported .premidi file. Supported Beat formats are pre-midi v7, v9 and v11."];
+  return ["Unsupported .premidi file. Supported Beat formats are pre-midi v7, v9, v11 and v17."];
  if(!text(doc.id,128)||!text(doc.title,100))errors.push("Beat needs an ID and title.");
  if(!Number.isInteger(doc.bpm)||!within(doc.bpm,40,240))errors.push("BPM must be 40–240.");
  if(doc.beatsPerBar!==4||doc.stepsPerBeat!==4)errors.push("This version uses 4/4 with 16 steps per bar.");
- if(!Number.isInteger(doc.bars)||!within(doc.bars,1,16))errors.push("Timeline must have 1–16 bars.");
+ if(!Number.isInteger(doc.bars)||!within(doc.bars,1,MAX_BEAT_BARS))errors.push("Timeline must have 1–64 bars.");
+ if(doc.bars>16&&doc.version!==EXTENDED_BEAT_VERSION)errors.push("Beats longer than 16 bars require Beat v17.");
  if(!Array.isArray(doc.samples)||doc.samples.length>160)return [...errors,"Invalid sample asset list."];
  const sampleIds=new Set();
  for(const asset of doc.samples){
