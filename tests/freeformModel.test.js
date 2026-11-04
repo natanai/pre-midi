@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {create,id,clone,makeInstrument,makeSound,upgradeBeatFeatures,validate as validateBeat,SUSTAIN_BEAT_VERSION} from "../schema.js";
 import {makePatch} from "../synth.js";
 import {renderEvents} from "../audio.js";
+import {parseSong} from "../songIO.js";
 import {createSong,addBeat,editBeatClip,upgradeSongFeatures,validateSong,SUSTAIN_SONG_VERSION} from "../songModel.js";
 import {nativePlans} from "../src/hosts/native/session.js";
 import {noteCutoffAutomation} from "../src/dsp/automation.js";
@@ -310,6 +311,9 @@ test("multi-bar freeform sustains convert to one-onset reusable Beats and versio
  assert.equal(song.version,SUSTAIN_SONG_VERSION);
  assert.deepEqual(validateSong(song),[]);
  assert.equal(JSON.parse(JSON.stringify(song)).beats.at(-1).version,SUSTAIN_BEAT_VERSION);
+ assert.deepEqual(parseSong(JSON.stringify(song)),song);
+ const legacy=clone(song);legacy.version=24;
+ assert.match(validateSong(legacy).join(" "),/Song v26/);
 });
 test("unpacking a v25 Beat protects selections through long tails and preserves onset",()=>{
  const source=create(),chunk=source.instruments[0].chunks[0];
