@@ -224,16 +224,16 @@ export const diagram=(patch,type,page=0)=>{
   // are shown per page so overlapping source pitches never hide one another.
   const zones=p.zones??[],start=Math.max(0,page)*4;
   for(let i=0;i<=5;i++){
-   const x=18+i*324/5;
+   const note=i*24,x=18+324*note/127;
    line("M"+x.toFixed(2)+" 14 V101",true);
-   tag(Math.min(331,x+2),111,"c"+(i+2));
+   tag(Math.min(331,x+2),111,"c"+(2*i-1));
   }
   for(let j=0;j<Math.min(4,zones.length-start);j++){
    const index=start+j,zone=zones[index],y=25+j*21;
-   const x=18+324*clamp((zone.root-36)/60);
+   const x=18+324*clamp(zone.root/127);
    line("M18 "+y+" H342",true);
    line("M"+x.toFixed(2)+" "+(y-9)+" V"+(y+9),false,["zones."+index+".root"]);
-   handle(x,y,[axis(["zones",index,"root"],36,96,"linearX",
+   handle(x,y,[axis(["zones",index,"root"],0,127,"linearX",
     {from:18,to:342,step:1})],"sample "+(index+1)+" recorded pitch");
    tag(23,y-8,String(index+1));
   }
