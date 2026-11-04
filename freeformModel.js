@@ -118,6 +118,115 @@ export function soundingFreeformPitches(layer,instrumentId,step){
  return result;
 }
 
+// An overlap is a layering choice, not an error: two notes on the same
+// Instrument and pitch/Sound can sound at once. Preview it without modifying
+// the Song, deleting notes, or making a passage into a detachable Track.
+// Limit event expansion for very dense Songs and report incomplete results.
+export function previewFreeformPassageLayering(layer,passageId,nextStartStep,
+ {beatClips=[],maxEvents=12000,maxPairs=50000}={}){
+ const passage=layer?.passages?.find(p=>p.id===passageId);
+ if(!passage)throw Error("Missing freeform passage.");
+ if(!whole(nextStartStep)||nextStartStep+passage.lengthSteps>FREEFORM_LIMIT_STEPS)
+  throw Error("Passage would move outside freeform.");
+ const shift=nextStartStep-passage.startStep,active=[],inactive=[];
+ let incomplete=false;
+ const push=(list,instrument,note,start,id)=>{
+  if(list.length>=maxEvents){incomplete=true;return false;}
+  list.push({instrumentId:instrument.id,key:instrument.layout==="rack"?
+   "sound:"+note.soundId:"pitch:"+note.pitch,start,end:start+note.duration,id});
+  return true;
+ };
+ const gather=(instrument,owned,into,windowStart=-Infinity,windowEnd=Infinity)=>{
+  for(const note of instrument.notes){
+   if((note.passageId===passageId)!==owned)continue;
+   const start=note.start+(owned?shift:0);
+   if(start>=windowEnd||start+note.duration<=windowStart)continue;
+   if(!push(into,instrument,note,start,note.id))return;
+  }
+  for(const placement of instrument.chunkPlacements){
+   if((placement.passageId===passageId)!==owned)continue;
+   const chunk=instrument.chunks.find(item=>item.id===placement.chunkId);
+   if(!chunk)continue;
+   const anchor=placement.startStep+(owned?shift:0);
+   // Each Chunk note is at most one bar long. Skip repeat instances whose
+   // potential note intervals cannot intersect the prospective move window.
+   const first=Math.max(0,Math.ceil((windowStart-anchor-16)/placement.every));
+   const last=Math.min(placement.repeats-1,Math.floor((windowEnd-anchor)/placement.every));
+   for(let n=first;n<=last;n++){
+    const start=anchor+n*placement.every;
+    for(const note of chunk.notes){
+     if(note.start>=placement.length)continue;
+     const at=start+note.start;
+     if(at>=windowEnd||at+note.duration<=windowStart)continue;
+     if(!push(into,instrument,note,at,placement.id+":"+n+":"+note.id))return;
+    }
+   }
+  }
+ };
+ for(const inst of layer.instruments){
+  gather(inst,true,active);
+  if(incomplete)break;
+ }
+ if(active.length===0&&!incomplete){
+  // An empty organizational passage may still overlap a linked Beat Clip.
+  return {noteOverlapCount:0,beatClipOverlapCount:beatClips.filter(c=>
+   c.startStep<nextStartStep+passage.lengthSteps&&
+   c.startStep+c.lengthSteps>nextStartStep).length,
+   examples:[],incomplete:false};
+ }
+ const start=Math.min(...active.map(item=>item.start));
+ const end=Math.max(...active.map(item=>item.end));
+ for(const inst of layer.instruments){
+  if(incomplete)break;
+  gather(inst,false,inactive,start,end);
+ }
+ const groups=new Map();
+ for(const note of inactive){
+  const key=note.instrumentId+"|"+note.key;
+  if(!groups.has(key))groups.set(key,{notes:[],maxEnds:[]});
+  groups.get(key).notes.push(note);
+ }
+ for(const group of groups.values()){
+  group.notes.sort((a,b)=>a.start-b.start);
+  let maximum=0;
+  for(const note of group.notes){
+   maximum=Math.max(maximum,note.end);
+   group.maxEnds.push(maximum);
+  }
+ }
+ let count=0,checked=0;
+ const examples=[];
+ for(const moving of active){
+  const group=groups.get(moving.instrumentId+"|"+moving.key);
+  if(!group)continue;
+  // Prefix maximum ends are monotonic. Binary-search past all earlier
+  // notes whose tails cannot reach the moved event, even in a long Song.
+  let low=0,high=group.maxEnds.length;
+  while(low<high){
+   const mid=(low+high)>>>1;
+   if(group.maxEnds[mid]<=moving.start)low=mid+1;else high=mid;
+  }
+  for(let index=low;index<group.notes.length;index++){
+   const other=group.notes[index];
+   if(other.start>=moving.end)break;
+   if(other.end<=moving.start)continue;
+   if(++checked>maxPairs){incomplete=true;break;}
+   count++;
+   if(examples.length<12)examples.push({
+    startStep:Math.max(moving.start,other.start),
+    endStep:Math.min(moving.end,other.end),
+    instrumentId:moving.instrumentId,
+    key:moving.key,movingId:moving.id,otherId:other.id
+   });
+  }
+  if(incomplete)break;
+ }
+ const beatClipOverlapCount=beatClips.filter(c=>
+  c.startStep<nextStartStep+passage.lengthSteps&&
+  c.startStep+c.lengthSteps>nextStartStep).length;
+ return {noteOverlapCount:count,beatClipOverlapCount,examples,incomplete};
+}
+
 export function moveFreeformPassage(layer,passageId,nextStartStep){
  const passage=layer.passages.find(p=>p.id===passageId);
  if(!passage)throw Error("Missing freeform passage.");

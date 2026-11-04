@@ -88,3 +88,13 @@ main.editing-freeform .beat-identity > label{display:none}
 .freeform-sound-modules{width:100%}
 .freeform-sound-modules .synth-grid{width:100%}
 .freeform-sound-modules .sample-replace-action{min-height:30px}
+
+/* Intentional overlap stays movable. Neutral indicators explain simultaneous
+   playback rather than treating musical layering as a destructive collision. */
+.song-freeform-passage.song-freeform-layered{border-style:dashed;border-color:#a9b697}
+.song-freeform-passage.song-freeform-note-overlap{border-color:#d4b78c;
+ background:rgba(145,112,73,.22)}
+.song-freeform-layering-hint{position:absolute;inset:1px 2px auto auto;
+ display:block;max-width:calc(100% - 3px);overflow:hidden;white-space:nowrap;
+ color:#d9d6c4;font-size:9px;line-height:12px;pointer-events:none}
+.song-freeform-passage.song-freeform-scan-incomplete{outline:1px dotted #bba57e}

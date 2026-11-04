@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Attached freeform layering and keyboard movement</title>
+<link rel="stylesheet" href="/freeform.css">
+<div id="root"></div>
+<script type="module">
+import {create} from "/schema.js";
+import {createSong,upgradeSongFeatures} from "/songModel.js";
+import {ensureFreeform,addFreeformInstrument,addFreeformNote} from "/freeformModel.js";
+import {installFreeformUI} from "/freeformUI.js";
+const assert=(ok,message)=>{if(!ok)throw Error(message)};
+const report=(status,details)=>fetch("/__song_result?status="+status+
+ "&details="+encodeURIComponent(details)).catch(()=>{});
+try{
+ const song=createSong(create()),track=song.tracks[0];
+ track.clips[0].startStep=16;
+ const free=ensureFreeform(track),instrument=addFreeformInstrument(free);
+ const passage={id:"test-passage",startStep:16,lengthSteps:16};
+ free.passages.push(passage);
+ addFreeformNote(instrument,{pitch:60,start:16,duration:8,velocity:.8,passageId:passage.id});
+ addFreeformNote(instrument,{pitch:60,start:32,duration:8,velocity:.7});
+ upgradeSongFeatures(song);
+ const root=document.querySelector("#root");
+ let controller;
+ controller=installFreeformUI({root,getSong:()=>song,onError:message=>{throw Error(message)},
+  onChange:change=>{
+   change();
+   root.querySelector(".song-freeform-row")?.replaceWith(controller.renderAttached(track,864));
+   return true;
+  }
+ });
+ root.append(controller.renderAttached(track,864));
+ let button=root.querySelector(".song-freeform-passage");
+ assert(button,"Passage is shown inside parent-attached freeform row");
+ assert(button.title.includes("Alt+arrow"),"Passage advertises keyboard movement");
+ assert(button.classList.contains("song-freeform-layered"),
+  "Parent linked Beat Clip layer is visibly indicated");
+ button.focus();
+ assert(button.getAttribute("aria-label").includes("linked Beat Clip"),
+  "Accessible preview explains linked Beat layering");
+ button.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowRight",altKey:true,bubbles:true,cancelable:true
+ }));
+ assert(passage.startStep===32,"Alt+right moves attached passage one bar");
+ assert(instrument.notes[0].start===32,"Owned freeform note moved with passage");
+ assert(instrument.notes[1].start===32,"Unowned freeform note stays where it was");
+ assert(track.clips[0].startStep===16,"Parent linked Beat Clip was not detached or moved");
+ button=root.querySelector(".song-freeform-passage");
+ assert(button.classList.contains("song-freeform-note-overlap"),
+  "New same-pitch layering receives a visible nonblocking indicator");
+ assert(button.title.includes("both notes will sound"),
+  "Indicator describes intentional simultaneous playback");
+ assert(button.querySelector(".song-freeform-layering-hint")?.textContent.includes("1"),
+  "Compact overlay summarizes one matching note overlap");
+ button.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowLeft",altKey:true,shiftKey:true,bubbles:true,cancelable:true
+ }));
+ assert(passage.startStep===31,"Shift+Alt+left moves a passage by one step");
+ assert(instrument.notes[0].start===31,"Step movement preserves source-note ownership");
+ await report("PASS","Beat-attached layering preview, keyboard movement and deliberate overlap");
+}catch(error){await report("FAIL",String(error.stack||error))}
+</script>
