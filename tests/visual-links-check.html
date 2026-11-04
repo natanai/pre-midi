@@ -22,7 +22,7 @@ frame.addEventListener("load",async()=>{
   const target=field.querySelector('[role="slider"],select,input');
   target.focus();
   assert("knob focus highlights diagram",!!filter.querySelector(".visual-graph-line.visual-linked"));
-  hit.click();
+  hit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
   assert("clicking illustration focuses relevant field",details.open&&field.contains(doc.activeElement));
   const osc=doc.querySelector('.visual-sound-panel[data-visual-kind="oscillators"]');
   osc.querySelector("details").open=true;
