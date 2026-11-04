@@ -102,7 +102,8 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
  toolbar.append(startLabel,zoomLabel,endLabel,time);
  wrapper.append(svg,toolbar);
  const show=()=>{
-  const w=waveformWindow(duration,value,zoom);
+  // Keep the visible source-time window fixed while dragging the trim handle.
+  const w=drag?.window??waveformWindow(duration,value,zoom);
   startLabel.textContent=w.start.toFixed(3)+"s";
   endLabel.textContent=w.end.toFixed(3)+"s";
   time.textContent="trim "+value.toFixed(3)+"s";
@@ -134,12 +135,15 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
   if(e.pointerType==="mouse"&&e.button!==0)return;
   e.preventDefault();
   const rect=svg.getBoundingClientRect();
-  drag={pointerId:e.pointerId,initial:value,window:waveformWindow(duration,value,zoom),left:rect.left,width:rect.width};
+  const window=waveformWindow(duration,value,zoom);
+  const pointerX=(e.clientX-rect.left)/rect.width*480;
+  drag={pointerId:e.pointerId,initial:value,window,left:rect.left,width:rect.width,
+   grabOffset:pointerX-waveformXAtTime(value,window)};
   hit.setPointerCapture(e.pointerId);
  });
  hit.addEventListener("pointermove",e=>{
   if(!drag||e.pointerId!==drag.pointerId)return;
-  const x=(e.clientX-drag.left)/drag.width*480;
+  const x=(e.clientX-drag.left)/drag.width*480-drag.grabOffset;
   preview(waveformTimeAtX(x,drag.window));
  });
  const finish=e=>{
