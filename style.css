@@ -1520,6 +1520,45 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .vocal-effect-sections .synth-fields{min-width:0}
 @media(max-width:850px){.vocal-effect-sections{grid-template-columns:minmax(0,1fr)}}
 
+/* The diagram and its controls share focus; no duplicate setting widgets. */
+.visual-panel-graph{pointer-events:auto}
+.visual-graph-label{pointer-events:none}
+.visual-graph-hit{fill:none;stroke:transparent;stroke-width:14px;
+ vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:pointer;outline:none}
+.visual-graph-line.visual-linked,.visual-graph-secondary.visual-linked{
+ stroke:var(--track-accent,#08e4ec);stroke-width:2.8;opacity:1;
+ filter:drop-shadow(0 0 2px var(--track-accent,#08e4ec))}
+.visual-graph-hit:focus-visible{stroke:#ffffff24}
+.visual-sound-panel .sound-link-active{outline:1px solid var(--track-accent,#08e4ec);
+ outline-offset:2px}
+.visual-sound-panel .sound-link-active .dial-amount{stroke:var(--track-accent,#08e4ec)}
+
+/* Waveform position and held reference: measurements, not simulated curves. */
+.signal-scope-header{align-items:center}
+.signal-scope-header .signal-scope-compare{margin-left:auto;min-width:27px;min-height:23px;
+ padding:1px 5px;border:1px solid var(--line);background:transparent;
+ color:var(--muted);font-size:10px;letter-spacing:.02em}
+.signal-scope-header .signal-scope-compare[aria-pressed="true"]{
+ color:var(--scope-accent);border-color:var(--scope-accent)}
+.signal-scope-seek{cursor:crosshair;touch-action:none}
+.signal-scope-seek:focus-visible{stroke:var(--scope-accent);stroke-width:1;outline:none}
+.signal-scope-marker{stroke:var(--scope-accent);stroke-width:1;stroke-dasharray:2 3;opacity:.75}
+.signal-scope-reference{stroke:#aaaaaa;stroke-width:1;opacity:.65;
+ stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
+
+/* Paged diagrams keep individual sample zones and modulation routes legible. */
+.visual-panel-pages {position:absolute;right:45px;top:6px;display:flex;
+ align-items:center;gap:4px;z-index:2;color:var(--muted);font-size:10px;
+ line-height:1;white-space:nowrap;background:#020304dc}
+.visual-panel-pages[hidden] {display:none}
+.visual-panel-pages button {display:grid;place-items:center;min-width:25px;
+ min-height:27px;padding:0 3px;border:1px solid transparent;
+ background:transparent;color:var(--bright);font-size:16px}
+.visual-panel-pages button:hover:not(:disabled),
+.visual-panel-pages button:focus-visible {border-color:var(--line)}
+.visual-panel-pages button:disabled {opacity:.3}
+.visual-panel-range {font-variant-numeric:tabular-nums}
+
 /* Note expression uses the same illustration and grab-point language as Sound. */
 .note-expression .expression-visual {--track-accent:var(--signal-mauve);color:var(--signal-mauve)}
 .note-expression .expression-visual .visual-panel-area {

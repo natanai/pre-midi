@@ -187,7 +187,7 @@ test("primary instrument controls replace redundant lower fields",()=>{
  assert.match(css,/\.oscillator-stack/);
  assert.match(studio,/entry\.id\);/);
  assert.match(studio,/PRIMARY_SYNTH_FIELDS/);
- assert.match(studio,/createSignalDisplay\(\$\("sound-visualizer"\),patch,beat,signal\(inst\),inst.volume\*entry.gain,entry.referencePitch,inst.automation\)/);
+ assert.match(studio,/createSignalDisplay\(\$\("sound-visualizer"\),patch,beat,signal\(inst\),inst.volume\*entry.gain,entry.referencePitch,inst.automation,entry\.id\)/);
  assert.ok(!synth.includes('{name:"Sound",open:true'));
  assert.ok(!sampler.includes('["cutoff","Cutoff",50,14000,1,"hz",true]'));
  assert.ok(!sampler.includes('["attack","Attack",0,2,.005,"seconds"]'));

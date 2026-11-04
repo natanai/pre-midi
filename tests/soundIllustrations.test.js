@@ -88,3 +88,29 @@ test("distortion has its own response curve and drive control",()=>{
  const stronger=synth();stronger.effects.drive=.95;
  assert.notEqual(first.paths[1].d,diagram(stronger,"distortion").paths[1].d);
 });
+
+test("combined oscillator illustration keeps source traces while exposing their actual mix",()=>{
+ const patch=synth();
+ const combined=diagram(patch,"oscillators");
+ assert.equal(combined.handles.length,2);
+ assert.equal(combined.paths.length,6);
+ assert.ok(combined.labels.some(x=>x.value==="mix"));
+ const mix=combined.paths[1];
+ assert.ok(mix.links.includes("oscillators.0.wave"));
+ assert.ok(mix.links.includes("oscillators.1.detune"));
+ const changed=structuredClone(patch);
+ changed.oscillators[1].wave="square";
+ assert.notEqual(diagram(changed,"oscillators").paths[1].d,mix.d);
+ changed.oscillators[1].level=0;
+ const single=diagram(changed,"oscillators");
+ assert.equal(single.handles.length,1);
+ assert.ok(!single.paths[1].links.includes("oscillators.1.wave"));
+});
+test("illustrated sound features expose parameter links without changing user-facing knob help",()=>{
+ const patch=synth();
+ assert.ok(diagram(patch,"filter").paths.some(p=>p.links?.includes("filter.cutoff")));
+ assert.ok(diagram(patch,"envelope").paths.some(p=>p.links?.includes("envelope.attack")));
+ assert.ok(diagram(patch,"movement").paths.some(p=>p.links?.includes("movement.tremolo")));
+ assert.ok(diagram(patch,"distortion").paths.some(p=>p.links?.includes("effects.drive")));
+ assert.ok(diagram(patch,"delay").paths.some(p=>p.links?.includes("effects.delayTime")));
+});

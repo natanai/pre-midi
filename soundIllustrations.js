@@ -31,33 +31,40 @@ function waveAt(type,phase,harmonics){
 const pathFrom=points=>points.map(([x,y],i)=>(i?"L":"M")+x.toFixed(2)+" "+y.toFixed(2)).join(" ");
 const pathRange=(count,fn)=>pathFrom(Array.from({length:count},(_,i)=>fn(i/(count-1))));
 // Diagrams respond to canonical parameters; the measured scope is separate.
-export const diagram=(patch,type)=>{
+export const diagram=(patch,type,page=0)=>{
  const color=type==="movement"?"var(--signal-mauve)":"var(--track-accent,#08e4ec)";
  const paths=[],handles=[],labels=[];
- const line=(d,secondary=false)=>paths.push({d,secondary});
+ const line=(d,secondary=false,links=[])=>paths.push({d,secondary,links});
  const tag=(x,y,value)=>labels.push({x,y,value});
  const handle=(x,y,axes,label)=>handles.push({x,y,axes,label});
  const axis=(path,min,max,mode,options={})=>({path,min,max,mode,...options});
  const p=patch;
  if(type==="oscillators"){
-  const second=Number(p.oscillators?.[1]?.level)>0||
+  const slots=p.oscillators;
+  const second=Number(slots?.[1]?.level)>0||
    (p.modulation?.routes??[]).some(route=>route.target==="oscillators.1.level");
-  for(const index of second?[0,1]:[0]){
-   const o=p.oscillators[index],center=index===0?(second?34:59):87;
+  const enabled=second?[0,1]:[0];
+  const voice=(i,t)=>{const o=slots[i],phase=t*10*Math.PI*2**o.octave*2**(o.detune/1200);
+   return (o.level||0)*waveAt(o.wave,phase,o.harmonics);};
+  const sourceKeys=i=>["wave","octave","detune","harmonics","level"].map(k=>"oscillators."+i+"."+k);
+  const norm=Math.max(1,enabled.reduce((sum,i)=>sum+Math.max(0,slots[i].level),0));
+  line("M18 29 H342",true);
+  line(pathRange(320,t=>[18+324*t,29-16*enabled.reduce((sum,i)=>sum+voice(i,t),0)/norm]),
+   false,enabled.flatMap(sourceKeys));
+  tag(18,12,"mix");
+  for(const index of enabled){
+   const o=slots[index],center=second?(index===0?62:95):79,amplitude=11;
    line("M18 "+center+" H342",true);
-   const gain=clamp(o.level);
-   line(pathRange(280,t=>{
-    const phase=t*10*Math.PI*2**(o.octave*.32)*2**(o.detune/1200);
-    return [18+t*324,center-20*gain*waveAt(o.wave,phase,o.harmonics)];
-   }),index===1);
-   const bottom=center+(index===0&&second?20:22),top=center-20;
-   handle(38+clamp((o.detune+100)/200)*278,bottom-(bottom-top)*gain,[
+   line(pathRange(280,t=>[18+324*t,center-amplitude*voice(index,t)]),
+    index===1,sourceKeys(index));
+   const bottom=center+amplitude,top=center-amplitude;
+   handle(38+clamp((o.detune+100)/200)*278,bottom-(bottom-top)*clamp(o.level),[
     axis(["oscillators",index,"detune"],-100,100,"linearX",{from:38,to:316,step:1}),
     axis(["oscillators",index,"level"],0,1,"linearY",{from:bottom,to:top,step:.01})
    ],"oscillator "+(index+1)+" detune / level");
-   tag(18,index===0?11:70,"osc "+(index+1));
+   tag(18,center-14,"osc "+(index+1));
   }
-  tag(294,11,"detune →");
+  tag(296,12,"detune");
  }else if(type.startsWith("oscillator")){
   const index=Number(type.slice(-1))-1,o=p.oscillators[index];
   const cutoff=clamp(Math.log(Math.max(50,p.filter.cutoff)/50)/Math.log(280));
@@ -89,7 +96,7 @@ export const diagram=(patch,type)=>{
    return clamp(level+Math.exp(-delta*delta*4)*r*(25/60),0,1.5);
   };
   line("M18 95 H344 M18 22 V95",true);
-  line(pathRange(300,t=>{const px=18+t*324;return [px,95-60*response(px)];}));
+  line(pathRange(300,t=>{const px=18+t*324;return [px,95-60*response(px)];}),false,["filter.cutoff","filter.resonance","filter.type"]);
   line("M"+x.toFixed(2)+" 97 V19",true);
   handle(x,95-60*base-25*r,[
    axis(["filter","cutoff"],50,14000,"logX",{from:18,to:342,step:1}),
@@ -98,7 +105,7 @@ export const diagram=(patch,type)=>{
   tag(18,15,"low");tag(308,15,"high");
   if(p.type==="sample"){
    const transfer=driveCurve(p.drive??0);
-   line(pathRange(121,t=>[205+t*123,99-13*transfer[Math.round(t*(transfer.length-1))]]),true);
+   line(pathRange(121,t=>[205+t*123,99-13*transfer[Math.round(t*(transfer.length-1))]]),true,["drive"]);
    tag(217,110,"drive");
   }else{
    const sweep=f.sweep??0,sweepTime=f.sweepTime??.2;
@@ -108,14 +115,14 @@ export const diagram=(patch,type)=>{
    const timeY=26+clamp(sweepTime/3)*54;
    // The line represents the cutoff's actual start/end and sweep duration.
    if(sweep!==0){
-    line(pathFrom([[startX,26],[startX+(stopX-startX)*.5,timeY*.65+14],[stopX,timeY]]),true);
+    line(pathFrom([[startX,26],[startX+(stopX-startX)*.5,timeY*.65+14],[stopX,timeY]]),true,["filter.sweep","filter.sweepTime"]);
     tag(clamp(startX+5,24,295),23,"sweep");
    }
    // Noise is unpitched, so show a decaying irregular signal.
    const noise=clamp(p.noise??0),decay=clamp((p.noiseDecay??0)/4);
    if(noise>0){
     line(pathRange(110,t=>[18+140*t,99-14*noise*
-     (1-t)**(1.5+6*(1-decay))*Math.sin(t*67)*Math.cos(t*17)]),true);
+     (1-t)**(1.5+6*(1-decay))*Math.sin(t*67)*Math.cos(t*17)]),true,["noise","noiseDecay"]);
     tag(18,111,"noise");
    }
   }
@@ -128,7 +135,7 @@ export const diagram=(patch,type)=>{
   const sustainY=88-65*clamp(e.sustain);
   const releaseX=248+clamp(e.release/releaseMax)*95;
   line("M18 90 H348 M248 18 V96",true);
-  line(pathFrom([[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]]));
+  line(pathFrom([[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]]),false,sample?["attack","release"]:["envelope.attack","envelope.decay","envelope.sustain","envelope.release"]);
   const prefix=sample?[]:["envelope"];
   handle(attackX,23,[axis([...prefix,"attack"],0,attackMax,"linearX",{from:25,to:103,step:.01})],"attack");
   if(!sample){
@@ -144,14 +151,14 @@ export const diagram=(patch,type)=>{
    const gain=clamp(p.gain??.9,0,2),transpose=p.transpose??0,pan=p.pan??0;
    const strum=p.strumMs??0,root=p.zones?.[0]?.root??60;
    const pitchFollow=p.followPitch!==false,oneShot=!!p.oneShot,dynamics=!!p.preserveDynamics;
-   line("M20 "+(112-9*gain).toFixed(2)+" H150",true);
-   line("M173 "+(105-6*transpose/12).toFixed(2)+" H252",true);
-   line("M274 104 H340 M"+(307+30*pan).toFixed(2)+" 98 V110",true);
+   line("M20 "+(112-9*gain).toFixed(2)+" H150",true,["gain"]);
+   line("M173 "+(105-6*transpose/12).toFixed(2)+" H252",true,["transpose","followPitch"]);
+   line("M274 104 H340 M"+(307+30*pan).toFixed(2)+" 98 V110",true,["pan"]);
    tag(19,110,"level");tag(171,110,(pitchFollow?"pitch ":"root ")+root);
    tag(290,95,"pan");
-   line("M"+(18+(strum+25)/50*52).toFixed(2)+" 94 V102",true);
-   if(oneShot)line("M344 40 V91",true);
-   if(dynamics)line("M331 41 L338 35 L345 41",true);
+   line("M"+(18+(strum+25)/50*52).toFixed(2)+" 94 V102",true,["strumMs"]);
+   if(oneShot)line("M344 40 V91",true,["oneShot"]);
+   if(dynamics)line("M331 41 L338 35 L345 41",true,["preserveDynamics"]);
   }
  }else if(type==="movement"){
   const m=movement(p);
@@ -161,7 +168,7 @@ export const diagram=(patch,type)=>{
    const cents=pitchCents({bend:p.bend},m,Math.min(time,1.25),1.25)/100;
    const vibrato=time>=m.delay?m.depth/100*Math.sin(time*2*Math.PI*m.rate):0;
    return [15+t*330,62-clamp((cents+vibrato)*5,-43,43)];
-  }));
+  }),false,["bend.shape","bend.amount","bend.rate","movement.glide","movement.glideTime","movement.depth","movement.rate","movement.delay"]);
   handle(27,62-clamp(m.glide*5,-43,43),[
    axis(["movement","glide"],-12,12,"linearY",{from:104,to:20,step:.1})
   ],"glide");
@@ -173,11 +180,11 @@ export const diagram=(patch,type)=>{
   // Separate amplitude and timbre motion cannot be seen on a pitch plot.
   const pulse=m.tremolo??0,pulseRate=m.tremoloRate??5;
   const tone=m.tone??0,toneRate=m.toneRate??2;
-  line(pathRange(150,t=>[18+t*324,86-8*pulse*Math.sin(2*Math.PI*t*1.5*pulseRate)]),true);
-  line(pathRange(150,t=>[18+t*324,100-7*tone*Math.sin(2*Math.PI*t*1.5*toneRate)]),true);
+  line(pathRange(150,t=>[18+t*324,86-8*pulse*Math.sin(2*Math.PI*t*1.5*pulseRate)]),true,["movement.tremolo","movement.tremoloRate"]);
+  line(pathRange(150,t=>[18+t*324,100-7*tone*Math.sin(2*Math.PI*t*1.5*toneRate)]),true,["movement.tone","movement.toneRate"]);
   const pan=clamp(p.pan??0,-1,1);
-  line("M22 109 H"+(22+22*(1-pan)).toFixed(2),true);
-  line("M294 109 H"+(294+22*(1+pan)).toFixed(2),true);
+  line("M22 109 H"+(22+22*(1-pan)).toFixed(2),true,["pan"]);
+  line("M294 109 H"+(294+22*(1+pan)).toFixed(2),true,["pan"]);
   tag(20,79,"level");tag(20,96,"tone");tag(260,110,"l / r");
  }else if(type==="distortion"){
   const drive=p.effects.drive||0,transfer=driveCurve(drive);
@@ -185,7 +192,7 @@ export const diagram=(patch,type)=>{
   line(pathRange(300,t=>{
    const output=transfer[Math.round(t*(transfer.length-1))];
    return [24+t*312,58-output*37];
-  }));
+  }),false,["effects.drive"]);
   handle(306,88-60*drive,[
    axis(["effects","drive"],0,1,"linearY",{from:88,to:28,step:.01})
   ],"drive");
@@ -199,7 +206,7 @@ export const diagram=(patch,type)=>{
   for(let i=0;i<4;i++){
    const x=origin+i*space;
    const level=i===0?1:mix*feedback**(i-1);
-   line("M"+x.toFixed(2)+" 100 V"+(100-72*level).toFixed(2),i>0);
+   line("M"+x.toFixed(2)+" 100 V"+(100-72*level).toFixed(2),i>0,["effects.delayTime","effects.delayMix","effects.delayFeedback"]);
    if(i>0)tag(x+4,Math.max(18,94-72*level),String(i));
   }
   handle(origin+space,100-72*mix,[
@@ -212,31 +219,51 @@ export const diagram=(patch,type)=>{
     {from:100,to:100-72*mix*.8,step:.01})
   ],"feedback");
   tag(18,13,"mix ↑");tag(287,13,"time →");tag(30,112,"dry");
+ }else if(type==="mapping"){
+  // Every imported recording can be inspected independently. Four lanes
+  // are shown per page so overlapping source pitches never hide one another.
+  const zones=p.zones??[],start=Math.max(0,page)*4;
+  for(let i=0;i<=5;i++){
+   const note=i*24,x=18+324*note/127;
+   line("M"+x.toFixed(2)+" 14 V101",true);
+   tag(Math.min(331,x+2),111,"c"+(2*i-1));
+  }
+  for(let j=0;j<Math.min(4,zones.length-start);j++){
+   const index=start+j,zone=zones[index],y=25+j*21;
+   const x=18+324*clamp(zone.root/127);
+   line("M18 "+y+" H342",true);
+   line("M"+x.toFixed(2)+" "+(y-9)+" V"+(y+9),false,["zones."+index+".root"]);
+   handle(x,y,[axis(["zones",index,"root"],0,127,"linearX",
+    {from:18,to:342,step:1})],"sample "+(index+1)+" recorded pitch");
+   tag(23,y-8,String(index+1));
+  }
  }else if(type==="modulation"){
   const routes=p.modulation?.routes??[];
   tag(17,13,"source");tag(291,13,"target");
   if(!routes.length)line("M24 57 H336",true);
   // Modulation amplitudes come from the actual source and route math.
-  const shown=routes.slice(0,4),centers=[30,51,73,95];
-  shown.forEach((route,i)=>{
-   const center=centers[i],limit=MOD_TARGETS.find(t=>t.id===route.target)?.limit||1;
+  const start=Math.max(0,page)*4,shown=routes.slice(start,start+4),centers=[30,51,73,95];
+  shown.forEach((route,j)=>{
+   const i=start+j;
+   const center=centers[j],limit=MOD_TARGETS.find(t=>t.id===route.target)?.limit||1;
    line("M67 "+center+" H290",true);
    line(pathRange(130,t=>{
     const seconds=1.25*t;
     const value=routeValueAt(route,{elapsed:seconds,gate:1,velocity:.7,pitch:65});
     const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
     return [67+223*t,center-9*Math.tanh(value/visualScale)];
-   }));
+   }),false,["modulation.routes."+i]);
    const source=route.source.kind==="lfo"?"lfo":route.source.kind==="keytrack"?"keys":
     route.source.kind==="velocity"?"touch":"env";
    const target=MOD_TARGETS.find(item=>item.id===route.target);
    tag(18,center+3,source);tag(294,center+3,target?.name.replace("oscillator ","osc ")||"target");
   });
-  if(routes.length>4)tag(18,111,"+"+(routes.length-4)+" routes");
+
 
  }
  return {paths,handles,labels,color};
 };
+const pageState=new Map();
 let zoomId=null;
 const idFor=(kind,index)=>kind+"-"+index;
 function setZoom(wrapper,id,enabled){
@@ -255,6 +282,8 @@ if(typeof document!=="undefined")document.addEventListener("keydown",event=>{
 });
 export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index=0){
  const id=idFor(kind,index);
+ let page=pageState.get(id)??0;
+ const paginated=kind==="mapping"||kind==="modulation";
  const wrapper=document.createElement("section");wrapper.className="visual-sound-panel";
  wrapper.dataset.visualKind=kind;
  const area=document.createElement("div");area.className="visual-panel-area";
@@ -269,12 +298,27 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const next=!wrapper.classList.contains("zoomed");
   if(next)details.open=true;setZoom(wrapper,id,next);
  });
- area.append(graphic,handlesRoot,expand);
+ const pages=document.createElement("div");pages.className="visual-panel-pages";
+ pages.setAttribute("aria-label",kind+" pages");
+ const previous=document.createElement("button");previous.type="button";
+ previous.textContent="‹";previous.setAttribute("aria-label","previous "+kind+" page");
+ const range=document.createElement("span");range.className="visual-panel-range";
+ const next=document.createElement("button");next.type="button";
+ next.textContent="›";next.setAttribute("aria-label","next "+kind+" page");
+ pages.append(previous,range,next);
+ const turn=delta=>{
+  page=clamp(page+delta,0,Math.max(0,Math.ceil((kind==="mapping"?(latestPatch.zones?.length??0):
+   latestPatch.modulation?.routes?.length??0)/4)-1));
+  pageState.set(id,page);draw(latestPatch);
+ };
+ previous.addEventListener("click",()=>turn(-1));
+ next.addEventListener("click",()=>turn(1));
+ area.append(graphic,handlesRoot,pages,expand);
  // The drawing belongs inside its accordion: closed sections stay compact.
  const summary=details.querySelector("summary");
  if(summary)summary.after(area);else details.prepend(area);
  wrapper.append(details);
- let active=null,latestPatch=patch,visibleHandles=[];
+ let active=null,latestPatch=patch,visibleHandles=[],activeLink=null;
  const setValue=(next,path,value)=>{
   const ownerPath=path.slice(0,-1);let owner=next;
   for(const key of ownerPath)owner=owner[key]??={};
@@ -282,12 +326,30 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  };
  function draw(current=latestPatch){
   latestPatch=current;
-  const {paths,handles,labels,color}=diagram(current,kind);
+  const total=kind==="mapping"?(current.zones?.length??0):
+   kind==="modulation"?(current.modulation?.routes?.length??0):0;
+  if(paginated){
+   const maxPage=Math.max(0,Math.ceil(total/4)-1);
+   page=clamp(page,0,maxPage);
+   pages.hidden=total<=4;
+   previous.disabled=page===0;next.disabled=page===maxPage;
+   range.textContent=(page*4+1)+"–"+Math.min(total,(page+1)*4)+" / "+total;
+  }else pages.hidden=true;
+  const {paths,handles,labels,color}=diagram(current,kind,page);
   visibleHandles=handles;
   graphic.replaceChildren();handlesRoot.replaceChildren();
   graphic.style.setProperty("--visual-color",color);
-  for(const path of paths)graphic.append(svgNode("path",{
-   d:path.d,class:path.secondary?"visual-graph-secondary":"visual-graph-line",fill:"none"}));
+  for(const path of paths){
+   const visible=svgNode("path",{d:path.d,
+    class:path.secondary?"visual-graph-secondary":"visual-graph-line",fill:"none"});
+   if(path.links?.length){
+    visible.dataset.soundLinks=path.links.join("|");
+    const hit=svgNode("path",{d:path.d,class:"visual-graph-hit",fill:"none",
+     tabindex:"0",role:"button","aria-label":"edit "+path.links[0].split(".").at(-1)});
+    hit.dataset.soundLinks=path.links.join("|");
+    graphic.append(visible,hit);
+   }else graphic.append(visible);
+  }
   for(const {x,y,value} of labels)graphic.append(svgNode("text",{x,y,
    class:"visual-graph-label"},value));
   handles.forEach((point,i)=>{
@@ -306,7 +368,69 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    }
    handlesRoot.append(button);
   });
+  highlight(activeLink);
  }
+ function targetFields(keys){
+  const fields=[...details.querySelectorAll("[data-sound-path]")];
+  return fields.filter(field=>keys.some(key=>{
+   const path=field.dataset.soundPath;
+   return path===key||path.startsWith(key+".")||key.startsWith(path+".");
+  }));
+ }
+ function highlight(keys){
+  activeLink=keys?.length?keys:null;
+  for(const field of details.querySelectorAll("[data-sound-path]"))
+   field.classList.toggle("sound-link-active",!!activeLink&&targetFields(activeLink).includes(field));
+  for(const item of graphic.querySelectorAll("[data-sound-links]")){
+   const connected=item.dataset.soundLinks.split("|");
+   item.classList.toggle("visual-linked",!!activeLink&&connected.some(key=>
+    activeLink.some(selected=>key===selected||key.startsWith(selected+".")||selected.startsWith(key+"."))));
+  }
+ }
+ function focusFeature(keys){
+  details.open=true;
+  details.populateMapping?.();
+  const field=targetFields(keys)[0]??details.querySelector("[data-sound-path]");
+  if(!field)return;
+  const nested=field.closest("details.modulation-routing");
+  if(nested)nested.open=true;
+  highlight([field.dataset.soundPath]);
+  const focus=field.matches("button,select,input,[tabindex]")?field:
+   field.querySelector('[role="slider"],select,input,button,[tabindex]');
+  if(focus){focus.focus();focus.scrollIntoView?.({block:"nearest"});}
+ }
+ graphic.addEventListener("click",event=>{
+  const hit=event.target.closest?.(".visual-graph-hit");
+  const keys=hit?.dataset.soundLinks?.split("|")??[];
+  focusFeature(keys);
+ });
+ graphic.addEventListener("keydown",event=>{
+  if(!["Enter"," "].includes(event.key))return;
+  const hit=event.target.closest?.(".visual-graph-hit");
+  if(!hit)return;
+  event.preventDefault();focusFeature(hit.dataset.soundLinks.split("|"));
+ });
+ graphic.addEventListener("pointerover",event=>{
+  const hit=event.target.closest?.(".visual-graph-hit");
+  if(hit)highlight(hit.dataset.soundLinks.split("|"));
+ });
+ graphic.addEventListener("pointerout",event=>{
+  if(!event.relatedTarget?.closest?.(".visual-graph-hit"))highlight(null);
+ });
+ details.addEventListener("pointerover",event=>{
+  const control=event.target.closest?.("[data-sound-path]");
+  if(control&&details.contains(control))highlight([control.dataset.soundPath]);
+ });
+ details.addEventListener("pointerout",event=>{
+  if(!event.relatedTarget?.closest?.("[data-sound-path]"))highlight(null);
+ });
+ details.addEventListener("focusin",event=>{
+  const control=event.target.closest?.("[data-sound-path]");
+  if(control)highlight([control.dataset.soundPath]);
+ });
+ details.addEventListener("focusout",event=>{
+  if(!details.contains(event.relatedTarget))highlight(null);
+ });
  const coord=event=>{
   const rect=graphic.getBoundingClientRect();
   return {x:(event.clientX-rect.left)/rect.width*360,
