@@ -59,6 +59,7 @@
   assert(get("export-dialog").open,"Song export available");
   get("export-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
   await wait(()=>!!project,"Song export completed");
+  await wait(()=>!get("export-dialog").open,"Song export dialog has closed");
   const saved=JSON.parse(await project.text());
   assert(saved.kind==="song"&&saved.version===22,"Freeform exported as Song v22");
   assert(saved.tracks[0].freeform.instruments.length===2,"Song retains both Instruments");
