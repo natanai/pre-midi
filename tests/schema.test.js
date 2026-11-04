@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { create, makeInstrument, makeChunk, id, validate, parse, clone, resizeBeatBars, EXTENDED_BEAT_VERSION } from "../schema.js";
+import { create, makeInstrument, makeChunk, id, validate, parse, clone, resizeBeatBars, EXTENDED_BEAT_VERSION, SUSTAIN_BEAT_VERSION, upgradeBeatFeatures } from "../schema.js";
 import { stepEvents } from "../audio.js";
 import { PRESETS, getPreset, makePatch, validatePatch } from "../synth.js";
 
@@ -88,4 +88,18 @@ test("shortening a Beat does not silently discard placed Chunks",()=>{
  resizeBeatBars(beat,7);
  assert.equal(beat.bars,7);
  assert.deepEqual(validate(beat),[]);
+});
+
+test("a sustained Chunk note requires v25 and round-trips without retriggering",()=>{
+ const beat=create(),chunk=beat.instruments[0].chunks[0];
+ chunk.notes.push({id:id(),pitch:60,start:14,duration:40,velocity:.9});
+ assert.match(validate(beat).join(" "),/Beat v25/,"Legacy Beat v7 must reject unknown sustain semantics.");
+ upgradeBeatFeatures(beat);
+ assert.equal(beat.version,SUSTAIN_BEAT_VERSION);
+ assert.deepEqual(validate(beat),[]);
+ assert.deepEqual(parse(JSON.stringify(beat)),beat);
+ assert.equal(stepEvents(beat,14).length,1);
+ assert.equal(stepEvents(beat,16).length,0);
+ const invalid=clone(beat);invalid.instruments[0].chunks[0].notes[0].duration=1025;
+ assert.match(validate(invalid).join(" "),/Invalid chunk note/);
 });
