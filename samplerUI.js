@@ -47,6 +47,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  }
  filterSelect.value=tone.filter.type;
  filterSelect.addEventListener("change",()=>onChange(["filter"],{...tone.filter,type:filterSelect.value}));
+ filterLabel.dataset.soundPath="filter.type";
  filterLabel.append(filterTitle,filterSelect);toneFields.append(filterLabel);
  for(const [key,label,min,max,step,display,log] of [
   ["resonance","Resonance",.1,16,.1,"number",false]
@@ -58,6 +59,8 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   value=>onPreview(["filter"],{...tone.filter,[key]:value})));
  toneFields.append(createDial({label:"Distortion",min:0,max:1,step:.01,display:"percent"},tone.drive,
   value=>onChange(["drive"],value),value=>onPreview(["drive"],value)));
+ const toneDials=[...toneFields.querySelectorAll(".dial-field")];
+ toneDials.forEach((dial,i)=>dial.dataset.soundPath=i===0?"filter.resonance":"drive");
  toneGroup.append(toneTitle,toneFields);root.append(toneGroup);
  const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=expanded.has("movement");
  movementGroup.addEventListener("toggle",()=>movementGroup.open?expanded.add("movement"):expanded.delete("movement"));
@@ -100,6 +103,10 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   disabled:bend.shape==="straight",disabledReason:"Choose a bend shape other than Straight first."},bend[key],
   value=>onChange(["bend"],{...bend,[key]:value}),
   value=>onPreview(["bend",key],value)));
+ const movementDials=[...movementFields.querySelectorAll(".dial-field")];
+ movementDials.forEach((dial,i)=>dial.dataset.soundPath=i<movements.length?
+  "movement."+movements[i][0]:"bend."+(i===movements.length?"amount":"rate"));
+ shapeLabel.dataset.soundPath="bend.shape";
  movementGroup.append(movementTitle,movementFields);root.append(movementGroup);
  const details=document.createElement("details");details.className="synth-group sample-shaping";details.open=expanded.has("sample");
  details.addEventListener("toggle",()=>details.open?expanded.add("sample"):expanded.delete("sample"));
@@ -118,11 +125,14 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
    value=>onChange([key],value),
    value=>onPreview([key],value)));
  }
+ [...fields.querySelectorAll(".dial-field")].forEach((dial,i)=>
+  dial.dataset.soundPath=configs[i][0]);
  const toggles=document.createElement("div");toggles.className="sample-toggles";
  const addToggle=(label,path,checked)=>{
   const control=document.createElement("label");control.className="sample-pitch-setting";
   const box=document.createElement("input");box.type="checkbox";box.checked=checked;
   box.addEventListener("change",()=>onChange([path],box.checked));
+  control.dataset.soundPath=path;
   control.append(box,document.createTextNode(label));toggles.append(control);
  };
  addToggle("Follow note pitch","followPitch",patch.followPitch);
@@ -144,7 +154,8 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   }
   select.value=String(zone.root);
   select.addEventListener("change",()=>onChange(["zones",index,"root"],Number(select.value)));
-  label.append(name,select);mapping.append(label);
+  label.dataset.soundPath="zones."+index+".root";
+   label.append(name,select);mapping.append(label);
  });
  if(patch.zones.length>8) {
   const details=document.createElement("details");details.className="sample-map-details";
