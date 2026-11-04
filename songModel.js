@@ -12,7 +12,7 @@ export const VOCAL_FX_SONG_VERSION=16;
 export function upgradeSongFeatures(song){
  song.beats.forEach(upgradeBeatFeatures);
  if(song.tracks?.some(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.effects!==undefined||clip.trimStartSeconds!==undefined)))song.version=VOCAL_FX_SONG_VERSION;
- if(song.recordings?.some(recording=>recording.mime==='audio/wav'))song.version=PCM_SONG_VERSION;
+ else if(song.recordings?.some(recording=>recording.mime==='audio/wav')&&song.version<PCM_SONG_VERSION)song.version=PCM_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===AUTOMATION_BEAT_VERSION)&&song.version<AUTOMATION_SONG_VERSION)song.version=AUTOMATION_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===MODULATION_BEAT_VERSION)&&song.version<MODULATION_SONG_VERSION)song.version=MODULATION_SONG_VERSION;
  return song;
