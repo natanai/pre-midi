@@ -1545,3 +1545,16 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .signal-scope-marker{stroke:var(--scope-accent);stroke-width:1;stroke-dasharray:2 3;opacity:.75}
 .signal-scope-reference{stroke:#aaaaaa;stroke-width:1;opacity:.65;
  stroke-dasharray:4 3;vector-effect:non-scaling-stroke}
+
+/* Paged diagrams keep individual sample zones and modulation routes legible. */
+.visual-panel-pages {position:absolute;right:45px;top:6px;display:flex;
+ align-items:center;gap:4px;z-index:2;color:var(--muted);font-size:10px;
+ line-height:1;white-space:nowrap;background:#020304dc}
+.visual-panel-pages[hidden] {display:none}
+.visual-panel-pages button {display:grid;place-items:center;min-width:25px;
+ min-height:27px;padding:0 3px;border:1px solid transparent;
+ background:transparent;color:var(--bright);font-size:16px}
+.visual-panel-pages button:hover:not(:disabled),
+.visual-panel-pages button:focus-visible {border-color:var(--line)}
+.visual-panel-pages button:disabled {opacity:.3}
+.visual-panel-range {font-variant-numeric:tabular-nums}
