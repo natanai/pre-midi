@@ -12,6 +12,7 @@ export function renderModulationEditor(patch,onChange,soundId=null){
  const update=(index,values)=>change(routes.map((route,i)=>i===index?{...route,...values}:route));
  for(const [index,route] of routes.entries()){
   const row=document.createElement("div");row.className="synth-fields modulation-route";
+   row.dataset.soundPath="modulation.routes."+index;
   const target=MOD_TARGETS.find(item=>item.id===route.target);
   const name=document.createElement("span");name.textContent=route.source.kind==="velocity"?"touch → "+target.name:route.source.kind==="keytrack"?"keys → "+target.name:target.name+" over time";
   row.append(name);
