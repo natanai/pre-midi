@@ -3062,30 +3062,6 @@
       "proof": "not-qualified"
     },
     {
-      "id": "event:studio:sound-name-change:1",
-      "source": "studio.js",
-      "anchor": "$(\"sound-name\")",
-      "kind": "listener",
-      "event": "change",
-      "desktopRoute": "studio.js $(\"sound-name\").change",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:studio:sound-reference-change:1",
-      "source": "studio.js",
-      "anchor": "$(\"sound-reference\")",
-      "kind": "listener",
-      "event": "change",
-      "desktopRoute": "studio.js $(\"sound-reference\").change",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
       "id": "event:studio:sound-toggle-click:1",
       "source": "studio.js",
       "anchor": "$(\"sound-toggle\")",
