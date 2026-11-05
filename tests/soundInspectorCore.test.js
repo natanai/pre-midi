@@ -131,7 +131,7 @@ test("shared catalog action binding preserves context-specific browser and prese
  });
  browse.onclick();save.onclick();
  assert.deepEqual(actions,[["browse","replace-row"],["save",false]]);
- assert.equal(save.attributes["aria-label"],"save preset");
+ assert.equal(save.attributes["aria-label"],"Save preset");
 });
 
 test("both Sound contexts own no separate catalog or preset action handlers",()=>{
