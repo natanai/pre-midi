@@ -235,10 +235,14 @@ export function validateRecording(entry){
  return null;
 }
 export function songDurationSteps(song){
- return Math.max(0,...song.tracks.flatMap(track=>[
-  ...track.clips.map(clip=>clip.startStep+clip.lengthSteps),
-  ...(track.kind==="beat"?[freeformEndStep(track.freeform)]:[])
- ]));
+ // Avoid spreading an unbounded clip array into Math.max; a long arrangement
+ // must not exhaust the JS argument stack simply because it contains many Clips.
+ let end=0;
+ for(const track of song.tracks){
+  for(const clip of track.clips)end=Math.max(end,clip.startStep+clip.lengthSteps);
+  if(track.kind==="beat"&&track.freeform)end=Math.max(end,freeformEndStep(track.freeform));
+ }
+ return end;
 }
 // Project an occurrence's absolute Song step onto its source Beat phase.
 // Existing Clips without a phase field retain their original behavior.
@@ -253,6 +257,7 @@ export function eventsAtSongStep(song,step){
  if(!nonnegative(step))return [];
  const events=[];
  const beats=new Map(song.beats.map(beat=>[beat.id,beat]));
+ let freeformBars; // Only resolve the Song extent if an attached freeform lane needs it.
  for(const track of song.tracks){
   if(track.kind!=="beat")continue;
   for(const clip of track.clips){
@@ -264,8 +269,9 @@ export function eventsAtSongStep(song,step){
     events.push({...event,beat,track,clip,songStep:step,beatStep:localStep});
   }
   if(track.freeform){
+   freeformBars??=Math.max(1,Math.ceil(songDurationSteps(song)/STEPS_PER_BAR));
    const source={id:track.id+"-freeform",bpm:song.bpm,
-    bars:Math.max(1,Math.ceil(songDurationSteps(song)/STEPS_PER_BAR)),
+    bars:freeformBars,
     samples:track.freeform.samples};
    for(const event of eventsAtFreeformStep(track.freeform,step))
     events.push({...event,beat:source,track,songStep:step,beatStep:step});
