@@ -47,6 +47,20 @@
 .freeform-layer-choice select{max-width:185px}
 .freeform-layer-help{font-size:10px;color:var(--muted);align-self:center;max-width:240px}
 .freeform-duplicate-note{min-height:30px;border:1px solid var(--line);color:var(--bright)}
+/* Note-level cutoff authoring shares the canonical two-handle filter automation
+   illustration. Both handles and numeric fields remain available simultaneously. */
+.freeform-note-cutoff{flex:1 1 100%;min-width:min(100%,320px);
+ border:1px solid var(--line);background:#0b1311;padding:6px 10px;
+ display:flex;align-items:end;gap:9px;flex-wrap:wrap}
+.freeform-note-cutoff>summary{cursor:pointer;flex:1 1 100%;font-size:11px;
+ color:var(--bright);list-style:revert}
+.freeform-note-cutoff:not([open]){display:block}
+.freeform-note-cutoff>.visual-sound-panel{flex:1 1 100%;min-width:0}
+.freeform-note-cutoff>.freeform-field{min-width:90px}
+.freeform-note-cutoff>.freeform-field input[type=number]{width:90px}
+.freeform-note-cutoff .freeform-layer-help{flex:1 1 100%}
+.freeform-add-cutoff,.freeform-remove-cutoff{min-height:30px;border:1px solid var(--line)}
+
 
 .freeform-playhead{position:absolute;top:0;bottom:0;left:0;border-left:2px solid #e5846e;z-index:3;pointer-events:none}
 .freeform-playhead[hidden]{display:none!important}
