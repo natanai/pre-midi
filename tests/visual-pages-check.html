@@ -468,6 +468,9 @@ try{
  // controls; reacquire the live handle instead of dispatching to a stale node.
  const liveGainPoint=pitchedPanel.element.querySelector(
   '.visual-graph-point[data-sound-links="volume|gain"]');
+ pass("two-axis illustrated controls announce their current X/Y values and units",
+  liveGainPoint.getAttribute("aria-description").includes("x volume 64%")&&
+  liveGainPoint.getAttribute("aria-description").includes("y gain 75%"));
  const pitchedGraph=pitchedPanel.element.querySelector(".visual-panel-graph");
  const pitchedArea=pitchedPanel.element.querySelector(".visual-panel-area");
  pitchedGraph.getBoundingClientRect=()=>({left:0,top:0,width:360,height:112});
@@ -497,6 +500,12 @@ try{
   Math.abs(liveGain-pitchedPreview.value[1])<.0001);
  pass("illustration preview is not also committed through conventional dials",
   pitchedCommits===beforeGrab);
+ const previewPoint=pitchedPanel.element.querySelector(
+  '.visual-graph-point[data-sound-links="volume|gain"]');
+ const previewDescription=previewPoint.getAttribute("aria-description");
+ pass("screen-reader X/Y values follow illustration previews before commit",
+  previewDescription.includes("x volume "+Math.round(liveVolume*100)+"%")&&
+  previewDescription.includes("y gain "+Math.round(liveGain*100)+"%"));
  pointer(pitchedArea,"pointerup",190,72);
  pass("two-axis release commits exactly one atomic edit",
   pitchedCommits===beforeGrab+1&&pitchedEdit.path.length===2&&
