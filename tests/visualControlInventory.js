@@ -28,13 +28,19 @@ export function auditSoundVisualCoverage(root,{context="sound"}={}){
   const previous=pages?.querySelector("button:first-of-type");
   // Inspect every actually rendered page, including dynamically generated
   // modulation routes and all imported sample zones. Restore original page.
-  let advanced=0;
+  let rewound=0,advanced=0;
+  if(pages&&!pages.hidden&&previous){
+   for(let guard=0;guard<256&&!previous.disabled;guard++){
+    previous.click();rewound++;
+   }
+  }
   for(let guard=0;guard<256;guard++){
    read(panel);
    if(!pages||pages.hidden||!next||next.disabled)break;
    next.click();advanced++;
   }
-  for(let i=0;i<advanced;i++)previous.click();
+  // Return to the exact originally selected page, not always page one.
+  for(let i=0;i<advanced-rewound;i++)previous.click();
  }
  // Note expression intentionally shares the graph/point primitives but has
  // no accordion wrapper. Its controls must pass the same exact-path audit.
