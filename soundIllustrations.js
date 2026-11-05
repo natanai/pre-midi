@@ -758,11 +758,16 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    button.dataset.handle=String(i);
    button.dataset.soundLinks=point.axes.map(axis=>axis.path.join(".")).join("|");
    button.setAttribute("aria-label",point.label);
-   button.setAttribute("aria-description",point.axes.map(axisDirection).join("; "));
+   const values=point.axes.map(axis=>axisReadout(axis,axisValue(current,axis.path)));
+   // The visible output is inside a labelled button. Its text is otherwise
+   // hidden by aria-label, so announce current X/Y values in the accessible
+   // description as well as directions. Live previews rebuild both together.
+   button.setAttribute("aria-description",[
+    ...point.axes.map(axisDirection),...values
+   ].join("; "));
    const readout=document.createElement("output");
    readout.className="visual-point-readout";
-   readout.textContent=point.label+" · "+
-    point.axes.map(axis=>axisReadout(axis,axisValue(current,axis.path))).join(" · ");
+   readout.textContent=point.label+" · "+values.join(" · ");
    button.append(readout);
    // A two-dimensional handle is a button, not an inaccurately labelled slider.
    if(point.axes.length===1){
