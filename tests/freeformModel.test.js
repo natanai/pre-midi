@@ -11,7 +11,7 @@ import {planSynthVoice} from "../src/dsp/synth-voice.js";
 import {createFreeform,addFreeformInstrument,addFreeformNote,
  addFreeformChunkPlacement,editFreeformChunkPlacement,removeFreeformChunkPlacement,
  eventsAtFreeformStep,freeformEndStep,
- moveFreeformPassage,unpackBeatClip,createBeatFromFreeformSelection,soundingFreeformPitches,validateFreeform,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION} from "../freeformModel.js";
+ moveFreeformPassage,unpackBeatClip,createBeatFromFreeformSelection,soundingFreeformPitches,validateFreeform,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION,FREEFORM_LIMIT_STEPS} from "../freeformModel.js";
 
 test("empty freeform supports long notes and independent reusable Chunks",()=>{
  const layer=createFreeform(),instrument=addFreeformInstrument(layer);
@@ -384,7 +384,7 @@ test("freeform reusable Chunk placements can move mid-bar, repeat polymetrically
  assert.equal(placed.chunkId,chunkId);
  assert.deepEqual([52,64,76].map(step=>eventsAtFreeformStep(free,step).length),[1,1,1]);
  assert.equal(eventsAtFreeformStep(free,66).length,0);
- assert.equal(freeformEndStep(free),81);
+ assert.equal(freeformEndStep(free),82,"The placement's note-on window also contributes to Song length");
  upgradeSongFeatures(song);
  assert.deepEqual(validateSong(song),[]);
  assert.deepEqual(parseSong(JSON.stringify(song)),song);
