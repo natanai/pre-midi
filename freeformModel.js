@@ -110,6 +110,29 @@ export function addFreeformChunkPlacement(instrument,chunkId,startStep,{length=1
  instrument.chunkPlacements.push(placement);
  return placement;
 }
+// A placed Chunk remains a reusable source definition. Editing its Song-time
+// position/repetition never edits the Chunk or duplicates its notes.
+export function editFreeformChunkPlacement(instrument,placementId,changes){
+ const placement=instrument?.chunkPlacements?.find(item=>item.id===placementId);
+ if(!placement)throw Error("Choose a placed freeform Chunk.");
+ if(!obj(changes)||Object.keys(changes).some(key=>
+  !["startStep","length","every","repeats","chunkId"].includes(key)))
+  throw Error("Invalid freeform Chunk placement change.");
+ const next={...placement,...changes};
+ const source=instrument.chunks.find(chunk=>chunk.id===next.chunkId);
+ if(!source||!whole(next.startStep)||!positive(next.length)||next.length>16||
+  !positive(next.every)||next.every>64||!positive(next.repeats)||next.repeats>32||
+  next.startStep+(next.repeats-1)*next.every+chunkTail(source,next.length)>FREEFORM_LIMIT_STEPS)
+  throw Error("Invalid freeform Chunk placement.");
+ Object.assign(placement,next);
+ return placement;
+}
+export function removeFreeformChunkPlacement(instrument,placementId){
+ const index=instrument?.chunkPlacements?.findIndex(item=>item.id===placementId)??-1;
+ if(index<0)throw Error("Choose a placed freeform Chunk.");
+ const [placement]=instrument.chunkPlacements.splice(index,1);
+ return placement;
+}
 export function freeformEndStep(layer){
  if(!layer)return 0;
  let end=0;
