@@ -768,6 +768,19 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    handlesRoot.querySelector('.visual-graph-point[data-handle="'+focusedHandle+'"]')
     ?.focus({preventScroll:true});
   }
+  // Keep the *existing* knobs visually current while an illustration is
+  // dragged. setDialDisplayValue only updates the dial face, readout and ARIA:
+  // it never calls the knob's own preview or commit handlers. That preserves
+  // the caller's single undo transaction for a multi-axis gesture.
+  const editedAxes=new Set(handles.flatMap(point=>point.axes.map(axis=>axis.path.join("."))));
+  for(const dial of controlOwner().querySelectorAll(".dial-field")){
+   const key=dial.dataset.soundPath||
+    dial.parentElement?.closest("[data-sound-path]")?.dataset.soundPath;
+   if(!editedAxes.has(key)||dial.classList.contains("adjusting"))continue;
+   const value=at(current,key.split("."));
+   if(typeof value==="number"&&Number.isFinite(value))
+    dial.setDialDisplayValue?.(value);
+  }
   highlight(activeLink);
  }
  function targetFields(keys){
@@ -957,26 +970,44 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   if(!button||event.button!==0||active)return;
   const point=visibleHandles[Number(button.dataset.handle)];
   if(!point)return;
+  const grab=coord(event);
+  // The visible handle has a 28px touch target. A press away from its center
+  // must not change either parameter before the user actually drags.
+  const offset={x:point.x-grab.x,y:point.y-grab.y};
+  active={pointerId:event.pointerId,point,grab,offset,moved:false};
   if(kind.startsWith("harmonics")){
    const oscillator=Number(kind.slice("harmonics".length));
-   active={pointerId:event.pointerId,stroke:{
-    oscillator,base:page*8,values:new Map(),last:null
-   }};
-  }else active={pointerId:event.pointerId,point};
+   const index=page*8+Number(button.dataset.handle);
+   active.stroke={oscillator,base:page*8,values:new Map(),
+    last:{index,level:at(latestPatch,["oscillators",oscillator,"harmonics",index])}};
+  }
   area.setPointerCapture(event.pointerId);event.preventDefault();
-  if(active.stroke)paintHarmonics(active.stroke,coord(event),false);
-  else apply(point,coord(event),false);
  });
+ const shiftedPosition=(gesture,event)=>{
+  const position=coord(event);
+  return {x:position.x+gesture.offset.x,y:position.y+gesture.offset.y};
+ };
  area.addEventListener("pointermove",event=>{
   if(!active||active.pointerId!==event.pointerId)return;
-  if(active.stroke)paintHarmonics(active.stroke,coord(event),false);
-  else apply(active.point,coord(event),false);
+  const position=coord(event);
+  if(!active.moved&&Math.hypot(position.x-active.grab.x,
+   position.y-active.grab.y)<1)return;
+  active.moved=true;
+  const shifted=shiftedPosition(active,event);
+  if(active.stroke)paintHarmonics(active.stroke,shifted,false);
+  else apply(active.point,shifted,false);
  });
  area.addEventListener("pointerup",event=>{
   if(!active||active.pointerId!==event.pointerId)return;
   const gesture=active;active=null;
-  if(gesture.stroke)paintHarmonics(gesture.stroke,coord(event),true);
-  else apply(gesture.point,coord(event),true);
+  const position=coord(event);
+  const moved=gesture.moved||Math.hypot(position.x-gesture.grab.x,
+   position.y-gesture.grab.y)>=1;
+  if(moved){
+   const shifted=shiftedPosition(gesture,event);
+   if(gesture.stroke)paintHarmonics(gesture.stroke,shifted,true);
+   else apply(gesture.point,shifted,true);
+  }
   if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
  });
  area.addEventListener("pointercancel",event=>{
