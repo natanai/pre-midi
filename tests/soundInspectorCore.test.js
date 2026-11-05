@@ -123,7 +123,7 @@ test("shared catalog action binding preserves context-specific browser and prese
   ["browse","replace"],["save",true],["browse","replace-row"],
   ["save",false],["save",true],["import"]
  ]);
- assert.equal(save.attributes["aria-label"],"save rack preset");
+ assert.equal(save.attributes["aria-label"],"Save rack preset");
  actions.length=0;
  bindSoundInspectorCatalogActions({
   instrument:{layout:"rack"},browseButton:browse,saveButton:save,
