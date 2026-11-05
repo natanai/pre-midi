@@ -1004,6 +1004,9 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
     last:{index,level:at(latestPatch,["oscillators",oscillator,"harmonics",index])}};
   }
   area.setPointerCapture(event.pointerId);event.preventDefault();
+  // Pointer default prevention otherwise leaves focus on the prior dial.
+  // Make Escape cancel available on the actual dragged handle.
+  button.focus({preventScroll:true});
  });
  const shiftedPosition=(gesture,event)=>{
   const position=coord(event);
@@ -1032,8 +1035,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   }
   if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
  });
- area.addEventListener("pointercancel",event=>{
-  if(!active||active.pointerId!==event.pointerId)return;
+ const cancelGesture=()=>{
+  if(!active)return;
   const gesture=active;active=null;
   dragReadout.hidden=true;draw(patch);
   const paths=gesture.stroke?[...gesture.stroke.values.keys()].map(index=>
@@ -1042,9 +1045,17 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const values=paths.map(path=>at(patch,path));
   if(paths.length)onPreview(paths.length===1?paths[0]:paths,
    paths.length===1?values[0]:values);
-  if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
+  if(area.hasPointerCapture(gesture.pointerId))
+   area.releasePointerCapture(gesture.pointerId);
+ };
+ area.addEventListener("pointercancel",event=>{
+  if(active?.pointerId===event.pointerId)cancelGesture();
  });
  area.addEventListener("keydown",event=>{
+  if(event.key==="Escape"&&active){
+   event.preventDefault();event.stopPropagation();
+   cancelGesture();return;
+  }
   if(!["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(event.key))return;
   const button=event.target.closest(".visual-graph-point");if(!button)return;
   const point=visibleHandles[Number(button.dataset.handle)];if(!point)return;
