@@ -336,7 +336,8 @@ try{
   '.dial-field[data-sound-path="volume"] [role="slider"]').getAttribute("aria-valuenow"));
  const liveGain=Number(pitchedRoot.querySelector(
   '.dial-field[data-sound-path="gain"] [role="slider"]').getAttribute("aria-valuenow"));
- pass("illustration dragging updates both physical knob faces before commit",
+ pass("illustration dragging updates both physical knob faces before commit: "+
+  JSON.stringify({liveVolume,liveGain,pitchedPreview,pitchedCommits,beforeGrab}),
   liveVolume<.64&&liveGain<.75&&pitchedPreview?.path?.length===2&&
   Math.abs(liveVolume-pitchedPreview.value[0])<.0001&&
   Math.abs(liveGain-pitchedPreview.value[1])<.0001);
