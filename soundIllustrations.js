@@ -4,6 +4,7 @@ import {movement,pitchCents,BEND_SHAPES} from "./expression.js";
 import {harmonicWave,harmonicRecipe} from "./harmonics.js";
 import {DEFAULT_SAMPLE_FILTER,driveCurve} from "./audioEffects.js";
 import {modeledFilterMagnitude,modeledFilterY} from "./filterIllustrationResponse.js";
+import {modeledDelayTaps} from "./delayIllustrationResponse.js";
 import {routeValueAt,MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {cutoffAt} from "./src/dsp/automation.js";
@@ -456,13 +457,20 @@ export const diagram=(patch,type,page=0)=>{
   const e=p.effects,mix=e.delayMix||0,feedback=e.delayFeedback||0;
   const space=24+clamp((e.delayTime-.05)/.95)*66,origin=52;
   line("M16 100 H348",true);
-  // The original note, then discrete echoes with spacing and amplitude
-  // derived from the authored time, mix and feedback settings.
-  for(let i=0;i<4;i++){
-   const x=origin+i*space;
-   const level=i===0?1:mix*feedback**(i-1);
-   line("M"+x.toFixed(2)+" 100 V"+(100-72*level).toFixed(2),i>0,["effects.delayTime","effects.delayMix","effects.delayFeedback"]);
-   if(i>0)tag(x+4,Math.max(18,94-72*level),String(i));
+  // A unit impulse exposes the host's real dry attenuation and three wet
+  // returns: send=mix*.55, wet=.8, then feedback^n with an additional
+  // 128-frame cycle delay. Unlike the former sketch, an echo is NOT mix*1.
+  // The position scale expands musical delay time so its small quantum lag
+  // remains barely visible. The measured scope still shows actual PCM.
+  const taps=modeledDelayTaps(e);
+  for(const tap of taps){
+   const x=origin+space*(tap.time/e.delayTime);
+   line("M"+x.toFixed(2)+" 100 V"+(100-72*tap.level).toFixed(2),
+    tap.index>0,tap.index?
+     ["effects.delayTime","effects.delayMix","effects.delayFeedback"]:
+     ["effects.delayMix"]);
+   if(tap.index>0&&tap.level>0)
+    tag(x+4,Math.max(18,94-72*tap.level),String(tap.index));
   }
   handle(origin+space,100-72*mix,[
    axis(["effects","delayTime"],.05,1,"linearX",

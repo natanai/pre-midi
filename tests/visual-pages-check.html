@@ -15,6 +15,7 @@ import {renderAudioDelayControls} from "../audioControlUI.js";
 import {vocalDisplayPatch} from "../vocalAudioView.js";
 import {illustrateSoundPanel,diagram} from "../soundIllustrations.js";
 import {modeledFilterMagnitude} from "../filterIllustrationResponse.js";
+import {modeledDelayTaps} from "../delayIllustrationResponse.js";
 import {createDial} from "../dial.js";
 import {renderVocalEditor} from "../vocalEditor.js";
 import {installFreeformSoundUI} from "../freeformSoundUI.js";
@@ -50,6 +51,46 @@ try{
  pass("all four Sound filter types and their resonance values are physically qualified",
   filterChecks===84);
  void fetch("/__layout_progress?stage=filter-magnitude-verified");
+ // Independently render a unit impulse through the same browser DelayNode
+ // send/feedback/wet/dry graph used for studio playback. This validates the
+ // educational dry and wet stem heights, not just matching hard-coded math.
+ const delayFx={delayMix:.5,delayTime:.1,delayFeedback:.5};
+ const delayRate=48000,delayOffline=new OfflineAudioContext(1,delayRate,delayRate);
+ const impulse=delayOffline.createBuffer(1,1,delayRate);
+ impulse.getChannelData(0)[0]=1;
+ const source=delayOffline.createBufferSource();source.buffer=impulse;
+ const dry=delayOffline.createGain();
+ dry.gain.value=1-delayFx.delayMix*.4;
+ source.connect(dry);dry.connect(delayOffline.destination);
+ const send=delayOffline.createGain(),delay=delayOffline.createDelay(1.2);
+ const feedback=delayOffline.createGain(),wet=delayOffline.createGain();
+ send.gain.value=delayFx.delayMix*.55;
+ delay.delayTime.value=delayFx.delayTime;
+ feedback.gain.value=delayFx.delayFeedback;
+ wet.gain.value=.8;
+ source.connect(send);send.connect(delay);
+ delay.connect(feedback);feedback.connect(delay);
+ delay.connect(wet);wet.connect(delayOffline.destination);
+ source.start(0);
+ const delayAudio=(await delayOffline.startRendering()).getChannelData(0);
+ const delayPeaks=modeledDelayTaps(delayFx);
+ const delayResiduals=[];
+ for(const peak of delayPeaks){
+  const center=Math.round(peak.time*delayRate),tolerance=peak.index?256:1;
+  let observed=0;
+  for(let i=Math.max(0,center-tolerance);
+   i<Math.min(delayAudio.length,center+tolerance+1);i++)
+   observed=Math.max(observed,Math.abs(delayAudio[i]));
+  delayResiduals.push({echo:peak.index,expected:peak.level,observed});
+ }
+ pass("48k delay model agrees with Web Audio dry and three feedback echo gains "+
+  JSON.stringify(delayResiduals),delayResiduals.every(x=>
+   Math.abs(x.observed-x.expected)<Math.max(.004,x.expected*.08)));
+ pass("delay illustration maps the actual modeled echo levels",
+  delayPeaks.every((peak,i)=>diagram({
+   type:"synth",effects:delayFx
+  },"delay").paths[i+1].d.endsWith("V"+(100-72*peak.level).toFixed(2))));
+ void fetch("/__layout_progress?stage=delay-impulse-verified");
  const patch={type:"sample",zones:Array.from({length:10},(_,i)=>({assetId:"z"+i,root:40+i*4})),
   gain:.9,transpose:0,pan:0,strumMs:0,attack:.005,release:.17,
   followPitch:true,oneShot:false,preserveDynamics:false};
