@@ -92,6 +92,22 @@ try{
  fields.at(-1).dispatchEvent(new Event("change",{bubbles:true}));
  assert(selected.cutoffAutomation?.block.points[1].value===2100,
   "Numeric edit changes the same curve shown by the two-axis illustration");
+ let graphHandle=[...root.querySelectorAll(".freeform-note-cutoff .visual-graph-point")].at(-1);
+ assert(graphHandle?.getAttribute("aria-description")?.includes("left/right")&&
+  graphHandle.getAttribute("aria-description")?.includes("up/down"),
+  "Cutoff endpoint is an educational, keyboard-accessible two-axis illustration");
+ const oldEnd=selected.cutoffAutomation.block.points[1].step;
+ graphHandle.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowLeft",bubbles:true,cancelable:true
+ }));
+ assert(selected.cutoffAutomation.block.points[1].step===oldEnd-1,
+  "Graph horizontal axis edits the same endpoint position as the numeric input");
+ graphHandle=[...root.querySelectorAll(".freeform-note-cutoff .visual-graph-point")].at(-1);
+ graphHandle.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowUp",bubbles:true,cancelable:true
+ }));
+ assert(selected.cutoffAutomation.block.points[1].value>2100,
+  "Graph vertical axis edits the same real cutoff frequency as the numeric input");
  upgradeSongFeatures(song);
  assert(song.version>=23,"New freeform note automation upgrades the native Song instruction version");
  await report("PASS","Beat-attached movement, layered notes and authored interactive cutoff curve");
