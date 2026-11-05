@@ -54,6 +54,17 @@ try{
   gain:.9,transpose:0,pan:0,strumMs:0,attack:.005,release:.17,
   followPitch:true,oneShot:false,preserveDynamics:false};
  const sampleEdits=[];
+ // A one-shot sample does not stop at note-off: the tail marking must teach
+ // the actual source-region fade instead of suggesting a keyed release.
+ const keyedIllustration=diagram({...patch,oneShot:false},"sample");
+ const oneShotIllustration=diagram({...patch,oneShot:true},"sample");
+ pass("keyed sample envelope labels the key-off boundary",
+  keyedIllustration.labels.some(label=>label.value==="off")&&
+  keyedIllustration.handles.some(h=>h.axes.some(a=>a.path.join(".")==="release")));
+ pass("one-shot envelope labels the recording tail, not note-off",
+  oneShotIllustration.labels.some(label=>label.value==="tail")&&
+  !oneShotIllustration.labels.some(label=>label.value==="off")&&
+  oneShotIllustration.handles.some(h=>h.axes.some(a=>a.path.join(".")==="attack")));
  renderSamplerEditor(document.querySelector("#sample"),patch,(path,value)=>sampleEdits.push([path,value]),null,()=>{},()=>{},"visual-page-sample");
  const samplePanel=document.querySelector('#sample .visual-sound-panel[data-visual-kind="mapping"]');
  pass("mapping module exists",!!samplePanel);
