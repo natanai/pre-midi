@@ -40,6 +40,14 @@
 .freeform-note-row:focus-visible{outline:1px dotted #8dd0af;outline-offset:-2px}
 .freeform-roll-note{position:absolute;top:3px;height:13px;border-radius:2px;border:1px solid #2a7760;background:#7fc59f;padding:0;z-index:2;cursor:grab;touch-action:none}
 .freeform-roll-note.selected{background:#c7f0da;outline:1px solid white}
+.freeform-roll-note.layered{border-color:#397a64;box-sizing:border-box}
+.freeform-roll-note.layer-overflow{border-style:dotted}
+.freeform-roll-note.layered.selected{border-color:#e4f7ec}
+.freeform-layer-choice{max-width:190px}
+.freeform-layer-choice select{max-width:185px}
+.freeform-layer-help{font-size:10px;color:var(--muted);align-self:center;max-width:240px}
+.freeform-duplicate-note{min-height:30px;border:1px solid var(--line);color:var(--bright)}
+
 .freeform-playhead{position:absolute;top:0;bottom:0;left:0;border-left:2px solid #e5846e;z-index:3;pointer-events:none}
 .freeform-playhead[hidden]{display:none!important}
 .freeform-note-details{display:flex;flex-wrap:wrap;align-items:end;gap:7px;margin-top:8px;padding-top:8px;border-top:1px solid var(--faint)}
