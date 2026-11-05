@@ -1,7 +1,8 @@
 // Attached freeform Song lane and Song-position piano roll.
 // Every mutation passes through the studio's existing Song undo/history boundary.
 import {createFreeform,ensureFreeform,addFreeformInstrument,addFreeformNote,
- addFreeformChunkPlacement,moveFreeformPassage,createBeatFromFreeformSelection,soundingFreeformPitches,
+ addFreeformChunkPlacement,editFreeformChunkPlacement,removeFreeformChunkPlacement,
+ moveFreeformPassage,createBeatFromFreeformSelection,soundingFreeformPitches,
  previewFreeformPassageLayering,FREEFORM_LIMIT_STEPS,
  duplicateFreeformInstrument,moveFreeformInstrument,removeFreeformInstrument} from "./freeformModel.js";
 import {addBeat} from "./songModel.js";
@@ -40,7 +41,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
  const panel=el("section","song-freeform-editor");panel.hidden=true;
  panel.setAttribute("aria-label","Freeform Song notes");
  root.append(panel);
- let activeTrackId=null,activeInstrumentId=null,selectedNoteId=null,barStart=0,playStep=null;
+ let activeTrackId=null,activeInstrumentId=null,selectedNoteId=null,selectedPlacementId=null,barStart=0,playStep=null;
  let selectionStartStep=0,selectionLengthSteps=16,followPlayback=false;
  let editorScrollTop=null,editorScrollLeft=null;
 
@@ -61,7 +62,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
  });
  function close(){
   const wasActive=activeTrackId!==null;
-  activeTrackId=null;activeInstrumentId=null;selectedNoteId=null;
+  activeTrackId=null;activeInstrumentId=null;selectedNoteId=null;selectedPlacementId=null;
   panel.hidden=true;panel.replaceChildren();if(wasActive)onActiveChange(false);
  }
  function open(trackId,passageId=null){
@@ -70,7 +71,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   if(!chosen.freeform&&!mutate(()=>ensureFreeform(chosen)))return;
   activeTrackId=chosen.id;
   activeInstrumentId=chosen.freeform?.instruments[0]?.id??null;
-  selectedNoteId=null;
+  selectedNoteId=null;selectedPlacementId=null;
   const selectedPassage=chosen.freeform?.passages.find(p=>p.id===passageId);
   const anchor=selectedPassage?.startStep??chosen.freeform?.passages[0]?.startStep??0;
   barStart=Math.floor(anchor/BAR_STEPS);
@@ -108,7 +109,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
      if(!free.samples.some(item=>item.id===asset.id))free.samples.push(structuredClone(asset));
    }
   }))return;
-  activeInstrumentId=newId;selectedNoteId=null;render();
+  activeInstrumentId=newId;selectedNoteId=null;selectedPlacementId=null;render();
  }
  function changeNote(noteId,patch){
   const original=instrument()?.notes.find(note=>note.id===noteId);
@@ -297,7 +298,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   }
   const inst=instrument();
   if(inst){activeInstrumentId=inst.id;picker.value=inst.id;}
-  picker.addEventListener("change",()=>{activeInstrumentId=picker.value;selectedNoteId=null;editorScrollTop=null;render();});
+  picker.addEventListener("change",()=>{activeInstrumentId=picker.value;selectedNoteId=null;selectedPlacementId=null;editorScrollTop=null;render();});
   tools.append(picker,action("+ instrument",addInstrument),
    action("browse sounds",()=>onBrowseSound({
     trackId:activeTrackId,mode:inst?"replace":"add",
@@ -321,7 +322,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    options.append(action("duplicate",()=>{
     let copy=null;
     if(mutate(()=>{copy=duplicateFreeformInstrument(free,inst.id);})){
-     activeInstrumentId=copy.id;selectedNoteId=null;editorScrollTop=null;render();
+     activeInstrumentId=copy.id;selectedNoteId=null;selectedPlacementId=null;editorScrollTop=null;render();
     }
    },"freeform-instrument-copy"));
    const index=free.instruments.indexOf(inst);
@@ -337,7 +338,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
     const remaining=free.instruments.filter(item=>item.id!==inst.id);
     if(mutate(()=>removeFreeformInstrument(free,inst.id))){
      activeInstrumentId=remaining[Math.min(index,remaining.length-1)]?.id??null;
-     selectedNoteId=null;editorScrollTop=null;render();
+     selectedNoteId=null;selectedPlacementId=null;editorScrollTop=null;render();
     }
    },"freeform-instrument-remove"));
    menu.append(options);tools.append(menu);
@@ -392,9 +393,59 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   for(const chunk of inst.chunks){
    const opt=el("option","",chunk.name);opt.value=chunk.id;chunkPicker.append(opt);
   }
-  chunkControls.append(chunkPicker,action("place Chunk",()=>mutate(()=>
-   addFreeformChunkPlacement(inst,chunkPicker.value,viewStep()))));
+  chunkControls.append(chunkPicker,action("place Chunk",()=>{
+   let created=null;
+   if(mutate(()=>{created=addFreeformChunkPlacement(inst,chunkPicker.value,viewStep());})){
+    selectedPlacementId=created.id;render();
+   }
+  }));
   panel.append(chunkControls);
+  if(inst.chunkPlacements.length){
+   const placement=inst.chunkPlacements.find(p=>p.id===selectedPlacementId)||
+    inst.chunkPlacements.at(-1);
+   selectedPlacementId=placement.id;
+   const controls=el("div","freeform-placement-editor");
+   const placementChoice=el("select");
+   placementChoice.setAttribute("aria-label","Placed freeform Chunk");
+   for(const item of inst.chunkPlacements){
+    const source=inst.chunks.find(chunk=>chunk.id===item.chunkId);
+    const opt=el("option","",(source?.name||"Chunk")+" · bar "+
+     (Math.floor(item.startStep/16)+1)+" step "+(item.startStep%16+1));
+    opt.value=item.id;placementChoice.append(opt);
+   }
+   placementChoice.value=placement.id;
+   placementChoice.addEventListener("change",()=>{
+    selectedPlacementId=placementChoice.value;render();
+   });
+   const change=patch=>mutate(()=>editFreeformChunkPlacement(inst,placement.id,patch));
+   const positionBar=input("number",Math.floor(placement.startStep/16)+1,1,4096,value=>{
+    if(Number.isInteger(value)&&value>=1)
+     change({startStep:(value-1)*16+placement.startStep%16});
+   });
+   positionBar.setAttribute("aria-label","Placed Chunk start bar");
+   const positionStep=input("number",placement.startStep%16+1,1,16,value=>{
+    if(Number.isInteger(value)&&value>=1&&value<=16)
+     change({startStep:Math.floor(placement.startStep/16)*16+value-1});
+   });
+   positionStep.setAttribute("aria-label","Placed Chunk start step");
+   const repeat=input("number",placement.repeats,1,32,value=>change({repeats:value}));
+   repeat.setAttribute("aria-label","Placed Chunk repetitions");
+   const every=input("number",placement.every,1,64,value=>change({every:value}));
+   every.setAttribute("aria-label","Placed Chunk spacing in steps");
+   const span=input("number",placement.length,1,16,value=>change({length:value}));
+   span.setAttribute("aria-label","Placed Chunk onset window in steps");
+   const remove=action("remove placement",()=>{
+    if(mutate(()=>removeFreeformChunkPlacement(inst,placement.id))){
+     selectedPlacementId=null;render();
+    }
+   },"freeform-placement-remove");
+   remove.title="Remove this Song placement without deleting the reusable Chunk";
+   controls.append(field("placed Chunk",placementChoice),
+    field("bar",positionBar),field("step",positionStep),
+    field("repeats",repeat),field("every · steps",every),
+    field("onset span",span),remove);
+   panel.append(controls);
+  }
   const roll=el("div","freeform-roll-scroll");
   const grid=el("div","freeform-roll-grid");
   const width=VIEW_BARS*BAR_STEPS*STEP_WIDTH;
@@ -621,7 +672,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   focusInstrument(trackId,instrumentId,soundId=null){
    if(activeTrackId!==trackId)return;
    if(!layer()?.instruments.some(inst=>inst.id===instrumentId))return;
-   activeInstrumentId=instrumentId;selectedNoteId=null;
+   activeInstrumentId=instrumentId;selectedNoteId=null;selectedPlacementId=null;
    if(soundId)soundUI.selectSound(instrumentId,soundId);
    render();
   },
