@@ -236,6 +236,22 @@ try{
   harmonicsEdits.some(([paths,values])=>Array.isArray(paths[0])&&
    paths.length>=4&&paths.every(keys=>keys[0]==="oscillators"&&keys[3]>=24&&keys[3]<=27)&&
    values.every(value=>value>=0&&value<=1)&&values.some(value=>value>0)));
+ // Escape also rolls back a multi-partial paint instead of recording the
+ // interpolated preview. The SVG and ordinary partial knobs regain base values.
+ const harmonicCommitsBeforeEscape=harmonicsEdits.length;
+ const escapeHarmonic=spectrum.querySelector(
+  '.visual-graph-point[aria-label="harmonic 25 level"]');
+ pointer(escapeHarmonic,"pointerdown",harmonicStartX,harmonicStartY);
+ pointer(harmonicArea,"pointermove",160,72);
+ const focusedHarmonic=spectrum.querySelector(
+  '.visual-graph-point[aria-label="harmonic 25 level"]');
+ focusedHarmonic.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"Escape",bubbles:true,cancelable:true
+ }));
+ pointer(harmonicArea,"pointerup",160,72);
+ pass("Escape cancels harmonic spectral painting without creating another edit",
+  harmonicsEdits.length===harmonicCommitsBeforeEscape&&
+  document.activeElement?.getAttribute("aria-label")==="harmonic 25 level");
  const routePatch=makePatch("init");
  routePatch.version=2;
  routePatch.modulation={version:1,routes:["lfo","envelope","keytrack"].map((kind,i)=>({
@@ -459,7 +475,7 @@ try{
  // arrow is pressed beyond the range or a drag returns to its starting value.
  const boundaryRoot=document.createElement("section");
  boundaryRoot.className="freeform-sound-content";document.body.append(boundaryRoot);
- const boundaryDetails=document.createElement("details");
+ const boundaryDetails=document.createElement("details");boundaryDetails.open=true;
  boundaryDetails.append(document.createElement("summary"));boundaryRoot.append(boundaryDetails);
  let boundaryCommits=0,boundaryPreviews=0;
  const boundaryPanel=illustrateSoundPanel(boundaryDetails,"stage",{
@@ -491,6 +507,33 @@ try{
  pass("return-to-start gesture resets its original teaching handle position",
   Math.abs(parseFloat(restoredPoint.style.left)/100*360-originX)<.001&&
   Math.abs(parseFloat(restoredPoint.style.top)/100*112-originY)<.001);
+ const beforeEscapeCommits=boundaryCommits,beforeEscapePreviews=boundaryPreviews;
+ const escapeStagePoint=boundaryPanel.element.querySelector(
+  '.visual-graph-point[data-sound-links="volume|gain"]');
+ pointer(escapeStagePoint,"pointerdown",originX,originY);
+ pointer(boundaryArea,"pointermove",originX-48,originY+25);
+ const draggedStage=boundaryPanel.element.querySelector(
+  '.visual-graph-point[data-sound-links="volume|gain"]');
+ pass("diagram pointer gesture keeps its active handle keyboard-focused",
+  document.activeElement===draggedStage);
+ draggedStage.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"Escape",bubbles:true,cancelable:true
+ }));
+ pointer(boundaryArea,"pointerup",originX-48,originY+25);
+ const afterEscapePoint=boundaryPanel.element.querySelector(
+  '.visual-graph-point[data-sound-links="volume|gain"]');
+ pass("Escape restores two-axis illustration preview with no undoable commit",
+  boundaryCommits===beforeEscapeCommits&&
+  boundaryPreviews>=beforeEscapePreviews+2&&
+  Math.abs(parseFloat(afterEscapePoint.style.left)/100*360-originX)<.001&&
+  Math.abs(parseFloat(afterEscapePoint.style.top)/100*112-originY)<.001);
+ const beforeCancel=boundaryCommits,beforeCancelPreview=boundaryPreviews;
+ pointer(afterEscapePoint,"pointerdown",originX,originY);
+ pointer(boundaryArea,"pointermove",originX-30,originY+15);
+ pointer(boundaryArea,"pointercancel",originX-30,originY+15);
+ pointer(boundaryArea,"pointerup",originX-30,originY+15);
+ pass("system pointer cancellation shares Escape rollback and makes no history",
+  boundaryCommits===beforeCancel&&boundaryPreviews>=beforeCancelPreview+2);
  boundaryPanel.element.disposeSoundIllustration?.();boundaryRoot.remove();
  pitchedRoot.remove();stageRoot.remove();voiceRoot.remove();
  // Check the actual user-facing Vocal editor rather than just its shared
