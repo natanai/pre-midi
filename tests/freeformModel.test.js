@@ -416,3 +416,60 @@ test("onset window filters Chunk note-ons without shortening releases and suppor
  assert.throws(()=>removeFreeformChunkPlacement(inst,"no such placement"),/Choose a placed/);
  assert.equal(second.chunkId,inst.chunks[0].id);
 });
+
+test("partial unpack preserves every source-offset phase, Rack identity and release boundary",()=>{
+ const beat=create();
+ const keys=beat.instruments[0];
+ keys.chunks[0].notes=[
+  {id:"key-1",pitch:60,start:0,duration:1,velocity:.5},
+  {id:"key-2",pitch:64,start:5,duration:1,velocity:.7},
+  {id:"key-3",pitch:67,start:15,duration:1,velocity:.9}
+ ];
+ for(let bar=0;bar<beat.bars;bar++)keys.timeline[bar]=keys.chunks[0].id;
+ const drums=makeInstrument(2,beat.bars,makeSound("Kick",makePatch(),"hit"));
+ const snare=makeSound("Snare",makePatch(),"hit");drums.sounds.push(snare);
+ drums.chunks[0].notes=[
+  {id:"drum-1",soundId:drums.sounds[0].id,start:2,duration:1,velocity:.85},
+  {id:"drum-2",soundId:snare.id,start:11,duration:1,velocity:.95}
+ ];
+ for(let bar=0;bar<beat.bars;bar++)drums.timeline[bar]=drums.chunks[0].id;
+ beat.instruments.push(drums);
+ const unit=60/beat.bpm/4;
+ const voices=song=>renderEvents(song).filter(x=>x.kind!=="vocal").map(x=>{
+  const sound=x.instrument.sounds.find(s=>s.id===(x.note.soundId??x.instrument.sounds[0].id));
+  return [Math.round(x.at/unit),x.note.duration,x.instrument.name,
+   sound.name,x.note.pitch??"hit",x.note.velocity];
+ }).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+ for(const offset of [0,1,5,15,16,31,49,127]){
+  const song=createSong(beat),clip=song.tracks[0].clips[0];
+  editBeatClip(song,clip.id,{startStep:7,lengthSteps:90,sourceOffsetSteps:offset});
+  const before=voices(song),immutableSource=clone(song.beats[0]);
+  const from=7+17,to=7+67;
+  const passage=unpackBeatClip(song,clip.id,{fromStep:from,toStep:to});
+  const [left,right]=song.tracks[0].clips;
+  assert.equal(left.lengthSteps,17,"left segment at offset "+offset);
+  assert.equal(right.startStep,to,"right segment at offset "+offset);
+  assert.equal(right.sourceOffsetSteps,(offset+67)%128,
+   "the right Clip retains the exact original source cycle offset");
+  assert.equal(passage.startStep,from);
+  assert.deepEqual(voices(song),before,"Unpack must be sample-phase equivalent at offset "+offset);
+  assert.deepEqual(song.beats[0],immutableSource);
+  assert.deepEqual(validateSong(song),[],"Freeform and linked Clip remain valid at offset "+offset);
+ }
+});
+
+test("sustain exactly ending at an unpack boundary is safe, but one step earlier remains atomic",()=>{
+ const beat=create(),keys=beat.instruments[0];
+ keys.chunks[0].notes=[{id:"border",pitch:65,start:11,duration:8,velocity:.8}];
+ upgradeBeatFeatures(beat);
+ const rejected=createSong(beat),before=clone(rejected),rejectClip=rejected.tracks[0].clips[0];
+ assert.throws(()=>unpackBeatClip(rejected,rejectClip.id,{fromStep:18,toStep:32}),
+  /sustained note crosses/);
+ assert.deepEqual(rejected,before,"an invalid slice must not change a linked Clip or freeform lane");
+ const accepted=createSong(beat),clip=accepted.tracks[0].clips[0];
+ unpackBeatClip(accepted,clip.id,{fromStep:19,toStep:32});
+ assert.deepEqual(validateSong(accepted),[]);
+ assert.equal(accepted.tracks[0].clips[0].lengthSteps,19);
+ assert.equal(accepted.tracks[0].freeform.instruments[0].notes.length,0,
+  "a completed release must not be replayed or duplicated in the unpacked slice");
+});
