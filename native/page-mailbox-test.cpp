@@ -87,6 +87,7 @@ int main(){
    check(mailbox.advance(100)==PageResult::playing,"Valid page after rejection cannot disappear");
    check(mailbox.advance(120)==PageResult::fault&&mailbox.fault()==PageError::underrun,
     "Missing next page must be a fatal underrun, never silent playback");
+   mustReject(mailbox,page(2,120,140));
   }
   {
    PageMailbox mailbox(91,7,0);
@@ -109,9 +110,13 @@ int main(){
    constexpr unsigned total=400;
    PageMailbox mailbox(91,7,0);
    std::atomic<unsigned> published{0},consumed{0};
+   std::atomic<bool> cancelled{false};
    std::thread callback([&]{
     for(unsigned n=1;n<=total;n++){
-     while(published.load(std::memory_order_acquire)<n)std::this_thread::yield();
+     while(published.load(std::memory_order_acquire)<n){
+      if(cancelled.load(std::memory_order_acquire))return;
+      std::this_thread::yield();
+     }
      callbackScope=true;
      const auto result=mailbox.advance((n-1)*64ull);
      const auto width=mailbox.framesUntilBoundary((n-1)*64ull,128);
@@ -128,14 +133,21 @@ int main(){
    });
    for(unsigned n=1;n<=total;n++){
     const auto next=page(n,(n-1)*64ull,n*64ull,n==total);
-    while(!mailbox.publish(next)){
+    const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(12);
+    bool accepted=false;
+    while(!(accepted=mailbox.publish(next))){
      mailbox.reclaim();
+     if(consumed.load(std::memory_order_acquire)>total||
+        std::chrono::steady_clock::now()>deadline){
+      cancelled.store(true,std::memory_order_release);break;
+     }
      std::this_thread::yield();
     }
+    if(!accepted)break;
     published.store(n,std::memory_order_release);
    }
    callback.join();mailbox.reclaim();
-   check(consumed.load()==total&&mailbox.ackSequence()==total&&
+   check(!cancelled.load()&&consumed.load()==total&&mailbox.ackSequence()==total&&
     mailbox.fault()==PageError::none,"Concurrent mailbox dropped or reordered a Song page");
   }
   check(callbackAllocations.load()==0,"Audio callback allocated during native page handoff");
