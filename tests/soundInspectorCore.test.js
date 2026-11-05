@@ -180,3 +180,24 @@ test("changing Sound before a host rejection suppresses stale error feedback",as
  await result;
  assert.deepEqual(errors,[]);
 });
+
+test("Beat and freeform mount one canonical Sound header and controls template",()=>{
+ const core=source("soundInspector.js"),beat=source("studio.js"),
+  freeform=source("freeformSoundUI.js"),html=source("index.html");
+ const start=core.indexOf("const SOUND_INSPECTOR_CHROME=");
+ const end=core.indexOf("export function populateSoundInspectorReferenceNotes");
+ assert.ok(start>=0&&end>start,"the Sound header must have one canonical source");
+ const controls=[...core.slice(start,end).matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]);
+ assert.equal(controls.length,new Set(controls).size,"the canonical Sound surface has unique IDs");
+ for(const id of ["sound-name","sound-reference","instrument-name","hear-sound",
+  "save-sound","change-sound","sound-volume-dial","instrument-volume-dial",
+  "sound-visualizer","synth-editor","move-sound-up","remove-sound"])
+  assert.ok(controls.includes(id),"shared Sound surface missing "+id);
+ assert.match(beat,/mountSoundInspectorChrome\(\$\("sound-section"\)\)/);
+ assert.match(freeform,/mountSoundInspectorChrome\(content,\{idPrefix:framePrefix\}\)/);
+ assert.match(freeform,/renderSoundInspectorCore\(\{/);
+ assert.match(beat,/renderSoundInspectorCore\(\{/);
+ assert.doesNotMatch(html,/class="sound-primary-controls"/,"Beat must not maintain a second Sound HTML template");
+ assert.doesNotMatch(freeform,/const tools=el\("div","freeform-sound-tools"\)/);
+ assert.doesNotMatch(freeform,/const dials=el\("div","freeform-sound-levels"\)/);
+});

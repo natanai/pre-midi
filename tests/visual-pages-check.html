@@ -426,6 +426,26 @@ try{
  const freeformHost=freeformUi.render();
  document.body.append(freeformHost);
  freeformHost.querySelector(".freeform-sound-summary").click();
+ const frameRoot=freeformHost.querySelector(".freeform-sound-content");
+ const sharedName=frameRoot.querySelector('[aria-label="Selected sound name"]');
+ const sharedPitch=frameRoot.querySelector('[aria-label="Sound reference note"]');
+ pass("freeform mounts canonical Beat Sound chrome with isolated IDs",
+  !!sharedName&&!!sharedPitch&&
+  !!frameRoot.querySelector(".sound-primary-controls")&&
+  !!frameRoot.querySelector(".sound-preset-save")&&
+  !!frameRoot.querySelector(".sound-preview-play")&&
+  ["instrument-name","sound-name","sound-reference","hear-sound",
+   "save-sound","sound-visualizer","synth-editor"].every(id=>
+    !!frameRoot.querySelector('[id$="'+id+'"]')&&
+    !frameRoot.querySelector('[id="'+id+'"]')));
+ sharedName.value="song sound";
+ sharedName.dispatchEvent(new Event("change",{bubbles:true}));
+ pass("shared Sound name commits through Song mutation",
+  freeformInst.sounds[0].name==="song sound");
+ const editedPitch=freeformHost.querySelector('[aria-label="Sound reference note"]');
+ editedPitch.value="72";editedPitch.dispatchEvent(new Event("change",{bubbles:true}));
+ pass("shared Sound reference note commits through Song mutation",
+  freeformInst.sounds[0].referencePitch===72);
  const realStage=freeformHost.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
  pass("real Freeform Sound mounts gain staging",!!realStage);
  const freeformAudit=auditSoundVisualCoverage(freeformHost,{context:"live freeform synth"});

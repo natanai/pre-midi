@@ -4,6 +4,7 @@ import {fileURLToPath} from "node:url";
 import {resolve,dirname} from "node:path";
 const SOURCE_FILES=[
  "index.html",
+ "soundInspector.js",
  "studio.js",
  "songUI.js",
  "freeformUI.js",
@@ -46,17 +47,23 @@ function buildInventory(sources){
   actions.push({...action,phoneRoute:choose(action.source,action.anchor,action.event,action.kind),
    phoneStatus:"todo",proof:"not-qualified"});
  };
- const html=sources["index.html"];
+ // The Sound controls have moved from static index HTML into one shared
+ // template, mounted by Beat and freeform. They retain their stable IDs and
+ // must not silently disappear from the phone capability inventory.
+ const chrome=sources["soundInspector.js"].match(/const SOUND_INSPECTOR_CHROME=String\.raw`([\s\S]*?)`;/)?.[1];
+ if(!chrome)throw Error("Canonical Sound Inspector template is missing.");
  const tag=/<(button|input|select|textarea|dialog|details|summary)\b([^>]*?)>/gi;
- for(const m of html.matchAll(tag)){
-  const id=m[2].match(/\bid\s*=\s*["']([^"']+)["']/)?.[1];
-  if(!id)continue;
-  const type=m[2].match(/\btype\s*=\s*["']([^"']+)["']/)?.[1]||"";
-  const kind=m[1].toLowerCase();
-  push({id:"html:"+id,source:"index.html",anchor:id,kind,event:kind==="dialog"?"open/close":type||"activate",desktopRoute:"index.html#"+id,
-   contract:kind==="dialog"?"dialog accessibility and dismiss":"user control; canonical project/UI state"});
+ for(const [path,html] of [["index.html",sources["index.html"]],["soundInspector.js",chrome]]){
+  for(const m of html.matchAll(tag)){
+   const id=m[2].match(/\bid\s*=\s*["']([^"']+)["']/)?.[1];
+   if(!id)continue;
+   const type=m[2].match(/\btype\s*=\s*["']([^"']+)["']/)?.[1]||"";
+   const kind=m[1].toLowerCase();
+   push({id:"html:"+id,source:path,anchor:id,kind,event:kind==="dialog"?"open/close":type||"activate",desktopRoute:path+"#"+id,
+    contract:kind==="dialog"?"dialog accessibility and dismiss":"user control; canonical project/UI state"});
+  }
  }
- for(const path of SOURCE_FILES.filter(p=>p!=="index.html")){
+ for(const path of SOURCE_FILES.filter(p=>p!=="index.html"&&p!=="soundInspector.js")){
   const src=sources[path],counts=new Map();
   const eventPattern=/\.addEventListener\s*\(\s*["']([a-zA-Z-]+)["']/g;
   for(const m of src.matchAll(eventPattern)){
