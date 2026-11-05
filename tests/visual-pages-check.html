@@ -169,6 +169,24 @@ try{
  const sampleShape=document.querySelector('#sample .visual-sound-panel[data-visual-kind="sample"]');
  sampleShape.querySelector("details").open=true;
  sampleShape.querySelector('button[aria-label="next sample page"]').click();
+ pass("recorded sample pitch page identifies its drawing as a control model",
+  [...sampleShape.querySelectorAll(".visual-graph-label")].some(label=>
+   label.textContent==="control model"));
+ const sampledOnset=sampleShape.querySelector(
+  '.visual-graph-point[data-sound-links="strumMs|transpose"]');
+ pass("recorded sample onset and pitch remain a directly editable two-axis handle",
+  !!sampledOnset&&sampledOnset.getAttribute("aria-description").includes("left/right")&&
+  sampledOnset.getAttribute("aria-description").includes("up/down"));
+ sampledOnset.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowRight",bubbles:true,cancelable:true
+ }));
+ pass("sample timing control model commits original recording offset",
+  sampleEdits.some(([path,value])=>path.join(".")==="strumMs"&&value===1));
+ sampledOnset.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowUp",bubbles:true,cancelable:true
+ }));
+ pass("sample pitch control model commits existing semitone offset",
+  sampleEdits.some(([path,value])=>path.join(".")==="transpose"&&value===1));
  const sampleToggle=sampleShape.querySelector('.visual-graph-action[data-sound-path="followPitch"]');
  pass("sample playback switch lives in illustration",!!sampleToggle);
  sampleToggle.click();
@@ -491,6 +509,20 @@ try{
  for(const bypass of [true,false]){
   if(!bypass)vocalClip.effects.filter={type:"lowpass",cutoff:3500,resonance:2};
   renderVocalEditor(actualVocal,vocalSelection,vocalOptions);
+  if(bypass){
+   const voiceShape=actualVocal.querySelector(
+    '.visual-sound-panel[data-visual-kind="sample"]');
+   voiceShape.querySelector("details").open=true;
+   voiceShape.querySelector('button[aria-label="next sample page"]').click();
+   pass("live vocal pitch/level page identifies its synthetic-free control model",
+    [...voiceShape.querySelectorAll(".visual-graph-label")].some(label=>
+     label.textContent==="control model"));
+   const voicePoint=voiceShape.querySelector(
+    '.visual-graph-point[data-sound-links="transpose|gain"]');
+   pass("real vocal pitch and level remain a two-axis direct editing control",
+    !!voicePoint&&voicePoint.getAttribute("aria-description").includes("left/right")&&
+    voicePoint.getAttribute("aria-description").includes("up/down"));
+  }
   const audit=auditSoundVisualCoverage(actualVocal,{context:"live vocal "+(bypass?"bypass":"active")});
   checks["live vocal "+(bypass?"bypass":"active")+" inventory"]=audit.summary;
   pass("live vocal "+(bypass?"bypass":"active")+" has every knob visualized: "+
