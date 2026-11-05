@@ -130,6 +130,61 @@ frame.addEventListener("load",async()=>{
   stageHit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
   assert("stage illustration focuses original instrument volume knob",
    !!doc.activeElement.closest("#instrument-volume-dial"));
+
+  // This must run through the ACTUAL Beat document undo/redo stack, not a
+  // stand-alone preview callback. Two axes change on one pointer gesture
+  // and return together after exactly one Undo.
+  const currentStage=scope.querySelector(
+   '.visual-sound-panel[data-visual-kind="stage"]');
+  const secondPage=currentStage.querySelector(
+   'button[aria-label="next stage page"]');
+  assert("Beat has volume × Sound gain illustration beside stereo × volume",
+   !!secondPage&&!secondPage.disabled);
+  secondPage.click();
+  const gainHandle=currentStage.querySelector(
+   '.visual-graph-point[data-sound-links="volume|gain"]');
+  assert("Beat gain staging has a single editable X/Y point",!!gainHandle);
+  const stageGraphic=currentStage.querySelector(".visual-panel-graph");
+  const stageArea=currentStage.querySelector(".visual-panel-area");
+  stageGraphic.getBoundingClientRect=()=>({
+   left:0,top:0,right:360,bottom:112,width:360,height:112
+  });
+  stageArea.setPointerCapture=()=>{};
+  stageArea.hasPointerCapture=()=>false;
+  stageArea.releasePointerCapture=()=>{};
+  const dialValue=id=>Number(get(id).querySelector('[role="slider"]')
+   .getAttribute("aria-valuenow"));
+  const beforeVolume=dialValue("instrument-volume-dial"),
+   beforeGain=dialValue("sound-volume-dial");
+  const cx=parseFloat(gainHandle.style.left)/100*360,
+   cy=parseFloat(gainHandle.style.top)/100*112;
+  const drag=(target,kind,x,y)=>target.dispatchEvent(
+   new frame.contentWindow.PointerEvent(kind,{
+    bubbles:true,cancelable:true,pointerId:71,pointerType:"mouse",
+    button:0,buttons:1,clientX:x,clientY:y
+   })
+  );
+  drag(gainHandle,"pointerdown",cx,cy);
+  drag(stageArea,"pointermove",cx-42,cy+17);
+  assert("Beat gain drag previews both conventional knobs before commit",
+   dialValue("instrument-volume-dial")<beforeVolume&&
+   dialValue("sound-volume-dial")<beforeGain);
+  drag(stageArea,"pointerup",cx-42,cy+17);
+  await wait(()=>dialValue("instrument-volume-dial")<beforeVolume&&
+   dialValue("sound-volume-dial")<beforeGain,"atomic Beat gain commit");
+  const committedVolume=dialValue("instrument-volume-dial"),
+   committedGain=dialValue("sound-volume-dial");
+  get("undo").click();
+  await wait(()=>dialValue("instrument-volume-dial")===beforeVolume&&
+   dialValue("sound-volume-dial")===beforeGain,
+   "one Beat Undo restores both axes");
+  assert("one Beat Undo restores both edited gain stages together",true);
+  get("redo").click();
+  await wait(()=>dialValue("instrument-volume-dial")===committedVolume&&
+   dialValue("sound-volume-dial")===committedGain,
+   "one Beat Redo restores both axes");
+  assert("one Beat Redo restores both edited gain stages together",true);
+
   const {auditSoundVisualCoverage}=await import("./visualControlInventory.js");
   const mounted=auditSoundVisualCoverage(get("sound-section"),{context:"live Beat Sound"});
   assert("live Beat editor has discoverable sound controls",mounted.summary.controls>0);
