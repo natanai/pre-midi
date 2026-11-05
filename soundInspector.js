@@ -215,3 +215,92 @@ export function renderSoundInspectorCore({
  scopeRoot.append(stagePanel.element);
  return {preview,redraw,stagePanel};
 }
+
+// Canonical Sound Inspector DOM. Both Beat and attached freeform mount exactly
+// this structure; contextual editors supply mutations, selection and layout
+// permissions, not a second HTML tree. This mirrors the original Beat layout.
+const SOUND_INSPECTOR_CHROME=String.raw`
+    <div class="heading sound-section-heading">
+     <div class="sound-heading">
+      <h2>sound</h2>
+      <input id="instrument-name" maxlength="60" aria-label="Instrument name" title="rename instrument">
+     </div>
+     <div class="sound-window-actions">
+      <details id="instrument-actions" class="sound-entity-menu">
+       <summary aria-label="instrument actions" title="instrument actions">···</summary>
+       <div class="sound-entity-menu-content">
+        <button id="convert-rack" type="button">convert to rack</button>
+        <button id="convert-pitched" type="button" hidden>convert to piano roll</button>
+        <button id="remove-instrument" type="button" class="danger">delete instrument</button>
+       </div>
+      </details>
+      <button id="sound-close" type="button" aria-label="Close sound editor">×</button>
+     </div>
+    </div>
+    <div class="sound-actions"><button id="change-sound" type="button">browse sounds</button></div>
+    <div class="sound-overview">
+     <div class="sound-primary-controls" aria-label="primary sound controls">
+      <div id="instrument-volume-dial" class="instrument-volume-dial" aria-label="Instrument volume"></div>
+      <button id="hear-sound" class="sound-preview-play" type="button" aria-label="Hear current sound">▶</button>
+      <button id="save-sound" class="sound-preset-save" type="button" aria-label="Save preset">
+       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/>
+        <path d="M7 3v6h9V3M7 21v-8h10v8"/>
+       </svg>
+      </button>
+      <div id="primary-brightness-dial"></div>
+      <div id="primary-attack-dial"></div>
+      <div id="primary-release-dial"></div>
+     </div>
+     <div id="sound-visualizer" class="sound-visualizer" aria-label="Measured waveform and pitch"></div>
+    </div>
+    <div id="sound-controls" class="rack-sound-controls" hidden>
+     <label>Sound name <input id="sound-name" maxlength="60" aria-label="Selected sound name"></label>
+     <div id="sound-volume-dial"></div>
+     <label>Reference note <select id="sound-reference" aria-label="Sound reference note"></select></label>
+     <div class="rack-sound-actions">
+      <button id="replace-row-sound" type="button">replace sound</button>
+      <button id="save-row-sound" type="button">save sound preset</button>
+      <button id="move-sound-up" type="button">Move up</button>
+      <button id="move-sound-down" type="button">Move down</button>
+      <button id="duplicate-sound" type="button">Duplicate sound</button>
+      <button id="remove-sound" type="button">Remove sound</button>
+     </div>
+    </div>
+    <div id="synth-editor" class="synth-editor" aria-label="Instrument sound controls"></div>
+   `;
+const pitchNames=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+export const noteLabelForPitch=pitch=>pitchNames[pitch%12]+(Math.floor(pitch/12)-1);
+export function populateSoundInspectorReferenceNotes(control){
+ if(!control||control.tagName!=="SELECT")throw Error("Sound Inspector requires a reference-note selector.");
+ control.replaceChildren();
+ for(let pitch=0;pitch<=127;pitch++){
+  const option=document.createElement("option");
+  option.textContent=noteLabelForPitch(pitch);
+  option.value=String(pitch);
+  control.append(option);
+ }
+ control.value="60";
+}
+export function mountSoundInspectorChrome(root,{idPrefix=""}={}){
+ if(!root)throw Error("Sound Inspector requires a mount element.");
+ const template=document.createElement("template");
+ template.innerHTML=SOUND_INSPECTOR_CHROME;
+ const fragment=template.content.cloneNode(true);
+ const nodes=new Map();
+ for(const node of fragment.querySelectorAll("[id]")){
+  const id=node.id;
+  if(nodes.has(id))throw Error("Duplicate Sound Inspector control: "+id);
+  nodes.set(id,node);
+  node.id=idPrefix+id;
+ }
+ for(const node of fragment.querySelectorAll("[for],[aria-controls],[aria-labelledby],[aria-describedby]")){
+  for(const attribute of ["for","aria-controls","aria-labelledby","aria-describedby"]){
+   const value=node.getAttribute(attribute);
+   if(value)node.setAttribute(attribute,value.split(/\s+/).map(id=>
+    nodes.has(id)?idPrefix+id:id).join(" "));
+  }
+ }
+ root.replaceChildren(fragment);
+ return {root,get:id=>nodes.get(id)??null};
+}

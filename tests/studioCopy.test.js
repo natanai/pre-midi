@@ -29,7 +29,7 @@ test("every current synth and sampler dial has concise label help",()=>{
 });
 
 test("the quiet layout conversion controls stay explicit and reversible",()=>{
- const html=read("index.html");
+ const html=read("index.html")+"\n"+read("soundInspector.js");
  const studio=read("studio.js");
  assert.match(html,/>convert to rack<\/button>/);
  assert.match(html,/>convert to piano roll<\/button>/);
@@ -40,7 +40,7 @@ test("the quiet layout conversion controls stay explicit and reversible",()=>{
 });
 
 test("unnecessary visible studio filler stays removed",()=>{
- const html=read("index.html");
+ const html=read("index.html")+"\n"+read("soundInspector.js");
  assert.doesNotMatch(html,/pre-programmed \/ music studio/i);
  assert.doesNotMatch(html,/sound parameters/i);
  assert.doesNotMatch(html,/game parity pending/i);
@@ -66,7 +66,7 @@ test("sound shape responds to rise and fade for both synth and recording",()=>{
 });
 
 test("hear sound stays an icon, including after a rack audition and rerender",()=>{
- const html=read("index.html"),studio=read("studio.js"),inspector=read("soundInspector.js");
+ const html=read("index.html")+"\n"+read("soundInspector.js"),studio=read("studio.js"),inspector=read("soundInspector.js");
  assert.match(html,/<button id="hear-sound"[^>]*>▶<\/button>/);
  assert.match(studio,/hear\.textContent="▶"/);
  assert.doesNotMatch(studio,/hear\.textContent="hear sound/);

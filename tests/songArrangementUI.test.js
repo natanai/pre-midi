@@ -234,8 +234,8 @@ test("attached freeform Rack offers Sound-row reordering through Song undo",()=>
  const editor=read("freeformSoundUI.js"),entities=read("entityActions.js");
  assert.match(editor,/moveRackSoundRow\(inst,sound\.id,-1\)/);
  assert.match(editor,/moveRackSoundRow\(inst,sound\.id,1\)/);
- assert.match(editor,/up\.disabled=index<=0/);
- assert.match(editor,/down\.disabled=index===ctx\.inst\.sounds\.length-1/);
+ assert.match(editor,/get\("move-sound-up"\)\.disabled=index<=0/);
+ assert.match(editor,/get\("move-sound-down"\)\.disabled=index>=ctx\.inst\.sounds\.length-1/);
  assert.match(entities,/export function moveRackSoundRow/);
  assert.match(editor,/mutateSelected\(\(\{inst,sound\}\)=>/);
 });

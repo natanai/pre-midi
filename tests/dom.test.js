@@ -1,15 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+const studioHtml=()=>readFileSync(new URL("../index.html",import.meta.url),"utf8")+"\n"+readFileSync(new URL("../soundInspector.js",import.meta.url),"utf8");
 
 test("all studio controls exist in the real HTML page", () => {
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const ids=[...studio.matchAll(/\$\("([^"]+)"\)/g)].map(m=>m[1]);
  for(const id of new Set(ids))assert.ok(html.includes('id="'+id+'"'),"Missing control #"+id);
 });
 test("the UI uses instruments, timeline and chunks without deprecated wording", () => {
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  assert.match(html, /<h2>Instruments<\/h2>/);
  assert.match(html, /<h2>Timeline<\/h2>/);
  assert.match(html, /class="chunk-name-field">chunk <input id="chunk-name"/);
@@ -31,7 +32,7 @@ test("note end grip, pointer resizing, and live scheduler are connected", () => 
 });
 
 test("instrument creation is a full-width action, not a cramped header control", () => {
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  const sidebar=html.slice(html.indexOf('<aside class="instrument-pane"'),html.indexOf("</aside>"));
  assert.match(sidebar,/class="heading"><h2>Instruments<\/h2><\/div>/);
@@ -43,7 +44,7 @@ test("instrument creation is a full-width action, not a cramped header control",
 });
 test("note and sound controls have distinct, wrapping groups", () => {
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  const notes=html.slice(html.indexOf('<section class="notes-section"'),html.indexOf('</section>',html.indexOf('<section class="notes-section"')));
  assert.ok(notes.indexOf('class="notes-toolbar"')>notes.indexOf('class="notes-heading"'));
@@ -74,7 +75,7 @@ test("note and sound controls have distinct, wrapping groups", () => {
 });
 
 test("instrument presets have one owner and the full synth editor is reachable",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const editor=readFileSync(new URL("../instrumentUI.js",import.meta.url),"utf8");
  const inspector=readFileSync(new URL("../soundInspector.js",import.meta.url),"utf8");
@@ -93,7 +94,7 @@ test("instrument presets have one owner and the full synth editor is reachable",
 });
 
 test("guitar dynamics and reachable low-string notes are exposed in the original editor",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  assert.doesNotMatch(html,/id="velocity"|id="length"/);
  assert.match(studio,/velocity:DEFAULT_NOTE_LEVEL/);
@@ -105,14 +106,14 @@ test("guitar dynamics and reachable low-string notes are exposed in the original
 test("an opened Sound inspector exposes full controls without a compact mode",()=>{
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  assert.doesNotMatch(studio,/inspector-compact|setInspector\("compact"\)/);
  assert.doesNotMatch(css,/inspector-compact/);
  assert.doesNotMatch(html,/id="sound-expand"/);
 });
 
 test("chunk menu duplicates exactly the chosen row and has one new-chunk action at its bottom",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  assert.match(html,/id="chunk-menu" class="chunk-menu"/);
@@ -124,7 +125,7 @@ test("chunk menu duplicates exactly the chosen row and has one new-chunk action 
  assert.match(css,/\.chunk-menu-new \{/);
 });
 test("note level belongs to the selected note effects inspector for piano and racks",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const expression=readFileSync(new URL("../expressionUI.js",import.meta.url),"utf8");
  assert.doesNotMatch(html,/id="velocity"|id="length"|>strength </);
@@ -139,7 +140,7 @@ test("note level belongs to the selected note effects inspector for piano and ra
 });
 
 test("compact note and Sound header keeps history accessible and Sound rightmost",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  const header=html.slice(html.indexOf('class="heading notes-heading"'),html.indexOf('<div class="notes-toolbar">'));
@@ -160,9 +161,9 @@ test("compact note and Sound header keeps history accessible and Sound rightmost
  assert.match(css,/\.history-actions button::before,\.history-actions button::after \{content:none\}/);
 });
 test("Sound heading does not duplicate its editable instrument name",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
- const sound=html.slice(html.indexOf('id="sound-section"'),html.indexOf('id="note-effects-section"'));
+ const sound=readFileSync(new URL("../soundInspector.js",import.meta.url),"utf8");
  assert.ok(sound.includes('<h2>sound</h2>'));
  assert.ok(sound.includes('class="sound-heading"'));
  assert.ok(sound.includes('<input id="instrument-name" maxlength="60" aria-label="Instrument name"'));
@@ -173,7 +174,7 @@ test("Sound heading does not duplicate its editable instrument name",()=>{
 });
 
 test("primary instrument controls replace redundant lower fields",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const synth=readFileSync(new URL("../instrumentUI.js",import.meta.url),"utf8");
  const sampler=readFileSync(new URL("../samplerUI.js",import.meta.url),"utf8");
@@ -198,7 +199,7 @@ test("primary instrument controls replace redundant lower fields",()=>{
 });
 
 test("Notes pencil suppresses generic heading brackets rather than stacking them into the toolbar",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  assert.match(html,/id="note-mode"[^>]*>✎<\/button>/);
  assert.match(css,/\.heading button::before \{content:"\["/);
@@ -206,7 +207,7 @@ test("Notes pencil suppresses generic heading brackets rather than stacking them
 });
 
 test("sound layout conversion actions live only in the contextual ellipsis menu",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  const menuStart=html.indexOf('id="instrument-actions"');

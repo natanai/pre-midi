@@ -13,7 +13,7 @@ import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
-import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity,bindSoundInspectorCatalogActions} from "./soundInspector.js";
+import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity,bindSoundInspectorCatalogActions,mountSoundInspectorChrome,populateSoundInspectorReferenceNotes,noteLabelForPitch} from "./soundInspector.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
 import {FACTORY_SOUND_CATALOG} from "./soundCatalog.js";
 import { nextRackPreview } from "./rackPreview.js";
@@ -42,6 +42,8 @@ import {applyFreeformPreset} from "./freeformPresets.js";
 import {installDesktopUI} from "./desktopUI.js";
 
 const $ = key => document.getElementById(key);
+// Install the common Sound frame before any of the existing Beat controls bind.
+mountSoundInspectorChrome($("sound-section"));
 let assetsReady=Promise.resolve();
 const CACHE = "premidi-v5-draft";
 // Retain the previous fallback draft for desktop compatibility.
@@ -666,14 +668,9 @@ document.addEventListener("keydown", event => {
  if (event.key === "Escape" && picker) { event.preventDefault(); const trigger = pickerTrigger; closePicker(); trigger?.focus(); }
 });
 
-const pitchNames = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
-const noteLabel = pitch => pitchNames[pitch % 12] + (Math.floor(pitch / 12) - 1);
-for(const control of [$("sound-reference"),$("import-root")]){
- for(let pitch=0;pitch<=127;pitch++){
-  const option=element("option",noteLabel(pitch));option.value=String(pitch);control.append(option);
- }
- control.value="60";
-}
+const noteLabel=noteLabelForPitch;
+for(const control of [$("sound-reference"),$("import-root")])
+ populateSoundInspectorReferenceNotes(control);
 function selectSound(entry){
  selectedSounds.set(instrument().id,entry.id);selectedNoteId=null;
  if(inspectorState==="closed")setInspector("expanded");
