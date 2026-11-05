@@ -3,6 +3,7 @@
 import {movement,pitchCents,BEND_SHAPES} from "./expression.js";
 import {harmonicWave,harmonicRecipe} from "./harmonics.js";
 import {DEFAULT_SAMPLE_FILTER,driveCurve} from "./audioEffects.js";
+import {modeledFilterMagnitude,modeledFilterY} from "./filterIllustrationResponse.js";
 import {routeValueAt,MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {cutoffAt} from "./src/dsp/automation.js";
@@ -253,21 +254,20 @@ export const diagram=(patch,type,page=0)=>{
   const cutoff=clamp(Math.log(Math.max(50,f.cutoff)/50)/Math.log(280));
   const x=18+cutoff*324,r=clamp((f.resonance-.1)/15.9);
   const base=f.type==="bandpass"?1:f.type==="notch"?0:.5;
-  const response=x=>{
-   const delta=Math.log2(freq(x)/Math.max(50,f.cutoff));
-   const low=1/(1+Math.exp(delta*2.6));
-   const level=f.type==="highpass"?1-low:f.type==="bandpass"?4*low*(1-low):
-    f.type==="notch"?1-4*low*(1-low):low;
-   return clamp(level+Math.exp(-delta*delta*4)*r*(25/60),0,1.5);
-  };
-  line("M18 95 H344 M18 22 V95",true);
-  line(pathRange(300,t=>{const px=18+t*324;return [px,95-60*response(px)];}),false,["filter.cutoff","filter.resonance","filter.type"]);
+  // This response is the fixed-rate, 48 kHz analytic biquad model matching
+  // native/filter.hpp and Web Audio, not an arbitrary cutoff sigmoid or a
+  // measurement of the current voice. Live PCM remains in the sound scope.
+  line("M18 95 H344 M18 41 H344 M18 22 V95",true);
+  line(pathRange(300,t=>{
+   const px=18+t*324;
+   return [px,modeledFilterY(modeledFilterMagnitude(f,freq(px)))];
+  }),false,["filter.cutoff","filter.resonance","filter.type"]);
   line("M"+x.toFixed(2)+" 97 V19",true);
   handle(x,95-60*base-25*r,[
    axis(["filter","cutoff"],50,14000,"logX",{from:18,to:342,step:1,unit:"Hz"}),
    axis(["filter","resonance"],.1,16,"linearY",{from:95-60*base,to:95-60*base-25,step:.1})
   ],"cutoff / resonance");
-  tag(18,15,"low");tag(308,15,"high");
+  tag(18,15,"low");tag(308,15,"high");tag(146,15,"48k model");
   action(90,103,["filter","type"],FILTERS,"filter shape");
   if(p.type==="vocal")
    action(189,103,["audioFilterBypassed"],[false,true],"turn filter off");
