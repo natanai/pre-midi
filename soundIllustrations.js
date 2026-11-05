@@ -5,6 +5,7 @@ import {harmonicWave,harmonicRecipe} from "./harmonics.js";
 import {DEFAULT_SAMPLE_FILTER,driveCurve} from "./audioEffects.js";
 import {modeledFilterMagnitude,modeledFilterY} from "./filterIllustrationResponse.js";
 import {modeledDelayTaps} from "./delayIllustrationResponse.js";
+import {envelopeLevelAt,planAmplitudeEnvelope} from "./src/dsp/amplitude-envelope.js";
 import {routeValueAt,MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {cutoffAt} from "./src/dsp/automation.js";
@@ -75,6 +76,7 @@ export function diagramPageCount(patch,type){
   return Math.max(1,Math.ceil(routes.length/4))+routes.length;
  }
  if(type==="filter")return 2;
+ if(type==="envelope")return 2;
  if(type==="movement")return 3;
  if(type==="sample")return 2;
  if(type==="automation")return 1;
@@ -296,6 +298,38 @@ export const diagram=(patch,type,page=0)=>{
    }
   }
   }
+ }else if(type==="envelope"&&page===1){
+  const e=p.envelope,off=.25;
+  // This short, fixed-duration note reveals an important distinction hidden
+  // by the held-note stage overview: the actual synth stops attack/decay at
+  // NOTE-OFF, then releases from its CURRENT level, not always from sustain.
+  // Reuse the same envelope planner and level calculation as real playback.
+  const plan=planAmplitudeEnvelope({start:0,off,peak:1,envelope:e});
+  const yFor=value=>67-40*clamp(value);
+  const endingX=234+104*clamp((e.release-.01)/3.99);
+  line("M18 67 H344 M218 21 V67",true);
+  const before=Array.from({length:101},(_,i)=>{
+   const t=off*i/100;
+   return [18+200*i/100,yFor(envelopeLevelAt(e,1,t))];
+  });
+  line(pathFrom([...before,[endingX,yFor(.000001)]]),false,
+   ["envelope.attack","envelope.decay","envelope.sustain","envelope.release"]);
+  const attackX=32+131*clamp(e.attack/3),decayY=107-27*clamp(e.decay/3);
+  const sustainX=224+112*clamp(e.sustain),releaseY=107-27*clamp((e.release-.01)/3.99);
+  line("M32 107 H163 M224 107 H336",true);
+  handle(attackX,decayY,[
+   axis(["envelope","attack"],0,3,"linearX",{from:32,to:163,step:.01,unit:"s"}),
+   axis(["envelope","decay"],0,3,"linearY",{from:107,to:80,step:.01,unit:"s"})
+  ],"attack / decay");
+  handle(sustainX,releaseY,[
+   axis(["envelope","sustain"],0,1,"linearX",{from:224,to:336,step:.01,unit:"percent"}),
+   axis(["envelope","release"],.01,4,"linearY",{from:107,to:80,step:.01,unit:"s"})
+  ],"sustain / release");
+  tag(18,14,"0.25s note");tag(260,14,"release");
+  tag(18,78,"attack / decay");tag(224,78,"sustain / fade");
+  // Keep the actual note-off level discoverable without claiming the
+  // deliberately separated pre- and post-off time scales are uniform.
+  tag(223,68,Math.round(plan.releaseLevel*100)+"%");
  }else if(type==="envelope"||(type==="sample"&&page===0)){
   const sample=type==="sample",e=sample?
    {attack:p.attack??0,decay:0,sustain:1,release:p.release??.2}:p.envelope;
@@ -317,6 +351,7 @@ export const diagram=(patch,type,page=0)=>{
   handle(releaseX,90,[axis([...prefix,"release"],.01,releaseMax,"linearX",
    {from:248,to:343,step:.01,unit:"s"})],"release");
   tag(18,14,"on");
+  if(!sample)tag(115,14,"held note model");
   // Keyed Sounds release on note-off, but a one-shot recording ignores the
   // key release and fades near its natural/source-region end. Calling the
   // latter 'off' teaches the wrong playback behavior.
