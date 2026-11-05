@@ -146,3 +146,37 @@ test("both Sound contexts own no separate catalog or preset action handlers",()=
  assert.doesNotMatch(freeform,/button\("browse sounds",\(\)=>onBrowseSound/);
  assert.doesNotMatch(freeform,/button\("save preset",\(\)=>onSaveSound/);
 });
+
+test("an older rejected Sound audition cannot surface an error after a newer audition",async()=>{
+ const sound={id:"s",name:"sound",referencePitch:60};
+ const instrument={id:"i",layout:"piano",sounds:[sound]};
+ const button={dataset:{},setAttribute(){}},auditionRequests=new Map();
+ const errors=[],rejections=[];
+ const play=()=>new Promise((_,reject)=>rejections.push(reject));
+ const request=()=>auditionSoundInspector({
+  instrument,sound,context:{},button,play,
+  previewPositions:new Map(),auditionRequests,
+  onError:error=>errors.push(error.message)
+ });
+ const earlier=request(),later=request();
+ rejections[0](new Error("stale device error"));
+ await earlier;
+ assert.deepEqual(errors,[],"the superseded preview must not report a host error");
+ rejections[1](new Error("current device error"));
+ await later;
+ assert.deepEqual(errors,["current device error"]);
+});
+test("changing Sound before a host rejection suppresses stale error feedback",async()=>{
+ const sound={id:"one",referencePitch:60},instrument={id:"i",layout:"piano",sounds:[sound]};
+ const button={dataset:{},setAttribute(){}},errors=[];
+ let selected="one",rejectHost;
+ const result=auditionSoundInspector({
+  instrument,sound,context:{},button,previewPositions:new Map(),auditionRequests:new Map(),
+  play:()=>new Promise((_,reject)=>{rejectHost=reject;}),
+  isCurrent:()=>selected===sound.id,onError:error=>errors.push(error.message)
+ });
+ selected="two";
+ rejectHost(new Error("former Sound unavailable"));
+ await result;
+ assert.deepEqual(errors,[]);
+});

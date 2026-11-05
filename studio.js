@@ -53,6 +53,7 @@ const cached=(()=>{try{return parseDocument(localStorage.getItem(CACHE)||"");}ca
 const savedSounds=loadUserSounds();
 let libraryMode="add",libraryCategory="All",libraryContext=null;
 const rackPreviewPositions=new Map(),rackPreviewRequests=new Map();
+const beatAuditionRequests=new Map();
 const inspectorViewport=window.matchMedia("(min-width:1100px)");
 let inspectorState=inspectorViewport.matches?"expanded":"closed";
 let loadingExample=false;
@@ -1882,11 +1883,12 @@ presetForm.addEventListener("submit",async event=>{
  finally{presetSaving=false;$("save-preset-confirm").disabled=false;}
 });
 $("hear-sound").addEventListener("click",()=>{
- const inst=instrument();
+ const inst=instrument(),currentEntry=sound(inst);
  void auditionSoundInspector({
   instrument:inst,sound:sound(inst),context:beat,
   button:$("hear-sound"),previewPositions:rackPreviewPositions,
-  play:audition,duration:.6,
+  auditionRequests:beatAuditionRequests,play:audition,duration:.6,
+  isCurrent:()=>instrument().id===inst.id&&sound(inst).id===currentEntry.id,
   onError:error=>message("Could not preview sound: "+error.message,true)
  });
 });
