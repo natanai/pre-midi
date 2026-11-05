@@ -679,6 +679,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    button.style.left=(point.x/360*100)+"%";
    button.style.top=(point.y/112*100)+"%";
    button.dataset.handle=String(i);
+   button.dataset.soundLinks=point.axes.map(axis=>axis.path.join(".")).join("|");
    button.setAttribute("aria-label",point.label);
    button.setAttribute("aria-description",point.axes.map(axisDirection).join("; "));
    const readout=document.createElement("output");
@@ -707,6 +708,10 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
     bandpass:"band",straight:"flat"})[display]??display);
    button.setAttribute("aria-label",entry.label+": "+String(value??entry.choices[0])+"; next choice");
    button.dataset.soundPath=entry.path.join(".");
+   // Filter-bypass graph actions edit the canonical filter object, not a
+   // separately stored bypass knob. The filter selector links to this action.
+   button.dataset.soundLinks=entry.path[0]==="audioFilterBypassed"?
+    "filter.type|audioFilterBypassed":entry.path.join(".");
    button.addEventListener("click",()=>{
     const live=at(latestPatch,entry.path)??entry.choices[0];
     const index=entry.choices.findIndex(choice=>choice===live);
