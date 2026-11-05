@@ -172,6 +172,12 @@ export const diagram=(patch,type,page=0)=>{
    tag(18,center-14,"osc "+(index+1));
   }
   tag(296,12,"detune");
+  // A silent second oscillator has no waveform or conventional dial in the
+  // collapsed editor. Its illustration must still be able to bring it in,
+  // using the same canonical level value as the existing add/remove buttons.
+  // Setting the base level to zero does not erase modulation routes.
+  action(311,second?95:80,["oscillators",1,"level"],[0,.25],
+   "oscillator 2 base level");
   for(const index of enabled){
    action(60,second?(index===0?57:90):80,["oscillators",index,"wave"],WAVES,"wave "+(index+1));
    action(252,second?(index===0?57:90):80,["oscillators",index,"octave"],[-2,-1,0,1,2],"octave "+(index+1));
@@ -711,11 +717,16 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    button.style.top=(entry.y/112*100)+"%";
    const value=at(current,entry.path);
    const display=typeof value==="boolean"?(value?"on":"off"):String(value??entry.choices[0]);
+   const secondOscillator=entry.path.join(".")==="oscillators.1.level";
    button.textContent=entry.path[0]==="audioFilterBypassed"?
     (current.audioFilterBypassed?"filter on":"filter off"):
+    secondOscillator?(Number(value)>0?"osc 2 0%":"osc 2 25%"):
     (({sawtooth:"saw",triangle:"tri",lowpass:"low",highpass:"high",
     bandpass:"band",straight:"flat"})[display]??display);
-   button.setAttribute("aria-label",entry.label+": "+String(value??entry.choices[0])+"; next choice");
+   button.setAttribute("aria-label",secondOscillator?
+    (Number(value)>0?"set oscillator 2 base level to zero":
+     "set oscillator 2 base level to 25 percent"):
+    entry.label+": "+String(value??entry.choices[0])+"; next choice");
    button.dataset.soundPath=entry.path.join(".");
    // Filter-bypass graph actions edit the canonical filter object, not a
    // separately stored bypass knob. The filter selector links to this action.
