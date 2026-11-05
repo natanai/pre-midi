@@ -7,6 +7,11 @@ const directLinks=".visual-graph-point[data-sound-links],.visual-graph-action[da
 const linkedPaths=node=>(node.dataset.soundLinks||"").split("|").filter(Boolean);
 
 export function auditSoundVisualCoverage(root,{context="sound"}={}){
+ // Large multisample selectors are intentionally lazy-rendered. Populate
+ // them without changing the user's accordion state, or their actual knobs
+ // would silently escape the inventory when there are more than eight zones.
+ for(const mapping of root.querySelectorAll("details.sample-map-details"))
+  mapping.populateMapping?.();
  const editable=[...root.querySelectorAll(editors)].filter(node=>
   node.querySelector(editableSelector)&&
   !node.closest(".visual-graph-points")&&!node.closest("[hidden]"));
