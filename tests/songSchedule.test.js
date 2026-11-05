@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {performance} from "node:perf_hooks";
 import {create,id,clone,upgradeBeatFeatures} from "../schema.js";
-import {renderEvents,noteTimeline,secondsPerStep} from "../audio.js";
+import {renderEvents,noteTimeline,secondsPerStep,wav,checkAudioTimelineLength} from "../audio.js";
 import {eventsAtSongStep,songDurationSteps,createSong,addSongTrack,
  addBeatClip,upgradeSongFeatures,validateSong} from "../songModel.js";
 import {recordingEventsAtStep} from "../songAudio.js";
@@ -97,4 +97,14 @@ test("native onset budgets reject dense Songs before unbounded packet allocation
  assert.deepEqual(validateSong(song),[]);
  assert.equal(renderEvents(song).length,4097,"Web rendering keeps all valid notes");
  assert.throws(()=>renderEvents(song,{maxEvents:4096}),/4096 scheduled note\/voice onsets/);
+});
+
+test("WAV/native timeline limits reject impossible Songs before expanding onsets",async()=>{
+ const song=createSong(create());
+ song.tracks[0].clips[0].lengthSteps=4801; // 120 BPM: just beyond 600 seconds
+ assert.throws(()=>checkAudioTimelineLength(song),/10-minute/);
+ await assert.rejects(wav(song),/10-minute/,
+  "An overlong timeline must not attempt a browser OfflineAudioContext");
+ song.tracks[0].clips[0].lengthSteps=320;
+ assert.equal(checkAudioTimelineLength(song),40);
 });
