@@ -33,14 +33,18 @@ try{
    biquad.type=type;biquad.frequency.value=2300;biquad.Q.value=q;
    const mags=new Float32Array(frequencies.length),phases=new Float32Array(frequencies.length);
    biquad.getFrequencyResponse(frequencies,mags,phases);
+   let firstMismatch=null;
    for(let i=0;i<frequencies.length;i++){
     const expected=modeledFilterMagnitude({type,cutoff:2300,resonance:q},frequencies[i]);
     const observed=mags[i];
-    pass("48k biquad physical filter model matches Web Audio "+type+
-     " q="+q+" at "+frequencies[i]+" Hz ("+expected+" / "+observed+")",
-     Math.abs(observed-expected)<Math.max(.002,expected*.012));
+    if(firstMismatch===null&&Math.abs(observed-expected)>=Math.max(.002,expected*.012))
+     firstMismatch={hz:frequencies[i],expected,observed};
     filterChecks++;
    }
+   // Assert all seven frequencies per type/Q; only transmit twelve concise
+   // pass/fail summaries over the local browser-test reporting endpoint.
+   pass("48k Biquad model matches Web Audio "+type+" q="+q+
+    (firstMismatch?" "+JSON.stringify(firstMismatch):""),firstMismatch===null);
   }
  pass("all four Sound filter types and their resonance values are physically qualified",
   filterChecks===84);
