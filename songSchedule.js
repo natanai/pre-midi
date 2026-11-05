@@ -1,7 +1,7 @@
 // Sparse, source-linked Song onset index for offline and native scheduling.
 // Reusing a Beat never clones its patch, changes a note's source phase, or
 // changes its owning Song Track/Clip. This index is a disposable snapshot: do
-// not cache it across edits to the mutable Song document.
+// only reuse it across steps when an explicit edit revision remains unchanged.
 import {phraseInstances,STEPS_PER_BAR} from "./arrangement.js";
 import {songDurationSteps} from "./songModel.js";
 
@@ -111,4 +111,28 @@ export function scheduledSongOnsets(song,{maxEvents=Infinity}={}){
   }
  }
  return index;
+}
+
+// Browser real-time playback can share native/offline's sparse source-linked
+// event compilation. The caller supplies a monotonically increasing revision
+// for every committed Song change and for undo/redo. A replacement document
+// invalidates the schedule even if it shares the previous revision.
+const EMPTY_LIVE_ONSETS=Object.freeze({
+ vocals:Object.freeze([]),notes:Object.freeze([])
+});
+export function createLiveSongScheduler(read,getRevision){
+ if(typeof read!=="function"||typeof getRevision!=="function")
+  throw Error("Live Song scheduling requires a document reader and edit revision.");
+ let cachedDocument=null,cachedRevision=null,cachedIndex=null;
+ return {
+  atStep(step){
+   const song=read(),revision=getRevision();
+   if(song?.kind!=="song")return EMPTY_LIVE_ONSETS;
+   if(cachedIndex===null||song!==cachedDocument||revision!==cachedRevision){
+    cachedIndex=scheduledSongOnsets(song);
+    cachedDocument=song;cachedRevision=revision;
+   }
+   return cachedIndex.get(step)??EMPTY_LIVE_ONSETS;
+  }
+ };
 }
