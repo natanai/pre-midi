@@ -11,6 +11,7 @@ import {ensureFreeform,addFreeformInstrument,addFreeformNote,
 import {resolveEvent} from "../soundModel.js";
 import {strumOffset} from "../guitarTiming.js";
 import {nativePlans} from "../src/hosts/native/session.js";
+import {scheduledSongOnsets,scheduledSongOnsetsInWindow} from "../songSchedule.js";
 
 // Slow, intentionally independent reference: exactly the legacy step-by-step
 // public APIs, not the sparse compiler's implementation.
@@ -107,4 +108,64 @@ test("WAV/native timeline limits reject impossible Songs before expanding onsets
   "An overlong timeline must not attempt a browser OfflineAudioContext");
  song.tracks[0].clips[0].lengthSteps=320;
  assert.equal(checkAudioTimelineLength(song),40);
+});
+
+test("bounded Song onset windows exactly match full source-linked scheduling at every page edge",()=>{
+ const beat=create(),inst=beat.instruments[0];
+ inst.chunks[0].notes=[
+  {id:"long-tail",pitch:60,start:15,duration:25,velocity:.8},
+  {id:"accent",pitch:67,start:4,duration:2,velocity:.67}
+ ];
+ inst.timeline[1]=inst.chunks[0].id;
+ upgradeBeatFeatures(beat);
+ const song=createSong(beat),first=song.tracks[0].clips[0];
+ first.startStep=7;first.lengthSteps=178;first.sourceOffsetSteps=9;
+ const second=addSongTrack(song,"beat");
+ addBeatClip(song,second.id,beat.id,24,121).sourceOffsetSteps=21;
+ const layer=ensureFreeform(song.tracks[0]),free=addFreeformInstrument(layer);
+ addFreeformNote(free,{pitch:74,start:15,duration:27,velocity:.76});
+ addFreeformNote(free,{pitch:76,start:65,duration:1,velocity:.88});
+ free.chunks[0].notes=[
+  {id:"chunk-a",pitch:79,start:1,duration:18,velocity:.7},
+  {id:"chunk-b",pitch:81,start:11,duration:2,velocity:.6}
+ ];
+ addFreeformChunkPlacement(free,free.chunks[0].id,29,{every:11,repeats:15});
+ const voice=addSongTrack(song,"vocal");
+ song.recordings=[{id:"voice",durationSeconds:2}];
+ voice.clips.push({id:"vocal",recordingId:"voice",startStep:48,lengthSteps:8,gain:1});
+ upgradeSongFeatures(song);
+ const full=scheduledSongOnsets(song);
+ const windows=[[0,7],[7,16],[16,29],[29,48],[48,65],
+  [65,96],[96,160],[160,200],[200,280]];
+ for(const [start,end] of windows){
+  const expected=[...full].filter(([step])=>step>=start&&step<end);
+  const actual=[...scheduledSongOnsetsInWindow(song,start,end)];
+  assert.deepEqual(actual,expected,"page "+start+".."+end+" changes source phase or event ordering");
+ }
+ const beginning=scheduledSongOnsetsInWindow(song,0,16);
+ assert.ok([...beginning.values()].flatMap(x=>x.notes).some(x=>
+  x.note.id==="long-tail"&&x.note.duration===25),
+  "a note crossing a page boundary retains its original full duration");
+ const next=scheduledSongOnsetsInWindow(song,16,29);
+ assert.ok(![...next.values()].flatMap(x=>x.notes).some(x=>x.note.id==="long-tail"),
+  "later pages must not retrigger a voice carried by the native host");
+});
+
+test("late Song-time windows avoid expansion of thousands of earlier onsets",()=>{
+ const beat=create(),inst=beat.instruments[0];
+ inst.chunks[0].notes=[{id:"ping",pitch:72,start:0,duration:1,velocity:.7}];
+ const song=createSong(beat),clip=song.tracks[0].clips[0];
+ song.tracks[0].clips=Array.from({length:5000},(_,i)=>({
+  ...clip,id:"clip-"+i,startStep:i*16,lengthSteps:16
+ }));
+ assert.throws(()=>scheduledSongOnsets(song,{maxEvents:4096}),/4096 scheduled/);
+ const range=scheduledSongOnsetsInWindow(song,4500*16,4512*16,{maxEvents:12});
+ assert.equal([...range.values()].reduce((n,x)=>n+x.notes.length,0),12);
+ assert.deepEqual([...range.keys()].sort((a,b)=>a-b),
+  Array.from({length:12},(_,i)=>(4500+i)*16));
+ assert.throws(()=>scheduledSongOnsetsInWindow(song,4500*16,4512*16,
+  {maxEvents:11}),/11 scheduled/);
+ assert.throws(()=>scheduledSongOnsetsInWindow(song,-1,16),/nonnegative/);
+ assert.throws(()=>scheduledSongOnsetsInWindow(song,16,16),/increasing/);
+ assert.throws(()=>scheduledSongOnsetsInWindow(song,0,16,{maxEvents:4097}),/1 to 4096/);
 });
