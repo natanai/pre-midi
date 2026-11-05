@@ -59,8 +59,10 @@ export function nativePageDescriptorCursor(song,{
   throw Error("Native Song page clock needs an 8000–192000 Hz sample rate.");
  if(!Number.isSafeInteger(startStep)||startStep<0)
   throw Error("Native Song page clock start must be a nonnegative step.");
- if(getRevision!==null&&typeof getRevision!=="function")
+ if(typeof getRevision!=="function")
   throw Error("Native Song page revision reader must be a function.");
+ if(getRevision()!==revision)
+  throw Error("Song changed during native page preparation; invalidate the transport revision.");
  const sourceBpm=song.bpm,unit=60/sourceBpm/4,frameAt=step=>{
   const frames=Math.ceil(step*unit*sampleRate-1e-9);
   if(!Number.isSafeInteger(frames)||frames<0)
@@ -70,7 +72,7 @@ export function nativePageDescriptorCursor(song,{
  let step=startStep,sequence=0;
  return {
   next(){
-   if(song.bpm!==sourceBpm||(getRevision&&getRevision()!==revision))
+   if(song.bpm!==sourceBpm||getRevision()!==revision)
     throw Error("Song changed during native page preparation; invalidate the transport revision.");
    const page=nextNativeOnsetPage(song,step,{maxSteps,maxOnsets});
    if(!page)return null;
