@@ -5,8 +5,12 @@ import {makePatch,validatePatch} from "../synth.js";
 import {harmonicRecipe} from "../harmonics.js";
 import {assignSoundEdit} from "../soundEditPath.js";
 import {defaultSource,MOD_TARGETS} from "../src/dsp/modulation.js";
+import {vocalChangesFromControl} from "../vocalAudioView.js";
+import {DEFAULT_SAMPLE_FILTER} from "../audioEffects.js";
 
 const key=path=>path.join(".");
+const axesFor=(graph,path)=>graph.handles.flatMap(handle=>handle.axes)
+ .find(axis=>key(axis.path)===key(path));
 const handles=(patch,kind)=>Array.from({length:diagramPageCount(patch,kind)},
  (_,page)=>diagram(patch,kind,page).handles).flat();
 const actions=(patch,kind)=>Array.from({length:diagramPageCount(patch,kind)},
@@ -238,4 +242,33 @@ test("instrument volume is never knob-only; stereo and rack gain use two-axis il
  assert.notDeepEqual(current.handles,next.handles,"rack output level responds to the actual rack-volume knob");
  assert.ok(next.labels.some(label=>label.value==="total "+Math.round(100*.3*.85)+"%"),
   "gain illustration teaches that rack and Sound levels multiply");
+});
+
+test("vocal filter illustration offers both filter-on and filter-off edits",()=>{
+ const off={...sample(),type:"vocal",audioFilterBypassed:true};
+ const on={...sample(),type:"vocal",audioFilterBypassed:false};
+ const offAction=diagram(off,"filter").actions.find(action=>
+  key(action.path)==="audioFilterBypassed");
+ const onAction=diagram(on,"filter").actions.find(action=>
+  key(action.path)==="audioFilterBypassed");
+ assert.equal(offAction?.label,"turn filter on");
+ assert.equal(onAction?.label,"turn filter off");
+ assert.deepEqual(vocalChangesFromControl(off,["filter"],{...DEFAULT_SAMPLE_FILTER}).filter,
+  DEFAULT_SAMPLE_FILTER,"enabling uses the existing canonical sample filter");
+ assert.equal(vocalChangesFromControl(on,["filter"],null).filter,null,
+  "disabling stores the existing vocal filter bypass, not an illustration-only flag");
+});
+
+test("educational Sound axes disclose the real units used by their controls",()=>{
+ const patch=synth();
+ assert.equal(axesFor(diagram(patch,"filter"),["filter","cutoff"]).unit,"Hz");
+ assert.equal(axesFor(diagram(patch,"envelope"),["envelope","attack"]).unit,"s");
+ assert.equal(axesFor(diagram(patch,"delay"),["effects","delayTime"]).unit,"s");
+ assert.equal(axesFor(diagram(patch,"delay"),["effects","delayMix"]).unit,"percent");
+ const sampleGraph=diagram(sample(),"sample",1);
+ assert.equal(axesFor(sampleGraph,["strumMs"]).unit,"ms");
+ assert.equal(axesFor(sampleGraph,["pan"]).unit,"pan");
+ const stage=diagram({type:"stage",layout:"levels",volume:.6,gain:.7,pan:0},"stage");
+ assert.equal(axesFor(stage,["volume"]).unit,"percent");
+ assert.equal(axesFor(stage,["gain"]).unit,"percent");
 });
