@@ -66,10 +66,11 @@ test("sound shape responds to rise and fade for both synth and recording",()=>{
 });
 
 test("hear sound stays an icon, including after a rack audition and rerender",()=>{
- const html=read("index.html"),studio=read("studio.js");
+ const html=read("index.html"),studio=read("studio.js"),inspector=read("soundInspector.js");
  assert.match(html,/<button id="hear-sound"[^>]*>▶<\/button>/);
  assert.match(studio,/hear\.textContent="▶"/);
  assert.doesNotMatch(studio,/hear\.textContent="hear sound/);
- assert.match(studio,/hear\.setAttribute\("aria-label","hear "\+entry\.name/);
- assert.match(studio,/nextRackPreview/);
+ assert.match(studio,/auditionSoundInspector\(\{/);
+ assert.match(inspector,/button\.setAttribute\("aria-label",label\)/);
+ assert.match(inspector,/nextRackPreview\(previewPositions/);
 });
