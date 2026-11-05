@@ -195,6 +195,35 @@ try{
  assert(instrument.chunkPlacements.length===0&&
   JSON.stringify(sourceChunk)===originalChunk,
   "Removing placement never deletes or modifies its reusable Chunk");
- await report("PASS","Layered notes, note cutoff, Instrument lifecycle and editable reusable Chunk placements");
+ // Freeform must show the same canonical Sound Inspector controls and
+ // interactive parameter diagrams that the Beat Sound editor renders.
+ root.querySelector(".freeform-sound-summary").click();
+ const owner=root.querySelector(".freeform-sound-content");
+ assert(owner,"The common Inspector mounts under the existing Song Sound disclosure");
+ const paths=["volume","gain","filter.cutoff","envelope.attack","envelope.release"];
+ for(const path of paths)
+  assert(owner.querySelector('[data-sound-path="'+path+'"]'),
+   "Freeform exposes canonical Sound control "+path);
+ const filterPanel=owner.querySelector('.visual-sound-panel[data-visual-kind="filter"]');
+ const stagePanel=owner.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
+ assert(filterPanel&&stagePanel&&owner.querySelector(".signal-scope"),
+  "The same real waveform, filter illustration and gain staging mount in freeform");
+ filterPanel.querySelector("details").open=true;
+ const filterHit=filterPanel.querySelector(
+  '.visual-graph-hit[data-sound-links*="filter.cutoff"]');
+ assert(filterHit,"Educational brightness illustration targets the real primary control");
+ const primary=owner.querySelector('[data-sound-path="filter.cutoff"]');
+ assert(primary.querySelector('[role="slider"]'),
+  "Freeform's primary brightness control remains a conventional, editable dial");
+ const originalCutoff=instrument.sounds[0].patch.filter.cutoff;
+ primary.querySelector('[role="slider"]').dispatchEvent(new KeyboardEvent(
+  "keydown",{key:"ArrowLeft",bubbles:true,cancelable:true}
+ ));
+ assert(instrument.sounds[0].patch.filter.cutoff!==originalCutoff,
+  "Editing the shared Freeform brightness knob writes the original Sound patch");
+ const refreshed=root.querySelector(".freeform-sound-content");
+ assert(refreshed.querySelector('.visual-sound-panel[data-visual-kind="filter"]'),
+  "Editing a Sound preserves the shared educational panel");
+ await report("PASS","Layered notes, reusable Chunks and canonical Beat/freeform Sound Inspector parity");
 }catch(error){await report("FAIL",String(error.stack||error))}
 </script>
