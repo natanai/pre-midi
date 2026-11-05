@@ -4,7 +4,7 @@ import {validateModulation} from "./src/dsp/modulation.js";
 import {resolveEvent} from "./soundModel.js";
 import {eventsAtStep} from "./arrangement.js";
 import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
-import {scheduledSongOnsets} from "./songSchedule.js";
+import {scheduledSongOnsets,createLiveSongScheduler} from "./songSchedule.js";
 import {decodeSongRecordings,recordingEventsAtStep,scheduleVocal} from "./songAudio.js";
 import {vocalSourceRange} from "./vocalEffects.js";
 import {delayTailSeconds} from "./src/dsp/effect-tail.js";
@@ -251,7 +251,7 @@ export async function auditionChord(instrument,pitches,beat,velocity=.85) {
    now+strumOffset(instrument,note,notes),duration,beat,previews());
  }
 }
-export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0,countIn=0,recording=null,onCountIn=()=>{}}={}) {
+export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0,countIn=0,recording=null,onCountIn=()=>{},getRevision=null}={}) {
  if(nativeEnabled()){
   const read=typeof beat==='function'?beat:()=>beat,document=read();
   const prepare=document=>({...document,nativeLengthSteps:document.kind==='song'?songDurationSteps(document):document.bars*16});
@@ -263,6 +263,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  const ctx=context,out=ctx.createGain(),read=typeof beat==="function"?beat:()=>beat;
+ const liveSong=typeof getRevision==="function"?createLiveSongScheduler(read,getRevision):null;
  await Promise.all(musicSampleContexts(read()).map(entry=>decodeSamples(ctx,entry,bufferCache(ctx))));
  const vocalBuffers=await decodeSongRecordings(ctx,read());
  const loops=()=>typeof loop==="function"?loop():loop;
@@ -292,10 +293,14 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    const step=scheduled%Math.max(1,cycle),barIndex=Math.floor(step/16),unit=secondsPerStep(current);
    if(step%16===0)for(const entry of musicSampleContexts(current))
     void decodeSamples(ctx,entry,bufferCache(ctx)).catch(console.warn);
-   const events=current.kind==="song"?eventsAtSongStep(current,step):stepEvents(current,scheduled);
-   if(current.kind==="song")for(const event of recordingEventsAtStep(current,step,{
-    includeOverlapping:scheduled===start
-   }))
+   const sparse=current.kind==="song"&&liveSong?liveSong.atStep(step):null;
+   const events=current.kind==="song"?(sparse?.notes??eventsAtSongStep(current,step)):stepEvents(current,scheduled);
+   // On initial playback/seek, preserve vocals already sounding before this
+   // step. Subsequent vocal starts come directly from the indexed Song onset.
+   if(current.kind==="song")for(const event of (
+    scheduled===start?recordingEventsAtStep(current,step,{includeOverlapping:true}):
+     sparse?.vocals??recordingEventsAtStep(current,step)
+   ))
     scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers,{elapsedSteps:step-event.clip.startStep,session});
    for(const event of events)
     scheduleNote(ctx,out,event.instrument,event.note,
