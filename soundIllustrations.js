@@ -342,9 +342,14 @@ export const diagram=(patch,type,page=0)=>{
   if(p.type==="vocal"){
    // Vocal clips do not have the sample's strum/pitch-follow options.
    // This graph edits the actual three common voice controls instead.
-   line("M18 100 H169 M193 82 H342",true);
-   line(pathRange(190,t=>[18+151*t,
-    73-24*Math.min(1,gain/1.5)*Math.sin(t*2*Math.PI*4*2**(transpose/12))]),
+   // A vocal Recording has arbitrary PCM, not a deterministic sine wave.
+   // Teach actual pitch/level control directions without presenting invented
+   // samples as its waveform; the vocal waveform editor shows measured PCM.
+   const voiceX=19+148*clamp((transpose+24)/48);
+   const voiceY=99-50*gain/2;
+   line("M18 100 H169 M193 82 H342 M93 43 V100",true);
+   line("M93 "+voiceY.toFixed(2)+" H"+voiceX.toFixed(2)+
+    " M"+voiceX.toFixed(2)+" 100 V"+voiceY.toFixed(2),
     false,["transpose","gain"]);
    handle(19+148*clamp((transpose+24)/48),99-50*gain/2,[
     axis(["transpose"],-24,24,"linearX",{from:19,to:167,step:1,unit:"st"}),
@@ -356,11 +361,16 @@ export const diagram=(patch,type,page=0)=>{
     axis(["pan"],-1,1,"linearX",{from:202,to:332,step:.01,unit:"pan"})
    ],"voice left / right");
    tag(19,15,"pitch → / level ↑");tag(204,15,"left ← stereo → right");
+   tag(19,112,"control model");
   }else{
-  line("M18 60 H171 M192 104 H342",true);
-  line(pathRange(190,t=>[25+18*strum/25+126*t,
-   60-22*Math.sin(2*Math.PI*6*2**(transpose/12)*t)*Math.min(1,gain/1.5)]),
-   true,["transpose","strumMs","gain"]);
+  // Strum displaces the onset in time; transpose shifts played pitch.
+  // Do not fabricate a sine waveform for an arbitrary imported Recording:
+  // this guide is a parameter diagram, not a source PCM measurement.
+  const onsetX=19+clamp((strum+25)/50)*148;
+  const pitchY=60-35*clamp(transpose/24,-1,1);
+  line("M18 60 H171 M192 104 H342 M93 24 V96",true);
+  line("M93 60 H"+onsetX.toFixed(2)+" V"+pitchY.toFixed(2),
+   false,["transpose","strumMs"]);
   // X is the recording's onset displacement; Y is its pitch shift.
   handle(19+clamp((strum+25)/50)*148,60-35*clamp(transpose/24,-1,1),[
    axis(["strumMs"],-25,25,"linearX",{from:19,to:167,step:1,unit:"ms"}),
@@ -374,6 +384,7 @@ export const diagram=(patch,type,page=0)=>{
    axis(["gain"],0,2,"linearY",{from:103,to:68,step:.01,unit:"percent"})
   ],"stereo position / recording level");
   tag(19,15,"onset / pitch");tag(205,15,"stereo / level");
+  tag(19,112,"control model");
   action(65,107,["followPitch"],[true,false],"follow played note");
   action(190,40,["oneShot"],[false,true],"play entire recording");
   action(299,40,["preserveDynamics"],[false,true],"preserve recorded dynamics");
