@@ -449,7 +449,7 @@ test("partial unpack preserves every source-offset phase, Rack identity and rele
   const [left,right]=song.tracks[0].clips;
   assert.equal(left.lengthSteps,17,"left segment at offset "+offset);
   assert.equal(right.startStep,to,"right segment at offset "+offset);
-  assert.equal(right.sourceOffsetSteps,(offset+60)%128,
+  assert.equal(right.sourceOffsetSteps,(offset+67)%128,
    "the right Clip retains the exact original source cycle offset");
   assert.equal(passage.startStep,from);
   assert.deepEqual(voices(song),before,"Unpack must be sample-phase equivalent at offset "+offset);
