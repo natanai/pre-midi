@@ -166,6 +166,36 @@ try{
  pulsePoint.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true,cancelable:true}));
  pass("illustrated pulse edits canonical knob parameter",
   synthEdits.some(([path,value])=>path.join(".")==="movement.tremolo"&&value>0));
+ const envPanel=document.querySelector('#synth .visual-sound-panel[data-visual-kind="envelope"]');
+ envPanel.querySelector("details").open=true;
+ const envNext=envPanel.querySelector('button[aria-label="next envelope page"]');
+ pass("synth ADSR offers a separate planner-backed short-note example",
+  !!envNext&&!envNext.disabled);
+ envNext.click();
+ const offLabel=[...envPanel.querySelectorAll(".visual-graph-label")]
+  .find(label=>label.textContent==="0.25s note");
+ const envShape=diagram(synth,"envelope",1);
+ const envTrace=envPanel.querySelectorAll(".visual-graph-line")[0];
+ pass("mounted ADSR illustrates the planner's actual short note-off level",
+  !!offLabel&&!!envTrace&&envTrace.getAttribute("d")===envShape.paths[1].d);
+ const earlyPoint=envPanel.querySelector(
+  '.visual-graph-point[data-sound-links="envelope.attack|envelope.decay"]');
+ const laterPoint=envPanel.querySelector(
+  '.visual-graph-point[data-sound-links="envelope.sustain|envelope.release"]');
+ pass("early and late ADSR stages retain direct two-axis editing",
+  !!earlyPoint&&!!laterPoint&&
+  earlyPoint.getAttribute("aria-description").includes("left/right")&&
+  earlyPoint.getAttribute("aria-description").includes("up/down")&&
+  laterPoint.getAttribute("aria-description").includes("left/right")&&
+  laterPoint.getAttribute("aria-description").includes("up/down"));
+ earlyPoint.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true,cancelable:true}));
+ earlyPoint.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true,cancelable:true}));
+ laterPoint.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true,cancelable:true}));
+ laterPoint.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowUp",bubbles:true,cancelable:true}));
+ pass("short-note curve edits all four original ADSR parameters through existing controls",
+  ["attack","decay","sustain","release"].every(name=>
+   synthEdits.some(([path,value])=>path.join(".")==="envelope."+name&&
+    Number.isFinite(value))));
  const sampleShape=document.querySelector('#sample .visual-sound-panel[data-visual-kind="sample"]');
  sampleShape.querySelector("details").open=true;
  sampleShape.querySelector('button[aria-label="next sample page"]').click();
