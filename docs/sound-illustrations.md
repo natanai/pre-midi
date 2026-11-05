@@ -40,7 +40,8 @@
 
 ### Active work / next milestone
 
-- Add a direct, reversible illustration affordance for oscillator 2 even when its level is zero and the second waveform is visually collapsed; the existing ordinary **add oscillator** control must remain. Verify the primary oscillator drawing reacts to enabling it and restoring zero.
+- **In review:** [PR #160](https://github.com/natanai/pre-midi/pull/160), branch `illustrations/oscillator-two-direct-edit-and-audit`. Adds a direct, reversible mix-diagram action for oscillator 2's canonical base level even when the second waveform is collapsed. The ordinary add/remove control remains. Pure path and mounted Chrome tests added. **Do not report as merged or qualified until the latest GitHub Actions run passes.**
+- **Newly observed after Song agent PR #159:** `soundInspector.js` now creates one shared Sound editor. For pitched Instruments the stage illustration's first page exposes pan and Instrument volume while the new separate Sound-level knob (`gain`) needs direct coverage. Implement a second gain-staging page showing volume × gain while retaining the first stereo view; test its exact source paths, single atomic commits and live inspector rendering.
 - Use the actual `diagram` model and tests to inventory any **direct-edit holes**, not just paths that have visual hover links. Derive a real cross-context count once the common inspector is merged.
 - Verify illustration-to-knob synchronization **during preview**, especially after common Sound Inspector consolidation, while keeping one undo entry for two-axis drags.
 - Audit response/curve fidelity: the filter graph is an approximate teaching curve, not a measured Biquad frequency response; waveform/delay/envelope illustrations also have simplified assumptions. Decide what should be physically accurate versus explicitly labeled schematic after comparing web and native DSP.
@@ -49,7 +50,7 @@
 
 ### Known architectural limits (owned by the other agent)
 
-`studio.js` and `freeformSoundUI.js` have separately assembled Sound headers/previews/dials despite reusing the same synth/sampler/illustration modules. The other agent's required shared Sound Inspector is documented in `docs/song-rollout.md`. **Do not solve this by copying controls across editors.** Complete shared-inspector integration before final bidirectional coverage sign-off.
+The Freeform agent merged [PR #159](https://github.com/natanai/pre-midi/pull/159) introducing shared `soundInspector.js`; consolidation may still have later milestones. The other agent owns its progress and `docs/song-rollout.md`. **Do not solve missing coverage by copying controls across editors.** Validate the new common inspector's final state before bidirectional coverage sign-off.
 
 ## Next-chat continuation procedure
 
