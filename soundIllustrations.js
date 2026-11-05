@@ -23,6 +23,16 @@ const axisValue=(patch,path)=>{
 };
 const shortValue=value=>Math.abs(value)>=100?String(Math.round(value)):
  String(Number(value.toFixed(3)));
+// Explain actual graph axes without changing the project's existing dial hints.
+const axisReadout=(axis,value)=>
+ (axis.mode.endsWith("X")?"x ":"y ")+axis.path.at(-1)+" "+shortValue(value);
+const axisDirection=axis=>{
+ const horizontal=axis.mode.endsWith("X");
+ const increase=horizontal?(axis.to>axis.from?"right":"left"):
+  (axis.to<axis.from?"up":"down");
+ return (horizontal?"left/right":"up/down")+": "+increase+
+  " increases "+axis.path.at(-1);
+};
 const cloneEdit=(patch,path,value)=>{
  const next=structuredClone(patch);let owner=next;
  for(const key of path.slice(0,-1))owner=owner[key]??={};
@@ -584,6 +594,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  const controlOwner=()=>wrapper.closest(".sound-section,.freeform-sound-content")??
   initiallyAttachedOwner;
  wrapper.dataset.visualKind=kind;
+ wrapper.dataset.visualId=id;
  const area=document.createElement("div");area.className="visual-panel-area";
  const graphic=svgNode("svg",{viewBox:"0 0 360 112",preserveAspectRatio:"none",
   role:"img","aria-label":kind.replace(/\\d+/g,"")+" sound illustration"});
@@ -639,6 +650,9 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   }else pages.hidden=true;
   const {paths,handles,labels,actions,color}=diagram(current,kind,page);
   visibleHandles=handles;
+  // Rebuilding the diagram for live previews must not steal keyboard focus.
+  const focusedHandle=handlesRoot.contains(document.activeElement)?
+   document.activeElement.dataset.handle:null;
   graphic.replaceChildren();handlesRoot.replaceChildren();
   graphic.style.setProperty("--visual-color",color);
   for(const path of paths){
@@ -661,12 +675,11 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    button.style.top=(point.y/112*100)+"%";
    button.dataset.handle=String(i);
    button.setAttribute("aria-label",point.label);
-   button.setAttribute("aria-description",point.axes.map(axis=>
-    (axis.mode.endsWith("X")?"left/right: ":"up/down: ")+axis.path.at(-1)).join("; "));
+   button.setAttribute("aria-description",point.axes.map(axisDirection).join("; "));
    const readout=document.createElement("output");
    readout.className="visual-point-readout";
    readout.textContent=point.label+" · "+
-    point.axes.map(axis=>shortValue(axisValue(current,axis.path))).join(" / ");
+    point.axes.map(axis=>axisReadout(axis,axisValue(current,axis.path))).join(" · ");
    button.append(readout);
    // A two-dimensional handle is a button, not an inaccurately labelled slider.
    if(point.axes.length===1){
@@ -714,6 +727,10 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
     }else onChange(entry.path,next);
    });
    handlesRoot.append(button);
+  }
+  if(focusedHandle!==null){
+   handlesRoot.querySelector('.visual-graph-point[data-handle="'+focusedHandle+'"]')
+    ?.focus({preventScroll:true});
   }
   highlight(activeLink);
  }
@@ -801,6 +818,15 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   if(linksDisposed)return;
   linksDisposed=true;
   listen(listenerOwner,"removeEventListener");
+  // The whole Sound editor can be replaced when selecting another Sound.
+  // Let its replacement reattach the same expanded illustration, otherwise
+  // clear the orphaned backdrop after this synchronous render completes.
+  if(wrapper.classList.contains("zoomed"))queueMicrotask(()=>{
+   if(!document.querySelector(".visual-sound-panel.zoomed")){
+    zoomId=null;
+    document.body.classList.remove("sound-visual-zoom");
+   }
+  });
  };
  // Keep detached test mounts working, and bind to the shared editor once
  // the caller finishes inserting the illustration into the live DOM.
@@ -864,7 +890,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   assignSoundEdit(next,paths,values);
   draw(next);
   // A persistent readout survives the redraw while the pointer is captured.
-  dragReadout.textContent=point.label+" · "+values.map(shortValue).join(" / ");
+  dragReadout.textContent=point.label+" · "+
+   point.axes.map((axis,i)=>axisReadout(axis,values[i])).join(" · ");
   dragReadout.style.left=(clamp(position.x,24,336)/360*100)+"%";
   dragReadout.style.top=(clamp(position.y,14,91)/112*100)+"%";
   dragReadout.hidden=commit;

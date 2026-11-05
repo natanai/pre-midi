@@ -80,7 +80,24 @@ frame.addEventListener("load",async()=>{
    .getAttribute("aria-valuenow"))<oldVolume,"stage level commit");
   const stageAfter=scope.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
   assert("stage remains expanded after a real instrument edit",stageAfter.querySelector("details").open);
-  const stageHit=stageAfter.querySelector('.visual-graph-hit[data-sound-links*="volume"]');
+  const focusedPoint=stageAfter.querySelector(".visual-graph-point");
+  focusedPoint.focus();
+  assert("diagram point can receive keyboard focus",doc.activeElement===focusedPoint);
+  const volumeBeforeRepeat=Number(get("instrument-volume-dial").querySelector('[role="slider"]')
+   .getAttribute("aria-valuenow"));
+  focusedPoint.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{
+   key:"ArrowDown",bubbles:true,cancelable:true
+  }));
+  await wait(()=>Number(get("instrument-volume-dial").querySelector('[role="slider"]')
+   .getAttribute("aria-valuenow"))<volumeBeforeRepeat,"second stage level commit");
+  const restoredPoint=scope.querySelector(
+   '.visual-sound-panel[data-visual-kind="stage"] .visual-graph-point');
+  assert("arrow-key diagram focus survives the editor redraw",
+   doc.activeElement===restoredPoint&&restoredPoint!==focusedPoint);
+  assert("axis directions teach which movement increases the value",
+   restoredPoint.getAttribute("aria-description").includes("up increases volume"));
+  const stageHit=scope.querySelector(
+   '.visual-sound-panel[data-visual-kind="stage"] .visual-graph-hit[data-sound-links*="volume"]');
   stageHit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
   assert("stage illustration focuses original instrument volume knob",
    !!doc.activeElement.closest("#instrument-volume-dial"));
