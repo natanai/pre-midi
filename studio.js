@@ -13,21 +13,16 @@ import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
-import { renderPatchEditor,PRIMARY_SYNTH_FIELDS } from "./instrumentUI.js";
+import {renderSoundInspectorCore} from "./soundInspector.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
 import {FACTORY_SOUND_CATALOG} from "./soundCatalog.js";
 import { nextRackPreview } from "./rackPreview.js";
 import { loadLibrarySample, makeSampleAsset, MAX_BEAT_BYTES, sampleForNote } from "./sampler.js";
 import { sampleAsset } from "./samples.js";
-import { renderSamplerEditor } from "./samplerUI.js";
-import {sampleTone} from "./audioEffects.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import { loadDraft, saveDraft, savePresetAssets } from "./storage.js";
 import {loadUserSounds,writeUserSounds,presetFromInstrument} from "./userSoundLibrary.js";
 import { renderNoteExpression } from "./expressionUI.js";
-import {createDial} from "./dial.js";
-import {createSignalDisplay} from "./soundScope.js";
-import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
@@ -1163,11 +1158,6 @@ function renderChunkEditor() {
  renderNotes();
 }
 function renderSound() {
- // Every Sound redraw replaces its visualizer DOM, but the surrounding
- // Sound section persists. Release delegated diagram listeners first.
- for(const panel of document.querySelectorAll(
-  "#synth-editor .visual-sound-panel,#sound-visualizer .visual-sound-panel"
- ))panel.disposeSoundIllustration?.();
  const inst=instrument(),entry=sound(inst),patch=entry.patch;
  const hear=$("hear-sound");
  hear.textContent="▶";
@@ -1176,22 +1166,6 @@ function renderSound() {
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
- const stageWasOpen=$("sound-visualizer").querySelector(
-  '.visual-sound-panel[data-visual-kind="stage"] details')?.open??false;
- const scope=createSignalDisplay($("sound-visualizer"),patch,beat,signal(inst),inst.volume*entry.gain,entry.referencePitch,inst.automation,entry.id);
- let stagePanel=null;
- const stageState=(pan=patch.pan??0,volume=inst.volume,gain=entry.gain)=>({
-  type:"stage",layout:inst.layout,pan,volume,gain
- });
- const preview=(path,value)=>{
-  // Construct a temporary sound-definition view, not an alternate mutable draft.
-  const next=patchCopy(sound().patch);
-  assignSoundEdit(next,path,value);
-  scope(next);
-  stagePanel?.draw(stageState(next.pan??0));
-  for(const panel of $("synth-editor").querySelectorAll(".visual-sound-panel"))
-   panel.drawSoundIllustration?.(next);
- };
  const onChange=(path,value)=>{
   const changed=modify(()=>{
    const target=sound().patch;
@@ -1210,41 +1184,15 @@ function renderSound() {
    },140);
   }
  };
- // Prominent edits share exactly the same persistent patch fields as the
- // existing sound modules, with no duplicate parameter controls below.
- const volume=$("instrument-volume-dial");
- volume.replaceChildren();
- volume.append(createDial({label:inst.layout==="rack"?"rack volume":"volume",min:0,max:1,step:.01,display:"percent"},
-  inst.volume,value=>modify(()=>{instrument().volume=value;}),
-  value=>{scope(patch,value*entry.gain);stagePanel?.draw(stageState(patch.pan??0,value));}));
- volume.dataset.soundPath="volume";
- const topFields=patch.type==="synth"?PRIMARY_SYNTH_FIELDS:[
-  {label:"brightness",path:["filter"],min:50,max:14000,step:1,display:"hz",log:true},
-  {label:"attack",path:["attack"],min:0,max:2,step:.005,display:"seconds"},
-  {label:"release",path:["release"],min:.01,max:3,step:.01,display:"seconds"}
- ];
- // Return the same dial nodes to the header before replacing the editor.
- // The visuals adopt them after rendering, without duplicate parameters.
+ // The persistent Beat header hosts the same Inspector's primary controls
+ // that the attached freeform Song editor mounts in its own Sound view.
+ // Reparent the nodes before rebuilding their previous illustration owners.
  const primary=document.querySelector(".sound-primary-controls");
- for(const key of ["primary-brightness-dial","primary-attack-dial","primary-release-dial"]){
-  const dial=$(key);if(dial.parentElement!==primary)primary.append(dial);
+ const primaryKeys=["primary-brightness-dial","primary-attack-dial","primary-release-dial"];
+ for(const key of primaryKeys){
+  const node=$(key);
+  if(node.parentElement!==primary)primary.append(node);
  }
- const topNodes=["primary-brightness-dial","primary-attack-dial","primary-release-dial"];
- topFields.forEach((field,index)=>{
-  const root=$(topNodes[index]);root.replaceChildren();
-  const filter=patch.type==="sample"&&index===0;
-  const current=filter?sampleTone(patch).filter.cutoff:
-   field.path.reduce((value,key)=>value?.[key],patch);
-  const update=(value,apply)=>{
-   if(filter)apply(["filter"],{...sampleTone(patch).filter,cutoff:value});
-   else apply(field.path,value);
-  };
-  const filterType=patch.type==="sample"?sampleTone(patch).filter.type:patch.filter.type;
-  const help=index===0?(filterType==="lowpass"?
-   "turn it down to muffle the high stuff":"move the filter to reshape the sound"):undefined;
-  root.append(createDial({...field,help},current,
-   value=>update(value,onChange),value=>update(value,preview)));
- });
  $("sound-name").value=entry.name;
  $("move-sound-up").disabled=inst.sounds.indexOf(entry)===0;
  $("move-sound-down").disabled=inst.sounds.indexOf(entry)===inst.sounds.length-1;
@@ -1254,11 +1202,6 @@ function renderSound() {
  $("sound-controls").hidden=inst.layout!=="rack";
  $("save-row-sound").hidden=inst.layout!=="rack";
  $("save-sound").setAttribute("aria-label",inst.layout==="rack"?"Save rack preset":"Save preset");
- const level=$("sound-volume-dial");level.replaceChildren();
- level.append(createDial({label:"Sound level",min:0,max:1,step:.01,display:"percent"},entry.gain,
-  value=>modify(()=>{sound().gain=value;}),
-  value=>{scope(patch,inst.volume*value);stagePanel?.draw(stageState(patch.pan??0,inst.volume,value));}));
- level.dataset.soundPath="gain";
  $("sound-reference").value=String(entry.referencePitch);
  $("convert-rack").hidden=inst.layout==="rack";
  $("convert-rack").disabled=!!inst.automation||!canConvertToRack(inst);
@@ -1272,60 +1215,42 @@ function renderSound() {
   "The beat already has 12 instruments": "Move this sound to its own piano-roll instrument";
  $("sound-section").setAttribute("aria-label",
   "sound editor for "+inst.name+(inst.layout==="rack"?" / "+entry.name:""));
- if(patch.type==="sample"){
-  renderSamplerEditor($("synth-editor"),patch,onChange,
-   patch.zones.map(zone=>beat.samples.find(x=>x.id===zone.assetId)?.name||zone.assetId).join(" / "),
-   ()=>openAudioReplace(),preview,entry.id);
- }else {
-  renderPatchEditor($("synth-editor"),patch,onChange,preview,entry.id);
-  renderCutoffAutomation($("synth-editor"),inst,beat,block=>{const changed=modify(()=>{if(block)instrument().automation=block;else delete instrument().automation;});if(changed&&playback)message("cutoff movement updates with new notes");});
- }
- const editor=$("synth-editor");
- const placeDial=(id,kind)=>{
-  const fields=editor.querySelector('.visual-sound-panel[data-visual-kind="'+kind+'"] .synth-fields');
-  if(fields)fields.prepend($(id));
- };
- placeDial("primary-brightness-dial","filter");
- placeDial("primary-attack-dial",patch.type==="sample"?"sample":"envelope");
- placeDial("primary-release-dial",patch.type==="sample"?"sample":"envelope");
- $("primary-brightness-dial").dataset.soundPath="filter.cutoff";
- $("primary-attack-dial").dataset.soundPath=patch.type==="sample"?"attack":"envelope.attack";
- $("primary-release-dial").dataset.soundPath=patch.type==="sample"?"release":"envelope.release";
- // Gain staging is an educational illustration, not a second mixer. It edits
- // the same instrument, Sound, and pan values as their existing knobs.
- const stageDetails=document.createElement("details");stageDetails.className="synth-group";
- stageDetails.open=stageWasOpen;
- const stageSummary=document.createElement("summary");
- stageSummary.textContent=inst.layout==="rack"?"gain staging":"stereo & volume";
- stageDetails.append(stageSummary);
- // Attach before wrapping so the diagram can find and link the real dials
- // outside its own disclosure, including rack gain and stereo pan.
- $("sound-visualizer").append(stageDetails);
- const stageEdit=(path,value,commit)=>{
-  const edits=Array.isArray(path?.[0])?path.map((keys,i)=>[keys,value[i]]):[[path,value]];
-  const next=patchCopy(patch);let instrumentLevel=inst.volume,soundLevel=entry.gain;
-  for(const [keys,amount] of edits){
-   if(keys[0]==="volume")instrumentLevel=amount;
-   else if(keys[0]==="gain")soundLevel=amount;
-   else if(keys[0]==="pan")next.pan=amount;
-  }
-  if(commit)modify(()=>{
-   for(const [keys,amount] of edits){
-    if(keys[0]==="volume")instrument().volume=amount;
-    else if(keys[0]==="gain")sound().gain=amount;
+
+ renderSoundInspectorCore({
+  instrument:inst,sound:entry,context:beat,
+  modulesRoot:$("synth-editor"),scopeRoot:$("sound-visualizer"),
+  volumeRoot:$("instrument-volume-dial"),gainRoot:$("sound-volume-dial"),
+  primaryRoots:primaryKeys.map(key=>$(key)),
+  accent:signal(inst),
+  sampleNames:patch.type==="sample"?patch.zones.map(zone=>
+   beat.samples.find(asset=>asset.id===zone.assetId)?.name||zone.assetId).join(" / "):"",
+  onReplaceSample:()=>openAudioReplace(),
+  onPatchChange:onChange,
+  onLevelChange:(kind,value)=>modify(()=>{
+   if(kind==="volume")instrument().volume=value;
+   else sound().gain=value;
+  }),
+  onStageChange:edits=>modify(()=>{
+   for(const [keys,value] of edits){
+    if(keys[0]==="volume")instrument().volume=value;
+    else if(keys[0]==="gain")sound().gain=value;
     else if(keys[0]==="pan"){
-     sound().patch.pan=amount;sound().patch.presetId="custom";
+     sound().patch.pan=value;
+     sound().patch.presetId="custom";
     }
    }
-  });
-  else scope(next,instrumentLevel*soundLevel);
- };
- stagePanel=illustrateSoundPanel(stageDetails,"stage",stageState(),
-  (path,value)=>stageEdit(path,value,true),
-  (path,value)=>stageEdit(path,value,false),entry.id);
- $("sound-visualizer").append(stagePanel.element);
+  }),
+  onCutoffAutomation:(root,current,source)=>
+   renderCutoffAutomation(root,current,source,block=>{
+    const changed=modify(()=>{
+     if(block)instrument().automation=block;
+     else delete instrument().automation;
+    });
+    if(changed&&playback)message("cutoff movement updates with new notes");
+   })
+ });
  $("remove-instrument").disabled=false;
-  $("remove-instrument").textContent=instrumentDeleteLabel(inst);
+ $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }
 // Song clips use the existing lower Beat editing space, not a second window.
 function renderVocalWorkspace(){
