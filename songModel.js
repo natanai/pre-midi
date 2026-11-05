@@ -257,7 +257,7 @@ export function eventsAtSongStep(song,step){
  if(!nonnegative(step))return [];
  const events=[];
  const beats=new Map(song.beats.map(beat=>[beat.id,beat]));
- const freeformBars=Math.max(1,Math.ceil(songDurationSteps(song)/STEPS_PER_BAR));
+ let freeformBars; // Only resolve the Song extent if an attached freeform lane needs it.
  for(const track of song.tracks){
   if(track.kind!=="beat")continue;
   for(const clip of track.clips){
@@ -269,6 +269,7 @@ export function eventsAtSongStep(song,step){
     events.push({...event,beat,track,clip,songStep:step,beatStep:localStep});
   }
   if(track.freeform){
+   freeformBars??=Math.max(1,Math.ceil(songDurationSteps(song)/STEPS_PER_BAR));
    const source={id:track.id+"-freeform",bpm:song.bpm,
     bars:freeformBars,
     samples:track.freeform.samples};
