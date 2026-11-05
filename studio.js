@@ -72,6 +72,7 @@ let editingNoteEffects = false;
 let selectedChunks = new Map();
 let selectedSlot = { instrumentId: selectedInstrumentId, bar: 0 };
 let history = [], future = [], playback = null, pendingPlay = false, playbackGeneration=0;
+ let songEditRevision=0;
 let vocalTake=null,vocalRequest=false,vocalFinalizing=false,vocalStartStep=0,vocalTargetTrackId=null;
 let voiceCountAbort=null,voiceToken=0;
 let soundPreviewTimer=null;
@@ -318,6 +319,7 @@ function commitChange(before){
  const graphFocus=panel&&focused?.classList.contains("visual-graph-point")?
   {id:panel.dataset.visualId,handle:focused.dataset.handle}:null;
  history.push(before);
+ songEditRevision++;
  if(history.length>100)history.shift();
  future=[];store();render();
  if(graphFocus){
@@ -392,7 +394,7 @@ function undo() {
  if (!history.length) return;
  closePicker();
  future.push(snapshot(currentDocument()));
- restoreDocument(history.pop());
+ restoreDocument(history.pop());songEditRevision++;
  store();
  render();
  refreshNativePlayback();
@@ -401,7 +403,7 @@ function redo() {
  if (!future.length) return;
  closePicker();
  history.push(snapshot(currentDocument()));
- restoreDocument(future.pop());
+ restoreDocument(future.pop());songEditRevision++;
  store();
  render();
  refreshNativePlayback();
@@ -1597,7 +1599,7 @@ async function startTransport({onStart=null,recording=false,startStep=null,count
  const playingSong=!!(song&&songExpanded),generation=++playbackGeneration;
  try {
   const session = await play(() => playingSong?song:beat, {
-   countIn,recording:captureOwner,onCountIn,
+   countIn,recording:captureOwner,onCountIn,getRevision:()=>songEditRevision,
    onStart:metadata=>onStart?.(metadata),
    startStep:playingSong?(startStep??songUI?.getStartStep()??0):0,
    loop: () => recording?false:$("loop").checked,
