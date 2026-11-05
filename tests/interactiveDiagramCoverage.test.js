@@ -272,3 +272,24 @@ test("educational Sound axes disclose the real units used by their controls",()=
  assert.equal(axesFor(stage,["volume"]).unit,"percent");
  assert.equal(axesFor(stage,["gain"]).unit,"percent");
 });
+
+test("pitched stage illustrates stereo and both multiplicative gain controls across pages",()=>{
+ const pitched={type:"stage",layout:"pitched",volume:.64,gain:.75,pan:-.25};
+ assert.equal(diagramPageCount(pitched,"stage"),2);
+ const stereo=diagram(pitched,"stage",0);
+ requirePaths(new Set(stereo.handles.flatMap(h=>h.axes.map(a=>key(a.path)))),
+  ["pan","volume"],"stereo position");
+ assert.ok(pairs(pitched,"stage").length===1);
+ const levels=diagram(pitched,"stage",1);
+ requirePaths(new Set(levels.handles.flatMap(h=>h.axes.map(a=>key(a.path)))),
+  ["volume","gain"],"pitched Sound gain staging");
+ assert.equal(levels.handles[0].axes.length,2,
+  "instrument level and Sound gain remain a simultaneous X/Y edit");
+ assert.ok(levels.labels.some(item=>item.value==="total 48%"),
+  "gain diagram shows their real product, not their sum");
+ const adjusted={...pitched,gain:.5};
+ assert.notEqual(diagram(adjusted,"stage",1).handles[0].y,levels.handles[0].y,
+  "the Sound gain dial has its own visual position");
+ assert.equal(diagramPageCount({...pitched,layout:"levels"},"stage"),1);
+ assert.equal(diagramPageCount({...pitched,layout:"rack"},"stage"),1);
+});
