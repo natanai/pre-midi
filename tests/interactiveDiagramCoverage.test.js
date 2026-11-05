@@ -9,6 +9,8 @@ import {vocalChangesFromControl} from "../vocalAudioView.js";
 import {DEFAULT_SAMPLE_FILTER} from "../audioEffects.js";
 
 const key=path=>path.join(".");
+const axesFor=(graph,path)=>graph.handles.flatMap(handle=>handle.axes)
+ .find(axis=>key(axis.path)===key(path));
 const handles=(patch,kind)=>Array.from({length:diagramPageCount(patch,kind)},
  (_,page)=>diagram(patch,kind,page).handles).flat();
 const actions=(patch,kind)=>Array.from({length:diagramPageCount(patch,kind)},
