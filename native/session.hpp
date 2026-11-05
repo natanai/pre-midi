@@ -36,27 +36,67 @@ class Session {
  // An external control owner MUST retain each lease past its final active
  // Voice/release (and eventual effects) retirement, not just metadata ACK.
  bool streamed=false,streamLast=false;
- const PreparedNote* streamNotes=nullptr;
- std::size_t streamCount=0,streamNext=0;
- std::uint64_t streamBaseFrame=0,streamEndFrame=0,streamSequence=0;
+ struct StreamOnset{
+  const PreparedNote* note=nullptr;
+  std::uint64_t frame=0,baseFrame=0,order=0;
+  int delay=-1;
+ };
+ // Fixed no-allocation priority queue for a note whose authored source page
+ // ends before a positive strum/timing offset makes it audible. Later pages
+ // enter the SAME queue; a voice starts once, at its real native frame.
+ static constexpr std::size_t streamPendingLimit=4096;
+ std::array<StreamOnset,streamPendingLimit> streamPending{};
+ std::size_t streamPendingCount=0;
+ std::uint64_t streamBaseFrame=0,streamSpawnBase=0,streamEndFrame=0,
+  streamSequence=0,streamOrder=0;
+ static bool onsetEarlier(const StreamOnset& a,const StreamOnset& b)noexcept{
+  return a.frame<b.frame||(a.frame==b.frame&&a.order<b.order);
+ }
+ void insertPending(StreamOnset item)noexcept{
+  auto i=streamPendingCount++;
+  streamPending[i]=item;
+  while(i){
+   const auto parent=(i-1)/2;
+   if(!onsetEarlier(streamPending[i],streamPending[parent]))break;
+   std::swap(streamPending[i],streamPending[parent]);i=parent;
+  }
+ }
+ void removePending()noexcept{
+  if(!streamPendingCount)return;
+  const auto last=streamPending[--streamPendingCount];
+  if(!streamPendingCount)return;
+  streamPending[0]=last;
+  std::size_t parent=0;
+  for(;;){
+   const auto left=parent*2+1,right=left+1;
+   if(left>=streamPendingCount)break;
+   auto child=left;
+   if(right<streamPendingCount&&onsetEarlier(streamPending[right],streamPending[left]))
+    child=right;
+   if(!onsetEarlier(streamPending[child],streamPending[parent]))break;
+   std::swap(streamPending[child],streamPending[parent]);parent=child;
+  }
+ }
  std::uint64_t frameAt(double seconds)const noexcept{return static_cast<std::uint64_t>(std::ceil(seconds*rate-1e-9));}
  void expire(std::uint64_t at)noexcept{
   for(auto& s:voices)if(s.voice&&s.end<=at)s.voice.reset();
   for(auto& s:retiring)if(s.voice&&s.fadeEnd<=at)s.voice.reset();
+  if(streamed)releasedThrough.store(at,std::memory_order_release);
  }
  std::uint64_t upcoming(unsigned stream,bool loop)const noexcept{
   if(streamed){
-   if(stream!=0||streamNext>=streamCount)return UINT64_MAX;
-   return streamBaseFrame+frameAt(streamNotes[streamNext].plan.start);
+   if(stream!=0||!streamPendingCount)return UINT64_MAX;
+   return streamPending[0].frame;
   }
   if(next[stream]>=notes.size()||(!loop&&cycles[stream]>stopCycle))return UINT64_MAX;
   return frameAt(cycles[stream]*cycleSeconds+notes[next[stream]].plan.start);
  }
  void advance(unsigned stream,bool loop)noexcept{
-  if(streamed){++streamNext;return;}
+  if(streamed){removePending();return;}
   if(++next[stream]>=notes.size()&&loop){next[stream]=0;cycles[stream]+=2;}
  }
- void spawn(const PreparedNote& note,std::uint64_t cycle,std::uint64_t at)noexcept{
+ void spawn(const PreparedNote& note,std::uint64_t cycle,std::uint64_t at,
+  int mappedDelay=-2)noexcept{
   Slot* free=nullptr;for(auto& s:voices)if(!s.voice){free=&s;break;}
   if(!free){
    free=&voices[0];for(auto& s:voices){
@@ -73,14 +113,14 @@ class Session {
    }
    stolen++;
   }
-  free->plan=note.plan;free->delay=note.delay;free->drive=note.prepared.drive;free->lfo=note.prepared.lfoBank;const double shift=streamed?static_cast<double>(streamBaseFrame)/rate:cycle*cycleSeconds;
+  free->plan=note.plan;free->delay=mappedDelay==-2?note.delay:mappedDelay;free->drive=note.prepared.drive;free->lfo=note.prepared.lfoBank;const double shift=streamed?static_cast<double>(streamSpawnBase)/rate:cycle*cycleSeconds;
   auto& p=free->plan;p.start+=shift;p.off+=shift;p.sourceEnd+=shift;p.graphEnd+=shift;
   if(p.version>=4)p.sweepEnd+=shift;
   for(unsigned i=0;i<p.eventCount;i++)p.events[i].time+=shift;
   for(unsigned i=0;i<p.automationCount;i++)p.automation[i].time+=shift;
   free->banks=note.banks;free->start=at;free->off=frameAt(p.off);free->end=frameAt(p.graphEnd);free->order=++serial;
   free->voice.emplace(p,rate,free->banks,at,&note.prepared,nullptr,nullptr,free->channels);admitted++;
-  if(note.delay>=0)tailEnd=std::max(tailEnd,frameAt(p.graphEnd+buses[note.delay].tail));
+  if(free->delay>=0)tailEnd=std::max(tailEnd,frameAt(p.graphEnd+buses[free->delay].tail));
  }
  void mix(float* output,unsigned frames)noexcept{
   std::array<float,2*renderBlock> scratch{};
@@ -107,6 +147,10 @@ public:
  unsigned state=playing;std::uint64_t admitted=0,stolen=0;
  std::atomic<std::uint64_t> position{0},active{0},fault{0},stateView{playing};
  std::atomic<std::uint64_t> leadRemaining{0};
+ // RT callback watermark published only AFTER expiring old Voice owners.
+ // Control may release a page lease only after its graph/effect lifetime and
+ // this watermark have both advanced beyond the lease horizon.
+ std::atomic<std::uint64_t> releasedThrough{0};
  unsigned lastLeadFrames=0,lastMusicFrames=0;
  // Prepared handoff clock; read only by the callback after publication.
  Session* alignSource=nullptr;std::uint64_t alignOldFrame=0;
@@ -183,6 +227,24 @@ public:
   streamed=true;
  }
 
+ // CONTROL thread only: install the complete shared-effect recipe catalog
+ // before publication. No allocation or vector mutation is permitted after
+ // the native callback starts consuming page instructions.
+ int registerStreamingDelay(double mix,double time,double feedback){
+  require(streamed&&!streamSequence&&cursor==0,
+   "Native shared delay recipes must be installed before the stream starts");
+  require(std::isfinite(mix)&&std::isfinite(time)&&std::isfinite(feedback)&&
+   mix>0&&mix<=1&&time>=.04999999&&time<=1&&feedback>=0&&feedback<=.80000002,
+   "Invalid native streaming delay recipe");
+  for(unsigned i=0;i<buses.size();i++)
+   if(buses[i].mix==mix&&buses[i].time==time&&buses[i].feedback==feedback)
+    return static_cast<int>(i);
+  require(buses.size()<32,"Native streaming Song exceeds 32 shared delay buses");
+  const auto tail=Delay::tail(mix,time,feedback);
+  buses.push_back({mix,time,feedback,tail,Delay(mix,time,feedback,rate),{}});
+  return static_cast<int>(buses.size()-1);
+ }
+
  // CALLBACK thread only, after a matching PageMailbox ACK and before
  // rendering that page. Input is an immutable view into a pinned C++ lease.
  // The current first slice intentionally refuses delayed strums whose audible
@@ -194,18 +256,37 @@ public:
   if(!streamed||state!=playing||error||descriptor.sequence!=streamSequence+1||
      descriptor.startFrame!=cursor||descriptor.endFrame<=descriptor.startFrame||
      !descriptor.prepared||descriptor.onsets!=prepared.size()||
-     prepared.size()>4096||(streamSequence&&streamNext!=streamCount))
+     prepared.size()>streamPendingLimit||
+     prepared.size()>streamPendingLimit-streamPendingCount)
    return fail();
-  if(!prepared.empty()){
-   const auto& first=prepared.front(),&last=prepared.back();
-   if(first.plan.start<0||last.plan.start<first.plan.start||
-      streamBaseFrame>descriptor.startFrame||
-      frameAt(last.plan.start)>=descriptor.endFrame-descriptor.startFrame)
+  // Validate the whole page before mutating the priority queue. Positive
+  // strum offsets may cross into following pages; bound the lookahead to one
+  // real-time second and fail closed on a larger unsupported displacement.
+  std::uint64_t previous=0;
+  for(const auto& item:prepared){
+   if(item.plan.start<0||((item.delay>=0)!=(item.plan.delayMix>0)))return fail();
+   const auto offset=frameAt(item.plan.start);
+   if(offset<previous||offset>descriptor.endFrame-descriptor.startFrame+rate)
     return fail();
-   for(const auto& item:prepared)
-    if(item.delay>=0||item.plan.delayMix>0)return fail();
+   if(item.plan.delayMix>0){
+    bool found=false;
+    for(const auto& bus:buses)
+     if(bus.mix==item.plan.delayMix&&bus.time==item.plan.delayTime&&
+        bus.feedback==item.plan.delayFeedback){found=true;break;}
+    if(!found)return fail();
+   }
+   previous=offset;
   }
-  streamNotes=prepared.data();streamCount=prepared.size();streamNext=0;
+  for(const auto& item:prepared){
+   const auto onset=descriptor.startFrame+frameAt(item.plan.start);
+   if(onset<descriptor.startFrame||onset>UINT64_MAX-rate)return fail();
+   int delay=-1;
+   if(item.plan.delayMix>0)
+    for(unsigned i=0;i<buses.size();i++)
+     if(buses[i].mix==item.plan.delayMix&&buses[i].time==item.plan.delayTime&&
+        buses[i].feedback==item.plan.delayFeedback){delay=static_cast<int>(i);break;}
+   insertPending({&item,onset,descriptor.startFrame,++streamOrder,delay});
+  }
   streamBaseFrame=descriptor.startFrame;
   streamEndFrame=descriptor.endFrame;
   streamLast=descriptor.last;streamSequence=descriptor.sequence;
@@ -256,7 +337,11 @@ public:
    expire(cursor);
    for(;;){const auto a=upcoming(0,loop),b=upcoming(1,loop);const unsigned stream=a<=b?0:1;const auto at=std::min(a,b);if(at>cursor)break;
     if(!onsetBudget){error=2;break;}--onsetBudget;
-    if(streamed)spawn(streamNotes[streamNext],0,cursor);
+    if(streamed){
+     const auto item=streamPending[0];
+     streamSpawnBase=item.baseFrame;
+     spawn(*item.note,0,cursor,item.delay);
+    }
     else spawn(notes[next[stream]],cycles[stream],cursor);
     advance(stream,loop);if(error)break;
    }
