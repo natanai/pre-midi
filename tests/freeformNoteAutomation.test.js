@@ -43,6 +43,11 @@ test("both curve handles change the same source curve without changing its phase
  assert.equal(first.block.points[0].step,23,"Begin handle may not cross end handle");
  const second=editFreeformNoteCutoff(first,["points",1,"step"],3);
  assert.equal(second.block.points[1].step,24,"End handle may not cross begin handle");
+ const movedBoth=editFreeformNoteCutoff(captured,
+  [["points",1,"step"],["points",1,"value"]],[20,1700]);
+ assert.equal(movedBoth.block.points[1].step,20);
+ assert.equal(movedBoth.block.points[1].value,1700);
+ assert.deepEqual(captured,prior,"Two-axis edits preserve the source undo snapshot");
  assert.throws(()=>editFreeformNoteCutoff(first,["points",1,"value"],10),
   /cutoff|automation|unsupported|Hz|values/i);
 });
