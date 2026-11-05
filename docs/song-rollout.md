@@ -21,15 +21,15 @@ This is the Song-specific historical rollout and integration plan; the active sy
 
 ### Desktop Song/freeform completion checkpoint (2026-11-04)
 
-**Overall estimate: 90%.** This is an equal-weight average across the seven categories inherited from the earlier implementation scorecard, rounded to the nearest percentage point. It is **not** a percentage of passing tests or a claim of physical Windows 11 acceptance. The scope here is the desktop browser and native Windows Song/freeform rollout only; phone parity, the separate vocal-completion roadmap, and the pre-programmed game-side player are excluded.
+**Overall estimate: 91%.** This is an equal-weight average across the seven categories inherited from the earlier implementation scorecard, rounded to the nearest percentage point. It is **not** a percentage of passing tests or a claim of physical Windows 11 acceptance. The scope here is the desktop browser and native Windows Song/freeform rollout only; phone parity, the separate vocal-completion roadmap, and the pre-programmed game-side player are excluded.
 
 | Category | Estimated completion | Evidence / remaining gate |
 | --- | ---: | --- |
 | Beat length and Song timing | 95% | 1–64 bars, source-phase repeats and partial Clip offsets qualified; physical playback observation remains |
-| Freeform data, Instruments and .premidi | 95% | Versioned freeform, Sounds, samples and ZIP round trips |
+| Freeform data, Instruments and .premidi | 98% | Versioned freeform, Sounds, samples and ZIP round trips; PR #148 duplicate, reorder and remove workflows preserve independent IDs and shared assets |
 | Beat → freeform conversion | 90% | Source-linked full/partial unpack, long notes and captured automation; remaining unusual boundary/ownership workflows |
 | Freeform → reusable Beat | 95% | PRs #140 and #141 keep multi-bar sustained notes and per-note cutoff envelopes |
-| Desktop editing, Sounds and effects | 96% | Shared Sound editor, accessible attached lanes and PR #142 collision editor; PR #147 direct note cutoff illustration and numeric controls passed Chrome and native CI; remaining full Instrument workflows |
+| Desktop editing, Sounds and effects | 99% | Shared Sound editor, attached lanes, PR #142 collision editor, PR #147 direct note cutoff controls and PR #148 complete Instrument lifecycle, with Chrome/native CI; real Windows 11 usability observation remains |
 | Browser/native playback and long-Song performance | 87% | PR #143 sparse scheduling plus browser/native parity CI; native 10-minute/4,096-onset limits remain |
 | Windows portable release and final reliability | 70% | PR #145 packaged Windows Server 2022 and relocation smoke passed; preview.16 is published from exact main source with ZIP and SHA256SUMS; physical Windows 11 listening, device/recording and usability acceptance pending |
 
