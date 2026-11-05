@@ -292,10 +292,10 @@ test("a silent second oscillator remains directly editable from the mix illustra
  assert.ok(active.paths.some(line=>line.links?.includes("oscillators.1.level")),
   "the second waveform is linked to its real level parameter");
  const modulated=structuredClone(patch);
- modulated.modulation.routes=[{
+ modulated.modulation={version:1,routes:[{
   id:"osc-level",source:defaultSource("lfo"),target:"oscillators.1.level",
   unit:"linear_gain",depth:.5,polarity:"unipolar",smoothing:.005
- }];
+ }]};
  assert.ok(diagram(modulated,"oscillators").actions.some(item=>
   key(item.path)==="oscillators.1.level"),
   "a base-level edit must also be reachable when modulation enables the oscillator");
