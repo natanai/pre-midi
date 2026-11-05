@@ -85,6 +85,25 @@ test("recorded sounds and ADSR use compatible editable graphs",()=>{
  assert.ok(axesFor(diagram(synth(),"envelope"),["envelope","sustain"]));
 });
 
+test("sample attack and release illustration distinguishes key-off from one-shot source tail",()=>{
+ const base={...synth(),type:"sample",attack:.3,release:.7,
+  oneShot:false,followPitch:true};
+ const keyed=diagram(base,"sample");
+ const oneShot=diagram({...base,oneShot:true},"sample");
+ assert.ok(keyed.labels.some(label=>label.value==="off"),
+  "keyed samples end their hold/release at key-off");
+ assert.ok(!keyed.labels.some(label=>label.value==="tail"));
+ assert.ok(oneShot.labels.some(label=>label.value==="tail"),
+  "one-shot samples ignore note-off and naturally enter their source tail");
+ assert.ok(!oneShot.labels.some(label=>label.value==="off"));
+ for(const graph of [keyed,oneShot]){
+  assert.ok(axesFor(graph,["attack"]));
+  assert.ok(axesFor(graph,["release"]));
+  assert.equal(graph.handles.length,2,
+   "attack and release remain editable in both sampler modes");
+ }
+});
+
 test("distortion has its own response curve and drive control",()=>{
  const patch=synth(),first=diagram(patch,"distortion");
  assert.ok(axesFor(first,["effects","drive"]));

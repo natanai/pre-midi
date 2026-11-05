@@ -316,7 +316,11 @@ export const diagram=(patch,type,page=0)=>{
   }
   handle(releaseX,90,[axis([...prefix,"release"],.01,releaseMax,"linearX",
    {from:248,to:343,step:.01,unit:"s"})],"release");
-  tag(18,14,"on");tag(248,14,"off");
+  tag(18,14,"on");
+  // Keyed Sounds release on note-off, but a one-shot recording ignores the
+  // key release and fades near its natural/source-region end. Calling the
+  // latter 'off' teaches the wrong playback behavior.
+  tag(248,14,sample&&p.oneShot?"tail":"off");
   if(sample){
    const gain=clamp(p.gain??.9,0,2),transpose=p.transpose??0,pan=p.pan??0;
    const vocal=p.type==="vocal",strum=p.strumMs??0,root=p.zones?.[0]?.root??60;
