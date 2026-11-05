@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+const packageVersion=JSON.parse(readFileSync(new URL("../package.json",import.meta.url),"utf8")).version;
 
 const roadmap=JSON.parse(readFileSync(new URL("../docs/synthesis-roadmap.json",import.meta.url),"utf8"));
 const ids=new Map(roadmap.tasks.map(task=>[task.id,task]));
@@ -34,6 +35,13 @@ test("synthesis roadmap is a valid machine-readable task graph",()=>{
   visiting.delete(id);visited.add(id);
  };
  for(const id of ids.keys())visit(id);
+});
+test("current desktop release and native streaming gap are machine readable",()=>{
+ const desktop=roadmap.tasks.find(task=>task.id==="SYN-018")?.desktop_preview;
+ assert.equal(desktop?.preview_version,packageVersion,"Roadmap preview version must match package.json");
+ assert.match(roadmap.native_extended_execution.song_streaming.stage,/JavaScript Song feeder/i);
+ assert.equal(roadmap.native_extended_execution.song_streaming.shipping_limit_seconds,600);
+ assert.equal(roadmap.native_extended_execution.song_streaming.shipping_limit_onsets,4096);
 });
 test("native-first policy is explicit and the web is not a quality ceiling",()=>{
  const hosts=roadmap.platform_policy;

@@ -1,5 +1,7 @@
 # Tauri desktop host and release operations
 
+**Current release snapshot (2026-11-05):** immutable `v0.14.1-preview.19` is the published unsigned/manual Windows x64 ZIP, qualified by [exact-tag Windows CI](https://github.com/natanai/pre-midi/actions/runs/42087985416). Newer source adds experimental miniaudio C ABI/Rust streaming endpoints through #192, but no JS Song-page feeder and no newer packaged ZIP. Preview.1–.4 examples below are **historical**, not current installation instructions. For current limits see [Song stabilization](song-stabilization-handoff-2026-11-05.md). Physical Windows 11 hardware and signed automatic installation remain unqualified.
+
 Tauri is the chosen desktop framework, at Nat's request. The studio remains the same HTML/CSS/JavaScript dependency graph as GitHub Pages, embedded with all 122 pinned sample assets. There is no hosted-site dependency or UI rewrite. The authoritative product version is package.json; Tauri reads that file directly and Settings reads the running app's metadata. desktop/Cargo.toml and Cargo.lock are synchronized by the npm version hook; scripts/desktop-config.mjs rejects a mismatch.
 
 **Current preview policy:** publish only the Windows 11 x64 portable ZIP during rapid prototyping. The installer and macOS/Linux package configurations remain available for full-release engineering, but are not published by the preview workflow. Cross-platform native code and canonical music semantics remain shared. Earlier releases are historical builds, not the current preview target.

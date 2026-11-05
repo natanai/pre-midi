@@ -1,5 +1,7 @@
 # pre-midi vs professional synthesizers — source-based capability audit (2026-10-28)
 
+> **Historical preview.4 comparison.** Native sample racks/vocals, noise, drive, delay, movement, bounded live editing, offline WAV and native capture were implemented after this audit. Professional sound-design gaps (e.g. morphing wavetables, richer routing, MIDI/MPE, mastering tools) still merit investigation, but the preview.4 support column is no longer a current capability inventory. Refer to [synthesis roadmap](synthesis-roadmap.json) and [native audio](native-audio.md) before assigning new work. Keep historical evidence rather than deleting it.
+
 **Baseline:** `10ea09ecdb871d6312f67f95a84f7273a082ef79` (source inspection, not a hands-on Windows listening test). This compares broad capability categories found in professional software instruments such as Vital, Serum, Phase Plant, Pigments, and Kontakt. It does **not** assert feature-for-feature compatibility with any particular current product version.
 
 ## Important distinction
