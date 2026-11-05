@@ -287,6 +287,10 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
   if(preview)onPreview(current);
  }
  update(value);
+ // An educational diagram is a second input surface for this exact control.
+ // Let it mirror preview values without emitting a second preview/commit or
+ // triggering another undo entry. The ordinary dial remains fully editable.
+ control.setDialDisplayValue=next=>update(next,false);
  const moveTo=(t)=>update(fromFraction(t,field),true);
  let pointerStart=null,startFraction=0,startValue=value;
  knob.addEventListener("pointerdown",event=>{
