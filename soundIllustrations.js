@@ -633,7 +633,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  const summary=details.querySelector("summary");
  if(summary)summary.after(area);else details.prepend(area);
  wrapper.append(details);
- let active=null,latestPatch=patch,visibleHandles=[],activeLink=null;
+ let active=null,latestPatch=patch,visibleHandles=[],visibleActions=[],activeLink=null;
  const setValue=(next,path,value)=>{
   const ownerPath=path.slice(0,-1);let owner=next;
   for(const key of ownerPath)owner=owner[key]??={};
@@ -654,7 +654,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
     (page+1)+" / "+count;
   }else pages.hidden=true;
   const {paths,handles,labels,actions,color}=diagram(current,kind,page);
-  visibleHandles=handles;
+  visibleHandles=handles;visibleActions=actions;
   // Rebuilding the diagram for live previews must not steal keyboard focus.
   const focusedHandle=handlesRoot.contains(document.activeElement)?
    document.activeElement.dataset.handle:null;
@@ -785,8 +785,24 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  }
  graphic.addEventListener("click",event=>{
   const hit=event.target.closest?.(".visual-graph-hit");
-  const keys=hit?.dataset.soundLinks?.split("|")??[];
-  focusFeature(keys);
+  if(hit){focusFeature(hit.dataset.soundLinks.split("|"));return;}
+  // Empty drawing space is still a route to the nearest real control.
+  // Do not alter a Sound by clicking the background. Direct edits remain
+  // on the explicit point/action surfaces above the SVG.
+  const rect=graphic.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  const x=(event.clientX-rect.left)/rect.width*360;
+  const y=(event.clientY-rect.top)/rect.height*112;
+  const candidates=[
+   ...visibleHandles.map(point=>({x:point.x,y:point.y,
+    keys:point.axes.map(axis=>axis.path.join("."))})),
+   ...visibleActions.map(item=>({x:item.x,y:item.y,
+    keys:item.path[0]==="audioFilterBypassed"?["filter.type"]:
+     [item.path.join(".")]}))
+  ];
+  const nearest=candidates.sort((a,b)=>
+   (a.x-x)**2+(a.y-y)**2-(b.x-x)**2-(b.y-y)**2)[0];
+  if(nearest)focusFeature(nearest.keys);
  });
  graphic.addEventListener("keydown",event=>{
   if(!["Enter"," "].includes(event.key))return;
