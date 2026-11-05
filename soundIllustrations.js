@@ -946,6 +946,11 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   dragReadout.hidden=commit;
   const key=paths.length===1?paths[0]:paths;
   const value=paths.length===1?values[0]:values;
+  if(commit&&paths.every((path,i)=>values[i]===at(patch,path))){
+   // A painted gesture that returns to its exact authored partial values
+   // must restore transient audio/knobs without creating an empty undo step.
+   draw(patch);onPreview(key,value);return;
+  }
   if(commit)onChange(key,value);else onPreview(key,value);
  };
  const apply=(point,position,commit)=>{
@@ -963,6 +968,11 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   // Two axes are one sound edit and one undo step, never two disconnected edits.
   const key=paths.length===1?paths[0]:paths;
   const value=paths.length===1?values[0]:values;
+  if(commit&&paths.every((path,i)=>values[i]===at(patch,path))){
+   // The user may change their mind mid-gesture and return to the start.
+   // An identical final value is not a Sound edit or a new history entry.
+   draw(patch);onPreview(key,value);return;
+  }
   if(commit)onChange(key,value);else onPreview(key,value);
  };
  area.addEventListener("pointerdown",event=>{
@@ -1049,7 +1059,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const snapped=Math.round((current+dir*step)/selected.step)*selected.step;
   const next=clamp(Number(snapped.toFixed(4)),
    selected.hardMin??selected.min,selected.hardMax??selected.max);
-  onChange(selected.path,next);
+  if(next!==current)onChange(selected.path,next);
  });
  if(zoomId===id){wrapper.classList.add("zoomed");expand.textContent="−";}
  draw(patch);wrapper.drawSoundIllustration=draw;
