@@ -40,7 +40,6 @@ int main(){
    PageMailbox mailbox(91,7,0);
    const auto one=page(1,0,64),two=page(2,64,128),final=page(3,128,192,true);
    check(mailbox.publish(one)&&mailbox.publish(two)&&mailbox.publish(final),"Three bounded pages were not published");
-   check(!mailbox.publish(page(4,192,256)),"Mailbox overran three prepared slots");
    check(mailbox.advance(0)==PageResult::playing&&mailbox.ackSequence()==1,
     "First page must be acknowledged at the exact absolute frame");
    check(mailbox.framesUntilBoundary(0,128)==64&&mailbox.framesUntilBoundary(63,128)==1,
@@ -56,6 +55,23 @@ int main(){
    check(mailbox.advance(192)==PageResult::finished,"Finished transport must be sticky");
    check(mailbox.reclaim()==2,"Control must safely reclaim the remaining retired pages");
    mustReject(mailbox,page(4,192,256));
+  }
+  {
+   PageMailbox mailbox(91,7,0);
+   check(mailbox.publish(page(1,0,64))&&
+    mailbox.publish(page(2,64,128))&&
+    mailbox.publish(page(3,128,192)),"Mailbox capacity fixture failed");
+   check(!mailbox.publish(page(4,192,256)),
+    "All three control/callback slots must enforce backpressure");
+   check(mailbox.advance(0)==PageResult::playing&&
+    mailbox.advance(64)==PageResult::playing,"Capacity fixture did not advance");
+   check(mailbox.reclaim()==1,"Retired capacity slot was not reclaimed");
+   check(mailbox.publish(page(4,192,256,true)),
+    "Reclaimed slot must accept the same not-yet-published sequence");
+   check(mailbox.advance(128)==PageResult::playing&&
+    mailbox.advance(192)==PageResult::playing&&
+    mailbox.advance(256)==PageResult::finished,
+    "Reclaimed slot changed page order or terminal state");
   }
   {
    PageMailbox mailbox(91,7,100);
