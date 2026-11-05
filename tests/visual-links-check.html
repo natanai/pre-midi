@@ -109,6 +109,11 @@ frame.addEventListener("load",async()=>{
   stageHit.dispatchEvent(new frame.contentWindow.MouseEvent("click",{bubbles:true}));
   assert("stage illustration focuses original instrument volume knob",
    !!doc.activeElement.closest("#instrument-volume-dial"));
+  const {auditSoundVisualCoverage}=await import("./visualControlInventory.js");
+  const mounted=auditSoundVisualCoverage(get("sound-section"),{context:"live Beat Sound"});
+  assert("live Beat editor has discoverable sound controls",mounted.summary.controls>0);
+  assert("live Beat Sound has zero unlinked sound controls: "+JSON.stringify(mounted.missing),
+   mounted.missing.length===0);
   status="PASS";
  }catch(error){checks.error=String(error.stack||error)}
  doc.documentElement.dataset.visualLinks=status;
