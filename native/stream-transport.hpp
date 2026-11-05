@@ -54,7 +54,7 @@ class StreamTransport final {
  StreamTransport& operator=(const StreamTransport&)=delete;
  unsigned rate()const noexcept{return rate_;}
  unsigned state()const noexcept{return paused.load(std::memory_order_acquire)?
-  premidi::paused:player->stateView.load(std::memory_order_acquire);}
+  static_cast<unsigned>(premidi::paused):player->stateView.load(std::memory_order_acquire);}
  void setPaused(bool value)noexcept{paused.store(value,std::memory_order_release);}
  std::uint64_t acknowledgment()const noexcept{return mailbox.ackSequence();}
  std::uint64_t acknowledgmentEnd()const noexcept{return mailbox.ackEndFrame();}
