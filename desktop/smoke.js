@@ -218,6 +218,44 @@
    JSON.stringify(editableSource)===sourceBefore&&
    !songs.validateSong(advancedReopen).length,
    'removing a duplicate restores exact native audio plans and original Instrument state');
+  // Reusing a Chunk must remain source-linked across irregular, overlapping
+  // repetitions in the real portable WebView/C++ audio host. No Web Audio fallback.
+  const originalPlacementPlans=signature(advancedReopen);
+  const chunkSource=editableSource.chunks[0];
+  assert(chunkSource?.notes?.length>0,'Unpacked automated Beat retains a reusable source Chunk');
+  const originalChunkSource=JSON.stringify(chunkSource);
+  const placedChunk=freeforms.addFreeformChunkPlacement(editableSource,chunkSource.id,64,{
+   length:16,every:12,repeats:2
+  });
+  const firstPlacementPlans=signature(advancedReopen);
+  assert(firstPlacementPlans!==originalPlacementPlans&&
+   !songs.validateSong(advancedReopen).length,
+   'native portable Song schedules newly placed reusable Chunk notes');
+  freeforms.editFreeformChunkPlacement(editableSource,placedChunk.id,{
+   startStep:65,every:7,repeats:3,length:16
+  });
+  assert(placedChunk.startStep===65&&placedChunk.repeats===3&&
+   placedChunk.every===7&&
+   JSON.stringify(chunkSource)===originalChunkSource,
+   'edited offsets, repetition and polymeter retain the original reusable Chunk');
+  const editedPlacementPlans=signature(advancedReopen);
+  assert(editedPlacementPlans!==firstPlacementPlans&&
+   !songs.validateSong(advancedReopen).length,
+   'native voices update from the exact edited Song-time placement');
+  const placementPackage=songFiles.exportSongProject(advancedReopen);
+  const placementRoundtrip=await songFiles.importSongProject(
+   new File([placementPackage.blob],placementPackage.name));
+  assert(!songs.validateSong(placementRoundtrip).length&&
+   signature(placementRoundtrip)===editedPlacementPlans,
+   'portable ZIP round trip retains placed Chunk timing, repeated tails and original source phase');
+  const placementAudio=await wav(placementRoundtrip);
+  assert(placementAudio.size>44,
+   'native C++ WAV renders repeated freeform Chunk instances after project recovery');
+  freeforms.removeFreeformChunkPlacement(editableSource,placedChunk.id);
+  assert(signature(advancedReopen)===originalPlacementPlans&&
+   JSON.stringify(chunkSource)===originalChunkSource&&
+   !songs.validateSong(advancedReopen).length,
+   'removing one placed Chunk restores the source native audio plan and all reusable notes');
   await saveDraft(beat);
   assert(JSON.parse(await loadDraft()).instruments[0].chunks[0].notes.length===1,'IndexedDB draft transaction');
   localStorage.setItem('premidi-smoke-preset',JSON.stringify(inst.sounds[0].patch));
