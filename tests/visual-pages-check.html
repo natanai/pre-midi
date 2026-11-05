@@ -13,7 +13,7 @@ import {defaultSource} from "../src/dsp/modulation.js";
 import {auditSoundVisualCoverage} from "./visualControlInventory.js";
 import {renderAudioDelayControls} from "../audioControlUI.js";
 import {vocalDisplayPatch} from "../vocalAudioView.js";
-import {illustrateSoundPanel} from "../soundIllustrations.js";
+import {illustrateSoundPanel,diagram} from "../soundIllustrations.js";
 import {modeledFilterMagnitude} from "../filterIllustrationResponse.js";
 import {createDial} from "../dial.js";
 import {renderVocalEditor} from "../vocalEditor.js";
@@ -415,12 +415,14 @@ try{
  // The real Freeform Sound inspector must preserve level controls and
  // commit through the Song mutation callback, not a standalone diagram fixture.
  const freeformInst=makeInstrument(1,2);
- let freeformUi=null;
+ let freeformUi=null,songTransactions=0;
  const freeformLayer={samples:[]},freeformSong={bpm:120};
  freeformUi=installFreeformSoundUI({
   getSong:()=>freeformSong,getLayer:()=>freeformLayer,
   getInstrument:()=>freeformInst,
-  mutate:edit=>{edit();freeformUi.render();},
+  // This is the real Freeform editor using its Song-owned transaction
+  // adapter; every multi-axis illustration gesture must enter exactly once.
+  mutate:edit=>{songTransactions++;edit();freeformUi.render();},
   onError:()=>{}
  });
  const freeformHost=freeformUi.render();
@@ -460,6 +462,78 @@ try{
   freeformInst.sounds[0].gain<beforeGain);
  const afterFreeform=auditSoundVisualCoverage(freeformHost,{context:"freeform after editing"});
  pass("real Freeform remains fully covered after rerender",afterFreeform.missing.length===0);
+ // Conventional knobs and illustrations must agree in both directions when
+ // mounted through the real Song editor, not only in stand-alone fixtures.
+ const songBrightness=()=>freeformHost.querySelector(
+  '[id$="primary-brightness-dial"] [role="slider"]');
+ const songFilter=()=>freeformHost.querySelector(
+  '.visual-sound-panel[data-visual-kind="filter"] .visual-graph-point');
+ const beforeSongFilter=freeformInst.sounds[0].patch.filter.cutoff;
+ const beforeKnobTransaction=songTransactions;
+ songBrightness().dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowLeft",bubbles:true,cancelable:true
+ }));
+ pass("real Freeform cutoff knob updates its Song-owned Sound exactly once",
+  freeformInst.sounds[0].patch.filter.cutoff<beforeSongFilter&&
+  songTransactions===beforeKnobTransaction+1);
+ const cutoff=freeformInst.sounds[0].patch.filter.cutoff;
+ const expectedFilterX=diagram(freeformInst.sounds[0].patch,"filter").handles[0].x/360*100;
+ pass("real Freeform brightness knob redraws the filter handle at its stored cutoff",
+  Math.abs(parseFloat(songFilter().style.left)-expectedFilterX)<.04&&
+  Number(songBrightness().getAttribute("aria-valuenow"))===cutoff);
+ const beforeIllustrationTransaction=songTransactions;
+ songFilter().dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowRight",bubbles:true,cancelable:true
+ }));
+ pass("real Freeform filter illustration updates the original brightness knob",
+  freeformInst.sounds[0].patch.filter.cutoff>cutoff&&
+  Number(songBrightness().getAttribute("aria-valuenow"))===
+   freeformInst.sounds[0].patch.filter.cutoff&&
+  songTransactions===beforeIllustrationTransaction+1);
+
+ // A two-axis drag must preview both real Song-level knobs with no authored
+ // mutation, then commit Instrument volume and selected Sound gain atomically.
+ const freeformStage=freeformHost.querySelector(
+  '.visual-sound-panel[data-visual-kind="stage"]');
+ const freeformPoint=freeformStage.querySelector(
+  '.visual-graph-point[data-sound-links="volume|gain"]');
+ const freeformArea=freeformStage.querySelector(".visual-panel-area");
+ const freeformGraphic=freeformStage.querySelector(".visual-panel-graph");
+ const baseSongVolume=freeformInst.volume,baseSongGain=freeformInst.sounds[0].gain;
+ const stageXY=diagram({type:"stage",layout:"levels",
+  volume:baseSongVolume,gain:baseSongGain,pan:0},"stage").handles[0];
+ freeformGraphic.getBoundingClientRect=()=>({
+  left:0,top:0,width:360,height:112
+ });
+ freeformArea.setPointerCapture=()=>{};
+ freeformArea.hasPointerCapture=()=>false;
+ freeformArea.releasePointerCapture=()=>{};
+ const liveLevel=selector=>Number(freeformHost.querySelector(
+  selector+' [role="slider"]').getAttribute("aria-valuenow"));
+ const instrumentVolumeSelector='[id$="instrument-volume-dial"]';
+ const soundGainSelector='[id$="sound-volume-dial"]';
+ const beforeDragTransactions=songTransactions;
+ pointer(freeformPoint,"pointerdown",stageXY.x,stageXY.y);
+ pointer(freeformArea,"pointermove",stageXY.x-44,stageXY.y+24);
+ pass("real Song illustration previews both conventional gain knobs without editing history",
+  songTransactions===beforeDragTransactions&&
+  liveLevel(instrumentVolumeSelector)<baseSongVolume&&
+  liveLevel(soundGainSelector)<baseSongGain&&
+  freeformInst.volume===baseSongVolume&&freeformInst.sounds[0].gain===baseSongGain);
+ pointer(freeformArea,"pointerup",stageXY.x-44,stageXY.y+24);
+ pass("real Freeform two-axis drag commits volume and Sound gain in one Song mutation",
+  songTransactions===beforeDragTransactions+1&&
+  freeformInst.volume<baseSongVolume&&freeformInst.sounds[0].gain<baseSongGain);
+ pass("Freeform redraw keeps gain knobs and two-axis illustration synchronized",
+  liveLevel(instrumentVolumeSelector)===freeformInst.volume&&
+  liveLevel(soundGainSelector)===freeformInst.sounds[0].gain&&
+  Math.abs(parseFloat(freeformHost.querySelector(
+   '.visual-sound-panel[data-visual-kind="stage"] .visual-graph-point').style.left)-
+   diagram({type:"stage",layout:"levels",volume:freeformInst.volume,
+    gain:freeformInst.sounds[0].gain,pan:0},"stage").handles[0].x/360*100)<.04);
+ const finalFreeform=auditSoundVisualCoverage(freeformHost,{context:"Freeform bidirectional roundtrip"});
+ pass("live Song illustration roundtrips retain all conventional knob coverage",
+  finalFreeform.missing.length===0);
  freeformHost.remove();
  // Dismissing one Sound must not leave a modal-like dark layer on the next.
  const expand=samplePanel.querySelector(".visual-panel-expand");
