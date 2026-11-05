@@ -191,7 +191,7 @@
   const editableSource=editableLayer.instruments.find(item=>
    item.notes.some(note=>note.cutoffAutomation));
   assert(!!editableSource,'unpacked automated Beat becomes an editable freeform Instrument');
-  const sourceBefore=JSON.stringify(editableSource),originalPlans=signature(advancedReopen);
+  const sourceBefore=JSON.stringify(editableSource),beforeLifecyclePlans=signature(advancedReopen);
   const originalCount=renderEvents(advancedReopen).filter(event=>event.kind==='note').length;
   const cloneInstrument=freeforms.duplicateFreeformInstrument(editableLayer,editableSource.id);
   assert(cloneInstrument.id!==editableSource.id&&
@@ -214,7 +214,7 @@
    editableLayer.instruments.indexOf(editableSource),
    'portable Instrument reorder retains independent Sound identities');
   freeforms.removeFreeformInstrument(editableLayer,cloneInstrument.id);
-  assert(signature(advancedReopen)===originalPlans&&
+  assert(signature(advancedReopen)===beforeLifecyclePlans&&
    JSON.stringify(editableSource)===sourceBefore&&
    !songs.validateSong(advancedReopen).length,
    'removing a duplicate restores exact native audio plans and original Instrument state');
