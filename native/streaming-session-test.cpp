@@ -48,6 +48,9 @@ int main(int argc,char** argv){
    static_cast<double>(frames)/rate,0);
   premidi::Session streamed(empty.data(),empty.size(),rate,1,0);
   streamed.enableStreaming();
+  for(const auto& note:baseline.notes)
+   if(note.plan.delayMix>0)streamed.registerStreamingDelay(
+    note.plan.delayMix,note.plan.delayTime,note.plan.delayFeedback);
   premidi::PageMailbox mailbox(91,7,0);
   std::vector<Page> pages;
   std::uint64_t last=0;

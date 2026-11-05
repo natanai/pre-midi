@@ -23,10 +23,14 @@ try{
   const frames=Math.round(1.1*rate),mid1=nativeFrameAt(.113,rate),
    mid2=nativeFrameAt(.261,rate);
   const keys=makePatch("touch-keys");
-  keys.effects={...keys.effects,drive:0,delayMix:0};
+  keys.effects={...keys.effects,drive:.25,delayMix:.45,delayTime:.073137,delayFeedback:.6};
   keys.envelope={...keys.envelope,release:.22};
   const long=planSynthVoice({patch:keys,volume:.14},
    {pitch:62,velocity:.8},.018,.61);
+  // Authored in page one, but an expressive/strummed positive timing offset
+  // means its actual native onset falls inside page two.
+  const delayed=planSynthVoice({patch:keys,volume:.09},
+   {pitch:55,velocity:.7},.118,.09);
   const short=planSynthVoice({patch:keys,volume:.14},
    {pitch:70,velocity:.7},.305,.17);
   const count=Math.round(.16*rate),pcm=new Float32Array(count*2);
@@ -41,11 +45,11 @@ try{
   const sampler={patch:samplePatch,volume:.16};
   const firstSample=planNativeSample(sampler,{pitch:60,velocity:.9},.159,.05,handles);
   const secondSample=planNativeSample(sampler,{pitch:63,velocity:.65},.413,.05,handles);
-  const full=[long,firstSample,short,secondSample].sort((a,b)=>a.start-b.start);
+  const full=[long,delayed,firstSample,short,secondSample].sort((a,b)=>a.start-b.start);
   const fullPath=join(temp,"full-"+rate+".pms");
   await writeFile(fullPath,encodeNativeSession(full,rate,[asset]));
   const parts=[
-   {begin:0,end:mid1,voices:[long]},
+   {begin:0,end:mid1,voices:[long,delayed]},
    {begin:mid1,end:mid2,voices:[firstSample]},
    {begin:mid2,end:frames,voices:[short,secondSample]}
   ];
