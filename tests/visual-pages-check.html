@@ -42,6 +42,9 @@ try{
  pass("mapping click opens the corresponding sample root",
   document.activeElement.closest("[data-sound-path]")?.dataset.soundPath==="zones.9.root");
  const synth=makePatch("init");
+ // Explicitly start with the second oscillator silent: the factory init
+ // currently uses a nonzero second oscillator level.
+ synth.oscillators[1].level=0;
  synth.modulation={version:1,routes:Array.from({length:9},(_,i)=>({
   id:"visual-route-"+i,source:defaultSource("lfo"),target:"filter.cutoff",
   unit:"octaves",depth:1,polarity:"unipolar",smoothing:.005
