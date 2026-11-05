@@ -133,3 +133,16 @@ test("shared catalog action binding preserves context-specific browser and prese
  assert.deepEqual(actions,[["browse","replace-row"],["save",false]]);
  assert.equal(save.attributes["aria-label"],"save preset");
 });
+
+test("both Sound contexts own no separate catalog or preset action handlers",()=>{
+ const beat=source("studio.js"),freeform=source("freeformSoundUI.js");
+ const core=source("soundInspector.js");
+ assert.match(core,/export function bindSoundInspectorCatalogActions/);
+ assert.match(beat,/bindSoundInspectorCatalogActions\(\{/);
+ assert.match(freeform,/bindSoundInspectorCatalogActions\(\{/);
+ for(const id of ["change-sound","save-sound","save-row-sound","replace-row-sound"]){
+  assert.doesNotMatch(beat,new RegExp('\\$\\("'+id+'"\\)\\.addEventListener\\("click"'));
+ }
+ assert.doesNotMatch(freeform,/button\("browse sounds",\(\)=>onBrowseSound/);
+ assert.doesNotMatch(freeform,/button\("save preset",\(\)=>onSaveSound/);
+});
