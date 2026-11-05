@@ -63,6 +63,10 @@ const pathRange=(count,fn)=>pathFrom(Array.from({length:count},(_,i)=>fn(i/(coun
 // Each page has one legible concept. Detail pages expose every existing knob
 // without reducing, moving, or duplicating the underlying controls.
 export function diagramPageCount(patch,type){
+ // A pitched Instrument has three real stage controls but only two drawing
+ // axes at a time. Preserve the stereo/volume lesson and add a second
+ // volume/sound-level lesson instead of leaving Sound gain knob-only.
+ if(type==="stage")return patch.layout==="rack"||patch.layout==="levels"?1:2;
  if(type==="mapping")return Math.max(1,Math.ceil((patch.zones?.length??0)/4));
  if(type==="modulation"){
   const routes=patch.modulation?.routes??[];
@@ -88,7 +92,7 @@ export const diagram=(patch,type,page=0)=>{
  if(type==="stage"){
   // The overview's measured waveform remains factual PCM. This separate
   // explanatory field makes the level knobs directly editable.
-  const rack=p.layout==="rack",levels=rack||p.layout==="levels",
+  const rack=p.layout==="rack",levels=rack||p.layout==="levels"||page===1,
    volume=clamp(p.volume??1),gain=clamp(p.gain??1),
    pan=clamp(p.pan??0,-1,1);
   // Beat stereo edits pan/volume; freeform's two directly visible level

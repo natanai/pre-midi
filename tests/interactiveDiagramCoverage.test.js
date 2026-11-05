@@ -236,7 +236,8 @@ test("instrument volume is never knob-only; stereo and rack gain use two-axis il
  const rack={type:"stage",layout:"rack",volume:.7,pan:-.3,gain:.85};
  requirePaths(axes(pitched,"stage"),["volume","pan"],"stereo level");
  requirePaths(axes(rack,"stage"),["volume","gain"],"rack gain staging");
- assert.equal(pairs(pitched,"stage").length,1);
+ assert.equal(pairs(pitched,"stage").length,2,
+  "pitched level has both a stereo/volume and a volume/gain two-axis view");
  assert.equal(pairs(rack,"stage").length,1);
  const current=diagram(rack,"stage"),next=diagram({...rack,volume:.3},"stage");
  assert.notDeepEqual(current.handles,next.handles,"rack output level responds to the actual rack-volume knob");
@@ -299,4 +300,25 @@ test("a silent second oscillator remains directly editable from the mix illustra
  assert.ok(diagram(modulated,"oscillators").actions.some(item=>
   key(item.path)==="oscillators.1.level"),
   "a base-level edit must also be reachable when modulation enables the oscillator");
+});
+
+test("pitched stage illustrates stereo and both multiplicative gain controls across pages",()=>{
+ const pitched={type:"stage",layout:"pitched",volume:.64,gain:.75,pan:-.25};
+ assert.equal(diagramPageCount(pitched,"stage"),2);
+ const stereo=diagram(pitched,"stage",0);
+ requirePaths(new Set(stereo.handles.flatMap(h=>h.axes.map(a=>key(a.path)))),
+  ["pan","volume"],"stereo position");
+ assert.ok(pairs(pitched,"stage").length===2);
+ const levels=diagram(pitched,"stage",1);
+ requirePaths(new Set(levels.handles.flatMap(h=>h.axes.map(a=>key(a.path)))),
+  ["volume","gain"],"pitched Sound gain staging");
+ assert.equal(levels.handles[0].axes.length,2,
+  "instrument level and Sound gain remain a simultaneous X/Y edit");
+ assert.ok(levels.labels.some(item=>item.value==="total 48%"),
+  "gain diagram shows their real product, not their sum");
+ const adjusted={...pitched,gain:.5};
+ assert.notEqual(diagram(adjusted,"stage",1).handles[0].y,levels.handles[0].y,
+  "the Sound gain dial has its own visual position");
+ assert.equal(diagramPageCount({...pitched,layout:"levels"},"stage"),1);
+ assert.equal(diagramPageCount({...pitched,layout:"rack"},"stage"),1);
 });

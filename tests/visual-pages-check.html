@@ -279,7 +279,39 @@ try{
   !!stageIllustration.element.querySelector(".visual-graph-label")&&
   [...stageIllustration.element.querySelectorAll(".visual-graph-label")]
    .some(item=>item.textContent==="total 42%"));
- stageRoot.remove();voiceRoot.remove();
+ // Pitched Sounds have THREE actual stage values, not just pan and
+ // instrument volume. Page two teaches the multiplied instrument/Sound levels.
+ const pitchedRoot=document.createElement("section");
+ pitchedRoot.className="sound-section";document.body.append(pitchedRoot);
+ for(const [name,value] of [["volume",.64],["gain",.75]]){
+  const dial=createDial({label:name,min:0,max:1,step:.01,display:"percent"},value,()=>{});
+  dial.dataset.soundPath=name;pitchedRoot.append(dial);
+ }
+ const pitchedDetails=document.createElement("details");pitchedDetails.open=true;
+ pitchedDetails.append(document.createElement("summary"));pitchedRoot.append(pitchedDetails);
+ let pitchedEdit=null;
+ const pitchedPanel=illustrateSoundPanel(pitchedDetails,"stage",{
+  type:"stage",layout:"pitched",volume:.64,gain:.75,pan:-.25
+ },(path,value)=>pitchedEdit={path,value},()=>{},"pitched-gain-coverage");
+ pitchedRoot.append(pitchedPanel.element);
+ const nextStage=pitchedPanel.element.querySelector(
+  'button[aria-label="next stage page"]');
+ pass("pitched stage provides a second educational gain page",!!nextStage&&!nextStage.disabled);
+ nextStage.click();
+ const gainPoint=pitchedPanel.element.querySelector('.visual-graph-point[data-sound-links="volume|gain"]');
+ pass("pitched stage second page edits instrument and Sound level together",
+  !!gainPoint&&gainPoint.getAttribute("aria-description").includes("left/right")&&
+  gainPoint.getAttribute("aria-description").includes("up/down"));
+ pass("pitched Sound stage teaches the multiplied total",
+  [...pitchedPanel.element.querySelectorAll(".visual-graph-label")]
+   .some(item=>item.textContent==="total 48%"));
+ gainPoint.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowDown",bubbles:true,cancelable:true}));
+ pass("pitched stage diagram edits actual Sound gain",pitchedEdit?.path?.join(".")==="gain"&&
+  pitchedEdit.value===.74);
+ const pitchedAudit=auditSoundVisualCoverage(pitchedRoot,{context:"pitched gain staging"});
+ pass("pitched instrument volume and Sound gain are both directly illustrated",
+  pitchedAudit.summary.controls===2&&pitchedAudit.missing.length===0);
+ pitchedRoot.remove();stageRoot.remove();voiceRoot.remove();
  // Check the actual user-facing Vocal editor rather than just its shared
  // delay fixture. Bypassed and active filters have different control surfaces.
  const actualVocal=document.createElement("section");
