@@ -10,6 +10,7 @@ import {createSignalDisplay} from "./soundScope.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {clone} from "./schema.js";
+import {nextRackPreview} from "./rackPreview.js";
 
 const sampleFields=[
  {label:"brightness",path:["filter"],min:50,max:14000,step:1,display:"hz",log:true},
@@ -23,6 +24,32 @@ function stageState(instrument,patch,volume,gain,layout=instrument.layout){
 function entries(path,value){
  return Array.isArray(path?.[0])?path.map((keys,i)=>[keys,value[i]]):[[path,value]];
 }
+// Both Beat and attached freeform use one preview policy. A Rack plays one
+// Sound per click in row order; a pitched Instrument plays the selected Sound.
+// The adapter supplies its own native-aware audio host and error reporting.
+export function auditionSoundInspector({
+ instrument,sound,context,button,previewPositions,play,onError=()=>{},duration=.6
+}){
+ if(!instrument||!sound||!button||typeof play!=="function"||
+  !(previewPositions instanceof Map))
+  throw Error("Sound Inspector audition requires a Sound, host and preview state.");
+ const choice=instrument.layout==="rack"?
+  nextRackPreview(previewPositions,"instrument:"+instrument.id,instrument.sounds):null;
+ const entry=choice?.sound||sound;
+ const label=choice?
+  "hear "+entry.name+" ("+(choice.index+1)+" of "+choice.total+")":
+  "hear current sound";
+ button.dataset.previewSoundId=entry.id;
+ button.title=label;
+ button.setAttribute("aria-label",label);
+ try{
+  // No buffered selection is retained across clicks or context changes.
+  return Promise.resolve(play(instrument,entry.referencePitch,context,{
+   soundId:entry.id,duration
+  })).catch(onError);
+ }catch(error){onError(error);return Promise.resolve();}
+}
+
 export function renderSoundInspectorCore({
  instrument,sound,context,modulesRoot,scopeRoot,
  volumeRoot,gainRoot,primaryRoots,

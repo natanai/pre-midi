@@ -212,7 +212,9 @@ test("freeform Sound editor reuses canonical controls instead of duplicating eff
  assert.match(inspector,/renderSamplerEditor\(modulesRoot/);
  assert.match(inspector,/createSignalDisplay\(scopeRoot/);
  assert.match(shared,/assignSoundEdit\(sound\.patch,path,value\)/);
- assert.match(shared,/await audition\(ctx\.inst/);
+ assert.match(shared,/auditionSoundInspector\(\{/);
+ assert.match(shared,/play:audition/);
+ assert.match(inspector,/nextRackPreview\(previewPositions/);
  assert.match(shared,/makeSampleAsset\(/);
  assert.match(shared,/referencedSampleIds\(layer\.instruments\)/);
  assert.match(css,/\.freeform-sound-details/);

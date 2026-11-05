@@ -1,6 +1,6 @@
 // Freeform uses the canonical Beat synth, sampler, sound illustration and DSP patches.
 // This is a desktop panel, not a second sound-engine implementation.
-import {renderSoundInspectorCore} from "./soundInspector.js";
+import {renderSoundInspectorCore,auditionSoundInspector} from "./soundInspector.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {createSignalDisplay} from "./soundScope.js";
 import {audition} from "./audio.js";
@@ -40,7 +40,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
  const input=el("input");input.type="file";
  input.accept=".wav,.ogg,.mp3,audio/wav,audio/ogg,audio/mpeg";input.hidden=true;
  input.setAttribute("aria-label","Import audio into freeform Sound");
- const selected=new Map();
+ const selected=new Map(),previewPositions=new Map();
  let expanded=false,stagePanel=null,stageOpen=false;
  const current=()=>{
   const inst=getInstrument();
@@ -75,11 +75,15 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    if(sound.patch.modulation!==undefined)sound.patch.version=2;
   },expected);
  };
- const preview=async()=>{
+ const preview=()=>{
   const ctx=current();if(!ctx)return;
-  try{await audition(ctx.inst,ctx.sound.referencePitch,context(ctx),{
-   soundId:ctx.sound.id,duration:.4
-  });}catch(error){onError("Sound preview: "+error.message);}
+  const button=host.querySelector(".freeform-sound-play");
+  if(!button)return;
+  return auditionSoundInspector({
+   instrument:ctx.inst,sound:ctx.sound,context:context(ctx),
+   button,previewPositions,play:audition,duration:.4,
+   onError:error=>onError("Sound preview: "+error.message)
+  });
  };
  input.addEventListener("change",async()=>{
   const file=input.files?.[0];input.value="";

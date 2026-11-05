@@ -274,6 +274,34 @@ test("educational Sound axes disclose the real units used by their controls",()=
  assert.equal(axesFor(stage,["gain"]).unit,"percent");
 });
 
+test("a silent second oscillator remains directly editable from the mix illustration",()=>{
+ const patch=synth();
+ patch.oscillators[1].level=0;
+ const silent=diagram(patch,"oscillators");
+ assert.equal(silent.handles.length,1,
+  "only the audible oscillator needs a waveform handle");
+ const action=silent.actions.find(item=>key(item.path)==="oscillators.1.level");
+ assert.ok(action,"a zero-level oscillator must not require a knob-only add operation");
+ assert.deepEqual(action.choices,[0,.25]);
+ const enabled=structuredClone(patch);
+ assignSoundEdit(enabled,action.path,.25);
+ const active=diagram(enabled,"oscillators");
+ assert.equal(active.handles.length,2,
+  "the restored second oscillator has its own two-axis waveform");
+ assert.ok(active.actions.some(item=>key(item.path)==="oscillators.1.level"),
+  "the direct action remains available to return the base level to zero");
+ assert.ok(active.paths.some(line=>line.links?.includes("oscillators.1.level")),
+  "the second waveform is linked to its real level parameter");
+ const modulated=structuredClone(patch);
+ modulated.modulation={version:1,routes:[{
+  id:"osc-level",source:defaultSource("lfo"),target:"oscillators.1.level",
+  unit:"linear_gain",depth:.5,polarity:"unipolar",smoothing:.005
+ }]};
+ assert.ok(diagram(modulated,"oscillators").actions.some(item=>
+  key(item.path)==="oscillators.1.level"),
+  "a base-level edit must also be reachable when modulation enables the oscillator");
+});
+
 test("pitched stage illustrates stereo and both multiplicative gain controls across pages",()=>{
  const pitched={type:"stage",layout:"pitched",volume:.64,gain:.75,pan:-.25};
  assert.equal(diagramPageCount(pitched,"stage"),2);
