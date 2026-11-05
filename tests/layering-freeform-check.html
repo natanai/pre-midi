@@ -170,6 +170,27 @@ try{
   "Every placed repeat still sounds the reusable source notes on time");
  assert(JSON.stringify(sourceChunk)===originalChunk,
   "Editing placement never changes reusable Chunk notes");
+ const blockRepeats=[...root.querySelectorAll(".freeform-chunk-block")];
+ assert(blockRepeats.length===3,
+  "Every visible repeat has its own selectable block above the existing note rows");
+ assert(blockRepeats.every(node=>node.title.includes("Alt+left/right")),
+  "Placed Chunks describe non-destructive keyboard movement");
+ blockRepeats[0].click();
+ assert(root.querySelector(".freeform-chunk-block.selected"),
+  "Choosing a visual Chunk block focuses its parent reusable placement");
+ let selectedBlock=root.querySelector(".freeform-chunk-block.selected");
+ selectedBlock.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowRight",altKey:true,bubbles:true,cancelable:true
+ }));
+ assert(placed.startStep===66,
+  "Alt+right moves the entire reusable placement by one bar");
+ selectedBlock=root.querySelector(".freeform-chunk-block.selected");
+ selectedBlock.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowLeft",altKey:true,shiftKey:true,bubbles:true,cancelable:true
+ }));
+ assert(placed.startStep===65&&[67,79,91].every(step=>
+  eventsAtFreeformStep(free,step).some(event=>event.note.pitch===72)),
+  "Shift+Alt+left nudges one step while keeping all repeats and notes audible");
  root.querySelector(".freeform-placement-remove").click();
  assert(instrument.chunkPlacements.length===0&&
   JSON.stringify(sourceChunk)===originalChunk,
