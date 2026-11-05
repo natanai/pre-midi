@@ -61,7 +61,7 @@ test("Sample and vocal page rebasing retains source offsets and absolute release
  const patch={type:"sample",presetId:"test",zones:[{assetId:"recorded",root:60}],
   followPitch:true,oneShot:true,transpose:0,gain:.9,attack:0,release:.025,pan:0};
  const sample=planNativeSample({patch,volume:.2},{pitch:60,velocity:.8},start,.05,assets);
- const vocal=planNativeVocal({recording:{id:"recorded",durationSeconds:.1},
+ const vocal=planNativeVocal({recording:{id:"recorded",trimSeconds:0,durationSeconds:.1},
   clip:{lengthSteps:1,gain:.004}},start,.125,assets);
  for(const original of [sample,vocal]){
   const snapshot=JSON.stringify(original),local=rebaseNativePlanToPage(original,frame,rate);
