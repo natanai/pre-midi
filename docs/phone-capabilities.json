@@ -2378,18 +2378,6 @@
       "proof": "not-qualified"
     },
     {
-      "id": "event:studio:change-sound-click:1",
-      "source": "studio.js",
-      "anchor": "$(\"change-sound\")",
-      "kind": "listener",
-      "event": "click",
-      "desktopRoute": "studio.js $(\"change-sound\").click",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
       "id": "event:studio:chunk-click:1",
       "source": "studio.js",
       "anchor": "$(\"chunk\")",
@@ -2894,18 +2882,6 @@
       "proof": "not-qualified"
     },
     {
-      "id": "event:studio:replace-row-sound-click:1",
-      "source": "studio.js",
-      "anchor": "$(\"replace-row-sound\")",
-      "kind": "listener",
-      "event": "click",
-      "desktopRoute": "studio.js $(\"replace-row-sound\").click",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
       "id": "event:studio:root-change:1",
       "source": "studio.js",
       "anchor": "root",
@@ -2962,30 +2938,6 @@
       "desktopRoute": "studio.js $(\"save-preset-close\").click",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "project",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:studio:save-row-sound-click:1",
-      "source": "studio.js",
-      "anchor": "$(\"save-row-sound\")",
-      "kind": "listener",
-      "event": "click",
-      "desktopRoute": "studio.js $(\"save-row-sound\").click",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:studio:save-sound-click:1",
-      "source": "studio.js",
-      "anchor": "$(\"save-sound\")",
-      "kind": "listener",
-      "event": "click",
-      "desktopRoute": "studio.js $(\"save-sound\").click",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
       "phoneStatus": "todo",
       "proof": "not-qualified"
     },

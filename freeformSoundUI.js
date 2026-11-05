@@ -1,6 +1,6 @@
 // Freeform uses the canonical Beat synth, sampler, sound illustration and DSP patches.
 // This is a desktop panel, not a second sound-engine implementation.
-import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity} from "./soundInspector.js";
+import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity,bindSoundInspectorCatalogActions} from "./soundInspector.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {createSignalDisplay} from "./soundScope.js";
 import {audition} from "./audio.js";
@@ -15,7 +15,7 @@ const el=(tag,cls,text)=>{
  if(text!==undefined)e.textContent=text;return e;
 };
 const button=(label,fn,cls)=>{
- const e=el("button",cls,label);e.type="button";e.addEventListener("click",fn);return e;
+ const e=el("button",cls,label);e.type="button";if(fn)e.addEventListener("click",fn);return e;
 };
 const field=(title,control)=>{
  const label=el("label","freeform-sound-field");
@@ -147,15 +147,10 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   }
   const listen=button("▶",preview,"freeform-sound-play");
   listen.title="Hear this Sound using the active desktop audio host";
-  tools.append(listen,
-   button("browse sounds",()=>onBrowseSound({
-    mode:ctx.inst.layout==="rack"?"replace-row":"replace",
-    instrumentId:ctx.inst.id,soundId:ctx.sound.id
-   }),"freeform-sound-browse"),
-   button("save preset",()=>onSaveSound({
-    instrumentId:ctx.inst.id,soundId:ctx.sound.id,wholeRack:false
-   }),"freeform-sound-save"),
-   button("use audio",()=>input.click(),"freeform-sound-load"));
+  const browse=button("browse sounds",null,"freeform-sound-browse");
+  const save=button("save preset",null,"freeform-sound-save");
+  const importAudio=button("use audio",null,"freeform-sound-load");
+  tools.append(listen,browse,save,importAudio);
   const dials=el("div","freeform-sound-levels");
   const volumeRoot=el("div","freeform-sound-volume");
   const gainRoot=el("div","freeform-sound-gain");
@@ -171,11 +166,11 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    onReferencePitch:value=>mutateSelected(({sound})=>{sound.referencePitch=value;},ctx.sound.id)
   });
   dials.append(field("reference pitch",pitch));
+  let saveRack=null;
   if(ctx.inst.layout==="rack"){
    const actions=el("div","freeform-sound-actions");
-   actions.append(button("save rack",()=>onSaveSound({
-    instrumentId:ctx.inst.id,soundId:ctx.sound.id,wholeRack:true
-   }),"freeform-rack-save"));
+   saveRack=button("save rack",null,"freeform-rack-save");
+   actions.append(saveRack);
    actions.append(button("+ sound",()=>mutateSelected(({inst})=>{
     if(inst.sounds.length>=MAX_SOUNDS)throw Error("Rack holds at most 64 Sounds.");
     const entry=makeSound("Sound "+(inst.sounds.length+1),makePatch(),"hit");
@@ -198,6 +193,18 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    },ctx.sound.id),"freeform-sound-remove"));
    tools.append(actions);
   }
+  bindSoundInspectorCatalogActions({
+   instrument:ctx.inst,browseButton:browse,saveButton:save,
+   browseMode:ctx.inst.layout==="rack"?"replace-row":"replace",
+   saveWholeRack:false,rackSaveButton:saveRack,importButton:importAudio,
+   onBrowse:mode=>onBrowseSound({
+    mode,instrumentId:ctx.inst.id,soundId:ctx.sound.id
+   }),
+   onSave:wholeRack=>onSaveSound({
+    instrumentId:ctx.inst.id,soundId:ctx.sound.id,wholeRack
+   }),
+   onImport:()=>input.click()
+  });
   const content=el("div","freeform-sound-content");
   content.id="freeform-sound-content";
   content.append(tools,dials,scope,modules,input);

@@ -52,6 +52,27 @@ export function auditionSoundInspector({
 
 // Sound identity is part of the shared Inspector, not an editor-specific
 // data writer. Context adapters own the transaction and undo destination.
+// Shared presentation/action ownership; callers specify their own permitted
+// catalog operations, while the Inspector binds the common Sound controls.
+// The UI may occupy different hosts but does not fork the action semantics.
+export function bindSoundInspectorCatalogActions({
+ instrument,browseButton,saveButton,onBrowse,onSave,
+ browseMode="replace",saveWholeRack=instrument?.layout==="rack",
+ rowBrowseButton=null,rowSaveButton=null,rackSaveButton=null,
+ importButton=null,onImport=null
+}){
+ if(!instrument||!browseButton||!saveButton||
+  typeof onBrowse!=="function"||typeof onSave!=="function")
+  throw Error("Sound Inspector catalog actions require a host and context adapters.");
+ browseButton.onclick=()=>onBrowse(browseMode);
+ saveButton.onclick=()=>onSave(saveWholeRack);
+ saveButton.setAttribute("aria-label",saveWholeRack?"save rack preset":"save preset");
+ if(rowBrowseButton)rowBrowseButton.onclick=()=>onBrowse("replace-row");
+ if(rowSaveButton)rowSaveButton.onclick=()=>onSave(false);
+ if(rackSaveButton)rackSaveButton.onclick=()=>onSave(true);
+ if(importButton&&onImport)importButton.onclick=onImport;
+}
+
 export function bindSoundInspectorIdentity({
  sound,nameInput,referenceInput,onRename,onReferencePitch
 }){
