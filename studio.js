@@ -13,7 +13,7 @@ import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
-import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity} from "./soundInspector.js";
+import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity,bindSoundInspectorCatalogActions} from "./soundInspector.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
 import {FACTORY_SOUND_CATALOG} from "./soundCatalog.js";
 import { nextRackPreview } from "./rackPreview.js";
@@ -1205,7 +1205,11 @@ function renderSound() {
   $("remove-sound").textContent=soundDeleteLabel(inst);
  $("sound-controls").hidden=inst.layout!=="rack";
  $("save-row-sound").hidden=inst.layout!=="rack";
- $("save-sound").setAttribute("aria-label",inst.layout==="rack"?"Save rack preset":"Save preset");
+ bindSoundInspectorCatalogActions({
+  instrument:inst,browseButton:$("change-sound"),saveButton:$("save-sound"),
+  rowBrowseButton:$("replace-row-sound"),rowSaveButton:$("save-row-sound"),
+  onBrowse:mode=>openLibrary(mode),onSave:wholeRack=>openPresetSave(wholeRack)
+ });
  $("convert-rack").hidden=inst.layout==="rack";
  $("convert-rack").disabled=!!inst.automation||!canConvertToRack(inst);
  $("convert-rack").title=inst.automation?"remove cutoff movement before converting to rack":canConvertToRack(inst)?"convert this instrument into a one-sound rack":"requires a single pitch without overlapping hits";
@@ -1702,7 +1706,6 @@ $("bars").addEventListener("change", event => {
  }
 });
 $("add-instrument").addEventListener("click",()=>openLibrary("add"));
-$("change-sound").addEventListener("click",()=>openLibrary("replace"));
 $("close-library").addEventListener("click",()=>$("instrument-dialog").close());
 function currentContext(mode="replace"){
  return {mode,instrumentId:instrument().id,soundId:sound().id};
@@ -1887,8 +1890,6 @@ $("hear-sound").addEventListener("click",()=>{
   onError:error=>message("Could not preview sound: "+error.message,true)
  });
 });
-$("save-sound").addEventListener("click",()=>openPresetSave(instrument().layout==="rack"));
-$("save-row-sound").addEventListener("click",()=>openPresetSave(false));
 function allSounds(){return [...FACTORY_SOUND_CATALOG,...savedSounds];}
 function openLibrary(mode,contextOverride=null) {
  closePicker();
@@ -2108,7 +2109,6 @@ $("delete-chunk").addEventListener("click", () => {
  });
 });
 $("chunk-name").addEventListener("change", event => modify(() => chunkFor(instrument()).name = event.target.value.trim() || "Chunk"));
-$("replace-row-sound").addEventListener("click",()=>openLibrary("replace-row"));
 function moveRackSound(instrumentId,soundId,offset){
  const inst=beat.instruments.find(item=>item.id===instrumentId);
  if(!inst)return;

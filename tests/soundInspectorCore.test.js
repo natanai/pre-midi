@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {PRIMARY_SYNTH_FIELDS} from "../instrumentUI.js";
-import {auditionSoundInspector,bindSoundInspectorIdentity} from "../soundInspector.js";
+import {auditionSoundInspector,bindSoundInspectorIdentity,bindSoundInspectorCatalogActions} from "../soundInspector.js";
 
 const source=name=>readFileSync(new URL("../"+name,import.meta.url),"utf8");
 
@@ -104,4 +104,45 @@ test("shared Sound identity has one context-owned edit per name or pitch change"
   assert.equal(referenceInput.value,"60");
  }
  assert.equal(edits.length,2,"Invalid MIDI reference pitches create no undo transactions");
+});
+
+test("shared catalog action binding preserves context-specific browser and preset intent",()=>{
+ const btn=()=>({onclick:null,attributes:{},setAttribute(key,value){this.attributes[key]=value;}});
+ const browse=btn(),save=btn(),rowBrowse=btn(),rowSave=btn(),rackSave=btn(),importAudio=btn();
+ const actions=[],onBrowse=mode=>actions.push(["browse",mode]);
+ const onSave=wholeRack=>actions.push(["save",wholeRack]);
+ bindSoundInspectorCatalogActions({
+  instrument:{layout:"rack"},browseButton:browse,saveButton:save,
+  rowBrowseButton:rowBrowse,rowSaveButton:rowSave,rackSaveButton:rackSave,
+  importButton:importAudio,onImport:()=>actions.push(["import"]),
+  onBrowse,onSave
+ });
+ browse.onclick();save.onclick();rowBrowse.onclick();rowSave.onclick();
+ rackSave.onclick();importAudio.onclick();
+ assert.deepEqual(actions,[
+  ["browse","replace"],["save",true],["browse","replace-row"],
+  ["save",false],["save",true],["import"]
+ ]);
+ assert.equal(save.attributes["aria-label"],"Save rack preset");
+ actions.length=0;
+ bindSoundInspectorCatalogActions({
+  instrument:{layout:"rack"},browseButton:browse,saveButton:save,
+  browseMode:"replace-row",saveWholeRack:false,onBrowse,onSave
+ });
+ browse.onclick();save.onclick();
+ assert.deepEqual(actions,[["browse","replace-row"],["save",false]]);
+ assert.equal(save.attributes["aria-label"],"Save preset");
+});
+
+test("both Sound contexts own no separate catalog or preset action handlers",()=>{
+ const beat=source("studio.js"),freeform=source("freeformSoundUI.js");
+ const core=source("soundInspector.js");
+ assert.match(core,/export function bindSoundInspectorCatalogActions/);
+ assert.match(beat,/bindSoundInspectorCatalogActions\(\{/);
+ assert.match(freeform,/bindSoundInspectorCatalogActions\(\{/);
+ for(const id of ["change-sound","save-sound","save-row-sound","replace-row-sound"]){
+  assert.doesNotMatch(beat,new RegExp('\\$\\("'+id+'"\\)\\.addEventListener\\("click"'));
+ }
+ assert.doesNotMatch(freeform,/button\("browse sounds",\(\)=>onBrowseSound/);
+ assert.doesNotMatch(freeform,/button\("save preset",\(\)=>onSaveSound/);
 });

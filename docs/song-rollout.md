@@ -64,7 +64,8 @@ A category percentage is an engineering estimate based on implemented functional
 
 - [PR #159](https://github.com/natanai/pre-midi/pull/159) merged the first common Sound Inspector renderer for Beat and attached freeform: primary/level controls, gain/stereo illustration, synth/sampler modules, measured scope and existing Beat automation adapter. Its branch CI passed; the gate is **not yet complete**.
 - [PR #161](https://github.com/natanai/pre-midi/pull/161) merged one shared audition policy and deterministic one-Sound-at-a-time Rack previews in both contexts after complete browser/native CI passed.
-- [PR #163](https://github.com/natanai/pre-midi/pull/163) is retargeted to `main` for shared Sound name/reference-pitch identity binding and input validation. Qualify and merge only after its own CI succeeds.
+- [PR #163](https://github.com/natanai/pre-midi/pull/163) merged shared Sound name/reference-pitch identity binding and input validation after full Chrome/native CI succeeded.
+- [PR #165](https://github.com/natanai/pre-midi/pull/165) stages the shared browse/preset/import action binding on top of #163, without changing Beat/Freeform asset or undo ownership. It is not a substitute for the final single DOM header/action assembly and must qualify separately.
 - Continue with canonical header/catalog/save/import/Rack action assembly, then a generated inventory of all applicable Sound paths in Beat/freeform, error/preview lifecycle, song undo, aural/native parity, and finally the outstanding conversion, paging, and physical-Windows release gates. Keep the **92%** baseline until test evidence supports a scoped scorecard change. Preserve the illustrations agent's ownership of `soundIllustrations.js` and related visual interaction files; do not fork the educational diagrams.
 - Recheck live PR statuses and `main` before merging; this note is a handoff checkpoint, not a claim that ongoing CI or Windows hardware checks have finished.
 
