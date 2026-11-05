@@ -1,5 +1,7 @@
 # Beat → Song rollout
 
+> **Release and handoff checkpoint, 2026-11-05:** See [Song stabilization and handoff](song-stabilization-handoff-2026-11-05.md) for the currently testable Windows preview, exact CI evidence, merged C++ page-streaming stages, remaining native JS/Rust/hardware gates, and zero-open-PR closure decisions. **Overall Song/freeform estimate: 93%, not final production Windows streaming.** This document preserves detailed historical design decisions below.
+
 Status: **Stage 5 (vocal recording) implemented, reliability work ongoing**. Stage 6 (pre-programmed native parity) has not shipped.
 
 This is the Song-specific historical rollout and integration plan; the active synthesis and native-host task register is [docs/synthesis-roadmap.json](synthesis-roadmap.json). [Terminology](terminology.json) is authoritative for data, UI and code; [pre-programmed issue #235](https://github.com/natanai/pre-programmed/issues/235) tracks the game-side migration.
