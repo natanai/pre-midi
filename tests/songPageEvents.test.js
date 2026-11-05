@@ -59,10 +59,10 @@ test("strum crossing a page boundary is owned by its source Song step exactly on
   {id:"up",pitch:64,start:15,duration:2,velocity:.8}
  ];
  const patch=inst.sounds[0].patch;
- // A valid sample Sound can add an audible positive strum offset. The
+ // A sample-style Sound can add an audible positive strum offset. The
  // source-time page boundary remains fixed even when the higher note sounds
  // after its page's end.
- patch.type="sample";patch.strumMs=35;
+ patch.type="sample";patch.strumMs=175;
  const unit=secondsPerStep(song),full=renderEvents(song);
  const first=renderEventsInWindow(song,0,16);
  const second=renderEventsInWindow(song,16,32);
