@@ -13,6 +13,10 @@ namespace premidi {
 enum class PagePhase : unsigned {free=0,ready=1,active=2,retired=3};
 enum class PageResult : unsigned {playing=1,finished=2,fault=3};
 enum class PageError : unsigned {none=0,underrun=1,late=2,stale=3,order=4};
+static_assert(std::atomic<std::uint64_t>::is_always_lock_free,
+ "Native page acknowledgment counters must be lock-free");
+static_assert(std::atomic<PagePhase>::is_always_lock_free,
+ "Native page slot phases must be lock-free");
 
 struct PageDescriptor {
  std::uint64_t owner=0,revision=0,sequence=0,startFrame=0,endFrame=0;
@@ -55,6 +59,8 @@ class PageMailbox final {
   // Control-thread only. A false return means bounded-slot backpressure;
   // the page and publication sequence have not changed.
   bool publish(const PageDescriptor& page){
+   if(failure.load(std::memory_order_acquire)!=PageError::none)
+    throw std::invalid_argument("Faulted native page transport cannot accept more pages");
    if(publishedLast)throw std::invalid_argument("Native page cannot follow the terminal page");
    if(page.owner!=originalOwner||page.revision!=originalRevision||
       validOwner.load(std::memory_order_acquire)!=originalOwner||
