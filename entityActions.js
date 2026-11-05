@@ -20,6 +20,18 @@ export function deleteInstrumentFromBeat(beat,instrumentId){
  return beat.instruments[Math.min(index,beat.instruments.length-1)].id;
 }
 
+// Reorder Rack Sounds by identity. Chunk notes keep Sound IDs, so order
+// changes never rewrite authored note events or change which Sound they play.
+export function moveRackSoundRow(instrument,soundId,offset){
+ if(instrument?.layout!=="rack"||![-1,1].includes(offset))return false;
+ const index=instrument.sounds.findIndex(entry=>entry.id===soundId);
+ const next=index+offset;
+ if(index<0||next<0||next>=instrument.sounds.length)return false;
+ [instrument.sounds[index],instrument.sounds[next]]=
+  [instrument.sounds[next],instrument.sounds[index]];
+ return true;
+}
+
 export function deleteSoundFromBeat(beat,instrumentId,soundId){
  const instrument=beat.instruments.find(entry=>entry.id===instrumentId);
  if(!instrument||instrument.layout!=="rack"||

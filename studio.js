@@ -2,7 +2,7 @@ import {renderCutoffAutomation} from "./automationUI.js";
 import {upgradeBeatFeatures,resizeBeatBars,MAX_BEAT_BARS,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION} from "./schema.js";
 import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
-import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "./entityActions.js";
+import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll,moveRackSoundRow} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
 import { play, audition, auditionChord, auditionHeld, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
 import { installKeyboardPiano } from "./keyboardPiano.js";
@@ -2113,11 +2113,11 @@ $("delete-chunk").addEventListener("click", () => {
 $("chunk-name").addEventListener("change", event => modify(() => chunkFor(instrument()).name = event.target.value.trim() || "Chunk"));
 function moveRackSound(instrumentId,soundId,offset){
  const inst=beat.instruments.find(item=>item.id===instrumentId);
- if(!inst)return;
- const index=inst.sounds.findIndex(item=>item.id===soundId);
- if(index<0||index+offset<0||index+offset>=inst.sounds.length)return;
+ const index=inst?.sounds.findIndex(item=>item.id===soundId)??-1;
+ if(!inst||inst.layout!=="rack"||index<0||index+offset<0||
+  index+offset>=inst.sounds.length)return;
  modify(()=>{
-  [inst.sounds[index],inst.sounds[index+offset]]=[inst.sounds[index+offset],inst.sounds[index]];
+  moveRackSoundRow(inst,soundId,offset);
   selectedInstrumentId=inst.id;
   selectedSounds.set(inst.id,soundId);
  });

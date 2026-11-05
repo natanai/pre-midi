@@ -9,6 +9,7 @@ import {makePatch} from "./synth.js";
 import {movementDefaults} from "./expression.js";
 import {MAX_SOUNDS,referencedSampleIds} from "./soundModel.js";
 import {makeSampleAsset,MAX_SAMPLE_BYTES} from "./sampler.js";
+import {moveRackSoundRow} from "./entityActions.js";
 
 const el=(tag,cls,text)=>{
  const e=document.createElement(tag);if(cls)e.className=cls;
@@ -172,6 +173,15 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    const actions=el("div","freeform-sound-actions");
    saveRack=button("save rack",null,"freeform-rack-save");
    actions.append(saveRack);
+   const index=ctx.inst.sounds.findIndex(entry=>entry.id===ctx.sound.id);
+   const up=button("move up",()=>mutateSelected(({inst,sound})=>{
+    moveRackSoundRow(inst,sound.id,-1);
+   },ctx.sound.id),"freeform-sound-up");
+   const down=button("move down",()=>mutateSelected(({inst,sound})=>{
+    moveRackSoundRow(inst,sound.id,1);
+   },ctx.sound.id),"freeform-sound-down");
+   up.disabled=index<=0;down.disabled=index===ctx.inst.sounds.length-1;
+   actions.append(up,down);
    actions.append(button("+ sound",()=>mutateSelected(({inst})=>{
     if(inst.sounds.length>=MAX_SOUNDS)throw Error("Rack holds at most 64 Sounds.");
     const entry=makeSound("Sound "+(inst.sounds.length+1),makePatch(),"hit");
