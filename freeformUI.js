@@ -8,6 +8,8 @@ import {makeChunk,id} from "./schema.js";
 import {referencedSampleIds} from "./soundModel.js";
 import {installFreeformSoundUI} from "./freeformSoundUI.js";
 import {overlappingFreeformNotes,layoutFreeformNoteRow} from "./freeformLayerUIModel.js";
+import {createFreeformNoteCutoff,editFreeformNoteCutoff} from "./freeformNoteAutomation.js";
+import {illustrateSoundPanel} from "./soundIllustrations.js";
 
 const BAR_STEPS=16,SONG_BAR_PIXELS=54,STEP_WIDTH=8,ROW_HEIGHT=20,VIEW_BARS=8;
 const PITCH_MIN=36,PITCH_MAX=96;
@@ -160,11 +162,57 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   const section=el("div","freeform-note-details");
   const position=note.start;
   section.append(el("span","freeform-detail-title","selected note"));
-  if(note.cutoffAutomation){
-   const movement=el("span","freeform-automation-label",
-    "cutoff movement · preserved from source Beat");
-   movement.title="This note retains its source Beat cutoff curve and phase, even when moved in the Song.";
-   section.append(movement);
+  const patch=instrument()?.layout==="pitched"?
+   instrument()?.sounds?.[0]?.patch:null;
+  if(patch?.type==="synth"){
+   if(!note.cutoffAutomation){
+    section.append(action("move cutoff over time",()=>{
+     mutate(()=>{
+      const current=currentNote();
+      if(!current)return;
+      current.cutoffAutomation=createFreeformNoteCutoff(current,patch);
+      layer().version=2;
+     });
+    },"freeform-add-cutoff"));
+   }else{
+    const captured=note.cutoffAutomation;
+    const details=el("details","freeform-note-cutoff freeform-sound-content");
+    details.open=true;
+    const heading=el("summary","","cutoff over time · source phase");
+    heading.title="This curve is attached to the note, not its original Song bar.";
+    details.append(heading);
+    const diagramPatch={...captured.block,type:"automation",
+     bars:Math.max(1/16,
+      Math.max(captured.limitStep,...captured.block.points.map(point=>point.step))/16)};
+    const change=(path,value)=>{
+     const current=currentNote();
+     if(!current||!current.cutoffAutomation)return;
+     mutate(()=>{current.cutoffAutomation=
+      editFreeformNoteCutoff(current.cutoffAutomation,path,value);});
+    };
+    const visualDetails=el("details","synth-group");visualDetails.open=true;
+    visualDetails.append(el("summary","","cutoff curve"));
+    const picture=illustrateSoundPanel(visualDetails,"automation",diagramPatch,
+     change,()=>{},activeInstrumentId+":"+note.id);
+    details.append(picture.element);
+    for(const [index,point] of captured.block.points.entries()){
+     const name=index?"end":"begin";
+     const positionField=field(name+" step",input("number",point.step,0,1024,
+      value=>change(["points",index,"step"],value)));
+     positionField.dataset.soundPath="points."+index+".step";
+     details.append(positionField);
+     const cutoffField=field(name+" cutoff · hz",input("number",point.value,50,14000,
+      value=>change(["points",index,"value"],value)));
+     cutoffField.dataset.soundPath="points."+index+".value";
+     details.append(cutoffField);
+    }
+    details.append(el("span","freeform-layer-help",
+     "Drag both handles to change when the filter moves and how bright the sound becomes."));
+    details.append(action("remove cutoff movement",()=>mutate(()=>{
+     const current=currentNote();if(current)delete current.cutoffAutomation;
+    }),"freeform-remove-cutoff"));
+    section.append(details);
+   }
   }
   const overlaps=overlappingFreeformNotes(instrument(),note);
   if(overlaps.length){
