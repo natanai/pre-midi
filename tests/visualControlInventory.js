@@ -9,9 +9,11 @@ const linkedPaths=node=>(node.dataset.soundLinks||"").split("|").filter(Boolean)
 export function auditSoundVisualCoverage(root,{context="sound"}={}){
  const editable=[...root.querySelectorAll(editors)].filter(node=>
   node.querySelector(editableSelector)&&
-  !node.closest(".visual-graph-points"));
+  !node.closest(".visual-graph-points")&&!node.closest("[hidden]"));
  const controls=editable.map(node=>({
-  path:node.dataset.soundPath||"",
+  // Primary Beat controls are wrapped in stable containers that own their
+  // canonical path; child dials remain generic reusable widgets.
+  path:node.dataset.soundPath||node.parentElement?.closest("[data-sound-path]")?.dataset.soundPath||"",
   label:node.querySelector("label,span")?.textContent?.trim()||
    node.getAttribute("aria-label")||"",
   kind:node.matches(".dial-field")?"knob":
