@@ -31,6 +31,8 @@ jobs:
         run: node scripts/native-page-plan-check.mjs
       - name: Qualify pinned C++ Song page resources after metadata retirement
         run: node scripts/native-prepared-page-check.mjs
+      - name: Verify real native Song page ingestion through one persistent C++ mixer
+        run: node scripts/native-persistent-session-check.mjs
       - name: Fetch pinned CC0 recordings
         run: node scripts/fetch-samples.mjs
       - name: Stage minimal Pages build

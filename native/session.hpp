@@ -1,6 +1,7 @@
 #pragma once
 #include "plan-packet.hpp"
 #include "delay.hpp"
+#include "page-mailbox.hpp"
 #include <atomic>
 #include <memory>
 #include <optional>
@@ -30,16 +31,29 @@ class Session {
  std::uint64_t cursor=0,serial=0,stopCycle=0;bool wasLoop=false;
  unsigned fadeLeft=0,fadeIn=0,afterFade=playing,error=0;
  std::uint64_t leadCursor=0,leadTotal=0;double leadBeatFrames=0;
+ // Streaming-only, callback-owned view into one already-validated and pinned
+ // PreparedPageLease. No page payload is copied or prepared by the callback.
+ // An external control owner MUST retain each lease past its final active
+ // Voice/release (and eventual effects) retirement, not just metadata ACK.
+ bool streamed=false,streamLast=false;
+ const PreparedNote* streamNotes=nullptr;
+ std::size_t streamCount=0,streamNext=0;
+ std::uint64_t streamBaseFrame=0,streamEndFrame=0,streamSequence=0;
  std::uint64_t frameAt(double seconds)const noexcept{return static_cast<std::uint64_t>(std::ceil(seconds*rate-1e-9));}
  void expire(std::uint64_t at)noexcept{
   for(auto& s:voices)if(s.voice&&s.end<=at)s.voice.reset();
   for(auto& s:retiring)if(s.voice&&s.fadeEnd<=at)s.voice.reset();
  }
  std::uint64_t upcoming(unsigned stream,bool loop)const noexcept{
+  if(streamed){
+   if(stream!=0||streamNext>=streamCount)return UINT64_MAX;
+   return streamBaseFrame+frameAt(streamNotes[streamNext].plan.start);
+  }
   if(next[stream]>=notes.size()||(!loop&&cycles[stream]>stopCycle))return UINT64_MAX;
   return frameAt(cycles[stream]*cycleSeconds+notes[next[stream]].plan.start);
  }
  void advance(unsigned stream,bool loop)noexcept{
+  if(streamed){++streamNext;return;}
   if(++next[stream]>=notes.size()&&loop){next[stream]=0;cycles[stream]+=2;}
  }
  void spawn(const PreparedNote& note,std::uint64_t cycle,std::uint64_t at)noexcept{
@@ -59,7 +73,7 @@ class Session {
    }
    stolen++;
   }
-  free->plan=note.plan;free->delay=note.delay;free->drive=note.prepared.drive;free->lfo=note.prepared.lfoBank;const double shift=cycle*cycleSeconds;
+  free->plan=note.plan;free->delay=note.delay;free->drive=note.prepared.drive;free->lfo=note.prepared.lfoBank;const double shift=streamed?static_cast<double>(streamBaseFrame)/rate:cycle*cycleSeconds;
   auto& p=free->plan;p.start+=shift;p.off+=shift;p.sourceEnd+=shift;p.graphEnd+=shift;
   if(p.version>=4)p.sweepEnd+=shift;
   for(unsigned i=0;i<p.eventCount;i++)p.events[i].time+=shift;
@@ -155,6 +169,48 @@ public:
   }
   position.store(cursor);fadeIn=0;
  }
+ // Called on the CONTROL thread before this Session is ever published.
+ // Preallocating maximum sample channel scratch makes 4/6-channel samples
+ // valid in later pages without changing callback-owned allocations.
+ void enableStreaming(){
+  require(notes.empty()&&cursor==0&&!streamed&&buses.empty(),
+   "Native stream needs an empty and unstarted Session");
+  channelWidth=4;
+  channelState=std::make_unique<SampleChannelState[]>((voiceLimit+retireLimit)*channelWidth);
+  unsigned slot=0;
+  for(auto& voice:voices)voice.channels=channelState.get()+slot++*channelWidth;
+  for(auto& voice:retiring)voice.channels=channelState.get()+slot++*channelWidth;
+  streamed=true;
+ }
+
+ // CALLBACK thread only, after a matching PageMailbox ACK and before
+ // rendering that page. Input is an immutable view into a pinned C++ lease.
+ // The current first slice intentionally refuses delayed strums whose audible
+ // onset is in another page, and page-local delay buses; those are separate
+ // required gates and must not silently sound at an incorrect time.
+ bool activateStreamPage(const PageDescriptor& descriptor,
+   const std::vector<PreparedNote>& prepared)noexcept{
+  const auto fail=[&]()noexcept{error=4;state=failed;fault.store(error);stateView.store(state);return false;};
+  if(!streamed||state!=playing||error||descriptor.sequence!=streamSequence+1||
+     descriptor.startFrame!=cursor||descriptor.endFrame<=descriptor.startFrame||
+     !descriptor.prepared||descriptor.onsets!=prepared.size()||
+     prepared.size()>4096||(streamSequence&&streamNext!=streamCount))
+   return fail();
+  if(!prepared.empty()){
+   const auto& first=prepared.front(),&last=prepared.back();
+   if(first.plan.start<0||last.plan.start<first.plan.start||
+      streamBaseFrame>descriptor.startFrame||
+      frameAt(last.plan.start)>=descriptor.endFrame-descriptor.startFrame)
+    return fail();
+   for(const auto& item:prepared)
+    if(item.delay>=0||item.plan.delayMix>0)return fail();
+  }
+  streamNotes=prepared.data();streamCount=prepared.size();streamNext=0;
+  streamBaseFrame=descriptor.startFrame;
+  streamEndFrame=descriptor.endFrame;
+  streamLast=descriptor.last;streamSequence=descriptor.sequence;
+  return true;
+ }
  void command(unsigned command)noexcept{
   if(command==1||command==2){if(state==playing){fadeLeft=fadeFrames;afterFade=command==1?stopped:paused;}else if(command==1){state=stopped;cursor=0;for(auto& s:voices)s.voice.reset();for(auto& s:retiring)s.voice.reset();}}
   if(command==3&&state==paused){state=playing;fadeIn=fadeFrames;}
@@ -179,7 +235,7 @@ public:
  void process(float* output,unsigned frames,bool loop,unsigned& onsetBudget)noexcept{
   std::fill(output,output+2*frames,0.f);
   lastLeadFrames=lastMusicFrames=0;
-  if(loop&&!wasLoop){for(unsigned s=0;s<2;s++)if(next[s]>=notes.size()){next[s]=0;cycles[s]+=2;}}
+  if(loop&&!wasLoop&&!streamed){for(unsigned s=0;s<2;s++)if(next[s]>=notes.size()){next[s]=0;cycles[s]+=2;}}
   if(!loop&&wasLoop)stopCycle=static_cast<std::uint64_t>(cursor/(cycleSeconds*rate));
   wasLoop=loop;
   unsigned done=0;
@@ -199,12 +255,16 @@ public:
    }
    expire(cursor);
    for(;;){const auto a=upcoming(0,loop),b=upcoming(1,loop);const unsigned stream=a<=b?0:1;const auto at=std::min(a,b);if(at>cursor)break;
-    if(!onsetBudget){error=2;break;}--onsetBudget;spawn(notes[next[stream]],cycles[stream],cursor);advance(stream,loop);if(error)break;
+    if(!onsetBudget){error=2;break;}--onsetBudget;
+    if(streamed)spawn(streamNotes[streamNext],0,cursor);
+    else spawn(notes[next[stream]],cycles[stream],cursor);
+    advance(stream,loop);if(error)break;
    }
    const auto nextAt=std::min(upcoming(0,loop),upcoming(1,loop));
    std::uint64_t naturalEnd=UINT64_MAX;
-   if(!loop&&nextAt==UINT64_MAX){
-    naturalEnd=std::max(tailEnd,frameAt((stopCycle+1)*cycleSeconds));
+   if(!loop&&nextAt==UINT64_MAX&&(!streamed||streamLast)){
+    naturalEnd=streamed?std::max(tailEnd,streamEndFrame):
+     std::max(tailEnd,frameAt((stopCycle+1)*cycleSeconds));
     for(const auto& s:voices)if(s.voice)naturalEnd=std::max(naturalEnd,s.end);
     for(const auto& s:retiring)if(s.voice)naturalEnd=std::max(naturalEnd,s.fadeEnd);
     if(cursor>=naturalEnd){state=finished;break;}
@@ -223,7 +283,8 @@ public:
    cursor+=count;done+=count;lastMusicFrames+=count;
    if(!fadeLeft&&(afterFade==stopped||afterFade==paused)&&afterFade!=playing){state=afterFade;afterFade=playing;if(state==stopped){cursor=0;for(auto& s:voices)s.voice.reset();for(auto& s:retiring)s.voice.reset();}}
    bool any=false;for(const auto& s:voices)any|=s.voice.has_value();for(const auto& s:retiring)any|=s.voice.has_value();
-   if(!loop&&!any&&nextAt==UINT64_MAX&&cursor>=std::max(tailEnd,frameAt((stopCycle+1)*cycleSeconds)))state=finished;
+   if(!loop&&!any&&nextAt==UINT64_MAX&&(!streamed||streamLast)&&
+      cursor>=std::max(tailEnd,streamed?streamEndFrame:frameAt((stopCycle+1)*cycleSeconds)))state=finished;
   }
   if(error){state=failed;std::fill(output,output+2*frames,0.f);fault.store(error);}
   std::uint64_t live=0;for(const auto& s:voices)live+=s.voice.has_value();position.store(cursor);active.store(live);stateView.store(state);leadRemaining.store(leadTotal-leadCursor);
