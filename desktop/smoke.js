@@ -184,6 +184,40 @@
   freeforms.unpackBeatClip(advancedReopen,advancedReopen.tracks.find(track=>track.kind==='beat').clips[0].id);
   assert(!songs.validateSong(advancedReopen).length&&signature(advancedReopen)===priorUnpack,
    'portable v27 Beat unpacks without changing native note and cutoff plans');
+  // Qualify complete freeform Instrument editing against packaged Windows
+  // native synthesis, not only browser DOM and source-level unit tests.
+  const owningTrack=advancedReopen.tracks.find(track=>track.kind==='beat'&&track.freeform);
+  const editableLayer=owningTrack.freeform;
+  const editableSource=editableLayer.instruments.find(item=>
+   item.notes.some(note=>note.cutoffAutomation));
+  assert(!!editableSource,'unpacked automated Beat becomes an editable freeform Instrument');
+  const sourceBefore=JSON.stringify(editableSource),originalPlans=signature(advancedReopen);
+  const originalCount=renderEvents(advancedReopen).filter(event=>event.kind==='note').length;
+  const cloneInstrument=freeforms.duplicateFreeformInstrument(editableLayer,editableSource.id);
+  assert(cloneInstrument.id!==editableSource.id&&
+   cloneInstrument.sounds[0].id!==editableSource.sounds[0].id&&
+   cloneInstrument.notes.every((note,index)=>note.id!==editableSource.notes[index].id)&&
+   cloneInstrument.notes.some(note=>note.cutoffAutomation),
+   'portable Instrument clone keeps automation with independent note and Sound identities');
+  assert(renderEvents(advancedReopen).filter(event=>event.kind==='note').length>originalCount&&
+   !songs.validateSong(advancedReopen).length,
+   'cloned freeform Instrument adds an independent playable native voice');
+  const clonedPackage=songFiles.exportSongProject(advancedReopen);
+  const clonedRoundtrip=await songFiles.importSongProject(new File([clonedPackage.blob],clonedPackage.name));
+  assert(signature(clonedRoundtrip)===signature(advancedReopen),
+   'cloned Instrument and captured automation survive portable .premidi project recovery');
+  const clonedAudio=await wav(clonedRoundtrip);
+  assert(clonedAudio.size>44,
+   'native C++ WAV renders the duplicated freeform Instrument without Web Audio');
+  const moved=freeforms.moveFreeformInstrument(editableLayer,cloneInstrument.id,-1);
+  assert(moved&&editableLayer.instruments.indexOf(cloneInstrument)<
+   editableLayer.instruments.indexOf(editableSource),
+   'portable Instrument reorder retains independent Sound identities');
+  freeforms.removeFreeformInstrument(editableLayer,cloneInstrument.id);
+  assert(signature(advancedReopen)===originalPlans&&
+   JSON.stringify(editableSource)===sourceBefore&&
+   !songs.validateSong(advancedReopen).length,
+   'removing a duplicate restores exact native audio plans and original Instrument state');
   await saveDraft(beat);
   assert(JSON.parse(await loadDraft()).instruments[0].chunks[0].notes.length===1,'IndexedDB draft transaction');
   localStorage.setItem('premidi-smoke-preset',JSON.stringify(inst.sounds[0].patch));
