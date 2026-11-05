@@ -13,7 +13,7 @@ import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
-import {renderSoundInspectorCore} from "./soundInspector.js";
+import {renderSoundInspectorCore,auditionSoundInspector} from "./soundInspector.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
 import {FACTORY_SOUND_CATALOG} from "./soundCatalog.js";
 import { nextRackPreview } from "./rackPreview.js";
@@ -1877,20 +1877,12 @@ presetForm.addEventListener("submit",async event=>{
 });
 $("hear-sound").addEventListener("click",()=>{
  const inst=instrument();
- const choice=inst.layout==="rack"
-  ?nextRackPreview(rackPreviewPositions,"instrument:"+inst.id,inst.sounds):null;
- const entry=choice?.sound||sound(inst);
- const hear=$("hear-sound");
- hear.dataset.previewSoundId=entry.id;
- if(choice){
-  hear.title="hear "+entry.name+" ("+(choice.index+1)+" of "+choice.total+")";
-  hear.setAttribute("aria-label","hear "+entry.name+" ("+(choice.index+1)+" of "+choice.total+")");
- }else{
-  hear.title="hear current sound";
-  hear.setAttribute("aria-label","Hear current sound");
- }
- void audition(inst,entry.referencePitch,beat,{soundId:entry.id,duration:.6})
-  .catch(error=>message("Could not preview sound: "+error.message,true));
+ void auditionSoundInspector({
+  instrument:inst,sound:sound(inst),context:beat,
+  button:$("hear-sound"),previewPositions:rackPreviewPositions,
+  play:audition,duration:.6,
+  onError:error=>message("Could not preview sound: "+error.message,true)
+ });
 });
 $("save-sound").addEventListener("click",()=>openPresetSave(instrument().layout==="rack"));
 $("save-row-sound").addEventListener("click",()=>openPresetSave(false));
