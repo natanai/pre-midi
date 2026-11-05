@@ -1,6 +1,8 @@
 # Native Song onset paging: implementation and qualification contract
 
-Status: **bounded page compilation, exact native packet rebasing, a qualified C++ metadata mailbox, PCM page-clock proof and validated resource leases; NOT production pageable native playback**.
+Status: **bounded page compilation, accurate native plans, qualified mailbox, real C++ dynamic Voice/sample page ingestion (#187), delayed-onset/shared-effect continuity (#189), and payload transport binder (#191); NOT yet user-accessible production Windows Song paging**.
+
+For the current exact-build, open-PR cleanup, release decision and remaining JS/Rust/device acceptance work, use [Song stabilization and handoff (2026-11-05)](song-stabilization-handoff-2026-11-05.md). The older preparation-only sections below are preserved as implementation history; #187/#189/#191 supersede the "not yet implemented" portions for the internal C++ mixer.
 
 Canonical Song/freeform completion and ordering: [song-rollout.md](song-rollout.md).
 Do not remove the existing native preflight errors or mark a Windows portable build qualified on the strength of these helpers.
