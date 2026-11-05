@@ -198,6 +198,17 @@ try{
  pass("handle readout names its X and Y parameters",
   oscillatorPanel.querySelector(".visual-point-readout").textContent.includes("x detune")&&
   oscillatorPanel.querySelector(".visual-point-readout").textContent.includes("y level"));
+ pass("Sound teaching diagrams expose interactive controls instead of hiding them as images",
+  oscillatorPanel.querySelector(".visual-panel-graph").getAttribute("role")==="group");
+ const filterPanel=document.querySelector(
+  '#synth .visual-sound-panel[data-visual-kind="filter"]');
+ const filterReadout=filterPanel.querySelector(".visual-point-readout");
+ pass("filter illustration names frequency units on its draggable handle",
+  filterReadout?.textContent.includes("Hz"));
+ const sampleReadout=document.querySelector(
+  '#sample .visual-sound-panel[data-visual-kind="sample"] .visual-point-readout');
+ pass("sample illustration exposes time units for attack",
+  sampleReadout?.textContent.includes("s"));
  // Inventory is derived from the mounted controls, not only a handwritten
  // list of expected synth parameters. Every dynamic page must be traversed.
  for(const [name,selector] of [
@@ -266,7 +277,8 @@ try{
   durationSeconds:2,trimSeconds:0,waveform:[.1,.2,.6,.5,.25,.1]};
  const vocalClip={id:"coverage-clip",gain:1,effects:{delayMix:.3,delayTime:.4,
   delayFeedback:.5}};
- const vocalOptions={onApply:()=>{},onTrim:()=>{},onDuplicate:()=>{},
+ let vocalFilterChange;
+ const vocalOptions={onApply:(id,changes)=>{vocalFilterChange=changes.filter;},onTrim:()=>{},onDuplicate:()=>{},
   onBack:()=>{},onUseInBeat:()=>{},onUndo:()=>{},onRedo:()=>{}};
  const vocalSelection={clip:vocalClip,recording:vocalRecording,track:{name:"voice"}};
  renderVocalEditor(actualVocal,vocalSelection,vocalOptions);
@@ -277,6 +289,14 @@ try{
   checks["live vocal "+(bypass?"bypass":"active")+" inventory"]=audit.summary;
   pass("live vocal "+(bypass?"bypass":"active")+" has every knob visualized: "+
    JSON.stringify(audit.missing),audit.summary.knobs>0&&audit.missing.length===0);
+  const toggle=actualVocal.querySelector(
+   '.visual-sound-panel[data-visual-kind="filter"] .visual-graph-action[data-sound-path="audioFilterBypassed"]');
+  pass("vocal filter illustration includes a "+(bypass?"turn on":"turn off")+" action",
+   !!toggle&&toggle.textContent===(bypass?"filter on":"filter off"));
+  vocalFilterChange=undefined;
+  toggle.click();
+  pass("vocal illustration commits actual filter "+(bypass?"enable":"bypass")+" through Song editing",
+   bypass?vocalFilterChange?.type==="lowpass":vocalFilterChange===null);
  }
  actualVocal.remove();
 
