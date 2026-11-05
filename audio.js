@@ -4,7 +4,7 @@ import {validateModulation} from "./src/dsp/modulation.js";
 import {resolveEvent} from "./soundModel.js";
 import {eventsAtStep} from "./arrangement.js";
 import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
-import {scheduledSongOnsets,createLiveSongScheduler} from "./songSchedule.js";
+import {scheduledSongOnsets,scheduledSongOnsetsInWindow,createLiveSongScheduler} from "./songSchedule.js";
 import {decodeSongRecordings,recordingEventsAtStep,scheduleVocal} from "./songAudio.js";
 import {vocalSourceRange} from "./vocalEffects.js";
 import {delayTailSeconds} from "./src/dsp/effect-tail.js";
@@ -356,32 +356,44 @@ export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,s
  scheduleNote(ctx,ctx.destination,{patch,volume:1},{pitch,velocity:1},0,duration,null);
  return ctx.startRendering();
 }
-// Materialize and stably order offline onsets, including strums crossing steps.
-// This also bounds the allocator's ledger while rendering long arrangements.
-export function renderEvents(document,{maxEvents=Infinity}={}){
- const unit=secondsPerStep(document),song=document.kind==="song";
- const length=song?songDurationSteps(document):document.bars*16,events=[];
- const note=(event,step)=>events.push({kind:"note",
-  at:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
-  instrument:event.instrument,note:event.note,duration:event.note.duration*unit,
-  beat:event.beat||document,timeline:noteTimeline(event,step,unit,length)});
- if(song){
-  // Snapshot all note-onsets once. Long silent gaps and repeated linked Clips
-  // are not rescanned step-by-step for WAV export or native session builds.
-  const scheduled=scheduledSongOnsets(document,{maxEvents});
-  for(const step of [...scheduled.keys()].sort((a,b)=>a-b)){
-   const bucket=scheduled.get(step);
-   for(const event of bucket.vocals)events.push({kind:"vocal",at:step*unit,event});
-   for(const event of bucket.notes)note(event,step);
-  }
- }else{
-  for(let step=0;step<length;step++){
-   for(const event of stepEvents(document,step))note(event,step);
-   if(events.length>maxEvents)
-    throw Error("Beat exceeds "+maxEvents+" scheduled note onsets for native playback.");
-  }
+// Common materialization for both full Songs and source-linked onset pages.
+// A page owns the authored onset Song step (not a rounded time after strum),
+// so a strum crossing a page edge is emitted only once at its original time.
+function materializeSongOnsets(document,scheduled){
+ const unit=secondsPerStep(document),length=songDurationSteps(document),events=[];
+ for(const step of [...scheduled.keys()].sort((a,b)=>a-b)){
+  const bucket=scheduled.get(step);
+  for(const event of bucket.vocals)events.push({kind:"vocal",at:step*unit,event});
+  for(const event of bucket.notes)events.push({kind:"note",
+   at:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
+   instrument:event.instrument,note:event.note,duration:event.note.duration*unit,
+   beat:event.beat||document,timeline:noteTimeline(event,step,unit,length)});
  }
  return events.sort((a,b)=>a.at-b.at);
+}
+// Materialize and stably order offline onsets, including strums crossing steps.
+// Full Song rendering still uses its independent global onset budget.
+export function renderEvents(document,{maxEvents=Infinity}={}){
+ if(document.kind==="song")
+  return materializeSongOnsets(document,scheduledSongOnsets(document,{maxEvents}));
+ const unit=secondsPerStep(document),length=document.bars*16,events=[];
+ for(let step=0;step<length;step++){
+  for(const event of stepEvents(document,step))events.push({kind:"note",
+   at:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
+   instrument:event.instrument,note:event.note,duration:event.note.duration*unit,
+   beat:event.beat||document,timeline:noteTimeline(event,step,unit,length)});
+  if(events.length>maxEvents)
+   throw Error("Beat exceeds "+maxEvents+" scheduled note onsets for native playback.");
+ }
+ return events.sort((a,b)=>a.at-b.at);
+}
+// Control-thread-only native paging preparation: exact full Song-time onsets,
+// Sound references, note lengths, strum offsets and per-note automation plans.
+// This is NOT permission to play >4096 events or >600 seconds in the native host.
+export function renderEventsInWindow(song,startStep,endStep,{maxEvents=4096}={}){
+ if(song?.kind!=="song")throw Error("Native onset pages require a Song.");
+ return materializeSongOnsets(song,
+  scheduledSongOnsetsInWindow(song,startStep,endStep,{maxEvents}));
 }
 export function renderEndSeconds(document,events,decoded){
  const length=document.kind==="song"?songDurationSteps(document):document.bars*16;
