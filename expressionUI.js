@@ -118,19 +118,35 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
   select.value=current.shape;draw();
   onChange({...bend,shape:current.shape,amount:current.amount,rate:current.rate});
  });
- function setLink(enabled){
-  area.classList.toggle("visual-panel-linked",enabled);
-  shape.classList.toggle("visual-graph-linked",enabled);
-  dot.classList.toggle("visual-point-linked",enabled);
+ // All note controls share the Sound editor's bidirectional link contract.
+ // Highlight only the parameter family under the pointer, rather than
+ // implying that changing velocity also changes pitch bend.
+ let activeLink=null;
+ function setLink(kind,enabled){
+  if(enabled)activeLink=kind;
+  else if(activeLink===kind)activeLink=null;
+  const linked=activeLink;
+  area.classList.toggle("visual-panel-linked",!!linked);
+  shape.classList.toggle("visual-graph-linked",linked==="bend");
+  dot.classList.toggle("visual-point-linked",linked==="bend");
+  levelBar.classList.toggle("visual-graph-linked",linked==="level");
+  levelDot.classList.toggle("visual-point-linked",linked==="level");
+  shapeButton.classList.toggle("visual-point-linked",linked==="shape");
+  for(const [field,key] of [[amount,"bend"],[rate,"bend"],
+   [level,"level"],[choice,"shape"]])
+   field.classList.toggle("sound-link-active",linked===key);
  }
- for(const dial of [amount,rate]){
-  dial.addEventListener("pointerenter",()=>setLink(true));
-  dial.addEventListener("pointerleave",()=>setLink(false));
-  dial.addEventListener("focusin",()=>setLink(true));
-  dial.addEventListener("focusout",()=>setLink(false));
+ for(const [field,kind] of [[amount,"bend"],[rate,"bend"],
+  [level,"level"],[choice,"shape"],[dot,"bend"],
+  [levelDot,"level"],[shapeButton,"shape"]]){
+  field.addEventListener("pointerenter",()=>setLink(kind,true));
+  field.addEventListener("pointerleave",()=>{
+   if((kind==="bend"&&dragging)||(kind==="level"&&levelDragging))return;
+   setLink(kind,false);
+  });
+  field.addEventListener("focusin",()=>setLink(kind,true));
+  field.addEventListener("focusout",()=>setLink(kind,false));
  }
- dot.addEventListener("pointerenter",()=>setLink(true));
- dot.addEventListener("pointerleave",()=>{if(!dragging)setLink(false);});
  function position(event){
   const bounds=graph.getBoundingClientRect();
   return {x:(event.clientX-bounds.left)/bounds.width*320,
@@ -150,12 +166,13 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
   if(event.button!==0||levelDragging)return;
   dragging={id:event.pointerId,amount:current.amount,rate:current.rate};
   area.setPointerCapture(event.pointerId);event.preventDefault();
-  setLink(true);
+  setLink("bend",true);
  });
  levelDot.addEventListener("pointerdown",event=>{
   if(event.button!==0||dragging)return;
   levelDragging={id:event.pointerId,initial:noteLevel};
   area.setPointerCapture(event.pointerId);event.preventDefault();
+  setLink("level",true);
  });
  const levelFromPointer=event=>{
   const pos=position(event);
@@ -173,21 +190,22 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
    levelFromPointer(event);levelDragging=null;
    if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
    onLevelChange?.(noteLevel);
+   setLink("level",false);
    return;
   }
   if(dragging?.id!==event.pointerId)return;
   dragging=null;edit(event,true);
   if(area.hasPointerCapture(event.pointerId))area.releasePointerCapture(event.pointerId);
-  setLink(false);
+  setLink("bend",false);
  });
  area.addEventListener("pointercancel",event=>{
   if(levelDragging?.id===event.pointerId){
    noteLevel=levelDragging.initial;levelDragging=null;
-   levelInput.value=String(noteLevel);draw();return;
+   levelInput.value=String(noteLevel);draw();setLink("level",false);return;
   }
   if(dragging?.id!==event.pointerId)return;
   current.amount=dragging.amount;current.rate=dragging.rate;dragging=null;
-  draw();setLink(false);
+  draw();setLink("bend",false);
  });
  levelDot.addEventListener("keydown",event=>{
   if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;
@@ -208,7 +226,14 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
   else return;
   draw();onChange({...bend,amount:current.amount,rate:current.rate,shape:current.shape});
  });
- graph.addEventListener("click",focusAmount);
+ // A click in the lower lane navigates to velocity; the upper lane
+ // navigates to bend. The drawing itself never silently edits either.
+ graph.addEventListener("click",event=>{
+  const bounds=graph.getBoundingClientRect();
+  if(!bounds.height){focusAmount();return;}
+  const y=(event.clientY-bounds.top)/bounds.height*112;
+  if(y>=73)levelInput.focus();else focusAmount();
+ });
  graph.addEventListener("keydown",event=>{
   if(event.key==="Enter"||event.key===" "){event.preventDefault();focusAmount();}
  });
