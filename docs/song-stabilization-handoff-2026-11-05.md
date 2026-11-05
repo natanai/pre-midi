@@ -55,7 +55,7 @@ node scripts/prepare-pages.mjs
 node tests/song.browser.mjs
 ```
 
-If C ABI #192 is on the exact current branch, also run `node scripts/native-stream-device-check.mjs`. The full `.github/workflows/verify.yml` checks browser Song, Sound, stage, controls, native DSP/PCM and long-song budget; `.github/workflows/windows-portable.yml` is the required portable build/relocation/recovery gate. Do not call CI a physical-listening gate.
+If C ABI #192 is on the exact current branch, also run `node scripts/native-stream-device-check.mjs`. The full `.github/workflows/verify.yml` checks browser Song, Sound, stage, controls, native DSP/PCM and long-song budget; `.github/workflows/desktop-release.yml` is the required portable build/relocation/recovery gate. Do not call CI a physical-listening gate.
 
 ## Closing unrelated, deferred feature PRs
 
