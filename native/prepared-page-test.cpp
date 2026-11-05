@@ -19,11 +19,11 @@ __attribute__((noinline)) void* operator new(std::size_t count){
  if(auto* p=std::malloc(count))return p;
  throw std::bad_alloc();
 }
-void operator delete(void* p)noexcept{std::free(p);}
-void operator delete(void* p,std::size_t)noexcept{std::free(p);}
+__attribute__((noinline)) void operator delete(void* p)noexcept{std::free(p);}
+__attribute__((noinline)) void operator delete(void* p,std::size_t)noexcept{std::free(p);}
 __attribute__((noinline)) void* operator new[](std::size_t count){return ::operator new(count);}
-void operator delete[](void* p)noexcept{std::free(p);}
-void operator delete[](void* p,std::size_t)noexcept{std::free(p);}
+__attribute__((noinline)) void operator delete[](void* p)noexcept{std::free(p);}
+__attribute__((noinline)) void operator delete[](void* p,std::size_t)noexcept{std::free(p);}
 
 int main(int argc,char** argv){
  try{
