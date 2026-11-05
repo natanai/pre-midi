@@ -151,8 +151,11 @@ try{
  // Its focused handle must remain focused for repeated precision adjustments.
  const oscillatorPanel=document.querySelector(
   '#synth .visual-sound-panel[data-visual-kind="oscillators"]');
+ oscillatorPanel.querySelector("details").open=true;
  const oscillatorPoint=oscillatorPanel.querySelector(".visual-graph-point");
  oscillatorPoint.focus();
+ pass("illustration point accepts initial focus while expanded",
+  document.activeElement===oscillatorPoint);
  oscillatorPanel.drawSoundIllustration(synth);
  pass("focused handle survives a live illustration redraw",
   document.activeElement===oscillatorPanel.querySelector(".visual-graph-point"));
