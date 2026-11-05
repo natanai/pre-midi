@@ -27,6 +27,8 @@ jobs:
       - run: npm run check
       - name: Qualify bounded native Song page publication without callback allocations
         run: node scripts/native-page-mailbox-check.mjs
+      - name: Verify late native Song page-local synth/sample/vocal PCM
+        run: node scripts/native-page-plan-check.mjs
       - name: Fetch pinned CC0 recordings
         run: node scripts/fetch-samples.mjs
       - name: Stage minimal Pages build
