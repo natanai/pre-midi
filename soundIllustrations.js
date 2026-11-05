@@ -339,7 +339,16 @@ export const diagram=(patch,type,page=0)=>{
   const sustainY=88-65*clamp(e.sustain);
   const releaseX=248+clamp(e.release/releaseMax)*95;
   line("M18 90 H348 M248 18 V96",true);
-  line(pathFrom([[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]]),false,sample?["attack","release"]:["envelope.attack","envelope.decay","envelope.sustain","envelope.release"]);
+  // Without pitch-follow, sampler.js and the native sample planner don't
+  // release at key-up: the source plays toward its capped end and fades in
+  // the final ~10 ms. Show a short end taper rather than a long ADSR fade.
+  // This remains a timing guide, not a measured waveform or duration claim.
+  const naturalEnd=sample&&!p.oneShot&&p.followPitch===false;
+  const points=naturalEnd?[
+   [18,90],[attackX,23],[248,23],[Math.max(248,releaseX-6),23],
+   [releaseX,90],[348,90]
+  ]:[[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]];
+  line(pathFrom(points),false,sample?["attack","release"]:["envelope.attack","envelope.decay","envelope.sustain","envelope.release"]);
   const prefix=sample?[]:["envelope"];
   handle(attackX,23,[axis([...prefix,"attack"],0,attackMax,"linearX",{from:25,to:103,step:.01,unit:"s"})],"attack");
   if(!sample){
@@ -351,11 +360,10 @@ export const diagram=(patch,type,page=0)=>{
   handle(releaseX,90,[axis([...prefix,"release"],.01,releaseMax,"linearX",
    {from:248,to:343,step:.01,unit:"s"})],"release");
   tag(18,14,"on");
-  if(!sample)tag(115,14,"held note model");
-  // Keyed Sounds release on note-off, but a one-shot recording ignores the
-  // key release and fades near its natural/source-region end. Calling the
-  // latter 'off' teaches the wrong playback behavior.
-  tag(248,14,sample&&p.oneShot?"tail":"off");
+  tag(115,14,sample?"time guide":"held note model");
+  // Only pitch-following keyed Samples release at key-up. One-shots release
+  // near the source tail; pitch-follow-off Samples fade at their capped end.
+  tag(248,14,sample?(p.oneShot?"tail":naturalEnd?"end":"off"):"off");
   if(sample){
    const gain=clamp(p.gain??.9,0,2),transpose=p.transpose??0,pan=p.pan??0;
    const vocal=p.type==="vocal",strum=p.strumMs??0,root=p.zones?.[0]?.root??60;
