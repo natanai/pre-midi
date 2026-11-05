@@ -10,6 +10,17 @@ typedef struct {
  uint64_t lead_remaining,preview_position,preview_state,capture_phase,capture_frames,capture_missing,capture_clipped,capture_peak_million,capture_lead,capture_start;
 } premidi_audio_status;
 typedef struct {uint32_t id,rate,channels;uint64_t frames;double normalization;} premidi_sample_info;
+typedef struct {
+ uint64_t position,ack_sequence,ack_end_frame,released_through;
+ uint32_t state,fault,sample_rate,active;
+} premidi_stream_status;
+int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision);
+int premidi_audio_stream_delay(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback);
+int premidi_audio_stream_page(void* host,uint64_t owner,uint64_t revision,uint64_t sequence,uint64_t first_frame,uint64_t end_frame,uint32_t onsets,int last,const uint8_t* packet,size_t length);
+int premidi_audio_stream_start(void* host,uint64_t owner,uint64_t revision);
+int premidi_audio_stream_stop(void* host,uint64_t owner,uint64_t revision);
+int premidi_audio_stream_status_get(void* host,premidi_stream_status* status);
+
 void* premidi_audio_create(int test_backend);
 void premidi_audio_destroy(void* host);
 const char* premidi_audio_error(void* host);

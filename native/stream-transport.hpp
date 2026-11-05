@@ -35,6 +35,7 @@ class StreamTransport final {
  std::atomic<bool> armed{false};
  bool terminalPublished=false;
  std::atomic<unsigned> renderFault{0};
+ std::atomic<bool> paused{false};
 
  const PreparedPageLease* find(std::uint64_t sequence)const noexcept{
   const auto& slot=published[(sequence-1)%published.size()];
@@ -52,6 +53,9 @@ class StreamTransport final {
  StreamTransport(const StreamTransport&)=delete;
  StreamTransport& operator=(const StreamTransport&)=delete;
  unsigned rate()const noexcept{return rate_;}
+ unsigned state()const noexcept{return paused.load(std::memory_order_acquire)?
+  static_cast<unsigned>(premidi::paused):player->stateView.load(std::memory_order_acquire);}
+ void setPaused(bool value)noexcept{paused.store(value,std::memory_order_release);}
  std::uint64_t acknowledgment()const noexcept{return mailbox.ackSequence();}
  std::uint64_t acknowledgmentEnd()const noexcept{return mailbox.ackEndFrame();}
  std::uint64_t position()const noexcept{return player->position.load(std::memory_order_acquire);}
@@ -134,6 +138,10 @@ class StreamTransport final {
   if(!output||frames>renderBlock||renderFault.load(std::memory_order_relaxed))
    return false;
   armed.store(true,std::memory_order_release);
+  if(paused.load(std::memory_order_acquire)){
+   std::fill(output,output+2*frames,0.f);
+   return true;
+  }
   unsigned done=0;
   while(done<frames){
    const auto at=player->position.load(std::memory_order_relaxed);
