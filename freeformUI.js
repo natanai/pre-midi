@@ -190,7 +190,9 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
      mutate(()=>{current.cutoffAutomation=
       editFreeformNoteCutoff(current.cutoffAutomation,path,value);});
     };
-    const picture=illustrateSoundPanel(details,"automation",diagramPatch,
+    const visualDetails=el("details","synth-group");visualDetails.open=true;
+    visualDetails.append(el("summary","","cutoff curve"));
+    const picture=illustrateSoundPanel(visualDetails,"automation",diagramPatch,
      change,()=>{},activeInstrumentId+":"+note.id);
     details.append(picture.element);
     for(const [index,point] of captured.block.points.entries()){
