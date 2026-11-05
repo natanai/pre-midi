@@ -289,10 +289,11 @@ try{
  }
  const pitchedDetails=document.createElement("details");pitchedDetails.open=true;
  pitchedDetails.append(document.createElement("summary"));pitchedRoot.append(pitchedDetails);
- let pitchedEdit=null;
+ let pitchedEdit=null,pitchedPreview=null,pitchedCommits=0;
  const pitchedPanel=illustrateSoundPanel(pitchedDetails,"stage",{
   type:"stage",layout:"pitched",volume:.64,gain:.75,pan:-.25
- },(path,value)=>pitchedEdit={path,value},()=>{},"pitched-gain-coverage");
+ },(path,value)=>{pitchedEdit={path,value};pitchedCommits++;},
+ (path,value)=>pitchedPreview={path,value},"pitched-gain-coverage");
  pitchedRoot.append(pitchedPanel.element);
  const nextStage=pitchedPanel.element.querySelector(
   'button[aria-label="next stage page"]');
@@ -311,6 +312,40 @@ try{
  const pitchedAudit=auditSoundVisualCoverage(pitchedRoot,{context:"pitched gain staging"});
  pass("pitched instrument volume and Sound gain are both directly illustrated",
   pitchedAudit.summary.controls===2&&pitchedAudit.missing.length===0);
+ // A pointer can touch the large hit target off-center. Pressing and
+ // releasing must neither jump the value nor create an undo history entry.
+ const pitchedGraph=pitchedPanel.element.querySelector(".visual-panel-graph");
+ const pitchedArea=pitchedPanel.element.querySelector(".visual-panel-area");
+ pitchedGraph.getBoundingClientRect=()=>({left:0,top:0,width:360,height:112});
+ pitchedArea.setPointerCapture=()=>{};
+ pitchedArea.hasPointerCapture=()=>false;
+ pitchedArea.releasePointerCapture=()=>{};
+ const beforeGrab=pitchedCommits;
+ const startGain=Number(pitchedRoot.querySelector(
+  '.dial-field[data-sound-path="gain"] [role="slider"]').getAttribute("aria-valuenow"));
+ pointer(gainPoint,"pointerdown",218,55);
+ pass("grabbing a Sound gain handle off-center does not preview a changed value",
+  pitchedPreview===null);
+ pointer(pitchedArea,"pointerup",218,55);
+ pass("click-only handle grab does not record an edit",
+  pitchedCommits===beforeGrab&&Number(pitchedRoot.querySelector(
+   '.dial-field[data-sound-path="gain"] [role="slider"]').getAttribute("aria-valuenow"))===startGain);
+ pointer(gainPoint,"pointerdown",218,55);
+ pointer(pitchedArea,"pointermove",190,72);
+ const liveVolume=Number(pitchedRoot.querySelector(
+  '.dial-field[data-sound-path="volume"] [role="slider"]').getAttribute("aria-valuenow"));
+ const liveGain=Number(pitchedRoot.querySelector(
+  '.dial-field[data-sound-path="gain"] [role="slider"]').getAttribute("aria-valuenow"));
+ pass("illustration dragging updates both physical knob faces before commit",
+  liveVolume<.64&&liveGain<.75&&pitchedPreview?.path?.length===2&&
+  Math.abs(liveVolume-pitchedPreview.value[0])<.0001&&
+  Math.abs(liveGain-pitchedPreview.value[1])<.0001);
+ pass("illustration preview is not also committed through conventional dials",
+  pitchedCommits===beforeGrab);
+ pointer(pitchedArea,"pointerup",190,72);
+ pass("two-axis release commits exactly one atomic edit",
+  pitchedCommits===beforeGrab+1&&pitchedEdit.path.length===2&&
+  pitchedEdit.path.every(path=>Array.isArray(path)));
  pitchedRoot.remove();stageRoot.remove();voiceRoot.remove();
  // Check the actual user-facing Vocal editor rather than just its shared
  // delay fixture. Bypassed and active filters have different control surfaces.
