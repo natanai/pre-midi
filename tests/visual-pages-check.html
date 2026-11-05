@@ -147,6 +147,28 @@ try{
  pass("note velocity point commits a real level change",noteLevel===.81);
  document.querySelector("#note .expression-shape-choice").click();
  pass("note shape changes without the select knob",noteBend&&noteBend.shape!=="wave");
+ // Moving a knob may redraw the graph without replacing the entire inspector.
+ // Its focused handle must remain focused for repeated precision adjustments.
+ const oscillatorPanel=document.querySelector(
+  '#synth .visual-sound-panel[data-visual-kind="oscillators"]');
+ const oscillatorPoint=oscillatorPanel.querySelector(".visual-graph-point");
+ oscillatorPoint.focus();
+ oscillatorPanel.drawSoundIllustration(synth);
+ pass("focused handle survives a live illustration redraw",
+  document.activeElement===oscillatorPanel.querySelector(".visual-graph-point"));
+ pass("handle readout names its X and Y parameters",
+  oscillatorPanel.querySelector(".visual-point-readout").textContent.includes("x detune")&&
+  oscillatorPanel.querySelector(".visual-point-readout").textContent.includes("y level"));
+ // Dismissing one Sound must not leave a modal-like dark layer on the next.
+ const expand=samplePanel.querySelector(".visual-panel-expand");
+ expand.click();
+ pass("expanded illustration has its overlay",
+  document.body.classList.contains("sound-visual-zoom")&&samplePanel.classList.contains("zoomed"));
+ samplePanel.disposeSoundIllustration();
+ samplePanel.remove();
+ await Promise.resolve();
+ pass("removed expanded illustration clears its orphaned overlay",
+  !document.body.classList.contains("sound-visual-zoom"));
  status="PASS";
 }catch(error){checks.error=String(error.stack||error);}
 document.querySelector("#result").textContent=JSON.stringify(checks);
