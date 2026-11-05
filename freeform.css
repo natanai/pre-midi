@@ -37,11 +37,32 @@
 .freeform-field input[type=number]{width:77px}
 .freeform-editor-tools button,.freeform-chunk-tools button{font-size:11px;min-height:29px}
 .freeform-chunk-tools{margin:9px 0 7px;justify-content:flex-start}
+.freeform-placement-editor{display:flex;gap:7px;align-items:end;flex-wrap:wrap;
+ padding:7px 0;margin-bottom:7px;border-top:1px solid var(--faint);
+ border-bottom:1px solid var(--faint)}
+.freeform-placement-editor select{max-width:165px}
+.freeform-placement-editor input[type=number]{width:72px}
+.freeform-placement-editor .freeform-placement-remove{min-height:29px;font-size:11px;
+ color:var(--bright);border:1px solid var(--line);padding:4px 8px}
+
 .freeform-chunk-tools select{max-width:160px}
 .freeform-empty{font-size:11px;color:var(--muted)}
 .freeform-roll-scroll{max-height:360px;overflow:auto;border:1px solid var(--line);background:#060808;scrollbar-width:thin}
 .freeform-roll-grid{width:max-content;min-width:100%}
 .freeform-roll-ruler{display:flex;height:21px;position:sticky;top:0;z-index:5;background:#111}
+.freeform-chunk-strip{display:flex;min-height:23px;background:#0b1511;border-bottom:1px solid #30473b}
+.freeform-chunk-strip-label{position:sticky;left:0;z-index:5;display:flex;align-items:center;
+ width:53px;min-width:53px;padding:0 4px;border-right:1px solid #46594f;
+ background:#101515;font-size:10px;color:var(--muted)}
+.freeform-chunk-strip-plot{position:relative;min-height:23px;overflow:hidden}
+.freeform-chunk-block{position:absolute;top:3px;height:17px;z-index:1;padding:0 3px;
+ box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ font-size:9px;text-align:left;border:1px solid #456b58;background:#254738;
+ color:#d5f0e2;cursor:grab;touch-action:none}
+.freeform-chunk-block.selected{z-index:2;border-color:#b3efcd;background:#35674d;
+ outline:1px solid #b3efcd}
+.freeform-chunk-block:focus-visible{outline:2px solid white;z-index:3}
+
 .freeform-key-space{width:53px;min-width:53px;padding:3px 7px;border-right:1px solid #444;font-size:10px;color:var(--muted)}
 .freeform-ruler-ticks{position:relative;font-size:10px;color:var(--muted)}
 .freeform-ruler-ticks span{position:absolute;top:3px}

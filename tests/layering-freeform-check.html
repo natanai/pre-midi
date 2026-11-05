@@ -6,7 +6,8 @@
 <script type="module">
 import {create} from "/schema.js";
 import {createSong,upgradeSongFeatures} from "/songModel.js";
-import {ensureFreeform,addFreeformInstrument,addFreeformNote} from "/freeformModel.js";
+import {ensureFreeform,addFreeformInstrument,addFreeformNote,
+ eventsAtFreeformStep} from "/freeformModel.js";
 import {installFreeformUI} from "/freeformUI.js";
 const assert=(ok,message)=>{if(!ok)throw Error(message)};
 const report=(status,details)=>fetch("/__song_result?status="+status+
@@ -140,6 +141,60 @@ try{
   "Removing a duplicate preserves its source Instrument and notes");
  assert(root.querySelector('select[aria-label="Freeform Instrument"]').value===instrument.id,
   "Removing the selected Instrument switches to the surviving one");
- await report("PASS","Layered notes, editable cutoff and safe Instrument duplicate, reorder and removal");
+ const sourceChunk=instrument.chunks[0];
+ sourceChunk.notes=[{id:"browser-chunk-note",pitch:72,start:2,duration:4,velocity:.73}];
+ const originalChunk=JSON.stringify(sourceChunk);
+ const placeChunk=[...root.querySelectorAll(".freeform-chunk-tools button")]
+  .find(node=>node.textContent==="place Chunk");
+ assert(placeChunk,"Reusable Chunks have a placement action");
+ placeChunk.click();
+ assert(instrument.chunkPlacements.length===1,
+  "Placing a Chunk creates one Song-time placement without copying notes");
+ const placed=instrument.chunkPlacements[0],originalId=placed.id;
+ const edit=(ariaLabel,value)=>{
+  const node=root.querySelector('input[aria-label="'+ariaLabel+'"]');
+  assert(node,"Placed Chunk exposes "+ariaLabel);
+  node.value=String(value);
+  node.dispatchEvent(new Event("change",{bubbles:true}));
+ };
+ edit("Placed Chunk start bar",4);
+ edit("Placed Chunk start step",3);
+ edit("Placed Chunk repetitions",3);
+ edit("Placed Chunk spacing in steps",12);
+ edit("Placed Chunk onset window in steps",8);
+ assert(placed.id===originalId&&placed.startStep===50&&placed.repeats===3&&
+  placed.every===12&&placed.length===8,
+  "Editing a placed Chunk preserves its identity and supports offsets and polymeter");
+ assert([52,64,76].every(step=>eventsAtFreeformStep(free,step)
+  .some(event=>event.note.pitch===72)),
+  "Every placed repeat still sounds the reusable source notes on time");
+ assert(JSON.stringify(sourceChunk)===originalChunk,
+  "Editing placement never changes reusable Chunk notes");
+ const blockRepeats=[...root.querySelectorAll(".freeform-chunk-block")];
+ assert(blockRepeats.length===3,
+  "Every visible repeat has its own selectable block above the existing note rows");
+ assert(blockRepeats.every(node=>node.title.includes("Alt+left/right")),
+  "Placed Chunks describe non-destructive keyboard movement");
+ blockRepeats[0].click();
+ assert(root.querySelector(".freeform-chunk-block.selected"),
+  "Choosing a visual Chunk block focuses its parent reusable placement");
+ let selectedBlock=root.querySelector(".freeform-chunk-block.selected");
+ selectedBlock.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowRight",altKey:true,bubbles:true,cancelable:true
+ }));
+ assert(placed.startStep===66,
+  "Alt+right moves the entire reusable placement by one bar");
+ selectedBlock=root.querySelector(".freeform-chunk-block.selected");
+ selectedBlock.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowLeft",altKey:true,shiftKey:true,bubbles:true,cancelable:true
+ }));
+ assert(placed.startStep===65&&[67,79,91].every(step=>
+  eventsAtFreeformStep(free,step).some(event=>event.note.pitch===72)),
+  "Shift+Alt+left nudges one step while keeping all repeats and notes audible");
+ root.querySelector(".freeform-placement-remove").click();
+ assert(instrument.chunkPlacements.length===0&&
+  JSON.stringify(sourceChunk)===originalChunk,
+  "Removing placement never deletes or modifies its reusable Chunk");
+ await report("PASS","Layered notes, note cutoff, Instrument lifecycle and editable reusable Chunk placements");
 }catch(error){await report("FAIL",String(error.stack||error))}
 </script>
