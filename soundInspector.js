@@ -50,6 +50,31 @@ export function auditionSoundInspector({
  }catch(error){onError(error);return Promise.resolve();}
 }
 
+// Sound identity is part of the shared Inspector, not an editor-specific
+// data writer. Context adapters own the transaction and undo destination.
+export function bindSoundInspectorIdentity({
+ sound,nameInput,referenceInput,onRename,onReferencePitch
+}){
+ if(!sound||!nameInput||!referenceInput||
+  typeof onRename!=="function"||typeof onReferencePitch!=="function")
+  throw Error("Sound Inspector identity requires controls and context writers.");
+ nameInput.value=sound.name;
+ referenceInput.value=String(sound.referencePitch);
+ nameInput.onchange=()=>{
+  const name=nameInput.value.trim()||"Sound";
+  nameInput.value=name;
+  onRename(name);
+ };
+ referenceInput.onchange=()=>{
+  const value=Number(referenceInput.value);
+  if(referenceInput.value.trim()===""||!Number.isInteger(value)||value<0||value>127){
+   referenceInput.value=String(sound.referencePitch);
+   return;
+  }
+  onReferencePitch(value);
+ };
+}
+
 export function renderSoundInspectorCore({
  instrument,sound,context,modulesRoot,scopeRoot,
  volumeRoot,gainRoot,primaryRoots,

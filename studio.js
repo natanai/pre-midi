@@ -13,7 +13,7 @@ import {pianoKeyGeometry} from "./pianoKeyboard.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
-import {renderSoundInspectorCore,auditionSoundInspector} from "./soundInspector.js";
+import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity} from "./soundInspector.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
 import {FACTORY_SOUND_CATALOG} from "./soundCatalog.js";
 import { nextRackPreview } from "./rackPreview.js";
@@ -1193,7 +1193,11 @@ function renderSound() {
   const node=$(key);
   if(node.parentElement!==primary)primary.append(node);
  }
- $("sound-name").value=entry.name;
+ bindSoundInspectorIdentity({
+  sound:entry,nameInput:$("sound-name"),referenceInput:$("sound-reference"),
+  onRename:value=>{if(sound().id===entry.id)modify(()=>{sound().name=value;});},
+  onReferencePitch:value=>{if(sound().id===entry.id)modify(()=>{sound().referencePitch=value;});}
+ });
  $("move-sound-up").disabled=inst.sounds.indexOf(entry)===0;
  $("move-sound-down").disabled=inst.sounds.indexOf(entry)===inst.sounds.length-1;
  $("duplicate-sound").disabled=inst.sounds.length>=MAX_SOUNDS;
@@ -1202,7 +1206,6 @@ function renderSound() {
  $("sound-controls").hidden=inst.layout!=="rack";
  $("save-row-sound").hidden=inst.layout!=="rack";
  $("save-sound").setAttribute("aria-label",inst.layout==="rack"?"Save rack preset":"Save preset");
- $("sound-reference").value=String(entry.referencePitch);
  $("convert-rack").hidden=inst.layout==="rack";
  $("convert-rack").disabled=!!inst.automation||!canConvertToRack(inst);
  $("convert-rack").title=inst.automation?"remove cutoff movement before converting to rack":canConvertToRack(inst)?"convert this instrument into a one-sound rack":"requires a single pitch without overlapping hits";
@@ -2105,8 +2108,6 @@ $("delete-chunk").addEventListener("click", () => {
  });
 });
 $("chunk-name").addEventListener("change", event => modify(() => chunkFor(instrument()).name = event.target.value.trim() || "Chunk"));
-$("sound-name").addEventListener("change",event=>modify(()=>{sound().name=event.target.value.trim()||"Sound";}));
-$("sound-reference").addEventListener("change",event=>modify(()=>{sound().referencePitch=Number(event.target.value);}));
 $("replace-row-sound").addEventListener("click",()=>openLibrary("replace-row"));
 function moveRackSound(instrumentId,soundId,offset){
  const inst=beat.instruments.find(item=>item.id===instrumentId);

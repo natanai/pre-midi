@@ -1,6 +1,6 @@
 // Freeform uses the canonical Beat synth, sampler, sound illustration and DSP patches.
 // This is a desktop panel, not a second sound-engine implementation.
-import {renderSoundInspectorCore,auditionSoundInspector} from "./soundInspector.js";
+import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity} from "./soundInspector.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {createSignalDisplay} from "./soundScope.js";
 import {audition} from "./audio.js";
@@ -133,11 +133,8 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   host.append(details);
   if(!expanded)return host;
   const tools=el("div","freeform-sound-tools");
-  const label=el("input");label.type="text";label.value=ctx.sound.name;label.maxLength=60;
+  const label=el("input");label.type="text";label.maxLength=60;
   label.setAttribute("aria-label","Freeform Sound name");
-  label.addEventListener("change",()=>mutateSelected(({sound})=>{
-   sound.name=label.value.trim()||"Sound";
-  },ctx.sound.id));
   tools.append(field("name",label));
   if(ctx.inst.layout==="rack"){
    const pick=el("select");pick.setAttribute("aria-label","Freeform Sound");
@@ -167,11 +164,11 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   // The canonical Inspector moves them into the associated illustration.
   dials.append(volumeRoot,gainRoot,...primaryRoots);
   const pitch=el("input");pitch.type="number";pitch.step="1";pitch.min="0";pitch.max="127";
-  pitch.value=String(ctx.sound.referencePitch);
   pitch.setAttribute("aria-label","Freeform Sound reference pitch");
-  pitch.addEventListener("change",()=>{
-   const value=Number(pitch.value);
-   if(Number.isInteger(value))mutateSelected(({sound})=>{sound.referencePitch=value;},ctx.sound.id);
+  bindSoundInspectorIdentity({
+   sound:ctx.sound,nameInput:label,referenceInput:pitch,
+   onRename:value=>mutateSelected(({sound})=>{sound.name=value;},ctx.sound.id),
+   onReferencePitch:value=>mutateSelected(({sound})=>{sound.referencePitch=value;},ctx.sound.id)
   });
   dials.append(field("reference pitch",pitch));
   if(ctx.inst.layout==="rack"){

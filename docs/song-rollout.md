@@ -60,6 +60,14 @@ A category percentage is an engineering estimate based on implemented functional
 
 **Work coordination:** The educational-illustrations agent owns the diagrams, their visual interactions and parameter-to-illustration semantics in `soundIllustrations.js` and associated modules. The Inspector owner owns the common Sound layout, adapters and lifecycle. Land compatible interface-contract changes in small reviewable PRs; do not independently edit the same visualizer internals or create another Sound-control metadata catalogue. Changes to a canonical diagram automatically propagate to both contexts once the Inspector consolidation is complete. The separate native streaming/paging and vocal agents retain their existing milestones.
 
+**Live handoff checkpoint (2026-11-04, continued in new chat):**
+
+- [PR #159](https://github.com/natanai/pre-midi/pull/159) merged the first common Sound Inspector renderer for Beat and attached freeform: primary/level controls, gain/stereo illustration, synth/sampler modules, measured scope and existing Beat automation adapter. Its branch CI passed; the gate is **not yet complete**.
+- [PR #161](https://github.com/natanai/pre-midi/pull/161) merged one shared audition policy and deterministic one-Sound-at-a-time Rack previews in both contexts after complete browser/native CI passed.
+- [PR #163](https://github.com/natanai/pre-midi/pull/163) is retargeted to `main` for shared Sound name/reference-pitch identity binding and input validation. Qualify and merge only after its own CI succeeds.
+- Continue with canonical header/catalog/save/import/Rack action assembly, then a generated inventory of all applicable Sound paths in Beat/freeform, error/preview lifecycle, song undo, aural/native parity, and finally the outstanding conversion, paging, and physical-Windows release gates. Keep the **92%** baseline until test evidence supports a scoped scorecard change. Preserve the illustrations agent's ownership of `soundIllustrations.js` and related visual interaction files; do not fork the educational diagrams.
+- Recheck live PR statuses and `main` before merging; this note is a handoff checkpoint, not a claim that ongoing CI or Windows hardware checks have finished.
+
 **Updated 100% route:** shared Inspector consolidation → remaining unusual partial-unpack/conversion boundary cases → bounded native long-Song streaming/page handoff (without raising limits prematurely) → verified Windows portable release and real Windows 11 playback/recording/usability acceptance. Phone parity and pre-programmed game integration remain deferred, separately tracked scope. All earlier Song/freeform implementations remain available throughout.
 
 ### Staged delivery gates

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {PRIMARY_SYNTH_FIELDS} from "../instrumentUI.js";
-import {auditionSoundInspector} from "../soundInspector.js";
+import {auditionSoundInspector,bindSoundInspectorIdentity} from "../soundInspector.js";
 
 const source=name=>readFileSync(new URL("../"+name,import.meta.url),"utf8");
 
@@ -83,4 +83,25 @@ test("shared audition passes host failures to the active context",async()=>{
   onError:error=>errors.push(error.message)
  });
  assert.deepEqual(errors,["device unavailable"]);
+});
+
+test("shared Sound identity has one context-owned edit per name or pitch change",()=>{
+ const sound={id:"s",name:"voice",referencePitch:60};
+ const nameInput={},referenceInput={},edits=[];
+ bindSoundInspectorIdentity({
+  sound,nameInput,referenceInput,
+  onRename:value=>edits.push(["name",value]),
+  onReferencePitch:value=>edits.push(["pitch",value])
+ });
+ assert.equal(nameInput.value,"voice");
+ assert.equal(referenceInput.value,"60");
+ nameInput.value="  new voice  ";nameInput.onchange();
+ referenceInput.value="72";referenceInput.onchange();
+ assert.deepEqual(edits,[["name","new voice"],["pitch",72]]);
+ assert.equal(nameInput.value,"new voice");
+ for(const bad of ["","-1","128","70.5","not a number"]){
+  referenceInput.value=bad;referenceInput.onchange();
+  assert.equal(referenceInput.value,"60");
+ }
+ assert.equal(edits.length,2,"Invalid MIDI reference pitches create no undo transactions");
 });
