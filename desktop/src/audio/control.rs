@@ -14,6 +14,12 @@ struct Status {
 #[repr(C)]
 #[derive(Default,Clone,Serialize)]
 struct SampleInfo {id:u32,rate:u32,channels:u32,frames:u64,normalization:f64}
+#[repr(C)]
+#[derive(Default)]
+struct StreamStatus {
+ position:u64,ack_sequence:u64,ack_end_frame:u64,released_through:u64,
+ state:u32,fault:u32,sample_rate:u32,active:u32,
+}
 unsafe extern "C" {
  #[cfg(test)]fn premidi_audio_add_sample(host:*mut c_void,pcm:*const f32,frames:u64,rate:u32,channels:u32,info:*mut SampleInfo)->i32;
  fn premidi_audio_add_sample_rate(host:*mut c_void,pcm:*const f32,frames:u64,rate:u32,channels:u32,info:*mut SampleInfo,target_rate:u32)->i32;
@@ -37,6 +43,12 @@ unsafe extern "C" {
  fn premidi_audio_render(host:*mut c_void,data:*const u8,length:usize,cycle:f64,rate:u32,frames:u64,output:*mut u8,output_bytes:usize,format:u32,gain:f64)->i32;
  fn premidi_audio_control(host:*mut c_void,command:u32,looping:i32)->i32;
  fn premidi_audio_status_get(host:*mut c_void,status:*mut Status)->i32;
+ fn premidi_audio_stream_begin(host:*mut c_void,owner:u64,revision:u64)->i32;
+ fn premidi_audio_stream_delay(host:*mut c_void,owner:u64,revision:u64,mix:f64,time:f64,feedback:f64)->i32;
+ fn premidi_audio_stream_page(host:*mut c_void,owner:u64,revision:u64,sequence:u64,first_frame:u64,end_frame:u64,onsets:u32,last:i32,packet:*const u8,length:usize)->i32;
+ fn premidi_audio_stream_start(host:*mut c_void,owner:u64,revision:u64)->i32;
+ fn premidi_audio_stream_stop(host:*mut c_void,owner:u64,revision:u64)->i32;
+ fn premidi_audio_stream_status_get(host:*mut c_void,status:*mut StreamStatus)->i32;
 }
 struct Host(*mut c_void);
 // This pointer never leaves its dedicated control thread. COM/backend affinity
@@ -49,6 +61,15 @@ impl Host {
   if pointer.is_null(){Err("No native audio backend is available. Connect an output, or explicitly choose Web Audio in Settings.".into())}else{Ok(Self(pointer))}
  }
  fn check(&self,result:i32)->Result<(),String>{if result<0{Err(unsafe{CStr::from_ptr(premidi_audio_error(self.0))}.to_string_lossy().into_owned())}else{Ok(())}}
+ fn stream_status(&self)->Result<Value,String>{
+  let mut s=StreamStatus::default();
+  self.check(unsafe{premidi_audio_stream_status_get(self.0,&mut s)})?;
+  Ok(json!({"state":s.state,"fault":s.fault,"sampleRate":s.sample_rate,
+   "positionSeconds":if s.sample_rate>0{s.position as f64/s.sample_rate as f64}else{0.0},
+   "positionFrame":s.position,"ackSequence":s.ack_sequence,
+   "ackEndFrame":s.ack_end_frame,"releasedThrough":s.released_through,
+   "activeVoices":s.active}))
+ }
  fn status(&self)->Result<Value,String>{
   let mut s=Status::default();self.check(unsafe{premidi_audio_status_get(self.0,&mut s)})?;
   let backend=unsafe{CStr::from_ptr(premidi_audio_backend(self.0))}.to_string_lossy();
@@ -58,7 +79,8 @@ impl Host {
    "callbacks":s.callbacks,"frames":s.frames,"renderCpuPercent":cpu,"maxCallbackMs":s.max_ns as f64/1_000_000.,"deadlineMisses":s.deadline_misses,"oversizedCallbacks":s.oversized,
    "peak":s.peak_million as f64/1_000_000.,"clippedSamples":s.clipped,"deviceUnderruns":Value::Null,"measuredLatencyMs":Value::Null,
    "countInFrames":s.lead_remaining,"previewState":s.preview_state,"previewSeconds":if s.sample_rate>0{s.preview_position as f64/s.sample_rate as f64}else{0.},
-   "capture":{"phase":s.capture_phase,"frames":s.capture_frames,"missingFrames":s.capture_missing,"clippedSamples":s.capture_clipped,"peak":s.capture_peak_million as f64/1_000_000.,"leadFrames":s.capture_lead,"startFrame":s.capture_start}}))
+   "capture":{"phase":s.capture_phase,"frames":s.capture_frames,"missingFrames":s.capture_missing,"clippedSamples":s.capture_clipped,"peak":s.capture_peak_million as f64/1_000_000.,"leadFrames":s.capture_lead,"startFrame":s.capture_start},
+   "stream":self.stream_status()?}))
  }
 }
 type Reply=SyncSender<Result<Value,String>>;
@@ -154,6 +176,12 @@ pub enum Request {
  Configure{device:Option<u32>,rate:u32,buffer:u32},
  Play{data:Vec<u8>,cycle:f64,seek:f64,looping:bool,preview:bool,#[serde(default)] owner:u64,#[serde(default)] count_in:u32,#[serde(default="default_bpm")] bpm:f64,#[serde(default)] recording:Option<u64>},
  Update{data:Vec<u8>,cycle:f64,looping:bool,tempo_ratio:f64,owner:u64},
+ StreamBegin{owner:u64,revision:u64},
+ StreamDelay{owner:u64,revision:u64,mix:f64,time:f64,feedback:f64},
+ StreamPage{owner:u64,revision:u64,sequence:u64,start_frame:u64,end_frame:u64,onsets:u32,last:bool,data:Vec<u8>},
+ StreamStart{owner:u64,revision:u64},
+ StreamStop{owner:u64,revision:u64},
+ StreamStatus{owner:u64,revision:u64},
  Control{command:u32,looping:bool,#[serde(default)] owner:Option<u64>},
  PreviewControl{command:u32,owner:u64},
  CapturePrepare{seconds:f64,offset_ms:f64,synchronized:bool},
@@ -162,7 +190,7 @@ pub enum Request {
 }
 fn default_bpm()->f64{120.0}
 #[derive(Default)]
-struct ControlState{host:Option<Host>,issued:u64,cancelled:u64,current:u64,preview_current:u64,capture_issued:u64,capture_current:u64,generation:u64,assets:HashMap<(u32,Vec<u8>),SampleInfo>}
+struct ControlState{host:Option<Host>,issued:u64,cancelled:u64,current:u64,stream_revision:u64,preview_current:u64,capture_issued:u64,capture_current:u64,generation:u64,assets:HashMap<(u32,Vec<u8>),SampleInfo>}
 impl ControlState{
  fn begin(&mut self)->Result<Value,String>{self.issued=self.issued.checked_add(1).ok_or("Audio session ID exhausted")?;Ok(json!({"owner":self.issued}))}
  fn valid(&self,owner:u64)->bool{owner>self.cancelled&&owner<=self.issued&&owner>=self.current}
@@ -173,7 +201,7 @@ impl ControlState{
 }
 fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
  if matches!(&request,Request::Begin){return state.begin();}
- if matches!(&request,Request::Shutdown){state.cancelled=state.issued;state.current=0;state.preview_current=0;state.capture_current=0;state.assets.clear();state.host.take();return Ok(json!({"closed":true}));}
+ if matches!(&request,Request::Shutdown){state.cancelled=state.issued;state.current=0;state.stream_revision=0;state.preview_current=0;state.capture_current=0;state.assets.clear();state.host.take();return Ok(json!({"closed":true}));}
  if let Request::Control{command:1|4,owner,..}=&request{
   let cancelled=owner.unwrap_or(state.issued);if cancelled>state.issued{return Err("Unknown native session".into());}state.cancelled=state.cancelled.max(cancelled);
  }
@@ -181,6 +209,17 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
  if let Request::Play{owner,preview:true,..}=&request{if *owner==0||*owner<=state.cancelled||*owner>state.issued||*owner<state.preview_current{return Err("Native preview request cancelled".into());}}
  if let Request::Play{recording:Some(owner),..}=&request{if *owner==0||*owner!=state.capture_current{return Err("Native microphone take was cancelled".into());}}
  if let Request::Update{owner,..}=&request{if *owner!=state.current||!state.valid(*owner){return Err("Native edit request cancelled".into());}}
+ if let Request::StreamBegin{owner,revision}=&request{
+  if !state.valid(*owner)||*revision==0{return Err("Native Song stream begin was cancelled".into());}
+ }
+ match &request{
+  Request::StreamDelay{owner,revision,..}|Request::StreamPage{owner,revision,..}|
+  Request::StreamStart{owner,revision}|Request::StreamStop{owner,revision}|
+  Request::StreamStatus{owner,revision}
+   if *owner!=state.current||*revision==0||*revision!=state.stream_revision=>
+    return Err("Native Song page owner or revision is stale".into()),
+  _=>{}
+ }
  if matches!(&request,Request::Control{..}|Request::Status)&&state.host.is_none(){return state.status();}
  if state.host.is_none(){state.generation+=1;state.host=Some(Host::new()?);}
  match request {
@@ -201,15 +240,45 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    state.assets.insert(key,info.clone());Ok(serde_json::to_value(info).unwrap())
   },
   Request::Status=>state.status(),
-  Request::Configure{device,rate,buffer}=>{state.assets.clear();state.generation+=1;state.cancelled=state.issued;state.current=0;state.preview_current=0;state.capture_current=0;let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_configure(host.0,device.unwrap_or(u32::MAX),rate,buffer)})?;state.status()},
+  Request::Configure{device,rate,buffer}=>{state.assets.clear();state.generation+=1;state.cancelled=state.issued;state.current=0;state.stream_revision=0;state.preview_current=0;state.capture_current=0;let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_configure(host.0,device.unwrap_or(u32::MAX),rate,buffer)})?;state.status()},
   Request::Play{data,cycle,seek,looping,preview,owner,count_in,bpm,recording}=>{
    if data.len()>16*1024*1024{return Err("Native session exceeds 16 MiB".into());}
    let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_play_take(host.0,data.as_ptr(),data.len(),cycle,seek,i32::from(looping),i32::from(preview),bpm,count_in,i32::from(recording.is_some()))})?;
-   if preview{state.preview_current=owner;}else{state.current=owner;}state.status()
+   if preview{state.preview_current=owner;}else{state.current=owner;state.stream_revision=0;}state.status()
   },
+  Request::StreamBegin{owner,revision}=>{
+   let host=state.host.as_ref().unwrap();
+   host.check(unsafe{premidi_audio_stream_begin(host.0,owner,revision)})?;
+   state.current=owner;state.stream_revision=revision;state.status()
+  },
+  Request::StreamDelay{owner,revision,mix,time,feedback}=>{
+   let host=state.host.as_ref().unwrap();
+   host.check(unsafe{premidi_audio_stream_delay(host.0,owner,revision,mix,time,feedback)})?;
+   host.stream_status()
+  },
+  Request::StreamPage{owner,revision,sequence,start_frame,end_frame,onsets,last,data}=>{
+   if data.len()<8||data.len()>16*1024*1024{return Err("Native Song page is outside 16 MiB".into());}
+   let host=state.host.as_ref().unwrap();
+   let value=unsafe{premidi_audio_stream_page(host.0,owner,revision,sequence,start_frame,end_frame,onsets,i32::from(last),data.as_ptr(),data.len())};
+   host.check(value)?;
+   Ok(json!({"accepted":value==0,"stream":host.stream_status()?}))
+  },
+  Request::StreamStart{owner,revision}=>{
+   let host=state.host.as_ref().unwrap();
+   host.check(unsafe{premidi_audio_stream_start(host.0,owner,revision)})?;
+   state.status()
+  },
+  Request::StreamStop{owner,revision}=>{
+   let host=state.host.as_ref().unwrap();
+   host.check(unsafe{premidi_audio_stream_stop(host.0,owner,revision)})?;
+   state.stream_revision=0;state.status()
+  },
+  Request::StreamStatus{..}=>state.status(),
   Request::Control{command,looping,owner}=>{
    if owner.is_some_and(|value|value!=state.current){return state.status();}
-   let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_control(host.0,command,i32::from(looping))})?;state.status()
+   let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_control(host.0,command,i32::from(looping))})?;
+   if command==1||command==4{state.stream_revision=0;}
+   state.status()
   },
   Request::Update{data,cycle,looping,tempo_ratio,..}=>{
    if data.len()>16*1024*1024{return Err("Native session exceeds 16 MiB".into());}
