@@ -28,7 +28,8 @@ function entries(path,value){
 // Sound per click in row order; a pitched Instrument plays the selected Sound.
 // The adapter supplies its own native-aware audio host and error reporting.
 export function auditionSoundInspector({
- instrument,sound,context,button,previewPositions,play,onError=()=>{},duration=.6
+ instrument,sound,context,button,previewPositions,play,onError=()=>{},duration=.6,
+ auditionRequests=null,isCurrent=()=>true
 }){
  if(!instrument||!sound||!button||typeof play!=="function"||
   !(previewPositions instanceof Map))
@@ -42,16 +43,25 @@ export function auditionSoundInspector({
  button.dataset.previewSoundId=entry.id;
  button.title=label;
  button.setAttribute("aria-label",label);
+ // Asynchronous native/browser host rejection must not report against an
+ // Inspector that has already switched Sound or been superseded by a newer
+ // audition request. A request map belongs to the host context, not the DSP.
+ const requestKey="instrument:"+instrument.id;
+ const token=auditionRequests instanceof Map?
+  (auditionRequests.get(requestKey)??0)+1:0;
+ if(auditionRequests instanceof Map)auditionRequests.set(requestKey,token);
+ const report=error=>{
+  if(!isCurrent())return;
+  if(auditionRequests instanceof Map&&auditionRequests.get(requestKey)!==token)return;
+  onError(error);
+ };
  try{
-  // No buffered selection is retained across clicks or context changes.
   return Promise.resolve(play(instrument,entry.referencePitch,context,{
    soundId:entry.id,duration
-  })).catch(onError);
- }catch(error){onError(error);return Promise.resolve();}
+  })).catch(report);
+ }catch(error){report(error);return Promise.resolve();}
 }
 
-// Sound identity is part of the shared Inspector, not an editor-specific
-// data writer. Context adapters own the transaction and undo destination.
 // Shared presentation/action ownership; callers specify their own permitted
 // catalog operations, while the Inspector binds the common Sound controls.
 // The UI may occupy different hosts but does not fork the action semantics.
@@ -73,6 +83,8 @@ export function bindSoundInspectorCatalogActions({
  if(importButton&&onImport)importButton.onclick=onImport;
 }
 
+// Sound identity is part of the shared Inspector, not an editor-specific
+// data writer. Context adapters own the transaction and undo destination.
 export function bindSoundInspectorIdentity({
  sound,nameInput,referenceInput,onRename,onReferencePitch
 }){

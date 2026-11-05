@@ -40,7 +40,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
  const input=el("input");input.type="file";
  input.accept=".wav,.ogg,.mp3,audio/wav,audio/ogg,audio/mpeg";input.hidden=true;
  input.setAttribute("aria-label","Import audio into freeform Sound");
- const selected=new Map(),previewPositions=new Map();
+ const selected=new Map(),previewPositions=new Map(),auditionRequests=new Map();
  let expanded=false,stagePanel=null,stageOpen=false;
  const current=()=>{
   const inst=getInstrument();
@@ -81,7 +81,8 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   if(!button)return;
   return auditionSoundInspector({
    instrument:ctx.inst,sound:ctx.sound,context:context(ctx),
-   button,previewPositions,play:audition,duration:.4,
+   button,previewPositions,auditionRequests,play:audition,duration:.4,
+   isCurrent:()=>current()?.inst.id===ctx.inst.id&&current()?.sound.id===ctx.sound.id,
    onError:error=>onError("Sound preview: "+error.message)
   });
  };
