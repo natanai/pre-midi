@@ -206,6 +206,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    modulesRoot:modules,scopeRoot:scope,
    volumeRoot,gainRoot,primaryRoots,
    accent:"#86c6a7",
+   stageLayout:ctx.inst.layout==="rack"?"rack":"levels",
    sampleNames:ctx.sound.patch.type==="sample"?ctx.sound.patch.zones.map(zone=>
     ctx.layer.samples.find(asset=>asset.id===zone.assetId)?.name||zone.assetId).join(" / "):"",
    onReplaceSample:()=>input.click(),
