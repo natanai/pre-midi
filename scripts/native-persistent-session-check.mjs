@@ -11,12 +11,17 @@ import {encodeNativeSession} from "../src/hosts/native/session.js";
 import {nativeFrameAt,rebaseNativePlansToPage} from "../src/hosts/native/page-plan.js";
 const root=fileURLToPath(new URL("../",import.meta.url));
 const temp=await mkdtemp(join(tmpdir(),"premidi-persistent-pages-"));
-const bin=join(temp,"native-stream-check");
+const bin=join(temp,"native-stream-check"),binder=join(temp,"native-stream-binder");
 try{
  execFileSync(process.env.CXX||"g++",[
   "-std=c++17","-O2","-ffp-contract=off","-Wall","-Wextra",
   "-Werror","-pedantic",join(root,"native/streaming-session-test.cpp"),
   "-pthread","-o",bin
+ ],{stdio:"pipe",timeout:90000});
+ execFileSync(process.env.CXX||"g++",[
+  "-std=c++17","-O2","-ffp-contract=off","-Wall","-Wextra",
+  "-Werror","-pedantic",join(root,"native/stream-transport-test.cpp"),
+  "-pthread","-o",binder
  ],{stdio:"pipe",timeout:90000});
  const rows=[];
  for(const rate of [44100,48000,96000]){
@@ -74,7 +79,16 @@ try{
   assert.ok(report.callbackSplits>=2);
   assert.ok(report.maxPcm<=1e-4);
   assert.ok(report.rmsPcm<=2e-5);
-  rows.push({rate,...report});
+  const bound=JSON.parse(execFileSync(binder,args.map(String),{
+   encoding:"utf8",timeout:90000,maxBuffer:65536
+  }));
+  assert.equal(bound.qualified,true);
+  assert.equal(bound.pages,3);
+  assert.equal(bound.boundPackets,3);
+  assert.equal(bound.acknowledged,3);
+  assert.equal(bound.callbackAllocations,0);
+  assert.ok(bound.maxPcm<=1e-4&&bound.rmsPcm<=2e-5);
+  rows.push({rate,...report,binder:bound});
  }
  console.log("PASS live native persistent Session multi-page note/sample ingestion: "+JSON.stringify(rows));
 }finally{
