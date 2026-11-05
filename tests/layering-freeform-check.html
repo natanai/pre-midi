@@ -57,6 +57,26 @@ try{
  }));
  assert(passage.startStep===31,"Shift+Alt+left moves a passage by one step");
  assert(instrument.notes[0].start===31,"Step movement preserves source-note ownership");
- await report("PASS","Beat-attached layering preview, keyboard movement and deliberate overlap");
+ controller.open(track.id,passage.id);
+ let notes=[...root.querySelectorAll(".freeform-roll-note")];
+ assert(notes.length===2,"Both independently editable overlapping notes remain in the roll");
+ assert(notes.every(note=>note.classList.contains("layered")),
+  "The overlapped notes show distinct stacked visual lanes");
+ assert(notes[0].style.top!==notes[1].style.top,
+  "Simultaneous voices must not paint directly over each other");
+ notes[0].click();
+ const choice=root.querySelector('select[aria-label="Choose overlapping freeform note"]');
+ assert(choice&&choice.options.length===2,
+  "Selecting an overlap exposes both notes without modifying the Song");
+ const duplicate=[...root.querySelectorAll("button")]
+  .find(node=>node.textContent==="+ layer note");
+ assert(duplicate,"Selected notes provide explicit non-destructive layering");
+ duplicate.click();
+ assert(instrument.notes.length===3,"Layering keeps the original notes and adds one new identity");
+ assert(new Set(instrument.notes.map(note=>note.id)).size===3,
+  "Every layered note has a distinct editable identity");
+ assert(root.querySelectorAll(".freeform-roll-note").length===3,
+  "All three concurrent notes remain represented in the roll");
+ await report("PASS","Beat-attached movement, stacked overlap selection and duplicate layering");
 }catch(error){await report("FAIL",String(error.stack||error))}
 </script>
