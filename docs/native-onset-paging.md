@@ -1,6 +1,6 @@
 # Native Song onset paging: implementation and qualification contract
 
-Status: **bounded Song-page compilation and a qualified C++ publication-mailbox prototype only; not pageable native playback**.
+Status: **bounded Song-page compilation, full-render event equivalence and a qualified C++ metadata mailbox; not pageable native playback**.
 
 Canonical Song/freeform completion and ordering: [song-rollout.md](song-rollout.md).
 Do not remove the existing native preflight errors or mark a Windows portable build qualified on the strength of these helpers.
@@ -13,10 +13,13 @@ Do not remove the existing native preflight errors or mark a Windows portable bu
 
 ## C++ control/callback page mailbox (experimental milestone)
 
-- [PR #177](https://github.com/natanai/pre-midi/pull/177) introduces `native/page-mailbox.hpp` and a standalone C++17 test in `native/page-mailbox-test.cpp`, run from the source-verification workflow with `scripts/native-page-mailbox-check.mjs`. Treat the PR as pending until exact head CI passes. This is a metadata-only control/callback mailbox, **not a playable packet scheduler**.
+- [PR #177](https://github.com/natanai/pre-midi/pull/177) introduces `native/page-mailbox.hpp` and a standalone C++17 test in `native/page-mailbox-test.cpp`, run from the source-verification workflow with `scripts/native-page-mailbox-check.mjs`. PR #177 passed full browser/native CI and Windows Server 2022 portable-build qualification and merged into `main`. This is a metadata-only control/callback mailbox, **not a playable packet scheduler**.
 - The mailbox has three fixed slots and immutable owner/revision/sequence/absolute-frame descriptors. The producer validates a contiguous timeline, a maximum of 4,096 events and 512 declared resource references, and publishes with release semantics. The callback acquires a ready slot at an exact boundary without allocating or waiting, acknowledges sequence and end frame, and retires old slots for control-thread reclamation.
 - A missing, late or stale page is fatal rather than disguised as successful silence. Stop/edit/revision invalidation needs a new mailbox. The standalone test measures callback allocations, owner/revision rejection, terminal handling, bounded backpressure and real two-thread order; it does not run native synth voices across a page edge.
-- [PR #179](https://github.com/natanai/pre-midi/pull/179) separately stages the exact `renderEventsInWindow` conversion from source-linked Song events to native voice/vocal/automation plans. It must pass its own verification and does **not** replace the existing single-session native transport.
+- [PR #179](https://github.com/natanai/pre-midi/pull/179) merged after full CI: `renderEventsInWindow` uses exactly the same event materialization as full Song playback, including source-phase cutoff automation, vocal references and strum offsets across page boundaries. It does **not** replace the existing single-session native transport.
+- [PR #180](https://github.com/natanai/pre-midi/pull/180) stages `nativePageDescriptorCursor`, which maps absolute Song steps into monotonically sequenced native audio frames with a mandatory edit-revision reader; descriptors remain `prepared:false` until actual resources are resolved. Verify and merge this PR separately.
+- **Crucial resource-lifetime distinction:** a page’s descriptor may be retired at its end frame, but its banks/samples/plan data must **not** be freed merely because that metadata slot was reclaimed. A strummed onset authored in page A can sound after page B begins, and an already-sounding oscillator or recorded sample may release several pages later. The future Session needs independent resource lifetime ownership until every delayed onset, active Voice and effects tail has ended.
+- A whole-Session replacement/crossfade is not a valid shortcut: existing `native/session.hpp` keeps oscillator banks, DriveRecipes, sample channels, active Voice objects and delay feedback within one Session. Swapping whole Sessions does not retain their exact DSP state or shared voice-stealing policy.
 - Before wiring the mailbox into the real audio device, connect descriptors to fully prepared and pinned C++ packet/bank/sample/effect resources; the callback must not accept a Boolean “prepared” claim without validating actual immutable resource handles. The Session must keep active voices, delay and modulation state alive across page consumption.
 
 ## Existing native safety invariants (still mandatory)
