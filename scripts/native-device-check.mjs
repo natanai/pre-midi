@@ -18,9 +18,9 @@ let renderer;
 try{
  execFileSync(process.env.CXX||'g++',['-std=c++17','-O2','-ffp-contract=off','-Wall','-Wextra','-Werror','-pedantic','-DPREMIDI_AUDIO_TEST',join(root,'native/session-test.cpp'),join(root,'native/device-host.cpp'),'-pthread','-ldl','-lm','-o',binary],{stdio:'pipe'});
  renderer=await buildNativeRenderer();
- async function render(plans,{rate=48000,cycle=1,seek=0,loop=false,seconds=.4,block=128,pause=false,assets=null,offline=false,loopEdit=false}={}){
+ async function render(plans,{rate=48000,cycle=1,seek=0,loop=false,seconds=.4,block=128,pause=false,assets=null,offline=false,loopEdit=false,paged=false}={}){
   const input=join(temp,'fixture.pms'),output=join(temp,'pcm.f32');await writeFile(input,encodeNativeSession(plans,rate,assets));
-  const frames=Math.round(seconds*rate),report=JSON.parse(run([offline?'--export':'--render',input,rate,cycle,seek,Number(loop),frames,block,output,pause?'pause':loopEdit?'loop-edit':'none']));
+  const frames=Math.round(seconds*rate),report=JSON.parse(run([offline?'--export':'--render',input,rate,cycle,seek,Number(loop),frames,block,output,pause?'pause':loopEdit?'loop-edit':paged?'paged':'none']));
   return {pcm:floatArray(await readFile(output)),report};
  }
  function compare(name,actual,expected,extra={}){
@@ -86,6 +86,14 @@ try{
   const expected=[one,two].map(p=>floatArray(renderer.render(p,rate,Math.round(rate*1.2))));
   compare('delay-shared-bus-'+rate,base.pcm,expected[0].map((v,i)=>(v+expected[1][i])*.85));
   for(const block of [1,17,511,8192])compare('delay-block-'+block+'-'+rate,(await render([one,two],{rate,cycle:.25,seconds:1.2,block})).pcm,base.pcm);
+  // One Session persists while a strict 511-frame mailbox splits callback
+  // blocks; no oscillator/release/feedback state may reset on page changes.
+  const persistent=await render([one,two],{rate,cycle:2,seconds:1.2,block:127});
+  for(const block of [1,127,511,8192]){
+   const paged=await render([one,two],{rate,cycle:2,seconds:1.2,block,paged:true});
+   compare('native-paged-dsp-continuity-'+block+'-'+rate,paged.pcm,persistent.pcm,
+    {rate,allocationAssertions:paged.report.allocations===0,pages:true});
+  }
   const seek=.6;
   compare('delay-seek-ended-notes-'+rate,(await render([one,two],{rate,cycle:1,seek,seconds:.6})).pcm,base.pcm.slice(Math.ceil(seek*rate)*2));
   const seconds=.8,cycle=.25,totalFrames=Math.round(seconds*rate),loopExpected=new Array(totalFrames*2).fill(0);
@@ -150,6 +158,9 @@ try{
   for(let ch=0;ch<2;ch++)expected[2*frame+ch]=source[2*at+ch]*Math.fround(amp)*.85;
  }
  compare('stereo-sample-independent-envelope',stereo.pcm,expected);
+ compare('native-paged-stereo-sample-retention',
+  (await render([sample],{rate:sampleRate,cycle:1,seconds:.25,assets,block:127,paged:true})).pcm,
+  stereo.pcm,{rate:sampleRate,pages:true});
  compare('stereo-sample-block-one',(await render([sample],{rate:sampleRate,cycle:1,seconds:.25,block:1,assets})).pcm,stereo.pcm);
  compare('native-offline-stereo-sample',(await render([sample],{rate:sampleRate,cycle:1,seconds:.25,assets,offline:true})).pcm,stereo.pcm);
  compare('stereo-sample-seek',(await render([sample],{rate:sampleRate,cycle:1,seek:.04,seconds:.21,assets})).pcm,stereo.pcm.slice(Math.ceil(.04*sampleRate-1e-9)*2));

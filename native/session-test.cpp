@@ -1,4 +1,5 @@
 #include "session.hpp"
+#include "paged-mixer-probe.hpp"
 #include "device-host.h"
 #include <fstream>
 #include <iostream>
@@ -49,6 +50,38 @@ int main(int argc,char** argv){
     void* host=premidi_audio_create(1);premidi::require(host!=nullptr,"Native offline host unavailable");
     const int result=premidi_audio_render(host,bytes.data(),bytes.size(),std::stod(argv[4]),rate,frames,reinterpret_cast<std::uint8_t*>(output.data()),output.size()*4,0,.85);
     const std::string error=premidi_audio_error(host);premidi_audio_destroy(host);premidi::require(result==0,error.c_str());
+   }else if(std::string(argv[10])=="paged"){
+    premidi::require(!loop,"Page-clock PCM probe does not yet qualify Song loops");
+    premidi::PageMailbox pages(91,7,0);
+    premidi::PagedMixerProbe probe(session,pages);
+    // Control-side producer. Prefetch at least one full maximum callback,
+    // with 3 bounded slots. Deliberately non-block-aligned page boundaries
+    // exercise DSP continuity even when a callback spans multiple pages.
+    const std::uint64_t pageWidth=std::max<std::uint64_t>(511,
+     static_cast<std::uint64_t>(block)/2+1);
+    std::uint64_t preparedUntil=0,sequence=0;
+    const auto prepare=[&]{
+     pages.reclaim();
+     while(preparedUntil<frames){
+      const auto end=std::min<std::uint64_t>(frames,preparedUntil+pageWidth);
+      const premidi::PageDescriptor p{91,7,sequence+1,preparedUntil,end,0,0,true,end==frames};
+      if(!pages.publish(p))break;
+      preparedUntil=end;++sequence;
+     }
+    };
+    for(unsigned at=0;at<frames;){
+     prepare();
+     const auto n=std::min(block,frames-at);unsigned budget=256;
+     callbackScope=true;
+     const bool ok=probe.process(output.data()+2*at,n,budget);
+     callbackScope=false;
+     premidi::require(ok&&pages.fault()==premidi::PageError::none,
+      "Native page-clock probe failed or underrun");
+     at+=n;
+    }
+    pages.reclaim();
+    premidi::require(pages.advance(frames)==premidi::PageResult::finished&&
+     pages.ackSequence()==sequence,"Native page-clock probe did not finish at the exact frame");
    }else for(unsigned at=0;at<frames;){const auto n=std::min(block,frames-at);unsigned budget=256;callbackScope=true;session.process(output.data()+2*at,n,loop,budget);callbackScope=false;at+=n;}
    premidi::require(session.fault.load()==0,"Callback mixer fault");premidi::require(callbackAllocations.load()==0,"Callback mixer allocated");
    for(auto value:output)premidi::require(std::isfinite(value),"Nonfinite callback PCM");
