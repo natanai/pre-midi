@@ -77,10 +77,12 @@ test("instrument presets have one owner and the full synth editor is reachable",
  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const editor=readFileSync(new URL("../instrumentUI.js",import.meta.url),"utf8");
+ const inspector=readFileSync(new URL("../soundInspector.js",import.meta.url),"utf8");
  assert.match(html,/id="add-instrument"/);
  assert.match(studio,/openLibrary\("add"\)/);
  assert.match(studio,/openLibrary\("replace"\)/);
- assert.match(studio,/renderPatchEditor\(/);
+ assert.match(studio,/renderSoundInspectorCore\(\{/);
+ assert.match(inspector,/renderPatchEditor\(/);
  assert.match(editor,/Oscillators/);
  assert.match(editor,/Envelope/);
  assert.match(editor,/Filter & noise/);
@@ -185,9 +187,11 @@ test("primary instrument controls replace redundant lower fields",()=>{
  assert.ok(!html.includes('class="sound-control-group sound-identity-controls"'));
  assert.match(css,/\.visual-sound-panel/);
  assert.match(css,/\.oscillator-stack/);
- assert.match(studio,/entry\.id\);/);
- assert.match(studio,/PRIMARY_SYNTH_FIELDS/);
- assert.match(studio,/createSignalDisplay\(\$\("sound-visualizer"\),patch,beat,signal\(inst\),inst.volume\*entry.gain,entry.referencePitch,inst.automation,entry\.id\)/);
+ const shared=readFileSync(new URL("../soundInspector.js",import.meta.url),"utf8");
+ assert.match(studio,/renderSoundInspectorCore\(\{/);
+ assert.match(shared,/PRIMARY_SYNTH_FIELDS/);
+ assert.match(shared,/createSignalDisplay\(scopeRoot,patch,context,accent,level/);
+ assert.match(shared,/sound\.referencePitch,instrument\.automation\?\?null,sound\.id/);
  assert.ok(!synth.includes('{name:"Sound",open:true'));
  assert.ok(!sampler.includes('["cutoff","Cutoff",50,14000,1,"hz",true]'));
  assert.ok(!sampler.includes('["attack","Attack",0,2,.005,"seconds"]'));
