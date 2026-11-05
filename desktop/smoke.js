@@ -147,7 +147,16 @@
   songs.upgradeSongFeatures(advancedSong);
   assert(advancedSong.version===28&&!songs.validateSong(advancedSong).length,
    'portable Song v28 owns independent freeform and reusable v27 Beats');
-  const signature=doc=>JSON.stringify(audioHost.nativePlans(renderEvents(doc)));
+  // Unpacking must assign fresh note IDs and passage ownership. Those fields
+  // are not audible; retain every actual voice, envelope, patch and automation
+  // field so this remains a strict native audio-plan equivalence test.
+  const audiblePlan=plan=>{
+   const value=structuredClone(plan);
+   if(value.expression)for(const key of ['id','passageId','strumGroup','strumKey'])
+    delete value.expression[key];
+   return value;
+  };
+  const signature=doc=>JSON.stringify(audioHost.nativePlans(renderEvents(doc)).map(audiblePlan));
   const originalPlans=signature(advancedSong);
   const reusable=freeforms.createBeatFromFreeformSelection(advancedSong,advancedTrack.id,0,32);
   assert(reusable.version===25&&!schema.validate(reusable).length,
