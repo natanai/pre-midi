@@ -167,16 +167,16 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   if(patch?.type==="synth"){
    if(!note.cutoffAutomation){
     section.append(action("move cutoff over time",()=>{
-     if(mutate(()=>{
+     mutate(()=>{
       const current=currentNote();
       if(!current)return;
       current.cutoffAutomation=createFreeformNoteCutoff(current,patch);
       layer().version=2;
-     }))render();
+     });
     },"freeform-add-cutoff"));
    }else{
     const captured=note.cutoffAutomation;
-    const details=el("details","freeform-note-cutoff");
+    const details=el("details","freeform-note-cutoff freeform-sound-content");
     details.open=true;
     const heading=el("summary","","cutoff over time · source phase");
     heading.title="This curve is attached to the note, not its original Song bar.";
@@ -197,10 +197,14 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
     details.append(picture.element);
     for(const [index,point] of captured.block.points.entries()){
      const name=index?"end":"begin";
-     details.append(field(name+" step",input("number",point.step,0,1024,
-      value=>change(["points",index,"step"],value))));
-     details.append(field(name+" cutoff · hz",input("number",point.value,50,14000,
-      value=>change(["points",index,"value"],value))));
+     const positionField=field(name+" step",input("number",point.step,0,1024,
+      value=>change(["points",index,"step"],value)));
+     positionField.dataset.soundPath="points."+index+".step";
+     details.append(positionField);
+     const cutoffField=field(name+" cutoff · hz",input("number",point.value,50,14000,
+      value=>change(["points",index,"value"],value)));
+     cutoffField.dataset.soundPath="points."+index+".value";
+     details.append(cutoffField);
     }
     details.append(el("span","freeform-layer-help",
      "Drag both handles to change when the filter moves and how bright the sound becomes."));
