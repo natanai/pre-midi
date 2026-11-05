@@ -9,7 +9,8 @@ import {nativePlans} from "../src/hosts/native/session.js";
 import {noteCutoffAutomation} from "../src/dsp/automation.js";
 import {planSynthVoice} from "../src/dsp/synth-voice.js";
 import {createFreeform,addFreeformInstrument,addFreeformNote,
- addFreeformChunkPlacement,eventsAtFreeformStep,freeformEndStep,
+ addFreeformChunkPlacement,editFreeformChunkPlacement,removeFreeformChunkPlacement,
+ eventsAtFreeformStep,freeformEndStep,
  moveFreeformPassage,unpackBeatClip,createBeatFromFreeformSelection,soundingFreeformPitches,validateFreeform,FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION} from "../freeformModel.js";
 
 test("empty freeform supports long notes and independent reusable Chunks",()=>{
@@ -366,4 +367,52 @@ test("reusable automated Beats unpack back to freeform without losing per-note s
  assert.equal(song.tracks[0].freeform.version,2);
  assert.deepEqual(nativePlans(renderEvents(song)).map(signature),before);
  assert.deepEqual(validateSong(song),[]);
+});
+
+test("freeform reusable Chunk placements can move mid-bar, repeat polymetrically, and revert without editing the Chunk",()=>{
+ const song=createSong(create()),free=createFreeform();
+ song.tracks[0].freeform=free;
+ const inst=addFreeformInstrument(free);
+ const note={id:id(),pitch:72,start:2,duration:5,velocity:.74};
+ inst.chunks[0].notes=[note];
+ const before=clone(inst.chunks[0]);
+ const placed=addFreeformChunkPlacement(inst,inst.chunks[0].id,16);
+ const identity=placed.id,chunkId=placed.chunkId;
+ editFreeformChunkPlacement(inst,placed.id,{startStep:50,every:12,repeats:3,length:8});
+ assert.deepEqual(inst.chunks[0],before,"Changing a placement never edits the reusable Chunk");
+ assert.equal(placed.id,identity);
+ assert.equal(placed.chunkId,chunkId);
+ assert.deepEqual([52,64,76].map(step=>eventsAtFreeformStep(free,step).length),[1,1,1]);
+ assert.equal(eventsAtFreeformStep(free,66).length,0);
+ assert.equal(freeformEndStep(free),81);
+ upgradeSongFeatures(song);
+ assert.deepEqual(validateSong(song),[]);
+ assert.deepEqual(parseSong(JSON.stringify(song)),song);
+ const snapshot=clone(placed);
+ assert.throws(()=>editFreeformChunkPlacement(inst,placed.id,{startStep:FREEFORM_LIMIT_STEPS-2}),/Invalid freeform Chunk placement/);
+ assert.throws(()=>editFreeformChunkPlacement(inst,placed.id,{repeats:33}),/Invalid freeform Chunk placement/);
+ assert.throws(()=>editFreeformChunkPlacement(inst,placed.id,{id:"different"}),/Invalid freeform Chunk placement change/);
+ assert.deepEqual(placed,snapshot,"Invalid placement edits must be atomic and undo-safe");
+ assert.equal(removeFreeformChunkPlacement(inst,placed.id),placed);
+ assert.equal(inst.chunkPlacements.length,0);
+ assert.equal(inst.chunks[0].notes.length,1,"Removing an instance never deletes its source notes");
+ assert.equal(eventsAtFreeformStep(free,52).length,0);
+ assert.deepEqual(validateSong(song),[]);
+});
+test("onset window filters Chunk note-ons without shortening releases and supports overlapping instances",()=>{
+ const free=createFreeform(),inst=addFreeformInstrument(free);
+ inst.chunks[0].notes=[
+  {id:id(),pitch:60,start:1,duration:30,velocity:.9},
+  {id:id(),pitch:64,start:10,duration:2,velocity:.7}
+ ];
+ const first=addFreeformChunkPlacement(inst,inst.chunks[0].id,0,{length:16});
+ const second=addFreeformChunkPlacement(inst,inst.chunks[0].id,8,{length:16});
+ editFreeformChunkPlacement(inst,first.id,{length:8});
+ assert.equal(eventsAtFreeformStep(free,1).length,1);
+ assert.equal(eventsAtFreeformStep(free,10).length,0);
+ assert.equal(eventsAtFreeformStep(free,18).length,1);
+ assert.equal(freeformEndStep(free),39,"A sustained note tail extends Song time past its Chunk onset span");
+ assert.deepEqual(validateFreeform(free),[]);
+ assert.throws(()=>removeFreeformChunkPlacement(inst,"no such placement"),/Choose a placed/);
+ assert.equal(second.chunkId,inst.chunks[0].id);
 });
