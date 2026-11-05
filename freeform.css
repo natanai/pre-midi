@@ -37,6 +37,14 @@
 .freeform-field input[type=number]{width:77px}
 .freeform-editor-tools button,.freeform-chunk-tools button{font-size:11px;min-height:29px}
 .freeform-chunk-tools{margin:9px 0 7px;justify-content:flex-start}
+.freeform-placement-editor{display:flex;gap:7px;align-items:end;flex-wrap:wrap;
+ padding:7px 0;margin-bottom:7px;border-top:1px solid var(--faint);
+ border-bottom:1px solid var(--faint)}
+.freeform-placement-editor select{max-width:165px}
+.freeform-placement-editor input[type=number]{width:72px}
+.freeform-placement-editor .freeform-placement-remove{min-height:29px;font-size:11px;
+ color:var(--bright);border:1px solid var(--line);padding:4px 8px}
+
 .freeform-chunk-tools select{max-width:160px}
 .freeform-empty{font-size:11px;color:var(--muted)}
 .freeform-roll-scroll{max-height:360px;overflow:auto;border:1px solid var(--line);background:#060808;scrollbar-width:thin}
