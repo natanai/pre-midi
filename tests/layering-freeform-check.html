@@ -110,6 +110,36 @@ try{
   "Graph vertical axis edits the same real cutoff frequency as the numeric input");
  upgradeSongFeatures(song);
  assert(song.version>=23,"New freeform note automation upgrades the native Song instruction version");
- await report("PASS","Beat-attached movement, layered notes and authored interactive cutoff curve");
+ let actions=root.querySelector(".freeform-instrument-menu");
+ assert(actions?.querySelector('summary[aria-label="Instrument actions"]'),
+  "Existing Instrument controls expose one compact accessible actions menu");
+ actions.open=true;
+ actions.querySelector(".freeform-instrument-copy").click();
+ assert(free.instruments.length===2,"Instrument duplication creates a second editable lane");
+ const copied=free.instruments[1];
+ assert(copied.id!==instrument.id&&copied.notes.length===instrument.notes.length,
+  "Copied Instrument keeps all notes with a new independent identity");
+ assert(copied.notes.every((note,i)=>note.id!==instrument.notes[i].id),
+  "Copied notes are independently addressable");
+ assert(copied.notes.at(-1).cutoffAutomation?.block.points[1].value===
+  instrument.notes.at(-1).cutoffAutomation?.block.points[1].value,
+  "Note-level cutoff movement survives an Instrument duplicate");
+ actions=root.querySelector(".freeform-instrument-menu");actions.open=true;
+ actions.querySelector(".freeform-instrument-up").click();
+ assert(free.instruments[0].id===copied.id,"Move up reorders the Instrument without changing its notes");
+ actions=root.querySelector(".freeform-instrument-menu");actions.open=true;
+ actions.querySelector(".freeform-instrument-down").click();
+ assert(free.instruments[1].id===copied.id,"Move down restores the Instrument order");
+ const originalConfirm=window.confirm;
+ window.confirm=()=>true;
+ try{
+  actions=root.querySelector(".freeform-instrument-menu");actions.open=true;
+  actions.querySelector(".freeform-instrument-remove").click();
+ }finally{window.confirm=originalConfirm;}
+ assert(free.instruments.length===1&&free.instruments[0].id===instrument.id,
+  "Removing a duplicate preserves its source Instrument and notes");
+ assert(root.querySelector('select[aria-label="Freeform Instrument"]').value===instrument.id,
+  "Removing the selected Instrument switches to the surviving one");
+ await report("PASS","Layered notes, editable cutoff and safe Instrument duplicate, reorder and removal");
 }catch(error){await report("FAIL",String(error.stack||error))}
 </script>

@@ -45,6 +45,51 @@ export function addFreeformInstrument(layer,source=null){
  layer.instruments.push(inst);
  return inst;
 }
+// Full Instrument workflows preserve the existing Sound, Chunk and sample
+// contracts. Duplicates get independent IDs but reuse immutable external
+// audio Assets, so a copy does not write or decode the same WAV twice.
+export function duplicateFreeformInstrument(layer,instrumentId){
+ const original=layer?.instruments?.find(item=>item.id===instrumentId);
+ if(!original)throw Error("Choose a freeform Instrument to duplicate.");
+ if(layer.instruments.length>=MAX_INSTRUMENTS)
+  throw Error("Freeform has too many Instruments.");
+ const duplicate=addFreeformInstrument(layer,original);
+ const soundIds=new Map(original.sounds.map((sound,i)=>[sound.id,duplicate.sounds[i].id]));
+ const chunkIds=new Map(original.chunks.map((chunk,i)=>[chunk.id,duplicate.chunks[i].id]));
+ duplicate.name=(original.name+" copy").slice(0,60);
+ duplicate.notes=original.notes.map(note=>({
+  ...clone(note),id:id(),
+  ...(note.soundId!==undefined?{soundId:soundIds.get(note.soundId)}:{})
+ }));
+ duplicate.chunkPlacements=original.chunkPlacements.map(placement=>({
+  ...clone(placement),id:id(),chunkId:chunkIds.get(placement.chunkId)
+ }));
+ // Keep duplicates next to their original Instrument in the Song editor.
+ layer.instruments.pop();
+ const index=layer.instruments.indexOf(original);
+ layer.instruments.splice(index+1,0,duplicate);
+ return duplicate;
+}
+export function moveFreeformInstrument(layer,instrumentId,direction){
+ const index=layer?.instruments?.findIndex(item=>item.id===instrumentId)??-1;
+ if(index<0)throw Error("Choose a freeform Instrument to move.");
+ if(direction!==-1&&direction!==1)throw Error("Choose one position up or down.");
+ const next=index+direction;
+ if(next<0||next>=layer.instruments.length)return false;
+ const [instrument]=layer.instruments.splice(index,1);
+ layer.instruments.splice(next,0,instrument);
+ return true;
+}
+export function removeFreeformInstrument(layer,instrumentId){
+ const index=layer?.instruments?.findIndex(item=>item.id===instrumentId)??-1;
+ if(index<0)throw Error("Choose a freeform Instrument to remove.");
+ const [removed]=layer.instruments.splice(index,1);
+ // Only assets no longer used by any remaining Instrument in this freeform
+ // lane are pruned. A source Beat or vocal may still retain the same asset.
+ const referenced=referencedSampleIds(layer.instruments);
+ layer.samples=layer.samples.filter(asset=>referenced.has(asset.id));
+ return removed;
+}
 export function addFreeformNote(instrument,raw){
  const note={...clone(raw),id:raw.id||id()};
  if(!whole(note.start)||!positive(note.duration)||note.start+note.duration>FREEFORM_LIMIT_STEPS||

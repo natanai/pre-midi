@@ -2,7 +2,8 @@
 // Every mutation passes through the studio's existing Song undo/history boundary.
 import {createFreeform,ensureFreeform,addFreeformInstrument,addFreeformNote,
  addFreeformChunkPlacement,moveFreeformPassage,createBeatFromFreeformSelection,soundingFreeformPitches,
- previewFreeformPassageLayering,FREEFORM_LIMIT_STEPS} from "./freeformModel.js";
+ previewFreeformPassageLayering,FREEFORM_LIMIT_STEPS,
+ duplicateFreeformInstrument,moveFreeformInstrument,removeFreeformInstrument} from "./freeformModel.js";
 import {addBeat} from "./songModel.js";
 import {makeChunk,id} from "./schema.js";
 import {referencedSampleIds} from "./soundModel.js";
@@ -309,6 +310,37 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
     inst.name=sourceName.value.trim()||"Instrument";
    }));
    tools.append(sourceName);
+   const menu=el("details","freeform-instrument-menu");
+   const menuLabel=el("summary","","⋯");
+   menuLabel.setAttribute("aria-label","Instrument actions");
+   menuLabel.title="duplicate · reorder · remove Instrument";
+   menu.append(menuLabel);
+   const options=el("div","freeform-instrument-menu-actions");
+   options.setAttribute("role","group");
+   options.setAttribute("aria-label","Freeform Instrument actions");
+   options.append(action("duplicate",()=>{
+    let copy=null;
+    if(mutate(()=>{copy=duplicateFreeformInstrument(free,inst.id);})){
+     activeInstrumentId=copy.id;selectedNoteId=null;editorScrollTop=null;render();
+    }
+   },"freeform-instrument-copy"));
+   const index=free.instruments.indexOf(inst);
+   const up=action("move up",()=>mutate(()=>
+    moveFreeformInstrument(free,inst.id,-1)),"freeform-instrument-up");
+   const down=action("move down",()=>mutate(()=>
+    moveFreeformInstrument(free,inst.id,1)),"freeform-instrument-down");
+   up.disabled=index===0;down.disabled=index===free.instruments.length-1;
+   options.append(up,down);
+   options.append(action("remove",()=>{
+    if((inst.notes.length||inst.chunkPlacements.length)&&
+     !confirm("Remove "+inst.name+" and its notes and Chunk placements? Undo restores it."))return;
+    const remaining=free.instruments.filter(item=>item.id!==inst.id);
+    if(mutate(()=>removeFreeformInstrument(free,inst.id))){
+     activeInstrumentId=remaining[Math.min(index,remaining.length-1)]?.id??null;
+     selectedNoteId=null;editorScrollTop=null;render();
+    }
+   },"freeform-instrument-remove"));
+   menu.append(options);tools.append(menu);
   }
   const previous=action("←",()=>{followPlayback=false;barStart=Math.max(0,barStart-4);render();},"freeform-nav");
   const next=action("→",()=>{followPlayback=false;barStart+=4;render();},"freeform-nav");

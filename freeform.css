@@ -19,6 +19,20 @@
 .freeform-editor-tools{flex:1}
 .freeform-editor-tools>select{max-width:170px}
 .freeform-editor-tools>input[type=text]{max-width:140px}
+/* One compact Instrument menu, rather than permanent duplicate/delete buttons
+   crowding the existing Song-position and Sound controls. */
+.freeform-instrument-menu{position:relative;min-width:30px}
+.freeform-instrument-menu>summary{cursor:pointer;list-style:none;display:grid;place-items:center;
+ min-height:29px;min-width:30px;border:1px solid var(--line);color:var(--bright)}
+.freeform-instrument-menu>summary::-webkit-details-marker{display:none}
+.freeform-instrument-menu[open]>summary{border-color:var(--bright)}
+.freeform-instrument-menu-actions{position:absolute;left:0;top:calc(100% + 4px);
+ z-index:20;display:grid;gap:3px;min-width:140px;padding:6px;
+ background:#0a0f0d;border:1px solid var(--line);box-shadow:0 5px 18px #000a}
+.freeform-instrument-menu-actions button{text-align:left;white-space:nowrap}
+.freeform-instrument-menu-actions button:disabled{opacity:.4;cursor:not-allowed}
+.freeform-instrument-remove{color:var(--bright)}
+
 .freeform-field{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--muted)}
 .freeform-field input[type=number]{width:77px}
 .freeform-editor-tools button,.freeform-chunk-tools button{font-size:11px;min-height:29px}
