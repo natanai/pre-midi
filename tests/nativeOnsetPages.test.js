@@ -117,16 +117,17 @@ test("native page descriptors have exact contiguous frame clocks, owner/revision
 test("native page descriptor ownership and late frame numbers reject unsafe input",()=>{
  const song=createSong(create());
  for(const options of [
-  {owner:0,revision:1,sampleRate:48000},
-  {owner:1,revision:0,sampleRate:48000},
-  {owner:1,revision:1,sampleRate:4800},
-  {owner:1,revision:1,sampleRate:48000,startStep:-1},
-  {owner:1,revision:1,sampleRate:48000,getRevision:"wrong"}
+  {owner:0,revision:1,sampleRate:48000,getRevision:()=>1},
+  {owner:1,revision:0,sampleRate:48000,getRevision:()=>0},
+  {owner:1,revision:1,sampleRate:4800,getRevision:()=>1},
+  {owner:1,revision:1,sampleRate:48000,startStep:-1,getRevision:()=>1},
+  {owner:1,revision:1,sampleRate:48000,getRevision:"wrong"},
+  {owner:1,revision:1,sampleRate:48000}
  ])assert.throws(()=>nativePageDescriptorCursor(song,options));
  const clip=song.tracks[0].clips[0];
  clip.startStep=8000;clip.lengthSteps=32;
  const clock=nativePageDescriptorCursor(song,{owner:2,revision:3,
-  sampleRate:48000,startStep:7995,maxSteps:10,maxOnsets:4});
+  sampleRate:48000,startStep:7995,maxSteps:10,maxOnsets:4,getRevision:()=>3});
  const first=clock.next();
  assert.equal(first.descriptor.startFrame,Math.ceil(7995*.125*48000-1e-9));
  assert.ok(first.descriptor.startFrame>600*48000,
