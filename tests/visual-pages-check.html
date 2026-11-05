@@ -14,6 +14,7 @@ import {auditSoundVisualCoverage} from "./visualControlInventory.js";
 import {renderAudioDelayControls} from "../audioControlUI.js";
 import {vocalDisplayPatch} from "../vocalAudioView.js";
 import {illustrateSoundPanel} from "../soundIllustrations.js";
+import {modeledFilterMagnitude} from "../filterIllustrationResponse.js";
 import {createDial} from "../dial.js";
 import {renderVocalEditor} from "../vocalEditor.js";
 import {installFreeformSoundUI} from "../freeformSoundUI.js";
@@ -21,6 +22,28 @@ import {makeInstrument} from "../schema.js";
 const checks={},pass=(label,value)=>{checks[label]=!!value;if(!value)throw Error(label);};
 let status="FAIL";
 try{
+ // Verify the teaching curve against the browser's real Web Audio filter,
+ // independently of the repository's matching native C++ coefficients.
+ const reference=new OfflineAudioContext(1,128,48000);
+ const frequencies=new Float32Array([70,180,900,1700,2300,4800,11500]);
+ let filterChecks=0;
+ for(const type of ["lowpass","highpass","bandpass","notch"])
+  for(const q of [.1,5,16]){
+   const biquad=reference.createBiquadFilter();
+   biquad.type=type;biquad.frequency.value=2300;biquad.Q.value=q;
+   const mags=new Float32Array(frequencies.length),phases=new Float32Array(frequencies.length);
+   biquad.getFrequencyResponse(frequencies,mags,phases);
+   for(let i=0;i<frequencies.length;i++){
+    const expected=modeledFilterMagnitude({type,cutoff:2300,resonance:q},frequencies[i]);
+    const observed=mags[i];
+    pass("48k biquad physical filter model matches Web Audio "+type+
+     " q="+q+" at "+frequencies[i]+" Hz ("+expected+" / "+observed+")",
+     Math.abs(observed-expected)<Math.max(.002,expected*.012));
+    filterChecks++;
+   }
+  }
+ pass("all four Sound filter types and their resonance values are physically qualified",
+  filterChecks===84);
  const patch={type:"sample",zones:Array.from({length:10},(_,i)=>({assetId:"z"+i,root:40+i*4})),
   gain:.9,transpose:0,pan:0,strumMs:0,attack:.005,release:.17,
   followPitch:true,oneShot:false,preserveDynamics:false};
