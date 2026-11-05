@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {create,makeInstrument,makeSound,makeChunk,id,validate} from "../schema.js";
 import {makeSampleAsset} from "../sampler.js";
-import {deleteInstrumentFromBeat,deleteSoundFromBeat,instrumentDeleteLabel,soundDeleteLabel,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll} from "../entityActions.js";
+import {deleteInstrumentFromBeat,deleteSoundFromBeat,instrumentDeleteLabel,soundDeleteLabel,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll,moveRackSoundRow} from "../entityActions.js";
 
 function rack(){
  const beat=create(),instrument=beat.instruments[0];
@@ -145,4 +145,20 @@ test("moving a recorded hit to piano roll enables audible pitch-following and no
  assert.equal(moved.sounds[0].patch.oneShot,false);
  assert.equal(moved.sounds[0].patch.zones[0].assetId,"recorded-fixture");
  assert.deepEqual(validate(beat),[]);
+});
+
+test("reordering Rack Sounds preserves authored note identity and guards edges",()=>{
+ const rack={layout:"rack",sounds:[
+  {id:"kick",name:"kick"},{id:"snare",name:"snare"},{id:"hat",name:"hat"}
+ ],chunks:[{notes:[{id:"n1",soundId:"snare",step:3}]}]};
+ const before=structuredClone(rack.chunks);
+ assert.equal(moveRackSoundRow(rack,"snare",-1),true);
+ assert.deepEqual(rack.sounds.map(s=>s.id),["snare","kick","hat"]);
+ assert.deepEqual(rack.chunks,before);
+ assert.equal(moveRackSoundRow(rack,"snare",-1),false);
+ assert.equal(moveRackSoundRow(rack,"hat",1),false);
+ assert.equal(moveRackSoundRow(rack,"missing",1),false);
+ assert.equal(moveRackSoundRow(rack,"kick",2),false);
+ assert.equal(moveRackSoundRow({...rack,layout:"pitched"},"kick",-1),false);
+ assert.deepEqual(rack.chunks,before);
 });
