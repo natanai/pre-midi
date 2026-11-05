@@ -314,6 +314,10 @@ try{
   pitchedAudit.summary.controls===2&&pitchedAudit.missing.length===0);
  // A pointer can touch the large hit target off-center. Pressing and
  // releasing must neither jump the value nor create an undo history entry.
+ // The preceding inventory audits all diagram pages and rebuilds their
+ // controls; reacquire the live handle instead of dispatching to a stale node.
+ const liveGainPoint=pitchedPanel.element.querySelector(
+  '.visual-graph-point[data-sound-links="volume|gain"]');
  const pitchedGraph=pitchedPanel.element.querySelector(".visual-panel-graph");
  const pitchedArea=pitchedPanel.element.querySelector(".visual-panel-area");
  pitchedGraph.getBoundingClientRect=()=>({left:0,top:0,width:360,height:112});
@@ -323,14 +327,14 @@ try{
  const beforeGrab=pitchedCommits;
  const startGain=Number(pitchedRoot.querySelector(
   '.dial-field[data-sound-path="gain"] [role="slider"]').getAttribute("aria-valuenow"));
- pointer(gainPoint,"pointerdown",218,55);
+ pointer(liveGainPoint,"pointerdown",218,55);
  pass("grabbing a Sound gain handle off-center does not preview a changed value",
   pitchedPreview===null);
  pointer(pitchedArea,"pointerup",218,55);
  pass("click-only handle grab does not record an edit",
   pitchedCommits===beforeGrab&&Number(pitchedRoot.querySelector(
    '.dial-field[data-sound-path="gain"] [role="slider"]').getAttribute("aria-valuenow"))===startGain);
- pointer(gainPoint,"pointerdown",218,55);
+ pointer(liveGainPoint,"pointerdown",218,55);
  pointer(pitchedArea,"pointermove",190,72);
  const liveVolume=Number(pitchedRoot.querySelector(
   '.dial-field[data-sound-path="volume"] [role="slider"]').getAttribute("aria-valuenow"));
