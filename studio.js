@@ -310,9 +310,22 @@ function refreshNativePlayback(){
  nativeEditTimer=setTimeout(()=>{if(playback===current)void current.refresh().catch(error=>{if(playback===current)message('playback edit: '+error.message,true);});},90);
 }
 function commitChange(before){
+ // A keyboard edit commits through the canonical document path and redraws
+ // the Sound inspector. Restore its diagram handle so successive arrow presses
+ // remain usable rather than silently returning focus to the document body.
+ const focused=document.activeElement;
+ const panel=focused?.closest?.(".visual-sound-panel");
+ const graphFocus=panel&&focused?.classList.contains("visual-graph-point")?
+  {id:panel.dataset.visualId,handle:focused.dataset.handle}:null;
  history.push(before);
  if(history.length>100)history.shift();
  future=[];store();render();
+ if(graphFocus){
+  const replacement=[...document.querySelectorAll(".visual-sound-panel")]
+   .find(item=>item.dataset.visualId===graphFocus.id);
+  replacement?.querySelector('.visual-graph-point[data-handle="'+graphFocus.handle+'"]')
+   ?.focus({preventScroll:true});
+ }
  refreshNativePlayback();
  return true;
 }
