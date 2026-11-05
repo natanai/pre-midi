@@ -1,6 +1,6 @@
 # Native Song onset paging: implementation and qualification contract
 
-Status: **page preparation only, not pageable native playback**.
+Status: **bounded Song-page compilation and a qualified C++ publication-mailbox prototype only; not pageable native playback**.
 
 Canonical Song/freeform completion and ordering: [song-rollout.md](song-rollout.md).
 Do not remove the existing native preflight errors or mark a Windows portable build qualified on the strength of these helpers.
@@ -10,6 +10,14 @@ Do not remove the existing native preflight errors or mark a Windows portable bu
 - `songSchedule.js → scheduledSongOnsetsInWindow(song,startStep,endStep,{maxEvents})` compiles only authored onsets in the half-open absolute Song-step range. It preserves Beat source phase, non-bar-aligned Clips, repeated freeform Chunks, direct notes, vocal onsets, original note duration and source references. It does not enumerate all earlier repetitions to fetch a late window. The maximum returned count is bounded by 4,096.
 - `src/hosts/native/onset-pages.js → nextNativeOnsetPage(song,startStep,{maxSteps,maxOnsets})` chooses the longest whole-step window inside both limits, using a monotonic search of source-linked onsets. A step containing more events than its budget is rejected explicitly rather than silently partitioned, shortened or dropped.
 - The unit fixtures compare every compiled window with the original full Song onset schedule, including long note releases across page edges, order/phase, large sparse Songs, high density, and non-destructive source ownership. These tests do **not** verify real-time callback page delivery.
+
+## C++ control/callback page mailbox (experimental milestone)
+
+- [PR #177](https://github.com/natanai/pre-midi/pull/177) introduces `native/page-mailbox.hpp` and a standalone C++17 test in `native/page-mailbox-test.cpp`, run from the source-verification workflow with `scripts/native-page-mailbox-check.mjs`. Treat the PR as pending until exact head CI passes. This is a metadata-only control/callback mailbox, **not a playable packet scheduler**.
+- The mailbox has three fixed slots and immutable owner/revision/sequence/absolute-frame descriptors. The producer validates a contiguous timeline, a maximum of 4,096 events and 512 declared resource references, and publishes with release semantics. The callback acquires a ready slot at an exact boundary without allocating or waiting, acknowledges sequence and end frame, and retires old slots for control-thread reclamation.
+- A missing, late or stale page is fatal rather than disguised as successful silence. Stop/edit/revision invalidation needs a new mailbox. The standalone test measures callback allocations, owner/revision rejection, terminal handling, bounded backpressure and real two-thread order; it does not run native synth voices across a page edge.
+- [PR #179](https://github.com/natanai/pre-midi/pull/179) separately stages the exact `renderEventsInWindow` conversion from source-linked Song events to native voice/vocal/automation plans. It must pass its own verification and does **not** replace the existing single-session native transport.
+- Before wiring the mailbox into the real audio device, connect descriptors to fully prepared and pinned C++ packet/bank/sample/effect resources; the callback must not accept a Boolean “prepared” claim without validating actual immutable resource handles. The Session must keep active voices, delay and modulation state alive across page consumption.
 
 ## Existing native safety invariants (still mandatory)
 
