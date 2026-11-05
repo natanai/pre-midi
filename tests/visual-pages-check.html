@@ -457,7 +457,7 @@ try{
  // arrow is pressed beyond the range or a drag returns to its starting value.
  const boundaryRoot=document.createElement("section");
  boundaryRoot.className="freeform-sound-content";document.body.append(boundaryRoot);
- const boundaryDetails=document.createElement("details");
+ const boundaryDetails=document.createElement("details");boundaryDetails.open=true;
  boundaryDetails.append(document.createElement("summary"));boundaryRoot.append(boundaryDetails);
  let boundaryCommits=0,boundaryPreviews=0;
  const boundaryPanel=illustrateSoundPanel(boundaryDetails,"stage",{
