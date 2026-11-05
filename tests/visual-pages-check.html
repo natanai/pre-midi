@@ -10,6 +10,11 @@ import {makePatch} from "../synth.js";
 import {harmonicRecipe} from "../harmonics.js";
 import {renderNoteExpression} from "../expressionUI.js";
 import {defaultSource} from "../src/dsp/modulation.js";
+import {auditSoundVisualCoverage} from "./visualControlInventory.js";
+import {renderAudioDelayControls} from "../audioControlUI.js";
+import {vocalDisplayPatch} from "../vocalAudioView.js";
+import {illustrateSoundPanel} from "../soundIllustrations.js";
+import {createDial} from "../dial.js";
 const checks={},pass=(label,value)=>{checks[label]=!!value;if(!value)throw Error(label);};
 let status="FAIL";
 try{
@@ -162,6 +167,66 @@ try{
  pass("handle readout names its X and Y parameters",
   oscillatorPanel.querySelector(".visual-point-readout").textContent.includes("x detune")&&
   oscillatorPanel.querySelector(".visual-point-readout").textContent.includes("y level"));
+ // Inventory is derived from the mounted controls, not only a handwritten
+ // list of expected synth parameters. Every dynamic page must be traversed.
+ for(const [name,selector] of [
+  ["sampled Sound","#sample"],["synth Sound","#synth"],
+  ["harmonic Sound","#harmonics"],["modulation routes","#routes"],
+  ["individual note","#note"]
+ ]){
+  const audit=auditSoundVisualCoverage(document.querySelector(selector),{context:name});
+  pass(name+" has rendered sound-shaping controls",audit.summary.controls>0);
+  pass(name+" has zero controls without direct visual editing: "+
+    JSON.stringify(audit.missing),audit.missing.length===0);
+ }
+ // Vocal delay knobs must use the same nested effects paths and values as
+ // their real shared illustration, not legacy root-level references.
+ const voicePatch=vocalDisplayPatch({gain:1,effects:{delayMix:.36,delayTime:.44,
+  delayFeedback:.61}},{id:"voice-test"});
+ const voiceRoot=document.createElement("div");
+ document.body.append(voiceRoot);
+ let vocalEdit=null;
+ renderAudioDelayControls(voiceRoot,voicePatch,(path,value)=>vocalEdit={path,value});
+ const delayPaths=["delayMix","delayTime","delayFeedback"].map(name=>"effects."+name);
+ pass("vocal delay knobs expose the canonical effect paths",
+  delayPaths.every(path=>!!voiceRoot.querySelector('[data-sound-path="'+path+'"] [role="slider"]')));
+ pass("vocal delay dials read the real authored values",
+  delayPaths.every(path=>Number(voiceRoot.querySelector(
+   '[data-sound-path="'+path+'"] [role="slider"]').getAttribute("aria-valuenow"))>0));
+ const delayDetail=document.createElement("details");
+ delayDetail.append(document.createElement("summary"));voiceRoot.append(delayDetail);
+ const delayPanel=illustrateSoundPanel(delayDetail,"delay",voicePatch,
+  (path,value)=>vocalEdit={path,value},()=>{},"voice-test");
+ voiceRoot.append(delayPanel.element);
+ const voiceAudit=auditSoundVisualCoverage(voiceRoot,{context:"vocal delay"});
+ pass("vocal delay has zero unlinked knobs: "+JSON.stringify(voiceAudit.missing),
+  voiceAudit.missing.length===0&&voiceAudit.summary.controls===3);
+ const echo=delayPanel.element.querySelector(".visual-graph-point");
+ echo.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true,cancelable:true}));
+ pass("vocal delay graph edits the canonical delay path",vocalEdit?.path?.join(".")==="effects.delayTime");
+
+ // Freeform's instrument and individual Sound gains share an interactive
+ // two-axis staging diagram. Both levels remain actual separately editable
+ // controls, and the visual teaches their multiplied output.
+ const stageRoot=document.createElement("div");stageRoot.className="freeform-sound-content";
+ document.body.append(stageRoot);
+ for(const [path,value] of [["volume",.6],["gain",.7]]){
+  const dial=createDial({label:path,min:0,max:1,step:.01,display:"percent"},value,()=>{});
+  dial.dataset.soundPath=path;stageRoot.append(dial);
+ }
+ const stageDetail=document.createElement("details");
+ stageDetail.append(document.createElement("summary"));stageRoot.append(stageDetail);
+ const stagePatch={type:"stage",layout:"levels",volume:.6,gain:.7,pan:0};
+ const stageIllustration=illustrateSoundPanel(stageDetail,"stage",stagePatch,()=>{},()=>{},"freeform-stage");
+ stageRoot.append(stageIllustration.element);
+ const stageAudit=auditSoundVisualCoverage(stageRoot,{context:"freeform gain staging"});
+ pass("freeform level dials share direct two-axis coverage: "+JSON.stringify(stageAudit.missing),
+  stageAudit.missing.length===0&&stageAudit.summary.controls===2);
+ pass("freeform gain staging teaches multiplied output",
+  !!stageIllustration.element.querySelector(".visual-graph-label")&&
+  [...stageIllustration.element.querySelectorAll(".visual-graph-label")]
+   .some(item=>item.textContent==="total 42%"));
+ stageRoot.remove();voiceRoot.remove();
  // Dismissing one Sound must not leave a modal-like dark layer on the next.
  const expand=samplePanel.querySelector(".visual-panel-expand");
  expand.click();

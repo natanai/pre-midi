@@ -116,7 +116,12 @@ export function renderAudioArticulationControls(root,patch,onChange,onPreview=()
 export function renderAudioDelayControls(root,patch,onChange,onPreview=()=>{}){
  for(const item of AUDIO_DELAY_CONTROLS){
   const [key]=item;
-  slider(root,item,patch[key],[key],onChange,onPreview);
+  // A Vocal Clip stores its delay settings on effects, just as the shared
+  // illustration does. A path and value mismatch left these three dials
+  // unlinked (and without an initial numerical value).
+  const vocal=patch.type==="vocal";
+  slider(root,item,vocal?patch.effects?.[key]:patch[key],
+   vocal?["effects",key]:[key],onChange,onPreview);
  }
 }
 export const DEFAULT_VOCAL_DIAGRAM_FILTER=DEFAULT_SAMPLE_FILTER;

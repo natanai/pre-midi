@@ -5,6 +5,7 @@ import {renderSamplerEditor} from "./samplerUI.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {createSignalDisplay} from "./soundScope.js";
 import {createDial} from "./dial.js";
+import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {audition} from "./audio.js";
 import {clone,id,makeSound} from "./schema.js";
 import {makePatch} from "./synth.js";
@@ -43,7 +44,11 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
  input.accept=".wav,.ogg,.mp3,audio/wav,audio/ogg,audio/mpeg";input.hidden=true;
  input.setAttribute("aria-label","Import audio into freeform Sound");
  const selected=new Map();
- let expanded=false;
+ let expanded=false,stagePanel=null,stageOpen=false;
+ const stageState=(ctx,volume=ctx.inst.volume,gain=ctx.sound.gain)=>({
+  type:"stage",layout:ctx.inst.layout==="rack"?"rack":"levels",
+  volume,gain,pan:ctx.sound.patch.pan??0
+ });
  const current=()=>{
   const inst=getInstrument();
   if(!inst)return null;
@@ -111,6 +116,15 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   }catch(error){onError("Audio import: "+error.message);}
  });
  function render(){
+  // The scope element survives Sound redraws to preserve A/B measurements.
+  // Its old graph does not: detach listeners and rebuild the direct editor
+  // for the currently selected Sound.
+  if(stagePanel){
+   stageOpen=stagePanel.element.querySelector("details")?.open??stageOpen;
+   stagePanel.element.disposeSoundIllustration?.();
+   stagePanel.element.remove();
+   stagePanel=null;
+  }
   const ctx=current();
   if(!ctx){host.hidden=true;host.replaceChildren();return host;}
   host.hidden=false;host.replaceChildren();
@@ -153,12 +167,22 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    }),"freeform-sound-save"),
    button("use audio",()=>input.click(),"freeform-sound-load"));
   const dials=el("div","freeform-sound-levels");
-  dials.append(createDial({label:"volume",min:0,max:1,step:.01,display:"percent"},
+  const instrumentLevel=createDial({label:"volume",min:0,max:1,step:.01,display:"percent"},
    ctx.inst.volume,value=>mutateSelected(({inst})=>{inst.volume=value;},ctx.sound.id),
-   value=>visualize(ctx,ctx.sound.patch,value*ctx.sound.gain)));
-  dials.append(createDial({label:"sound level",min:0,max:1,step:.01,display:"percent"},
+   value=>{
+    visualize(ctx,ctx.sound.patch,value*ctx.sound.gain);
+    stagePanel?.draw(stageState(ctx,value));
+   });
+  instrumentLevel.dataset.soundPath="volume";
+  dials.append(instrumentLevel);
+  const soundLevel=createDial({label:"sound level",min:0,max:1,step:.01,display:"percent"},
    ctx.sound.gain,value=>mutateSelected(({sound})=>{sound.gain=value;},ctx.sound.id),
-   value=>visualize(ctx,ctx.sound.patch,ctx.inst.volume*value)));
+   value=>{
+    visualize(ctx,ctx.sound.patch,ctx.inst.volume*value);
+    stagePanel?.draw(stageState(ctx,ctx.inst.volume,value));
+   });
+  soundLevel.dataset.soundPath="gain";
+  dials.append(soundLevel);
   const pitch=el("input");pitch.type="number";pitch.step="1";pitch.min="0";pitch.max="127";
   pitch.value=String(ctx.sound.referencePitch);
   pitch.setAttribute("aria-label","Freeform Sound reference pitch");
@@ -199,6 +223,35 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   content.append(tools,dials,scope,modules,input);
   details.append(content);
   visualize(ctx);
+  // Reuse the same canonical gain-staging illustration as the Beat editor.
+  // Both freeform level knobs remain available; moving the illustration
+  // edits those exact values in one undoable Sound transaction.
+  const stageDetails=el("details","synth-group");
+  stageDetails.open=stageOpen;
+  stageDetails.append(el("summary",undefined,"gain staging"));
+  scope.append(stageDetails);
+  const stageEdit=(path,value,commit)=>{
+   const edits=Array.isArray(path?.[0])?path.map((keys,i)=>[keys,value[i]]):[[path,value]];
+   let volume=ctx.inst.volume,gain=ctx.sound.gain;
+   for(const [keys,amount] of edits){
+    if(keys[0]==="volume")volume=amount;
+    else if(keys[0]==="gain")gain=amount;
+   }
+   if(commit)mutateSelected(({inst,sound})=>{
+    for(const [keys,amount] of edits){
+     if(keys[0]==="volume")inst.volume=amount;
+     else if(keys[0]==="gain")sound.gain=amount;
+    }
+   },ctx.sound.id);
+   else{
+    visualize(ctx,ctx.sound.patch,volume*gain);
+    stagePanel?.draw(stageState(ctx,volume,gain));
+   }
+  };
+  stagePanel=illustrateSoundPanel(stageDetails,"stage",stageState(ctx),
+   (path,value)=>stageEdit(path,value,true),
+   (path,value)=>stageEdit(path,value,false),ctx.sound.id);
+  scope.append(stagePanel.element);
   if(ctx.sound.patch.type==="sample"){
    const names=ctx.sound.patch.zones.map(zone=>
     ctx.layer.samples.find(asset=>asset.id===zone.assetId)?.name||zone.assetId).join(" / ");
