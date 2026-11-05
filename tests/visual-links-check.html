@@ -73,6 +73,27 @@ frame.addEventListener("load",async()=>{
   restored.click();
   assert("reference cleared",restored.getAttribute("aria-pressed")==="false"&&
    !scope.querySelector(".signal-scope-reference").getAttribute("d"));
+  // The actual Beat Inspector must redraw its educational filter handle when
+  // the existing brightness knob changes, and redraw the knob when its handle
+  // is edited. Do not settle for path/highlight coverage alone.
+  const beatCutoffDial=()=>get("primary-brightness-dial").querySelector('[role="slider"]');
+  const beatFilterHandle=()=>doc.querySelector(
+   '.visual-sound-panel[data-visual-kind="filter"] .visual-graph-point');
+  const beatCutoff=Number(beatCutoffDial().getAttribute("aria-valuenow"));
+  const expectedCutoffX=18+324*Math.log(beatCutoff/50)/Math.log(280);
+  assert("Beat brightness knob places filter illustration at its authored frequency",
+   Math.abs(parseFloat(beatFilterHandle().style.left)-expectedCutoffX/360*100)<.04);
+  beatFilterHandle().dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown",{
+   key:"ArrowRight",bubbles:true,cancelable:true
+  }));
+  await wait(()=>Number(beatCutoffDial().getAttribute("aria-valuenow"))>beatCutoff,
+   "Beat two-way filter edit");
+  const fromIllustration=Number(beatCutoffDial().getAttribute("aria-valuenow"));
+  assert("Beat cutoff illustration writes back to the original brightness knob",
+   Number.isFinite(fromIllustration)&&fromIllustration>beatCutoff);
+  const nextExpectedX=18+324*Math.log(fromIllustration/50)/Math.log(280);
+  assert("Beat diagram preserves numerical alignment after committing a filter edit",
+   Math.abs(parseFloat(beatFilterHandle().style.left)-nextExpectedX/360*100)<.04);
   const stage=scope.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
   assert("instrument level and stereo have their own educational field",!!stage);
   stage.querySelector("details").open=true;
