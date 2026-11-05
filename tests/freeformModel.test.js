@@ -461,6 +461,7 @@ test("partial unpack preserves every source-offset phase, Rack identity and rele
 test("sustain exactly ending at an unpack boundary is safe, but one step earlier remains atomic",()=>{
  const beat=create(),keys=beat.instruments[0];
  keys.chunks[0].notes=[{id:"border",pitch:65,start:11,duration:8,velocity:.8}];
+ upgradeBeatFeatures(beat);
  const rejected=createSong(beat),before=clone(rejected),rejectClip=rejected.tracks[0].clips[0];
  assert.throws(()=>unpackBeatClip(rejected,rejectClip.id,{fromStep:18,toStep:32}),
   /sustained note crosses/);
