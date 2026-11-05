@@ -54,9 +54,11 @@ int main(int argc,char** argv){
     premidi::require(!loop,"Page-clock PCM probe does not yet qualify Song loops");
     premidi::PageMailbox pages(91,7,0);
     premidi::PagedMixerProbe probe(session,pages);
-    // Control-side producer. Intentional non-block-aligned 511-frame pages
-    // exercise callback splitting and DSP continuity across page boundaries.
-    const std::uint64_t pageWidth=511;
+    // Control-side producer. Prefetch at least one full maximum callback,
+    // with 3 bounded slots. Deliberately non-block-aligned page boundaries
+    // exercise DSP continuity even when a callback spans multiple pages.
+    const std::uint64_t pageWidth=std::max<std::uint64_t>(511,
+     static_cast<std::uint64_t>(block)/2+1);
     std::uint64_t preparedUntil=0,sequence=0;
     const auto prepare=[&]{
      pages.reclaim();
