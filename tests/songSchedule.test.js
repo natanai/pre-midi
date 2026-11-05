@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {performance} from "node:perf_hooks";
-import {create,id,clone} from "../schema.js";
+import {create,id,clone,upgradeBeatFeatures} from "../schema.js";
 import {renderEvents,noteTimeline,secondsPerStep} from "../audio.js";
 import {eventsAtSongStep,songDurationSteps,createSong,addSongTrack,
  addBeatClip,upgradeSongFeatures,validateSong} from "../songModel.js";
@@ -41,6 +41,7 @@ test("sparse Song schedule exactly matches stepwise source phases, overlaps, fre
  inst.timeline[1]=chunk.id;
  inst.placements[0]={offset:1,length:16,every:7,repeats:3};
  // Multi-bar sustain is versioned rather than split into multiple note-ons.
+ upgradeBeatFeatures(beat);
  const song=createSong(beat),first=song.tracks[0].clips[0];
  first.startStep=9;first.lengthSteps=73;first.sourceOffsetSteps=5;
  const secondTrack=addSongTrack(song,"beat");
