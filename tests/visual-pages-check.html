@@ -153,6 +153,34 @@ try{
  pass("note level has an independently draggable graph point",!!notePoint);
  notePoint.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowRight",bubbles:true,cancelable:true}));
  pass("note velocity point commits a real level change",noteLevel===.81);
+ const noteLevelField=document.querySelector("#note .expression-level");
+ const noteLevelLine=document.querySelector("#note .visual-graph-level");
+ notePoint.dispatchEvent(new PointerEvent("pointerenter",{bubbles:true}));
+ pass("note level diagram highlights only its real velocity knob",
+  noteLevelField.classList.contains("sound-link-active")&&
+  !document.querySelector("#note .expression-controls .dial-field").classList.contains("sound-link-active"));
+ notePoint.dispatchEvent(new PointerEvent("pointerleave",{bubbles:true}));
+ noteLevelField.dispatchEvent(new PointerEvent("pointerenter",{bubbles:true}));
+ pass("hovering note velocity highlights its own level line",
+  noteLevelLine.classList.contains("visual-graph-linked")&&
+  !document.querySelector("#note .visual-graph-line").classList.contains("visual-graph-linked"));
+ noteLevelField.dispatchEvent(new PointerEvent("pointerleave",{bubbles:true}));
+ const bendDial=document.querySelector("#note .expression-controls .dial-field");
+ bendDial.dispatchEvent(new PointerEvent("pointerenter",{bubbles:true}));
+ pass("hovering note bend highlights its own pitch curve",
+  document.querySelector("#note .visual-graph-line").classList.contains("visual-graph-linked")&&
+  !noteLevelLine.classList.contains("visual-graph-linked"));
+ bendDial.dispatchEvent(new PointerEvent("pointerleave",{bubbles:true}));
+ const shapeField=document.querySelector('#note [data-sound-path="bend.shape"]');
+ shapeField.dispatchEvent(new PointerEvent("pointerenter",{bubbles:true}));
+ pass("bend-shape selection points to the actual graph action",
+  document.querySelector("#note .expression-shape-choice").classList.contains("visual-point-linked"));
+ shapeField.dispatchEvent(new PointerEvent("pointerleave",{bubbles:true}));
+ const noteGraph=document.querySelector("#note .expression-visual svg");
+ noteGraph.getBoundingClientRect=()=>({top:0,height:112,left:0,width:320});
+ noteGraph.dispatchEvent(new MouseEvent("click",{clientY:95,bubbles:true}));
+ pass("clicking the lower note graph focuses the velocity slider",
+  document.activeElement===noteLevelField.querySelector("input"));
  document.querySelector("#note .expression-shape-choice").click();
  pass("note shape changes without the select knob",noteBend&&noteBend.shape!=="wave");
  // Moving a knob may redraw the graph without replacing the entire inspector.

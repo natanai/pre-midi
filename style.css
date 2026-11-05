@@ -1605,6 +1605,20 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .note-expression .expression-visual .visual-graph-level {
  stroke:var(--signal-mauve);stroke-width:2;vector-effect:non-scaling-stroke
 }
+/* Per-note linking uses the same visual/knob semantics as a Sound graph,
+   with independent targets for velocity, bend, and the categorical shape. */
+.note-effects-section .sound-link-active{
+ outline:1px solid var(--signal-mauve);outline-offset:2px
+}
+.note-expression .expression-visual .visual-graph-level.visual-graph-linked{
+ stroke-width:3.2;filter:drop-shadow(0 0 2px var(--signal-mauve))
+}
+.note-expression .expression-visual .visual-graph-point.visual-point-linked::after{
+ transform:scale(1.5);background:var(--signal-mauve);border-color:var(--bright)
+}
+.note-expression .expression-visual .visual-graph-action.visual-point-linked{
+ outline:1px solid var(--signal-mauve);outline-offset:2px
+}
 .note-expression .expression-visual .visual-graph-point {
  --track-accent:var(--signal-mauve)
 }
