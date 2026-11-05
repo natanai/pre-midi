@@ -124,6 +124,66 @@
   const {createSong,addBeat}=await load('songModel.js'),{exportSongProject,importSongProject}=await load('songIO.js');
   const song=createSong(beat);const output=exportSongProject(song);const restored=await importSongProject(new File([output.blob],output.name));
   assert(restored.kind==='song','Song export and reopen');
+  // Native portable acceptance for reusable multi-bar notes, captured cutoff
+  // movement and a Beat-owned freeform lane, without any Web Audio fallback.
+  const schema=await load('schema.js'),songs=await load('songModel.js');
+  const freeforms=await load('freeformModel.js');
+  const audioHost=await load('src/hosts/native/session.js');
+  const {renderEvents}=await load('audio.js');
+  const advanced=schema.create(),advancedInst=advanced.instruments[0];
+  advanced.bars=2;advancedInst.timeline=[advancedInst.chunks[0].id,null];
+  advancedInst.placements=[null,null];
+  advancedInst.chunks[0].notes=[{id:id(),pitch:63,start:14,duration:24,velocity:.82,
+   cutoffAutomation:{version:1,step:14,limitStep:32,
+    block:{version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',
+     points:[{id:id(),step:0,value:430},{id:id(),step:32,value:4300}]}}}];
+  schema.upgradeBeatFeatures(advanced);
+  assert(advanced.version===27&&!schema.validate(advanced).length,
+   'portable Beat v27 retains a continuous multi-bar note and captured cutoff curve');
+  const advancedSong=songs.createSong(advanced),advancedTrack=advancedSong.tracks[0];
+  const freeform=freeforms.ensureFreeform(advancedTrack);
+  const freeInst=freeforms.addFreeformInstrument(freeform);
+  freeforms.addFreeformNote(freeInst,{pitch:68,start:5,duration:22,velocity:.74});
+  songs.upgradeSongFeatures(advancedSong);
+  assert(advancedSong.version===28&&!songs.validateSong(advancedSong).length,
+   'portable Song v28 owns independent freeform and reusable v27 Beats');
+  // Unpacking must assign fresh note IDs and passage ownership. Those fields
+  // are not audible; retain every actual voice, envelope, patch and automation
+  // field so this remains a strict native audio-plan equivalence test.
+  const audiblePlan=plan=>{
+   const value=structuredClone(plan);
+   if(value.expression)for(const key of ['id','passageId','strumGroup','strumKey'])
+    delete value.expression[key];
+   return value;
+  };
+  const signature=doc=>JSON.stringify(audioHost.nativePlans(renderEvents(doc)).map(audiblePlan));
+  const originalPlans=signature(advancedSong);
+  const reusable=freeforms.createBeatFromFreeformSelection(advancedSong,advancedTrack.id,0,32);
+  assert(reusable.version===25&&!schema.validate(reusable).length,
+   'freeform multi-bar passage becomes a standalone v25 Beat without retriggers');
+  songs.addBeat(advancedSong,reusable);
+  assert(signature(advancedSong)===originalPlans,
+   'creating a reusable Beat never doubles Song playback');
+  const advancedExport=songFiles.exportSongProject(advancedSong);
+  const advancedReopen=await songFiles.importSongProject(new File([advancedExport.blob],advancedExport.name));
+  assert(!songs.validateSong(advancedReopen).length&&signature(advancedReopen)===originalPlans,
+   'portable Song ZIP retains v27 automation and freeform onset instructions exactly');
+  const browserOffline=window.OfflineAudioContext;
+  window.OfflineAudioContext=class{constructor(){throw Error('Song native render attempted Web Audio');}};
+  try{
+   const renderedSong=await wav(advancedReopen);
+   assert(renderedSong.size>44,'native C++ WAV renders freeform, v27 automation and long-note tails');
+  }finally{window.OfflineAudioContext=browserOffline;}
+  const advancedSession=await play(()=>advancedReopen,{loop:()=>false});
+  assert(advancedSession.backend==='native-cpp','portable Song performs native freeform playback');
+  await advancedSession.seek(10);
+  assert((await audioRequest({action:'status'})).fault===0,
+   'native Song seek through freeform and sustained Beat does not exhaust callback capacity');
+  await advancedSession.stop();
+  const priorUnpack=signature(advancedReopen);
+  freeforms.unpackBeatClip(advancedReopen,advancedReopen.tracks.find(track=>track.kind==='beat').clips[0].id);
+  assert(!songs.validateSong(advancedReopen).length&&signature(advancedReopen)===priorUnpack,
+   'portable v27 Beat unpacks without changing native note and cutoff plans');
   await saveDraft(beat);
   assert(JSON.parse(await loadDraft()).instruments[0].chunks[0].notes.length===1,'IndexedDB draft transaction');
   localStorage.setItem('premidi-smoke-preset',JSON.stringify(inst.sounds[0].patch));
