@@ -154,13 +154,18 @@ try{
   bubbles:true,cancelable:true,pointerId:15,pointerType:"mouse",button:0,
   clientX:x,clientY:y
  }));
- pointer(harmonic25,"pointerdown",37,69);
+ // Begin at the actual harmonic handle center. An off-center 69px
+ // press on a zero-level handle at 100px would produce a shifted pointer
+ // below the axis, accidentally painting only zero-amplitude partials.
+ const harmonicStartX=parseFloat(harmonic25.style.left)/100*360;
+ const harmonicStartY=parseFloat(harmonic25.style.top)/100*112;
+ pointer(harmonic25,"pointerdown",harmonicStartX,harmonicStartY);
  pointer(harmonicArea,"pointermove",160,85);
  pointer(harmonicArea,"pointerup",160,85);
  pass("two-dimensional harmonic painting edits adjacent partials atomically",
   harmonicsEdits.some(([paths,values])=>Array.isArray(paths[0])&&
    paths.length>=4&&paths.every(keys=>keys[0]==="oscillators"&&keys[3]>=24&&keys[3]<=27)&&
-   values.every(value=>value>=0&&value<=1)));
+   values.every(value=>value>=0&&value<=1)&&values.some(value=>value>0)));
  const routePatch=makePatch("init");
  routePatch.version=2;
  routePatch.modulation={version:1,routes:["lfo","envelope","keytrack"].map((kind,i)=>({
