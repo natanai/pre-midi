@@ -29,6 +29,8 @@ jobs:
         run: node scripts/native-page-mailbox-check.mjs
       - name: Verify late native Song page-local synth/sample/vocal PCM
         run: node scripts/native-page-plan-check.mjs
+      - name: Qualify pinned C++ Song page resources after metadata retirement
+        run: node scripts/native-prepared-page-check.mjs
       - name: Fetch pinned CC0 recordings
         run: node scripts/fetch-samples.mjs
       - name: Stage minimal Pages build
