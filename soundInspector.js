@@ -17,8 +17,8 @@ const sampleFields=[
  {label:"release",path:["release"],min:.01,max:3,step:.01,display:"seconds"}
 ];
 
-function stageState(instrument,patch,volume,gain){
- return {type:"stage",layout:instrument.layout,pan:patch.pan??0,volume,gain};
+function stageState(instrument,patch,volume,gain,layout=instrument.layout){
+ return {type:"stage",layout,pan:patch.pan??0,volume,gain};
 }
 function entries(path,value){
  return Array.isArray(path?.[0])?path.map((keys,i)=>[keys,value[i]]):[[path,value]];
@@ -26,7 +26,7 @@ function entries(path,value){
 export function renderSoundInspectorCore({
  instrument,sound,context,modulesRoot,scopeRoot,
  volumeRoot,gainRoot,primaryRoots,
- accent="#86c6a7",sampleNames="",onReplaceSample=()=>{},
+ accent="#86c6a7",sampleNames="",onReplaceSample=()=>{},stageLayout=null,
  onPatchChange,onLevelChange,onStageChange,
  onCutoffAutomation=null,scopeRenderer=null,stageOpen=null
 }){
@@ -49,7 +49,7 @@ export function renderSoundInspectorCore({
  let stagePanel=null;
  const redraw=(next,volume=instrument.volume,gain=sound.gain)=>{
   updateScope(next,volume*gain);
-  stagePanel?.draw(stageState(instrument,next,volume,gain));
+  stagePanel?.draw(stageState(instrument,next,volume,gain,stageLayout??instrument.layout));
  };
  const preview=(path,value)=>{
   // Preview is ephemeral. Never mutate the authored patch before committing
@@ -124,7 +124,7 @@ export function renderSoundInspectorCore({
   else redraw(next,volume,gain);
  };
  stagePanel=illustrateSoundPanel(details,"stage",
-  stageState(instrument,patch,instrument.volume,sound.gain),
+  stageState(instrument,patch,instrument.volume,sound.gain,stageLayout??instrument.layout),
   (path,value)=>editStage(path,value,true),
   (path,value)=>editStage(path,value,false),sound.id);
  scopeRoot.append(stagePanel.element);
