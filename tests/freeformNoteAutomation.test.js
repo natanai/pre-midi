@@ -74,7 +74,7 @@ test("newly authored freeform cutoff and multi-bar sustain survive v27 extractio
 test("desktop freeform editor uses shared interactive two-axis automation instead of knob-only changes",()=>{
  const ui=readFileSync(new URL("../freeformUI.js",import.meta.url),"utf8");
  assert.match(ui,/createFreeformNoteCutoff\(current,patch\)/);
- assert.match(ui,/illustrateSoundPanel\(details,"automation"/);
+ assert.match(ui,/illustrateSoundPanel\(visualDetails,"automation"/);
  assert.match(ui,/editFreeformNoteCutoff\(current\.cutoffAutomation,path,value\)/);
  assert.match(ui,/remove cutoff movement/);
 });
