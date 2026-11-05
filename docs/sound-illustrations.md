@@ -2,6 +2,50 @@
 
 **Canonical ownership:** this is the single running handoff, acceptance checklist and execution log for the **educational, interactive Sound illustrations**. Update this file in place at every meaningful milestone and before handing the work to another chat. This is **not** a competing Song/freeform roadmap: `docs/song-rollout.md` remains authoritative for the shared Sound Inspector and Song/freeform architecture; `docs/synthesis-roadmap.json` remains authoritative for DSP synthesis.
 
+## Final stabilization checkpoint and future-agent handoff (2026-11-05)
+
+**Decision: freeze the illustration rollout for testing.** Do not add further visual features to this candidate or conflate automated CI with Windows 11 hardware qualification. The educational diagrams are substantially delivered; this final pass focuses on evidence, exact-version portable packaging, and a handoff that another agent can resume without reconstructing old chats.
+
+**Release candidate:** `release/preview19-illustration-stabilization`, based on main `03b1041407f867594a499aebdf01d8906d6a79cc` (latest merged native Song work through PR #189). Authoritative candidate version is `0.14.1-preview.19` in `package.json` and matching `desktop/Cargo.toml`/`desktop/Cargo.lock`. The candidate adds an actual mounted **Beat** Sound Inspector regression: one **volume × Sound gain** pointer gesture previews both knobs, commits both, and one Undo/Redo restores/reapplies both. This closes a gap previously verified only with a Song-owned transaction. Do not count it as qualified until its full CI passes.
+
+### Actual testable builds and release gates
+
+| Scope | Last independently observed state | Required gate |
+| --- | --- | --- |
+| Desktop web | Main `03b1041407f867594a499aebdf01d8906d6a79cc` had a successful [Pages workflow 42050853338](https://github.com/natanai/pre-midi/actions/runs/42050853338). | Candidate commit must pass full PR Chrome/Node/native CI and a subsequent same-commit Pages deployment. |
+| Existing Windows download | [v0.14.1-preview.18 portable ZIP](https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.18) is published; its immutable release tag targets `231aeae9063c60d82d3479e1682d619f3008890d`, **older than latest Sound/native work**. | Do not use preview.18 to judge changes merged after that tag. |
+| Current Windows candidate | `v0.14.1-preview.19` is **a candidate, not an already published download**. The existing `.github/workflows/desktop-release.yml` builds portable x64 on Windows Server 2022, tests folder-local isolation/relocation/recovery, and publishes only when the new version tag can be created immutably. | Require successful Windows portable PR workflow, successful exact-commit publication after merge, downloadable ZIP + `SHA256SUMS.txt`, and release tag SHA matching the shipped commit. |
+| Physical Windows 11 | **Not observed** by this agent. Automated Windows runners, Chrome and native PCM comparison cannot certify real speakers, microphone timing or control ergonomics. | Complete the manual checklist below on Windows 11 before declaring stable/100%. |
+| Concurrent native Song work | PRs [#191](https://github.com/natanai/pre-midi/pull/191) and [#192](https://github.com/natanai/pre-midi/pull/192) are under another agent's ownership at this freeze point. | Do not merge, rewrite, cherry-pick or claim their unmerged native-page changes as part of this candidate. Review latest PR statuses after reopening. |
+
+**Automated qualification that must succeed on the release commit:**
+`npm run check` (including all Node tests and phone capability inventory), desktop/narrow Chrome illustration and Song browser checks, pinned recording fetch, native C++ sound/PCM/reference and device callback checks, the Windows portable workflow's `cargo test`, version consistency, executable dependency inspection, portable packaging/checksum, and folder-local upgrade/relocation/failure-recovery smoke. The PR and release workflows are separate; **both** must pass. A successful Pages job alone does not produce a Windows ZIP.
+
+The current illustration suite already has 140+ inverse handle geometry checks, 84 real Biquad frequency-response comparisons, real offline echo-impulse checks, canonical ADSR/sampler timing tests, mounted Beat/Freeform knob ↔ diagram checks, an editable-parameter inventory (zero unlinked in tested fixtures), accessibility/keyboard, no-op history, pointer cancel and Escape. Keep them in CI; do not weaken or delete tests simply to ship.
+
+### Windows 11 hands-on acceptance (operator-owned; do not mark done from CI)
+
+- [ ] Install the **exact published preview.19 ZIP** into a new writable folder without registry edits. Verify its executable opens and reports the expected version. Keep the old portable folder untouched.
+- [ ] Select the native C++ audio backend. Play a Beat, edit notes *while it plays*, start/stop/loop, and audition pitched synth, multiple Rack rows and an imported sample. Listen for silence, clipping, timing drift or unexpectedly different effects.
+- [ ] In the normal Beat Sound Inspector, open volume/gain staging, move **both axes** in one drag, confirm both standard knobs update, then press Undo once and Redo once. Repeat in Freeform/Song. Try an Escape-cancel drag and keyboard arrows at bounds; cancellation/no-op must not add history.
+- [ ] Move the filter cutoff and resonance via its X/Y illustration, verify the actual knobs and audible change; test ADSR short-note page, delay repeats, recording vs model scopes, sample one-shot and pitch-follow-off labels, and vocal compatible controls.
+- [ ] Record several short vocal phrases on one Vocal Track, trim onset to the intended beat, apply effects, play alongside a Beat, and export/import the project's `.premidi` package with external Assets intact. Also export a WAV and listen to the rendered file.
+- [ ] Stop/close the app, back up the entire portable folder, copy it to another directory, relaunch and confirm saved presets, recordings and projects survive. Confirm `data/`, `projects/`, `exports/` remain folder-local; do not delete/overwrite them during updates.
+- [ ] Change output devices and test microphone permission/latency and a sustained long Song session. Record any WASAPI device disconnects, dropouts, stale note tails, sample/rack mismatches or native Song paging stalls with reproduction steps.
+- [ ] Run a keyboard-only/screen-reader pass on two-axis controls, zoom, categorical actions, SVG trace links and focus recovery. Check Windows display scaling and inspector narrow widths.
+
+### Remaining work, ranked for takeover
+
+**P0 — release acceptance, not optional:** complete the release-workflow gates above; prove the same tagged portable archive can be downloaded and run; obtain real Windows 11 listening/recording evidence. If any gate fails, fix it on a follow-up patch/release **without overwriting the immutable earlier preview**. Never call an unobserved hardware workflow stable.
+
+**P1 — illustration closure:** broaden actual Beat undo/redo and Freeform tests to every context and Rack/voice applicable pair; check SVG trace hit target keyboard activation, categorical selector accessibility, zoom and focus at real WebView scale. Audit movement/velocity envelopes and oscillator response illustrations: when a drawing is a teaching schematic, label it truthfully instead of suggesting measured PCM. Maintain the conventional knobs, canonical fields and 4-direction grouped editing. Only change DSP if independently required and owned by the DSP team.
+
+**P2 — separate workstreams:** physical macOS/Linux, iOS Safari/Home Screen, pre-programmed game host parity, native Song device pipeline PRs #191/#192, and vocal-specific feature completeness have separate owners/roadmaps. They must not be silently counted as illustration completion.
+
+**Next agent first actions:** (1) read `AGENTS.md`, this handoff, `docs/song-rollout.md`, `docs/desktop-host.md`; (2) inspect current main, open PRs and latest CI/release tag **before** trusting these fixed SHA snapshots; (3) check preview.19 release status and its Windows artifact + checksum; (4) collect the Windows acceptance evidence, then decide whether the remaining P1 items justify a short qualified PR; (5) update **this same handoff**, rather than creating a competing plan. Preserve all external audio assets, project formats and folder-local user data.
+
+---
+
 ## Responsibilities and boundaries
 
 - **Illustration agent (this track):** `soundIllustrations.js`, its educational graphs, axes, gestures, readouts, accessibility, test fixtures, and **illustration-specific** tests. Cover synths, samples, modulation routes, harmonics, gain staging, note expression, cutoff automation and shared vocal processor illustrations.
@@ -34,7 +78,7 @@
 
 ## Engineering status and verified changes
 
-**Provisional illustration-goal estimate: ~90%** after qualified PRs #158, #160, #162, #164, #168, #170, #171, #174, #176, #178, #181, #182, #186 and #188. The original November 4 source audit estimated ~80% and the previous checkpoint was ~89%. The latest qualified work adds a second interactive **short-note ADSR** page that exposes real attack/decay release behavior from the canonical envelope planner, and truthful **key-off vs. capped-end vs. one-shot tail** sample diagrams checked against native scheduling. Unmerged accessibility PR #190 is tracked separately and excluded from this completion score. This is a **qualitative engineering estimate, not test pass coverage**, and is separate from `docs/song-rollout.md`'s Song/freeform score. Do not claim 100% until remaining compatible parameter states/contexts have bidirectional interaction coverage, movement illustrations are semantically truthful, and real Windows 11 input/audio acceptance is observed.
+**Provisional illustration-goal estimate: ~90% (frozen pending hardware acceptance)** after qualified PRs #158, #160, #162, #164, #168, #170, #171, #174, #176, #178, #181, #182, #186, #188 and **#190**. The original November 4 source audit estimated ~80%. Recent qualifications include canonical ADSR short-note/note-off modeling, real sampled-note endings, and accessible, preview-synchronized X/Y value readouts. The freeze candidate additionally tests **real Beat dual-axis undo/redo** but that test is **not** counted until its candidate PR is qualified. This estimate is **engineering judgment, not test coverage or Windows hardware acceptance**, and is separate from `docs/song-rollout.md`. Do not report 100% until the P0 hardware and remaining P1 illustration gates above are completed.
 
 **Measured mounted-UI coverage (qualified PR #171):** [Chrome/native workflow 41976346315](https://github.com/natanai/pre-midi/actions/runs/41976346315) observed **38 Freeform synth controls (32 ordinary knobs), all 38 directly linked; 0 unlinked**, **22 vocal controls (20 knobs) with active filter, 0 unlinked**, and **20 vocal controls (18 knobs) with bypassed filter, 0 unlinked**. These are **tested fixture counts**, not a universal proof that every imported Sound type or every categorical pathway is semantically reversible. The same workflow verified live Beat and Freeform cutoff knob ↔ diagram edits and the Freeform two-axis Song-owned gain transaction.
 
