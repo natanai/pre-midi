@@ -26,6 +26,7 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  clear.type="button";clear.addEventListener("click",onDelete);
  caption.append(clear);
  const level=make("label",undefined,"expression-level");
+ level.dataset.soundPath="velocity";
  level.title="the level of this note; samples may respond with a different recorded layer";
  const levelTitle=make("span","note level");
  const levelRow=make("div",undefined,"expression-level-row");
@@ -39,7 +40,8 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  levelRow.append(levelInput,levelValue);
  level.append(levelTitle,levelRow);
  const controls=make("div",undefined,"expression-controls");
- const choice=make("label","Shape");
+ const choice=make("label","Shape","synth-field");
+ choice.dataset.soundPath="bend.shape";
  const select=make("select");
  select.setAttribute("aria-label","Held note bend shape");
  for(const [id,name] of BEND_SHAPES){
@@ -53,6 +55,8 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
   value=>onChange({...bend,amount:value}),value=>{current.amount=value;draw();});
  const rate=createDial({label:"Wave speed",min:.1,max:12,step:.1,display:"hz"},bend.rate,
   value=>onChange({...bend,rate:value}),value=>{current.rate=value;draw();});
+ amount.dataset.soundPath="bend.amount";
+ rate.dataset.soundPath="bend.rate";
  controls.append(amount,rate);
  const graph=svg("svg",{viewBox:"0 0 320 112",
   "aria-label":"Bend and note level",role:"button",tabindex:"0",
@@ -69,13 +73,16 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  const points=make("div",undefined,"visual-graph-points");
  const dot=make("button",undefined,"visual-graph-point");
  dot.type="button";dot.setAttribute("aria-label","bend amount");
+ dot.dataset.soundLinks="bend.amount|bend.rate";
  const levelDot=make("button",undefined,"visual-graph-point visual-note-level-point");
  levelDot.type="button";levelDot.setAttribute("role","slider");
  levelDot.setAttribute("aria-label","note level");
+ levelDot.dataset.soundLinks="velocity";
  levelDot.setAttribute("aria-valuemin","0");levelDot.setAttribute("aria-valuemax","1");
  const shapeButton=make("button",undefined,"visual-graph-action expression-shape-choice");
  shapeButton.type="button";shapeButton.style.left="78%";shapeButton.style.top="77%";
  shapeButton.setAttribute("aria-label","change bend shape");
+ shapeButton.dataset.soundLinks="bend.shape";
  points.append(dot,levelDot,shapeButton);area.append(graph,points);visual.append(area);
  let noteLevel=note.velocity,dragging=null,levelDragging=null;
  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
