@@ -30,11 +30,16 @@ function beatOnsets(beat){
  return events;
 }
 
-export function scheduledSongOnsets(song,{maxEvents=Infinity}={}){
+export function scheduledSongOnsets(song,{maxEvents=Infinity,fromStep=0,toStep=Infinity}={}){
  const index=new Map(),beats=new Map(song.beats.map(beat=>[beat.id,beat]));
  const templates=new Map(),songLength=songDurationSteps(song);
+ // One window over the same source-linked Song, not a destructive split,
+ // bounce, or replacement clock. Existing full-Song callers pass no bounds.
+ const windowStart=Math.min(songLength,fromStep);
+ const windowEnd=Math.min(songLength,toStep);
  let count=0;
  const push=(step,kind,event)=>{
+  if(step<windowStart||step>=windowEnd)return;
   if(++count>maxEvents)
    throw Error("Song exceeds "+maxEvents+" scheduled note/voice onsets. Split or shorten it for native playback.");
   bucket(index,step)[kind].push(event);
@@ -46,7 +51,8 @@ export function scheduledSongOnsets(song,{maxEvents=Infinity}={}){
   for(const track of song.tracks)if(track.kind==="vocal"){
    for(const clip of track.clips){
     const recording=recordings.get(clip.recordingId);
-    if(recording)push(clip.startStep,"vocals",{recording,clip,track});
+    if(recording&&clip.startStep>=windowStart&&clip.startStep<windowEnd)
+     push(clip.startStep,"vocals",{recording,clip,track});
    }
   }
  }
@@ -61,9 +67,15 @@ export function scheduledSongOnsets(song,{maxEvents=Infinity}={}){
    if(!onsets){onsets=beatOnsets(beat);templates.set(beat.id,onsets);}
    const cycle=beat.bars*STEPS_PER_BAR;
    const phase=(clip.sourceOffsetSteps??0)%cycle;
+   const minRelative=Math.max(0,windowStart-clip.startStep);
+   const maxRelative=Math.min(clip.lengthSteps,windowEnd-clip.startStep);
+   if(maxRelative<=minRelative)continue;
    for(const {at,event} of onsets){
     const first=(at-phase+cycle)%cycle;
-    for(let relative=first;relative<clip.lengthSteps;relative+=cycle){
+    // Jump directly to the first repetition in this Song-time window.
+    // A 10,000-bar Clip must not expand into 10,000 events to read bar 9,999.
+    const skip=Math.max(0,Math.ceil((minRelative-first)/cycle));
+    for(let relative=first+skip*cycle;relative<maxRelative;relative+=cycle){
      const step=clip.startStep+relative;
      push(step,"notes",{...event,beat,track,clip,songStep:step,beatStep:at});
     }
@@ -78,6 +90,7 @@ export function scheduledSongOnsets(song,{maxEvents=Infinity}={}){
    // group; retain the original order to preserve strum offsets and ties.
    const directs=new Map();
    for(const note of instrument.notes){
+    if(note.start<windowStart||note.start>=windowEnd)continue;
     let notes=directs.get(note.start);
     if(!notes){notes=[];directs.set(note.start,notes);}
     notes.push(note);
@@ -98,11 +111,18 @@ export function scheduledSongOnsets(song,{maxEvents=Infinity}={}){
    for(const placement of instrument.chunkPlacements){
     const chunk=instrument.chunks.find(item=>item.id===placement.chunkId);
     if(!chunk)continue;
-    for(let repeat=0;repeat<placement.repeats;repeat++){
+    const onsets=chunk.notes.filter(note=>note.start<placement.length);
+    if(!onsets.length)continue;
+    const min=Math.min(...onsets.map(note=>note.start));
+    const max=Math.max(...onsets.map(note=>note.start));
+    const first=Math.max(0,Math.ceil((windowStart-placement.startStep-max)/placement.every));
+    const last=Math.min(placement.repeats-1,
+     Math.floor((windowEnd-1-placement.startStep-min)/placement.every));
+    for(let repeat=first;repeat<=last;repeat++){
      const start=placement.startStep+repeat*placement.every;
-     for(const note of chunk.notes){
-      if(note.start>=placement.length)continue;
+     for(const note of onsets){
       const step=start+note.start;
+      if(step<windowStart||step>=windowEnd)continue;
       push(step,"notes",{instrument,note,chunk,
        beat:source,track,songStep:step,beatStep:step});
      }
@@ -111,6 +131,19 @@ export function scheduledSongOnsets(song,{maxEvents=Infinity}={}){
   }
  }
  return index;
+}
+
+// A bounded, deterministic page feeder for future native Song streaming.
+// This does not change the currently enforced 10-minute or 4096-onset native
+// playback limits; the C++ host must support continuous voice/effect handoff
+// before a window may be played as part of a longer session.
+export function scheduledSongOnsetsInWindow(song,startStep,endStep,{maxEvents=4096}={}){
+ if(!Number.isSafeInteger(startStep)||startStep<0||
+  !Number.isSafeInteger(endStep)||endStep<=startStep)
+  throw Error("Song onset window needs increasing, nonnegative Song steps.");
+ if(!Number.isSafeInteger(maxEvents)||maxEvents<1||maxEvents>4096)
+  throw Error("Native onset window budget must be 1 to 4096.");
+ return scheduledSongOnsets(song,{maxEvents,fromStep:startStep,toStep:endStep});
 }
 
 // Browser real-time playback can share native/offline's sparse source-linked
