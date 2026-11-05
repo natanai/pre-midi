@@ -4,7 +4,7 @@ import {create} from "../schema.js";
 import {createSong,upgradeSongFeatures,songDurationSteps} from "../songModel.js";
 import {ensureFreeform,addFreeformInstrument,addFreeformNote} from "../freeformModel.js";
 import {scheduledSongOnsets} from "../songSchedule.js";
-import {nextNativeOnsetPage} from "../src/hosts/native/onset-pages.js";
+import {nextNativeOnsetPage,nativePageDescriptorCursor} from "../src/hosts/native/onset-pages.js";
 
 test("adaptive onset pages cover dense Song steps with no skipped, duplicated or truncated onsets",()=>{
  const song=createSong(create()),layer=ensureFreeform(song.tracks[0]);
@@ -71,4 +71,68 @@ test("late pages do not need to expand thousands of earlier linked Beat Clips",(
  assert.throws(()=>nextNativeOnsetPage(song,-1),/nonnegative/);
  assert.throws(()=>nextNativeOnsetPage(song,0,{maxSteps:0}),/width/);
  assert.throws(()=>nextNativeOnsetPage(song,0,{maxOnsets:4097}),/budget/);
+});
+
+test("native page descriptors have exact contiguous frame clocks, owner/revision and no premature resource claim",()=>{
+ const song=createSong(create()),beat=song.beats[0],clip=song.tracks[0].clips[0];
+ beat.instruments[0].chunks[0].notes=[
+  {id:"note-a",pitch:60,start:4,duration:22,velocity:.8},
+  {id:"note-b",pitch:67,start:8,duration:2,velocity:.7}
+ ];
+ clip.startStep=9;clip.lengthSteps=321;clip.sourceOffsetSteps=7;
+ const layer=ensureFreeform(song.tracks[0]),free=addFreeformInstrument(layer);
+ for(let step=10;step<250;step+=9)
+  addFreeformNote(free,{pitch:72,start:step,duration:4,velocity:.6});
+ upgradeSongFeatures(song);
+ const source=JSON.stringify(song),unit=60/song.bpm/4,sr=44100;
+ let revision=4,previous=null,sequence=0,seen=0;
+ const cursor=nativePageDescriptorCursor(song,{
+  owner:91,revision,sampleRate:sr,startStep:5,maxSteps:21,maxOnsets:5,
+  getRevision:()=>revision
+ });
+ for(let page=cursor.next();page;page=cursor.next()){
+  const d=page.descriptor;
+  assert.equal(d.sequence,++sequence);
+  assert.equal(d.owner,91);assert.equal(d.revision,4);
+  assert.equal(d.onsets,page.onsetCount);
+  assert.equal(d.resources,0);
+  assert.equal(d.prepared,false,"unvalidated resources must never be marked ready for callback");
+  assert.equal(d.last,!page.hasMore);
+  assert.equal(d.startFrame,Math.ceil(page.startStep*unit*sr-1e-9));
+  assert.equal(d.endFrame,Math.ceil(page.endStep*unit*sr-1e-9));
+  assert.ok(d.endFrame>d.startFrame);
+  if(previous)assert.equal(d.startFrame,previous.endFrame,"audio frame clock has a page gap");
+  previous=d;seen+=d.onsets;
+  assert.ok(sequence<500,"adaptive descriptor generation must advance");
+ }
+ assert.ok(sequence>3&&seen>10);
+ assert.equal(cursor.positionStep,songDurationSteps(song));
+ assert.equal(cursor.sequence,sequence);
+ assert.equal(previous.last,true);
+ assert.equal(JSON.stringify(song),source,"descriptor generation may never mutate music");
+ revision=5;
+ assert.throws(()=>cursor.next(),/invalidate the transport revision/);
+});
+
+test("native page descriptor ownership and late frame numbers reject unsafe input",()=>{
+ const song=createSong(create());
+ for(const options of [
+  {owner:0,revision:1,sampleRate:48000,getRevision:()=>1},
+  {owner:1,revision:0,sampleRate:48000,getRevision:()=>0},
+  {owner:1,revision:1,sampleRate:4800,getRevision:()=>1},
+  {owner:1,revision:1,sampleRate:48000,startStep:-1,getRevision:()=>1},
+  {owner:1,revision:1,sampleRate:48000,getRevision:"wrong"},
+  {owner:1,revision:1,sampleRate:48000}
+ ])assert.throws(()=>nativePageDescriptorCursor(song,options));
+ const clip=song.tracks[0].clips[0];
+ clip.startStep=8000;clip.lengthSteps=32;
+ const clock=nativePageDescriptorCursor(song,{owner:2,revision:3,
+  sampleRate:48000,startStep:7995,maxSteps:10,maxOnsets:4,getRevision:()=>3});
+ const first=clock.next();
+ assert.equal(first.descriptor.startFrame,Math.ceil(7995*.125*48000-1e-9));
+ assert.ok(first.descriptor.startFrame>600*48000,
+  "page metadata can represent late time without authorizing >10-minute native playback");
+ assert.equal(first.descriptor.prepared,false);
+ song.bpm=121;
+ assert.throws(()=>clock.next(),/invalidate the transport revision/);
 });
