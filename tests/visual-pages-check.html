@@ -15,6 +15,9 @@ import {renderAudioDelayControls} from "../audioControlUI.js";
 import {vocalDisplayPatch} from "../vocalAudioView.js";
 import {illustrateSoundPanel} from "../soundIllustrations.js";
 import {createDial} from "../dial.js";
+import {renderVocalEditor} from "../vocalEditor.js";
+import {installFreeformSoundUI} from "../freeformSoundUI.js";
+import {makeInstrument} from "../schema.js";
 const checks={},pass=(label,value)=>{checks[label]=!!value;if(!value)throw Error(label);};
 let status="FAIL";
 try{
@@ -227,6 +230,57 @@ try{
   [...stageIllustration.element.querySelectorAll(".visual-graph-label")]
    .some(item=>item.textContent==="total 42%"));
  stageRoot.remove();voiceRoot.remove();
+ // Check the actual user-facing Vocal editor rather than just its shared
+ // delay fixture. Bypassed and active filters have different control surfaces.
+ const actualVocal=document.createElement("section");
+ actualVocal.className="vocal-editor";document.body.append(actualVocal);
+ const vocalRecording={id:"coverage-voice",name:"Voice",path:"voice.wav",
+  durationSeconds:2,trimSeconds:0,waveform:[.1,.2,.6,.5,.25,.1]};
+ const vocalClip={id:"coverage-clip",gain:1,effects:{delayMix:.3,delayTime:.4,
+  delayFeedback:.5}};
+ const vocalOptions={onApply:()=>{},onTrim:()=>{},onDuplicate:()=>{},
+  onBack:()=>{},onUseInBeat:()=>{},onUndo:()=>{},onRedo:()=>{}};
+ const vocalSelection={clip:vocalClip,recording:vocalRecording,track:{name:"voice"}};
+ renderVocalEditor(actualVocal,vocalSelection,vocalOptions);
+ for(const bypass of [true,false]){
+  if(!bypass)vocalClip.effects.filter={type:"lowpass",cutoff:3500,resonance:2};
+  renderVocalEditor(actualVocal,vocalSelection,vocalOptions);
+  const audit=auditSoundVisualCoverage(actualVocal,{context:"live vocal "+(bypass?"bypass":"active")});
+  checks["live vocal "+(bypass?"bypass":"active")+" inventory"]=audit.summary;
+  pass("live vocal "+(bypass?"bypass":"active")+" has every knob visualized: "+
+   JSON.stringify(audit.missing),audit.summary.knobs>0&&audit.missing.length===0);
+ }
+ actualVocal.remove();
+
+ // The real Freeform Sound inspector must preserve level controls and
+ // commit through the Song mutation callback, not a standalone diagram fixture.
+ const freeformInst=makeInstrument(1,2);
+ let freeformUi=null;
+ const freeformLayer={samples:[]},freeformSong={bpm:120};
+ freeformUi=installFreeformSoundUI({
+  getSong:()=>freeformSong,getLayer:()=>freeformLayer,
+  getInstrument:()=>freeformInst,
+  mutate:edit=>{edit();freeformUi.render();},
+  onError:()=>{}
+ });
+ const freeformHost=freeformUi.render();
+ document.body.append(freeformHost);
+ freeformHost.querySelector(".freeform-sound-summary").click();
+ const realStage=freeformHost.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
+ pass("real Freeform Sound mounts gain staging",!!realStage);
+ const freeformAudit=auditSoundVisualCoverage(freeformHost,{context:"live freeform synth"});
+ checks["live freeform synth inventory"]=freeformAudit.summary;
+ pass("real Freeform Sound has every knob visualized: "+
+  JSON.stringify(freeformAudit.missing),freeformAudit.summary.knobs>0&&
+  freeformAudit.missing.length===0);
+ const beforeGain=freeformInst.sounds[0].gain;
+ realStage.querySelector(".visual-graph-point").dispatchEvent(
+  new KeyboardEvent("keydown",{key:"ArrowDown",bubbles:true,cancelable:true}));
+ pass("real Freeform diagram edits the selected Sound in its Song state",
+  freeformInst.sounds[0].gain<beforeGain);
+ const afterFreeform=auditSoundVisualCoverage(freeformHost,{context:"freeform after editing"});
+ pass("real Freeform remains fully covered after rerender",afterFreeform.missing.length===0);
+ freeformHost.remove();
  // Dismissing one Sound must not leave a modal-like dark layer on the next.
  const expand=samplePanel.querySelector(".visual-panel-expand");
  expand.click();
