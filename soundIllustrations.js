@@ -176,7 +176,8 @@ export const diagram=(patch,type,page=0)=>{
   // collapsed editor. Its illustration must still be able to bring it in,
   // using the same canonical level value as the existing add/remove buttons.
   // Setting the base level to zero does not erase modulation routes.
-  action(311,second?95:80,["oscillators",1,"level"],[0,.25],
+  action(311,second?95:80,["oscillators",1,"level"],
+   [0,slots[1].level>0?slots[1].level:.25],
    "oscillator 2 base level");
   for(const index of enabled){
    action(60,second?(index===0?57:90):80,["oscillators",index,"wave"],WAVES,"wave "+(index+1));
