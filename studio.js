@@ -1162,7 +1162,7 @@ function renderSound() {
  const hear=$("hear-sound");
  hear.textContent="▶";
  hear.title=inst.layout==="rack"?"hear rack sounds one at a time":"hear current sound";
- hear.setAttribute("aria-label",hear.title);
+ hear.setAttribute("aria-label",inst.layout==="rack"?"Hear rack sounds one at a time":"Hear current sound");
  $("instrument-name").value=inst.name;
  document.querySelector(".controls")?.style.setProperty("--track-accent",signal(inst));
  $("synth-editor").style.setProperty("--track-accent",signal(inst));
