@@ -380,6 +380,43 @@ try{
  pass("two-axis release commits exactly one atomic edit",
   pitchedCommits===beforeGrab+1&&pitchedEdit.path.length===2&&
   pitchedEdit.path.every(path=>Array.isArray(path)));
+ // Saturated controls should not manufacture history entries when an
+ // arrow is pressed beyond the range or a drag returns to its starting value.
+ const boundaryRoot=document.createElement("section");
+ boundaryRoot.className="freeform-sound-content";document.body.append(boundaryRoot);
+ const boundaryDetails=document.createElement("details");
+ boundaryDetails.append(document.createElement("summary"));boundaryRoot.append(boundaryDetails);
+ let boundaryCommits=0,boundaryPreviews=0;
+ const boundaryPanel=illustrateSoundPanel(boundaryDetails,"stage",{
+  type:"stage",layout:"levels",volume:1,gain:1,pan:0
+ },()=>boundaryCommits++,()=>boundaryPreviews++,"stage-noop-check");
+ boundaryRoot.append(boundaryPanel.element);
+ const boundaryPoint=boundaryPanel.element.querySelector(
+  '.visual-graph-point[data-sound-links="volume|gain"]');
+ for(const key of ["ArrowRight","ArrowUp"])
+  boundaryPoint.dispatchEvent(new KeyboardEvent("keydown",{
+   key,bubbles:true,cancelable:true
+  }));
+ pass("keyboard arrows beyond both stage maxima do not create no-op history",
+  boundaryCommits===0);
+ const boundaryGraph=boundaryPanel.element.querySelector(".visual-panel-graph");
+ const boundaryArea=boundaryPanel.element.querySelector(".visual-panel-area");
+ boundaryGraph.getBoundingClientRect=()=>({left:0,top:0,width:360,height:112});
+ boundaryArea.setPointerCapture=()=>{};
+ boundaryArea.hasPointerCapture=()=>false;
+ boundaryArea.releasePointerCapture=()=>{};
+ const originX=parseFloat(boundaryPoint.style.left)/100*360;
+ const originY=parseFloat(boundaryPoint.style.top)/100*112;
+ pointer(boundaryPoint,"pointerdown",originX,originY);
+ pointer(boundaryArea,"pointermove",originX-34,originY+20);
+ pointer(boundaryArea,"pointerup",originX,originY);
+ pass("a visual gesture that returns to the authored values restores preview without commit",
+  boundaryCommits===0&&boundaryPreviews>=2);
+ const restoredPoint=boundaryPanel.element.querySelector(".visual-graph-point");
+ pass("return-to-start gesture resets its original teaching handle position",
+  Math.abs(parseFloat(restoredPoint.style.left)/100*360-originX)<.001&&
+  Math.abs(parseFloat(restoredPoint.style.top)/100*112-originY)<.001);
+ boundaryPanel.element.disposeSoundIllustration?.();boundaryRoot.remove();
  pitchedRoot.remove();stageRoot.remove();voiceRoot.remove();
  // Check the actual user-facing Vocal editor rather than just its shared
  // delay fixture. Bypassed and active filters have different control surfaces.
