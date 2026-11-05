@@ -66,7 +66,7 @@ export function bindSoundInspectorCatalogActions({
   throw Error("Sound Inspector catalog actions require a host and context adapters.");
  browseButton.onclick=()=>onBrowse(browseMode);
  saveButton.onclick=()=>onSave(saveWholeRack);
- saveButton.setAttribute("aria-label",saveWholeRack?"save rack preset":"save preset");
+ saveButton.setAttribute("aria-label",saveWholeRack?"Save rack preset":"Save preset");
  if(rowBrowseButton)rowBrowseButton.onclick=()=>onBrowse("replace-row");
  if(rowSaveButton)rowSaveButton.onclick=()=>onSave(false);
  if(rackSaveButton)rackSaveButton.onclick=()=>onSave(true);
