@@ -4,6 +4,7 @@ import {validateModulation} from "./src/dsp/modulation.js";
 import {resolveEvent} from "./soundModel.js";
 import {eventsAtStep} from "./arrangement.js";
 import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
+import {scheduledSongOnsets} from "./songSchedule.js";
 import {decodeSongRecordings,recordingEventsAtStep,scheduleVocal} from "./songAudio.js";
 import {vocalSourceRange} from "./vocalEffects.js";
 import {delayTailSeconds} from "./src/dsp/effect-tail.js";
@@ -245,8 +246,8 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  if(nativeEnabled()){
   const read=typeof beat==='function'?beat:()=>beat,document=read();
   const prepare=document=>({...document,nativeLengthSteps:document.kind==='song'?songDurationSteps(document):document.bars*16});
-  const handle=await playNative(prepare(document),renderEvents(document),{loop,onPosition,onProgress,onStop,onStart,startStep,countIn,recording,onCountIn});
-  handle.refresh=()=>{const next=read();return handle.update(prepare(next),renderEvents(next));};return handle;
+  const handle=await playNative(prepare(document),renderEvents(document,{maxEvents:4096}),{loop,onPosition,onProgress,onStop,onStart,startStep,countIn,recording,onCountIn});
+  handle.refresh=()=>{const next=read();return handle.update(prepare(next),renderEvents(next,{maxEvents:4096}));};return handle;
  }
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
@@ -341,16 +342,28 @@ export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,s
 }
 // Materialize and stably order offline onsets, including strums crossing steps.
 // This also bounds the allocator's ledger while rendering long arrangements.
-export function renderEvents(document){
+export function renderEvents(document,{maxEvents=Infinity}={}){
  const unit=secondsPerStep(document),song=document.kind==="song";
  const length=song?songDurationSteps(document):document.bars*16,events=[];
- for(let step=0;step<length;step++){
-  if(song)for(const event of recordingEventsAtStep(document,step))
-   events.push({kind:"vocal",at:step*unit,event});
-  for(const event of (song?eventsAtSongStep(document,step):stepEvents(document,step)))
-   events.push({kind:"note",at:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
-    instrument:event.instrument,note:event.note,duration:event.note.duration*unit,beat:event.beat||document,
-     timeline:noteTimeline(event,step,unit,length)});
+ const note=(event,step)=>events.push({kind:"note",
+  at:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),
+  instrument:event.instrument,note:event.note,duration:event.note.duration*unit,
+  beat:event.beat||document,timeline:noteTimeline(event,step,unit,length)});
+ if(song){
+  // Snapshot all note-onsets once. Long silent gaps and repeated linked Clips
+  // are not rescanned step-by-step for WAV export or native session builds.
+  const scheduled=scheduledSongOnsets(document,{maxEvents});
+  for(const step of [...scheduled.keys()].sort((a,b)=>a-b)){
+   const bucket=scheduled.get(step);
+   for(const event of bucket.vocals)events.push({kind:"vocal",at:step*unit,event});
+   for(const event of bucket.notes)note(event,step);
+  }
+ }else{
+  for(let step=0;step<length;step++){
+   for(const event of stepEvents(document,step))note(event,step);
+   if(events.length>maxEvents)
+    throw Error("Beat exceeds "+maxEvents+" scheduled note onsets for native playback.");
+  }
  }
  return events.sort((a,b)=>a.at-b.at);
 }
@@ -381,7 +394,7 @@ export function renderEndSeconds(document,events,decoded){
 }
 export async function wav(document){
  if(nativeEnabled()){
-  const events=renderEvents(document),info=await nativeRequest({action:'status'}),rate=44100;
+  const events=renderEvents(document,{maxEvents:4096}),info=await nativeRequest({action:'status'}),rate=44100;
   const assets=await prepareNativeAssets(nativeRequiredAssets(events),{...info,sampleRate:rate}),seconds=renderEndSeconds(document,events,assets);
   if(seconds>600)throw Error("WAV including effect tails exceeds the current 10-minute render limit.");
   const plans=nativePlans(events,assets,secondsPerStep(document)),cycle=(document.kind==='song'?songDurationSteps(document):document.bars*16)*secondsPerStep(document);
