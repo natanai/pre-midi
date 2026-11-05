@@ -37,6 +37,8 @@ Professional capability and newcomer comprehension are both release requirements
 
 ## Visual system
 
+The single implementation/handoff log for educational and interactive Sound illustrations is [docs/sound-illustrations.md](docs/sound-illustrations.md). The separate Song/freeform agent owns the canonical Sound Inspector architecture and [docs/song-rollout.md](docs/song-rollout.md); do not create a competing illustration plan or duplicate either editor.
+
 Black or near-black surfaces, grayscale chrome, thin rules, monospace typography and square controls. Use saturated color for data (selected musical signals, recording state), not decoration. Selected notes and instruments require an outline as well as color; focus and accessibility remain visible. Desktop and mobile share the same editing behaviors.
 
 ## Cleanup and publishing
