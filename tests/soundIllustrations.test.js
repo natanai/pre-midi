@@ -104,6 +104,37 @@ test("sample attack and release illustration distinguishes key-off from one-shot
  }
 });
 
+test("recording pitch illustrations show parameter geometry, never invented PCM",()=>{
+ const base={...synth(),type:"sample",zones:[{assetId:"recording",root:60}],
+  gain:1,transpose:0,pan:0,strumMs:0,oneShot:false,followPitch:true,
+  preserveDynamics:false,attack:.005,release:.17};
+ const neutral=diagram(base,"sample",1);
+ assert.ok(neutral.labels.some(item=>item.value==="control model"));
+ assert.equal(neutral.paths[1].d,"M93 60 H93.00 V60.00",
+  "neutral onset and pitch offsets meet at the control origin");
+ assert.deepEqual(neutral.paths[1].links,["transpose","strumMs"],
+  "the timing/pitch map only links its real inputs");
+ assert.ok(!neutral.paths[1].d.includes("L"),
+  "a source recording does not pretend to be a generated oscillator");
+ const shifted=diagram({...base,transpose:12,strumMs:20},"sample",1);
+ assert.notEqual(shifted.paths[1].d,neutral.paths[1].d);
+ assert.ok(shifted.handles[0].x>neutral.handles[0].x);
+ assert.ok(shifted.handles[0].y<neutral.handles[0].y);
+ for(const key of ["strumMs","transpose","pan","gain"])
+  assert.ok(shifted.handles.some(point=>point.axes.some(axis=>
+   axis.path.join(".")===key)),key+" remains directly editable");
+ const vocal=diagram({...base,type:"vocal",transpose:-7,gain:1.4,pan:.3},"sample",1);
+ assert.ok(vocal.labels.some(item=>item.value==="control model"));
+ assert.ok(vocal.paths[1].d.startsWith("M93 "));
+ assert.ok(!vocal.paths[1].d.includes("L"),
+  "recorded speech and singing do not get fabricated sinusoidal samples");
+ for(const key of ["transpose","gain","pan"])
+  assert.ok(vocal.handles.some(point=>point.axes.some(axis=>
+   axis.path.join(".")===key)),key+" remains directly editable for voice");
+ assert.ok(vocal.handles.some(point=>point.axes.length===2),
+  "voice pitch and level still support simultaneous x/y editing");
+});
+
 test("distortion has its own response curve and drive control",()=>{
  const patch=synth(),first=diagram(patch,"distortion");
  assert.ok(axesFor(first,["effects","drive"]));
