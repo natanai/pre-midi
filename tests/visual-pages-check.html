@@ -48,6 +48,14 @@ try{
  }))};
  const synthEdits=[];
  renderPatchEditor(document.querySelector("#synth"),synth,(path,value)=>synthEdits.push([path,value]),()=>{},"visual-page-synth");
+ const osc=document.querySelector('#synth .visual-sound-panel[data-visual-kind="oscillators"]');
+ osc.querySelector("details").open=true;
+ const secondControl=osc.querySelector('.visual-graph-action[data-sound-path="oscillators.1.level"]');
+ pass("quiet oscillator 2 can be enabled directly inside the mix illustration",
+  !!secondControl&&secondControl.textContent.includes("25%"));
+ secondControl.click();
+ pass("illustrated oscillator 2 activation writes the original level knob parameter",
+  synthEdits.some(([path,value])=>path.join(".")==="oscillators.1.level"&&value===.25));
  const mod=document.querySelector('#synth .visual-sound-panel[data-visual-kind="modulation"]');
  pass("modulation module exists",!!mod);
  mod.querySelector("details").open=true;
