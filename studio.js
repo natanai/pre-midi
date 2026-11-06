@@ -40,6 +40,7 @@ import {readRecordingAlignment,saveRecordingAlignment} from "./recordingAlignmen
 import {exportSongProject,importSongProject,parseSong} from "./songIO.js";
 import {readZip} from "./zip.js";
 import {installSongUI} from "./songUI.js";
+import {synchronizeLinkedFreeform} from "./freeformModel.js";
 import {applyFreeformPreset} from "./freeformPresets.js";
 import {installDesktopUI} from "./desktopUI.js";
 
@@ -331,7 +332,7 @@ function modify(change){
  change();
  const referenced=referencedSampleIds(beat.instruments);
  beat.samples=beat.samples.filter(asset=>referenced.has(asset.id));
- if(song){pruneUnusedRecordings(song);upgradeSongFeatures(song);}else upgradeBeatFeatures(beat);
+ if(song){synchronizeLinkedFreeform(song);pruneUnusedRecordings(song);upgradeSongFeatures(song);}else upgradeBeatFeatures(beat);
  const errors=validate(beat);
  if(song)errors.push(...validateSong(song));
  if(errors.length){restoreDocument(before);render();message(errors[0],true);return false;}
@@ -342,6 +343,7 @@ function modifySong(change){
  const before=snapshot(song);
  if(change==="add-track")addSongTrack(song);
  else change();
+ synchronizeLinkedFreeform(song);
  pruneUnusedRecordings(song);
  upgradeSongFeatures(song);
  const errors=validateSong(song);
