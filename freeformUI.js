@@ -14,7 +14,7 @@ import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
 import {renderPianoRollRows,createPianoNoteSurface,noteWindow,applyPianoNoteState} from "./editorPianoRoll.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
-import {createInstrumentCard} from "./editorInstrumentCard.js";
+import {createInstrumentCard,createInstrumentActionMenu} from "./editorInstrumentCard.js";
 import {installKeyboardPiano,pitchName} from "./keyboardPiano.js";
 import {normalizeScaleGuide,isPitchInScaleAtStep} from "./scaleGuide.js";
 import {audition,auditionHeld} from "./audio.js";
@@ -403,45 +403,44 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    close();onSelectSourceBeat(parentBeat().id);
   },"freeform-source-beat"));
   if(inst){
-   const menu=el("details","freeform-instrument-menu");
-   const menuLabel=el("summary","","⋯");
-   menuLabel.setAttribute("aria-label","Instrument actions");
-   menuLabel.title="duplicate · reorder · remove Instrument";
-   menu.append(menuLabel);
-   const options=el("div","freeform-instrument-menu-actions");
-   options.setAttribute("role","group");
-   options.setAttribute("aria-label","Freeform Instrument actions");
-   options.append(action("rename",()=>{
+   const linked=!!sourceForFreeformInstrument(song,rawInstrument());
+   const actions=[{label:"rename",className:"freeform-instrument-rename",run:()=>{
     const name=prompt("Rename instrument",inst.name);
     if(name===null)return;
     const next=name.trim().slice(0,60);
     if(next&&next!==inst.name)mutate(()=>{inst.name=next;});
-   },"freeform-instrument-rename"));
-   if(!sourceForFreeformInstrument(song,rawInstrument())){
-   options.append(action("duplicate",()=>{
-    let copy=null;
-    if(mutate(()=>{copy=duplicateFreeformInstrument(free,inst.id);})){
-     activeInstrumentId=copy.id;selectedNoteId=null;selectedPlacementId=null;editorScrollTop=null;render();
-    }
-   },"freeform-instrument-copy"));
-   const index=free.instruments.findIndex(item=>item.id===inst.id);
-   const up=action("move up",()=>mutate(()=>
-    moveFreeformInstrument(free,inst.id,-1)),"freeform-instrument-up");
-   const down=action("move down",()=>mutate(()=>
-    moveFreeformInstrument(free,inst.id,1)),"freeform-instrument-down");
-   up.disabled=index===0;down.disabled=index===free.instruments.length-1;
-   options.append(up,down);
-   options.append(action("remove",()=>{
-    if((inst.notes.length||inst.chunkPlacements.length)&&
-     !confirm("Remove "+inst.name+" and its notes and Chunk placements? Undo restores it."))return;
-    const remaining=free.instruments.filter(item=>item.id!==inst.id);
-    if(mutate(()=>removeFreeformInstrument(free,inst.id))){
-     activeInstrumentId=remaining[Math.min(index,remaining.length-1)]?.id??null;
-     selectedNoteId=null;selectedPlacementId=null;editorScrollTop=null;render();
-    }
-   },"freeform-instrument-remove"));
+   }}];
+   if(!linked){
+    actions.push({label:"duplicate",className:"freeform-instrument-copy",run:()=>{
+     let copy=null;
+     if(mutate(()=>{copy=duplicateFreeformInstrument(free,inst.id);})){
+      activeInstrumentId=copy.id;selectedNoteId=null;selectedPlacementId=null;
+      editorScrollTop=null;render();
+     }
+    }});
+    const index=free.instruments.findIndex(item=>item.id===inst.id);
+    actions.push(
+     {label:"move up",className:"freeform-instrument-up",disabled:index===0,
+      run:()=>mutate(()=>moveFreeformInstrument(free,inst.id,-1))},
+     {label:"move down",className:"freeform-instrument-down",
+      disabled:index===free.instruments.length-1,
+      run:()=>mutate(()=>moveFreeformInstrument(free,inst.id,1))},
+     {label:"remove",className:"freeform-instrument-remove",danger:true,run:()=>{
+      if((inst.notes.length||inst.chunkPlacements.length)&&
+       !confirm("Remove "+inst.name+" and its notes and Chunk placements? Undo restores it."))return;
+      const remaining=free.instruments.filter(item=>item.id!==inst.id);
+      if(mutate(()=>removeFreeformInstrument(free,inst.id))){
+       activeInstrumentId=remaining[Math.min(index,remaining.length-1)]?.id??null;
+       selectedNoteId=null;selectedPlacementId=null;editorScrollTop=null;render();
+      }
+     }}
+    );
    }
-   menu.append(options);activeEntry?.append(menu);
+   activeEntry?.append(createInstrumentActionMenu({
+    label:"Instrument actions",title:linked?"rename Instrument":"rename · duplicate · reorder · remove Instrument",
+    menuClass:"freeform-instrument-menu",listClass:"freeform-instrument-menu-actions",
+    groupLabel:"Freeform Instrument actions",actions
+   }));
   }
   const seekTo=step=>{
    const target=Math.max(0,Math.min(FREEFORM_LIMIT_STEPS-BAR_STEPS,
