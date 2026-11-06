@@ -15,7 +15,11 @@ const server=createServer(async(request,response)=>{
   }
   const file=resolve(root,"."+path);
   if(!file.startsWith(root+"/"))throw Error("Invalid path");
-  const content=await readFile(file);
+  let content=await readFile(file);
+  if(path==="/index.html"){
+   const script='<script>window.__testBootErrors=[];window.addEventListener("error",e=>window.__testBootErrors.push(String(e.message||e.error)));window.addEventListener("unhandledrejection",e=>window.__testBootErrors.push(String(e.reason)));<\\/script>';
+   content=Buffer.from(content.toString("utf8").replace("</head>",script+"</head>"));
+  }
   response.writeHead(200,{"Content-Type":({".js":"text/javascript",".css":"text/css",".html":"text/html",".wav":"audio/wav"})[extname(file)]||"application/octet-stream"});
   response.end(content);
  }catch{response.writeHead(404);response.end("Not found");}
