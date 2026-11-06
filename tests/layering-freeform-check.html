@@ -119,6 +119,19 @@ try{
  let actions=root.querySelector(".freeform-instrument-menu");
  assert(actions?.querySelector('summary[aria-label="Instrument actions"]'),
   "Linked Beat Instrument still exposes its contextual action menu");
+ assert(actions.classList.contains("entity-actions")&&
+  actions.querySelector(".entity-action-list"),
+  "Beat and attached freeform render the exact same Instrument action menu chrome");
+ actions.open=true;
+ const sourceName=song.beats[0].instruments[0].name;
+ const oldPrompt=window.prompt;
+ window.prompt=()=>sourceName+" renamed";
+ try{actions.querySelector(".freeform-instrument-rename").click();}
+ finally{window.prompt=oldPrompt;}
+ assert(song.beats[0].instruments[0].name===sourceName+" renamed",
+  "Renaming from attached freeform edits its source Beat Instrument");
+ actions=root.querySelector(".freeform-instrument-menu");
+ assert(!actions.open,"Selecting an action closes the shared Instrument menu");
  actions.open=true;
  assert(!actions.querySelector(".freeform-instrument-copy")&&
   !actions.querySelector(".freeform-instrument-remove"),
