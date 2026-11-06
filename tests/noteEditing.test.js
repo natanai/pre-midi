@@ -97,7 +97,11 @@ test("a newly placed note can be lengthened before its first saved commit", () =
 test("piano-roll pointer handler keeps simple clicks and commits drags only once",async () => {
  const {readFileSync}=await import("node:fs");
  const source=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
- assert.match(source,/setTimeout\(\(\)=>\{\s*if\(finished\)return;\s*grabbed=true/);
+ const gesture=readFileSync(new URL("../pianoNoteGesture.js",import.meta.url),"utf8");
+ const freeform=readFileSync(new URL("../freeformUI.js",import.meta.url),"utf8");
+ assert.match(source,/bindPianoNoteGesture\(cell/);
+ assert.match(freeform,/bindPianoNoteGesture\(n/);
+ assert.match(gesture,/setTimeout\(\(\)=>\{\s*if\(finished\|\|grabbed\)return;\s*grabbed=true/);
  assert.match(source,/applyNoteCommand\(chunk,\{type:"note.move"/);
  assert.match(source,/mode==="paint"[\s\S]*?applyNoteCommand\(chunk,\{type:"note.add",note\}\)/);
  assert.match(source,/if\(changed\)\{\s*ignoreClick=true;[\s\S]*?setTimeout\(\(\)=>commitChange\(before\),0\)/);
