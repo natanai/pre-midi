@@ -82,8 +82,15 @@ function makeAttachedInstrument(layer,beat,source){
  linked.sourceInstrumentId=source.id;
  return linked;
 }
+export function attachedBeatForTrack(song,track){
+ if(!song||track?.kind!=="beat")return null;
+ const beatId=track.clips?.[0]?.beatId??
+  track.freeform?.passages?.find(item=>item.sourceBeatId)?.sourceBeatId??
+  track.freeform?.instruments?.find(item=>item.sourceBeatId)?.sourceBeatId;
+ return song.beats.find(item=>item.id===beatId)??null;
+}
 export function attachBeatInstruments(song,track,beatId=null){
- const beat=song?.beats?.find(item=>item.id===(beatId??track?.clips?.[0]?.beatId));
+ const beat=beatId?song?.beats?.find(item=>item.id===beatId):attachedBeatForTrack(song,track);
  if(!beat||track?.kind!=="beat")return track?.freeform??null;
  const layer=ensureFreeform(track);
  for(const source of beat.instruments){
