@@ -11,7 +11,7 @@ import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchIn
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
 import {renderPianoRollRows,createPianoNoteSurface,applyPianoNoteState} from "./editorPianoRoll.js";
-import {createInstrumentCard} from "./editorInstrumentCard.js";
+import {createInstrumentCard,createInstrumentActionMenu} from "./editorInstrumentCard.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
@@ -444,10 +444,10 @@ function renderInstruments() {
   const el=createInstrumentCard(inst,{
    selected,accent:signal(inst),onSelect:()=>{closePicker();focus(inst);}
   });
-  item.append(el,actionMenu("Actions for "+inst.name,[
+  item.append(el,createInstrumentActionMenu({label:"Actions for "+inst.name,actions:[
    {label:"Rename",run:()=>renameInstrument(inst)},
    {label:instrumentDeleteLabel(inst),danger:true,run:()=>removeInstrument(inst.id)}
-  ],"instrument-actions"));
+  ]}));
   list.append(item);
  }
  $("add-instrument").disabled = beat.instruments.length >= 12;
