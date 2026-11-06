@@ -15,11 +15,11 @@ function songFixture(length=6000){
  song.tracks[0].clips[0].lengthSteps=length;
  return song;
 }
-function harness(){
+function harness({experimental=true}={}){
  const calls=[],status={sampleRate:48000,generation:1,deviceLost:false};
  let owner=0,revision=0,ackSequence=0,fault=0,streamState=1,backpressureOnce=false;
  const localStorage=globalThis.localStorage,__TAURI__=globalThis.__TAURI__;
- globalThis.localStorage={getItem:key=>key==="premidi-native-song-streaming"?"experimental":
+ globalThis.localStorage={getItem:key=>key==="premidi-native-song-streaming"?(experimental?"experimental":null):
   key==="premidi-audio-backend"?"native":null};
  globalThis.__TAURI__={core:{invoke:async(_,{request})=>{
   calls.push(request);
@@ -146,4 +146,12 @@ test("studio global native cancel followed by stream handle stop is idempotent",
   assert.equal(mock.calls.filter(x=>x.action==="control"&&x.command===1).length,1);
   assert.equal(mock.calls.filter(x=>x.action==="stream_stop").length,1);
  }finally{await handle?.stop();mock.cleanup();}
+});
+
+test("normal native Song playback remains bounded without explicit experimental opt-in",async()=>{
+ const mock=harness({experimental:false});
+ try{
+  await assert.rejects(play(songFixture(6000),{loop:false}),/10-minute playback\/render limit/);
+  assert.equal(mock.calls.length,0);
+ }finally{mock.cleanup();}
 });
