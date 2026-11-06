@@ -7,7 +7,6 @@ import {createFreeform,ensureFreeform,attachBeatInstruments,attachedBeatForTrack
  duplicateFreeformInstrument,moveFreeformInstrument,removeFreeformInstrument} from "./freeformModel.js";
 import {addBeat} from "./songModel.js";
 import {makeChunk,id} from "./schema.js";
-import {referencedSampleIds} from "./soundModel.js";
 import {installFreeformSoundUI} from "./freeformSoundUI.js";
 import {overlappingFreeformNotes,layoutFreeformNoteRow} from "./freeformLayerUIModel.js";
 import {createFreeformNoteCutoff,editFreeformNoteCutoff} from "./freeformNoteAutomation.js";
