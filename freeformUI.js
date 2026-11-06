@@ -13,7 +13,7 @@ import {overlappingFreeformNotes,layoutFreeformNoteRow} from "./freeformLayerUIM
 import {createFreeformNoteCutoff,editFreeformNoteCutoff} from "./freeformNoteAutomation.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
-import {pianoRollRows,createPianoRollRow,createPianoNoteSurface,noteWindow,applyPianoNoteState} from "./editorPianoRoll.js";
+import {renderPianoRollRows,createPianoNoteSurface,noteWindow,applyPianoNoteState} from "./editorPianoRoll.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {createInstrumentCard} from "./editorInstrumentCard.js";
 import {installKeyboardPiano,pitchName} from "./keyboardPiano.js";
@@ -659,13 +659,12 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    if(shown>=256)break;
   }
   placementStrip.append(stripLabel,stripPlot);grid.append(placementStrip);
-  const instrumentRows=pianoRollRows(inst,{
-   low:PITCH_MIN,high:PITCH_MAX,noteLabel:pitchName
+  const instrumentRows=renderPianoRollRows(inst,{
+   mode:"song",low:PITCH_MIN,high:PITCH_MAX,noteLabel:pitchName
   });
   const plot=el("div","freeform-plot");plot.style.width=width+"px";
   const keyColumn=el("div","freeform-key-column");
-  for(const rowData of instrumentRows){
-   const {row:noteRow,label:key}=createPianoRollRow(rowData,{mode:"song"});
+  for(const {rowData,row:noteRow,label:key} of instrumentRows){
    keyColumn.append(key);
    if(rowData.pitch!==null&&guide.mode!=="chromatic"){
     const inScale=isPitchInScaleAtStep(rowData.pitch,guide,inst.notes,viewStep());
