@@ -356,72 +356,72 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 #piano.piano-keyboard .note-name {
  background:transparent;border:0;padding:0;color:transparent;
 }
-#piano .piano-keys-overlay {
+:is(#piano,.freeform-roll-content) .piano-keys-overlay {
  position:absolute;inset:0 auto 0 0;
  width:var(--piano-gutter,82px);
  box-sizing:border-box;overflow:hidden;
  background:#171717;border-right:1px solid #484848;
  z-index:3;pointer-events:auto;
 }
-#piano .piano-key {
+:is(#piano,.freeform-roll-content) .piano-key {
  position:absolute;left:0;box-sizing:border-box;
  display:block;margin:0;padding:0;border-radius:0;
  cursor:pointer;text-align:left;touch-action:manipulation;
 }
-#piano .piano-key:focus-visible {
+:is(#piano,.freeform-roll-content) .piano-key:focus-visible {
  outline:2px solid var(--track-accent);outline-offset:-3px;z-index:2;
 }
-#piano .piano-key:hover {text-decoration:none}
-#piano .piano-key.white {
+:is(#piano,.freeform-roll-content) .piano-key:hover {text-decoration:none}
+:is(#piano,.freeform-roll-content) .piano-key.white {
  right:0;
  background:#bcbfc0;
  border-right:1px solid #777b7d;
  border-bottom:1px solid #707477;
  box-shadow:inset -4px 0 0 #aeb2b4;
 }
-#piano .piano-key.black {
+:is(#piano,.freeform-roll-content) .piano-key.black {
  z-index:1;width:59%;
  background:#17191b;
  border:1px solid #08090a;border-right-color:#555a5d;
  box-shadow:inset -2px 0 0 #25282a,1px 1px 0 #1119;
 }
-#piano .piano-key-caption {
+:is(#piano,.freeform-roll-content) .piano-key-caption {
  position:absolute;right:6px;top:50%;transform:translateY(-50%);
  font-size:10px;font-weight:600;letter-spacing:0;
  color:#343638;white-space:nowrap;pointer-events:none;
 }
-#piano .piano-key.white.in-scale {
+:is(#piano,.freeform-roll-content) .piano-key.white.in-scale {
  background:#b3c7c9;
  box-shadow:inset 3px 0 0 var(--signal-cyan),inset -4px 0 0 #9cabad;
 }
-#piano .piano-key.black.in-scale {
+:is(#piano,.freeform-roll-content) .piano-key.black.in-scale {
  background:#1a363a;
  box-shadow:inset 3px 0 0 var(--signal-cyan),inset -2px 0 0 #30494d;
 }
-#piano .piano-key.white.out-of-scale {
+:is(#piano,.freeform-roll-content) .piano-key.white.out-of-scale {
  background:#8d9295;box-shadow:inset -4px 0 0 #7e8284;
 }
-#piano .piano-key.black.out-of-scale {
+:is(#piano,.freeform-roll-content) .piano-key.black.out-of-scale {
  background:#101112;box-shadow:inset -2px 0 0 #202224;
 }
-#piano .piano-key.out-of-scale .piano-key-caption {color:#4c4f51}
+:is(#piano,.freeform-roll-content) .piano-key.out-of-scale .piano-key-caption {color:#4c4f51}
 /* Hover indicates a candidate pitch without suggesting a note was added.
    The played-note motion below is intentionally more conspicuous. */
-#piano .piano-key.white.hovered {
+:is(#piano,.freeform-roll-content) .piano-key.white.hovered {
  background:#d9e5e6;
  box-shadow:inset -4px 0 0 var(--track-accent);
 }
-#piano .piano-key.white.in-scale.hovered {
+:is(#piano,.freeform-roll-content) .piano-key.white.in-scale.hovered {
  box-shadow:inset 3px 0 0 var(--signal-cyan),inset -4px 0 0 var(--track-accent);
 }
-#piano .piano-key.black.hovered {
+:is(#piano,.freeform-roll-content) .piano-key.black.hovered {
  background:#304448;
  box-shadow:inset -3px 0 0 var(--track-accent);
 }
-#piano .piano-key.black.in-scale.hovered {
+:is(#piano,.freeform-roll-content) .piano-key.black.in-scale.hovered {
  box-shadow:inset 3px 0 0 var(--signal-cyan),inset -3px 0 0 var(--track-accent);
 }
-#piano .piano-key.pressed {
+:is(#piano,.freeform-roll-content) .piano-key.pressed {
  animation:piano-key-tap 220ms ease-out both;
 }
 @keyframes piano-key-tap {
@@ -430,7 +430,7 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
  100% {transform:translateX(0);filter:brightness(1)}
 }
 @media(prefers-reduced-motion:reduce){
- #piano .piano-key.pressed {
+ :is(#piano,.freeform-roll-content) .piano-key.pressed {
   animation:none;filter:brightness(1.2);
   outline:2px solid var(--track-accent);outline-offset:-2px;
  }
@@ -1504,8 +1504,8 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
 body.keyboard-piano-active .app :is(input,select,textarea) {opacity:.4;filter:grayscale(1)}
 body.keyboard-piano-active .app button:not(#qwerty-piano):not(.piano-key):not(.note-name):not(.keyboard-piano-configure) {opacity:.38}
 body.keyboard-piano-active .piano-scroll {pointer-events:none}
-#piano .piano-key.keyboard-held.white {background:#72bbc1;box-shadow:inset 4px 0 0 var(--signal-cyan),inset -3px 0 0 #4e969a}
-#piano .piano-key.keyboard-held.black {background:#14747c;box-shadow:inset 3px 0 0 var(--signal-cyan)}
+:is(#piano,.freeform-roll-content) .piano-key.keyboard-held.white {background:#72bbc1;box-shadow:inset 4px 0 0 var(--signal-cyan),inset -3px 0 0 #4e969a}
+:is(#piano,.freeform-roll-content) .piano-key.keyboard-held.black {background:#14747c;box-shadow:inset 3px 0 0 var(--signal-cyan)}
 #piano .piano-row.keyboard-held .note-name {background:#245a60;color:#fff}
 #piano .piano-row.keyboard-held .note:not(.filled):not(.tail) {background:#173439}
 .keyboard-piano-dialog {background:#141516;color:var(--text);border:1px solid #747b7e;max-height:80vh;width:min(480px,calc(100vw - 28px));padding:20px}
