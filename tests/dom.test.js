@@ -23,7 +23,8 @@ test("note end grip, pointer resizing, and live scheduler are connected", () => 
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  assert.match(css,/\.note\.end::after/);
- assert.match(studio,/setPointerCapture/);
+ assert.match(studio,/bindPianoNoteGesture\(cell/);
+ assert.match(readFileSync(new URL("../pianoNoteGesture.js",import.meta.url),"utf8"),/setPointerCapture/);
  assert.match(studio,/applyNoteCommand\(chunk,\{type:"note.resize"/);
   assert.match(readFileSync(new URL("../studioCommands.js",import.meta.url),"utf8"),/resizeNote\(chunk/);
  assert.match(studio,/play\(\(\) => playingSong\?song:beat/);
