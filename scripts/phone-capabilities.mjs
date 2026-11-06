@@ -18,6 +18,7 @@ const SOURCE_FILES=[
  "expressionUI.js",
  "microphoneUI.js",
  "keyboardPiano.js",
+ "pianoNoteGesture.js",
  "dial.js",
  "desktopAudioUI.js",
  "desktopUI.js",
