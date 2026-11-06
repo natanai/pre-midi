@@ -127,7 +127,12 @@ export async function playNativeSongStreamExperimental(song,{
     if(!result.accepted){retryAfterAck=stream.ackSequence;break;}
     retryAfterAck=null;
    }
-  }catch(error){await fail(error);}
+  }catch(error){
+   // The studio's normal Stop or a newer transport invalidates this token.
+   // That is intentional cancellation, not an audio fault to announce.
+   if(!nativeTransportEpochCurrent(token))try{await stop();}catch{}
+   else await fail(error);
+  }
   finally{polling=false;}
  };
  const unsupported=async operation=>{
