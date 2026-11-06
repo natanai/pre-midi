@@ -2,10 +2,10 @@ name: Windows portable release
 on:
   pull_request:
     branches: [main]
-    paths: ['desktop/**', 'native/**', 'desktopUI.js', 'scripts/*desktop*', 'scripts/test-windows-portable.ps1', '.github/workflows/desktop-release.yml', 'package*.json', 'tests/song-check.html']
+    paths: ['desktop/**', 'native/**', 'src/hosts/native/**', 'src/dsp/**', 'audio.js', 'song*.js', 'freeform*.js', 'sound*.js', 'vocal*.js', 'recording*.js', 'sample*.js', 'synth.js', 'schema.js', 'desktopUI.js', 'scripts/*desktop*', 'scripts/native*check.mjs', 'scripts/test-windows-portable.ps1', '.github/workflows/desktop-release.yml', 'package*.json', 'tests/song-check.html', 'tests/native*.test.js', 'tests/song*.test.js']
   push:
     branches: [main]
-    paths: ['package.json', '.github/workflows/desktop-release.yml']
+    paths: ['package.json', '.github/workflows/desktop-release.yml', 'desktop/**', 'native/**', 'src/hosts/native/**', 'src/dsp/**', 'audio.js', 'song*.js', 'freeform*.js', 'sound*.js', 'vocal*.js', 'recording*.js', 'sample*.js', 'synth.js', 'schema.js']
   workflow_dispatch:
     inputs:
       publish_preview:
@@ -70,7 +70,9 @@ jobs:
             } catch(error) {
               if(error.status !== 404) throw error;
             }
-            build = build || publish;
+            // Every affected main commit gets an exact-source Windows test build even
+            // when its published version tag correctly blocks re-publication.
+            build = build || publish || context.eventName === 'push';
             core.setOutput('commit',commit);
             core.setOutput('tag',tag);
             core.setOutput('publish',String(publish));
@@ -151,8 +153,15 @@ jobs:
             ${{ runner.temp }}/premidi*smoke.json
             desktop/Cargo.lock
           if-no-files-found: error
+  audio-qualification:
+    name: Exact-commit source, browser and native audio verification
+    needs: source
+    if: needs.source.outputs.publish == 'true'
+    uses: ./.github/workflows/verify.yml
+    permissions:
+      contents: read
   publish:
-    needs: [source, build]
+    needs: [source, build, audio-qualification]
     if: needs.source.outputs.publish == 'true'
     runs-on: ubuntu-22.04
     permissions:

@@ -4,9 +4,9 @@ A local-first Beat maker and Song arranger for the [pre-programmed](https://gith
 
 [Open the web studio](https://natanai.github.io/pre-midi/) · [Windows portable preview](https://github.com/natanai/pre-midi/releases) · [Native audio status](docs/native-audio.md) · [Synthesis roadmap](docs/synthesis-roadmap.json)
 
-## Phone studio rebuild
+## Phone studio rebuild (experimental, not release-qualified)
 
-The previous phone-width desktop layout has been retired because editing interactions were unreliable. The phone entry currently shows a rebuild notice instead of a partially functional editor. The planned iOS Add to Home Screen edition will have its own phone UI but share the desktop music engine and project format. **Phone editing, offline mode and install-quality behavior are not yet implemented.** See the [canonical phone rebuild plan](docs/phone-studio.md).
+The previous phone-width desktop layout was retired. A dedicated `phone/` host now implements experimental Notes, Sound and Song editing, shared preset browsing, early recording/import workflows and an opt-in offline sample cache. **These are not evidence of full iPhone Safari, microphone, Home Screen, offline or Freeform parity.** The desktop/Windows rollout remains the priority; phone improvements are deferred without deleting this prototype. See the [canonical phone architecture and acceptance ledger](docs/phone-studio.md).
 
 ## Windows portable preview
 
@@ -57,7 +57,7 @@ The source files have no generated bundles committed to Git. Browser audio is bu
 ## Contracts and credits
 
 - [Canonical terminology](docs/terminology.json) — Sound, Rack, Instrument, Chunk, Beat, Song, Track, Clip, Recording, Asset.
-- [Song rollout and integration gates](docs/song-rollout.md).
+- [Song rollout and integration gates](docs/song-rollout.md), including the [current stabilization handoff](docs/song-stabilization-handoff-2026-11-05.md).
 - [Machine-readable native-first synthesis roadmap](docs/synthesis-roadmap.json).
 - [Sound-conversion method](docs/synth-conversion.md).
 - [Sample provenance and checksums](docs/sample-sources.md) and [third-party notices](THIRD_PARTY_NOTICES.md).

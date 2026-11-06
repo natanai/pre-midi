@@ -1,5 +1,7 @@
 # Repository maintenance audit — 2026-10-28
 
+> **Historical snapshot, not current feature support.** Later merges implemented sample racks, vocals, noise/drive/delay, native capture and bounded live-session edits; C++/Rust streaming transport was further extended in PRs #187–#192. The remaining blockers include JS Song streaming/lifecycle plus physical Windows hardware qualification. See [current Song handoff](song-stabilization-handoff-2026-11-05.md) and [native audio](native-audio.md). Retained as evidence for safe maintenance, not a live missing-features list.
+
 Source baseline: `10ea09ecdb871d6312f67f95a84f7273a082ef79`. This audit is intentionally non-destructive: file names alone do not prove dead code. No production files, tests, historical benchmark reports, sample provenance, or platform adapters were deleted.
 
 ## Verified current release policy

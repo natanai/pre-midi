@@ -2,6 +2,13 @@
 
 **Purpose:** One actionable handoff for the remaining desktop Song/freeform and native Windows rollout. Read alongside [song-rollout.md](song-rollout.md), [native-onset-paging.md](native-onset-paging.md), [terminology.json](terminology.json), and [synthesis-roadmap.json](synthesis-roadmap.json). This note records verified distinctions; it does **not** supersede the approved architecture.
 
+## Repository stability audit checkpoint (2026-11-05)
+
+- **Preserve preview.19 unchanged.** Current main at audit baseline `068beb69c1b0b30401901fdba1fd24ff359d65aa` is nine commits ahead of immutable preview.19; the ZIP is the last published Windows candidate. Do not claim post-tag DeviceHost/Rust streaming changes ship in it.
+- **Source and release CI are separate.** The latest baseline Pages deploy succeeded ([run 42097347110](https://github.com/natanai/pre-midi/actions/runs/42097347110)). Exact #192 PR source/browser/native ([run 42096053203](https://github.com/natanai/pre-midi/actions/runs/42096053203)) and Windows portable qualification ([run 42096053213](https://github.com/natanai/pre-midi/actions/runs/42096053213)) succeeded; none measures real WASAPI. Maintenance changes make main run source verification, and expand native/source Windows workflow triggers to test affected commits even without new release version.
+- **Documentation reconciliation:** `README.md` and `AGENTS.md` acknowledge experimental phone Notes/Sound/Song without implying Safari parity; `docs/synthesis-roadmap.json` distinguishes current preview from native paging source. The 2026-10-28 maintenance/pro-synth audits remain historical. Issue #49 should track remaining Windows acceptance rather than obsolete DSP limitations. Continue to use this handoff for native Song acceptance instead of creating another competing roadmap.
+- **Release gate remains open:** no shipping JS Song feeder, so native 600-second/4,096-onset limits remain. Full source/native/Windows CI, a new immutable versioned ZIP **and physical Windows 11 output, recording, seek/edit/loop and portable-data checks** are required before 100% or stable status. Phone/game parity and professional synthesis improvements remain separate scope.
+
 ## Release disposition and completion
 
 - **Overall Song/freeform engineering estimate: 93%, provisional. NOT 100%.** This percentage is a planning estimate, not an automated test score. It must not increase merely because a C++ building block compiles. Desktop Song/freeform UI, attached lanes, Beat ↔ freeform commands, shared Sound Inspector, Beat and Song export, vocals and source-linked scheduling are largely implemented and browser/native-CI qualified.

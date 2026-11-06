@@ -2,7 +2,7 @@
   "schema_version": 1,
   "program_id": "pre-midi-professional-synthesis",
   "title": "Professional native-first synthesis and DSP",
-  "updated_on": "2026-10-28",
+  "updated_on": "2026-11-05",
   "status": "active",
   "scope": "Synthesizer sound generation, DSP fidelity, quality qualification and cross-host rendering; complements docs/song-rollout.md instead of replacing its Song-specific stages.",
   "mission": "Deliver professionally viable editable instruments that sound correct in native desktop/mobile production and natively in pre-programmed, while retaining a compatible web studio wherever technically feasible.",
@@ -119,7 +119,8 @@
       "synthMatch.js",
       "expression.js",
       "tests/audio-check.html"
-    ]
+    ],
+    "audit_note": "Historical capability snapshot; see native_extended_execution and SYN-018 for current shipping scope."
   },
   "verification_policy": {
     "must_pass": [
@@ -296,7 +297,7 @@
         "report": "benchmarks/web-audio-reference.json",
         "contract": "docs/dsp-contract.schema.json",
         "method": "18 constant-input rendered ADSR cases against an independent analytical oracle; overlapping and retriggered production voices at three sample rates",
-        "max_sample_error_gate": 3e-05,
+        "max_sample_error_gate": 0.00003,
         "shared_runtime": "live transport, audition, conversion preview and WAV export all use scheduleNote -> scheduleAmplitudeEnvelope -> planAmplitudeEnvelope",
         "compatibility": "preserves 2 ms attack floor, zero-decay sustain step and 0.000001 release floor; unchanged stored patch v1 and Beat v7/Song v8",
         "scope": "current ADSR scheduling contract; physical live-device loopback and native DSP equivalence are later host qualification"
@@ -542,11 +543,9 @@
         "command": "npm run benchmark:native -- --require-clean",
         "native_scope": "Original C++ sine/triangle/square/sawtooth/harmonic, prepared pitch, ADSR, four static biquads and pan; no Web Audio synthesis in native process",
         "missing": [
-          "selected device host and target-platform builds",
-          "real callback/device latency and underrun qualification",
-          "noise/decay, drive and delay support",
-          "native oversampling parity",
-          "desktop/mobile suspend-resume and device changes"
+          "Physical Windows 11 WASAPI output/input latency, dropout, disconnect and recovery qualification",
+          "Shipping JavaScript Song page feeder, revisions, seek/edit/loop and portable end-user testing",
+          "Cross-platform physical device qualification remains deferred"
         ],
         "no_completion_claim": "Offline synthesis and block allocation assertions do not establish device performance",
         "report": "benchmarks/native-parity-reference.json",
@@ -590,7 +589,9 @@
           "evidence": "benchmarks/automation-qualification.json",
           "scope": "Compiled filter.cutoff curves where the underlying patch is in the existing native profile; effects and legacy motion still reject.",
           "process_selftest": "400 waveform/filter/rate/extreme profiles, three maximum-route v2 and three v3 profiles at five block sizes, allocation assertions and finite bounded PCM"
-        }
+        },
+        "historical_native_scope_note": "native_scope and original prototype/modulation/automation profiles below preserve earlier qualification, not current unsupported-feature lists.",
+        "current_native_scope": "C++17/miniaudio realtime host implements factory synth/sample/vocal playback, noise/drive/delay/movement, native microphone and live bounded-session edits. C++ persistent streaming, device callback C ABI and Rust stream requests merged through #192; JavaScript Song feeder is not connected."
       }
     },
     {
@@ -745,7 +746,7 @@
           ],
           "pcm_limits": {
             "max_absolute": 0.0001,
-            "rms": 2e-05
+            "rms": 0.00002
           },
           "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
           "raw_reports": "benchmarks/automation-reference.json"
@@ -958,15 +959,19 @@
       ],
       "desktop_preview": {
         "framework": "tauri",
-        "audio": "native-cpp for explicitly supported synth playback; explicit web-audio option and Web Audio export/recording",
+        "audio": "Default desktop playback/capture/render uses C++17/miniaudio for supported plans, explicit Web Audio alternative. Streaming Song C ABI/Rust code is opt-in, with no JavaScript feeder.",
         "version_source": "package.json",
-        "preview_version": "0.14.1-preview.4",
-        "qualification": "Native device integration implemented with explicit test-backend callback checks. Local native comparisons and null-device lifecycle tests do not establish physical output quality, latency, underruns or platform hardware qualification.",
+        "preview_version": "0.14.1-preview.19",
+        "qualification": "Exact-tag preview.19 Node/Chrome/native CI, Windows Server 2022 portable build/relocation/recovery and Pages deploy passed. Real Windows 11 WASAPI audio, microphone and user-facing streamed Song playback remain unqualified.",
         "evidence": {
           "platform_ci": "https://github.com/natanai/pre-midi/actions/runs/40580528484",
           "browser_and_dsp_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635994",
           "release_workflow": "https://github.com/natanai/pre-midi/actions/workflows/desktop-release.yml",
-          "published_preview_2": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.2"
+          "published_preview_2": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.2",
+          "published_preview_19": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.19",
+          "latest_exact_tag_windows": "https://github.com/natanai/pre-midi/actions/runs/42087985416",
+          "current_source_native_streaming_ci": "https://github.com/natanai/pre-midi/actions/runs/42096053203",
+          "current_source_windows_build_ci": "https://github.com/natanai/pre-midi/actions/runs/42096053213"
         },
         "subtasks": [
           {
@@ -987,7 +992,7 @@
           {
             "id": "update-infrastructure",
             "status": "blocked",
-            "result": "Official GitHub Releases discovery, channels, Minisign verification with signed-version binding, save-before-install, and no automatic relaunch implemented. Portable ZIP and DEB use manual installation.",
+            "result": "Preview/stable discovery, Minisign verification and rollback infrastructure exist. Published preview.19 is unsigned/manual-install only. Paired signed update and signing-key provisioning remain blocked; no registry/installer needed for manual upgrades.",
             "blocked_by": [
               "Persistent updater keypair must be provisioned through repository-secret access",
               "Paired signed release installation test remains unqualified"
@@ -996,7 +1001,7 @@
           {
             "id": "release-qualification",
             "status": "in_progress",
-            "result": "Preview 2 Windows Server 2022 installation, same-version reinstall and portable ZIP checks passed, with four-platform WebView render/roundtrip/native PCM evidence. Preview 3 adds Windows portable isolation, relocation, copied-profile independence and failure-without-fallback checks. This is not physical Windows 11 or a signed version-to-version update.",
+            "result": "Preview.19 tagged source passed Windows Server 2022 portable packaging, native audio and folder-local upgrade/relocation/recovery tests. Main has newer native C ABI/Rust page transport not in that ZIP. Real Windows 11 output/capture and streamed Song user interaction remain pending.",
             "remaining": [
               "Real microphone permissions/capture and listening on each supported OS",
               "Physical Windows 11 offline/install/upgrade checks",
@@ -1013,7 +1018,7 @@
           {
             "id": "native-device-host",
             "status": "in_progress",
-            "result": "Pinned miniaudio device layer hosts canonical C++ voices through bounded callbacks; separate transport/preview lanes, pause/resume/seek/loop, device selection and disconnect gating are implemented. Production hardware qualification remains pending.",
+            "result": "Miniaudio callbacks support bounded synth/rack/vocal Sessions and opt-in C++ page transport through Rust actions (#191/#192). Shipping JavaScript still uses whole-Session 600-second/4,096-onset limit. Physical Windows and streaming integration remain open.",
             "remaining": [
               "Physical Windows 11 output/input and listening",
               "Sustained CPU/driver-underrun/latency, device switch and sleep/resume qualification",
@@ -1022,9 +1027,10 @@
           }
         ],
         "remaining": [
-          "Update signing key provisioning and paired installed-update qualification",
-          "Real hardware and newcomer/listening qualification",
-          "Physical native audio-device qualification and full synthesis parity"
+          "JavaScript Song feeder for native stream C ABI including revision, seek, edit, loop, samples/effects and backpressure",
+          "Measured Windows 11 WASAPI playback/capture and portable-folder user acceptance",
+          "Signed updater keys, paired signed install and manual reopening qualification",
+          "Human listening/accessibility review; cross-platform packaging deferred"
         ],
         "initial_qualified_preview_version": "0.14.1-preview.1",
         "initial_qualified_tag_commit": "e4dc803063794bd2d56f07dc3ac09a67cac7fbb9",
@@ -1195,6 +1201,17 @@
   ],
   "current_development_priorities": [
     {
+      "order": 0,
+      "id": "SONG-JS-STREAM",
+      "goal": "Wire Song windows into Rust/C++ native stream without silent fallback",
+      "acceptance": [
+        "Start/publish/ACK bounded pages with exact plans, shared effect recipes and asset lifetime",
+        "Seek, loop, edit, pause and microphone/device changes invalidate old revisions safely",
+        "Remove shipping limits only after exact-commit CI and physical Windows qualification"
+      ],
+      "progress": "C++/Rust actions merged through #192; shipping Song playback still calls bounded playNative()"
+    },
+    {
       "order": 1,
       "id": "NATIVE-PARITY",
       "goal": "Native sample rack playback plus noise, drive, delay and legacy movement",
@@ -1301,6 +1318,15 @@
       "low-rate tone movement"
     ],
     "qualification": "620-case independent acoustic/library matrix, 201 functional tests, 113 PCM mixer comparisons and 12 null-device profiles pass; full CI is a merge gate",
-    "physical_windows": "unqualified; no Windows WASAPI hardware available in this environment"
+    "physical_windows": "unqualified; no Windows WASAPI hardware available in this environment",
+    "song_streaming": {
+      "stage": "C++ persistent mixer, miniaudio callback and Rust actions implemented/CI qualified through #192; JavaScript Song feeder and lifecycle not implemented",
+      "shipping_limit_seconds": 600,
+      "shipping_limit_onsets": 4096,
+      "preview_release": "v0.14.1-preview.19",
+      "release_qualifier": "Preview.19 predates #191/#192 and omits their C ABI/Rust additions",
+      "manual_windows_qualification": "not observed",
+      "next_reference": "docs/song-stabilization-handoff-2026-11-05.md"
+    }
   }
 }
