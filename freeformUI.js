@@ -403,7 +403,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    if(selected)activeEntry=entry;
   }
   sidebar.append(instrumentList);
-  if(!parentBeat())tools.append(action("+ instrument",addInstrument),
+  if(!sourceForFreeformInstrument(song,rawInstrument()))tools.append(action("+ instrument",addInstrument),
    action("browse sounds",()=>onBrowseSound({
     trackId:activeTrackId,mode:inst?"replace":"add",
     instrumentId:inst?.id??null,soundId:soundUI.getSelectedSound()?.id??null
