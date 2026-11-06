@@ -265,3 +265,20 @@ main.editing-freeform .beat-identity > label{display:none}
  .freeform-roll-scroll{height:52dvh;flex:initial}
  .freeform-sound-pane{border-left:0;border-top:1px solid var(--line);overflow:visible}
 }
+
+
+/* Beat and Song-time freeform share the Instrument card. Context actions live
+   on the selected card rather than beneath a competing Instrument picker. */
+.freeform-instrument-list{display:grid;gap:4px;min-width:0;margin:0 0 12px}
+.freeform-instrument-list .instrument-entry{min-width:0}
+.freeform-instrument-list .instrument-card{
+ width:100%;min-height:70px;text-align:left;white-space:normal;
+ padding-right:53px;
+}
+.freeform-instrument-list .freeform-instrument-menu{
+ position:absolute;top:8px;right:8px;left:auto;z-index:25;
+}
+.freeform-instrument-list .freeform-instrument-menu-actions{
+ left:auto;right:0;top:calc(100% + 4px);
+}
+.freeform-instrument-list .freeform-instrument-menu[open]{z-index:30}
