@@ -51,8 +51,8 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
  // either Beat or freeform, never to a vertically clipped Song subpanel.
  const main=root.closest("main");
  const beatWorkspace=main?.querySelector(".work");
- if(!beatWorkspace)throw Error("Freeform requires the studio editing workspace.");
- beatWorkspace.before(panel);
+ if(beatWorkspace)beatWorkspace.before(panel);
+ else root.append(panel);
  let activeTrackId=null,activeInstrumentId=null,selectedNoteId=null,selectedPlacementId=null,barStart=0,playStep=null;
  let selectionStartStep=0,selectionLengthSteps=16,followPlayback=false;
  let editorScrollTop=null,editorScrollLeft=null;
