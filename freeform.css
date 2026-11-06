@@ -155,3 +155,91 @@ main.editing-freeform .beat-identity > label{display:none}
  display:block;max-width:calc(100% - 3px);overflow:hidden;white-space:nowrap;
  color:#d9d6c4;font-size:9px;line-height:12px;pointer-events:none}
 .song-freeform-passage.song-freeform-scan-incomplete{outline:1px dotted #bba57e}
+
+
+/* The Song arranger remains above the editor; Beat and freeform occupy the same
+   lower desktop workspace. No panel-within-panel height cap or page-sized void. */
+.song-freeform-editor{
+ margin:0;padding:0;min-height:0;min-width:0;flex:1 1 0;
+ display:flex;flex-direction:column;overflow:hidden;
+ background:var(--void);
+}
+.freeform-editor-header{
+ flex:0 0 auto;min-height:45px;padding:5px 14px;
+ align-items:center;border-bottom:1px solid var(--line);
+}
+.freeform-editor-title{padding:5px 0;font-weight:normal;font-size:13px}
+.freeform-work{
+ flex:1 1 0;min-height:0;min-width:0;display:grid;
+ grid-template-columns:clamp(210px,19vw,280px) minmax(0,1fr);
+ overflow:hidden;
+}
+.freeform-instrument-pane{
+ display:block;min-height:0;min-width:0;
+ overflow-y:auto;overscroll-behavior:contain;
+ border-right:1px solid var(--line);padding:10px 12px;
+}
+.freeform-editor-tools{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.freeform-editor-tools>select,.freeform-editor-tools>input[type=text]{
+ width:100%;max-width:100%;
+}
+.freeform-editor-tools>.freeform-field{width:100%}
+.freeform-editor-tools>.freeform-field input{width:100%;max-width:100%}
+.freeform-editor-tools>button{text-align:left}
+.freeform-mainwork{
+ display:grid;grid-template-columns:minmax(0,1fr) clamp(320px,27vw,510px);
+ min-height:0;min-width:0;overflow:hidden;
+}
+.freeform-note-work{
+ display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;
+}
+.freeform-sound-pane{
+ min-height:0;min-width:0;overflow-y:auto;overscroll-behavior:contain;
+ border-left:1px solid var(--line);padding:10px 12px;
+}
+.freeform-sound-host{margin:0}
+.freeform-roll-scroll{
+ max-height:none;min-height:0;flex:1 1 0;overscroll-behavior:contain;
+}
+.freeform-note-work>.freeform-note-details{flex:0 0 auto;padding:9px 12px;margin:0;max-height:160px;overflow-y:auto}
+.freeform-scale-controls{
+ display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;
+ border-bottom:1px solid var(--faint);padding:9px 12px;
+}
+.freeform-scale-controls .freeform-field{display:flex;flex-direction:column}
+.freeform-scale-controls select{width:clamp(120px,12vw,180px)}
+.freeform-scale-controls .scale-lock-control{display:flex;align-items:center;min-height:34px;gap:5px}
+.freeform-piano-tools{flex:0 0 auto;padding:5px 12px}
+.freeform-selection-tools,.freeform-chunk-tools,.freeform-placement-editor{
+ margin:10px 0;padding:9px 0;
+}
+.freeform-selection-title{width:100%;padding:0;font-size:11px}
+.freeform-selection-tools .freeform-field input{max-width:80px}
+.freeform-empty{padding:18px 14px;font-size:12px}
+.freeform-roll-grid{--freeform-gutter:67px}
+.freeform-roll-grid:has(.piano-keyboard){--freeform-gutter:82px}
+.freeform-key-space,.freeform-key-column{
+ width:var(--freeform-gutter);min-width:var(--freeform-gutter);
+}
+.freeform-roll-content{position:relative}
+.freeform-roll-content.piano-keyboard .freeform-key{color:transparent}
+.freeform-roll-content .piano-keys-overlay{
+ height:100%;width:var(--freeform-gutter);overflow:hidden;top:0;
+}
+.freeform-note-row.in-scale{background-color:#0b1915}
+.freeform-note-row.out-of-scale{background-color:#070a09}
+.freeform-key.in-scale{color:#c8e5da}
+.freeform-key.out-of-scale{color:#78827e}
+.freeform-roll-note{z-index:2}
+@media(max-width:1099px){
+ .song-freeform-editor{min-height:540px;overflow:visible}
+ .freeform-work{display:block;overflow:visible}
+ .freeform-instrument-pane{overflow:visible;border-right:0;border-bottom:1px solid var(--line)}
+ .freeform-editor-tools{flex-direction:row;flex-wrap:wrap;align-items:flex-end}
+ .freeform-editor-tools>select{max-width:180px}
+ .freeform-editor-tools>input[type=text]{max-width:160px}
+ .freeform-mainwork{display:block;overflow:visible}
+ .freeform-note-work{min-height:450px}
+ .freeform-roll-scroll{height:52dvh;flex:initial}
+ .freeform-sound-pane{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
