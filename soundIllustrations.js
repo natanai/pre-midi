@@ -657,12 +657,29 @@ const pageState=new Map();
 let zoomId=null;
 const idFor=(kind,index)=>kind+"-"+index;
 function setZoom(wrapper,id,enabled){
- if(enabled){zoomId=id;document.body.classList.add("sound-visual-zoom");}
- else{zoomId=null;document.body.classList.remove("sound-visual-zoom");}
- document.querySelectorAll(".visual-sound-panel.zoomed").forEach(el=>el.classList.remove("zoomed"));
- if(enabled)wrapper.classList.add("zoomed");
+ // The regular disclosure is still present inside a zoomed panel, but zoom
+ // has one exit: its X. Restore any prior panel's normal expand control.
+ for(const panel of document.querySelectorAll(".visual-sound-panel.zoomed")){
+  panel.classList.remove("zoomed");
+  const oldButton=panel.querySelector(".visual-panel-expand");
+  if(oldButton){
+   oldButton.textContent="⤢";
+   oldButton.setAttribute("aria-label","expand "+panel.dataset.visualKind+" illustration");
+   oldButton.title="expand illustration";
+   panel.querySelector(".visual-panel-area")?.append(oldButton);
+  }
+ }
+ zoomId=enabled?id:null;
+ document.body.classList.toggle("sound-visual-zoom",enabled);
+ wrapper.classList.toggle("zoomed",enabled);
  const button=wrapper.querySelector(".visual-panel-expand");
- if(button){button.textContent=enabled?"−":"⤢";button.setAttribute("aria-label",(enabled?"shrink ":"expand ")+id.split("-")[0]+" illustration");}
+ if(button){
+  button.textContent=enabled?"×":"⤢";
+  button.setAttribute("aria-label",(enabled?"close expanded ":"expand ")+id.split("-")[0]+" illustration");
+  button.title=enabled?"close expanded illustration":"expand illustration";
+  // In zoom the X belongs to the module header, never to the graph itself.
+  (enabled?wrapper:wrapper.querySelector(".visual-panel-area"))?.append(button);
+ }
 }
 if(typeof document!=="undefined")document.addEventListener("keydown",event=>{
  if(event.key==="Escape"&&zoomId){
@@ -716,6 +733,10 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  area.append(graphic,handlesRoot,pages,expand,dragReadout);
  // The drawing belongs inside its accordion: closed sections stay compact.
  const summary=details.querySelector("summary");
+ // A zoomed module must not collapse behind the modal backdrop.
+ summary?.addEventListener("click",event=>{
+  if(wrapper.classList.contains("zoomed"))event.preventDefault();
+ });
  if(summary)summary.after(area);else details.prepend(area);
  wrapper.append(details);
  let active=null,latestPatch=patch,visibleHandles=[],visibleActions=[],activeLink=null;
@@ -863,9 +884,9 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  }
  function highlight(keys){
   activeLink=keys?.length?keys:null;
-  const linked=activeLink?targetFields(activeLink):[];
-  for(const field of controlOwner().querySelectorAll("[data-sound-path]"))
-   field.classList.toggle("sound-link-active",linked.includes(field));
+  // Leave conventional knobs visually unchanged when a diagram is hovered.
+  // The illustration can still highlight its own trace and focus the real
+  // control on activation; knob-to-illustration feedback remains available.
   for(const item of graphic.querySelectorAll("[data-sound-links]")){
    const connected=item.dataset.soundLinks.split("|");
    item.classList.toggle("visual-linked",!!activeLink&&connected.some(key=>
@@ -1143,7 +1164,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    selected.hardMin??selected.min,selected.hardMax??selected.max);
   if(next!==current)onChange(selected.path,next);
  });
- if(zoomId===id){wrapper.classList.add("zoomed");expand.textContent="−";}
+ if(zoomId===id)setZoom(wrapper,id,true);
  draw(patch);wrapper.drawSoundIllustration=draw;
  return {element:wrapper,draw};
 }
