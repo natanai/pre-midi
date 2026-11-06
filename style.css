@@ -1410,6 +1410,9 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
  border-color:var(--bright);box-shadow:0 12px 60px #000}
 .visual-sound-panel.zoomed>.synth-group>.visual-panel-area {height:clamp(220px,37dvh,380px)}
 .visual-sound-panel.zoomed>.synth-group>.synth-fields {grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+.visual-sound-panel.zoomed>.synth-group>summary {cursor:default;padding-right:44px}
+.visual-sound-panel.zoomed>.synth-group>summary::after {display:none}
+.visual-sound-panel.zoomed>.visual-panel-expand {top:6px;right:8px;font-size:22px;color:var(--bright)}
 
 
 /* One sound overview: measured audio and master volume share the same row. */
@@ -1555,16 +1558,8 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
  stroke:var(--track-accent,#08e4ec);stroke-width:2.8;opacity:1;
  filter:drop-shadow(0 0 2px var(--track-accent,#08e4ec))}
 .visual-graph-hit:focus-visible{stroke:#ffffff24}
-/* A Sound's controlling dial can live outside the graph wrapper (overview,
-   freeform, or Song vocal editor); preserve reciprocal link highlighting. */
-.visual-sound-panel .sound-link-active,.sound-section .sound-link-active,
-.freeform-sound-content .sound-link-active,.vocal-effect-sections .sound-link-active{
- outline:1px solid var(--track-accent,#08e4ec);outline-offset:2px}
-.visual-sound-panel .sound-link-active .dial-amount,
-.sound-section .sound-link-active .dial-amount,
-.freeform-sound-content .sound-link-active .dial-amount,
-.vocal-effect-sections .sound-link-active .dial-amount{
- stroke:var(--track-accent,#08e4ec)}
+/* Graph links highlight their traces instead of outlining ordinary knobs.
+   Keyboard focus still uses the controls' normal focus indicator. */
 
 /* Waveform position and held reference: measurements, not simulated curves. */
 .signal-scope-header{align-items:center}
