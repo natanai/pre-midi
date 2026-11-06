@@ -1897,7 +1897,7 @@ async function chooseSound(preset) {
    const layer=song?.tracks.find(track=>track.id===context.trackId)?.freeform;
    if(!layer)throw Error("The freeform lane was removed. Open the Sound library again.");
    chosen=applyFreeformPreset(layer,context,{
-    name:preset.name,patch,trigger,assets,rackSounds:preset.sounds,settings
+    name:preset.name,patch,trigger,assets,rackSounds:preset.sounds,settings,song
    });
   }):applySoundSelection(patch,preset.name,trigger,assets,context,preset.sounds,settings);
   if(ok) {
