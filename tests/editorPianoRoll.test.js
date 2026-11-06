@@ -6,13 +6,14 @@ const source=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 
 test("the actual Beat and freeform note surfaces share one renderer",()=>{
  const beat=source("studio.js"),song=source("freeformUI.js");
- for(const functionName of ["pianoRollRows","createPianoRollRow",
-  "createPianoNoteSurface","applyPianoNoteState"]){
-  assert.match(beat,new RegExp(functionName+"\\("),
-   "Beat must use canonical "+functionName);
-  assert.match(song,new RegExp(functionName+"\\("),
-   "Song-time freeform must use canonical "+functionName);
+ // Both hosts use the same actual pitch and Rack row DOM constructor.
+ for(const host of [beat,song]){
+  assert.match(host,/renderPianoRollRows\(inst,\{/);
+  assert.match(host,/createPianoNoteSurface\(\{/);
+  assert.match(host,/applyPianoNoteState\(/);
  }
+ assert.match(beat,/mode:"beat",keyboard:showPianoKeys,low:36,high:83,noteLabel/);
+ assert.match(song,/mode:"song",low:PITCH_MIN,high:PITCH_MAX,noteLabel:pitchName/);
  assert.match(song,/noteWindow\(note,viewStep\(\),VIEW_BARS\*BAR_STEPS,STEP_WIDTH\)/);
 });
 
