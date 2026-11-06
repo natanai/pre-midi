@@ -42,6 +42,15 @@ export function createPianoRollRow(rowData,{mode="song",keyboard=false,onPlay}={
  return {row,label,surface:row};
 }
 
+// One ordered row constructor for both editors. The returned row views
+// belong to the caller's Beat-local or Song-time input/undo adapter.
+export function renderPianoRollRows(instrument,{mode="beat",keyboard=false,onPlay,
+ low=36,high=83,noteLabel=pitch=>String(pitch)}={}){
+ return pianoRollRows(instrument,{low,high,noteLabel}).map(rowData=>({
+  rowData,...createPianoRollRow(rowData,{mode,keyboard,onPlay})
+ }));
+}
+
 export function createPianoNoteSurface({className,ariaLabel,onClick}={}){
  const surface=el("button",className);
  surface.type="button";
