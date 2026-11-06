@@ -1022,9 +1022,16 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .rack-actions summary{min-width:34px;min-height:40px;border:0}
 .rack-actions .entity-action-list{left:0;right:auto;min-width:176px}
 
-/* Inactive conditional modulation controls have explicit visual and input states. */
-.dial-disabled{opacity:.42}
+/* Preserve the cause alongside a subdued control. The explanation must
+   remain readable even when its knob is disabled or presently inaudible. */
+.dial-inactive .dial-knob,.dial-inactive .dial-value,
+.dial-disabled .dial-knob,.dial-disabled .dial-value{opacity:.42}
 .dial-disabled .dial-knob{cursor:not-allowed}
+.dial-state-reason{
+ display:block;width:100%;max-width:100%;min-width:0;
+ font-size:10px;line-height:1.3;text-align:center;
+ color:#aaa;overflow-wrap:break-word;
+}
 .sample-tone .synth-fields{padding-bottom:12px}
 
 /* quiet studio typography: interface chrome is lowercase, authored names and note pitches remain data */
