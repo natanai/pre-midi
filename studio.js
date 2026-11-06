@@ -10,6 +10,7 @@ import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
+import {renderPianoRollRows,createPianoNoteSurface,applyPianoNoteState} from "./editorPianoRoll.js";
 import {createInstrumentCard} from "./editorInstrumentCard.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
@@ -827,38 +828,30 @@ function renderNotes() {
   paintKeys(step);
  }
 
- for (let pitch = 83; pitch >= 36; pitch--) {
-  const pitchClass=pitch%12;
-  const sharp=[1,3,6,8,10].includes(pitchClass);
-  const row=element("div",undefined,"piano-row"+(sharp?" sharp":""));
-  row.dataset.pitch=String(pitch);
-  // The note column remains a fixed-width grid gutter. In keyboard mode,
-  // actual piano keys render in one independent layer above all rows.
-  const label=element(showPianoKeys?"span":"button",showPianoKeys?"":noteLabel(pitch),"note-name");
-  label.setAttribute("aria-label",showPianoKeys?noteLabel(pitch):"Play "+noteLabel(pitch));
-  label.title=showPianoKeys?noteLabel(pitch):"play "+noteLabel(pitch);
-  if(!showPianoKeys){
-   label.type="button";
-   label.addEventListener("click",()=>{
-    label.classList.add("pressed");
-    setTimeout(()=>label.classList.remove("pressed"),220);
-    if(!playback&&!pendingPlay)
-     void audition(inst,pitch,beat).catch(error=>message("Couldn't preview key: "+error.message,true));
-   });
+ for (const {rowData,row,label} of renderPianoRollRows(inst,{
+  mode:"beat",keyboard:showPianoKeys,low:36,high:83,noteLabel,
+  onPlay:(pitch,key)=>{
+   key.classList.add("pressed");
+   setTimeout(()=>key.classList.remove("pressed"),220);
+   if(!playback&&!pendingPlay)
+    void audition(inst,pitch,beat).catch(error=>message("Couldn't preview key: "+error.message,true));
   }
-  row.append(label);
+ })) {
+  const pitch=rowData.pitch;
   keys.push({pitch,row,label});
   const cells = [];
   function previewRow() {
    for (let pos = 0; pos < 16; pos++) {
     const present = chunk.notes.find(n => n.pitch === pitch && pos >= n.start && pos < n.start + n.duration);
     const cell = cells[pos];
-    cell.classList.toggle("filled", !!present && present.start === pos);
-    cell.classList.toggle("tail", !!present && present.start !== pos);
-    cell.classList.toggle("end", !!present && present.start + present.duration - 1 === pos);
-    cell.classList.toggle("selected", editingNoteEffects && !!present && present.id===selectedNoteId);
-    cell.classList.toggle("bent", !!present && present.bend?.shape && present.bend.shape!=="straight");
-    cell.classList.toggle("dragging", !!present && present.id===draggedNoteId);
+    applyPianoNoteState(cell,{
+     head:!!present&&present.start===pos,
+     tail:!!present&&present.start!==pos,
+     end:!!present&&present.start+present.duration-1===pos,
+     selected:editingNoteEffects&&!!present&&present.id===selectedNoteId,
+     bent:!!present&&!!present.bend?.shape&&present.bend.shape!=="straight",
+     dragging:!!present&&present.id===draggedNoteId
+    });
     // Direction is evaluated at this *time column*, not per pitch row.
     const inScale=isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,pos);
     const direction=directionalScale?scaleDirectionAtStep(pitch,chunk.notes,pos):"";
@@ -878,7 +871,7 @@ function renderNotes() {
   rowPreviews.set(pitch,previewRow);
   for (let step = 0; step < 16; step++) {
    let ignoreClick = false;
-   const cell = button("", event => {
+   const cell = createPianoNoteSurface({className:"note"+(step%4===0?" beat":""),onClick:event=>{
     if (ignoreClick) return;
     const targetInst = instrument();
     const editedChunk = chunkFor(targetInst);
@@ -902,7 +895,7 @@ function renderNotes() {
      if(!playback&&!pendingPlay)
       void audition(targetInst,pitch,beat,{velocity:created.velocity}).catch(()=>{});
     }
-   }, "note" + (step % 4 === 0 ? " beat" : ""));
+   }});
    cells.push(cell);
    cell.addEventListener("contextmenu",event=>{
     // A note tail is still the same note. Never add/remove on a right-click.

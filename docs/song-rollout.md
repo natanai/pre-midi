@@ -21,6 +21,12 @@ This is the Song-specific historical rollout and integration plan; the active sy
 - A single Song clock drives Song and freeform piano-roll views. Zoom and scroll are independent. Optional playback-follow yields to manual navigation. Pitched keys can illuminate when sounding.
 - Editing the source Beat updates only linked Beat Clips, not already unpacked material. Every transform is undoable and round-trips through a versioned .premidi schema.
 
+### Canonical piano roll renderer, staged delivery (2026-11-06)
+
+The canonical piano roll module is `editorPianoRoll.js`. Beat and Song-time freeform now use its pitch/Rack row descriptors, actual pitch-row DOM construction, clickable note buttons, note state classes and Song note viewport projection; both continue to share keyboard, scale and note gestures via `editorPianoView.js` and `pianoNoteGesture.js`. The two contexts retain their own editing and undo adapters: Beat has a 16-step Chunk grid with per-cell click targets; freeform has Song-absolute multi-bar note blocks with layering, sustained tails, and Rack Sound rows. This is source reuse of the **actual rendered note surfaces**, not a second reduced-function piano roll.
+
+**Not yet complete:** The top-level row/grid assembly, note-input handlers and Rack arrangement layout still live in `studio.js` and `freeformUI.js`. Do not claim identical full editor until these remaining adapter roles have been consolidated and tested, including all note effects/automation, scale direction, long notes, overlapping notes, multiple sampled Instruments, 64-bar Beats and Song playback/scrubber coupling. Keep Beat-local navigation independent from the Song scrubber. Use this document as the handoff; do not create another roadmap.
+
 ### Attached freeform is part of its Beat (2026-11-06)
 
 **Approved user behavior:** A Beat Track starts with only a narrow freeform drop tab under its Beat lane. Dropping a Beat Clip onto the tab unpacks that occurrence and opens editing; an explicitly empty Track created through +track may instead offer a new independent Instrument. Opening an attached Beat lane must not ask for a second Instrument.

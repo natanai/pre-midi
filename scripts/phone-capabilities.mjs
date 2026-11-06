@@ -20,6 +20,7 @@ const SOURCE_FILES=[
  "keyboardPiano.js",
  "pianoNoteGesture.js",
  "editorInstrumentCard.js",
+ "editorPianoRoll.js",
  "dial.js",
  "desktopAudioUI.js",
  "desktopUI.js",
