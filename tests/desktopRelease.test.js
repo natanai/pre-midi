@@ -122,8 +122,8 @@ test('portable release rejects mismatched detached signature metadata',async()=>
 });
 
 test('Windows publication waits for exact-source full audio qualification',async()=>{
- const release=await readFile(new URL('../.github/workflows/desktop-release.yml',import.meta.url),'utf8');
- const verify=await readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8');
+ const release=(await readFile(new URL('../.github/workflows/desktop-release.yml',import.meta.url),'utf8')).replace(/\r\n/g,'\n');
+ const verify=(await readFile(new URL('../.github/workflows/verify.yml',import.meta.url),'utf8')).replace(/\r\n/g,'\n');
  assert.match(release,/audio-qualification:\n[\s\S]*?uses: \.\/\.github\/workflows\/verify\.yml/);
  assert.match(release,/publish:\n\s+needs: \[source, build, audio-qualification\]/);
  assert.match(release,/ref: \$\{\{ needs\.source\.outputs\.commit \}\}/);
