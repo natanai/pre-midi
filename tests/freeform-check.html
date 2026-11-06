@@ -246,6 +246,13 @@
   fileControl.files=transfer.files;fileControl.dispatchEvent(new Event("change",{bubbles:true}));
   await wait(()=>!!doc.querySelector(".freeform-sound-modules .sample-zones"),
    "Canonical sampler editor opens after importing audio");
+  const linkedDraft=await readDraft();
+  assert(linkedDraft?.beats?.[0]?.instruments?.[0]?.sounds?.[0]?.patch?.type==="sample",
+   "Importing audio into attached freeform also changes the source Beat Sound");
+  const assetId=linkedDraft.beats[0].instruments[0].sounds[0].patch.zones[0].assetId;
+  assert(linkedDraft.beats[0].samples.some(asset=>asset.id===assetId)&&
+   linkedDraft.tracks[0].freeform.samples.some(asset=>asset.id===assetId),
+   "Imported sample remains available to both Beat and Song playback");
   const filter=doc.querySelector('.freeform-sound-modules [aria-label="Recorded sound filter type"]');
   assert(filter,"Freeform sample has existing filter and distortion settings");
   filter.value="highpass";filter.dispatchEvent(new Event("change",{bubbles:true}));
