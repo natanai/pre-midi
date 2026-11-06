@@ -10,6 +10,7 @@ import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
+import {createInstrumentCard} from "./editorInstrumentCard.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
@@ -437,11 +438,9 @@ function renderInstruments() {
  for (const inst of beat.instruments) {
   const selected = inst.id === selectedInstrumentId;
   const item=element("div",undefined,"instrument-entry");
-  const el = button("", () => { closePicker(); focus(inst); }, "instrument-card" + (selected ? " active" : ""));
-  el.style.setProperty("--track-accent", signal(inst));
-  el.setAttribute("aria-pressed", String(selected));
-  el.append(element("strong",inst.name));
-  if(inst.layout==="rack")el.append(element("small",inst.sounds.length+" sounds"));
+  const el=createInstrumentCard(inst,{
+   selected,accent:signal(inst),onSelect:()=>{closePicker();focus(inst);}
+  });
   item.append(el,actionMenu("Actions for "+inst.name,[
    {label:"Rename",run:()=>renameInstrument(inst)},
    {label:instrumentDeleteLabel(inst),danger:true,run:()=>removeInstrument(inst.id)}
