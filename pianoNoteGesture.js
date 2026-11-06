@@ -27,6 +27,8 @@ export function bindPianoNoteGesture(element,{begin,stepWidth,rowHeight}){
   const operation=begin(event);
   if(!operation)return;
   const pointerId=event.pointerId,startX=event.clientX,startY=event.clientY;
+  const unitX=typeof stepWidth==="function"?stepWidth():stepWidth;
+  const unitY=typeof rowHeight==="function"?rowHeight():rowHeight;
   let finished=false,grabbed=operation.mode!=="move";
   if(grabbed)operation.grab?.();
   if(operation.mode!=="move")event.preventDefault();
@@ -37,7 +39,7 @@ export function bindPianoNoteGesture(element,{begin,stepWidth,rowHeight}){
    operation.grab?.();
   },NOTE_HOLD_MS):null;
   function deltaAt(e){
-   return noteDragDelta(e.clientX-startX,e.clientY-startY,stepWidth,rowHeight);
+   return noteDragDelta(e.clientX-startX,e.clientY-startY,unitX,unitY);
   }
   function move(e){
    if(finished||e.pointerId!==pointerId)return;
