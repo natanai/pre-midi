@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {create,upgradeBeatFeatures} from "../schema.js";
 import {createSong} from "../songModel.js";
 import {makePatch} from "../synth.js";
-import {play} from "../audio.js";
+import {play,cancelNativeTransport} from "../audio.js";
 
 function songFixture(length=6000){
  const beat=create(),instrument=beat.instruments[0],chunk=instrument.chunks[0];
@@ -36,8 +36,12 @@ function harness(){
    case "stream_status":return {...status,owner,stream:{
     state:streamState,fault,ackSequence,positionSeconds:ackSequence*8
    }};
-   case "stream_stop":streamState=0;revision=0;return {...status,owner};
-   case "control":return {...status,owner};
+   case "stream_stop":
+    if(revision===0)throw Error("Native Song page owner or revision is stale");
+    streamState=0;revision=0;return {...status,owner};
+   case "control":
+    if(request.command===1)revision=0;
+    return {...status,owner};
    default:throw Error("Unexpected native action "+request.action);
   }
  }}};
@@ -129,5 +133,17 @@ test("native page callback faults and dynamic loop changes stop the opt-in playe
   await handle.poll();
   assert.equal(stops,2);
   assert.equal(mock.calls.filter(x=>x.action==="stream_stop").length,2);
+ }finally{await handle?.stop();mock.cleanup();}
+});
+
+test("studio global native cancel followed by stream handle stop is idempotent",async()=>{
+ const mock=harness();let handle,stops=0;
+ try{
+  handle=await play(songFixture(96),{onStop:()=>{stops++;}});
+  await cancelNativeTransport();
+  await assert.doesNotReject(handle.stop());
+  assert.equal(stops,1);
+  assert.equal(mock.calls.filter(x=>x.action==="control"&&x.command===1).length,1);
+  assert.equal(mock.calls.filter(x=>x.action==="stream_stop").length,1);
  }finally{await handle?.stop();mock.cleanup();}
 });
