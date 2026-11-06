@@ -59,8 +59,10 @@ test("desktop editor renders clipped sustained tails and selectable layered note
  const css=readFileSync(new URL("../freeform.css",import.meta.url),"utf8");
  assert.match(ui,/layoutFreeformNoteRow\(rowNotes\)/);
  assert.match(ui,/overlappingFreeformNotes\(instrument\(\),note\)/);
- assert.match(ui,/const visibleStart=Math\.max\(note\.start,viewStep\(\)\)/);
- assert.match(ui,/const visibleEnd=Math\.min\(note\.start\+note\.duration/);
+ assert.match(ui,/noteWindow\(note,viewStep\(\),VIEW_BARS\*BAR_STEPS,STEP_WIDTH\)/);
+ const roll=readFileSync(new URL("../editorPianoRoll.js",import.meta.url),"utf8");
+ assert.match(roll,/const beginning=Math\.max\(note\.start,fromStep\)/);
+ assert.match(roll,/const ending=Math\.min\(note\.start\+note\.duration/);
  assert.match(ui,/\+ layer note/);
  assert.match(ui,/Choose overlapping freeform note/);
  assert.match(css,/\.freeform-roll-note\.layered/);
