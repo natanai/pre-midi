@@ -185,6 +185,7 @@ try{
  const onInspectorError=event=>inspectorErrors.push(event.message||String(event.error));
  window.addEventListener("error",onInspectorError);
  root.querySelector(".freeform-sound-summary").click();
+ await new Promise(resolve=>setTimeout(resolve,0));
  window.removeEventListener("error",onInspectorError);
  assert(inspectorErrors.length===0,"Sound Inspector opens without JS errors: "+inspectorErrors.join(" | "));
  const owner=root.querySelector(".freeform-sound-content");
@@ -192,7 +193,9 @@ try{
  const paths=["volume","gain","filter.cutoff","envelope.attack","envelope.release"];
  for(const path of paths)
   assert(owner.querySelector('[data-sound-path="'+path+'"]'),
-   "Freeform exposes canonical Sound control "+path);
+   "Freeform exposes canonical Sound control "+path+
+   " | available: "+[...owner.querySelectorAll("[data-sound-path]")].map(node=>node.dataset.soundPath).join(",")+
+   " | markup: "+owner.outerHTML.slice(0,900));
  const filterPanel=owner.querySelector('.visual-sound-panel[data-visual-kind="filter"]');
  const stagePanel=owner.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
  assert(filterPanel&&stagePanel&&owner.querySelector(".signal-scope"),
