@@ -17,7 +17,7 @@ const server=createServer(async(request,response)=>{
   if(!file.startsWith(root+"/"))throw Error("Invalid path");
   let content=await readFile(file);
   if(path==="/index.html"){
-   const script='<script>window.__testBootErrors=[];window.addEventListener("error",e=>window.__testBootErrors.push(String(e.message||e.error)));window.addEventListener("unhandledrejection",e=>window.__testBootErrors.push(String(e.reason)));<\\/script>';
+   const script='<script>window.__testBootErrors=[];window.addEventListener("error",e=>window.__testBootErrors.push(String(e.message||e.error||e.target?.src||e.target?.href||"unknown resource failure")),true);window.addEventListener("unhandledrejection",e=>window.__testBootErrors.push(String(e.reason)));<\\/script>';
    content=Buffer.from(content.toString("utf8").replace("</head>",script+"</head>"));
   }
   response.writeHead(200,{"Content-Type":({".js":"text/javascript",".css":"text/css",".html":"text/html",".wav":"audio/wav"})[extname(file)]||"application/octet-stream"});
