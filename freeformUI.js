@@ -14,6 +14,7 @@ import {createFreeformNoteCutoff,editFreeformNoteCutoff} from "./freeformNoteAut
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
+import {createInstrumentCard} from "./editorInstrumentCard.js";
 import {installKeyboardPiano,pitchName} from "./keyboardPiano.js";
 import {normalizeScaleGuide,isPitchInScaleAtStep} from "./scaleGuide.js";
 import {audition,auditionHeld} from "./audio.js";
@@ -366,27 +367,33 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   panel.append(header,workspace);
   const tools=el("div","freeform-editor-tools");
   const free=chosen.freeform;
-  const picker=el("select");
-  picker.setAttribute("aria-label","Freeform Instrument");
-  for(const inst of free.instruments){
-   const option=el("option","",inst.name);option.value=inst.id;picker.append(option);
-  }
   const inst=instrument();
-  if(inst){activeInstrumentId=inst.id;picker.value=inst.id;}
-  picker.hidden=free.instruments.length===0;
-  picker.addEventListener("change",()=>{activeInstrumentId=picker.value;selectedNoteId=null;selectedPlacementId=null;editorScrollTop=null;render();});
-  tools.append(picker,action("+ instrument",addInstrument),
+  if(inst)activeInstrumentId=inst.id;
+  const instrumentList=el("div","freeform-instrument-list");
+  instrumentList.setAttribute("role","group");
+  instrumentList.setAttribute("aria-label","Instruments");
+  let activeEntry=null;
+  for(const option of free.instruments){
+   const selected=option.id===inst?.id;
+   const entry=el("div","instrument-entry");
+   const card=createInstrumentCard(option,{
+    selected,accent:"#83c6a9",
+    onSelect:()=>{
+     if(activeInstrumentId===option.id)return;
+     activeInstrumentId=option.id;selectedNoteId=null;selectedPlacementId=null;
+     editorScrollTop=null;render();
+    }
+   });
+   entry.append(card);instrumentList.append(entry);
+   if(selected)activeEntry=entry;
+  }
+  sidebar.append(instrumentList);
+  tools.append(action("+ instrument",addInstrument),
    action("browse sounds",()=>onBrowseSound({
     trackId:activeTrackId,mode:inst?"replace":"add",
     instrumentId:inst?.id??null,soundId:soundUI.getSelectedSound()?.id??null
    }),"freeform-instrument-browse"));
   if(inst){
-   const sourceName=input("text",inst.name,undefined,undefined,()=>{});
-   sourceName.maxLength=60;sourceName.setAttribute("aria-label","Freeform Instrument name");
-   sourceName.addEventListener("change",()=>mutate(()=>{
-    inst.name=sourceName.value.trim()||"Instrument";
-   }));
-   tools.append(sourceName);
    const menu=el("details","freeform-instrument-menu");
    const menuLabel=el("summary","","⋯");
    menuLabel.setAttribute("aria-label","Instrument actions");
@@ -395,6 +402,12 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    const options=el("div","freeform-instrument-menu-actions");
    options.setAttribute("role","group");
    options.setAttribute("aria-label","Freeform Instrument actions");
+   options.append(action("rename",()=>{
+    const name=prompt("Rename instrument",inst.name);
+    if(name===null)return;
+    const next=name.trim().slice(0,60);
+    if(next&&next!==inst.name)mutate(()=>{inst.name=next;});
+   },"freeform-instrument-rename"));
    options.append(action("duplicate",()=>{
     let copy=null;
     if(mutate(()=>{copy=duplicateFreeformInstrument(free,inst.id);})){
@@ -417,7 +430,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
      selectedNoteId=null;selectedPlacementId=null;editorScrollTop=null;render();
     }
    },"freeform-instrument-remove"));
-   menu.append(options);tools.append(menu);
+   menu.append(options);activeEntry?.append(menu);
   }
   const previous=action("←",()=>{followPlayback=false;barStart=Math.max(0,barStart-4);render();},"freeform-nav");
   const next=action("→",()=>{followPlayback=false;barStart+=4;render();},"freeform-nav");
