@@ -37,6 +37,12 @@
 - A page's metadata becoming retired **never means** its WaveBanks, DriveRecipes, LFO, sample PCM, active voices or shared feedback tails may be released. Keep a separate page resource lease through `keepThroughFrame` and the callback retirement watermark. Source-page notes may sound in later pages after positive timing offsets.
 - Do not edit `soundIllustrations.js` or illustration control paths as part of this native pipeline; that work has separate ownership. Phone parity and pre-programmed engine migration are separate, deferred acceptance gates.
 
+## Additional source milestone: JavaScript Song page preparation (not end-user streaming)
+
+- `src/hosts/native/song-stream-page.js` implements the bounded JS packet-building and immutable backpressure-retry boundary. It uses existing Song event/materialization/plan code, rebases all note/sample/vocal times to page-local native frames, preserves `.premidi` source music, enforces native packet and resource claims and precomputes exact shared delay recipes. `tests/nativeSongStreamPage.test.js` covers late-page precision, staleness, missing assets, malformed native acknowledgment and retry identity.
+- **Still not wired to the Song player:** there is no production `stream_begin` → `stream_delay` → `stream_page` → `stream_start` lookahead loop, owner-scoped fault/ACK polling, lifecycle editing/seek/loop strategy or physical Windows hardware acceptance. Do **not** raise the provisional 93% to 100%; native 600-second/4,096-onset safeguards stay intact.
+- Next agent should use this reusable producer rather than duplicating Sound/Beat/Freeform scheduling. Start streaming only after enough contiguous pages are prepared; handle `accepted:false` without skipping sequence; fail visibly on missing pages. Reset ownership on stop, seek, edit, microphone start or device reconfigure; never silently switch to Web Audio.
+
 ## Required order for the next agent
 
 1. **PR cleanup finished on 2026-11-05.** Verified **zero open PRs** using the repository's GitHub pull-request listing after #191 and #192 merged; #114/#62 were explicitly closed unmerged with their branches preserved. If new PRs appear later, reconcile them rather than assuming this snapshot is permanent.
