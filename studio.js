@@ -10,6 +10,7 @@ import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
+import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
@@ -914,97 +915,67 @@ function renderNotes() {
 
    // End-cap resizing keeps priority; drag a note body to move it.
    // Empty-cell pointerdown creates immediately, allowing one-gesture length painting.
-   cell.addEventListener("pointerdown", event => {
-    if(event.button!==0 || event.isPrimary===false)return;
-    const existing=chunk.notes.find(n=>n.pitch===pitch && step>=n.start && step<n.start+n.duration);
-    if(!existing && (cell.disabled ||
-     (scaleGuide.lock && !isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step))))return;
-    const bounds=cell.getBoundingClientRect(),edge=event.pointerType==="touch"?18:13;
-    const atEnd=!!existing && step===existing.start+existing.duration-1 && event.clientX>=bounds.right-edge;
-    const mode=existing?(atEnd?"resize":"move"):"paint";
-    const before=snapshot(currentDocument()),previousSelectedNoteId=selectedNoteId;
-    let note=existing;
-    const original=existing?{start:existing.start,pitch:existing.pitch,duration:existing.duration}:null;
-    const pointerId=event.pointerId,x=event.clientX,y=event.clientY;
-    const cellWidth=bounds.width,rowHeight=bounds.height;
-    let finished=false,grabbed=mode!=="move";
-    if(mode==="paint"){
-     note={id:id(),pitch,start:step,
-      duration:1,velocity:DEFAULT_NOTE_LEVEL};
-     applyNoteCommand(chunk,{type:"note.add",note});
-     selectedNoteId=editingNoteEffects?note.id:null;
-     ignoreClick=true;
-     draggedNoteId=note.id;
-     previewRow();
-     tapPianoKey(pitch);
-     if(!playback&&!pendingPlay)void audition(inst,pitch,beat,{velocity:note.velocity}).catch(()=>{});
-    }else if(mode==="resize"){
-     ignoreClick=true;
-     draggedNoteId=note.id;
-     previewRow();
-    }
-    // A long hold starts the drag even before any grid step changes.
-    // Moving six pixels starts dragging promptly without waiting.
-    const holdTimer=mode==="move"?setTimeout(()=>{
-     if(finished)return;
-     grabbed=true;ignoreClick=true;draggedNoteId=note.id;previewRow();
-    },180):null;
-    if(mode!=="move")event.preventDefault();
-    cell.setPointerCapture(pointerId);
-    function paintRows(oldPitch){
-     rowPreviews.get(oldPitch)?.();
-     if(note.pitch!==oldPitch)rowPreviews.get(note.pitch)?.();
-    }
-    function move(moveEvent){
-     if(finished||moveEvent.pointerId!==pointerId)return;
-     const dx=moveEvent.clientX-x,dy=moveEvent.clientY-y;
-     if(!grabbed && Math.hypot(dx,dy)>=6){
-      grabbed=true;ignoreClick=true;draggedNoteId=note.id;clearTimeout(holdTimer);
+   bindPianoNoteGesture(cell,{
+    stepWidth:()=>cell.getBoundingClientRect().width,
+    rowHeight:()=>cell.getBoundingClientRect().height,
+    begin:event=>{
+     const existing=chunk.notes.find(n=>n.pitch===pitch && step>=n.start && step<n.start+n.duration);
+     if(!existing && (cell.disabled ||
+      (scaleGuide.lock && !isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step))))return null;
+     const bounds=cell.getBoundingClientRect();
+     const atEnd=!!existing&&step===existing.start+existing.duration-1&&
+      event.clientX>=bounds.right-noteEndGrabWidth(bounds.width,event.pointerType);
+     const mode=existing?(atEnd?"resize":"move"):"paint";
+     const before=snapshot(currentDocument()),previousSelectedNoteId=selectedNoteId;
+     const note=existing??{id:id(),pitch,start:step,duration:1,velocity:DEFAULT_NOTE_LEVEL};
+     const original=existing?{start:existing.start,pitch:existing.pitch,duration:existing.duration}:null;
+     if(mode==="paint"){
+      applyNoteCommand(chunk,{type:"note.add",note});
+      selectedNoteId=editingNoteEffects?note.id:null;
+      ignoreClick=true;draggedNoteId=note.id;previewRow();
+      tapPianoKey(pitch);
+      if(!playback&&!pendingPlay)
+       void audition(inst,pitch,beat,{velocity:note.velocity}).catch(()=>{});
      }
-     if(!grabbed)return;
-     moveEvent.preventDefault();
-     const oldPitch=note.pitch;
-     if(mode==="move"){
-      applyNoteCommand(chunk,{type:"note.move",noteId:note.id,start:original.start+Math.round(dx/cellWidth),
-       pitch:original.pitch-Math.round(dy/rowHeight)},{minPitch:36,maxPitch:83,allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(beat.version)});
-     }else{
-      applyNoteCommand(chunk,{type:"note.resize",noteId:note.id,
-       duration:(original?.duration??1)+Math.round(dx/cellWidth)},{allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(beat.version)});
-     }
-     paintRows(oldPitch);
+     return {
+      mode,
+      grab:()=>{
+       ignoreClick=true;draggedNoteId=note.id;previewRow();
+      },
+      preview:({steps,pitches})=>{
+       const oldPitch=note.pitch;
+       if(mode==="move")
+        applyNoteCommand(chunk,{type:"note.move",noteId:note.id,
+         start:original.start+steps,pitch:original.pitch+pitches},
+         {minPitch:36,maxPitch:83,allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(beat.version)});
+       else
+        applyNoteCommand(chunk,{type:"note.resize",noteId:note.id,
+         duration:(original?.duration??1)+steps},
+         {allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(beat.version)});
+       rowPreviews.get(oldPitch)?.();
+       if(note.pitch!==oldPitch)rowPreviews.get(note.pitch)?.();
+      },
+      finish:({cancelled})=>{
+       const oldPitch=note.pitch;
+       if(cancelled){
+        if(mode==="paint"){
+         chunk.notes=chunk.notes.filter(item=>item.id!==note.id);
+         selectedNoteId=previousSelectedNoteId;
+        }else Object.assign(note,original);
+        ignoreClick=true;
+       }
+       const changed=!cancelled&&(mode==="paint"||
+        note.start!==original.start||note.pitch!==original.pitch||note.duration!==original.duration);
+       draggedNoteId=null;
+       rowPreviews.get(oldPitch)?.();
+       if(note.pitch!==oldPitch)rowPreviews.get(note.pitch)?.();
+       if(changed){
+        ignoreClick=true;
+        setTimeout(()=>commitChange(before),0);
+       }else setTimeout(()=>{ignoreClick=false;},0);
+      }
+     };
     }
-    function end(endEvent){
-     if(finished||endEvent.pointerId!==pointerId)return;
-     if(endEvent.type==="pointerup")move(endEvent);
-     finished=true;
-     clearTimeout(holdTimer);
-     cell.removeEventListener("pointermove",move);
-     cell.removeEventListener("pointerup",end);
-     cell.removeEventListener("pointercancel",end);
-     if(cell.hasPointerCapture(pointerId))cell.releasePointerCapture(pointerId);
-     const cancelled=endEvent.type!=="pointerup",oldPitch=note.pitch;
-     if(cancelled){
-      if(mode==="paint"){
-       chunk.notes=chunk.notes.filter(item=>item.id!==note.id);
-       selectedNoteId=previousSelectedNoteId;
-      }else Object.assign(note,original);
-      ignoreClick=true;
-     }
-     const changed=!cancelled && (mode==="paint" ||
-      note.start!==original.start || note.pitch!==original.pitch || note.duration!==original.duration);
-     draggedNoteId=null;
-     paintRows(oldPitch);
-     if(changed){
-      ignoreClick=true;
-      // Click follows pointerup; suppress it before rebuilding the buttons.
-      setTimeout(()=>commitChange(before),0);
-     }else setTimeout(()=>{ignoreClick=false;},0);
-    }
-    cell.addEventListener("pointermove",move);
-    cell.addEventListener("pointerup",end);
-    cell.addEventListener("pointercancel",end);
-    // Lost capture (tab switch, interrupted touch) must not leave unsaved edits.
-    cell.addEventListener("lostpointercapture",end,{once:true});
    });
    // Backspace/Delete removes a selected note without hijacking text inputs.
    cell.addEventListener("keydown",event=>{

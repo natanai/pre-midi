@@ -65,6 +65,10 @@ try{
   "The overlapped notes show distinct stacked visual lanes");
  assert(notes[0].style.top!==notes[1].style.top,
   "Simultaneous voices must not paint directly over each other");
+ const noteMode=root.querySelector(".freeform-note-mode");
+ assert(noteMode&&noteMode.getAttribute("aria-pressed")==="false",
+  "Freeform note effects are selected explicitly, as in Beat");
+ noteMode.click();
  notes[0].click();
  const choice=root.querySelector('select[aria-label="Choose overlapping freeform note"]');
  assert(choice&&choice.options.length===2,
@@ -224,6 +228,32 @@ try{
  const refreshed=root.querySelector(".freeform-sound-content");
  assert(refreshed.querySelector('.visual-sound-panel[data-visual-kind="filter"]'),
   "Editing a Sound preserves the shared educational panel");
+ // Song notes now use the same explicit effects mode and delete/resize
+ // gestures as Beat notes; each operation edits only its own note identity.
+ const effectsToggle=root.querySelector(".freeform-note-mode");
+ assert(effectsToggle?.getAttribute("aria-pressed")==="true",
+  "Per-note effects mode remains selected while editing automation");
+ effectsToggle.click();
+ assert(root.querySelector(".freeform-note-mode").getAttribute("aria-pressed")==="false",
+  "Pencil toggles back to the Beat-style click-to-remove mode");
+ const noteChip=root.querySelector(".freeform-roll-note");
+ const noteId=noteChip.dataset.noteId;
+ const originalNote=instrument.notes.find(note=>note.id===noteId);
+ assert(originalNote,"Freeform note surfaces retain stable musical identities");
+ const lengthBefore=originalNote.duration;
+ noteChip.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowRight",altKey:true,bubbles:true,cancelable:true
+ }));
+ assert(originalNote.duration===lengthBefore+1,
+  "Alt+right lengthens a freeform note by one step, as in Beat");
+ const updatedChip=[...root.querySelectorAll(".freeform-roll-note")]
+  .find(item=>item.dataset.noteId===noteId);
+ const countBefore=instrument.notes.length;
+ updatedChip.click();
+ assert(instrument.notes.length===countBefore-1&&
+  !instrument.notes.some(item=>item.id===noteId),
+  "Clicking a freeform note in ordinary mode removes that exact note");
+
  await report("PASS","Layered notes, reusable Chunks and canonical Beat/freeform Sound Inspector parity");
 }catch(error){await report("FAIL",String(error.stack||error))}
 </script>

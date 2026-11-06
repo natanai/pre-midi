@@ -150,6 +150,12 @@
   doc.querySelector(".freeform-nav").click();
   assert(doc.querySelector(".freeform-follow").getAttribute("aria-pressed")==="false",
    "Manual bar navigation pauses playback follow");
+  const noteMode=doc.querySelector(".freeform-note-mode");
+  assert(noteMode&&noteMode.getAttribute("aria-pressed")==="false",
+   "Freeform defaults to Beat-style click-to-remove mode");
+  noteMode.click();
+  assert(doc.querySelector(".freeform-note-mode").getAttribute("aria-pressed")==="true",
+   "Freeform note effects mode is an explicit toolbar toggle");
   doc.querySelector(".freeform-roll-note").click();
   const lengthField=[...doc.querySelectorAll(".freeform-note-details .freeform-field")]
    .find(item=>item.textContent.includes("length"));
