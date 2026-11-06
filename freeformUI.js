@@ -45,7 +45,7 @@ const field=(label,control)=>{
 };
 export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActiveChange=()=>{},
  onBeatCreated=()=>{},onBrowseSound=()=>{},onSaveSound=()=>{},
- getSongStep=()=>0,seekSongStep=()=>{},onSelectSourceBeat=()=>{},
+ getSongStep=()=>null,seekSongStep=()=>{},onSelectSourceBeat=()=>{},
  getScaleGuide=()=>normalizeScaleGuide(),setScaleGuide=()=>{},
  getShowPianoKeys=()=>true,setShowPianoKeys=()=>{}}){
  const panel=el("section","song-freeform-editor");panel.hidden=true;
@@ -147,7 +147,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   activeInstrumentId=chosen.freeform?.instruments[0]?.id??null;
   selectedNoteId=null;selectedPlacementId=null;
   const selectedPassage=chosen.freeform?.passages.find(p=>p.id===passageId);
-  const anchor=anchorStep??selectedPassage?.startStep??getSongStep()??0;
+  const anchor=anchorStep??getSongStep()??selectedPassage?.startStep??0;
   barStart=Math.floor(anchor/BAR_STEPS);
   selectionStartStep=selectedPassage?.startStep??barStart*BAR_STEPS;
   selectionLengthSteps=selectedPassage?.lengthSteps??BAR_STEPS;
@@ -447,16 +447,22 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    }
    menu.append(options);activeEntry?.append(menu);
   }
-  const previous=action("←",()=>{followPlayback=false;barStart=Math.max(0,barStart-4);render();},"freeform-nav");
-  const next=action("→",()=>{followPlayback=false;barStart+=4;render();},"freeform-nav");
-  const barControl=input("number",barStart+1,1,4096,v=>{
-   if(Number.isInteger(v)&&v>=1){followPlayback=false;barStart=v-1;render();}
+  const seekTo=step=>{
+   const target=Math.max(0,Math.min(FREEFORM_LIMIT_STEPS-BAR_STEPS,
+    Math.floor(step/BAR_STEPS)*BAR_STEPS));
+   seekSongStep(target);
+   // Standalone fixtures do not install a Song scrubber host.
+   if(getSongStep()===null)seekToStep(target);
+  };
+  const previous=action("←",()=>seekTo(viewStep()-4*BAR_STEPS),"freeform-nav");
+  previous.setAttribute("aria-label","move Song scrubber earlier four bars");
+  const next=action("→",()=>seekTo(viewStep()+4*BAR_STEPS),"freeform-nav");
+  next.setAttribute("aria-label","move Song scrubber later four bars");
+  const barControl=input("number",barStart+1,1,4096,value=>{
+   if(Number.isInteger(value)&&value>=1)seekTo((value-1)*BAR_STEPS);
   });
-  barControl.setAttribute("aria-label","First visible Song bar");
-  const follow=action("follow",()=>{followPlayback=!followPlayback;render();},"freeform-follow");
-  follow.setAttribute("aria-pressed",String(followPlayback));
-  follow.title=followPlayback?"follow enabled · manual navigation pauses it":"follow Song playback in the freeform roll";
-  tools.append(previous,field("from bar",barControl),next,follow);
+  barControl.setAttribute("aria-label","Song scrubber bar");
+  tools.append(previous,field("song bar",barControl),next);
   sidebar.append(tools);
   const selection=el("div","freeform-selection-tools");
   const selectionTitle=el("span","freeform-selection-title","create Beat from selection");
@@ -819,14 +825,20 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   const row=el("div","song-freeform-row");
   row.dataset.parentTrackId=track.id;
   const label=el("div","song-freeform-label");
-  label.append(action("↳ freeform",()=>open(track.id),"song-freeform-toggle"));
+  const tab=action("↳ freeform",()=>open(track.id),"song-freeform-toggle");
+  tab.setAttribute("aria-label","open attached freeform editor for "+track.name);
+  tab.title="drop a Beat Clip here to make its notes freeform";
+  label.append(tab);
   const lane=el("div","song-freeform-lane");lane.style.width=width+"px";
   lane.style.setProperty("--song-bar-px",SONG_BAR_PIXELS+"px");
   lane.addEventListener("click",event=>{
    if(event.target===lane)open(track.id);
   });
   const layer=track.freeform;
-  row.classList.toggle("expanded",!!layer);
+  const hasMusic=!!layer&&(layer.passages.length>0||
+   layer.instruments.some(inst=>inst.notes.length||inst.chunkPlacements.length));
+  row.classList.toggle("expanded",hasMusic);
+  row.classList.toggle("dormant",!hasMusic);
   row.classList.toggle("active",activeTrackId===track.id);
   if(layer){
    const passageLimit=Math.min(200,layer.passages.length);
@@ -931,12 +943,21 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    if(soundId)soundUI.selectSound(instrumentId,soundId);
    render();
   },
+  seekToStep(step){
+   if(activeTrackId===null)return;
+   const next=Math.max(0,Math.floor(step/BAR_STEPS));
+   if(next!==barStart){
+    barStart=next;editorScrollLeft=0;render();
+   }
+   playStep=step;
+   paintPosition();
+  },
   setPosition(bar){
    playStep=bar<0?null:bar*BAR_STEPS;
-   if(followPlayback&&activeTrackId&&playStep!==null&&
+   if(activeTrackId&&playStep!==null&&
     (playStep<viewStep()||playStep>=viewStep()+VIEW_BARS*BAR_STEPS)){
-    barStart=Math.max(0,Math.floor(playStep/BAR_STEPS)-1);
-    render();
+    barStart=Math.max(0,Math.floor(playStep/BAR_STEPS));
+    editorScrollLeft=0;render();
    }
    paintPosition();
   }};
