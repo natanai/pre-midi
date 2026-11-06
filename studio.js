@@ -10,7 +10,7 @@ import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
-import {pianoRollRows,createPianoRollRow,createPianoNoteSurface,applyPianoNoteState} from "./editorPianoRoll.js";
+import {renderPianoRollRows,createPianoNoteSurface,applyPianoNoteState} from "./editorPianoRoll.js";
 import {createInstrumentCard} from "./editorInstrumentCard.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
@@ -828,17 +828,16 @@ function renderNotes() {
   paintKeys(step);
  }
 
- for (const rowData of pianoRollRows(inst,{low:36,high:83,noteLabel})) {
+ for (const {rowData,row,label} of renderPianoRollRows(inst,{
+  mode:"beat",keyboard:showPianoKeys,low:36,high:83,noteLabel,
+  onPlay:(pitch,key)=>{
+   key.classList.add("pressed");
+   setTimeout(()=>key.classList.remove("pressed"),220);
+   if(!playback&&!pendingPlay)
+    void audition(inst,pitch,beat).catch(error=>message("Couldn't preview key: "+error.message,true));
+  }
+ })) {
   const pitch=rowData.pitch;
-  const {row,label}=createPianoRollRow(rowData,{
-   mode:"beat",keyboard:showPianoKeys,
-   onPlay:()=>{
-    label.classList.add("pressed");
-    setTimeout(()=>label.classList.remove("pressed"),220);
-    if(!playback&&!pendingPlay)
-     void audition(inst,pitch,beat).catch(error=>message("Couldn't preview key: "+error.message,true));
-   }
-  });
   keys.push({pitch,row,label});
   const cells = [];
   function previewRow() {
