@@ -40,7 +40,7 @@ test('Windows streaming field-test switch is opt-in, described, and returns to n
   savedToggle.checked=false;savedToggle.onchange();
   assert.equal(store.get('premidi-native-song-streaming'),'off');
   assert.deepEqual(events,['premidi-audio-mode','premidi-audio-mode']);
-  assert.equal(store.get('premidi-audio-backend'),'native','Checkbox must not switch the user's native engine to Web Audio');
+  assert.equal(store.get('premidi-audio-backend'),'native',"Checkbox must not switch the native engine to Web Audio");
  }finally{
   for(const [key,value] of Object.entries(originals)){
    if(value===undefined)delete globalThis[key];else globalThis[key]=value;
