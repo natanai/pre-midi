@@ -13,6 +13,7 @@ import {overlappingFreeformNotes,layoutFreeformNoteRow} from "./freeformLayerUIM
 import {createFreeformNoteCutoff,editFreeformNoteCutoff} from "./freeformNoteAutomation.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
+import {pianoRollRows,createPianoRollRow,createPianoNoteSurface,noteWindow,applyPianoNoteState} from "./editorPianoRoll.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {createInstrumentCard} from "./editorInstrumentCard.js";
 import {installKeyboardPiano,pitchName} from "./keyboardPiano.js";
@@ -658,18 +659,14 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    if(shown>=256)break;
   }
   placementStrip.append(stripLabel,stripPlot);grid.append(placementStrip);
-  const instrumentRows=inst.layout==="rack"?
-   inst.sounds.map(sound=>({pitch:null,soundId:sound.id,label:sound.name})):
-   Array.from({length:PITCH_MAX-PITCH_MIN+1},(_,i)=>({
-    pitch:PITCH_MAX-i,soundId:null,label:pitchName(PITCH_MAX-i)
-   }));
+  const instrumentRows=pianoRollRows(inst,{
+   low:PITCH_MIN,high:PITCH_MAX,noteLabel:pitchName
+  });
   const plot=el("div","freeform-plot");plot.style.width=width+"px";
   const keyColumn=el("div","freeform-key-column");
   for(const rowData of instrumentRows){
-   const key=el("div","freeform-key",rowData.label);
-   if(rowData.pitch!==null)key.dataset.freeformPitch=String(rowData.pitch);
+   const {row:noteRow,label:key}=createPianoRollRow(rowData,{mode:"song"});
    keyColumn.append(key);
-   const noteRow=el("div","freeform-note-row");
    if(rowData.pitch!==null&&guide.mode!=="chromatic"){
     const inScale=isPitchInScaleAtStep(rowData.pitch,guide,inst.notes,viewStep());
     noteRow.classList.toggle("in-scale",inScale);
@@ -685,27 +682,27 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
     note.pitch===rowData.pitch:note.soundId===rowData.soundId);
    const stacks=layoutFreeformNoteRow(rowNotes);
    for(const note of rowNotes){
-    const visibleStart=Math.max(note.start,viewStep());
-    const visibleEnd=Math.min(note.start+note.duration,viewStep()+VIEW_BARS*16);
-    if(visibleEnd<=visibleStart)continue;
+    const visible=noteWindow(note,viewStep(),VIEW_BARS*BAR_STEPS,STEP_WIDTH);
+    if(!visible)continue;
     const position=stacks.get(note.id);
     let ignoreClick=false;
-    const n=action("",()=>{
+    const n=createPianoNoteSurface({className:"freeform-roll-note",onClick:()=>{
      if(ignoreClick)return;
      if(editingFreeformNoteEffects){selectedNoteId=note.id;render();return;}
      selectedNoteId=null;
      mutate(()=>{inst.notes=inst.notes.filter(item=>item.id!==note.id);});
-    },"freeform-roll-note");
+    }});
     n.title="note at bar "+(Math.floor(note.start/16)+1)+", step "+(note.start%16+1)+
      (position.voices>1?"; up to "+position.voices+" layered notes on this row":"")+
      (editingFreeformNoteEffects?"; click to edit effects":"; click to remove; right-click to edit");
     n.setAttribute("aria-label",n.title);
     n.dataset.noteId=note.id;
-    n.classList.toggle("selected",selectedNoteId===note.id);
-    n.classList.toggle("layered",position.voices>1);
-    n.classList.toggle("layer-overflow",position.overflow);
-    n.style.left=(visibleStart-viewStep())*STEP_WIDTH+"px";
-    n.style.width=Math.max(3,(visibleEnd-visibleStart)*STEP_WIDTH)+"px";
+    applyPianoNoteState(n,{
+     selected:selectedNoteId===note.id,layered:position.voices>1,
+     overflow:position.overflow
+    });
+    n.style.left=visible.left+"px";
+    n.style.width=visible.width+"px";
     if(position.voices>1){
      n.style.top=(2+position.slot*(position.voices===2?8:5))+"px";
      n.style.height=(position.voices===2?7:4)+"px";
