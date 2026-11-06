@@ -2043,6 +2043,18 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:soundIllustrations:dynamic-click:1",
+      "source": "soundIllustrations.js",
+      "anchor": "dynamic",
+      "kind": "listener",
+      "event": "click",
+      "desktopRoute": "soundIllustrations.js dynamic.click",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "sound",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:soundIllustrations:expand-click:1",
       "source": "soundIllustrations.js",
       "anchor": "expand",
