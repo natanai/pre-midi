@@ -961,8 +961,8 @@
         "framework": "tauri",
         "audio": "Default desktop playback/capture/render uses C++17/miniaudio for supported plans, explicit Web Audio alternative. An experimental opt-in Song page feeder now sends JS source pages to existing Rust/C++ stream commands; it is not the default, and editing/seek/loop/recording lifecycle and physical Windows 11 audio remain unqualified.",
         "version_source": "package.json",
-        "preview_version": "0.14.1-preview.19",
-        "qualification": "Exact-tag preview.19 Node/Chrome/native CI, Windows Server 2022 portable build/relocation/recovery and Pages deploy passed. Real Windows 11 WASAPI audio, microphone and user-facing streamed Song playback remain unqualified.",
+        "preview_version": "0.14.1-preview.20",
+        "qualification": "Preview.20 is a Windows portable field-test candidate with gated experimental JS-to-native Song paging. Exact-tag source/native and Windows portable CI must pass before publishing; physical Windows 11 WASAPI output/microphone and streamed Song editing/seek/loop remain unqualified. Historical preview.19 qualification remains independently valid.",
         "evidence": {
           "platform_ci": "https://github.com/natanai/pre-midi/actions/runs/40580528484",
           "browser_and_dsp_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635994",
@@ -971,7 +971,8 @@
           "published_preview_19": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.19",
           "latest_exact_tag_windows": "https://github.com/natanai/pre-midi/actions/runs/42087985416",
           "current_source_native_streaming_ci": "https://github.com/natanai/pre-midi/actions/runs/42096053203",
-          "current_source_windows_build_ci": "https://github.com/natanai/pre-midi/actions/runs/42096053213"
+          "current_source_windows_build_ci": "https://github.com/natanai/pre-midi/actions/runs/42096053213",
+          "preview_20_release_target": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.20"
         },
         "subtasks": [
           {
@@ -1323,8 +1324,8 @@
       "stage": "Experimental JavaScript Song feeder now implements opt-in source-window preparation, owner/revision protocol, native ACK lookahead, delay registration, bounded backpressure retries and visible cancellation; default native player still uses 600s/4096-onset Sessions. Full seek/loop/live edit/capture and physical Windows hardware remain open.",
       "shipping_limit_seconds": 600,
       "shipping_limit_onsets": 4096,
-      "preview_release": "v0.14.1-preview.19",
-      "release_qualifier": "Preview.19 predates #191/#192 and omits their C ABI/Rust additions",
+      "preview_release": "v0.14.1-preview.20",
+      "release_qualifier": "Preview.20 packages the developer-gated JS-to-native Song feeder for Windows 11 listening tests; normal production player still enforces 600s/4096 and the experimental path is not physically qualified.",
       "manual_windows_qualification": "not observed",
       "next_reference": "docs/song-stabilization-handoff-2026-11-05.md",
       "staged_js_bridge": {
