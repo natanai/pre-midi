@@ -1,6 +1,6 @@
 # Native Song onset paging: implementation and qualification contract
 
-Status: **bounded page compilation, real dynamic C++ Voice/sample ingestion (#187), cross-page delayed-onset/shared-effect continuity (#189), payload transport binder (#191), and actual miniaudio null-device C ABI/Rust actions (#192) verified. NOT yet end-user Song streaming: the JS feeder, edit/seek/loop integration and physical Windows 11 acceptance remain open.**
+Status: **bounded page compilation, real dynamic C++ Voice/sample ingestion (#187), cross-page delayed-onset/shared-effect continuity (#189), payload transport binder (#191), and miniaudio null-device C ABI/Rust actions (#192) verified. Experimental JS source/ACK feeder exists behind a developer-only opt-in, but default end-user Song streaming, full edit/seek/loop/capture lifecycle and physical Windows 11 acceptance remain open.**
 
 For the current exact-build, open-PR cleanup, release decision and remaining JS/Rust/device acceptance work, use [Song stabilization and handoff (2026-11-05)](song-stabilization-handoff-2026-11-05.md). The older preparation-only sections below are preserved as implementation history; #187/#189/#191 supersede the "not yet implemented" portions for the internal C++ mixer.
 
@@ -32,6 +32,12 @@ Do not remove the existing native preflight errors or mark a Windows portable bu
 `src/hosts/native/session.js` and `native/session.hpp` currently accept one immutable C++ Session for a playback cycle of at most 600 seconds and at most 4,096 note/voice onsets, subject to a 16 MiB encoded event-packet cap, per-render-block onset density, voice limits, and bounded oscillator/delay recipes. Playback over either limit must fail preflight explicitly; **never** silently route to Web Audio or increase constants as a shortcut.
 
 Window compilation alone does not bypass the single-session limit or make long Songs playable. Every window is still an unplayed preparation artifact until the remaining steps below have shipped.
+
+## JavaScript source-linked page publication milestone (staged, not enabled)
+
+`src/hosts/native/song-stream-page.js` now builds bounded, immutable native Song packets from the existing `renderEventsInWindow`, `nativePageDescriptorCursor`, `nativePlans` and frame-accurate `rebaseNativePlansToPage` functions. It also inventories shared synth/vocal delay recipes before the real-time stream begins and provides a revision-bound publisher that retries an identical packet when the Rust/C++ mailbox returns `accepted:false`. Failed assets, changed revisions, unregistered delay recipes, mismatched event counts and malformed ACK responses reject before further publication. `tests/nativeSongStreamPage.test.js` covers late (>600 s) rebasing, cross-platform effect precision, backpressure and failure ownership.
+
+**The source/packet layer is now exercised by an explicitly opted-in Tauri preview bridge, not by the default shipping Song player.** `audio.js::play` routes to `src/hosts/native/song-stream-control.js` only when the local developer flag `premidi-native-song-streaming=experimental` is set. The bridge performs owner/revision-bound begin → shared delay registration → three-page preload → native start, ACK-based lookahead, bounded backpressure retry, pause/resume, fault reporting and stop. Its tests use a simulated Rust action interface, not physical hardware. The default native path is unchanged. **Still open:** full revision-safe live edit/seek/loop reconstruction, microphone handoff, real-device queue starvation/fault recovery, physical WASAPI output and exported-project parity. The experimental bridge rejects unqualified features visibly and stops transport; it must not be offered as stable end-user functionality. The normal 600-second/4,096-onset preflight remains in force. Treat this as a checked intermediate engineering milestone, not end-user long-Song playback or permission to publish a new stable release.
 
 ## Required native host protocol before enabling pages
 

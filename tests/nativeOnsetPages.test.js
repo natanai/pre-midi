@@ -136,3 +136,14 @@ test("native page descriptor ownership and late frame numbers reject unsafe inpu
  song.bpm=121;
  assert.throws(()=>clock.next(),/invalidate the transport revision/);
 });
+
+test("the native Song page cursor never emits a negative zero first frame",()=>{
+ const song=createSong(create());
+ const cursor=nativePageDescriptorCursor(song,{
+  owner:11,revision:1,sampleRate:44100,getRevision:()=>1
+ });
+ const page=cursor.next();
+ assert.ok(page);
+ assert.equal(Object.is(page.descriptor.startFrame,-0),false);
+ assert.equal(page.descriptor.startFrame,0);
+});

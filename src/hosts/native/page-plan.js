@@ -7,7 +7,7 @@ export const nativeFrameAt=(seconds,sampleRate)=>{
  if(!Number.isFinite(seconds)||seconds<0||
     !Number.isInteger(sampleRate)||sampleRate<8000||sampleRate>192000)
   throw Error("Invalid native absolute-frame time or sample rate");
- const at=Math.ceil(seconds*sampleRate-1e-9);
+ const at=Math.max(0,Math.ceil(seconds*sampleRate-1e-9));
  if(!Number.isSafeInteger(at)||at<0)
   throw Error("Native absolute-frame counter exceeds the safe range");
  return at;

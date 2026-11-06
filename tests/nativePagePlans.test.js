@@ -103,3 +103,10 @@ test("Page voice transformations fail closed for stale, unsupported and overflow
  assert.throws(()=>rebaseNativePlanToPage({contract:"other"},0,rate),/Unsupported native voice/);
  assert.throws(()=>rebaseNativePlansToPage(Array(4097).fill(plan),0,rate),/4096/);
 });
+
+test("zero native Song frame is canonical positive zero",()=>{
+ for(const rate of [44100,48000,96000]){
+  assert.equal(Object.is(nativeFrameAt(0,rate),-0),false);
+  assert.equal(nativeFrameAt(0,rate),0);
+ }
+});

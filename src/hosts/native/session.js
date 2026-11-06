@@ -10,6 +10,9 @@ import {encodeNativeSample,planNativeSample,planNativeVocal} from './sample-plan
 export const nativeEnabled=()=>!!globalThis.__TAURI__?.core?.invoke&&(localStorage.getItem('premidi-audio-backend')||'native')==='native';
 export const nativeRequest=request=>globalThis.__TAURI__.core.invoke('native_audio',{request});
 let transportEpoch=0;
+// Shared by the bounded player and the opt-in native Song page feeder.
+export const claimNativeTransportEpoch=()=>++transportEpoch;
+export const nativeTransportEpochCurrent=epoch=>epoch===transportEpoch;
 export async function cancelNativeTransport(){transportEpoch++;return nativeRequest({action:'control',command:1,looping:false,owner:null});}
 export function unsupportedNativeFeatures(patch){
  if(!['synth','sample'].includes(patch?.type))return ['unknown sound type'];

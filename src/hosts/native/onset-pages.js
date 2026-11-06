@@ -64,7 +64,7 @@ export function nativePageDescriptorCursor(song,{
  if(getRevision()!==revision)
   throw Error("Song changed during native page preparation; invalidate the transport revision.");
  const sourceBpm=song.bpm,unit=60/sourceBpm/4,frameAt=step=>{
-  const frames=Math.ceil(step*unit*sampleRate-1e-9);
+  const frames=Math.max(0,Math.ceil(step*unit*sampleRate-1e-9));
   if(!Number.isSafeInteger(frames)||frames<0)
    throw Error("Native Song page frame is outside the safe transport range.");
   return frames;
