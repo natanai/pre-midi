@@ -21,9 +21,21 @@ export function installAudioSettings(list,{element,prompt,menu}){
  for(const value of [0,128,256,512,1024]){const option=element('option',value?value+' frames':'automatic');option.value=value;buffer.append(option);}
  let saved;try{saved=JSON.parse(localStorage.getItem('premidi-native-output')||'null');}catch{}
  rate.value=String(saved?.rate??0);buffer.value=String(saved?.buffer??0);rateLabel.append(rate);bufferLabel.append(buffer);
+ const streamLabel=element('label',' test long Song streaming (experimental) '),streaming=element('input');
+ streaming.type='checkbox';streaming.setAttribute('aria-label','test long Song streaming (experimental)');
+ streaming.checked=localStorage.getItem('premidi-native-song-streaming')==='experimental';
+ streaming.title='Windows native preview only: start at the first bar with loop off; no synchronized recording, seeking or live edits yet';
+ streamLabel.prepend(streaming);
+ const streamHelp=element('p','test only · native Song from the beginning · turn loop off · seeking, recording and live edits will stop playback');
+ streamHelp.style.margin='3px 0 8px';streamHelp.style.maxWidth='33rem';
+ streaming.onchange=()=>{
+  // Switching the native Song engine during transport requires a new owner.
+  window.dispatchEvent(new Event('premidi-audio-mode'));
+  localStorage.setItem('premidi-native-song-streaming',streaming.checked?'experimental':'off');
+ };
  const performance=element('output');performance.id='native-audio-performance';performance.style.whiteSpace='pre-wrap';
  performance.title='render CPU and deadline misses describe our callback; driver underruns and physical output latency require hardware measurement';
- advanced.append(rateLabel,bufferLabel,offsetLabel,performance);list.append(label,outputLabel,refresh,reconnect,advanced);
+ advanced.append(rateLabel,bufferLabel,offsetLabel,streamLabel,streamHelp,performance);list.append(label,outputLabel,refresh,reconnect,advanced);
  const pause=document.getElementById('native-pause');pause.onclick=()=>window.dispatchEvent(new Event('premidi-native-pause'));
  let devices=[],busy=false;
  function visibility(){const native=engine.value==='native';outputLabel.hidden=refresh.hidden=advanced.hidden=pause.hidden=!native;if(!native)reconnect.hidden=true;}
