@@ -1,6 +1,6 @@
 # Native Song onset paging: implementation and qualification contract
 
-Status: **bounded page compilation, real dynamic C++ Voice/sample ingestion (#187), cross-page delayed-onset/shared-effect continuity (#189), payload transport binder (#191), and actual miniaudio null-device C ABI/Rust actions (#192) verified. NOT yet end-user Song streaming: the JS feeder, edit/seek/loop integration and physical Windows 11 acceptance remain open.**
+Status: **bounded page compilation, real dynamic C++ Voice/sample ingestion (#187), cross-page delayed-onset/shared-effect continuity (#189), payload transport binder (#191), and miniaudio null-device C ABI/Rust actions (#192) verified. Experimental JS source/ACK feeder exists behind a developer-only opt-in, but default end-user Song streaming, full edit/seek/loop/capture lifecycle and physical Windows 11 acceptance remain open.**
 
 For the current exact-build, open-PR cleanup, release decision and remaining JS/Rust/device acceptance work, use [Song stabilization and handoff (2026-11-05)](song-stabilization-handoff-2026-11-05.md). The older preparation-only sections below are preserved as implementation history; #187/#189/#191 supersede the "not yet implemented" portions for the internal C++ mixer.
 
