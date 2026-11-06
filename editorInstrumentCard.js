@@ -18,3 +18,41 @@ export function createInstrumentCard(instrument,{selected=false,accent=null,onSe
  if(onSelect)card.addEventListener("click",onSelect);
  return card;
 }
+
+
+// Beat and Song-time freeform use one Instrument context-menu DOM and
+// interaction lifecycle. Hosts provide actions and own musical undo.
+export function createInstrumentActionMenu({
+ label,actions=[],menuClass="",listClass="",groupLabel="",title=""
+}={}){
+ if(!label)throw Error("Instrument menu needs an accessible label.");
+ const menu=document.createElement("details");
+ menu.className=["entity-actions","instrument-actions",menuClass].filter(Boolean).join(" ");
+ const summary=document.createElement("summary");
+ summary.textContent="⋯";
+ summary.setAttribute("aria-label",label);
+ summary.title=title||label;
+ const list=document.createElement("div");
+ list.className=["entity-action-list",listClass].filter(Boolean).join(" ");
+ if(groupLabel){
+  list.setAttribute("role","group");
+  list.setAttribute("aria-label",groupLabel);
+ }
+ for(const action of actions){
+  if(!action?.label||typeof action.run!=="function")
+   throw Error("Instrument action requires a label and callback.");
+  const button=document.createElement("button");
+  button.type="button";
+  button.textContent=action.label;
+  button.className=[action.danger?"danger":"",action.className||""].filter(Boolean).join(" ");
+  button.disabled=!!action.disabled;
+  if(action.title)button.title=action.title;
+  button.addEventListener("click",()=>{
+   menu.open=false;
+   action.run();
+  });
+  list.append(button);
+ }
+ menu.append(summary,list);
+ return menu;
+}
