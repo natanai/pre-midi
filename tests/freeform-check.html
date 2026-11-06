@@ -35,6 +35,46 @@
   assert(add,"Add freeform Instrument control exists");
   add.click();
   await wait(()=>doc.querySelector(".freeform-roll-content"),"Freeform piano roll available");
+  // Freeform must occupy the same lower workspace as Beat, not a scroller
+  // inside the height-capped Song arranger.
+  const freeform=doc.querySelector(".song-freeform-editor");
+  assert(freeform.parentElement===doc.querySelector("main"),
+   "Freeform mounts directly in main beside the Beat editor");
+  assert(!get("song-panel").contains(freeform),"Song arranger never encloses freeform");
+  assert(!!freeform.querySelector(".freeform-instrument-pane")&&
+   !!freeform.querySelector(".freeform-note-work")&&
+   !!freeform.querySelector(".freeform-sound-pane"),
+   "Freeform has Beat-style instrument, note and Sound workspaces");
+  const pianoToggle=freeform.querySelector(".freeform-piano-tools .piano-keys-toggle");
+  assert(pianoToggle?.getAttribute("aria-pressed")==="true"&&
+   !!freeform.querySelector(".freeform-roll-content .piano-keys-overlay"),
+   "Freeform uses the shared Beat piano keyboard overlay");
+  pianoToggle.click();
+  assert(!freeform.querySelector(".freeform-roll-content .piano-keys-overlay"),
+   "Shared keyboard toggle switches to note labels");
+  pianoToggle.click();
+  assert(!!freeform.querySelector(".freeform-roll-content .piano-keys-overlay"),
+   "Shared keyboard toggle restores piano keys");
+  const qwerty=freeform.querySelector(".freeform-piano-tools [aria-label='play with QWERTY keyboard']");
+  assert(qwerty,"Freeform offers the Beat QWERTY performance controller");
+  qwerty.click();
+  assert(qwerty.getAttribute("aria-pressed")==="true","Freeform QWERTY keyboard activates");
+  doc.dispatchEvent(new KeyboardEvent("keydown",{code:"Escape",key:"Escape",bubbles:true,cancelable:true}));
+  assert(qwerty.getAttribute("aria-pressed")==="false","Escape exits freeform QWERTY mode");
+  const scale=freeform.querySelector(".freeform-scale-controls");
+  const [scaleRoot,scaleMode]=scale.querySelectorAll("select");
+  const scaleLock=scale.querySelector('input[type="checkbox"]');
+  assert(scaleRoot&&scaleMode&&scaleLock,"Freeform has identical key, scale and lock controls");
+  scaleRoot.value="0";
+  scaleMode.value="major";
+  scaleMode.dispatchEvent(new Event("change",{bubbles:true}));
+  scaleLock.checked=true;
+  scaleLock.dispatchEvent(new Event("change",{bubbles:true}));
+  const blocked=[...doc.querySelectorAll(".freeform-note-row")]
+   .find(r=>(r.getAttribute("aria-label")||"").includes("pitch 61 "));
+  blocked.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));
+  assert(doc.querySelectorAll(".freeform-roll-note").length===0,
+   "Scale lock prevents adding out-of-scale Song notes");
   const row=[...doc.querySelectorAll(".freeform-note-row")].find(r=>(r.getAttribute("aria-label")||"").includes("pitch 60 "));
   assert(row,"C4 has an editable Song row");
   row.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));
