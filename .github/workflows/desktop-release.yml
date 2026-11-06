@@ -153,8 +153,15 @@ jobs:
             ${{ runner.temp }}/premidi*smoke.json
             desktop/Cargo.lock
           if-no-files-found: error
+  audio-qualification:
+    name: Exact-commit source, browser and native audio verification
+    needs: source
+    if: needs.source.outputs.publish == 'true'
+    uses: ./.github/workflows/verify.yml
+    permissions:
+      contents: read
   publish:
-    needs: [source, build]
+    needs: [source, build, audio-qualification]
     if: needs.source.outputs.publish == 'true'
     runs-on: ubuntu-22.04
     permissions:
