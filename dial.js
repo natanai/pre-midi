@@ -246,11 +246,15 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
  const control=document.createElement("div");control.className="dial-field";
  const title=document.createElement("span");title.className="dial-label";
  const name=document.createElement("span");name.textContent=field.label.toLowerCase();title.append(name);
- const explanation=field.disabled&&field.disabledReason?
-  field.disabledReason.toLowerCase().replace(/[.!]+$/,""):(field.help??helpForLabel(field.label));
+ // Inactive means an editable setting has no audible effect until another
+ // control changes; disabled means the current context forbids editing it.
+ // Both states must explain the cause without relying on hover alone.
+ const activityReason=field.inactiveReason??(field.disabled?field.disabledReason:null);
+ const explanation=activityReason??field.help??helpForLabel(field.label);
  explainLabel(name,field.label,explanation);
  const knob=document.createElement("div");knob.className="dial-knob";
- knob.tabIndex=field.disabled?-1:0;knob.setAttribute("role","slider");
+ knob.tabIndex=0;knob.setAttribute("role","slider");
+ if(field.inactiveReason)control.classList.add("dial-inactive");
  if(field.disabled){control.classList.add("dial-disabled");knob.setAttribute("aria-disabled","true");}
  knob.setAttribute("aria-label",field.label);
  if(explanation)knob.setAttribute("aria-description",explanation);
@@ -340,7 +344,13 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
   const next=fromFraction(fraction(reset,field),field);
   if(current!==next){update(next,true);onCommit(next);}
  });
- if(field.disabled&&field.disabledReason)knob.setAttribute("aria-description",field.disabledReason);
  control.append(title,knob,output);
+ if(activityReason){
+  const note=document.createElement("span");
+  note.className="dial-state-reason";
+  note.textContent=field.inactiveLabel??field.disabledLabel??activityReason;
+  control.append(note);
+ }
+
  return control;
 }
