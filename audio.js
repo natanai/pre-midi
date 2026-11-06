@@ -18,6 +18,7 @@ import {planSynthVoice,noteFrequency,extendedSynthExecution} from "./src/dsp/syn
 import {attachModulation} from "./src/hosts/web/modulation.js";
 import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
 import {nativeEnabled,auditionNative,playNative,renderNative,nativeRequest,prepareNativeAssets,nativeRequiredAssets,nativePlans} from "./src/hosts/native/session.js";
+import {playNativeSongStreamExperimental} from "./src/hosts/native/song-stream-control.js";
 export {nativeEnabled,cancelNativeTransport} from './src/hosts/native/session.js';
 // Canonical plans are shared by native desktop playback and the web adapter.
 // Everything audible comes from the resolved sound patch stored in the beat.
@@ -255,6 +256,18 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  if(nativeEnabled()){
   const read=typeof beat==='function'?beat:()=>beat,document=read();
   const prepare=document=>({...document,nativeLengthSteps:document.kind==='song'?songDurationSteps(document):document.bars*16});
+  // Hidden developer opt-in only. Keep the bounded production native transport
+  // and its 600s/4096-onset guard as the default until stream lifecycle/hardware
+  // qualification is complete. No fallback to Web Audio is allowed.
+  if(document.kind==="song"&&
+     localStorage.getItem("premidi-native-song-streaming")==="experimental"){
+   const handle=await playNativeSongStreamExperimental(document,{
+    renderWindow:renderEventsInWindow,getRevision,loop,onPosition,onProgress,
+    onStop,onStart,startStep,countIn,recording
+   });
+   handle.refresh=()=>handle.update(read());
+   return handle;
+  }
   checkAudioTimelineLength(document);
   const handle=await playNative(prepare(document),renderEvents(document,{maxEvents:4096}),{loop,onPosition,onProgress,onStop,onStart,startStep,countIn,recording,onCountIn});
   handle.refresh=()=>{const next=read();checkAudioTimelineLength(next);
