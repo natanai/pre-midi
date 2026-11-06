@@ -1023,6 +1023,42 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:freeformUI:scalelock-change:1",
+      "source": "freeformUI.js",
+      "anchor": "scaleLock",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "freeformUI.js scaleLock.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:freeformUI:scalemode-change:1",
+      "source": "freeformUI.js",
+      "anchor": "scaleMode",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "freeformUI.js scaleMode.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:freeformUI:scaleroot-change:1",
+      "source": "freeformUI.js",
+      "anchor": "scaleRoot",
+      "kind": "listener",
+      "event": "change",
+      "desktopRoute": "freeformUI.js scaleRoot.change",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "song",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:freeformUI:select-change:1",
       "source": "freeformUI.js",
       "anchor": "select",
@@ -2711,18 +2747,6 @@
       "desktopRoute": "studio.js $(\"instrument-name\").change",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "notes/instrument-sheet",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:studio:key-click:1",
-      "source": "studio.js",
-      "anchor": "key",
-      "kind": "listener",
-      "event": "click",
-      "desktopRoute": "studio.js key.click",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "notes",
       "phoneStatus": "todo",
       "proof": "not-qualified"
     },

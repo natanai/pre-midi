@@ -21,6 +21,18 @@ This is the Song-specific historical rollout and integration plan; the active sy
 - A single Song clock drives Song and freeform piano-roll views. Zoom and scroll are independent. Optional playback-follow yields to manual navigation. Pitched keys can illuminate when sounding.
 - Editing the source Beat updates only linked Beat Clips, not already unpacked material. Every transform is undoable and round-trips through a versioned .premidi schema.
 
+### Shared Beat/freeform editor requirement (approved 2026-11-05)
+
+**Decision:** Selecting an attached freeform lane must use the established lower Beat editing workspace, not an independent reduced-feature editor clipped into the Song panel. The parent Song Track and its timeline remain visible; freeform notes continue to use absolute Song step positions, independent of Beat Chunk loop phase. Preserve the attached lane and existing Song .premidi format, source-linking, native transport and Song-scoped undo. Do not convert freeform to an ordinary Beat just to reuse its UI.
+
+**Implemented in PR #197, pending qualification:** The Song freeform panel mounts alongside the Beat workspace instead of inside the scroll-limited arranger. Beat/freeform use one piano-key renderer and scale selector population, the existing keyboard-performance controller, and the same stored keyboard toggle. Freeform gains key, scale, and lock settings, with freeform guide preferences scoped by Track ID. A split instrument/note/Sound workspace replaces the old nested panel and adds Chrome regression assertions for keyboard, scale lock, and its location. This work preserves freeform's independent notes, Chunks and Sound Inspector but **does not yet unify the actual note grid and all gestures**, nor does it establish physical Windows acceptance.
+
+**Still required before calling this parity complete:**
+- Extract a single note/rack rendering and gesture contract behind Beat or Song-time context adapters; retire the separate note-grid assemblies in studio.js and freeformUI.js after both modes pass selection, one-gesture drawing, click removal, drag/move, end resizing, layered-note selection, note effects, keyboard audition, scale guidance, and sustained notes.
+- Share Instrument card/list presentation and contextual actions, not merely Sound Inspector internals; keep all freeform-only actions (unpack, move passage, reusable Chunks, make Beat from selection) accessible without cluttering the primary note surface.
+- Qualify high-density and wide-window freeform note rolls with persistent vertical/horizontal position, no clipped controls or nested page scrollbar; qualify Chrome at 1440, 1024, 780 widths and native Windows 11 with keyboard, sample/rack, automation and Song playback.
+- Do not raise the historical 93% planning estimate solely for component extraction or pass a release gate without user-observed testing.
+
 ### Desktop Song/freeform completion checkpoint (2026-11-04)
 
 **Overall estimate: 93% (after PRs #169, #172, #173, #175, #177, #179, #180, #183, #184 and #185).** This is an equal-weight average across the seven categories inherited from the earlier implementation scorecard, rounded to the nearest percentage point. It is **not** a percentage of passing tests or a claim of physical Windows 11 acceptance. The scope here is the desktop browser and native Windows Song/freeform rollout only; phone parity, the separate vocal-completion roadmap, and the pre-programmed game-side player are excluded.

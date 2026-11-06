@@ -10,7 +10,7 @@
  const wait=async(predicate,label,limit=5000)=>{
   const deadline=Date.now()+limit;
   while(Date.now()<deadline){if(predicate())return;await pause(30);}
-  throw Error("Timed out: "+label);
+  throw Error("Timed out: "+label+"; startup errors: "+JSON.stringify({errors:frame.contentWindow?.__testBootErrors||[],resources:frame.contentWindow?.performance?.getEntriesByType("resource")?.slice(-12).map(e=>({name:e.name,status:e.responseStatus})),stage:frame.contentDocument?.readyState}));
  };
  const report=(status,detail)=>fetch("/__song_result?status="+status+"&details="+encodeURIComponent(detail)).catch(()=>{});
  try{
