@@ -2,7 +2,7 @@
 // Reuse the canonical selection operation, Beat Sound schema and factory
 // assets. No new preset format or alternate synthesis state is introduced.
 import {clone,makeInstrument,makeSound} from "./schema.js";
-import {addFreeformInstrument} from "./freeformModel.js";
+import {addFreeformInstrument,sourceForFreeformInstrument,resolveFreeformInstrument,synchronizeLinkedFreeform} from "./freeformModel.js";
 import {selectionOperation,referencedSampleIds,MAX_SOUNDS} from "./soundModel.js";
 
 const safeName=name=>{
@@ -16,7 +16,7 @@ const referenced=patch=>patch?.type==="sample"?
  patch.zones.map(zone=>zone.assetId):[];
 
 export function applyFreeformPreset(layer,selection,{
- name,patch,trigger,assets=[],rackSounds=null,settings=null
+ name,patch,trigger,assets=[],rackSounds=null,settings=null,song=null
 }={}){
  if(!layer||!Array.isArray(layer.instruments)||!Array.isArray(layer.samples))
   throw Error("Open a freeform Song lane first.");
@@ -25,7 +25,9 @@ export function applyFreeformPreset(layer,selection,{
  if(!["hit","pitched"].includes(trigger))throw Error("Invalid Sound trigger.");
  if(!patch||!Array.isArray(assets))throw Error("Choose a complete Sound preset.");
  const label=safeName(name);
- const target=layer.instruments.find(item=>item.id===selection.instrumentId);
+ const stored=layer.instruments.find(item=>item.id===selection.instrumentId);
+ const linked=song&&sourceForFreeformInstrument(song,stored);
+ const target=linked?resolveFreeformInstrument(song,stored,{editable:true}):stored;
  if(selection.mode!=="add"&&!target)throw Error("This freeform Instrument no longer exists.");
  const row=target?.sounds.find(item=>item.id===selection.soundId);
  if(selection.mode==="replace-row"&&(!row||target.layout!=="rack"))
@@ -36,6 +38,8 @@ export function applyFreeformPreset(layer,selection,{
   selectionOperation(target?.layout,trigger,selection.mode==="add");
  if(operation==="append-rack"&&target.sounds.length>=MAX_SOUNDS)
   throw Error("This Rack already contains 64 Sounds.");
+ if(linked&&operation.startsWith("create-"))
+  throw Error("Add Instruments in the original Beat so its attached freeform uses the same Sound.");
  if(operation.startsWith("create-")&&layer.instruments.length>=64)
   throw Error("This freeform lane already contains 64 Instruments.");
  if(operation==="replace-pitched"&&patch.type!=="synth"&&hasCutoffMovement(target))
@@ -90,6 +94,7 @@ export function applyFreeformPreset(layer,selection,{
    if(settings?.volume!==undefined)target.volume=settings.volume;
   }
  }
+ if(linked)synchronizeLinkedFreeform(song);
  const needed=referencedSampleIds(layer.instruments);
  layer.samples=layer.samples.filter(asset=>needed.has(asset.id));
  return {operation,instrumentId:resultInstrument.id,soundId:resultSound.id};
