@@ -65,6 +65,10 @@ try{
   "The overlapped notes show distinct stacked visual lanes");
  assert(notes[0].style.top!==notes[1].style.top,
   "Simultaneous voices must not paint directly over each other");
+ const noteMode=root.querySelector(".freeform-note-mode");
+ assert(noteMode&&noteMode.getAttribute("aria-pressed")==="false",
+  "Freeform note effects are selected explicitly, as in Beat");
+ noteMode.click();
  notes[0].click();
  const choice=root.querySelector('select[aria-label="Choose overlapping freeform note"]');
  assert(choice&&choice.options.length===2,
