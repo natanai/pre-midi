@@ -101,7 +101,9 @@ test("guitar dynamics and reachable low-string notes are exposed in the original
  assert.match(studio,/velocity:DEFAULT_NOTE_LEVEL/);
  assert.match(studio,/duplicateChunk\(chunk.id\)/);
  assert.match(studio,/createChunk\(\)/);
- assert.match(studio,/pitch >= 36/);
+ assert.match(studio,/pianoRollRows\(inst,\{low:36,high:83,noteLabel\}\)/);
+ assert.match(readFileSync(new URL("../editorPianoRoll.js",import.meta.url),"utf8"),
+  /high-i/);
 });
 
 test("an opened Sound inspector exposes full controls without a compact mode",()=>{
