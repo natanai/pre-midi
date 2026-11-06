@@ -19,6 +19,7 @@
     "microphoneUI.js",
     "keyboardPiano.js",
     "pianoNoteGesture.js",
+    "editorInstrumentCard.js",
     "dial.js",
     "desktopAudioUI.js",
     "desktopUI.js",
@@ -468,6 +469,18 @@
       "desktopRoute": "dragNumber.js input.pointerdown",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "notes",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:editorInstrumentCard:card-click:1",
+      "source": "editorInstrumentCard.js",
+      "anchor": "card",
+      "kind": "listener",
+      "event": "click",
+      "desktopRoute": "editorInstrumentCard.js card.click",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "notes/instrument-sheet",
       "phoneStatus": "todo",
       "proof": "not-qualified"
     },
@@ -928,18 +941,6 @@
       "proof": "not-qualified"
     },
     {
-      "id": "event:freeformUI:picker-change:1",
-      "source": "freeformUI.js",
-      "anchor": "picker",
-      "kind": "listener",
-      "event": "change",
-      "desktopRoute": "freeformUI.js picker.change",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "song",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
       "id": "event:freeformUI:placementchoice-change:1",
       "source": "freeformUI.js",
       "anchor": "placementChoice",
@@ -994,18 +995,6 @@
       "kind": "listener",
       "event": "change",
       "desktopRoute": "freeformUI.js select.change",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "song",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:freeformUI:sourcename-change:1",
-      "source": "freeformUI.js",
-      "anchor": "sourceName",
-      "kind": "listener",
-      "event": "change",
-      "desktopRoute": "freeformUI.js sourceName.change",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "song",
       "phoneStatus": "todo",
