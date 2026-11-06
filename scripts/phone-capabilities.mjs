@@ -19,6 +19,7 @@ const SOURCE_FILES=[
  "microphoneUI.js",
  "keyboardPiano.js",
  "pianoNoteGesture.js",
+ "editorInstrumentCard.js",
  "dial.js",
  "desktopAudioUI.js",
  "desktopUI.js",
@@ -33,6 +34,7 @@ function buildInventory(sources){
   const k=(path+" "+id).toLowerCase();
   if(path==="desktopUI.js"||path==="desktopAudioUI.js")return "settings/host-equivalent";
   if(path==="keyboardPiano.js")return "notes/external-keyboard";
+  if(path==="editorInstrumentCard.js")return "notes/instrument-sheet";
   if(path==="songUI.js"||path==="freeformUI.js"||path==="vocalEditor.js"||path==="audioWaveform.js"||/\b(song|voice|vocal|clip|track)\b/.test(k))return "song";
   if(path==="microphoneUI.js"||/\b(mic|record|sample|sampling)\b/.test(k))return "sound/recording";
   if(["instrumentUI.js","samplerUI.js","audioControlUI.js","modulationUI.js","automationUI.js","soundIllustrations.js","soundScope.js","dial.js"].includes(path))return "sound";

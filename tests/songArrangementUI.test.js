@@ -239,3 +239,15 @@ test("attached freeform Rack offers Sound-row reordering through Song undo",()=>
  assert.match(entities,/export function moveRackSoundRow/);
  assert.match(editor,/mutateSelected\(\(\{inst,sound\}\)=>/);
 });
+
+
+test("Beat and Song-time freeform share canonical Instrument cards",()=>{
+ const beat=read("studio.js"),freeform=read("freeformUI.js"),
+  card=read("editorInstrumentCard.js");
+ assert.match(beat,/createInstrumentCard\(inst,\{/);
+ assert.match(freeform,/createInstrumentCard\(option,\{/);
+ assert.match(card,/card\.setAttribute\("aria-pressed",String\(selected\)\)/);
+ assert.match(card,/instrument\.sounds\.length\+" sounds"/);
+ assert.doesNotMatch(freeform,/const picker=el\("select"\)/);
+ assert.match(freeform,/activeEntry\?\.append\(menu\)/);
+});

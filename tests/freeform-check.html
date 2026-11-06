@@ -175,10 +175,11 @@
   await wait(()=>doc.querySelectorAll(".song-beat-clip").length===0,"Beat Clip replaced by freeform");
   assert(doc.querySelectorAll(".song-freeform-passage").length===1,"Converted passage remains attached");
   assert(doc.querySelectorAll(".song-freeform-preview-note").length>=2,"Original and direct note are independent");
-  const picker=doc.querySelector(".freeform-editor-tools select");
-  assert(picker&&picker.options.length===2,"Both Instruments remain available in freeform");
-  picker.value=picker.options[1].value;
-  picker.dispatchEvent(new Event("change",{bubbles:true}));
+  const instrumentCards=[...doc.querySelectorAll(".freeform-instrument-list .instrument-card")];
+  assert(instrumentCards.length===2,"Both Song Instruments use the shared Beat cards");
+  instrumentCards[1].click();
+  assert(doc.querySelector('.freeform-instrument-list .instrument-card[aria-pressed="true"]')?.textContent===
+   instrumentCards[1].textContent,"Clicking a Song Instrument card selects it");
   await wait(()=>doc.querySelectorAll(".freeform-roll-note").length>0,"Unpacked source notes editable");
   const madeCount=doc.querySelectorAll(".song-beat-clip").length;
   const create=doc.querySelector(".freeform-create-beat");
