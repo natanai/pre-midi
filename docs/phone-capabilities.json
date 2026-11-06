@@ -20,6 +20,7 @@
     "keyboardPiano.js",
     "pianoNoteGesture.js",
     "editorInstrumentCard.js",
+    "editorPianoRoll.js",
     "dial.js",
     "desktopAudioUI.js",
     "desktopUI.js",
@@ -481,6 +482,30 @@
       "desktopRoute": "editorInstrumentCard.js card.click",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "notes/instrument-sheet",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:editorPianoRoll:label-click:1",
+      "source": "editorPianoRoll.js",
+      "anchor": "label",
+      "kind": "listener",
+      "event": "click",
+      "desktopRoute": "editorPianoRoll.js label.click",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "notes",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
+      "id": "event:editorPianoRoll:surface-click:1",
+      "source": "editorPianoRoll.js",
+      "anchor": "surface",
+      "kind": "listener",
+      "event": "click",
+      "desktopRoute": "editorPianoRoll.js surface.click",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "notes",
       "phoneStatus": "todo",
       "proof": "not-qualified"
     },
@@ -2665,18 +2690,6 @@
       "desktopRoute": "studio.js $(\"instrument-name\").change",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "notes/instrument-sheet",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:studio:label-click:1",
-      "source": "studio.js",
-      "anchor": "label",
-      "kind": "listener",
-      "event": "click",
-      "desktopRoute": "studio.js label.click",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "notes",
       "phoneStatus": "todo",
       "proof": "not-qualified"
     },
