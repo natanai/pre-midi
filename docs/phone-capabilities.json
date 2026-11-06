@@ -474,6 +474,18 @@
       "proof": "not-qualified"
     },
     {
+      "id": "event:editorInstrumentCard:button-click:1",
+      "source": "editorInstrumentCard.js",
+      "anchor": "button",
+      "kind": "listener",
+      "event": "click",
+      "desktopRoute": "editorInstrumentCard.js button.click",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "notes/instrument-sheet",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "event:editorInstrumentCard:card-click:1",
       "source": "editorInstrumentCard.js",
       "anchor": "card",
