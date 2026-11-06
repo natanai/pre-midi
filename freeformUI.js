@@ -661,6 +661,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
      (position.voices>1?"; up to "+position.voices+" layered notes on this row":"")+
      (editingFreeformNoteEffects?"; click to edit effects":"; click to remove; right-click to edit");
     n.setAttribute("aria-label",n.title);
+    n.dataset.noteId=note.id;
     n.classList.toggle("selected",selectedNoteId===note.id);
     n.classList.toggle("layered",position.voices>1);
     n.classList.toggle("layer-overflow",position.overflow);
