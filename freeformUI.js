@@ -13,6 +13,7 @@ import {overlappingFreeformNotes,layoutFreeformNoteRow} from "./freeformLayerUIM
 import {createFreeformNoteCutoff,editFreeformNoteCutoff} from "./freeformNoteAutomation.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
+import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {installKeyboardPiano,pitchName} from "./keyboardPiano.js";
 import {normalizeScaleGuide,isPitchInScaleAtStep} from "./scaleGuide.js";
 import {audition,auditionHeld} from "./audio.js";
@@ -55,7 +56,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
  else root.append(panel);
  let activeTrackId=null,activeInstrumentId=null,selectedNoteId=null,selectedPlacementId=null,barStart=0,playStep=null;
  let selectionStartStep=0,selectionLengthSteps=16,followPlayback=false;
- let editorScrollTop=null,editorScrollLeft=null;
+ let editorScrollTop=null,editorScrollLeft=null,editingFreeformNoteEffects=false;
  const track=()=>getSong()?.tracks.find(item=>item.kind==="beat"&&item.id===activeTrackId);
  const layer=()=>track()?.freeform;
  const instrument=()=>layer()?.instruments.find(item=>item.id===activeInstrumentId)||layer()?.instruments[0];
@@ -67,10 +68,16 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   render();
  },"piano-keys-toggle");
  keysToggle.setAttribute("aria-label","show piano keys");
+ const noteModeToggle=action("✎",()=>{
+  editingFreeformNoteEffects=!editingFreeformNoteEffects;
+  if(!editingFreeformNoteEffects)selectedNoteId=null;
+  render();
+ },"freeform-note-mode");
+ noteModeToggle.setAttribute("aria-label","edit note effects");
  const qwertyToggle=el("button","piano-keys-toggle","⌨");
  qwertyToggle.type="button";
  qwertyToggle.setAttribute("aria-label","play with QWERTY keyboard");
- pianoTools.append(keysToggle,qwertyToggle);
+ pianoTools.append(keysToggle,qwertyToggle,noteModeToggle);
  const scales=el("div","scale-controls freeform-scale-controls");
  const scaleRoot=el("select"),scaleMode=el("select");
  populateScaleSelectors(scaleRoot,scaleMode);
@@ -119,7 +126,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
  function close(){
   const wasActive=activeTrackId!==null;
   activeTrackId=null;activeInstrumentId=null;selectedNoteId=null;selectedPlacementId=null;
-  keyboardPiano.stop();panel.hidden=true;panel.replaceChildren();if(wasActive)onActiveChange(false);
+  keyboardPiano.stop();editingFreeformNoteEffects=false;panel.hidden=true;panel.replaceChildren();if(wasActive)onActiveChange(false);
  }
  function open(trackId,passageId=null){
   const chosen=getSong()?.tracks.find(item=>item.kind==="beat"&&item.id===trackId);
@@ -521,6 +528,10 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   scales.hidden=inst.layout==="rack";
   pianoTools.hidden=inst.layout==="rack";
   if(inst.layout==="rack")keyboardPiano.stop();
+  noteModeToggle.setAttribute("aria-pressed",String(editingFreeformNoteEffects));
+  noteModeToggle.setAttribute("aria-label",
+   editingFreeformNoteEffects?"finish editing note effects":"edit note effects");
+  noteModeToggle.title=editingFreeformNoteEffects?"finish editing note effects":"edit note effects";
   keysToggle.setAttribute("aria-pressed",String(getShowPianoKeys()));
   keysToggle.title=getShowPianoKeys()?"show note names":"show piano keys";
   roll.replaceChildren();
@@ -639,10 +650,17 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
     const visibleEnd=Math.min(note.start+note.duration,viewStep()+VIEW_BARS*16);
     if(visibleEnd<=visibleStart)continue;
     const position=stacks.get(note.id);
-    const n=action("",()=>{selectedNoteId=note.id;render();},"freeform-roll-note");
+    let ignoreClick=false;
+    const n=action("",()=>{
+     if(ignoreClick)return;
+     if(editingFreeformNoteEffects){selectedNoteId=note.id;render();return;}
+     selectedNoteId=null;
+     mutate(()=>{inst.notes=inst.notes.filter(item=>item.id!==note.id);});
+    },"freeform-roll-note");
     n.title="note at bar "+(Math.floor(note.start/16)+1)+", step "+(note.start%16+1)+
-     (position.voices>1?"; up to "+position.voices+" layered notes on this row":"");
-    n.setAttribute("aria-label",n.title+"; select to edit");
+     (position.voices>1?"; up to "+position.voices+" layered notes on this row":"")+
+     (editingFreeformNoteEffects?"; click to edit effects":"; click to remove; right-click to edit");
+    n.setAttribute("aria-label",n.title);
     n.classList.toggle("selected",selectedNoteId===note.id);
     n.classList.toggle("layered",position.voices>1);
     n.classList.toggle("layer-overflow",position.overflow);
@@ -653,54 +671,97 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
      n.style.height=(position.voices===2?7:4)+"px";
      n.style.zIndex=String(note.id===selectedNoteId?9:position.slot+2);
     }
-    n.addEventListener("pointerdown",event=>{
-     if(event.button!==0)return;event.stopPropagation();
-     const firstX=event.clientX,firstY=event.clientY;
-     const oldStart=note.start,oldPitch=note.pitch;
-     let moved=false;
-     n.setPointerCapture(event.pointerId);
-     const drag=e=>{
-      if(e.pointerId!==event.pointerId)return;
-      const shift=Math.round((e.clientX-firstX)/STEP_WIDTH);
-      if(Math.abs(e.clientX-firstX)>4||Math.abs(e.clientY-firstY)>5)moved=true;
-      if(moved)n.style.transform="translate("+(shift*STEP_WIDTH)+"px,"+
-       (rowData.pitch===null?0:Math.round((e.clientY-firstY)/ROW_HEIGHT)*ROW_HEIGHT)+"px)";
-     };
-     const finish=e=>{
-      if(e.pointerId!==event.pointerId)return;
-      n.removeEventListener("pointermove",drag);n.removeEventListener("pointerup",finish);
-      n.removeEventListener("pointercancel",cancel);
-      if(e.type==="pointerup"&&moved){
-       const movedSteps=Math.round((e.clientX-firstX)/STEP_WIDTH);
-       const nextPitch=rowData.pitch===null?undefined:oldPitch-Math.round((e.clientY-firstY)/ROW_HEIGHT);
-       selectedNoteId=note.id;
-       changeNote(note.id,{start:Math.max(0,oldStart+movedSteps),
-        ...(nextPitch!==undefined?{pitch:Math.max(36,Math.min(96,nextPitch))}:{})});
-      }else if(moved)render();
-     };
-     const cancel=e=>finish(e);
-     n.addEventListener("pointermove",drag);n.addEventListener("pointerup",finish);
-     n.addEventListener("pointercancel",cancel);
+    n.addEventListener("contextmenu",event=>{
+     event.preventDefault();
+     editingFreeformNoteEffects=true;selectedNoteId=note.id;render();
+    });
+    n.addEventListener("keydown",event=>{
+     if(["Backspace","Delete"].includes(event.key)){
+      event.preventDefault();selectedNoteId=null;
+      mutate(()=>{inst.notes=inst.notes.filter(item=>item.id!==note.id);});
+     }else if(event.altKey&&["ArrowLeft","ArrowRight"].includes(event.key)&&
+      inst.layout!=="rack"){
+      event.preventDefault();
+      const next=Math.max(1,Math.min(FREEFORM_LIMIT_STEPS-note.start,
+       note.duration+(event.key==="ArrowRight"?1:-1)));
+      if(next!==note.duration)changeNote(note.id,{duration:next});
+     }
+    });
+    bindPianoNoteGesture(n,{
+     stepWidth:STEP_WIDTH,rowHeight:ROW_HEIGHT,
+     begin:event=>{
+      const rect=n.getBoundingClientRect();
+      const edge=noteEndGrabWidth(rect.width,event.pointerType);
+      const resize=inst.layout!=="rack"&&event.clientX>=rect.right-edge;
+      const mode=resize?"resize":"move";
+      const start=note.start,pitch=note.pitch,duration=note.duration;
+      const initialWidth=n.style.width;
+      const nextValues=({steps,pitches})=>{
+       if(mode==="resize")return {duration:Math.max(1,
+        Math.min(FREEFORM_LIMIT_STEPS-start,duration+steps))};
+       return {
+        start:Math.max(0,Math.min(FREEFORM_LIMIT_STEPS-duration,start+steps)),
+        ...(pitch!==undefined?{pitch:Math.max(PITCH_MIN,Math.min(PITCH_MAX,pitch+pitches))}:{})
+       };
+      };
+      return {
+       mode,
+       grab:()=>{ignoreClick=true;},
+       preview:delta=>{
+        const value=nextValues(delta);
+        if(mode==="resize"){
+         const newLength=Math.min(value.duration,viewStep()+VIEW_BARS*16-Math.max(start,viewStep()));
+         n.style.width=Math.max(3,newLength*STEP_WIDTH)+"px";
+        }else n.style.transform="translate("+
+         ((value.start-start)*STEP_WIDTH)+"px,"+
+         (pitch===undefined?0:(pitch-value.pitch)*ROW_HEIGHT)+"px)";
+       },
+       finish:({cancelled,grabbed,steps,pitches})=>{
+        if(cancelled){
+         n.style.transform="";n.style.width=initialWidth;
+        }else if(grabbed){
+         const values=nextValues({steps,pitches});
+         if(Object.entries(values).some(([key,value])=>note[key]!==value)){
+          selectedNoteId=note.id;
+          changeNote(note.id,values);
+         }else{n.style.transform="";n.style.width=initialWidth;}
+        }
+        if(grabbed||cancelled){
+         ignoreClick=true;
+         setTimeout(()=>{ignoreClick=false;},0);
+        }
+       }
+      };
+     }
     });
     noteRow.append(n);
    }
-   let pointer=null;
-   noteRow.addEventListener("pointerdown",event=>{
-    if(event.target!==noteRow||event.button!==0)return;
-    const x=event.clientX-noteRow.getBoundingClientRect().left;
-    pointer={id:event.pointerId,start:viewStep()+Math.max(0,Math.floor(x/STEP_WIDTH)),last:event.clientX};
-    noteRow.setPointerCapture(event.pointerId);
+   bindPianoNoteGesture(noteRow,{
+    stepWidth:STEP_WIDTH,rowHeight:ROW_HEIGHT,
+    begin:event=>{
+     if(event.target!==noteRow)return null;
+     const x=event.clientX-noteRow.getBoundingClientRect().left;
+     const step=viewStep()+Math.max(0,Math.min(VIEW_BARS*16-1,Math.floor(x/STEP_WIDTH)));
+     const ghost=el("span","freeform-paint-preview");
+     ghost.style.left=(step-viewStep())*STEP_WIDTH+"px";
+     ghost.style.width=STEP_WIDTH+"px";
+     noteRow.append(ghost);
+     return {
+      mode:"paint",
+      preview:({steps})=>{
+       const length=Math.max(1,Math.min(FREEFORM_LIMIT_STEPS-step,1+steps));
+       ghost.style.width=length*STEP_WIDTH+"px";
+      },
+      finish:({cancelled,steps})=>{
+       ghost.remove();
+       if(cancelled)return;
+       const duration=rowData.pitch===null?1:Math.max(1,
+        Math.min(FREEFORM_LIMIT_STEPS-step,1+steps));
+       addNoteAt(rowData.pitch,step,duration,rowData.soundId);
+      }
+     };
+    }
    });
-   noteRow.addEventListener("pointermove",event=>{if(pointer?.id===event.pointerId)pointer.last=event.clientX;});
-   noteRow.addEventListener("pointerup",event=>{
-    if(!pointer||pointer.id!==event.pointerId)return;
-    const start=pointer.start,end=viewStep()+Math.floor(
-     (event.clientX-noteRow.getBoundingClientRect().left)/STEP_WIDTH);
-    pointer=null;
-    const step=Math.max(0,start),duration=Math.max(1,end-step+1);
-    addNoteAt(rowData.pitch,step,Math.min(duration,65536-step),rowData.soundId);
-   });
-   noteRow.addEventListener("pointercancel",()=>pointer=null);
    noteRow.addEventListener("keydown",event=>{
     if(event.key!=="Enter"&&event.key!==" ")return;
     event.preventDefault();addNoteAt(rowData.pitch,viewStep(),1,rowData.soundId);
