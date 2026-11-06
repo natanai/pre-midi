@@ -10,7 +10,7 @@
  const wait=async(predicate,label,limit=5000)=>{
   const deadline=Date.now()+limit;
   while(Date.now()<deadline){if(predicate())return;await pause(30);}
-  throw Error("Timed out: "+label);
+  throw Error("Timed out: "+label+"; startup errors: "+JSON.stringify(frame.contentWindow?.__testBootErrors||[]));
  };
  const report=(status,detail)=>fetch("/__song_result?status="+status+"&details="+encodeURIComponent(detail)).catch(()=>{});
  try{
