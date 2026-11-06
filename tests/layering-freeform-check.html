@@ -143,8 +143,9 @@ try{
  }finally{window.confirm=originalConfirm;}
  assert(free.instruments.length===1&&free.instruments[0].id===instrument.id,
   "Removing a duplicate preserves its source Instrument and notes");
- assert(root.querySelector('select[aria-label="Freeform Instrument"]').value===instrument.id,
-  "Removing the selected Instrument switches to the surviving one");
+ assert(root.querySelector('.freeform-instrument-list .instrument-card[aria-pressed="true"]')?.
+  textContent.includes(instrument.name),
+  "Removing the selected Instrument switches to the surviving Beat-style card");
  const sourceChunk=instrument.chunks[0];
  sourceChunk.notes=[{id:"browser-chunk-note",pitch:72,start:2,duration:4,velocity:.73}];
  const originalChunk=JSON.stringify(sourceChunk);
