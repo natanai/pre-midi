@@ -148,6 +148,20 @@ try{
  }))};
  const synthEdits=[];
  renderPatchEditor(document.querySelector("#synth"),synth,(path,value)=>synthEdits.push([path,value]),()=>{},"visual-page-synth");
+ // Default Sine Keys-like patches can prepare effect durations without
+ // silently enabling a sweep or adding noise to the audible sound.
+ const dormantPaths=["filter.sweepTime","noiseDecay"];
+ const dormantDials=dormantPaths.map(path=>document.querySelector(
+  '#synth [data-sound-path="'+path+'"] [role="slider"]'));
+ pass("inactive sweep and noise durations remain keyboard-editable",
+  dormantDials.every(dial=>dial&&dial.tabIndex===0&&
+   dial.getAttribute("aria-disabled")!=="true"));
+ for(const dial of dormantDials)dial.dispatchEvent(new KeyboardEvent("keydown",{
+  key:"ArrowUp",bubbles:true,cancelable:true
+ }));
+ pass("dormant durations edit their own parameters without activating effects",
+  dormantPaths.every(path=>synthEdits.some(([keys])=>keys.join(".")===path))&&
+  synth.filter.sweep===0&&synth.noise===0);
  const osc=document.querySelector('#synth .visual-sound-panel[data-visual-kind="oscillators"]');
  osc.querySelector("details").open=true;
  const secondControl=osc.querySelector('.visual-graph-action[data-sound-path="oscillators.1.level"]');
@@ -762,8 +776,21 @@ try{
  // Dismissing one Sound must not leave a modal-like dark layer on the next.
  const expand=samplePanel.querySelector(".visual-panel-expand");
  expand.click();
- pass("expanded illustration has its overlay",
-  document.body.classList.contains("sound-visual-zoom")&&samplePanel.classList.contains("zoomed"));
+ pass("expanded illustration has one X in its module header",
+  document.body.classList.contains("sound-visual-zoom")&&
+  samplePanel.classList.contains("zoomed")&&expand.textContent==="×"&&
+  expand.parentElement===samplePanel);
+ const mappingDetails=samplePanel.querySelector("details");
+ mappingDetails.querySelector("summary").click();
+ pass("zoomed module summary cannot collapse its content",
+  mappingDetails.open&&samplePanel.classList.contains("zoomed"));
+ expand.click();
+ pass("X restores normal illustration without collapsing its module",
+  !document.body.classList.contains("sound-visual-zoom")&&
+  !samplePanel.classList.contains("zoomed")&&mappingDetails.open&&
+  expand.parentElement===samplePanel.querySelector(".visual-panel-area")&&
+  expand.textContent==="⤢");
+ expand.click();
  samplePanel.disposeSoundIllustration();
  samplePanel.remove();
  await Promise.resolve();
