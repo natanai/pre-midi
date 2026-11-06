@@ -181,7 +181,12 @@ try{
   "Removing placement never deletes or modifies its reusable Chunk");
  // Freeform must show the same canonical Sound Inspector controls and
  // interactive parameter diagrams that the Beat Sound editor renders.
+ const inspectorErrors=[];
+ const onInspectorError=event=>inspectorErrors.push(event.message||String(event.error));
+ window.addEventListener("error",onInspectorError);
  root.querySelector(".freeform-sound-summary").click();
+ window.removeEventListener("error",onInspectorError);
+ assert(inspectorErrors.length===0,"Sound Inspector opens without JS errors: "+inspectorErrors.join(" | "));
  const owner=root.querySelector(".freeform-sound-content");
  assert(owner,"The common Inspector mounts under the existing Song Sound disclosure");
  const paths=["volume","gain","filter.cutoff","envelope.attack","envelope.release"];
