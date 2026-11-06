@@ -79,7 +79,8 @@ export function makeKeyboardDiagram(codes){
 
 // One controller owns input capture, held-note release, feedback, and settings.
 // The studio supplies its current instrument and the audio note-on primitive.
-export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrument,getBeat}){
+export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrument,getBeat,
+ pianoRoot=document.getElementById("piano"),idPrefix="keyboard-piano",highPitch=PIANO_HIGH,rowHeight=23}){
   let codes=readBindings(),active=false,whole=0,right=0,leftShift=false;
   const held=new Map(),performancePitch=new Map();
   const status=document.createElement("span");
@@ -88,7 +89,7 @@ export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrume
   toggle.after(status);
   const guide=document.createElement("div");
   guide.className="keyboard-piano-guide";
-  guide.id="keyboard-piano-guide";
+  guide.id=idPrefix+"-guide";
   guide.setAttribute("role","group");
   guide.setAttribute("aria-label","Keyboard piano key guide");
   const diagram=document.createElement("div");
@@ -151,7 +152,7 @@ export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrume
     if(active)gateTextFields(true);
     document.querySelectorAll(".keyboard-held").forEach(node=>node.classList.remove("keyboard-held"));
     for(const pitch of performancePitch.values()){
-      document.querySelectorAll('#piano [data-pitch="'+pitch+'"]').forEach(node=>node.classList.add("keyboard-held"));
+      pianoRoot?.querySelectorAll('[data-pitch="'+pitch+'"]').forEach(node=>node.classList.add("keyboard-held"));
     }
   };
   const release=code=>{
@@ -168,7 +169,7 @@ export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrume
     if(active){
       whole=0;right=0;
       const middle=Math.round((pitchAt(0)+pitchAt(PIANO_NOTES.length-1))/2);
-      scroll.scrollTop=Math.max(0,(PIANO_HIGH-middle)*23-scroll.clientHeight/2);
+      scroll.scrollTop=Math.max(0,(highPitch-middle)*rowHeight-scroll.clientHeight/2);
       toggle.focus({preventScroll:true});
     }
     updateStatus();
@@ -185,7 +186,7 @@ export function installKeyboardPiano({toggle,toolbar,scroll,playNote,getInstrume
     if(rightOnly)right+=delta;else whole+=delta;
     updateStatus();
     const center=Math.round((pitchAt(0,whole,right)+pitchAt(PIANO_NOTES.length-1,whole,right))/2);
-    scroll.scrollTop=Math.max(0,(PIANO_HIGH-center)*23-scroll.clientHeight/2);
+    scroll.scrollTop=Math.max(0,(highPitch-center)*rowHeight-scroll.clientHeight/2);
   };
   toggle.addEventListener("click",()=>setActive(!active));
   configure.addEventListener("click",()=>{
