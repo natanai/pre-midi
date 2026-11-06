@@ -2178,11 +2178,20 @@ songUI=installSongUI({
  onSelectBeat:selectBeat,onChange:modifySong,onSelectionChange:renderVocalWorkspace,
  onError:error=>message(error,true),
  onFreeformBeatCreated:created=>message("Created \""+created.title+"\". Select + on a Beat Track to place it; your freeform notes are unchanged."),
+ getFreeformScaleGuide:track=>scaleGuideFor({id:track.id,instruments:track.freeform?.instruments??[]}),
+ setFreeformScaleGuide:(track,guide)=>setBeatScaleGuide({id:track.id,instruments:track.freeform?.instruments??[]},guide),
+ getShowPianoKeys:()=>showPianoKeys,
+ setShowPianoKeys:next=>{
+  showPianoKeys=!!next;
+  try{localStorage.setItem(PIANO_KEYS_PREF,showPianoKeys?"on":"off");}catch{}
+ },
  onBrowseFreeform:selection=>openLibrary(selection.mode,{...selection,kind:"freeform"}),
  onSaveFreeform:selection=>openPresetSave(selection.wholeRack,{...selection,kind:"freeform"}),
  onFreeformActiveChange:active=>{
   const main=document.querySelector("main");
   main?.classList.toggle("editing-freeform",active);
+  if(active)keyboardPiano?.stop();
+  else renderNotes();
   if(active)main?.classList.remove("editing-vocal");
  },
  onSeek:step=>{
