@@ -6,7 +6,7 @@
 <script type="module">
 import {create} from "/schema.js";
 import {createSong,upgradeSongFeatures} from "/songModel.js";
-import {ensureFreeform,addFreeformInstrument,addFreeformNote,
+import {attachBeatInstruments,addFreeformNote,
  eventsAtFreeformStep} from "/freeformModel.js";
 import {installFreeformUI} from "/freeformUI.js";
 const assert=(ok,message)=>{if(!ok)throw Error(message)};
@@ -15,7 +15,7 @@ const report=(status,details)=>fetch("/__song_result?status="+status+
 try{
  const song=createSong(create()),track=song.tracks[0];
  track.clips[0].startStep=16;
- const free=ensureFreeform(track),instrument=addFreeformInstrument(free);
+ const free=attachBeatInstruments(song,track),instrument=free.instruments[0];
  const passage={id:"test-passage",startStep:16,lengthSteps:16};
  free.passages.push(passage);
  addFreeformNote(instrument,{pitch:60,start:16,duration:8,velocity:.8,passageId:passage.id});
@@ -115,37 +115,16 @@ try{
   "Graph vertical axis edits the same real cutoff frequency as the numeric input");
  upgradeSongFeatures(song);
  assert(song.version>=23,"New freeform note automation upgrades the native Song instruction version");
+ // An attached lane uses the Beat's Instrument rather than duplicating it.
  let actions=root.querySelector(".freeform-instrument-menu");
  assert(actions?.querySelector('summary[aria-label="Instrument actions"]'),
-  "Existing Instrument controls expose one compact accessible actions menu");
+  "Linked Beat Instrument still exposes its contextual action menu");
  actions.open=true;
- actions.querySelector(".freeform-instrument-copy").click();
- assert(free.instruments.length===2,"Instrument duplication creates a second editable lane");
- const copied=free.instruments[1];
- assert(copied.id!==instrument.id&&copied.notes.length===instrument.notes.length,
-  "Copied Instrument keeps all notes with a new independent identity");
- assert(copied.notes.every((note,i)=>note.id!==instrument.notes[i].id),
-  "Copied notes are independently addressable");
- assert(copied.notes.at(-1).cutoffAutomation?.block.points[1].value===
-  instrument.notes.at(-1).cutoffAutomation?.block.points[1].value,
-  "Note-level cutoff movement survives an Instrument duplicate");
- actions=root.querySelector(".freeform-instrument-menu");actions.open=true;
- actions.querySelector(".freeform-instrument-up").click();
- assert(free.instruments[0].id===copied.id,"Move up reorders the Instrument without changing its notes");
- actions=root.querySelector(".freeform-instrument-menu");actions.open=true;
- actions.querySelector(".freeform-instrument-down").click();
- assert(free.instruments[1].id===copied.id,"Move down restores the Instrument order");
- const originalConfirm=window.confirm;
- window.confirm=()=>true;
- try{
-  actions=root.querySelector(".freeform-instrument-menu");actions.open=true;
-  actions.querySelector(".freeform-instrument-remove").click();
- }finally{window.confirm=originalConfirm;}
- assert(free.instruments.length===1&&free.instruments[0].id===instrument.id,
-  "Removing a duplicate preserves its source Instrument and notes");
- assert(root.querySelector('.freeform-instrument-list .instrument-card[aria-pressed="true"]')?.
-  textContent.includes(instrument.name),
-  "Removing the selected Instrument switches to the surviving Beat-style card");
+ assert(!actions.querySelector(".freeform-instrument-copy")&&
+  !actions.querySelector(".freeform-instrument-remove"),
+  "Attached freeform cannot duplicate or delete its parent Beat Instrument");
+ assert(free.instruments.length===song.beats[0].instruments.length,
+  "Song freeform shares the Beat's existing Instrument list");
  const sourceChunk=instrument.chunks[0];
  sourceChunk.notes=[{id:"browser-chunk-note",pitch:72,start:2,duration:4,velocity:.73}];
  const originalChunk=JSON.stringify(sourceChunk);
