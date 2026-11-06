@@ -109,18 +109,24 @@ function renderField(field,patch,onChange,onPreview){
  const value=pathValue(patch,field.path) ?? (field.defaultValue??(field.path[0]==="bend"?
   (field.path[1]==="shape"?"straight":field.path[1]==="amount"?2:4):
   (field.options?field.options[0]:0)));
- // These values can be prepared before their parent effect is audible.
- // Do not lock the ordinary controls while the diagram can already edit them.
- const inactiveHint=field.path[0]==="filter"&&field.path[1]==="sweepTime"&&
-  !patch.filter?.sweep?"sets the duration once filter sweep leaves zero":
-  field.path[0]==="noiseDecay"&&!patch.noise?
-  "sets the fade length once noise rises above zero":null;
+ // The value can be prepared even while its parent effect is silent.
+ // Clearly distinguish "inaudible right now" from "feature unavailable".
+ const sweepInactive=field.path[0]==="filter"&&field.path[1]==="sweepTime"&&
+  !patch.filter?.sweep;
+ const noiseInactive=field.path[0]==="noiseDecay"&&!patch.noise;
+ const inactiveReason=sweepInactive?
+  "Filter sweep is 0, so Sweep time cannot change the sound yet. Change Filter sweep above or below 0 to hear its timing.":
+  noiseInactive?
+  "Noise is 0%, so Noise decay cannot change the sound yet. Increase Noise to hear its decay.":null;
+ const inactiveLabel=sweepInactive?"inactive · sweep is 0":
+  noiseInactive?"inactive · noise is 0%":null;
  const cutoffHint=field.path[0]==="filter"&&field.path[1]==="cutoff"?
   patch.filter.type==="lowpass"?"turn it down to muffle the high stuff":
   patch.filter.type==="highpass"?"turn it up to shave off the bass":
   patch.filter.type==="bandpass"?"move the little window of sound up or down":null:null;
  if(!field.options){
-  const control=createDial({...field,help:inactiveHint??cutoffHint??field.help},value,
+  const control=createDial({...field,help:cutoffHint??field.help,
+   inactiveReason,inactiveLabel},value,
    next=>onChange(field.path,next),
    next=>onPreview(field.path,next));
   control.dataset.soundPath=field.path.join(".");
