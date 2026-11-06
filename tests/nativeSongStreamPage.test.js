@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {create} from "../schema.js";
+import {create,upgradeBeatFeatures} from "../schema.js";
 import {createSong} from "../songModel.js";
 import {makePatch} from "../synth.js";
 import {renderEventsInWindow} from "../audio.js";
@@ -18,6 +18,7 @@ function fixture(length=96){
   {id:"stream-note-two",pitch:67,start:3,duration:2,velocity:.6}
  ];
  instrument.sounds[0].patch=makePatch("touch-keys");
+ upgradeBeatFeatures(beat);
  const song=createSong(beat);
  song.tracks[0].clips[0].lengthSteps=length;
  return song;
