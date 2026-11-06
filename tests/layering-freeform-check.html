@@ -199,12 +199,13 @@ try{
  const primary=owner.querySelector('[data-sound-path="filter.cutoff"]');
  assert(primary.querySelector('[role="slider"]'),
   "Freeform's primary brightness control remains a conventional, editable dial");
- const originalCutoff=instrument.sounds[0].patch.filter.cutoff;
+ const parentSound=song.beats[0].instruments[0].sounds[0];
+ const originalCutoff=parentSound.patch.filter.cutoff;
  primary.querySelector('[role="slider"]').dispatchEvent(new KeyboardEvent(
   "keydown",{key:"ArrowLeft",bubbles:true,cancelable:true}
  ));
- assert(instrument.sounds[0].patch.filter.cutoff!==originalCutoff,
-  "Editing the shared Freeform brightness knob writes the original Sound patch");
+ assert(parentSound.patch.filter.cutoff!==originalCutoff,
+  "Editing freeform brightness changes the live parent Beat Sound, not a copied patch");
  const refreshed=root.querySelector("#freeform-sound-content");
  assert(refreshed.querySelector('.visual-sound-panel[data-visual-kind="filter"]'),
   "Editing a Sound preserves the shared educational panel");
