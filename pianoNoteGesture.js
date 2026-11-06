@@ -9,7 +9,7 @@ export function noteDragDelta(dx,dy,stepWidth,rowHeight){
   throw RangeError("invalid note drag geometry");
  return {
   steps:Math.round(dx/stepWidth),
-  pitches:-Math.round(dy/rowHeight),
+  pitches:Math.round(-dy/rowHeight),
   distance:Math.hypot(dx,dy)
  };
 }
