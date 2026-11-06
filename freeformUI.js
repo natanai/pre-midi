@@ -101,7 +101,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   samples:[...new Map([...(layer()?.samples??[]),
    ...(sourceForFreeformInstrument(getSong(),rawInstrument())?.beat.samples??[])]
    .map(asset=>[asset.id,asset])).values()],
-  instruments:instrument()?[instrument()]:[],
+  instruments:rawInstrument()?[resolveFreeformInstrument(getSong(),rawInstrument())]:[],
   bars:1,bpm:getSong()?.bpm??120
  });
  const keyboardPiano=installKeyboardPiano({
@@ -114,7 +114,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   void key.offsetWidth;
   key.classList.add("pressed");
   setTimeout(()=>key.classList.remove("pressed"),220);
-  const inst=instrument();
+  const inst=resolveFreeformInstrument(getSong(),rawInstrument());
   if(inst)void audition(inst,pitch,freeformPreviewContext())
    .catch(error=>onError("Couldn't preview key: "+error.message));
  }
@@ -139,9 +139,14 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   const chosen=getSong()?.tracks.find(item=>item.kind==="beat"&&item.id===trackId);
   if(!chosen)return;
   const source=attachedBeatForTrack(getSong(),chosen);
-  if((!chosen.freeform||source&&source.instruments.some(item=>!
-   chosen.freeform?.instruments?.some(inst=>inst.sourceBeatId===source.id&&
-    inst.sourceInstrumentId===item.id)))&&
+  // A legacy project with independent freeform Instruments retains them.
+  // A newly opened attached lane derives its Instrument definitions from Beat.
+  const hasIndependent=chosen.freeform?.instruments.some(inst=>!inst.sourceBeatId);
+  const missingLinked=source&&chosen.freeform?.instruments.some(inst=>inst.sourceBeatId)&&
+   source.instruments.some(item=>!chosen.freeform.instruments.some(inst=>
+    inst.sourceBeatId===source.id&&inst.sourceInstrumentId===item.id));
+  if((!chosen.freeform||source&&!hasIndependent&&
+   (!chosen.freeform.instruments.length||missingLinked))&&
    !mutate(()=>source?attachBeatInstruments(getSong(),chosen,source.id):ensureFreeform(chosen)))return;
   activeTrackId=chosen.id;
   activeInstrumentId=chosen.freeform?.instruments[0]?.id??null;
