@@ -18,7 +18,9 @@ frame.addEventListener("load",async()=>{
   const hit=filter.querySelector('.visual-graph-hit[data-sound-links*="filter.resonance"]');
   assert("filter illustration has control hit",!!hit);
   hit.dispatchEvent(new frame.contentWindow.PointerEvent("pointerover",{bubbles:true}));
-  assert("diagram hover highlights dial",field.classList.contains("sound-link-active"));
+  assert("diagram hover emphasizes its own trace without outlining the dial",
+   !field.classList.contains("sound-link-active")&&
+   !!filter.querySelector(".visual-graph-line.visual-linked"));
   const target=field.querySelector('[role="slider"],select,input');
   target.focus();
   assert("knob focus highlights diagram",!!filter.querySelector(".visual-graph-line.visual-linked"));
