@@ -71,6 +71,17 @@ export function resolveFreeformInstrument(song,instrument,{editable=false}={}){
 }
 // Creating an attached lane must not invent another synthesizer. Reuse all
 // source Sound IDs so Rack notes refer to the exact same playable rows.
+function makeAttachedInstrument(layer,beat,source){
+ const linked=addFreeformInstrument(layer,source);
+ const soundIds=new Map(linked.sounds.map((sound,index)=>
+  [sound.id,source.sounds[index]?.id]));
+ linked.sounds=clone(source.sounds);
+ for(const chunk of linked.chunks)for(const note of chunk.notes)
+  if(note.soundId!==undefined)note.soundId=soundIds.get(note.soundId);
+ linked.sourceBeatId=beat.id;
+ linked.sourceInstrumentId=source.id;
+ return linked;
+}
 export function attachBeatInstruments(song,track,beatId=null){
  const beat=song?.beats?.find(item=>item.id===(beatId??track?.clips?.[0]?.beatId));
  if(!beat||track?.kind!=="beat")return track?.freeform??null;
@@ -78,14 +89,7 @@ export function attachBeatInstruments(song,track,beatId=null){
  for(const source of beat.instruments){
   if(layer.instruments.some(item=>item.sourceBeatId===beat.id&&
    item.sourceInstrumentId===source.id))continue;
-  const linked=addFreeformInstrument(layer,source);
-  const soundIds=new Map(linked.sounds.map((sound,index)=>
-   [sound.id,source.sounds[index]?.id]));
-  linked.sounds=clone(source.sounds);
-  for(const chunk of linked.chunks)for(const note of chunk.notes)
-   if(note.soundId!==undefined)note.soundId=soundIds.get(note.soundId);
-  linked.sourceBeatId=beat.id;
-  linked.sourceInstrumentId=source.id;
+  makeAttachedInstrument(layer,beat,source);
  }
  synchronizeLinkedFreeform(song);
  return layer;
@@ -605,8 +609,10 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
  };
  const instruments=new Map();
  for(const original of beat.instruments){
-  const converted=addFreeformInstrument(layer,original);
-  const soundMap=new Map(original.sounds.map((sound,index)=>[sound.id,converted.sounds[index].id]));
+  const converted=layer.instruments.find(item=>
+   item.sourceBeatId===beat.id&&item.sourceInstrumentId===original.id)||
+   makeAttachedInstrument(layer,beat,original);
+  const soundMap=new Map(original.sounds.map(sound=>[sound.id,sound.id]));
   instruments.set(original.id,{converted,soundMap});
  }
  const referenced=referencedSampleIds(beat.instruments);
