@@ -10,7 +10,7 @@ import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
-import {renderPianoRollRows,createPianoNoteSurface,applyPianoNoteState} from "./editorPianoRoll.js";
+import {renderPianoRollRows,createPianoNoteSurface,applyPianoNoteState,noteAtPianoStep} from "./editorPianoRoll.js";
 import {createInstrumentCard,createInstrumentActionMenu} from "./editorInstrumentCard.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
@@ -842,7 +842,7 @@ function renderNotes() {
   const cells = [];
   function previewRow() {
    for (let pos = 0; pos < 16; pos++) {
-    const present = chunk.notes.find(n => n.pitch === pitch && pos >= n.start && pos < n.start + n.duration);
+    const present = noteAtPianoStep(chunk.notes,rowData,pos);
     const cell = cells[pos];
     applyPianoNoteState(cell,{
      head:!!present&&present.start===pos,
@@ -875,7 +875,7 @@ function renderNotes() {
     if (ignoreClick) return;
     const targetInst = instrument();
     const editedChunk = chunkFor(targetInst);
-    const existing = editedChunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
+    const existing = noteAtPianoStep(editedChunk.notes,rowData,step);
     if(existing && editingNoteEffects){
      selectedNoteId=existing.id;
      renderNotes();
@@ -899,7 +899,7 @@ function renderNotes() {
    cells.push(cell);
    cell.addEventListener("contextmenu",event=>{
     // A note tail is still the same note. Never add/remove on a right-click.
-    const note=chunk.notes.find(n=>n.pitch===pitch&&step>=n.start&&step<n.start+n.duration);
+    const note=noteAtPianoStep(chunk.notes,rowData,step);
     if(!note)return;
     event.preventDefault();
     setNoteEffectsMode(true,note.id,false);
@@ -913,7 +913,7 @@ function renderNotes() {
     stepWidth:()=>cell.getBoundingClientRect().width,
     rowHeight:()=>cell.getBoundingClientRect().height,
     begin:event=>{
-     const existing=chunk.notes.find(n=>n.pitch===pitch && step>=n.start && step<n.start+n.duration);
+     const existing=noteAtPianoStep(chunk.notes,rowData,step);
      if(!existing && (cell.disabled ||
       (scaleGuide.lock && !isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step))))return null;
      const bounds=cell.getBoundingClientRect();
@@ -983,7 +983,7 @@ function renderNotes() {
    // Keyboard support is also immediate and uses the canonical undo pathway.
    cell.addEventListener("keydown", event => {
     if (!event.altKey || !["ArrowLeft","ArrowRight"].includes(event.key)) return;
-    const target = chunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start+n.duration);
+    const target = noteAtPianoStep(chunk.notes,rowData,step);
     if (!target) return;
     event.preventDefault();
     const delta = event.key === "ArrowRight" ? 1 : -1;
