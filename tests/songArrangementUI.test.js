@@ -251,5 +251,20 @@ test("Beat and Song-time freeform share canonical Instrument cards",()=>{
  assert.match(card,/card\.setAttribute\("aria-pressed",String\(selected\)\)/);
  assert.match(card,/instrument\.sounds\.length\+" sounds"/);
  assert.doesNotMatch(freeform,/const picker=el\("select"\)/);
- assert.match(freeform,/activeEntry\?\.append\(menu\)/);
+ assert.match(beat,/createInstrumentActionMenu\(\{label:"Actions for "/);
+ assert.match(freeform,/activeEntry\?\.append\(createInstrumentActionMenu\(\{/);
+ assert.match(card,/export function createInstrumentActionMenu/);
+ assert.match(card,/menu\.open=false/);
+ assert.match(card,/button\.disabled=!!action\.disabled/);
+ assert.doesNotMatch(freeform,/const menu=el\("details","freeform-instrument-menu"\)/);
+});
+test("Instrument action menu preserves Beat-linked ownership and explicit empty-track actions",()=>{
+ const freeform=read("freeformUI.js"),shared=read("editorInstrumentCard.js");
+ assert.match(freeform,/if\(!linked\)\{/);
+ for(const cls of ["freeform-instrument-rename","freeform-instrument-copy",
+  "freeform-instrument-up","freeform-instrument-down","freeform-instrument-remove"])
+  assert.ok(freeform.includes(cls),"Missing action "+cls);
+ assert.match(shared,/action\.className\|\|""/);
+ assert.match(shared,/menu\.className=/);
+ assert.match(freeform,/danger:true/);
 });
