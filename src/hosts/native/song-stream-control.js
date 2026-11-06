@@ -77,7 +77,12 @@ export async function playNativeSongStreamExperimental(song,{
   stopped=true;
   if(timer!==null)clearInterval(timer);
   try{await nativeRequest({action:"stream_stop",owner,revision});}
-  finally{onStop();}
+  catch(error){
+   // studio.js Stop first calls cancelNativeTransport() (global owner stop),
+   // then invokes this handle's stop. In that documented order the Rust
+   // revision is already invalid: this cleanup must not reject unhandled.
+   if(nativeTransportEpochCurrent(token))throw error;
+  }finally{onStop();}
  };
  const fail=async error=>{
   if(stopped)return;
