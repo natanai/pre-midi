@@ -109,17 +109,18 @@ function renderField(field,patch,onChange,onPreview){
  const value=pathValue(patch,field.path) ?? (field.defaultValue??(field.path[0]==="bend"?
   (field.path[1]==="shape"?"straight":field.path[1]==="amount"?2:4):
   (field.options?field.options[0]:0)));
- const parent=field.path[0]==="filter"&&field.path[1]==="sweepTime"?"Filter sweep":
-  field.path[0]==="noiseDecay"?"Noise":null;
- const disabled=parent==="Filter sweep"&&!(patch.filter?.sweep)||
-  parent==="Noise"&&!patch.noise;
+ // These values can be prepared before their parent effect is audible.
+ // Do not lock the ordinary controls while the diagram can already edit them.
+ const inactiveHint=field.path[0]==="filter"&&field.path[1]==="sweepTime"&&
+  !patch.filter?.sweep?"sets the duration once filter sweep leaves zero":
+  field.path[0]==="noiseDecay"&&!patch.noise?
+  "sets the fade length once noise rises above zero":null;
  const cutoffHint=field.path[0]==="filter"&&field.path[1]==="cutoff"?
   patch.filter.type==="lowpass"?"turn it down to muffle the high stuff":
   patch.filter.type==="highpass"?"turn it up to shave off the bass":
   patch.filter.type==="bandpass"?"move the little window of sound up or down":null:null;
  if(!field.options){
-  const control=createDial({...field,disabled,help:cutoffHint??field.help,
-   disabledReason:disabled?"Adjust "+parent+" first.":undefined},value,
+  const control=createDial({...field,help:inactiveHint??cutoffHint??field.help},value,
    next=>onChange(field.path,next),
    next=>onPreview(field.path,next));
   control.dataset.soundPath=field.path.join(".");
