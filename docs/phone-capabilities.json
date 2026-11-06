@@ -2751,18 +2751,6 @@
       "proof": "not-qualified"
     },
     {
-      "id": "event:studio:key-click:1",
-      "source": "studio.js",
-      "anchor": "key",
-      "kind": "listener",
-      "event": "click",
-      "desktopRoute": "studio.js key.click",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "notes",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
       "id": "event:studio:label-click:1",
       "source": "studio.js",
       "anchor": "label",
