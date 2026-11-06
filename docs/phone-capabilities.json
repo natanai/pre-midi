@@ -3291,6 +3291,18 @@
       "proof": "not-qualified"
     },
     {
+      "id": "handler:desktopAudioUI:streaming-onchange:1",
+      "source": "desktopAudioUI.js",
+      "anchor": "streaming",
+      "kind": "assigned-handler",
+      "event": "change",
+      "desktopRoute": "desktopAudioUI.js streaming.onchange",
+      "contract": "same semantic action or documented host-equivalent",
+      "phoneRoute": "settings/host-equivalent",
+      "phoneStatus": "todo",
+      "proof": "not-qualified"
+    },
+    {
       "id": "handler:desktopUI:button-onclick:1",
       "source": "desktopUI.js",
       "anchor": "button",

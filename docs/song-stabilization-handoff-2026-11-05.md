@@ -2,6 +2,13 @@
 
 **Purpose:** One actionable handoff for the remaining desktop Song/freeform and native Windows rollout. Read alongside [song-rollout.md](song-rollout.md), [native-onset-paging.md](native-onset-paging.md), [terminology.json](terminology.json), and [synthesis-roadmap.json](synthesis-roadmap.json). This note records verified distinctions; it does **not** supersede the approved architecture.
 
+## Preview.20 field-test candidate (2026-11-05 local)
+
+- The next intended immutable portable ZIP is `v0.14.1-preview.20`, prepared from an exact-commit PR and required to pass Node/Chrome/native plus Windows portable packaging/recovery **before publication**. Do not claim the ZIP is available until the GitHub release contains it.
+- The default Windows native player is unchanged. Under **Settings → audio → audio performance**, a new explicitly off-by-default **test long Song streaming (experimental)** checkbox opts a user into the JS → Rust → C++ streaming bridge. Turn the Song loop off and start from the first bar; playback and pause/resume are pilot features. Seek, live edit, loop and synchronized microphone recording remain blocked in this mode.
+- [Preview.20 release notes](desktop-release-notes.md) contain the clean-folder backup/installation steps and specific real Windows 11 listening tests. Physical WASAPI stability and downloadable .20 artifacts remain unverified until reported.
+- Do not promote the provisional 93% Song/freeform completion figure merely for exposing a test control. The ZIP is for collecting actual long-Song device evidence, and is **not** a stable release.
+
 ## Repository stability audit checkpoint (2026-11-05)
 
 - **Preserve preview.19 unchanged.** Current main at audit baseline `068beb69c1b0b30401901fdba1fd24ff359d65aa` is nine commits ahead of immutable preview.19; the ZIP is the last published Windows candidate. Do not claim post-tag DeviceHost/Rust streaming changes ship in it.
