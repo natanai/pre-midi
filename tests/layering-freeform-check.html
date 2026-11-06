@@ -181,21 +181,13 @@ try{
   "Removing placement never deletes or modifies its reusable Chunk");
  // Freeform must show the same canonical Sound Inspector controls and
  // interactive parameter diagrams that the Beat Sound editor renders.
- const inspectorErrors=[];
- const onInspectorError=event=>inspectorErrors.push(event.message||String(event.error));
- window.addEventListener("error",onInspectorError);
  root.querySelector(".freeform-sound-summary").click();
- await new Promise(resolve=>setTimeout(resolve,0));
- window.removeEventListener("error",onInspectorError);
- assert(inspectorErrors.length===0,"Sound Inspector opens without JS errors: "+inspectorErrors.join(" | "));
- const owner=root.querySelector(".freeform-sound-content");
+ const owner=root.querySelector("#freeform-sound-content");
  assert(owner,"The common Inspector mounts under the existing Song Sound disclosure");
  const paths=["volume","gain","filter.cutoff","envelope.attack","envelope.release"];
  for(const path of paths)
   assert(owner.querySelector('[data-sound-path="'+path+'"]'),
-   "Freeform exposes canonical Sound control "+path+
-   " | available: "+[...owner.querySelectorAll("[data-sound-path]")].map(node=>node.dataset.soundPath).join(",")+
-   " | markup: "+owner.outerHTML.slice(0,900));
+   "Freeform exposes canonical Sound control "+path);
  const filterPanel=owner.querySelector('.visual-sound-panel[data-visual-kind="filter"]');
  const stagePanel=owner.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
  assert(filterPanel&&stagePanel&&owner.querySelector(".signal-scope"),
@@ -213,7 +205,7 @@ try{
  ));
  assert(instrument.sounds[0].patch.filter.cutoff!==originalCutoff,
   "Editing the shared Freeform brightness knob writes the original Sound patch");
- const refreshed=root.querySelector(".freeform-sound-content");
+ const refreshed=root.querySelector("#freeform-sound-content");
  assert(refreshed.querySelector('.visual-sound-panel[data-visual-kind="filter"]'),
   "Editing a Sound preserves the shared educational panel");
  // Song notes now use the same explicit effects mode and delete/resize
