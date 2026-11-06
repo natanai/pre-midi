@@ -43,6 +43,8 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
  const freeformUI=installFreeformUI({
   root,getSong,onChange:apply,onError,onBrowseSound:onBrowseFreeform,onSaveSound:onSaveFreeform,
   getScaleGuide:getFreeformScaleGuide,setScaleGuide:setFreeformScaleGuide,
+  getSongStep:()=>seekStep,seekSongStep:step=>setStartStep(step),
+  onSelectSourceBeat:onSelectBeat,
   getShowPianoKeys,setShowPianoKeys,
   onActiveChange:active=>{
    if(active)selectedClipId=null;
@@ -66,9 +68,10 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   cursor.title="Song starts at bar "+(Math.floor(seekStep/BAR_STEPS)+1);
  }
  function setStartStep(step){
-  const length=songDurationSteps(getSong());
+  const length=Math.max(songDurationSteps(getSong()),timelinePages*PAGE_BARS*BAR_STEPS);
   seekStep=Math.min(Math.max(0,Math.floor(step/BAR_STEPS)*BAR_STEPS),
-    Math.max(0,Math.floor(Math.max(0,length-1)/BAR_STEPS)*BAR_STEPS));
+   Math.max(0,Math.floor(Math.max(0,length-1)/BAR_STEPS)*BAR_STEPS));
+  freeformUI.seekToStep(seekStep);
   if(playPosition<0)updateCursor();
   ruler.setAttribute("aria-valuenow",String(Math.floor(seekStep/BAR_STEPS)+1));
   onSeek(seekStep);
@@ -465,6 +468,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
  },getStartStep:selectedStart,setStartStep,setPosition(bar){
   playPosition=bar;
   updateCursor();
-  freeformUI.setPosition(bar);
+  if(bar<0)freeformUI.seekToStep(seekStep);
+  else freeformUI.setPosition(bar);
  }};
 }
