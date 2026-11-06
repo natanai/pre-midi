@@ -45,6 +45,86 @@ export function addFreeformInstrument(layer,source=null){
  layer.instruments.push(inst);
  return inst;
 }
+// A freeform Instrument attached to an existing Beat uses the Beat's live
+// Instrument and Sound identity. Only its Song-time notes/Chunk placements
+// are separate. Legacy unlinked freeform Instruments remain independent.
+export function sourceForFreeformInstrument(song,instrument){
+ if(!instrument?.sourceBeatId||!instrument?.sourceInstrumentId)return null;
+ const beat=song?.beats?.find(item=>item.id===instrument.sourceBeatId);
+ const source=beat?.instruments.find(item=>item.id===instrument.sourceInstrumentId);
+ return beat&&source?{beat,instrument:source}:null;
+}
+const LINKED_FIELDS=new Set(["name","layout","volume","sounds"]);
+export function resolveFreeformInstrument(song,instrument,{editable=false}={}){
+ if(!instrument)return null;
+ const linked=sourceForFreeformInstrument(song,instrument);
+ if(!linked)return instrument;
+ if(editable)return new Proxy(instrument,{
+  get(target,key){return LINKED_FIELDS.has(key)?linked.instrument[key]:Reflect.get(target,key);},
+  set(target,key,value){
+   if(LINKED_FIELDS.has(key)){linked.instrument[key]=value;return true;}
+   return Reflect.set(target,key,value);
+  }
+ });
+ return {...instrument,name:linked.instrument.name,layout:linked.instrument.layout,
+  volume:linked.instrument.volume,sounds:linked.instrument.sounds};
+}
+// Creating an attached lane must not invent another synthesizer. Reuse all
+// source Sound IDs so Rack notes refer to the exact same playable rows.
+function makeAttachedInstrument(layer,beat,source){
+ const linked=addFreeformInstrument(layer,source);
+ const soundIds=new Map(linked.sounds.map((sound,index)=>
+  [sound.id,source.sounds[index]?.id]));
+ linked.sounds=clone(source.sounds);
+ for(const chunk of linked.chunks)for(const note of chunk.notes)
+  if(note.soundId!==undefined)note.soundId=soundIds.get(note.soundId);
+ linked.sourceBeatId=beat.id;
+ linked.sourceInstrumentId=source.id;
+ return linked;
+}
+export function attachedBeatForTrack(song,track){
+ if(!song||track?.kind!=="beat")return null;
+ const beatId=track.clips?.[0]?.beatId??
+  track.freeform?.passages?.find(item=>item.sourceBeatId)?.sourceBeatId??
+  track.freeform?.instruments?.find(item=>item.sourceBeatId)?.sourceBeatId;
+ return song.beats.find(item=>item.id===beatId)??null;
+}
+export function attachBeatInstruments(song,track,beatId=null){
+ const beat=beatId?song?.beats?.find(item=>item.id===beatId):attachedBeatForTrack(song,track);
+ if(!beat||track?.kind!=="beat")return track?.freeform??null;
+ const layer=ensureFreeform(track);
+ for(const source of beat.instruments){
+  if(layer.instruments.some(item=>item.sourceBeatId===beat.id&&
+   item.sourceInstrumentId===source.id))continue;
+  makeAttachedInstrument(layer,beat,source);
+ }
+ if(beat.instruments.some(inst=>inst.chunks.some(chunk=>
+  chunk.notes.some(note=>note.cutoffAutomation!==undefined))))layer.version=2;
+ synchronizeLinkedFreeform(song);
+ return layer;
+}
+// Keep a valid self-contained fallback for older readers. All present-day
+// playback and Sound controls resolve the source Beat directly.
+export function synchronizeLinkedFreeform(song){
+ if(!song?.tracks)return;
+ for(const track of song.tracks){
+  if(track.kind!=="beat"||!track.freeform)continue;
+  for(const inst of track.freeform.instruments){
+   const linked=sourceForFreeformInstrument(song,inst);
+   if(!linked)continue;
+   const source=linked.instrument;
+   inst.name=source.name;inst.layout=source.layout;
+   inst.volume=source.volume;inst.sounds=clone(source.sounds);
+   const needed=referencedSampleIds([source]);
+   for(const asset of track.freeform.samples.filter(asset=>needed.has(asset.id)))
+    if(!linked.beat.samples.some(item=>item.id===asset.id))
+     linked.beat.samples.push(clone(asset));
+   for(const asset of linked.beat.samples.filter(asset=>needed.has(asset.id)))
+    if(!track.freeform.samples.some(item=>item.id===asset.id))
+     track.freeform.samples.push(clone(asset));
+  }
+ }
+}
 // Full Instrument workflows preserve the existing Sound, Chunk and sample
 // contracts. Duplicates get independent IDs but reuse immutable external
 // audio Assets, so a copy does not write or decode the same WAV twice.
@@ -538,8 +618,10 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
  };
  const instruments=new Map();
  for(const original of beat.instruments){
-  const converted=addFreeformInstrument(layer,original);
-  const soundMap=new Map(original.sounds.map((sound,index)=>[sound.id,converted.sounds[index].id]));
+  const converted=layer.instruments.find(item=>
+   item.sourceBeatId===beat.id&&item.sourceInstrumentId===original.id)||
+   makeAttachedInstrument(layer,beat,original);
+  const soundMap=new Map(original.sounds.map(sound=>[sound.id,sound.id]));
   instruments.set(original.id,{converted,soundMap});
  }
  const referenced=referencedSampleIds(beat.instruments);

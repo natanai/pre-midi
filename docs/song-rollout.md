@@ -21,6 +21,16 @@ This is the Song-specific historical rollout and integration plan; the active sy
 - A single Song clock drives Song and freeform piano-roll views. Zoom and scroll are independent. Optional playback-follow yields to manual navigation. Pitched keys can illuminate when sounding.
 - Editing the source Beat updates only linked Beat Clips, not already unpacked material. Every transform is undoable and round-trips through a versioned .premidi schema.
 
+### Attached freeform is part of its Beat (2026-11-06)
+
+**Approved user behavior:** A Beat Track starts with only a narrow freeform drop tab under its Beat lane. Dropping a Beat Clip onto the tab unpacks that occurrence and opens editing; an explicitly empty Track created through +track may instead offer a new independent Instrument. Opening an attached Beat lane must not ask for a second Instrument.
+
+**Parent Sound identity, PR #200 (under qualification):** New attached freeform instruments retain `sourceBeatId` and `sourceInstrumentId`. Their Sound IDs, layout, volume, names and Sound patches resolve from the parent Beat when editing, auditioning and playing Song notes; independent Song-time notes and Chunk placements remain owned by freeform. Presets and imported sample references are synchronized through the existing Song undo/save/validation boundary. Existing unlinked freeform instruments remain independent and are not silently migrated or deleted. Once a Beat Clip is unpacked, the source Beat identity remains available through the recorded passage. If a Track contains multiple different source Beats, instruments are scoped to each source Beat, not arbitrarily merged by their names. Never create a second Synth or copy a Sound merely because a Beat's notes move into freeform.
+
+**Viewport contract:** The Song scrubber owns the freeform viewport, including clicks on the Song ruler, Song bar field and Song playback. Beat's own Chunk view must remain independent and unchanged. Navigating bars from freeform changes the Song cursor, not a second independent bar cursor.
+
+**Remaining main editor work:** The pitched-note and Rack DOM renderers still differ between Beat and freeform. Consolidate into one shared piano roll with adapters for 16-step Chunk time vs absolute Song time; no mode-specific subset of keyboard, scale, note editing, note effects, Sound Inspector, gestures, racks or musical automation is acceptable. Verify dense layered notes, sampled rack references and 64-bar plus Song-time note positions under Chrome and Windows native before calling this finished.
+
 ### Shared Beat/freeform editor requirement (approved 2026-11-05)
 
 **Decision:** Selecting an attached freeform lane must use the established lower Beat editing workspace, not an independent reduced-feature editor clipped into the Song panel. The parent Song Track and its timeline remain visible; freeform notes continue to use absolute Song step positions, independent of Beat Chunk loop phase. Preserve the attached lane and existing Song .premidi format, source-linking, native transport and Song-scoped undo. Do not convert freeform to an ordinary Beat just to reuse its UI.

@@ -5,7 +5,7 @@ import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXT
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
 import {validateVocalEffects,vocalEffects} from "./vocalEffects.js";
 import {requiresSampleSliceFormat,isRecordingSampleAlias} from "./sampleSlice.js";
-import {FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION,freeformEndStep,eventsAtFreeformStep,validateFreeform} from "./freeformModel.js";
+import {FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION,freeformEndStep,eventsAtFreeformStep,resolveFreeformInstrument,sourceForFreeformInstrument,validateFreeform} from "./freeformModel.js";
 export const SONG_VERSION=8;
 export const MODULATION_SONG_VERSION=10;
 export const AUTOMATION_SONG_VERSION=12;
@@ -270,11 +270,14 @@ export function eventsAtSongStep(song,step){
   }
   if(track.freeform){
    freeformBars??=Math.max(1,Math.ceil(songDurationSteps(song)/STEPS_PER_BAR));
-   const source={id:track.id+"-freeform",bpm:song.bpm,
-    bars:freeformBars,
-    samples:track.freeform.samples};
-   for(const event of eventsAtFreeformStep(track.freeform,step))
-    events.push({...event,beat:source,track,songStep:step,beatStep:step});
+   for(const event of eventsAtFreeformStep(track.freeform,step)){
+    const linked=sourceForFreeformInstrument(song,event.instrument);
+    const source={id:track.id+"-freeform",bpm:song.bpm,bars:freeformBars,
+     samples:linked?[...new Map([...linked.beat.samples,...track.freeform.samples]
+      .map(asset=>[asset.id,asset])).values()]:track.freeform.samples};
+    events.push({...event,instrument:resolveFreeformInstrument(song,event.instrument),
+     beat:source,track,songStep:step,beatStep:step});
+   }
   }
  }
  return events;

@@ -192,13 +192,15 @@ test("freeform Beat selection highlights the Song lane at absolute Song time",()
  assert.match(css,/\.song-freeform-selected-range/);
 });
 
-test("freeform key illumination is event-driven and playback follow yields to bar navigation",()=>{
- const ui=read("freeformUI.js"),model=read("freeformModel.js"),css=read("freeform.css");
+test("freeform sound follows the Song scrubber while Beat navigation stays independent",()=>{
+ const ui=read("freeformUI.js"),model=read("freeformModel.js"),
+  songUI=read("songUI.js"),css=read("freeform.css");
  assert.match(model,/export function soundingFreeformPitches/);
  assert.match(ui,/soundingFreeformPitches\(layer\(\),inst\?\.id,playStep\)/);
- assert.match(ui,/followPlayback=false;barStart=/);
- assert.match(ui,/follow\.setAttribute\("aria-pressed"/);
+ assert.match(ui,/seekSongStep\(target\)/);
+ assert.match(ui,/seekToStep\(step\)/);
  assert.match(ui,/playStep>=viewStep\(\)\+VIEW_BARS\*BAR_STEPS/);
+ assert.match(songUI,/freeformUI\.seekToStep\(seekStep\)/);
  assert.match(css,/\.freeform-key\.sounding/);
 });
 
@@ -245,7 +247,7 @@ test("Beat and Song-time freeform share canonical Instrument cards",()=>{
  const beat=read("studio.js"),freeform=read("freeformUI.js"),
   card=read("editorInstrumentCard.js");
  assert.match(beat,/createInstrumentCard\(inst,\{/);
- assert.match(freeform,/createInstrumentCard\(option,\{/);
+ assert.match(freeform,/createInstrumentCard\(resolveFreeformInstrument\(song,option\),\{/);
  assert.match(card,/card\.setAttribute\("aria-pressed",String\(selected\)\)/);
  assert.match(card,/instrument\.sounds\.length\+" sounds"/);
  assert.doesNotMatch(freeform,/const picker=el\("select"\)/);

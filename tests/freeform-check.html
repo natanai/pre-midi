@@ -27,14 +27,17 @@
   get("song-expand").click();
   await wait(()=>doc.querySelectorAll(".song-beat-clip").length===1,"Song created");
   assert(doc.querySelectorAll(".song-freeform-row").length===1,"One attached lane per Beat Track");
-  assert(!doc.querySelector(".song-freeform-row").classList.contains("expanded"),"Initially collapsed");
+  assert(doc.querySelector(".song-freeform-row").classList.contains("dormant"),
+   "Unused attached freeform begins as a compact drop tab");
   doc.querySelector(".song-freeform-toggle").click();
   await wait(()=>!doc.querySelector(".song-freeform-editor").hidden,"Empty freeform editor opens");
   assert(doc.querySelector("main").classList.contains("editing-freeform"),"Freeform owns lower editor space");
-  const add=[...doc.querySelectorAll(".freeform-editor-tools button")].find(b=>b.textContent.includes("instrument"));
-  assert(add,"Add freeform Instrument control exists");
-  add.click();
-  await wait(()=>doc.querySelector(".freeform-roll-content"),"Freeform piano roll available");
+  assert(doc.querySelectorAll(".freeform-instrument-list .instrument-card").length===1,
+   "Attached freeform inherits its Beat Instrument without asking to add one");
+  assert(![...doc.querySelectorAll(".freeform-editor-tools button")]
+   .some(button=>button.textContent==="+ instrument"),
+   "Attached freeform cannot create a divergent Instrument");
+  await wait(()=>doc.querySelector(".freeform-roll-content"),"Linked piano roll available");
   // Freeform must occupy the same lower workspace as Beat, not a scroller
   // inside the height-capped Song arranger.
   const freeform=doc.querySelector(".song-freeform-editor");
@@ -113,7 +116,9 @@
    saved?.tracks?.[0]?.freeform?.instruments?.[0]?.sounds?.[0]?.patch?.presetId==="init",
    "Freeform preset selection persists to Song")).tracks[0].freeform.instruments[0];
   assert(selected.notes.length===1&&selected.notes[0].id===firstId,
-   "Choosing a freeform Sound retains previously placed notes");
+   "Choosing a linked Sound retains its independent Song-position notes");
+  assert((await readDraft()).beats[0].instruments[0].sounds[0].patch.presetId==="init",
+   "Changing a linked freeform Sound changes its source Beat Instrument");
   assert(selected.sounds[0].patch.presetId==="init",
    "Factory preset writes the canonical patch in freeform Song data");
   await wait(()=>!!doc.querySelector(".freeform-sound-modules .synth-grid"),
@@ -142,14 +147,16 @@
   assert(soundPreview?.textContent==="▶","Freeform Sound has a native-aware preview");
   soundPreview.click();
   const controls=doc.querySelector(".freeform-editor-tools");
-  assert(controls.querySelector(".freeform-follow")?.getAttribute("aria-pressed")==="false",
-   "Follow is optional, not forced during editing");
-  controls.querySelector(".freeform-follow").click();
-  assert(doc.querySelector(".freeform-follow").getAttribute("aria-pressed")==="true",
-   "Song playback follow can be enabled");
-  doc.querySelector(".freeform-nav").click();
-  assert(doc.querySelector(".freeform-follow").getAttribute("aria-pressed")==="false",
-   "Manual bar navigation pauses playback follow");
+  const songBar=controls.querySelector('input[aria-label="Song scrubber bar"]');
+  assert(songBar,"Freeform navigation uses the Song scrubber rather than another timeline");
+  songBar.value="5";songBar.dispatchEvent(new Event("change",{bubbles:true}));
+  assert(get("song-ruler").getAttribute("aria-valuenow")==="5",
+   "Freeform navigation moves the canonical Song scrubber");
+  assert(doc.querySelector(".freeform-roll-ruler").textContent.includes("5"),
+   "Freeform viewport follows the Song scrubber");
+  songBar.value="1";songBar.dispatchEvent(new Event("change",{bubbles:true}));
+  assert(get("song-ruler").getAttribute("aria-valuenow")==="1",
+   "Returning the Song scrubber restores freeform bar one");
   const noteMode=doc.querySelector(".freeform-note-mode");
   assert(noteMode&&noteMode.getAttribute("aria-pressed")==="false",
    "Freeform defaults to Beat-style click-to-remove mode");
@@ -176,10 +183,10 @@
   assert(doc.querySelectorAll(".song-freeform-passage").length===1,"Converted passage remains attached");
   assert(doc.querySelectorAll(".song-freeform-preview-note").length>=2,"Original and direct note are independent");
   const instrumentCards=[...doc.querySelectorAll(".freeform-instrument-list .instrument-card")];
-  assert(instrumentCards.length===2,"Both Song Instruments use the shared Beat cards");
-  instrumentCards[1].click();
-  assert(doc.querySelector('.freeform-instrument-list .instrument-card[aria-pressed="true"]')?.textContent===
-   instrumentCards[1].textContent,"Clicking a Song Instrument card selects it");
+  assert(instrumentCards.length===1,
+   "Unpacking a Beat reuses its attached Instrument rather than cloning it");
+  assert(instrumentCards[0].getAttribute("aria-pressed")==="true",
+   "Source Instrument remains selected after unpacking");
   await wait(()=>doc.querySelectorAll(".freeform-roll-note").length>0,"Unpacked source notes editable");
   const madeCount=doc.querySelectorAll(".song-beat-clip").length;
   const create=doc.querySelector(".freeform-create-beat");
@@ -207,7 +214,7 @@
   await wait(()=>!get("export-dialog").open,"Song export dialog has closed");
   const saved=JSON.parse(await project.text());
   assert(saved.kind==="song"&&saved.version===22,"Freeform exported as Song v22");
-  assert(saved.tracks[0].freeform.instruments.length===2,"Song retains both Instruments");
+  assert(saved.tracks[0].freeform.instruments.length===1,"Song retains one linked Instrument identity");
   assert(saved.tracks[0].freeform.instruments[0].sounds[0].patch.effects.drive>.05,
    "Freeform Sound changes export in canonical synth patch fields");
   assert(saved.tracks[0].freeform.passages.length===1,"Song retains converted passage");
@@ -239,6 +246,13 @@
   fileControl.files=transfer.files;fileControl.dispatchEvent(new Event("change",{bubbles:true}));
   await wait(()=>!!doc.querySelector(".freeform-sound-modules .sample-zones"),
    "Canonical sampler editor opens after importing audio");
+  const linkedDraft=await readDraft();
+  assert(linkedDraft?.beats?.[0]?.instruments?.[0]?.sounds?.[0]?.patch?.type==="sample",
+   "Importing audio into attached freeform also changes the source Beat Sound");
+  const assetId=linkedDraft.beats[0].instruments[0].sounds[0].patch.zones[0].assetId;
+  assert(linkedDraft.beats[0].samples.some(asset=>asset.id===assetId)&&
+   linkedDraft.tracks[0].freeform.samples.some(asset=>asset.id===assetId),
+   "Imported sample remains available to both Beat and Song playback");
   const filter=doc.querySelector('.freeform-sound-modules [aria-label="Recorded sound filter type"]');
   assert(filter,"Freeform sample has existing filter and distortion settings");
   filter.value="highpass";filter.dispatchEvent(new Event("change",{bubbles:true}));
