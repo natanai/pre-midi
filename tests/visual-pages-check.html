@@ -148,11 +148,20 @@ try{
  }))};
  const synthEdits=[];
  renderPatchEditor(document.querySelector("#synth"),synth,(path,value)=>synthEdits.push([path,value]),()=>{},"visual-page-synth");
- // Default Sine Keys-like patches can prepare effect durations without
- // silently enabling a sweep or adding noise to the audible sound.
+ // Sine Keys-like patches visibly explain inaudible controls, while
+ // preserving the ability to prepare settings without making new sound.
  const dormantPaths=["filter.sweepTime","noiseDecay"];
- const dormantDials=dormantPaths.map(path=>document.querySelector(
-  '#synth [data-sound-path="'+path+'"] [role="slider"]'));
+ const dormantFields=dormantPaths.map(path=>document.querySelector(
+  '#synth [data-sound-path="'+path+'"]'));
+ const dormantDials=dormantFields.map(field=>field?.querySelector('[role="slider"]'));
+ pass("inactive durations are subdued with an always-visible reason",
+  dormantFields.every((field,i)=>field?.classList.contains("dial-inactive")&&
+   !!field.querySelector(".dial-state-reason")&&
+   field.querySelector(".dial-state-reason").textContent.includes(
+    i===0?"sweep is 0":"noise is 0%")));
+ pass("inactive durations explain how to make them audible to keyboard and screen readers",
+  dormantDials.every((dial,i)=>dial?.getAttribute("aria-description")?.includes(
+   i===0?"Change Filter sweep":"Increase Noise")));
  pass("inactive sweep and noise durations remain keyboard-editable",
   dormantDials.every(dial=>dial&&dial.tabIndex===0&&
    dial.getAttribute("aria-disabled")!=="true"));
@@ -162,6 +171,19 @@ try{
  pass("dormant durations edit their own parameters without activating effects",
   dormantPaths.every(path=>synthEdits.some(([keys])=>keys.join(".")===path))&&
   synth.filter.sweep===0&&synth.noise===0);
+ // The inactive indicators must be recomputed, not permanently attached.
+ const sounding=structuredClone(synth);
+ sounding.filter.sweep=-1;sounding.noise=.25;
+ renderPatchEditor(document.querySelector("#synth"),sounding,()=>{},()=>{},
+  "visual-page-synth");
+ pass("activating filter sweep and noise clears both inactive explanations",
+  dormantPaths.every(path=>{
+   const field=document.querySelector('#synth [data-sound-path="'+path+'"]');
+   return field&&!field.classList.contains("dial-inactive")&&
+    !field.querySelector(".dial-state-reason");
+  }));
+ renderPatchEditor(document.querySelector("#synth"),synth,
+  (path,value)=>synthEdits.push([path,value]),()=>{},"visual-page-synth");
  const osc=document.querySelector('#synth .visual-sound-panel[data-visual-kind="oscillators"]');
  osc.querySelector("details").open=true;
  const secondControl=osc.querySelector('.visual-graph-action[data-sound-path="oscillators.1.level"]');
