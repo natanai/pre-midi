@@ -9,7 +9,7 @@ import { installKeyboardPiano } from "./keyboardPiano.js";
 import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
-import {pianoKeyGeometry} from "./pianoKeyboard.js";
+import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
@@ -112,12 +112,7 @@ function updateScaleGuide(change) {
 }
 function initializeScaleControls() {
  const root=$("scale-root"),mode=$("scale-mode");
- SCALE_ROOTS.forEach((name,index)=>{
-  const option=element("option",name);option.value=String(index);root.append(option);
- });
- SCALE_MODES.forEach(({id,name})=>{
-  const option=element("option",name);option.value=id;mode.append(option);
- });
+ populateScaleSelectors(root,mode);
  root.addEventListener("change",event=>updateScaleGuide({root:Number(event.target.value)}));
  mode.addEventListener("change",event=>updateScaleGuide({mode:event.target.value}));
  $("scale-lock").addEventListener("change",event=>updateScaleGuide({lock:event.target.checked}));
@@ -1035,33 +1030,15 @@ function renderNotes() {
   previewRow();
  }
  if(showPianoKeys){
-  const keyboard=element("div",undefined,"piano-keys-overlay");
-  keyboard.setAttribute("role","group");
-  keyboard.setAttribute("aria-label","Play piano keys");
-  const geometry=pianoKeyGeometry();
-  // White keys share a single boundary, so they cannot overlap or leave
-  // gaps. Black keys are painted afterwards, above adjacent whites.
-  for(const [kind,items] of [["white",geometry.white],["black",geometry.black]]){
-   for(const {pitch,top,height} of items){
-    const key=element("button",undefined,"piano-key "+kind);
-    key.type="button";
-    key.style.top=top+"px";
-    key.style.height=height+"px";
-    key.dataset.pitch=String(pitch);
-    key.setAttribute("aria-label","Play "+noteLabel(pitch));
-    key.title="play "+noteLabel(pitch);
-    if(kind==="white"&&pitch%12===0)
-     key.append(element("span",noteLabel(pitch),"piano-key-caption"));
-    key.addEventListener("click",()=>{
-     tapPianoKey(pitch);
-     if(!playback&&!pendingPlay)
-      void audition(inst,pitch,beat).catch(error=>message("Couldn't preview key: "+error.message,true));
-    });
-    keyboard.append(key);
-    keyByPitch.set(pitch,key);
+  const keyboard=mountPianoKeyOverlay({
+   noteLabel, onPlay:pitch=>{
+    tapPianoKey(pitch);
+    if(!playback&&!pendingPlay)
+     void audition(inst,pitch,beat).catch(error=>message("Couldn't preview key: "+error.message,true));
    }
-  }
-  root.append(keyboard);
+  });
+  root.append(keyboard.element);
+  for(const [pitch,key] of keyboard.keys)keyByPitch.set(pitch,key);
  }
  const playhead = element("div", undefined, "piano-playhead");
  playhead.setAttribute("aria-hidden", "true");
