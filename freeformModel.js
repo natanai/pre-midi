@@ -98,6 +98,8 @@ export function attachBeatInstruments(song,track,beatId=null){
    item.sourceInstrumentId===source.id))continue;
   makeAttachedInstrument(layer,beat,source);
  }
+ if(beat.instruments.some(inst=>inst.chunks.some(chunk=>
+  chunk.notes.some(note=>note.cutoffAutomation!==undefined))))layer.version=2;
  synchronizeLinkedFreeform(song);
  return layer;
 }
