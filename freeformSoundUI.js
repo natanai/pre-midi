@@ -10,6 +10,7 @@ import {movementDefaults} from "./expression.js";
 import {MAX_SOUNDS,referencedSampleIds} from "./soundModel.js";
 import {makeSampleAsset,MAX_SAMPLE_BYTES} from "./sampler.js";
 import {moveRackSoundRow} from "./entityActions.js";
+import {resolveFreeformInstrument} from "./freeformModel.js";
 
 const el=(tag,cls,text)=>{
  const e=document.createElement(tag);if(cls)e.className=cls;
@@ -104,7 +105,8 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
      initialSample(asset.id,root,inst.layout);
     sound.name=file.name.replace(/\.[^.]+$/,"").slice(0,60)||"Audio";
     layer.samples.push(asset);
-    const needed=referencedSampleIds(layer.instruments);
+    const needed=referencedSampleIds(layer.instruments.map(item=>
+     resolveFreeformInstrument(getSong(),item)));
     layer.samples=layer.samples.filter(entry=>needed.has(entry.id));
    },original.sound.id);
   }catch(error){onError("Audio import: "+error.message);}
