@@ -56,6 +56,10 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
  let activeTrackId=null,activeInstrumentId=null,selectedNoteId=null,selectedPlacementId=null,barStart=0,playStep=null;
  let selectionStartStep=0,selectionLengthSteps=16,followPlayback=false;
  let editorScrollTop=null,editorScrollLeft=null;
+ const track=()=>getSong()?.tracks.find(item=>item.kind==="beat"&&item.id===activeTrackId);
+ const layer=()=>track()?.freeform;
+ const instrument=()=>layer()?.instruments.find(item=>item.id===activeInstrumentId)||layer()?.instruments[0];
+ const currentNote=()=>instrument()?.notes.find(note=>note.id===selectedNoteId);
  const roll=el("div","freeform-roll-scroll");
  const pianoTools=el("div","piano-tools freeform-piano-tools");
  const keysToggle=action("▥",()=>{
@@ -101,10 +105,6 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    .catch(error=>onError("Couldn't preview key: "+error.message));
  }
 
- const track=()=>getSong()?.tracks.find(item=>item.kind==="beat"&&item.id===activeTrackId);
- const layer=()=>track()?.freeform;
- const instrument=()=>layer()?.instruments.find(item=>item.id===activeInstrumentId)||layer()?.instruments[0];
- const currentNote=()=>instrument()?.notes.find(note=>note.id===selectedNoteId);
  function mutate(fn){
   const result=onChange(fn);
   if(result===false)return false;
