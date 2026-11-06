@@ -33,6 +33,12 @@ Do not remove the existing native preflight errors or mark a Windows portable bu
 
 Window compilation alone does not bypass the single-session limit or make long Songs playable. Every window is still an unplayed preparation artifact until the remaining steps below have shipped.
 
+## JavaScript source-linked page publication milestone (staged, not enabled)
+
+`src/hosts/native/song-stream-page.js` now builds bounded, immutable native Song packets from the existing `renderEventsInWindow`, `nativePageDescriptorCursor`, `nativePlans` and frame-accurate `rebaseNativePlansToPage` functions. It also inventories shared synth/vocal delay recipes before the real-time stream begins and provides a revision-bound publisher that retries an identical packet when the Rust/C++ mailbox returns `accepted:false`. Failed assets, changed revisions, unregistered delay recipes, mismatched event counts and malformed ACK responses reject before further publication. `tests/nativeSongStreamPage.test.js` covers late (>600 s) rebasing, cross-platform effect precision, backpressure and failure ownership.
+
+**This is control-side JS source/packet preparation only. It is not called by the shipping `audio.js::play` path.** Native start/status/lookahead polling, stop/fault callbacks, seek/loop/undo/edit invalidation, microphone handoff, bounded-queue starvation, physical WASAPI output and real exported project parity must still be integrated and qualified. The normal 600-second/4,096-onset preflight remains in force. Treat this as a checked intermediate engineering milestone, not end-user long-Song playback or permission to publish a new stable release.
+
 ## Required native host protocol before enabling pages
 
 1. A control worker prepares immutable absolute Song-time event pages, voice-bank recipes, external WAV/recording handles, and effect resources before publication. Page duration adapts to onset density *and* measured bank, effect, audio asset and callback work capacity. The audio callback must not parse packets, allocate memory, decode files, lock a mutex, or wait for page delivery.
