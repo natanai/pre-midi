@@ -47,7 +47,7 @@ export function addFreeformInstrument(layer,source=null){
 }
 // A freeform Instrument attached to an existing Beat uses the Beat's live
 // Instrument and Sound identity. Only its Song-time notes/Chunk placements
-// are separate. Legacy unlinked freeform Instruments remain independent.
+// are separate. Manually created empty Tracks own independent Instruments.
 export function sourceForFreeformInstrument(song,instrument){
  if(!instrument?.sourceBeatId||!instrument?.sourceInstrumentId)return null;
  const beat=song?.beats?.find(item=>item.id===instrument.sourceBeatId);
@@ -103,8 +103,10 @@ export function attachBeatInstruments(song,track,beatId=null){
  synchronizeLinkedFreeform(song);
  return layer;
 }
-// Keep a valid self-contained fallback for older readers. All present-day
-// playback and Sound controls resolve the source Beat directly.
+// Current schema validation and project serialization still materialize
+// linked Sound data. Playback and editing resolve the parent Beat directly;
+// delete this duplication when the canonical schema uses references end-to-end.
+// Do not maintain it as an old-reader compatibility guarantee.
 export function synchronizeLinkedFreeform(song){
  if(!song?.tracks)return;
  for(const track of song.tracks){

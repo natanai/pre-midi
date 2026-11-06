@@ -7,7 +7,6 @@ import {createFreeform,ensureFreeform,attachBeatInstruments,attachedBeatForTrack
  duplicateFreeformInstrument,moveFreeformInstrument,removeFreeformInstrument} from "./freeformModel.js";
 import {addBeat} from "./songModel.js";
 import {makeChunk,id} from "./schema.js";
-import {referencedSampleIds} from "./soundModel.js";
 import {installFreeformSoundUI} from "./freeformSoundUI.js";
 import {overlappingFreeformNotes,layoutFreeformNoteRow} from "./freeformLayerUIModel.js";
 import {createFreeformNoteCutoff,editFreeformNoteCutoff} from "./freeformNoteAutomation.js";
@@ -140,14 +139,12 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   const chosen=getSong()?.tracks.find(item=>item.kind==="beat"&&item.id===trackId);
   if(!chosen)return;
   const source=attachedBeatForTrack(getSong(),chosen);
-  // A legacy project with independent freeform Instruments retains them.
-  // A newly opened attached lane derives its Instrument definitions from Beat.
-  const hasIndependent=chosen.freeform?.instruments.some(inst=>!inst.sourceBeatId);
-  const missingLinked=source&&chosen.freeform?.instruments.some(inst=>inst.sourceBeatId)&&
-   source.instruments.some(item=>!chosen.freeform.instruments.some(inst=>
+  // A Beat-backed Track always derives its attached Instrument list from
+  // that Beat. An empty manually created Track instead owns its own Instruments.
+  const missingLinked=source&&source.instruments.some(item=>
+   !chosen.freeform?.instruments.some(inst=>
     inst.sourceBeatId===source.id&&inst.sourceInstrumentId===item.id));
-  if((!chosen.freeform||source&&!hasIndependent&&
-   (!chosen.freeform.instruments.length||missingLinked))&&
+  if((!chosen.freeform||missingLinked)&&
    !mutate(()=>source?attachBeatInstruments(getSong(),chosen,source.id):ensureFreeform(chosen)))return;
   activeTrackId=chosen.id;
   activeInstrumentId=chosen.freeform?.instruments[0]?.id??null;
@@ -177,17 +174,10 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
  function addInstrument(){
   const chosen=track(),song=getSong();
   if(!chosen||!song)return;
-  const source=null;
   let newId=null;
   if(!mutate(()=>{
    const free=ensureFreeform(chosen);
-   const inst=addFreeformInstrument(free,source);
-   newId=inst.id;
-   if(source){
-    const needed=referencedSampleIds([source]);
-    for(const asset of song.beats[0].samples.filter(item=>needed.has(item.id)))
-     if(!free.samples.some(item=>item.id===asset.id))free.samples.push(structuredClone(asset));
-   }
+   newId=addFreeformInstrument(free).id;
   }))return;
   activeInstrumentId=newId;selectedNoteId=null;selectedPlacementId=null;render();
  }
