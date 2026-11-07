@@ -233,7 +233,17 @@ main.editing-freeform .beat-identity > label{display:none}
 .freeform-roll-scroll{
  max-height:none;min-height:0;flex:1 1 0;overscroll-behavior:contain;
 }
-.freeform-note-work>.freeform-note-details{flex:0 0 auto;padding:9px 12px;margin:0;max-height:160px;overflow-y:auto}
+/* Selecting a freeform note replaces the right Sound Inspector, exactly
+   where the Beat note controls live. No second nested 160px scroll viewport. */
+.freeform-sound-pane>.freeform-note-details{
+ display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;
+ min-width:0;max-width:100%;max-height:none;overflow:visible;
+ padding:10px 0 18px;margin:0;border-top:0
+}
+.freeform-note-close{display:block;margin:0 0 8px auto;min-height:30px}
+.freeform-note-expression{flex:1 1 100%;max-width:100%;min-width:0}
+.freeform-note-expression .expression-controls{min-width:0;flex:1 1 100%}
+.freeform-note-expression .expression-visual{max-width:100%;width:100%}
 .freeform-scale-controls{
  display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;
  border-bottom:1px solid var(--faint);padding:9px 12px;
