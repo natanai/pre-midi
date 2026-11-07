@@ -1426,9 +1426,13 @@ body.sound-visual-zoom .visual-sound-panel.zoomed {position:fixed;z-index:220;le
  max-height:90dvh;overflow-y:auto;overscroll-behavior:contain;
  border-color:var(--bright);box-shadow:0 12px 60px #000}
 .visual-sound-panel.zoomed>.synth-group>.visual-panel-area {height:clamp(220px,37dvh,380px)}
-.visual-sound-panel.zoomed>.synth-group>.synth-fields {grid-template-columns:repeat(auto-fit,minmax(90px,120px));justify-content:start;gap:18px}
+.visual-sound-panel.zoomed>.synth-group>.synth-fields {display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,120px));justify-content:start;gap:18px}
+.visual-sound-panel.zoomed .synth-fields>.dial-field {min-width:0;width:100%}
+.visual-sound-panel.zoomed .synth-fields>.synth-field {min-width:0;max-width:100%}
 .visual-sound-panel.zoomed .oscillator-stack {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));align-items:start}
 .visual-sound-panel.zoomed .oscillator-unit {min-width:0;border-bottom:0}
+.visual-sound-panel.zoomed .oscillator-unit>.synth-fields {display:grid;grid-template-columns:repeat(auto-fit,minmax(82px,1fr));gap:14px 10px}
+.visual-sound-panel.zoomed .automation-toggle {grid-column:1/-1;justify-self:start}
 .visual-sound-panel.zoomed .visual-graph-label {font-size:11px}
 .sound-section,.freeform-sound-host {overflow-anchor:none}
 .visual-sound-panel.zoomed>.synth-group>summary {cursor:default;padding-right:44px}

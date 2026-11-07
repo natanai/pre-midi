@@ -106,7 +106,15 @@ frame.addEventListener("load",async()=>{
   }),rect.width<=1041&&rect.left>=10&&rect.right<=win.innerWidth-10);
   pass("expanded labels use unscaled text outside the SVG",label?.tagName==="SPAN"&&!label.closest("svg")&&label.getBoundingClientRect().height<20&&label.getBoundingClientRect().width<40);
   pass("expanded header remains within the viewport",rect.top>=0&&rect.bottom<=win.innerHeight+1);
+  pass("expanded oscillator controls do not overflow horizontally",oscillator.scrollWidth<=oscillator.clientWidth+1);
   oscillator.querySelector(".visual-panel-expand").click();
+  panel("filter").querySelector("details").open=true;
+  panel("filter").querySelector(".visual-panel-expand").click();
+  await settle();
+  const expandedFilter=panel("filter");
+  pass("expanded tone controls and automation action wrap without horizontal overflow",expandedFilter.scrollWidth<=expandedFilter.clientWidth+1);
+  pass("cutoff automation remains available in the renamed shared filter module",!!expandedFilter.querySelector('button[aria-label="Automate cutoff"]'));
+  expandedFilter.querySelector(".visual-panel-expand").click();
   status="PASS";
  }catch(error){checks.error=String(error.stack||error)}
  document.documentElement.dataset.result=status;
