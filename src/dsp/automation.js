@@ -1,5 +1,5 @@
-import {SYNTH_PARAMETERS} from './parameters.js';
-const parameter=SYNTH_PARAMETERS.find(item=>item.id==='filter.cutoff');
+import {parameterFor,validParameterValue} from './parameters.js';
+const parameter=parameterFor('filter.cutoff');
 export const AUTOMATION_VERSION=1;
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
 const keys=(object,allowed)=>object&&typeof object==='object'&&!Array.isArray(object)&&Object.keys(object).every(key=>allowed.includes(key));
@@ -35,7 +35,7 @@ export function validateAutomationPlan(block){
  if(!keys(block,['version','target','unit','interpolation','points'])||block.version!==1||block.target!=='filter.cutoff'||block.unit!=='hz'||block.interpolation!=='exponential'||!Array.isArray(block.points)||block.points.length<2||block.points.length>6)return ['Unsupported automation execution plan.'];
  let previous=-1;
  for(const [order,point] of block.points.entries()){
-  if(!keys(point,['time','value','id','order'])||!finite(point.time)||point.time<0||point.time<=previous||point.order!==order||!finite(point.value)||point.value<50||point.value>14000)return ['Invalid automation event.'];previous=point.time;
+  if(!keys(point,['time','value','id','order'])||!finite(point.time)||point.time<0||point.time<=previous||point.order!==order||!validParameterValue(parameter.id,point.value))return ['Invalid automation event.'];previous=point.time;
  }
  return [];
 }

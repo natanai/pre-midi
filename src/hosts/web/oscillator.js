@@ -28,8 +28,24 @@ export function prepareOscillator(context,slot,plan,index=0){
 // A shared periodic buffer keeps slow modulation phase independent of the
 // browser oscillator's SIMD quantum accumulation and inverse-FFT rounding.
 const sineLfos=new WeakMap();
-export function prepareSineLfo(context,rate,start){
+export function prepareSineLfo(context,rate,start,end,{elapsed=0}={}){
  let buffer=sineLfos.get(context);if(!buffer){buffer=context.createBuffer(1,4096,context.sampleRate);const data=buffer.getChannelData(0);for(let i=0;i<data.length;i++)data[i]=Math.sin(2*Math.PI*i/data.length);sineLfos.set(context,buffer);}
  const source=context.createBufferSource();source.buffer=buffer;source.loop=true;source.playbackRate.value=Math.fround(rate)*4096/context.sampleRate;
+ return {source,sourceStart:start,sourceOffset:((elapsed*Math.fround(rate))%1+1)%1*buffer.duration};
+}
+
+// Reuse the same Fourier phase convention as pitched oscillators. Restoring a
+// control clock changes the initial phase, never its rate or authored value.
+export function prepareControlLfo(context,rate,start,{precise=false,elapsed=0}={}){
+ if(precise)return prepareSineLfo(context,rate,start,undefined,{elapsed});
+ const source=context.createOscillator();source.frequency.value=rate;
+ if(elapsed>0){
+  const {real,imag}=phaseCoefficients({wave:"sine"},2*Math.PI*rate*elapsed,context.sampleRate);
+  source.setPeriodicWave(context.createPeriodicWave(real.subarray(0,2),imag.subarray(0,2),{disableNormalization:true}));
+ }else source.type="sine";
  return {source,sourceStart:start};
+}
+export function startControlLfo(prepared){
+ if(prepared.sourceOffset!==undefined)prepared.source.start(prepared.sourceStart,prepared.sourceOffset);
+ else prepared.source.start(prepared.sourceStart);
 }

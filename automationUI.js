@@ -1,3 +1,5 @@
+import {parameterFor} from "./src/dsp/parameters.js";
+const cutoff=parameterFor("filter.cutoff");
 import {explainUnit,explainLabel} from './dial.js';
 import {illustrateSoundPanel} from './soundIllustrations.js';
 import {assignSoundEdit} from './soundEditPath.js';
@@ -12,7 +14,7 @@ export function renderCutoffAutomation(root,instrument,beat,onChange){
  const fields=group.querySelector('.synth-fields')??group;
  const toggle=document.createElement('button');toggle.type='button';toggle.className='automation-toggle';toggle.textContent=block?'cutoff over time':'move over time';toggle.setAttribute('aria-label',block?'Edit cutoff automation':'Automate cutoff');
  toggle.addEventListener('click',()=>{
-  if(!block){group.open=true;opened.add(instrument.id);onChange({version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:[{id:crypto.randomUUID(),step:0,value:(patch.filter?.cutoff??14000)},{id:crypto.randomUUID(),step:Math.min(16,beat.bars*16),value:Math.max(50,(patch.filter?.cutoff??14000)/4)}]});}
+  if(!block){group.open=true;opened.add(instrument.id);onChange({version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:[{id:crypto.randomUUID(),step:0,value:(patch.filter?.cutoff??cutoff.max)},{id:crypto.randomUUID(),step:Math.min(16,beat.bars*16),value:Math.max(cutoff.min,(patch.filter?.cutoff??cutoff.max)/4)}]});}
   else{const panel=root.querySelector('.cutoff-automation');panel.open=!panel.open;if(panel.open)panel.scrollIntoView({block:'nearest'});}
  });if(!block)fields.append(toggle);
  if(!block)return;
@@ -40,7 +42,7 @@ export function renderCutoffAutomation(root,instrument,beat,onChange){
    label.dataset.soundPath='points.'+index+'.step';
    label.append(title,input);row.append(label);
   }
-  const field=document.createElement('label'),title=document.createElement('span'),word=document.createElement('span'),unit=document.createElement('span'),input=document.createElement('input');field.className='synth-field';word.textContent='cutoff';explainLabel(word,index?'End cutoff':'Begin cutoff');unit.textContent='hz';explainUnit(unit,'hz');title.append(word,' ',unit);input.type='number';input.min=50;input.max=14000;input.step=1;input.value=point.value;input.setAttribute('aria-label',index?'End cutoff':'Begin cutoff');input.addEventListener('change',()=>update(index,{value:Number(input.value)}));
+  const field=document.createElement('label'),title=document.createElement('span'),word=document.createElement('span'),unit=document.createElement('span'),input=document.createElement('input');field.className='synth-field';word.textContent='cutoff';explainLabel(word,index?'End cutoff':'Begin cutoff');unit.textContent='hz';explainUnit(unit,'hz');title.append(word,' ',unit);input.type='number';input.min=cutoff.min;input.max=cutoff.max;input.step=cutoff.ui.step;input.value=point.value;input.setAttribute('aria-label',index?'End cutoff':'Begin cutoff');input.addEventListener('change',()=>update(index,{value:Number(input.value)}));
   field.dataset.soundPath='points.'+index+'.value';
   field.append(title,input);row.append(field);visualDetails.append(row);
  }

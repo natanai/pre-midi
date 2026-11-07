@@ -1519,7 +1519,8 @@
       "transaction_rule": "One gesture -> ephemeral preview -> one undoable commit in the selected document; cancel leaves the authored patch and immutable source bytes unchanged.",
       "physical_instance": "soundInspector.js owns one sound-inspector-frame and one control-node map. Beat, Freeform and vocal adapters move that same node; mount never clones a second desktop Inspector. Beat listeners are owner-guarded and adapter handlers clear on ownership change.",
       "processor_owner": "recordedAudio.js: common sampled/vocal filter, drive, tone/tremolo, delay, modulation, cutoff automation and clip-envelope definitions; C++ reads a shared current sample-processing packet.",
-      "editor_buttons": "editorWorkspace.js uses one uiIcons.js SVG factory and class-based history/Sound control dimensions for every context; prefixed element IDs cannot change sizing or icon fonts."
+      "editor_buttons": "editorWorkspace.js uses one uiIcons.js SVG factory and class-based history/Sound control dimensions for every context; prefixed element IDs cannot change sizing or icon fonts.",
+      "parameter_owner": "src/dsp/parameters.js: frozen source-aware parameter authority; soundParameterAdapter.js maps stable musical IDs to context storage paths. Controls, validation, modulation/automation and illustration axes consume derived projections."
     },
     "references": [
       {
@@ -2327,7 +2328,7 @@
       {
         "id": "SE-01",
         "title": "Consolidate parameter and capability definitions",
-        "status": "in_progress",
+        "status": "done",
         "priority": "P0",
         "depends_on": [],
         "related_synthesis_tasks": [
@@ -2336,11 +2337,19 @@
         ],
         "implementation_paths": [
           "src/dsp/parameters.js",
+          "soundParameterAdapter.js",
           "instrumentUI.js",
           "audioControlUI.js",
           "samplerUI.js",
+          "synth.js",
+          "sampler.js",
           "vocalEffects.js",
-          "vocalAudioView.js"
+          "audioEffects.js",
+          "src/dsp/expression.js",
+          "src/dsp/modulation.js",
+          "src/dsp/automation.js",
+          "soundIllustrations.js",
+          "soundPanelModels.js"
         ],
         "acceptance": [
           "Replace duplicated definitions with one parameter authority used by validation, controls, modulation, automation and illustrations; do not add a second mirrored registry.",
@@ -2351,8 +2360,25 @@
         "verification": [
           "Focused validation and edit tests for defaults, boundary values and mixed multi-axis transactions."
         ],
-        "completion_evidence": [],
-        "progress_note": "Sampled Sounds and vocals now share the recorded-audio module definitions/renderer and filter bypass support. Full parameter authority consolidation remains pending."
+        "completion_evidence": [
+          {
+            "type": "implementation",
+            "paths": [
+              "src/dsp/parameters.js",
+              "soundParameterAdapter.js"
+            ],
+            "result": "Stable parameter IDs and source-aware ranges/defaults/units/interpolation/bypass/trigger/capability metadata, with cached derived projections and no mirrored UI range registry."
+          },
+          {
+            "type": "focused_behavior",
+            "paths": [
+              "tests/soundParameters.test.js",
+              "tests/audioControlUI.test.js"
+            ],
+            "result": "Factory sound preservation; shared endpoint acceptance/rejection for synth/sample/vocal; source-only/unsupported/inactive states; valid multi-axis vocal edits; recording modulation graphs cannot offer oscillator or note-derived controls."
+          }
+        ],
+        "progress_note": "Implemented and verified at the parameter/data layer. One frozen authority defines current Sound controls and recorded-source variants; synth/sample/vocal validators, factories, ordinary controls, quick controls, routing choices and graph handles derive from it. Opening/inspecting factory sounds preserves authored values. Source-only controls, inactive processing, unsupported fields, filter bypass, articulation triggers and current modulation applicability are explicit. Physical editor/host observation remains in SE-02/SE-17."
       },
       {
         "id": "SE-02",
@@ -2384,7 +2410,7 @@
       {
         "id": "SE-03",
         "title": "Close existing sampled-audio and vocal processing gaps",
-        "status": "implemented_unverified",
+        "status": "in_progress",
         "priority": "P0",
         "depends_on": [
           "SE-01",
@@ -2412,8 +2438,20 @@
         "verification": [
           "PCM/plan fixtures for sample versus vocal treatment of the same source, nonzero delay and tone motion, bypass, short fades, seeks and tails."
         ],
-        "completion_evidence": [],
-        "progress_note": "One recordedAudio.js graph serves sampled Sounds and vocals; native current packet includes tone, routes, automation and delay. Added sample delay, audio tone movement, cutoff/pan routes and two-point cutoff automation; clip-preserving gain/fade mode avoids reuse reinterpretation. Mono native pan corrected; focused native PCM comparison matches. Broad seek/loop and listening qualification remains pending."
+        "completion_evidence": [
+          {
+            "type": "focused_behavior",
+            "paths": [
+              "tests/vocalResume.test.js"
+            ],
+            "result": "Resumed clip envelope matches original attack/sustain/release values; glide/bend and sine phase use original Clip age; modulation smoothing history matches full recurrence within 2e-6."
+          }
+        ],
+        "progress_note": "Existing filter/drive/tone/pulse/delay, gain/envelope preservation and routing share recordedAudio.js. Browser mid-Clip playback now resumes the authored fade, glide/bend, vibrato onset/phase, tone/pulse phase and route envelopes instead of retriggering them. Route smoothing restores bounded recent control history (14 time constants, less than 1e-6 normalized omitted-history contribution); native already reconstructs voice history on seek. Exact pitch-modulated source-readhead integration and browser filter/delay buffer history remain implementation gaps, in addition to listening/loop qualification.",
+        "remaining_implementation": [
+          "Account for accumulated bend/glide/vibrato playback-rate changes in a browser mid-Clip source offset; current vocalSourceRange projects source position using base transpose only.",
+          "Reconstruct browser filter and delay audio-buffer history on seek, or agree and document a deliberate transport reset policy; current native Session already warms its history."
+        ]
       },
       {
         "id": "SE-04",
@@ -2863,9 +2901,9 @@
     ],
     "execution_policy": {
       "next_task_ids": [
-        "SE-01",
-        "SE-02",
-        "SE-03"
+        "SE-03",
+        "SE-05",
+        "SE-14"
       ],
       "first_implementation_milestone": "M1",
       "no_runtime_change_this_audit": false,
@@ -3005,6 +3043,32 @@
           "existing_waveform_timing": "6 existing waveform/timing cases passed",
           "visual_browser": "not run; prior local-preview browser access remains unapproved"
         }
+      },
+      {
+        "date": "2026-11-07",
+        "id": "SOUND-PARAMETER-FOUNDATION-05",
+        "status": "implemented_pending_observation",
+        "summary": "Complete the shared parameter authority and repair browser vocal control-clock retriggering.",
+        "task_ids": [
+          "SE-01",
+          "SE-03"
+        ],
+        "changes": [
+          "Replace independently maintained synth/sample/vocal ranges and defaults with one frozen authority consumed by validation, factory defaults, quick/module controls, modulation/automation and interactive illustration axes. Context serialization stays in soundParameterAdapter.js.",
+          "Declare source-only applicability, filter bypass and articulation triggers. Reject unsupported processing fields instead of retaining inaudible settings. Shared inactive-state explanations come from the same capability metadata.",
+          "Use the same capability lists in recorded-audio dropdowns and diagram actions; vocal graphs can no longer author oscillator targets or note-only movement sources.",
+          "Browser vocal resumes preserve fades, bend/glide progress, vibrato timing, tone/pulse/LFO phase, route envelopes and smoothed control state. Native and browser vocal onset fades use the same recordingEnvelope planner; native current packet remains unchanged."
+        ],
+        "verification": {
+          "routine_check": "npm run check: passed (edited JavaScript syntax and 44 smoke cases)",
+          "focused_regressions": "32 cases passed across parameter, resume, vocal timing, shared audio control, recorded processing, expression and envelope/voice suites",
+          "browser_interaction": "not run; no live browser or physical listening claim",
+          "windows_build": "not requested or run"
+        },
+        "remaining": [
+          "SE-03 still includes browser source-readhead integration for pitch movement and filter/delay history; this milestone does not declare full seek parity.",
+          "SE-05 extended modulation targets, SE-14 source end trimming/loops and the remaining professional suite are still open."
+        ]
       }
     ],
     "vocal_parity_milestone": {
@@ -3046,7 +3110,8 @@
       "remaining_qualification": [
         "Observe live-site trimming and context switching in a real browser",
         "Physical Windows playback/recording observations and future requested portable build",
-        "Broader seek/loop, live-edit and source conversion qualification remains in the Song reliability gates"
+        "Broader seek/loop, live-edit and source conversion qualification remains in the Song reliability gates",
+        "New parameter/control-clock code has focused model checks; pitch-modulated browser source-readhead and filter/delay seek-history implementation gaps remain under SE-03."
       ],
       "not_claimed": [
         "Commercial DAW feature equivalence",

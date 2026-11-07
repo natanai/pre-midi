@@ -1,3 +1,4 @@
+import {soundField,readSoundParameter,soundCapability} from "./soundParameterAdapter.js";
 import {mountSoundPanelView} from "./soundPanelView.js";
 import {renderModulationEditor} from "./modulationUI.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
@@ -5,60 +6,35 @@ import {collectSoundFields} from "./soundPanelLayout.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 // Controls are generated from the same patch keys validated by synth.js.
 // All edits go through the caller's one canonical beat mutation pathway.
-import { WAVES, FILTERS, makePatch } from "./synth.js";
-import { BEND_SHAPES } from "./expression.js";
+import {makePatch} from "./synth.js";
 import { createDial,explainLabel,helpForLabel } from "./dial.js";
 import {HARMONIC_COUNT,harmonicRecipe} from "./harmonics.js";
 // Quick controls and their module copies edit the same canonical fields.
+const field=(id,label,options={})=>soundField(id,"synth",{label,...options});
 export const PRIMARY_SYNTH_FIELDS=Object.freeze([
- {path:["filter","cutoff"],label:"brightness",min:50,max:14000,step:1,display:"hz",log:true},
- {path:["envelope","attack"],label:"attack",min:0,max:3,step:.01,display:"seconds"},
- {path:["envelope","release"],label:"release",min:.01,max:4,step:.01,display:"seconds"}
+ field("filter.cutoff","brightness"),field("envelope.attack","attack"),field("envelope.release","release")
 ]);
 const groups=[
  {name:"Oscillators",fields:[]},
- {name:"Envelope",open:false,fields:[
-  PRIMARY_SYNTH_FIELDS[1],
-  {path:["envelope","decay"],label:"Decay",min:0,max:3,step:.01,display:"seconds"},
-  {path:["envelope","sustain"],label:"Sustain",min:0,max:1,step:.01,display:"percent"},
-  PRIMARY_SYNTH_FIELDS[2]
- ]},
+ {name:"Envelope",open:false,fields:[PRIMARY_SYNTH_FIELDS[1],field("envelope.decay","Decay"),field("envelope.sustain","Sustain"),PRIMARY_SYNTH_FIELDS[2]]},
  {name:"Filter & noise",open:false,fields:[
-  PRIMARY_SYNTH_FIELDS[0],
-  {path:["filter","type"],label:"Filter",options:FILTERS},
-  {path:["filter","resonance"],label:"Resonance",min:.1,max:16,step:.1,display:"number"},
-  {path:["effects","drive"],label:"Distortion",min:0,max:1,step:.01,display:"percent"},
-  {path:["filter","sweep"],label:"Filter sweep",min:-5,max:5,step:.1,display:"number",defaultValue:0},
-  {path:["filter","sweepTime"],label:"Sweep time",min:.01,max:3,step:.01,display:"seconds",defaultValue:.2},
-  {path:["noise"],label:"Noise",min:0,max:1,step:.01,display:"percent"},
-  {path:["noiseDecay"],label:"Noise decay",min:0,max:4,step:.01,display:"seconds",defaultValue:0}
+  PRIMARY_SYNTH_FIELDS[0],field("filter.type","Filter"),field("filter.resonance","Resonance"),
+  field("effects.drive","Distortion"),field("filter.sweep","Filter sweep"),field("filter.sweepTime","Sweep time"),
+  field("noise","Noise"),field("noiseDecay","Noise decay")
  ]},
  {name:"Pitch & movement",open:false,fields:[
-  {path:["bend","shape"],label:"Bend shape",options:BEND_SHAPES.map(([id])=>id)},
-  {path:["bend","amount"],label:"Bend amount",min:0,max:12,step:.25,display:"semitones"},
-  {path:["bend","rate"],label:"Wave speed",min:.1,max:12,step:.1,display:"hz"},
-  {path:["movement","rate"],label:"Vibrato rate",min:.1,max:20,step:.1,display:"hz"},
-  {path:["movement","depth"],label:"Vibrato depth",min:0,max:100,step:1,display:"cents"},
-  {path:["movement","delay"],label:"Vibrato waits",min:0,max:3,step:.05,display:"seconds"},
-  {path:["movement","glide"],label:"Glide from",min:-12,max:12,step:.1,display:"semitones"},
-  {path:["movement","glideTime"],label:"Glide time",min:.01,max:3,step:.01,display:"seconds"},
-  {path:["movement","tremolo"],label:"Pulse amount",min:0,max:1,step:.01,display:"percent"},
-  {path:["movement","tremoloRate"],label:"Pulse speed",min:.1,max:20,step:.1,display:"hz"},
-  {path:["movement","tone"],label:"Tone wave",min:0,max:1,step:.01,display:"percent"},
-  {path:["movement","toneRate"],label:"Tone speed",min:.1,max:20,step:.1,display:"hz"},
-  {path:["pan"],label:"Pan",min:-1,max:1,step:.01,display:"pan"}
+  field("bend.shape","Bend shape"),field("bend.amount","Bend amount"),field("bend.rate","Wave speed"),
+  field("movement.rate","Vibrato speed"),field("movement.depth","Vibrato"),field("movement.delay","Vibrato waits"),
+  field("movement.glide","Glide from"),field("movement.glideTime","Glide time"),
+  field("movement.tremolo","Pulse"),field("movement.tremoloRate","Pulse speed"),
+  field("movement.tone","Tone wave"),field("movement.toneRate","Tone speed"),field("pan","Pan")
  ]},
- {name:"Delay",open:false,fields:[
-  {path:["effects","delayMix"],label:"Delay",min:0,max:1,step:.01,display:"percent"},
-  {path:["effects","delayTime"],label:"Delay time",min:.05,max:1,step:.01,display:"seconds"},
-  {path:["effects","delayFeedback"],label:"Feedback",min:0,max:.8,step:.01,display:"percent"}
- ]}
+ {name:"Delay",open:false,fields:[field("effects.delayMix","Delay"),field("effects.delayTime","Delay time"),field("effects.delayFeedback","Feedback")]}
 ];
 const oscillatorFields=index=>[
- {path:["oscillators",index,"wave"],label:"Wave",options:WAVES},
- {path:["oscillators",index,"level"],label:"Level",min:0,max:1,step:.01,display:"percent"},
- {path:["oscillators",index,"octave"],label:"Octave",options:[-2,-1,0,1,2]},
- {path:["oscillators",index,"detune"],label:"Detune",min:-100,max:100,step:1,display:"cents"}
+ field(`oscillators.${index}.wave`,"Wave"),field(`oscillators.${index}.level`,"Level"),
+ (()=>{const f=field(`oscillators.${index}.octave`,"Octave");return {...f,options:Array.from({length:f.max-f.min+1},(_,i)=>f.min+i)};})(),
+ field(`oscillators.${index}.detune`,"Detune")
 ];
 const editorStates=new Map();
 const init=makePatch("init");
@@ -85,54 +61,14 @@ export function activeSoundPanels(patch){
 const oscillatorTwoActive=patch=>Number(patch.oscillators?.[1]?.level)>0||
  (patch.modulation?.routes??[]).some(route=>route.target==="oscillators.1.level");
 // Common musical edits stay first; deeper controls reuse the same patch fields.
-const pathValue=(obj,path)=>path.reduce((target,key)=>target?.[key],obj);
 const fieldTitle=field=>field.label+" ("+field.path.join(".")+")";
-function format(value,display) {
- if(display==="percent")return Math.round(value*100)+"%";
- if(display==="seconds")return Math.round(value*1000)+" ms";
- if(display==="hz")return value>=1000?(value/1000).toFixed(1)+" kHz":Math.round(value)+" Hz";
- if(display==="cents")return Math.round(value)+" ct";
- if(display==="semitones")return (value>0?"+":"")+Number(value.toFixed(1))+" st";
- if(display==="pan")return value===0?"C":value<0?"L "+Math.round(-value*100):"R "+Math.round(value*100);
- return Number(value).toFixed(1);
-}
-function sliderValue(field,value) {
- if(!field.log)return value;
- const position=(Math.log(value)-Math.log(field.min))/(Math.log(field.max)-Math.log(field.min));
- return Math.round(position*1000);
-}
-function fromSlider(field,value) {
- if(!field.log)return Number(value);
- return Math.max(field.min,Math.min(field.max,Math.round(Math.exp(
-  Math.log(field.min)+(Math.log(field.max)-Math.log(field.min))*Number(value)/1000
- ))));
-}
 function renderField(field,patch,onChange,onPreview){
- const value=pathValue(patch,field.path) ?? (field.defaultValue??(field.path[0]==="bend"?
-  (field.path[1]==="shape"?"straight":field.path[1]==="amount"?2:4):
-  (field.options?field.options[0]:0)));
+ const value=readSoundParameter(patch,field.path.join("."));
+ const capability=soundCapability(patch,field.path);
  // The value can be prepared even while its parent effect is silent.
  // Clearly distinguish "inaudible right now" from "feature unavailable".
- const sweepInactive=field.path[0]==="filter"&&field.path[1]==="sweepTime"&&
-  !patch.filter?.sweep;
- const noiseInactive=field.path[0]==="noiseDecay"&&!patch.noise;
- const parent=field.path[0]==="movement"?({glideTime:"glide",rate:"depth",delay:"depth",
-  tremoloRate:"tremolo",toneRate:"tone"})[field.path[1]]:null;
- const movementInactive=parent&&(patch.movement?.[parent]??0)===0;
- const bendShape=patch.bend?.shape??"straight",bendSilent=(patch.bend?.amount??2)===0;
- const bendInactive=field.path[0]==="bend"&&field.path[1]!=="shape"&&
-  (bendShape==="straight"||field.path[1]==="rate"&&(bendShape!=="wave"||bendSilent));
- const parentName=({glide:"glide",depth:"vibrato",tremolo:"pulse",tone:"tone movement"})[parent];
- const inactiveReason=sweepInactive?
-  "Filter sweep is 0, so Sweep time cannot change the sound yet. Change Filter sweep above or below 0 to hear its timing.":
-  noiseInactive?
-  "Noise is 0%, so Noise decay cannot change the sound yet. Increase Noise to hear its decay.":
-  movementInactive?parentName+" is zero, so this setting cannot change the sound yet; the dashed curve is a reference guide":
-  bendInactive?(bendSilent&&bendShape==="wave"?"Bend amount is zero; the dashed wave is a speed reference":
-   "This setting does not affect the selected bend shape; the dashed wave is a reference guide"):null;
- const inactiveLabel=sweepInactive?"inactive · sweep is 0":
-  noiseInactive?"inactive · noise is 0%":movementInactive?"inactive · "+parentName+" is 0":
-  bendInactive?"inactive · "+(bendShape==="straight"?"straight bend":bendSilent?"bend amount is 0":"select wave"):null;
+ const inactiveReason=capability.state==="inactive"?capability.reason+"; the dashed curve is a reference guide":undefined;
+ const inactiveLabel=capability.state==="inactive"?"inactive · "+capability.reason:undefined;
  const cutoffHint=field.path[0]==="filter"&&field.path[1]==="cutoff"?
   patch.filter.type==="lowpass"?"turn it down to muffle the high stuff":
   patch.filter.type==="highpass"?"turn it up to shave off the bass":

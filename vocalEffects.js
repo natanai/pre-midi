@@ -1,3 +1,4 @@
+import {validParameterValue,parameterDefaults} from "./src/dsp/parameters.js";
 import {RECORDING_DEFAULTS,validateRecordedModulation,validateRecordingAutomation} from "./recordedAudio.js";
 // Clip audio processing uses the sampler's filter, drive and movement contracts,
 // plus the synthesizer's existing delay bus. Source recordings remain immutable.
@@ -7,19 +8,16 @@ export const VOCAL_EFFECT_DEFAULTS=RECORDING_DEFAULTS;
 export function vocalEffects(clip){
  const fx=clip?.effects||{};
  return {...VOCAL_EFFECT_DEFAULTS,...fx,movement:movement(fx),
-  filter:fx.filter??null,bend:fx.bend??{shape:"straight",amount:2,rate:4}};
+  filter:fx.filter??null,bend:fx.bend??parameterDefaults("bend","vocal")};
 }
 export function validateVocalEffects(fx){
  if(fx===undefined)return [];
  if(!fx||typeof fx!=="object"||Array.isArray(fx))return ["Invalid vocal effects."];
- const errors=[],value=(name,min,max)=>{
-  if(fx[name]!==undefined&&(!Number.isFinite(fx[name])||fx[name]<min||fx[name]>max))
-   errors.push("Invalid vocal "+name+".");
- };
- for(const [name,min,max] of [
-  ["pan",-1,1],["transpose",-24,24],["attack",0,2],["release",0,3],
-  ["delayMix",0,1],["delayTime",.05,1],["delayFeedback",0,.8]
- ])value(name,min,max);
+ const errors=[];
+ for(const name of ["pan","transpose","attack","release","delayMix","delayTime","delayFeedback"]){
+  const id=name==="attack"||name==="release"?"envelope."+name:name.startsWith("delay")?"effects."+name:name;
+  if(fx[name]!==undefined&&!validParameterValue(id,fx[name],"vocal"))errors.push("Invalid vocal "+name+".");
+ }
  errors.push(...validateMovement(fx.movement),...validateBend(fx.bend));
  const tone=validateSampleTone({...fx,filter:fx.filter??undefined});if(tone)errors.push(tone);
  errors.push(...validateRecordedModulation(fx.modulation,{vocal:true}),...validateRecordingAutomation(fx.automation));

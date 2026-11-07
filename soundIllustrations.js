@@ -1,3 +1,5 @@
+import {soundAxis,readSoundParameter} from "./soundParameterAdapter.js";
+import {modulationTargetsFor,modulationSourcesFor,parameterFor} from "./src/dsp/parameters.js";
 import {captureSoundGraphView} from "./soundControlView.js";
 // Reusable illustrations for the existing sound controls. These are teaching
 // diagrams, not an alternate audio engine or a second source of patch state.
@@ -25,12 +27,7 @@ const at=(patch,path)=>path.reduce((value,key)=>value?.[key],patch);
 const axisValue=(patch,path)=>{
  const value=at(patch,path);
  if(typeof value==="number"&&Number.isFinite(value))return value;
- if((patch.type==="sample"||patch.type==="vocal")&&path[0]==="filter")
-  return DEFAULT_SAMPLE_FILTER[path[1]]??0;
- if(path[0]==="drive")return 0;
- if(path[0]==="bend")return path[1]==="amount"?2:4;
- if(path.join(".")==="movement.glideTime")return .3;
- return 0;
+ return readSoundParameter(patch,path.join("."))??0;
 };
 const shortValue=value=>Math.abs(value)>=100?String(Math.round(value)):
  String(Number(value.toFixed(3)));
@@ -136,7 +133,8 @@ export const diagram=(patch,type,page=0)=>{
   paths.push({d,secondary,links,role});
  const tag=(x,y,value)=>labels.push({x,y,value});
  const handle=(x,y,axes,label)=>handles.push({x,y,axes,label});
- const axis=(path,min,max,mode,options={})=>({path,min,max,mode,...options});
+ const referenceAxis=(path,min,max,mode,options={})=>({path,min,max,mode,...options});
+ const axis=(path,mode,options={})=>soundAxis(patch,path,mode,options);
  const p=patch;
  if(type==="stage"){
   // The overview's measured waveform remains factual PCM. This separate
@@ -168,11 +166,11 @@ export const diagram=(patch,type,page=0)=>{
    if(volume===0)dormant("gain","instrument volume is zero; the dashed reference isolates sound level");
   }
   handle(x,y,levels?[
-   axis(["volume"],0,1,"linearX",{from:24,to:336,step:.01,unit:"percent"}),
-   axis(["gain"],0,1,"linearY",{from:100,to:30,step:.01,unit:"percent"})
+   referenceAxis(["volume"],0,1,"linearX",{from:24,to:336,step:.01,unit:"percent"}),
+   referenceAxis(["gain"],0,1,"linearY",{from:100,to:30,step:.01,unit:"percent"})
   ]:[
-   axis(["pan"],-1,1,"linearX",{from:24,to:336,step:.01,unit:"pan"}),
-   axis(["volume"],0,1,"linearY",{from:100,to:30,step:.01,unit:"percent"})
+   referenceAxis(["pan"],-1,1,"linearX",{from:24,to:336,step:.01,unit:"pan"}),
+   referenceAxis(["volume"],0,1,"linearY",{from:100,to:30,step:.01,unit:"percent"})
   ],levels?(rack?"rack level / selected sound level":"instrument level / sound level"):
    "stereo position / instrument level");
   tag(18,14,"l/r reference");
@@ -190,9 +188,9 @@ export const diagram=(patch,type,page=0)=>{
    line("M"+x.toFixed(2)+" 102 V"+y.toFixed(2),true,
     ["points."+index+".step","points."+index+".value"]);
    handle(x,y,[
-    axis(["points",index,"step"],0,total,"linearX",{from:18,to:342,step:1,unit:"step",
+    referenceAxis(["points",index,"step"],0,total,"linearX",{from:18,to:342,step:1,unit:"step",
      ...(index===0?{hardMax:p.points[1].step-1}:{hardMin:p.points[0].step+1})}),
-    axis(["points",index,"value"],50,14000,"logY",{from:98,to:26,step:1,unit:"Hz"})
+    axis(["points",index,"value"],"logY",{from:98,to:26,unit:"Hz"})
    ],(index===0?"start":"end")+" position / brightness");
    tag(x+4,Math.max(16,y-8),index===0?"start":"end");
   }
@@ -208,7 +206,7 @@ export const diagram=(patch,type,page=0)=>{
    line("M"+x+" 100 V"+(100-41*value).toFixed(2),false,
     ["oscillators."+index+".harmonics."+n]);
    handle(x,100-41*value,[
-    axis(["oscillators",index,"harmonics",n],0,1,"linearY",{from:100,to:59,step:.01,unit:"percent"})
+    axis(["oscillators",index,"harmonics",n],"linearY",{from:100,to:59,unit:"percent"})
    ],"harmonic "+(n+1)+" level");
    if(n===0||n===31||n%8===7)tag(x-5,111,"h"+(n+1));
   }
@@ -239,8 +237,8 @@ export const diagram=(patch,type,page=0)=>{
    }
    const bottom=center+amplitude,top=center-amplitude;
    handle(38+clamp((o.detune+100)/200)*278,bottom-(bottom-top)*clamp(o.level),[
-    axis(["oscillators",index,"detune"],-100,100,"linearX",{from:38,to:316,step:1}),
-    axis(["oscillators",index,"level"],0,1,"linearY",{from:bottom,to:top,step:.01})
+    axis(["oscillators",index,"detune"],"linearX",{from:38,to:316}),
+    axis(["oscillators",index,"level"],"linearY",{from:bottom,to:top})
    ],"oscillator "+(index+1)+" detune / level");
    tag(18,center-14,"osc "+(index+1));
   }
@@ -271,15 +269,15 @@ export const diagram=(patch,type,page=0)=>{
   const cutoff=clamp(Math.log(f.cutoff/50)/Math.log(280));
   const x=26+308*cutoff,y=104-78*drive;
   handle(x,y,[
-   ...(!p.audioFilterBypassed?[axis(["filter","cutoff"],50,14000,"logX",
+   ...(!p.audioFilterBypassed?[axis(["filter","cutoff"],"logX",
     {from:26,to:334,step:1,unit:"Hz"})]:[]),
-   axis(drivePath,0,1,"linearY",{from:104,to:26,step:.01,unit:"percent"})
+   axis(drivePath,"linearY",{from:104,to:26,unit:"percent"})
   ],p.audioFilterBypassed?"distortion (filter off)":"brightness / distortion");
   tag(18,14,"220 hz reference tone");tag(18,111,"drive ↑");
   tag(340,111,p.audioFilterBypassed?"filter off":"brightness →");
   tag(340,14,"before ··· / after");
   if(!p.audioFilterBypassed){
-   handle(26+308*(f.resonance-.1)/15.9,92,[axis(["filter","resonance"],.1,16,"linearX",{from:26,to:334,step:.1})],"resonance");
+   handle(26+308*(f.resonance-.1)/15.9,92,[axis(["filter","resonance"],"linearX",{from:26,to:334})],"resonance");
    action(180,105,["filter","type"],FILTERS,"filter shape");
   }else action(180,105,["audioFilterBypassed"],[true,false],"turn filter on");
   tag(168,111,"±"+shortValue(scale));
@@ -305,8 +303,8 @@ export const diagram=(patch,type,page=0)=>{
     dormant("filter.sweepTime","cutoff range limits this sweep; the dashed curve shows the requested timing");
    }
    handle(finish,startY,[
-    axis(["filter","sweepTime"],.01,3,"linearX",{from:26,to:164,step:.01,unit:"s"}),
-    axis(["filter","sweep"],-5,5,"linearY",{from:98,to:38,step:.1,unit:"oct"})
+    axis(["filter","sweepTime"],"linearX",{from:26,to:164,unit:"s"}),
+    axis(["filter","sweep"],"linearY",{from:98,to:38,unit:"oct"})
    ],"filter sweep duration / starting brightness");
    const noisePath=level=>pathRange(240,t=>[193+148*t,82-
     17*level*(decay>0?Math.exp(-t*4*5/decay):1)*Math.cos(t*83)*Math.cos(t*9)]);
@@ -316,8 +314,8 @@ export const diagram=(patch,type,page=0)=>{
     dormant("noiseDecay","noise level is zero; the dashed curve is a noise decay reference");
    }
    handle(197+clamp(decay/4)*137,100-noise*39,[
-    axis(["noiseDecay"],0,4,"linearX",{from:197,to:334,step:.01,unit:"s"}),
-    axis(["noise"],0,1,"linearY",{from:100,to:61,step:.01,unit:"percent"})
+    axis(["noiseDecay"],"linearX",{from:197,to:334,unit:"s"}),
+    axis(["noise"],"linearY",{from:100,to:61,unit:"percent"})
    ],"noise duration / level");
    tag(24,17,sweep===0?"sweep off · guide":Math.abs(actualSweep-sweep)>1e-9?"sweep limited · guide":"filter sweep");
    tag(195,17,noise===0?"noise off · guide":"noise");
@@ -346,8 +344,8 @@ export const diagram=(patch,type,page=0)=>{
   }),false,["filter.cutoff","filter.resonance","filter.type"]);
   line("M"+x.toFixed(2)+" 97 V19",true);
   handle(x,95-60*base-25*r,[
-   axis(["filter","cutoff"],50,14000,"logX",{from:18,to:342,step:1,unit:"Hz"}),
-   axis(["filter","resonance"],.1,16,"linearY",{from:95-60*base,to:95-60*base-25,step:.1})
+   axis(["filter","cutoff"],"logX",{from:18,to:342,unit:"Hz"}),
+   axis(["filter","resonance"],"linearY",{from:95-60*base,to:95-60*base-25})
   ],"cutoff / resonance");
   tag(18,15,"low");tag(308,15,"high");tag(146,15,"48k model");
   action(90,103,["filter","type"],FILTERS,"filter shape");
@@ -360,11 +358,11 @@ export const diagram=(patch,type,page=0)=>{
   line("M18 90 H344 M"+px(e.fadeStart).toFixed(2)+" 18 V96",true);
   line(pathFrom([[18,90],[px(e.attackEnd),23],[px(e.fadeStart),23],
    [px(e.life),90],[344,90]]),false,vocal?["attack","release"]:["attack","release","oneShot","followPitch"]);
-  handle(px(e.attackEnd),23,[axis(["attack"],0,2,"linearX",
+  handle(px(e.attackEnd),23,[axis(["attack"],"linearX",
    {from:px(vocal?0:.001),to:px(2+(vocal?0:.001)),step:.005,unit:"s"})],"attack");
   const release=p.release??.17;
   const releaseAt=value=>px(e.releaseMovesStart?8-value:4+value);
-  handle(releaseAt(release),e.releaseMovesStart?23:90,[axis(["release"],e.releaseMin,3,"linearX",
+  handle(releaseAt(release),e.releaseMovesStart?23:90,[axis(["release"],"linearX",
    {from:releaseAt(e.releaseMin),to:releaseAt(3),step:e.releaseStep,unit:"s"})],"release");
   tag(18,14,"on");tag(115,14,"time guide");
   tag(px(e.fadeStart),14,vocal?"fade":p.oneShot?"tail":p.followPitch===false?"end":"off");
@@ -394,12 +392,12 @@ export const diagram=(patch,type,page=0)=>{
   const sustainX=224+112*clamp(e.sustain),releaseY=107-27*clamp((e.release-.01)/3.99);
   line("M32 107 H163 M224 107 H336",true);
   handle(attackX,decayY,[
-   axis(["envelope","attack"],0,3,"linearX",{from:32,to:163,step:.01,unit:"s"}),
-   axis(["envelope","decay"],0,3,"linearY",{from:107,to:80,step:.01,unit:"s"})
+   axis(["envelope","attack"],"linearX",{from:32,to:163,unit:"s"}),
+   axis(["envelope","decay"],"linearY",{from:107,to:80,unit:"s"})
   ],"attack / decay");
   handle(sustainX,releaseY,[
-   axis(["envelope","sustain"],0,1,"linearX",{from:224,to:336,step:.01,unit:"percent"}),
-   axis(["envelope","release"],.01,4,"linearY",{from:107,to:80,step:.01,unit:"s"})
+   axis(["envelope","sustain"],"linearX",{from:224,to:336,unit:"percent"}),
+   axis(["envelope","release"],"linearY",{from:107,to:80,unit:"s"})
   ],"sustain / release");
   tag(18,14,"0.25s note");tag(260,14,"release");
   tag(18,78,"attack / decay");tag(224,78,"sustain / fade");
@@ -407,7 +405,7 @@ export const diagram=(patch,type,page=0)=>{
   // deliberately separated pre- and post-off time scales are uniform.
   tag(223,68,Math.round(plan.releaseLevel*100)+"%");
  }else if(type==="envelope"){
-  const e=p.envelope,attackMax=3,releaseMax=4,releaseMin=.01;
+  const e=p.envelope,attackMax=parameterFor("envelope.attack").max,releaseParameter=parameterFor("envelope.release"),releaseMax=releaseParameter.max,releaseMin=releaseParameter.min;
   const attackX=25+clamp(e.attack/attackMax)*78;
   const decayX=attackX+18+clamp(e.decay/3)*80;
   const sustainY=88-65*clamp(e.sustain);
@@ -415,12 +413,12 @@ export const diagram=(patch,type,page=0)=>{
   line("M18 90 H348 M248 18 V96",true);
   const points=[[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]];
   line(pathFrom(points),false,["envelope.attack","envelope.decay","envelope.sustain","envelope.release"]);
-  handle(attackX,23,[axis(["envelope","attack"],0,attackMax,"linearX",{from:25,to:103,step:.01,unit:"s"})],"attack");
+  handle(attackX,23,[axis(["envelope","attack"],"linearX",{from:25,to:103,unit:"s"})],"attack");
    handle(decayX,sustainY,[
-    axis(["envelope","decay"],0,3,"linearX",{from:attackX+18,to:attackX+98,step:.01,unit:"s"}),
-    axis(["envelope","sustain"],0,1,"linearY",{from:88,to:23,step:.01,unit:"percent"})
+    axis(["envelope","decay"],"linearX",{from:attackX+18,to:attackX+98,unit:"s"}),
+    axis(["envelope","sustain"],"linearY",{from:88,to:23,unit:"percent"})
    ],"decay / sustain");
-  handle(releaseX,90,[axis(["envelope","release"],releaseMin,releaseMax,"linearX",
+  handle(releaseX,90,[axis(["envelope","release"],"linearX",
    {from:248+95*releaseMin/releaseMax,to:343,step:.01,unit:"s"})],"release");
   tag(18,14,"on");
   tag(115,14,"held note model");tag(248,14,"off");
@@ -439,13 +437,13 @@ export const diagram=(patch,type,page=0)=>{
     " M"+voiceX.toFixed(2)+" 100 V"+voiceY.toFixed(2),
     true,["transpose","gain"]);
    handle(19+148*clamp((transpose+24)/48),99-50*gain/2,[
-    axis(["transpose"],-24,24,"linearX",{from:19,to:167,step:1,unit:"st"}),
-    axis(["gain"],0,2,"linearY",{from:99,to:49,step:.01,unit:"percent"})
+    axis(["transpose"],"linearX",{from:19,to:167,unit:"st"}),
+    axis(["gain"],"linearY",{from:99,to:49,unit:"percent"})
    ],"voice pitch / level");
    const x=202+130*clamp((pan+1)/2);
    line("M"+x.toFixed(2)+" 64 V100",true,["pan"]);
    handle(x,82,[
-    axis(["pan"],-1,1,"linearX",{from:202,to:332,step:.01,unit:"pan"})
+    axis(["pan"],"linearX",{from:202,to:332,unit:"pan"})
    ],"voice left / right");
    tag(19,15,"pitch → / level ↑");tag(204,15,"left ← stereo → right");
    tag(19,112,"control model");
@@ -463,15 +461,15 @@ export const diagram=(patch,type,page=0)=>{
    true,["transpose","strumMs"]);
   // X is the recording's onset displacement; Y is its pitch shift.
   handle(19+clamp((strum+25)/50)*148,60-35*clamp(transpose/24,-1,1),[
-   axis(["strumMs"],-25,25,"linearX",{from:19,to:167,step:1,unit:"ms"}),
-   axis(["transpose"],-24,24,"linearY",{from:95,to:25,step:1,unit:"st"})
+   axis(["strumMs"],"linearX",{from:19,to:167,unit:"ms"}),
+   axis(["transpose"],"linearY",{from:95,to:25,unit:"st"})
   ],"sample onset / pitch");
   line("M202 83 H332",true);
   line("M"+(202+130*(pan+1)/2).toFixed(2)+" 83 V"+(103-35*gain/2).toFixed(2),
    true,["pan","gain"]);
   handle(202+130*(pan+1)/2,103-35*gain/2,[
-   axis(["pan"],-1,1,"linearX",{from:202,to:332,step:.01,unit:"pan"}),
-   axis(["gain"],0,2,"linearY",{from:103,to:68,step:.01,unit:"percent"})
+   axis(["pan"],"linearX",{from:202,to:332,unit:"pan"}),
+   axis(["gain"],"linearY",{from:103,to:68,unit:"percent"})
   ],"stereo position / recording level");
   tag(19,15,"onset / pitch");
   tag(19,112,"control model");
@@ -529,8 +527,8 @@ export const diagram=(patch,type,page=0)=>{
    tag(166,14,"wave guide");
   }
   handle(42+clamp((bend.rate-.1)/11.9)*275,61-34*clamp(bend.amount/12),[
-   axis(["bend","rate"],.1,12,"linearX",{from:42,to:317,step:.1}),
-   axis(["bend","amount"],0,12,"linearY",{from:61,to:27,step:.25})
+   axis(["bend","rate"],"linearX",{from:42,to:317}),
+   axis(["bend","amount"],"linearY",{from:61,to:27})
   ],"bend speed / amount");
   const waitingPatch=m.depth>0?p:{...p,movement:{...m,depth:50}};
   if(m.depth===0)dormant("movement.delay","vibrato depth is zero; the dashed curve is a waiting-time reference");
@@ -539,7 +537,7 @@ export const diagram=(patch,type,page=0)=>{
   const waitX=18+326*m.delay/MOVEMENT_ILLUSTRATION_SECONDS;
   line("M"+waitX.toFixed(2)+" 85 V110",true);
   handle(waitX,103,[
-   axis(["movement","delay"],0,3,"linearX",{from:18,to:18+326*3/MOVEMENT_ILLUSTRATION_SECONDS,step:.05,unit:"s"})
+   axis(["movement","delay"],"linearX",{from:18,to:18+326*3/MOVEMENT_ILLUSTRATION_SECONDS,unit:"s"})
   ],"vibrato waiting time");
   action(87,108,["bend","shape"],BEND_SHAPES.map(([value])=>value),"bend shape");
   tag(18,14,"pitch bend");tag(245,82,m.depth>0?"vibrato waits":"vibrato off · guide");
@@ -554,8 +552,8 @@ export const diagram=(patch,type,page=0)=>{
    dormant("movement.tremoloRate","pulse amount is zero; the dashed curve is a rate reference");
   }
   handle(22+clamp(((m.tremoloRate??5)-.1)/19.9)*143,47-22*pulse,[
-   axis(["movement","tremoloRate"],.1,20,"linearX",{from:22,to:165,step:.1}),
-   axis(["movement","tremolo"],0,1,"linearY",{from:47,to:25,step:.01})
+   axis(["movement","tremoloRate"],"linearX",{from:22,to:165}),
+   axis(["movement","tremolo"],"linearY",{from:47,to:25})
   ],"volume pulse speed / depth");
   // Only the synth has tone movement knobs. A recorded Sound must not gain
   // an illustration-only control that its native renderer cannot mirror.
@@ -568,12 +566,12 @@ export const diagram=(patch,type,page=0)=>{
     dormant("movement.toneRate","tone movement is zero; the dashed curve is a rate reference");
    }
    handle(194+clamp(((m.toneRate??2)-.1)/19.9)*143,47-22*tone,[
-    axis(["movement","toneRate"],.1,20,"linearX",{from:194,to:337,step:.1}),
-    axis(["movement","tone"],0,1,"linearY",{from:47,to:25,step:.01})
+    axis(["movement","toneRate"],"linearX",{from:194,to:337}),
+    axis(["movement","tone"],"linearY",{from:47,to:25})
    ],"tone movement speed / depth");
   }
   handle(83+(pan+1)*97,103,[
-   axis(["pan"],-1,1,"linearX",{from:83,to:277,step:.01})
+   axis(["pan"],"linearX",{from:83,to:277})
   ],"stereo pan");
   const panAngle=(pan+1)*Math.PI/4;
   line(pathRange(100,t=>[18+152*t,103-7*Math.cos(panAngle)*Math.sin(t*6*Math.PI)]),false,["pan"]);
@@ -596,12 +594,12 @@ export const diagram=(patch,type,page=0)=>{
    tag(120,14,"glide off · guide");
   }
   handle(15+330*m.glideTime/MOVEMENT_ILLUSTRATION_SECONDS,62-clamp(m.glide*3.5,-42,42),[
-   axis(["movement","glideTime"],.01,3,"linearX",{from:15+330*.01/MOVEMENT_ILLUSTRATION_SECONDS,to:15+330*3/MOVEMENT_ILLUSTRATION_SECONDS,step:.01,unit:"s"}),
-   axis(["movement","glide"],-12,12,"linearY",{from:104,to:20,step:.1})
+   axis(["movement","glideTime"],"linearX",{from:15+330*.01/MOVEMENT_ILLUSTRATION_SECONDS,to:15+330*3/MOVEMENT_ILLUSTRATION_SECONDS,unit:"s"}),
+   axis(["movement","glide"],"linearY",{from:104,to:20})
   ],"glide duration / starting pitch");
   handle(48+clamp((m.rate-.1)/19.9)*260,62-35*m.depth/100,[
-   axis(["movement","rate"],.1,20,"linearX",{from:48,to:308,step:.1}),
-   axis(["movement","depth"],0,100,"linearY",{from:62,to:27,step:1})
+   axis(["movement","rate"],"linearX",{from:48,to:308}),
+   axis(["movement","depth"],"linearY",{from:62,to:27})
   ],"vibrato rate / depth");
   tag(15,14,"pitch");tag(287,14,"rate →");
   const vibratoPatch=m.depth>0?p:{...p,movement:{...m,depth:50}};
@@ -639,9 +637,9 @@ export const diagram=(patch,type,page=0)=>{
    dormant("effects.delayFeedback","delay mix is zero; dashed returns isolate feedback");
   }
   handle(origin+space,100-72*mix,[
-   axis(["effects","delayTime"],.05,1,"linearX",
+   axis(["effects","delayTime"],"linearX",
     {from:origin+24,to:origin+90,step:.01,unit:"s"}),
-   axis(["effects","delayMix"],0,1,"linearY",{from:100,to:28,step:.01,unit:"percent"})
+   axis(["effects","delayMix"],"linearY",{from:100,to:28,unit:"percent"})
   ],"delay time / mix");
   // Feedback is independently editable even with the wet mix at zero.
   // A faint guide communicates potential repeat persistence without falsely
@@ -650,8 +648,8 @@ export const diagram=(patch,type,page=0)=>{
   line("M"+feedbackX.toFixed(2)+" 100 V"+feedbackY.toFixed(2),
    true,["effects.delayFeedback"]);
   handle(feedbackX,feedbackY,[
-   axis(["effects","delayTime"],.05,1,"linearX",{from:origin+48,to:origin+180,step:.01,unit:"s"}),
-   axis(["effects","delayFeedback"],0,.8,"linearY",
+   axis(["effects","delayTime"],"linearX",{from:origin+48,to:origin+180,unit:"s"}),
+   axis(["effects","delayFeedback"],"linearY",
     {from:100,to:36,step:.01,unit:"percent"})
   ],"echo spacing / feedback");
   tag(250,107,"feedback");
@@ -670,7 +668,7 @@ export const diagram=(patch,type,page=0)=>{
    const x=18+324*clamp(zone.root/127);
    line("M18 "+y+" H342",true);
    line("M"+x.toFixed(2)+" "+(y-9)+" V"+(y+9),false,["zones."+index+".root"]);
-   handle(x,y,[axis(["zones",index,"root"],0,127,"linearX",
+   handle(x,y,[axis(["zones",index,"root"],"linearX",
     {from:18,to:342,step:1,unit:"MIDI"})],"sample "+(index+1)+" recorded pitch");
    tag(23,y-8,String(index+1));
   }
@@ -702,12 +700,9 @@ export const diagram=(patch,type,page=0)=>{
     const rate=route.source.kind==="lfo"?route.source.rate:null;
     handle(rate===null?75+215*clamp((route.smoothing??0)/.1):
      75+215*clamp((rate-.05)/19.95),center-8*depth,[
-     rate===null?axis(["modulation","routes",i,"smoothing"],0,.1,
-      "linearX",{from:75,to:290,step:.001,unit:"s"}):
-      axis(["modulation","routes",i,"source","rate"],.05,20,
-      "linearX",{from:75,to:290,step:.05,unit:"Hz"}),
-     axis(["modulation","routes",i,"depth"],-limit,limit,
-      "linearY",{from:center+8,to:center-8,step:target.unit==="cents"?1:.01})
+     rate===null?axis(["modulation","routes",i,"smoothing"],"linearX",{from:75,to:290,unit:"s"}):
+      axis(["modulation","routes",i,"source","rate"],"linearX",{from:75,to:290,unit:"Hz"}),
+     axis(["modulation","routes",i,"depth"],"linearY",{from:center+8,to:center-8})
     ],"movement "+(i+1)+" "+(rate===null?"smoothing / depth":"speed / depth"));
     const source=route.source.kind==="lfo"?"lfo":route.source.kind==="keytrack"?"keys":
      route.source.kind==="velocity"?"touch":"env";
@@ -734,19 +729,19 @@ export const diagram=(patch,type,page=0)=>{
      tag(192,43,"depth off · guide");
     }
     const primary=source.kind==="lfo"?
-     [axis([...prefix,"source","rate"],.05,20,"linearX",{from:35,to:317,step:.05})]:
-     [axis([...prefix,"smoothing"],0,.1,"linearX",{from:35,to:317,step:.001})];
+     [axis([...prefix,"source","rate"],"linearX",{from:35,to:317})]:
+     [axis([...prefix,"smoothing"],"linearX",{from:35,to:317})];
     handle(35+282*clamp(source.kind==="lfo"?(source.rate-.05)/19.95:
      (route.smoothing??0)/.1),61-35*depth,[
-     ...primary,axis([...prefix,"depth"],-limit,limit,"linearY",
+     ...primary,axis([...prefix,"depth"],"linearY",
       {from:96,to:26,step:target?.unit==="cents"?1:.01})
     ],source.kind==="lfo"?"route speed / depth":"route smoothing / depth");
     if(source.kind==="lfo"){
      // Smoothing is independent of the oscillator speed and movement depth.
      line("M35 90 H317",true,["modulation.routes."+i+".smoothing"]);
      handle(35+282*clamp((route.smoothing??0)/.1),90-18*depth,[
-      axis([...prefix,"smoothing"],0,.1,"linearX",{from:35,to:317,step:.001,unit:"s"}),
-      axis([...prefix,"depth"],-limit,limit,"linearY",
+      axis([...prefix,"smoothing"],"linearX",{from:35,to:317,unit:"s"}),
+      axis([...prefix,"depth"],"linearY",
        {from:108,to:72,step:target?.unit==="cents"?1:.01})
      ],"movement smoothing / depth");
      tag(254,112,"smooth →");
@@ -755,26 +750,26 @@ export const diagram=(patch,type,page=0)=>{
      if(route.depth!==0)tag(248,43,"6.25 s note");
      const e=source.envelope;
      handle(39+110*clamp(e.attack/3),99-31*clamp(e.sustain),[
-      axis([...prefix,"source","envelope","attack"],0,3,"linearX",
+      axis([...prefix,"source","envelope","attack"],"linearX",
        {from:39,to:149,step:.01}),
-      axis([...prefix,"source","envelope","sustain"],0,1,"linearY",
+      axis([...prefix,"source","envelope","sustain"],"linearY",
        {from:99,to:68,step:.01})
      ],"movement envelope attack / sustain");
      handle(188+138*clamp(e.decay/3),99-31*clamp((e.release-.01)/3.99),[
-      axis([...prefix,"source","envelope","decay"],0,3,"linearX",
+      axis([...prefix,"source","envelope","decay"],"linearX",
        {from:188,to:326,step:.01}),
-      axis([...prefix,"source","envelope","release"],.01,4,"linearY",
+      axis([...prefix,"source","envelope","release"],"linearY",
        {from:99,to:68,step:.01})
      ],"movement envelope decay / release");
     }else if(source.kind==="keytrack"){
      handle(39+287*clamp(source.root/127),99-32*clamp((source.span-1)/126),[
-      axis([...prefix,"source","root"],0,127,"linearX",{from:39,to:326,step:1}),
-      axis([...prefix,"source","span"],1,127,"linearY",{from:99,to:67,step:1})
+      axis([...prefix,"source","root"],"linearX",{from:39,to:326}),
+      axis([...prefix,"source","span"],"linearY",{from:99,to:67})
      ],"key tracking center / spread");
     }
-    action(73,14,[...prefix,"source","kind"],MOD_SOURCES,"movement source");
+    action(73,14,[...prefix,"source","kind"],modulationSourcesFor(p.type),"movement source");
     action(185,14,[...prefix,"polarity"],["unipolar","bipolar"],"movement range");
-    action(286,14,[...prefix,"target"],MOD_TARGETS.map(item=>item.id),"movement target");
+    action(286,14,[...prefix,"target"],modulationTargetsFor(p.type).map(item=>item.id),"movement target");
     tag(22,111,"route "+(i+1)+" · "+source.kind+" → "+(target?.name||route.target));
    }
   }

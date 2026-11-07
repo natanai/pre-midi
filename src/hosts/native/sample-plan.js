@@ -33,11 +33,9 @@ export function planNativeVocal(event,start,unit,assets){
  const offset=Math.max(0,Math.min(range.offset,asset.duration-.005));
  const duration=Math.min(range.duration,(asset.duration-offset)/range.rate);
  if(!(duration>.005))return null;
- const end=start+duration,attack=Math.min(fx.attack,duration*.5),release=Math.min(fx.release,duration*.5);
- const gain=clip.gain??1,fadeStart=Math.max(start+attack,end-release);
- const events=[{kind:0,time:start,value:0},{kind:1,time:start+attack,value:gain},
-  {kind:0,time:fadeStart,value:gain},{kind:1,time:end,value:0}];
- // An unedited legacy take retains its original gain behavior.
+ const end=start+duration,gain=clip.gain??1;
+ const events=recordingEnvelope(start,duration,gain,fx.attack,fx.release);
+ // A Clip without processing plays directly at its authored gain.
  if(clip.effects===undefined)events.splice(0,events.length,
   {kind:0,time:start,value:gain},{kind:0,time:end,value:0});
  const tail=delayTailSeconds(fx);

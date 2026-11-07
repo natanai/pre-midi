@@ -1,3 +1,4 @@
+import {parameterFor,parameterDefaults} from "./src/dsp/parameters.js";
 import {renderModulationEditor} from "./modulationUI.js";
 import {mountSoundPanelView} from "./soundPanelView.js";
 import {movement,movementDefaults} from "./expression.js";
@@ -14,12 +15,12 @@ export function activeSamplePanels(patch){
  if(JSON.stringify(tone.filter)!==JSON.stringify(DEFAULT_SAMPLE_FILTER)||tone.drive!==0)
   active.add("tone");
  if(Object.keys(movementDefaults).some(key=>move[key]!==movementDefaults[key])||
-    (patch.bend?.shape??"straight")!=="straight"||(patch.bend?.amount??2)!==2||(patch.bend?.rate??4)!==4)
+    Object.entries(parameterDefaults("bend")).some(([key,value])=>(patch.bend?.[key]??value)!==value))
   active.add("movement");
- if((patch.gain??.9)!==.9||(patch.transpose??0)!==0||
-    (patch.pan??0)!==0||(patch.strumMs??0)!==0||
-    (patch.attack??.005)!==.005||(patch.release??.17)!==.17||
-    !!patch.preserveDynamics)
+ if(["gain","transpose","pan","strumMs","envelope.attack","envelope.release","preserveDynamics"].some(id=>{
+  const key=id.startsWith("envelope.")?id.split(".")[1]:id,value=parameterFor(id,patch.type)?.default;
+  return value!==undefined&&(patch[key]??value)!==value;
+ }))
   active.add("sample");
  if((patch.zones?.length??0)>1)active.add("mapping");
  return active;
@@ -95,7 +96,7 @@ export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openU
   const name=document.createElement("span");name.textContent="Sample "+(index+1)+" · recorded pitch";
   const select=document.createElement("select");
   select.setAttribute("aria-label","Sample "+(index+1)+" recorded note");
-  for(let midi=0;midi<=127;midi++){
+  for(let midi=parameterFor("zones.root","sample").min;midi<=parameterFor("zones.root","sample").max;midi++){
    const option=document.createElement("option");
    option.value=String(midi);
    option.textContent=notes[midi%12]+(Math.floor(midi/12)-1);

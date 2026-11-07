@@ -1,26 +1,20 @@
+import {parameterFor,parameterDefaults,validParameterValue,validateParameterBlock} from "./src/dsp/parameters.js";
 import {validateModulation} from "./src/dsp/modulation.js";
 import { validateSamplerPatch } from "./sampler.js";
 import { validateMovement, validateBend, movementDefaults } from "./expression.js";
 import {harmonicRecipe,validHarmonics} from "./harmonics.js";
 // Original parameter-only instrument library. No samples, soundfonts, external DSP or runtime packages.
 // A patch is the single canonical definition used by the editor, live synth and WAV export.
-export const WAVES = ["sine", "triangle", "square", "sawtooth", "harmonic"];
-export const FILTERS = ["lowpass", "highpass", "bandpass", "notch"];
+export const WAVES=parameterFor("oscillators.0.wave").values;
+export const FILTERS=parameterFor("filter.type").values;
 export const PATCH_FORMAT = "pre-midi-patch";
 export const PATCH_VERSION = 1;
 const copy = value => JSON.parse(JSON.stringify(value));
 const base = {
-  oscillators: [
-    {wave:"triangle",level:.8,octave:0,detune:0},
-    {wave:"sine",level:.2,octave:0,detune:0}
-  ],
-  noise:0,noiseDecay:0,
-  filter:{type:"lowpass",cutoff:8000,resonance:.7,sweep:0,sweepTime:.2},
-  envelope:{attack:.01,decay:.16,sustain:.65,release:.2},
-  movement:{...movementDefaults},
-  effects:{drive:0,delayMix:0,delayTime:.24,delayFeedback:.26},
-  pan:0,
-  bend:{shape:"straight",amount:2,rate:4}
+  oscillators:[0,1].map(i=>parameterDefaults("oscillators."+i)),
+  ...parameterDefaults(""),
+  filter:parameterDefaults("filter"),envelope:parameterDefaults("envelope"),
+  movement:{...movementDefaults},effects:parameterDefaults("effects"),bend:parameterDefaults("bend")
 };
 const presets = [
  ["evolving-glass","Evolving Glass","Pads","Harmonics with independent envelope and octave filter movement.",{version:2,
@@ -100,7 +94,7 @@ export function makePatch(presetId="init") {
 }
 export const patchCopy=copy;
 const object=x=>x!==null && typeof x==="object" && !Array.isArray(x);
-const num=(x,min,max)=>typeof x==="number"&&Number.isFinite(x)&&x>=min&&x<=max;
+const valid=(id,value)=>validParameterValue(id,value);
 export function validatePatch(patch) {
  if(patch?.type==="sample")return validateSamplerPatch(patch);
  const errors=[];
@@ -111,29 +105,20 @@ export function validatePatch(patch) {
  if(!object(patch))return ["Missing instrument sound definition."];
  if(typeof patch.presetId!=="string"||patch.presetId.length>80)errors.push("Invalid sound preset reference.");
  if(!Array.isArray(patch.oscillators)||patch.oscillators.length!==2)errors.push("Sound must have two oscillator slots.");
- else for(const osc of patch.oscillators) {
-  if(!object(osc)||!WAVES.includes(osc.wave)||!num(osc.level,0,1)||
-     !Number.isInteger(osc.octave)||!num(osc.octave,-2,2)||!num(osc.detune,-100,100))
-   errors.push("Invalid oscillator parameters.");
+ else for(const [index,osc] of patch.oscillators.entries()) {
+  errors.push(...validateParameterBlock(osc,"oscillators."+index,{extra:["harmonics"]}));
   if(object(osc)&&(osc.wave==="harmonic"||osc.harmonics!==undefined)&&!validHarmonics(osc.harmonics))
    errors.push("A harmonic oscillator needs 32 strengths between 0 and 1.");
  }
- if(!num(patch.noise,0,1)||!num(patch.pan,-1,1))errors.push("Invalid noise level or panning.");
- if(patch.noiseDecay!==undefined&&!num(patch.noiseDecay,0,4))errors.push("Invalid noise decay.");
- if(!object(patch.filter)||!FILTERS.includes(patch.filter.type)||!num(patch.filter.cutoff,50,14000)||!num(patch.filter.resonance,.1,16))
-  errors.push("Invalid filter settings.");
- if(object(patch.filter)&&((patch.filter.sweep!==undefined&&!num(patch.filter.sweep,-5,5))||
-  (patch.filter.sweepTime!==undefined&&!num(patch.filter.sweepTime,.01,3))))
-  errors.push("Invalid filter sweep.");
- if(!object(patch.envelope)||!num(patch.envelope.attack,0,3)||!num(patch.envelope.decay,0,3)||
-   !num(patch.envelope.sustain,0,1)||!num(patch.envelope.release,.01,4))
-  errors.push("Invalid envelope.");
- if(!object(patch.movement)||!num(patch.movement.rate,.1,20)||!num(patch.movement.depth,0,100))
+ if(!valid("noise",patch.noise)||!valid("pan",patch.pan))errors.push("Invalid noise level or panning.");
+ if(patch.noiseDecay!==undefined&&!valid("noiseDecay",patch.noiseDecay))errors.push("Invalid noise decay.");
+ errors.push(...validateParameterBlock(patch.filter,"filter",{optional:["sweep","sweepTime"]}));
+ errors.push(...validateParameterBlock(patch.envelope,"envelope"));
+ if(!object(patch.movement)||!valid("movement.rate",patch.movement.rate)||!valid("movement.depth",patch.movement.depth))
   errors.push("Invalid vibrato.");
- errors.push(...validateMovement(patch.movement));
- errors.push(...validateBend(patch.bend));
- const fx=patch.effects;
- if(!object(fx)||!num(fx.drive,0,1)||!num(fx.delayMix,0,1)||
-   !num(fx.delayTime,.05,1)||!num(fx.delayFeedback,0,.8))errors.push("Invalid effects.");
+ errors.push(...validateMovement(patch.movement),...validateBend(patch.bend));
+ errors.push(...validateParameterBlock(patch.effects,"effects"));
+ const allowed=new Set(["type","presetId","version","oscillators","noise","noiseDecay","pan","filter","envelope","movement","effects","bend","modulation"]);
+ for(const key of Object.keys(patch))if(!allowed.has(key))errors.push("Unsupported sound parameter: "+key+".");
  return errors;
 }

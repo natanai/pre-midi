@@ -1,10 +1,8 @@
-import {connectRecordedAudio} from "./recordedAudio.js";
+import {connectRecordedAudio,recordingEnvelope} from "./recordedAudio.js";
 import {ownVoice} from "./src/hosts/web/voice-session.js";
 import {vocalEffects,vocalSourceRange} from "./vocalEffects.js";
-import {configureDriveShaper} from "./audioEffects.js";
-import {schedulePitchPlan,scheduleMovementLfo,movement} from "./expression.js";
+import {schedulePitchPlan,movement} from "./expression.js";
 import {planPitch} from "./src/dsp/expression.js";
-import {delayTailSeconds} from "./src/dsp/effect-tail.js";
 // Native timeline audio for continuous vocal takes.
 import {recordingBytes} from "./recordingAssets.js";
 const cache=new WeakMap();
@@ -42,15 +40,13 @@ export function scheduleVocal(context,destination,event,startTime,unit,decoded,{
  const nodes=[source,level,gate,pan],sources=[source],owner={sources,nodes};
  source.buffer=buffer;source.playbackRate.value=rate;
  const motion=movement(fx);
- schedulePitchPlan(context,source.detune,planPitch({bend:fx.bend},motion,startTime,duration),owner);
+ const elapsed=Math.max(0,elapsedSteps)*unit,totalDuration=duration+elapsed;
+ schedulePitchPlan(context,source.detune,planPitch({bend:fx.bend},motion,startTime,duration,0,{elapsed,totalDuration}),owner);
  const gain=clip.gain??1,end=startTime+duration;
  if(clip.effects===undefined)level.gain.setValueAtTime(gain,startTime);
  else{
-  const attack=Math.min(fx.attack,duration*.5),release=Math.min(fx.release,duration*.5);
-  level.gain.setValueAtTime(0,startTime);
-  level.gain.linearRampToValueAtTime(gain,startTime+attack);
-  level.gain.setValueAtTime(gain,Math.max(startTime+attack,end-release));
-  level.gain.linearRampToValueAtTime(0,end);
+  for(const e of recordingEnvelope(startTime,duration,gain,fx.attack,fx.release,{elapsed,totalDuration}))
+   level.gain[e.kind?"linearRampToValueAtTime":"setValueAtTime"](e.value,e.time);
  }
  const graph=connectRecordedAudio(context,{source,amp:level,gate,pan,out:destination,patch:fx,start:startTime,duration,owner,unit,elapsedSteps});
  const delayTail=graph.tail;

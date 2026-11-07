@@ -1,9 +1,10 @@
+import {modulationTargetsFor,modulationSourcesFor,MODULATION_CONTROLS,parameterField} from "./src/dsp/parameters.js";
 import {MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {createDial,explainLabel} from "./dial.js";
 const openBySound=new Map();
 export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=>{}){
- const targets=patch.type==="synth"?MOD_TARGETS:MOD_TARGETS.filter(t=>["filter.cutoff","pan"].includes(t.id));
- const sources=patch.type==="vocal"?MOD_SOURCES.filter(k=>["lfo","envelope"].includes(k)):MOD_SOURCES;
+ const targets=modulationTargetsFor(patch.type);
+ const sources=modulationSourcesFor(patch.type);
  const key=soundId??patch;
  if(!openBySound.has(key))openBySound.set(key,!!patch.modulation?.routes?.length);
  const details=document.createElement("details");details.className="synth-group modulation-editor";details.open=openBySound.get(key);
@@ -24,10 +25,10 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
   depth.querySelector('[role="slider"]').setAttribute("aria-label","Movement amount "+(index+1));
   depth.dataset.soundPath="modulation.routes."+index+".depth";row.append(depth);
   if(route.source.kind==="lfo"){
-   const speed=createDial({label:"Movement speed",min:.05,max:20,step:.05,display:"hz"},route.source.rate,value=>update(index,{source:{...route.source,rate:value}}),value=>preview(index,{source:{...route.source,rate:value}}));
+   const speed=createDial({label:"Movement speed",...MODULATION_CONTROLS.rate},route.source.rate,value=>update(index,{source:{...route.source,rate:value}}),value=>preview(index,{source:{...route.source,rate:value}}));
    speed.dataset.soundPath="modulation.routes."+index+".source.rate";row.append(speed);
   }
-  const smoothing=createDial({label:"Smoothing",min:0,max:.1,step:.001,display:"seconds"},
+  const smoothing=createDial({label:"Smoothing",...MODULATION_CONTROLS.smoothing},
    route.smoothing,value=>update(index,{smoothing:value}),value=>preview(index,{smoothing:value}));
   smoothing.dataset.soundPath="modulation.routes."+index+".smoothing";
   row.append(smoothing);
@@ -42,16 +43,15 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
   select("movement source",sources.map(kind=>[kind,kind==="keytrack"?"key tracking":kind]),route.source.kind,kind=>update(index,{source:defaultSource(kind)}));
   select("movement target",targets.map(target=>[target.id,target.name]),route.target,id=>{const next=MOD_TARGETS.find(t=>t.id===id);update(index,{target:id,unit:next.unit,depth:Math.max(-next.limit,Math.min(next.limit,route.depth))});});
   select("movement range",[["unipolar","one way"],["bipolar","both ways"]],route.polarity,polarity=>update(index,{polarity}));
-  if(route.source.kind==="envelope")for(const [field,max] of [["attack",3],["decay",3],["sustain",1],["release",4]]){
-   const dial=createDial({label:"Move "+field,min:field==="release"?.01:0,max,step:.01,display:field==="sustain"?"percent":"seconds"},
+  if(route.source.kind==="envelope")for(const field of ["attack","decay","sustain","release"]){
+   const dial=createDial({...parameterField("envelope."+field),label:"Move "+field},
     route.source.envelope[field],value=>update(index,{source:{...route.source,envelope:{...route.source.envelope,[field]:value}}}),
     value=>preview(index,{source:{...route.source,envelope:{...route.source.envelope,[field]:value}}}));
    dial.dataset.soundPath="modulation.routes."+index+".source.envelope."+field;
    settings.append(dial);
   }
-  if(route.source.kind==="keytrack")for(const [field,min,max,step] of
-   [["root",0,127,1],["span",1,127,1]]){
-   const dial=createDial({label:field==="root"?"Tracking center":"Tracking spread",min,max,step,display:"number"},
+  if(route.source.kind==="keytrack")for(const field of ["root","span"]){
+   const dial=createDial({label:field==="root"?"Tracking center":"Tracking spread",...MODULATION_CONTROLS[field]},
     route.source[field],value=>update(index,{source:{...route.source,[field]:value}}),
     value=>preview(index,{source:{...route.source,[field]:value}}));
    dial.dataset.soundPath="modulation.routes."+index+".source."+field;

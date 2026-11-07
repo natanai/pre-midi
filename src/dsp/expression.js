@@ -1,39 +1,18 @@
+import {parameterFor,parameterDefaults,validateParameterBlock} from "./parameters.js";
 // One expressive performance contract for synth and sampler voices.
 // The authored score retains each note's optional bend and each patch's
 // movement. Live transport, audition, and WAV render use identical scheduling.
-export const BEND_SHAPES=[
- ["straight","Straight"],["scoop","Scoop up"],["rise","Bend up"],
- ["fall","Fall away"],["dip","Dip and return"],["wail","Cry / wail"],
- ["wave","Wave / wobble"]
-];
-export const movementDefaults={
- rate:5,depth:0,delay:0,glide:0,glideTime:.18,
- tremolo:0,tremoloRate:5,tone:0,toneRate:2
-};
+const bendNames=["Straight","Scoop up","Bend up","Fall away","Dip and return","Cry / wail","Wave / wobble"];
+export const BEND_SHAPES=parameterFor("bend.shape").values.map((id,index)=>[id,bendNames[index]]);
+export const movementDefaults=Object.freeze(parameterDefaults("movement"));
 export const movement=patch=>({...movementDefaults,...(patch?.movement||{})});
-const valid=(v,min,max)=>typeof v==="number"&&Number.isFinite(v)&&v>=min&&v<=max;
 export function validateMovement(params){
  if(params===undefined)return [];
- if(!params||typeof params!=="object"||Array.isArray(params))return ["Invalid movement parameters."];
- const errors=[];
- for(const [name,min,max] of [
-  ["rate",.1,20],["depth",0,100],["delay",0,3],
-  ["glide",-12,12],["glideTime",.01,3],
-  ["tremolo",0,1],["tremoloRate",.1,20],
-  ["tone",0,1],["toneRate",.1,20]
- ]){
-  if(params[name]!==undefined&&!valid(params[name],min,max))
-   errors.push("Invalid "+name+" movement.");
- }
- return errors;
+ return validateParameterBlock(params,"movement",{optional:Object.keys(movementDefaults)});
 }
 export function validateBend(bend){
  if(bend===undefined)return [];
- if(!bend||typeof bend!=="object"||Array.isArray(bend)||
-   !BEND_SHAPES.some(([key])=>key===bend.shape)||
-   !valid(bend.amount,0,12)||!valid(bend.rate,.1,12))
-  return ["Invalid note pitch expression."];
- return [];
+ return validateParameterBlock(bend,"bend");
 }
 const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,n));
 const smooth=t=>{const x=clamp(t);return x*x*(3-2*x);};
@@ -57,13 +36,13 @@ export function pitchCents(note,motion,seconds,duration){
 }
 
 // Pitch curves retain the existing 80 Hz control sampling and Float32 rounding.
-export function planPitch(note,motion,start,duration,base=0){
+export function planPitch(note,motion,start,duration,base=0,{elapsed=0,totalDuration=duration+elapsed}={}){
  const m=movement({movement:motion});
  const expressive=Boolean(note?.bend&&note.bend.shape!=="straight")||m.glide!==0;
  let values=null;
  if(expressive){
   const count=Math.max(16,Math.min(600,Math.ceil(duration*80)));
-  values=Array.from({length:count},(_,i)=>Math.fround(base+pitchCents(note,m,i/(count-1)*duration,duration)));
+  values=Array.from({length:count},(_,i)=>Math.fround(base+pitchCents(note,m,elapsed+i/(count-1)*duration,totalDuration)));
  }
- return {start,duration,base,values,movement:m};
+ return {start,duration,base,values,movement:m,elapsed,totalDuration};
 }

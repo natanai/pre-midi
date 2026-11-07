@@ -1,9 +1,13 @@
-import {prepareSineLfo} from "./oscillator.js";
-import {validateModulation,smoothingAlpha} from "../../dsp/modulation.js";
+import {parameterFor} from "../../dsp/parameters.js";
+import {prepareControlLfo,startControlLfo} from "./oscillator.js";
+import {validateModulation,smoothingAlpha,modulationStateBefore} from "../../dsp/modulation.js";
+import {planAmplitudeEnvelope} from "../../dsp/amplitude-envelope.js";
+import {windowEnvelope} from "../../dsp/envelope-window.js";
 import {scheduleAmplitudeEnvelope} from "../../../envelope.js";
 // Audio-rate control signals; no per-note, sample-sized JS arrays or UI timers.
 export function attachModulation(context,plan,destinations,owner,{precise=false}={}){
  const definition=plan.modulation;if(!definition)return;
+ const elapsed=plan.elapsed??0;
  const errors=validateModulation(definition);if(errors.length)throw Error(errors.join(" "));
  const add=node=>{owner.nodes.push(node);return node;};
  const source=node=>{owner.sources.push(node);node.start(plan.start);node.stop(plan.graphEnd);return node;};
@@ -12,15 +16,20 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
  for(const route of [...definition.routes].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
   let input,normal;
   if(route.source.kind==="lfo"){
-   if(precise){
-    const prepared=prepareSineLfo(context,route.source.rate,plan.start,plan.graphEnd);
-    const precise=prepared.source;owner.sources.push(precise);precise.start(prepared.sourceStart);precise.stop(plan.graphEnd);
-    const gate=add(context.createGain());gate.gain.value=0;gate.gain.setValueAtTime(1,plan.start);precise.connect(gate);input=gate;
+   if(precise||elapsed>0){
+    const prepared=prepareControlLfo(context,route.source.rate,plan.start,{precise,elapsed});
+    const preciseSource=prepared.source;owner.sources.push(preciseSource);startControlLfo(prepared);preciseSource.stop(plan.graphEnd);
+    const gate=add(context.createGain());gate.gain.value=0;gate.gain.setValueAtTime(1,plan.start);preciseSource.connect(gate);input=gate;
    }else{const oscillator=context.createOscillator();oscillator.type="sine";oscillator.frequency.value=route.source.rate;input=source(oscillator);}
    normal={signed:true};
   }else if(route.source.kind==="envelope"){
    const amp=add(context.createGain());constant(1).connect(amp);
-   scheduleAmplitudeEnvelope(amp.gain,{start:plan.start,off:plan.off,peak:1,envelope:route.source.envelope});input=amp;normal={signed:false};
+   if(elapsed>0){
+    const full=planAmplitudeEnvelope({start:0,off:plan.off-plan.start+elapsed,peak:1,envelope:route.source.envelope});
+    const events=full.events.map(e=>({...e,kind:e.kind==="linear"?1:0}));
+    for(const e of windowEnvelope(events,elapsed,plan.start))amp.gain[e.kind?"linearRampToValueAtTime":"setValueAtTime"](e.value,e.time);
+   }else scheduleAmplitudeEnvelope(amp.gain,{start:plan.start,off:plan.off,peak:1,envelope:route.source.envelope});
+   input=amp;normal={signed:false};
   }else{
    const value=route.source.kind==="velocity"?plan.expression.velocity:Math.max(-1,Math.min(1,(plan.expression.pitch-route.source.root)/route.source.span));
    input=constant(value);normal={signed:route.source.kind==="keytrack"};
@@ -34,6 +43,12 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
   let smoothed=sum;
   if(route.smoothing>0){
    const alpha=smoothingAlpha(route.smoothing,context.sampleRate),filter=add(context.createIIRFilter([alpha],[1,-(1-alpha)]));sum.connect(filter);smoothed=filter;
+   if(elapsed>0){
+    const initial=(1-alpha)*modulationStateBefore(route,{...plan.expression,elapsed,gate:plan.off-plan.start+elapsed},context.sampleRate);
+    const correction=add(context.createGain()),resumed=add(context.createGain());
+    correction.gain.setValueAtTime(initial,plan.start);correction.gain.setTargetAtTime(0,plan.start,route.smoothing);
+    constant(1).connect(correction);correction.connect(resumed);filter.connect(resumed);smoothed=resumed;
+   }
   }
   const depth=add(context.createGain());depth.gain.value=route.depth;smoothed.connect(depth);
   if(!targetInputs.has(route.target))targetInputs.set(route.target,[]);targetInputs.get(route.target).push(depth);
@@ -45,7 +60,7 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
    constant(destination.value).connect(sum);destination.value=0;
    const clamp=add(context.createWaveShaper());clamp.curve=new Float32Array([0,0,1]);sum.connect(clamp);clamp.connect(destination);
   }else{
-   const limit=target==="filter.cutoff"?8:target.endsWith(".detune")?2400:2;
+   const limit=parameterFor(target).modulation.limit;
    const normalize=add(context.createGain()),clamp=add(context.createWaveShaper()),scale=add(context.createGain());
    normalize.gain.value=1/limit;clamp.curve=new Float32Array([-1,0,1]);scale.gain.value=limit*(target==="filter.cutoff"?1200:1);
    sum.connect(normalize);normalize.connect(clamp);clamp.connect(scale);scale.connect(destination);

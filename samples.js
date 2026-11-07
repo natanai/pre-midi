@@ -1,3 +1,4 @@
+import {parameterDefaults,parameterFor} from "./src/dsp/parameters.js";
 // Licensed recordings. The manifest, not a second instrument editor, owns sources.
 // All entries are CC0 1.0; SHA-1 is each upstream git *blob* checksum.
 // Copies are downloaded at GitHub Pages build time to static /samples.
@@ -106,12 +107,12 @@ export function makeSamplerPatch(preset){
     ...(asset.velocity===undefined?{}:{velocity:asset.velocity}),
     ...(asset.string===undefined?{}:{string:asset.string})};
   }),
-  followPitch:preset.followPitch,oneShot:preset.trigger==="hit",transpose:0,
-  gain:preset.gain??.9,attack:preset.attack??.005,release:preset.release??.17,
-  pan:0,strumMs:preset.strumMs??0,preserveDynamics:preset.preserveDynamics??false,
+  followPitch:preset.followPitch,oneShot:preset.trigger==="hit",transpose:parameterFor("transpose","sample").default,
+  gain:preset.gain??parameterFor("gain","sample").default,attack:preset.attack??parameterFor("envelope.attack","sample").default,release:preset.release??parameterFor("envelope.release","sample").default,
+  pan:parameterFor("pan","sample").default,strumMs:preset.strumMs??parameterFor("strumMs","sample").default,preserveDynamics:preset.preserveDynamics??parameterFor("preserveDynamics","sample").default,
   movement:{...movementDefaults,...(preset.movement||{})},
   ...(preset.filter?{filter:{...preset.filter}}:{}),
   ...(preset.drive===undefined?{}:{drive:preset.drive}),
-  bend:{shape:"straight",amount:2,rate:4}
+  bend:parameterDefaults("bend","sample")
  };
 }

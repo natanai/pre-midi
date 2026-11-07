@@ -1,3 +1,4 @@
+import {validParameterValue} from "./src/dsp/parameters.js";
 import {connectRecordedAudio,recordingEnvelope,validateRecordedModulation,validateRecordingAutomation} from "./recordedAudio.js";
 import {ownVoice} from "./src/hosts/web/voice-session.js";
 import {resolveEvent} from "./soundModel.js";
@@ -78,12 +79,12 @@ export function validateSamplerPatch(patch){
  const errors=[];
  errors.push(...validateRecordedModulation(patch.modulation),...validateRecordingAutomation(patch.automation));
  if(patch.audioMode!==undefined&&patch.audioMode!=="clip")errors.push("Invalid recorded envelope mode.");
- for(const [key,min,max] of [["delayMix",0,1],["delayTime",.05,1],["delayFeedback",0,.8]])
-  if(patch[key]!==undefined&&(!Number.isFinite(patch[key])||patch[key]<min||patch[key]>max))errors.push("Invalid sample delay.");
+ for(const key of ["delayMix","delayTime","delayFeedback"])
+  if(patch[key]!==undefined&&!validParameterValue("effects."+key,patch[key],"sample"))errors.push("Invalid sample delay.");
  if(typeof patch.presetId!=="string"||patch.presetId.length>100)errors.push("Invalid sample preset.");
  if(!Array.isArray(patch.zones)||patch.zones.length<1||patch.zones.length>64||
    patch.zones.some(zone=>typeof zone?.assetId!=="string"||!zone.assetId||
-    !Number.isInteger(zone.root)||zone.root<0||zone.root>127||
+    !validParameterValue("zones.root",zone.root,"sample")||
     (zone.velocity!==undefined && (!Number.isFinite(zone.velocity)||zone.velocity<0||zone.velocity>1))||
     (zone.string!==undefined && (typeof zone.string!=="string"||zone.string.length>20))||
     validateSampleSlice(zone)))errors.push("Invalid sample key mapping or source excerpt.");
@@ -93,11 +94,13 @@ export function validateSamplerPatch(patch){
  errors.push(...validateBend(patch.bend));
  const toneError=validateSampleTone(patch);if(toneError)errors.push(toneError);
  if(patch.preserveDynamics!==undefined && typeof patch.preserveDynamics!=="boolean")errors.push("Invalid recorded dynamic preservation.");
- if(patch.strumMs!==undefined && (!Number.isFinite(patch.strumMs)||patch.strumMs < -25||patch.strumMs > 25)) errors.push("Invalid strum timing.");
- for(const [field,lo,hi] of [["transpose",-24,24],["gain",0,2],["attack",0,2],["release",0,3],["pan",-1,1]]){
-  const value=patch[field];
-  if(typeof value!=="number"||!Number.isFinite(value)||value<lo||value>hi)errors.push("Invalid sample "+field+".");
+ if(patch.strumMs!==undefined&&!validParameterValue("strumMs",patch.strumMs,"sample"))errors.push("Invalid strum timing.");
+ for(const field of ["transpose","gain","attack","release","pan"]){
+  const id=field==="attack"||field==="release"?"envelope."+field:field;
+  if(!validParameterValue(id,patch[field],"sample"))errors.push("Invalid sample "+field+".");
  }
+ const allowed=new Set(["type","presetId","zones","followPitch","oneShot","preserveDynamics","audioMode","strumMs","transpose","gain","attack","release","pan","filter","drive","movement","bend","modulation","automation","delayMix","delayTime","delayFeedback"]);
+ for(const key of Object.keys(patch))if(!allowed.has(key))errors.push("Unsupported sample parameter: "+key+".");
  return errors;
 }
 // Decode only samples that the current beat can actually trigger.

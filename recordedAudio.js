@@ -1,3 +1,5 @@
+import {parameterFor,parameterDefaults,clampParameterValue,modulationTargetsFor,modulationSourcesFor} from "./src/dsp/parameters.js";
+import {windowEnvelope} from "./src/dsp/envelope-window.js";
 import {validateCutoffAutomation,planCutoffAutomation} from "./src/dsp/automation.js";
 // Canonical post-source processing for sampled Sounds and timeline recordings.
 import {configureDriveShaper} from './audioEffects.js';
@@ -5,27 +7,34 @@ import {movement,scheduleMovementLfo} from './expression.js';
 import {attachModulation} from './src/hosts/web/modulation.js';
 import {validateModulation} from './src/dsp/modulation.js';
 import {delayTailSeconds} from './src/dsp/effect-tail.js';
-export const RECORDING_DEFAULTS=Object.freeze({pan:0,transpose:0,attack:.005,release:.03,drive:0,delayMix:0,delayTime:.24,delayFeedback:.26});
+export const RECORDING_DEFAULTS=Object.freeze({
+ ...Object.fromEntries(["pan","transpose"].map(id=>[id,parameterFor(id,"vocal").default])),
+ attack:parameterFor("envelope.attack","vocal").default,release:parameterFor("envelope.release","vocal").default,
+ ...parameterDefaults("effects","vocal")
+});
 export function recordedEffects(patch){
  return {...RECORDING_DEFAULTS,...patch,movement:movement(patch),filter:patch.filter??null,
-  bend:patch.bend??{shape:'straight',amount:2,rate:4}};
+  bend:patch.bend??parameterDefaults('bend')};
 }
 export function validateRecordedModulation(block,{vocal=false}={}){
  if(block===undefined)return [];
  const errors=validateModulation(block);
  if(errors.length)return errors;
+ const context=vocal?'vocal':'sample',targets=modulationTargetsFor(context).map(t=>t.id),sources=modulationSourcesFor(context);
  for(const route of block.routes){
-  if(!['filter.cutoff','pan'].includes(route.target))errors.push('Recording routes target brightness or pan; oscillator routes require a synthesizer.');
-  if(vocal&&['velocity','keytrack'].includes(route.source.kind))errors.push('Timeline recordings use time-based movement sources.');
+  if(!targets.includes(route.target))errors.push('Recording routes target brightness or pan; oscillator routes require a synthesizer.');
+  if(!sources.includes(route.source.kind))errors.push('Timeline recordings use time-based movement sources.');
  }
  return errors;
 }
-export function recordingEnvelope(start,duration,gain,attack,release){
- const rise=Math.min(attack,duration*.5),fade=Math.min(release,duration*.5),end=start+duration;
- return [{kind:0,time:start,value:0},{kind:1,time:start+rise,value:gain},
-  {kind:0,time:Math.max(start+rise,end-fade),value:gain},{kind:1,time:end,value:0}];
+export function recordingEnvelope(start,duration,gain,attack,release,{elapsed=0,totalDuration=duration+elapsed}={}){
+ const rise=Math.min(attack,totalDuration*.5),fade=Math.min(release,totalDuration*.5);
+ const events=[{kind:0,time:0,value:0},{kind:1,time:rise,value:gain},
+  {kind:0,time:Math.max(rise,totalDuration-fade),value:gain},{kind:1,time:totalDuration,value:0}];
+ return elapsed>0?windowEnvelope(events,elapsed,start):events.map(event=>({...event,time:event.time+start}));
 }
 export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,start,duration,owner,expression={pitch:60,velocity:1},unit=.125,elapsedSteps=0}){
+ const elapsed=Math.max(0,elapsedSteps)*unit;
  const fx=recordedEffects(patch),motion=fx.movement,add=node=>{owner.nodes.push(node);return node;};
  let signal=source,filter=null;
  if(fx.filter){
@@ -35,7 +44,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
    for(const [i,point] of plan.points.entries())filter.frequency[i?'exponentialRampToValueAtTime':'setValueAtTime'](point.value,point.time);
   }
   filter.Q.setValueAtTime(fx.filter.resonance,start);
-  if(motion.tone>0)scheduleMovementLfo(context,filter.frequency,start,duration,motion.toneRate,fx.filter.cutoff*motion.tone*.8,owner);
+  if(motion.tone>0)scheduleMovementLfo(context,filter.frequency,start,duration,motion.toneRate,fx.filter.cutoff*motion.tone*.8,owner,{elapsed});
   signal.connect(filter);signal=filter;
  }
  if(fx.drive>0){
@@ -45,10 +54,10 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  }
  signal.connect(amp);
  const pulse=add(context.createGain());pulse.gain.setValueAtTime(1,start);
- scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner);
+ scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});
  amp.connect(pulse);pulse.connect(gate);gate.connect(pan);pan.pan.value=fx.pan;
  const targets=new Map([['pan',pan.pan]]);if(filter)targets.set('filter.cutoff',filter.detune);
- attachModulation(context,{modulation:fx.modulation,start,off:start+duration,graphEnd:start+duration,expression},targets,owner);
+ attachModulation(context,{modulation:fx.modulation,start,off:start+duration,graphEnd:start+duration,expression,elapsed},targets,owner);
  const dry=add(context.createGain());dry.gain.value=1-fx.delayMix*.4;pan.connect(dry);dry.connect(out);
  return {fx,tail:delayTailSeconds(fx),connectDelay(session,voice){
   if(!(fx.delayMix>0)||!voice.admitted&&session)return;
@@ -63,17 +72,17 @@ export function processingFromPatch(patch){
  const synth=patch.type==='synth',fx=recordedEffects({...patch,...(synth?{drive:patch.effects.drive,attack:patch.envelope.attack,release:patch.envelope.release}:{}),...(patch.effects??{})});
  const keys=['pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
  const result=Object.fromEntries(keys.filter(key=>fx[key]!==undefined).map(key=>[key,structuredClone(fx[key])]));
- if(result.modulation)result.modulation.routes=result.modulation.routes.filter(route=>['filter.cutoff','pan'].includes(route.target)&&['lfo','envelope'].includes(route.source.kind));
+ if(result.modulation)result.modulation.routes=result.modulation.routes.filter(route=>modulationTargetsFor('vocal').some(target=>target.id===route.target)&&modulationSourcesFor('vocal').includes(route.source.kind));
  if(result.filter)result.filter={type:result.filter.type,cutoff:result.filter.cutoff,resonance:result.filter.resonance};
- result.attack=Math.min(2,result.attack);result.release=Math.min(3,result.release);
+ result.attack=clampParameterValue('envelope.attack',result.attack,'vocal');result.release=clampParameterValue('envelope.release',result.release,'vocal');
  return result;
 }
 export function applyProcessingToPatch(patch,processing){
  const fx=structuredClone(processing);
  if(patch.type==='synth'){
   for(const key of ['pan','movement','bend','filter'])if(fx[key]!==undefined&&fx[key]!==null)patch[key]=fx[key];
-  patch.envelope.attack=Math.min(3,fx.attack??patch.envelope.attack);
-  patch.envelope.release=Math.max(.01,Math.min(4,fx.release??patch.envelope.release));
+  patch.envelope.attack=clampParameterValue('envelope.attack',fx.attack??patch.envelope.attack);
+  patch.envelope.release=clampParameterValue('envelope.release',fx.release??patch.envelope.release);
   for(const key of ['delayMix','delayTime','delayFeedback'])if(fx[key]!==undefined)patch.effects[key]=fx[key];
   if(fx.drive!==undefined)patch.effects.drive=fx.drive;
   if(fx.modulation){patch.modulation=fx.modulation;patch.version=2;}

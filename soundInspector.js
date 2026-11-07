@@ -1,3 +1,4 @@
+import {soundField} from "./soundParameterAdapter.js";
 import {mountSoundPanelView} from "./soundPanelView.js";
 import {renderCutoffAutomation} from "./automationUI.js";
 // One canonical Sound Inspector renderer for both the Beat and the attached
@@ -14,10 +15,9 @@ import {assignSoundEdit} from "./soundEditPath.js";
 import {clone} from "./schema.js";
 import {nextRackPreview} from "./rackPreview.js";
 
-const sampleFields=[
- {label:"brightness",path:["filter"],min:50,max:14000,step:1,display:"hz",log:true},
- {label:"attack",path:["attack"],min:0,max:2,step:.005,display:"seconds"},
- {label:"release",path:["release"],min:0,max:3,step:.01,display:"seconds"}
+const recordedFields=context=>[
+ soundField("filter.cutoff",context,{label:"brightness",path:["filter"]}),
+ soundField("envelope.attack",context,{label:"attack"}),soundField("envelope.release",context,{label:"release"})
 ];
 
 function stageState(instrument,patch,volume,gain,layout=instrument.layout){
@@ -161,7 +161,7 @@ export function renderSoundInspectorCore({
  value=>redraw(patch,instrument.volume,value)));
  gainRoot.dataset.soundPath="gain";
  gainRoot.dataset.soundDomain="stage";
- const fields=patch.type==="synth"?PRIMARY_SYNTH_FIELDS:sampleFields;
+ const fields=patch.type==="synth"?PRIMARY_SYNTH_FIELDS:recordedFields(patch.type);
  fields.forEach((field,index)=>{
   const root=primaryRoots[index];root.replaceChildren();
   const sampleFilter=recorded&&index===0;
@@ -174,7 +174,7 @@ export function renderSoundInspectorCore({
   const filterType=recorded?sampleTone(patch).filter.type:patch.filter.type;
   const help=index===0?(filterType==="lowpass"?
    "turn it down to muffle the high stuff":"move the filter to reshape the sound"):undefined;
-  root.append(createDial({...field,...(vocal&&index===2?{min:0}:{}),help},current,
+  root.append(createDial({...field,help},current,
    value=>update(value,onPatchChange),value=>update(value,preview)));
  });
  if(vocal)renderRecordedAudioEditor(modulesRoot,patch,onPatchChange,{onPreview:preview,soundId:sound.id,deferView:true});

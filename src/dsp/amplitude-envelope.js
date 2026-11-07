@@ -1,12 +1,8 @@
+import {SYNTH_PARAMETERS} from "./parameters.js";
 // Version 1 preserves existing synth ADSR semantics, including the legacy floor.
 // No host objects or clock reads. Hosts execute ordered events at absolute seconds.
 export const ENVELOPE_CONTRACT_VERSION=1;
-export const ENVELOPE_PARAMETERS=Object.freeze([
- Object.freeze({id:"envelope.attack",unit:"seconds",min:0,max:3,default:.01,interpolation:"linear",effectiveMin:.002}),
- Object.freeze({id:"envelope.decay",unit:"seconds",min:0,max:3,default:.16,interpolation:"linear"}),
- Object.freeze({id:"envelope.sustain",unit:"linear_gain",min:0,max:1,default:.65,interpolation:"linear"}),
- Object.freeze({id:"envelope.release",unit:"seconds",min:.01,max:4,default:.2,interpolation:"linear"})
-]);
+export const ENVELOPE_PARAMETERS=Object.freeze(SYNTH_PARAMETERS.filter(p=>p.id.startsWith("envelope.")));
 export function envelopeLevelAt(envelope,peak,elapsedSeconds){
  const time=Math.max(0,elapsedSeconds),attack=Math.max(.002,envelope.attack);
  if(time<attack)return peak*time/attack;

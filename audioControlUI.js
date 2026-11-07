@@ -1,40 +1,34 @@
+import {soundField,soundParameter,soundCapability} from "./soundParameterAdapter.js";
 // Shared sampled-audio controls for Beat Sounds and Song vocal Clips.
 // Parameters have one definition; source-specific options are explicit.
 import {createDial,explainLabel,helpForLabel} from "./dial.js";
 import {movement,BEND_SHAPES} from "./expression.js";
 import {sampleTone,SAMPLE_FILTERS,DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
 
+const config=(id,label,context="sample")=>{
+ const {path,min,max,step,display}=soundField(id,context);
+ return Object.freeze([path.at(-1),label,min,max,step,display]);
+};
 export const AUDIO_MOVEMENT_CONTROLS=Object.freeze([
- ["glide","Glide from",-12,12,.1,"semitones"],
- ["glideTime","Glide time",.01,3,.01,"seconds"],
- ["depth","Vibrato",0,100,1,"cents"],
- ["rate","Vibrato speed",.1,20,.1,"hz"],
- ["delay","Vibrato waits",0,3,.05,"seconds"],
- ["tremolo","Pulse",0,1,.01,"percent"],
- ["tremoloRate","Pulse speed",.1,20,.1,"hz"],
- ["tone","Tone wave",0,1,.01,"percent"],
- ["toneRate","Tone speed",.1,20,.1,"hz"]
-].map(Object.freeze));
+ ["glide","Glide from"],["glideTime","Glide time"],["depth","Vibrato"],
+ ["rate","Vibrato speed"],["delay","Vibrato waits"],["tremolo","Pulse"],
+ ["tremoloRate","Pulse speed"],["tone","Tone wave"],["toneRate","Tone speed"]
+].map(([id,label])=>config("movement."+id,label)));
 export const AUDIO_BEND_CONTROLS=Object.freeze([
- ["amount","Bend amount",0,12,.25,"semitones"],
- ["rate","Wave speed",.1,12,.1,"hz"]
-].map(Object.freeze));
+ config("bend.amount","Bend amount"),config("bend.rate","Wave speed")
+]);
 export const AUDIO_COMMON_CONTROLS=Object.freeze([
- ["gain","Level",0,2,.01,"percent"],
- ["transpose","Transpose",-24,24,1,"semitones"],
- ["pan","Pan",-1,1,.01,"pan"]
-].map(Object.freeze));
+ config("gain","Level"),config("transpose","Transpose"),config("pan","Pan")
+]);
 export const AUDIO_SAMPLE_EXTRA_CONTROLS=Object.freeze([
- ["strumMs","Strum",-25,25,1,"number"],
- ["attack","Attack",0,2,.005,"seconds"],
- ["release","Release",0,3,.01,"seconds"]
-].map(Object.freeze));
-export const AUDIO_VOCAL_ENVELOPE_CONTROLS=Object.freeze(AUDIO_SAMPLE_EXTRA_CONTROLS.filter(([key])=>key!=="strumMs"));
+ config("strumMs","Strum"),config("envelope.attack","Attack"),config("envelope.release","Release")
+]);
+export const AUDIO_VOCAL_ENVELOPE_CONTROLS=Object.freeze([
+ config("envelope.attack","Attack","vocal"),config("envelope.release","Release","vocal")
+]);
 export const AUDIO_DELAY_CONTROLS=Object.freeze([
- ["delayMix","Delay",0,1,.01,"percent"],
- ["delayTime","Delay time",.05,1,.01,"seconds"],
- ["delayFeedback","Feedback",0,.8,.01,"percent"]
-].map(Object.freeze));
+ config("effects.delayMix","Delay"),config("effects.delayTime","Delay time"),config("effects.delayFeedback","Feedback")
+]);
 
 function slider(root,config,value,path,change,preview=()=>{},{disabled=false,disabledReason,inactiveReason,inactiveLabel,format}={}){
  const [key,label,min,max,step,display]=config;
@@ -65,28 +59,25 @@ export function renderAudioToneControls(root,patch,onChange,onPreview=()=>{},
   select.value==="off"?null:{...tone.filter,type:select.value}));
  label.dataset.soundPath="filter.type";root.append(label);
  if(!off){
-  if(showCutoff)slider(root,["cutoff","Brightness",50,14000,1,"hz"],tone.filter.cutoff,
+  if(showCutoff)slider(root,config("filter.cutoff","Brightness"),tone.filter.cutoff,
    ["filter","cutoff"],(path,value)=>onChange(["filter"],{...tone.filter,cutoff:value}),
    (path,value)=>onPreview(["filter"],{...tone.filter,cutoff:value}));
-  slider(root,["resonance","Resonance",.1,16,.1,"number"],tone.filter.resonance,
+  slider(root,config("filter.resonance","Resonance"),tone.filter.resonance,
    ["filter","resonance"],(path,value)=>onChange(["filter"],{...tone.filter,resonance:value}),
    (path,value)=>onPreview(["filter"],{...tone.filter,resonance:value}));
  }
- slider(root,["drive","Distortion",0,1,.01,"percent"],tone.drive,["drive"],onChange,onPreview);
+ slider(root,config("effects.drive","Distortion"),tone.drive,["drive"],onChange,onPreview);
 }
 export function renderAudioMovementControls(root,patch,onChange,onPreview=()=>{}){
  const m=movement(patch);
  for(const item of AUDIO_MOVEMENT_CONTROLS){
   const [key]=item;
-  const parent=key==="glideTime"?"Glide from":
-   ["rate","delay"].includes(key)?"Vibrato":key==="tremoloRate"?"Pulse":key==="toneRate"?"Tone wave":null;
-  const inactive=parent==="Glide from"&&m.glide===0||
-   parent==="Vibrato"&&m.depth===0||parent==="Pulse"&&m.tremolo===0||parent==="Tone wave"&&m.tone===0;
+  const capability=soundCapability(patch,["movement",key]);
   slider(root,item,m[key],["movement",key],
    (path,value)=>onChange(["movement"],{...m,[key]:value}),
    (path,value)=>onPreview(["movement",key],value),
-   {inactiveReason:["tone","toneRate"].includes(key)&&patch.filter==null?"Turn the filter on to hear tone movement":inactive?"Change "+parent+" from zero to hear this setting; the dashed curve is a reference guide":undefined,
-    inactiveLabel:inactive?"inactive · "+parent.toLowerCase()+" is 0":undefined});
+   {inactiveReason:capability.state==="inactive"?capability.reason+"; the dashed curve is a reference guide":undefined,
+    inactiveLabel:capability.state==="inactive"?"inactive · "+capability.reason:undefined});
  }
  const bend=patch.bend??{shape:"straight",amount:2,rate:4};
  const {label,select}=selectorLabel("bend shape","Recorded sound bend shape");
@@ -97,17 +88,12 @@ export function renderAudioMovementControls(root,patch,onChange,onPreview=()=>{}
  select.addEventListener("change",()=>onChange(["bend"],{...bend,shape:select.value}));
  label.dataset.soundPath="bend.shape";root.prepend(label);
  for(const item of AUDIO_BEND_CONTROLS){
-  const [key]=item;
+  const [key]=item,capability=soundCapability(patch,["bend",key]);
   slider(root,item,bend[key],["bend",key],
    (path,value)=>onChange(["bend"],{...bend,[key]:value}),
    (path,value)=>onPreview(["bend",key],value),
-   {inactiveReason:bend.shape==="straight"||key==="rate"&&(bend.shape!=="wave"||bend.amount===0)?
-     (key==="rate"?(bend.amount===0?"Bend amount is zero; the dashed curve shows a speed reference":
-      "Wave speed only affects the wave bend shape; the dashed curve shows a wave reference"):
-      "The straight shape has no pitch bend; the dashed curve is a wave reference"):undefined,
-    inactiveLabel:bend.shape==="straight"?"inactive · straight bend":
-     key==="rate"&&bend.shape!=="wave"?"inactive · select wave":
-      key==="rate"&&bend.amount===0?"inactive · bend amount is 0":undefined});
+   {inactiveReason:capability.state==="inactive"?capability.reason+"; the dashed curve is a reference guide":undefined,
+    inactiveLabel:capability.state==="inactive"?"inactive · "+capability.reason:undefined});
  }
 }
 export function renderAudioArticulationControls(root,patch,onChange,onPreview=()=>{},
@@ -116,7 +102,7 @@ export function renderAudioArticulationControls(root,patch,onChange,onPreview=()
  const extras=context==="vocal"?AUDIO_VOCAL_ENVELOPE_CONTROLS:AUDIO_SAMPLE_EXTRA_CONTROLS;
  for(const item of [...common,...extras]){
   const [key]=item;
-  slider(root,item,patch[key]??0,[key],onChange,onPreview,{
+  slider(root,item,patch[key]??soundParameter(patch,[key]).default,[key],onChange,onPreview,{
    format:key==="strumMs"?(value=>value===0?"Off":(value>0?"Down ":"Up ")+Math.abs(value)+" ms"):undefined
   });
  }
@@ -128,8 +114,9 @@ export function renderAudioDelayControls(root,patch,onChange,onPreview=()=>{}){
   // illustration does. A path and value mismatch left these three dials
   // unlinked (and without an initial numerical value).
   const vocal=patch.type==="vocal";
-  slider(root,item,vocal?patch.effects?.[key]:(patch[key]??({delayMix:0,delayTime:.24,delayFeedback:.26})[key]),
-   vocal?["effects",key]:[key],onChange,onPreview);
+  const path=vocal?["effects",key]:[key],capability=soundCapability(patch,path);
+  slider(root,item,(vocal?patch.effects?.[key]:patch[key])??soundParameter(patch,path).default,
+   path,onChange,onPreview,{inactiveReason:capability.state==="inactive"?capability.reason:undefined});
  }
 }
 export const DEFAULT_VOCAL_DIAGRAM_FILTER=DEFAULT_SAMPLE_FILTER;
