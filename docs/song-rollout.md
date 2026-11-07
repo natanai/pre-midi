@@ -39,6 +39,10 @@ The canonical piano roll module is `editorPianoRoll.js`. Beat and Song-time free
 
 **Remaining main editor work:** The pitched-note and Rack DOM renderers still differ between Beat and freeform. Consolidate into one shared piano roll with adapters for 16-step Chunk time vs absolute Song time; no mode-specific subset of keyboard, scale, note editing, note effects, Sound Inspector, gestures, racks or musical automation is acceptable. Verify dense layered notes, sampled rack references and 64-bar plus Song-time note positions under Chrome and Windows native before calling this finished.
 
+### Freeform note-expression parity (PR #206, pending CI qualification, 2026-11-06)
+
+When a note is selected in effects mode, freeform now uses the same `renderNoteExpression` implementation as Beat for bend shape, bend amount/speed, the interactive bend and level illustration, note audition and deletion. Song note length/absolute position, independent note layering and source-phase cutoff automation remain separate valid Song-time controls. Instead of squeezing note effects into a 160px nested scroll region under the piano roll, the right Inspector temporarily shows note editing; closing note effects restores the Sound Inspector. The Sound Inspector host remains mounted but hidden for its existing visualization cleanup lifecycle. Rack notes retain a visible note-effects toggle even though their pitched keyboard controls are hidden. Browser tests must qualify the actual Song note's bend persistence and right Inspector placement before merge.
+
 ### Shared Beat/freeform editor requirement (approved 2026-11-05)
 
 **Decision:** Selecting an attached freeform lane must use the established lower Beat editing workspace, not an independent reduced-feature editor clipped into the Song panel. The parent Song Track and its timeline remain visible; freeform notes continue to use absolute Song step positions, independent of Beat Chunk loop phase. Preserve the attached lane, canonical current-format Song .premidi export/import, source-linking, native transport and Song-scoped undo. Do not convert freeform to an ordinary Beat just to reuse its UI.
