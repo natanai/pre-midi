@@ -208,7 +208,9 @@ test("freeform Sound editor reuses canonical controls instead of duplicating eff
  const ui=read("freeformUI.js"),shared=read("freeformSoundUI.js"),
   inspector=read("soundInspector.js"),css=read("freeform.css");
  assert.match(ui,/installFreeformSoundUI/);
- assert.match(ui,/inspector\.append\(soundUI\.render\(\)\)/);
+ assert.match(ui,/const soundHost=soundUI\.render\(\)/);
+ assert.match(ui,/soundHost\.hidden=showingNoteEffects/);
+ assert.match(ui,/inspector\.append\(soundHost\)/);
  assert.match(shared,/renderSoundInspectorCore\(\{/);
  assert.match(inspector,/renderPatchEditor\(modulesRoot/);
  assert.match(inspector,/renderSamplerEditor\(modulesRoot/);
