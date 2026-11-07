@@ -35,13 +35,15 @@ async function reportedTest(file,endpoint,width=1440,height=900,microphone=false
   "http://127.0.0.1:"+port+"/tests/"+file+".html?width="+width],{stdio:"ignore"});
  try{
   const finished=await Promise.race([result,
-   new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(file+" timed out")),file==="scope-check"?120000:60000);}),
+   new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(file+" timed out")),["scope-check","sound-teaching-check"].includes(file)?120000:60000);}),
    new Promise((_,reject)=>{child.on("error",reject);child.on("exit",code=>reject(Error(file+" browser exited: "+code)));})]);
   assert.equal(finished?.status,"PASS",file+" at "+width+": "+finished?.details);
   console.log("PASS",file,width+"x"+height,finished.details);
  }finally{clearTimeout(timer);pending.delete(endpoint);child.kill("SIGKILL");}
 }
 try{
+ await reportedTest("sound-teaching-check","/__sound_teaching_result",1440,900);
+ await reportedTest("sound-teaching-check","/__sound_teaching_result",780,900);
  await reportedTest("sound-illustration-polish-check","/__sound_illustration_polish_result",1440,900);
  await reportedTest("sound-illustration-polish-check","/__sound_illustration_polish_result",780,900);
  await reportedTest("visual-links-check","/__visual_links_result",1440,900);

@@ -262,6 +262,7 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
  if(explanation)knob.setAttribute("aria-description",explanation);
  knob.setAttribute("aria-valuemin",String(field.min));
  knob.setAttribute("aria-valuemax",String(field.max));
+ knob.dataset.soundStep=String(field.step??.01);
  knob.setAttribute("aria-orientation","vertical");
  const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
  svg.setAttribute("viewBox","0 0 64 64");
@@ -290,7 +291,10 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
   explainUnit(output,format(current));
   knob.setAttribute("aria-valuenow",String(current));
   knob.setAttribute("aria-valuetext",format(current));
-  if(preview)onPreview(current);
+  if(preview){
+   onPreview(current);
+   control.dispatchEvent(new CustomEvent("sound-control-input",{bubbles:true}));
+  }
  }
  update(value);
  // An educational diagram is a second input surface for this exact control.
@@ -331,7 +335,7 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
  knob.addEventListener("pointercancel",finish);
  knob.addEventListener("keydown",event=>{
   if(field.disabled)return;
-  const delta=event.shiftKey?.1:1;
+  const delta=event.shiftKey?10:1;
   const up=["ArrowUp","ArrowRight"].includes(event.key);
   const down=["ArrowDown","ArrowLeft"].includes(event.key);
   let next=null;

@@ -20,7 +20,7 @@ const axesFor=(chart,keys)=>chart.handles.flatMap(item=>item.axes).find(a=>path(
 
 test("sound diagrams cover all real synth sections without inventing parameter paths",()=>{
  const patch=synth();
- for(const kind of ["oscillator1","oscillator2","filter","envelope","movement","delay","modulation"]){
+ for(const kind of ["oscillators","filter","envelope","movement","delay","modulation"]){
   const chart=diagram(patch,kind);
   assert.ok(chart.paths.length,kind+" has no diagram");
   for(const point of chart.handles){
@@ -53,9 +53,9 @@ test("filter grab point exposes independent cutoff and resonance axes",()=>{
 
 test("oscillator handle maps detune horizontally and level vertically",()=>{
  const patch=synth();
- const original=diagram(patch,"oscillator1");
+ const original=diagram(patch,"oscillators");
  const next=synth();next.oscillators[0].level=.3;next.oscillators[0].detune=75;
- const changed=diagram(next,"oscillator1");
+ const changed=diagram(next,"oscillators");
  assert.ok(changed.handles[0].x>original.handles[0].x);
  assert.ok(changed.handles[0].y>original.handles[0].y);
  assert.notEqual(original.paths[1].d,changed.paths[1].d);
@@ -167,7 +167,7 @@ test("illustrated sound features expose parameter links without changing user-fa
  const patch=synth();
  assert.ok(diagram(patch,"filter").paths.some(p=>p.links?.includes("filter.cutoff")));
  assert.ok(diagram(patch,"envelope").paths.some(p=>p.links?.includes("envelope.attack")));
- assert.ok(diagram(patch,"movement").paths.some(p=>p.links?.includes("movement.tremolo")));
+ assert.ok(diagram(patch,"movement",2).paths.some(p=>p.links?.includes("movement.tremolo")));
  assert.ok(diagram(patch,"filter",2).paths.some(p=>p.links?.includes("effects.drive")));
  assert.ok(diagram(patch,"delay").paths.some(p=>p.links?.includes("effects.delayTime")));
 });

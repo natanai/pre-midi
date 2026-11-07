@@ -51,9 +51,13 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  select.addEventListener("change",()=>onChange({...bend,shape:select.value}));
  choice.append(select);controls.append(choice);
  const current={shape:bend.shape,amount:bend.amount,rate:bend.rate};
- const amount=createDial({label:"Amount",min:0,max:12,step:.25,display:"semitones"},bend.amount,
+ const amount=createDial({label:"Amount",min:0,max:12,step:.25,display:"semitones",
+  inactiveReason:bend.shape==="straight"?"choose a bend shape to hear its amount; the dashed wave is a reference":undefined,
+  inactiveLabel:bend.shape==="straight"?"inactive · straight bend":undefined},bend.amount,
   value=>onChange({...bend,amount:value}),value=>{current.amount=value;draw();});
- const rate=createDial({label:"Wave speed",min:.1,max:12,step:.1,display:"hz"},bend.rate,
+ const rate=createDial({label:"Wave speed",min:.1,max:12,step:.1,display:"hz",
+  inactiveReason:bend.amount===0?"bend amount is zero; the dashed wave is a speed reference":undefined,
+  inactiveLabel:bend.amount===0?"inactive · bend amount is 0":undefined},bend.rate,
   value=>onChange({...bend,rate:value}),value=>{current.rate=value;draw();});
  amount.dataset.soundPath="bend.amount";
  rate.dataset.soundPath="bend.rate";
@@ -64,10 +68,13 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  graph.classList.add("visual-panel-graph");
  const center=svg("path",{d:"M0 32 H320 M0 91 H320",class:"visual-graph-secondary"});
  const shape=svg("polyline",{fill:"none",class:"visual-graph-line"});
+ const reference=svg("polyline",{fill:"none",class:"visual-graph-secondary"});
+ const referenceLabel=svg("text",{x:"13",y:"70",class:"visual-graph-label"});
+ referenceLabel.textContent="straight · wave guide";
  const levelBar=svg("path",{fill:"none",class:"visual-graph-level"});
  const levelLabel=svg("text",{x:"13",y:"107",class:"visual-graph-label"});
  levelLabel.textContent="level";
- graph.append(center,shape,levelBar,levelLabel);
+ graph.append(center,reference,shape,referenceLabel,levelBar,levelLabel);
  const visual=make("div",undefined,"expression-visual");
  const area=make("div",undefined,"visual-panel-area");
  const points=make("div",undefined,"visual-graph-points");
@@ -90,19 +97,33 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  function draw(){
   current.shape=select.value;
   rate.hidden=current.shape!=="wave";
+  dot.dataset.soundKeys="patch:bend.amount"+(current.shape==="wave"?"|patch:bend.rate":"");
+  dot.dataset.soundAxes=JSON.stringify([
+   {path:["bend","amount"],min:0,max:12,step:.25,mode:"linearY",from:32,to:6.8},
+   ...(current.shape==="wave"?[{path:["bend","rate"],min:.1,max:12,step:.1,mode:"linearX",from:48,to:272}]:[])
+  ]);
+  levelDot.dataset.soundKeys="patch:velocity";
   const total=durationSeconds;
   const values=Array.from({length:121},(_,i)=>{
    const x=i/120,value=bendSemitones(current,x,x*total);
    return Math.round(x*320)+","+Math.round(32-value*2.1);
   });
   shape.setAttribute("points",values.join(" "));
+  const showReference=current.shape==="straight"||current.amount===0;
+  referenceLabel.textContent=current.shape==="straight"?"straight · wave guide":"amount off · wave guide";
+  reference.setAttribute("points",showReference?
+   Array.from({length:121},(_,i)=>i/120*320+","+
+    (32-bendSemitones({...current,shape:"wave",amount:current.amount||3},i/120,i/120*total)*2.1)).join(" "):"");
+  referenceLabel.style.display=showReference?"":"none";
   levelBar.setAttribute("d","M14 91 H"+(14+290*noteLevel).toFixed(1));
   levelDot.style.left=((14+290*noteLevel)/320*100)+"%";
   levelDot.style.top=(91/112*100)+"%";
   levelDot.setAttribute("aria-valuenow",String(Number(noteLevel.toFixed(2))));
   shapeButton.textContent="shape: "+current.shape;
   shapeButton.setAttribute("aria-label","bend shape "+current.shape+"; next choice");
-  dot.hidden=current.shape==="straight";
+  dot.hidden=false;
+  dot.setAttribute("aria-description",current.shape==="straight"?
+   "straight has no pitch bend; the dashed wave previews the stored amount":"");
   dot.style.left=(current.shape==="wave"?15+clamp((current.rate-.1)/11.9,0,1)*70:74)+"%";
   dot.style.top=(32-2.1*current.amount)/112*100+"%";
   dot.setAttribute("aria-label",current.shape==="wave"?"bend amount and speed":"bend amount");

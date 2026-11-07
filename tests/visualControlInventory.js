@@ -5,6 +5,8 @@ const editableSelector="select,input,[role='slider']";
 const editors=".dial-field,.synth-field,.sample-pitch-setting,.expression-level";
 const directLinks=".visual-graph-point[data-sound-links],.visual-graph-action[data-sound-links]";
 const linkedPaths=node=>(node.dataset.soundLinks||"").split("|").filter(Boolean);
+const linkedKeys=node=>(node.dataset.soundKeys||linkedPaths(node)
+ .map(path=>"patch:"+path).join("|")).split("|").filter(Boolean);
 
 export function auditSoundVisualCoverage(root,{context="sound"}={}){
  // Large multisample selectors are intentionally lazy-rendered. Populate
@@ -19,15 +21,26 @@ export function auditSoundVisualCoverage(root,{context="sound"}={}){
   // Primary Beat controls are wrapped in stable containers that own their
   // canonical path; child dials remain generic reusable widgets.
   path:node.dataset.soundPath||node.parentElement?.closest("[data-sound-path]")?.dataset.soundPath||"",
+  domain:node.closest("[data-sound-domain]")?.dataset.soundDomain??"patch",
+  ...(node.matches(".dial-field")?{range:{
+   min:Number(node.querySelector('[role="slider"]').getAttribute("aria-valuemin")),
+   max:Number(node.querySelector('[role="slider"]').getAttribute("aria-valuemax")),
+   step:Number(node.querySelector('[role="slider"]').dataset.soundStep)
+  }}:{}),
   label:node.querySelector("label,span")?.textContent?.trim()||
    node.getAttribute("aria-label")||"",
   kind:node.matches(".dial-field")?"knob":
    node.querySelector("select")?"selector":node.querySelector("input[type='checkbox']")?
     "switch":"level"
  }));
- const visualPaths=new Set(),panels=[...root.querySelectorAll(".visual-sound-panel")];
+ const visualPaths=new Set(),visualKeys=new Set(),axes=new Map(),panels=[...root.querySelectorAll(".visual-sound-panel")];
  const read=target=>target.querySelectorAll(directLinks).forEach(node=>{
   for(const path of linkedPaths(node))visualPaths.add(path);
+  const keys=linkedKeys(node);keys.forEach(key=>visualKeys.add(key));
+  for(const axis of JSON.parse(node.dataset.soundAxes||"[]")){
+   const key=keys.find(key=>key.endsWith(":"+axis.path.join(".")));
+   if(key){if(!axes.has(key))axes.set(key,[]);axes.get(key).push(axis);}
+  }
  });
  for(const panel of panels){
   const pages=panel.querySelector(".visual-panel-pages");
@@ -52,12 +65,15 @@ export function auditSoundVisualCoverage(root,{context="sound"}={}){
  // Note expression intentionally shares the graph/point primitives but has
  // no accordion wrapper. Its controls must pass the same exact-path audit.
  for(const expression of root.querySelectorAll(".expression-visual"))read(expression);
- const missing=controls.filter(control=>!control.path||!visualPaths.has(control.path));
+ const missing=controls.filter(control=>!control.path||!visualKeys.has(control.domain+":"+control.path));
+ const inexact=controls.filter(control=>control.kind==="knob"&&!missing.includes(control)&&
+  !(axes.get(control.domain+":"+control.path)||[]).some(axis=>
+   ["min","max","step"].every(key=>Math.abs(axis[key]-control.range[key])<1e-9)));
  return {
-  context,controls,visualPaths:[...visualPaths].sort(),
+  context,controls,visualPaths:[...visualPaths].sort(),visualKeys:[...visualKeys].sort(),
   summary:{controls:controls.length,knobs:controls.filter(c=>c.kind==="knob").length,
    linked:controls.length-missing.length,unlinked:missing.length,
-   panels:panels.length},
-  missing
+   panels:panels.length,inexact:inexact.length},
+  missing,inexact
  };
 }

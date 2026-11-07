@@ -25,6 +25,13 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  const stateKey=soundId??patch;
  let expanded=sampleOpenStates.get(stateKey);
  if(!expanded){expanded=activeSamplePanels(patch);sampleOpenStates.set(stateKey,expanded);}
+ const visuals=[];
+ const preview=(path,value)=>{
+  onPreview(path,value);
+  if(!path?.length)return;
+  const next=structuredClone(patch);assignSoundEdit(next,path,value);
+  for(const visual of visuals)visual.draw(next);
+ };
 
  root.replaceChildren();
  const header=document.createElement("div");header.className="sampler-description";
@@ -37,19 +44,19 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  toneGroup.addEventListener("toggle",()=>toneGroup.open?expanded.add("tone"):expanded.delete("tone"));
  const toneTitle=document.createElement("summary");toneTitle.textContent="Tone · filter & distortion";
  const toneFields=document.createElement("div");toneFields.className="synth-fields dial-grid";
- renderAudioToneControls(toneFields,patch,onChange,onPreview);
+ renderAudioToneControls(toneFields,patch,onChange,preview);
  toneGroup.append(toneTitle,toneFields);root.append(toneGroup);
  const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=expanded.has("movement");
  movementGroup.addEventListener("toggle",()=>movementGroup.open?expanded.add("movement"):expanded.delete("movement"));
  const movementTitle=document.createElement("summary");movementTitle.textContent="Pitch & movement";
  const movementFields=document.createElement("div");movementFields.className="synth-fields dial-grid";
- renderAudioMovementControls(movementFields,patch,onChange,onPreview);
+ renderAudioMovementControls(movementFields,patch,onChange,preview);
  movementGroup.append(movementTitle,movementFields);root.append(movementGroup);
  const details=document.createElement("details");details.className="synth-group sample-shaping";details.open=expanded.has("sample");
  details.addEventListener("toggle",()=>details.open?expanded.add("sample"):expanded.delete("sample"));
  const summary=document.createElement("summary");summary.textContent="Sample & articulation";
  const fields=document.createElement("div");fields.className="synth-fields dial-grid";
- renderAudioArticulationControls(fields,patch,onChange,onPreview);
+ renderAudioArticulationControls(fields,patch,onChange,preview);
  const toggles=document.createElement("div");toggles.className="sample-toggles";
  const addToggle=(label,path,checked)=>{
   const control=document.createElement("label");control.className="sample-pitch-setting";
@@ -95,14 +102,6 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  root.append(mapDetails);
  // Keep the same diagrams and direct manipulation for recorded instruments.
  // These wrappers leave the actual sampler dials and mapping controls intact.
- const visuals=[];
- const preview=(path,value)=>{
-  onPreview(path,value);
-  if(!path?.length)return;
-  const next=structuredClone(patch);
-  assignSoundEdit(next,path,value);
-  for(const visual of visuals)visual.draw(next);
- };
  for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"],[mapDetails,"mapping"]]){
   // illustrateSoundPanel moves section inside its new wrapper. Anchor the
   // original position *before* wrapping; replacing section afterward would

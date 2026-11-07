@@ -6,6 +6,7 @@ export function captureSoundControlView(knob){
  const field=knob.closest("[data-sound-path]");
  if(!field)return ()=>{};
  const path=field.dataset.soundPath;
+ const domain=field.closest("[data-sound-domain]")?.dataset.soundDomain??"patch";
  const panel=field.closest(".visual-sound-panel");
  const visualId=panel?.dataset.visualId;
  const root=field.closest(".sound-section,.phone-patch-editor")??panel?.parentElement;
@@ -22,6 +23,7 @@ export function captureSoundControlView(knob){
   const owner=root.isConnected?root:replacement?.parentElement;
   const candidates=[...(owner?.querySelectorAll("[data-sound-path]")??[])];
   const target=candidates.find(item=>item.dataset.soundPath===path&&
+   (item.closest("[data-sound-domain]")?.dataset.soundDomain??"patch")===domain&&
    !item.classList.contains("visual-graph-action")&&item.querySelector('[role="slider"]'));
   target?.querySelector('[role="slider"]')?.focus({preventScroll:true});
   // Force layout after replacement before restoring scroll extents. The old

@@ -151,11 +151,13 @@ export function renderSoundInspectorCore({
  },instrument.volume,value=>onLevelChange("volume",value),
  value=>redraw(patch,value,sound.gain)));
  volumeRoot.dataset.soundPath="volume";
+ volumeRoot.dataset.soundDomain="stage";
  gainRoot.replaceChildren(createDial({
   label:"Sound level",min:0,max:1,step:.01,display:"percent"
  },sound.gain,value=>onLevelChange("gain",value),
  value=>redraw(patch,instrument.volume,value)));
  gainRoot.dataset.soundPath="gain";
+ gainRoot.dataset.soundDomain="stage";
  const fields=patch.type==="synth"?PRIMARY_SYNTH_FIELDS:sampleFields;
  fields.forEach((field,index)=>{
   const root=primaryRoots[index];root.replaceChildren();
