@@ -3,7 +3,7 @@ import {movement,movementDefaults} from "./expression.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {collectSoundFields} from "./soundPanelLayout.js";
 import {assignSoundEdit} from "./soundEditPath.js";
-import {renderAudioToneControls,renderAudioMovementControls,renderAudioArticulationControls} from "./audioControlUI.js";
+import {renderAudioToneControls,renderAudioMovementControls,renderAudioArticulationControls,renderAudioDelayControls} from "./audioControlUI.js";
 import {sampleTone,DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
 // Sample controls and synth controls share the same dial and visualization
 // owner. All durable edits still flow through studio.js modify().
@@ -23,7 +23,18 @@ export function activeSamplePanels(patch){
  if((patch.zones?.length??0)>1)active.add("mapping");
  return active;
 }
+export function disposeRecordedAudioEditor(root){
+ root?.soundPanelView?.dispose();
+ for(const panel of root?.querySelectorAll(".visual-sound-panel")??[])
+  panel.disposeSoundIllustration?.();
+}
 export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{},soundId=null){
+ return renderRecordedAudioEditor(root,patch,onChange,{metadata,openUpload,onPreview,soundId});
+}
+// One module renderer for triggered sampled Sounds and timeline vocal Clips.
+// Adapters own source selection, storage and undo; controls and diagrams live here.
+export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openUpload=null,onPreview=()=>{},soundId=null}={}){
+ const vocal=patch.type==="vocal";
  const stateKey=soundId??patch;
  let expanded=sampleOpenStates.get(stateKey);
  if(!expanded){expanded=activeSamplePanels(patch);sampleOpenStates.set(stateKey,expanded);}
@@ -32,22 +43,23 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   onPreview(path,value);
   if(!path?.length)return;
   const next=structuredClone(patch);assignSoundEdit(next,path,value);
+  if(vocal)next.audioFilterBypassed=next.filter===null;
   for(const visual of visuals)visual.draw(next);
  };
 
- root.soundPanelView?.dispose();
+ disposeRecordedAudioEditor(root);
  root.replaceChildren();
  const header=document.createElement("div");header.className="sampler-description";
  const count=new Set(patch.zones.map(zone=>zone.root)).size;
  header.textContent=(metadata&&patch.zones.length<=8?metadata+" · ":"")+
   count+" recorded pitch"+(count===1?"":"es");
- root.append(header);
+ if(!vocal)root.append(header);
  // Direct sound shaping is prominent, including on imported and recorded audio.
  const toneGroup=document.createElement("details");toneGroup.className="synth-group sample-tone";toneGroup.open=expanded.has("tone");
  toneGroup.addEventListener("toggle",()=>toneGroup.open?expanded.add("tone"):expanded.delete("tone"));
  const toneTitle=document.createElement("summary");toneTitle.textContent="Tone · filter & distortion";
  const toneFields=document.createElement("div");toneFields.className="synth-fields dial-grid";
- renderAudioToneControls(toneFields,patch,onChange,preview,{showCutoff:true});
+ renderAudioToneControls(toneFields,patch,onChange,preview,{allowBypass:true,showCutoff:true});
  toneGroup.append(toneTitle,toneFields);root.append(toneGroup);
  const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=expanded.has("movement");
  movementGroup.addEventListener("toggle",()=>movementGroup.open?expanded.add("movement"):expanded.delete("movement"));
@@ -59,7 +71,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  details.addEventListener("toggle",()=>details.open?expanded.add("sample"):expanded.delete("sample"));
  const summary=document.createElement("summary");summary.textContent="Sample & articulation";
  const fields=document.createElement("div");fields.className="synth-fields dial-grid";
- renderAudioArticulationControls(fields,patch,onChange,preview);
+ renderAudioArticulationControls(fields,patch,onChange,preview,{context:vocal?"vocal":"sample"});
  const toggles=document.createElement("div");toggles.className="sample-toggles";
  const addToggle=(label,path,checked)=>{
   const control=document.createElement("label");control.className="sample-pitch-setting";
@@ -68,9 +80,11 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   control.dataset.soundPath=path;
   control.append(box,document.createTextNode(label));toggles.append(control);
  };
+ if(!vocal){
  addToggle("Follow note pitch","followPitch",patch.followPitch);
  addToggle("Play full recording","oneShot",!!patch.oneShot);
  addToggle("Keep recorded dynamics","preserveDynamics",!!patch.preserveDynamics);
+ }
  details.append(summary,fields,toggles);root.append(details);
  const mapping=document.createElement("div");mapping.className="sample-zones";
  const notes=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
@@ -101,12 +115,20 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  mapDetails.append(mapHeading,mapping);
  // Defer thousands of option nodes for large multisamples until opened.
  mapDetails.populateMapping=()=>{if(!mapping.childElementCount)populateMapping();};
- mapDetails.populateMapping();
- root.append(mapDetails);
+ if(!vocal)mapDetails.populateMapping();
+ if(!vocal)root.append(mapDetails);
+ const sections=[[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"]];
+ if(vocal){
+  const delay=document.createElement("details");delay.className="synth-group";delay.open=true;
+  const title=document.createElement("summary");title.textContent="delay";
+  const controls=document.createElement("div");controls.className="synth-fields dial-grid";
+  renderAudioDelayControls(controls,patch,onChange,preview);
+  delay.append(title,controls);root.append(delay);sections.push([delay,"delay"]);
+ }else sections.push([mapDetails,"mapping"]);
  const soundFields=collectSoundFields(root);
  // Keep the same diagrams and direct manipulation for recorded instruments.
  // These wrappers leave the actual sampler dials and mapping controls intact.
- for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"],[mapDetails,"mapping"]]){
+ for(const [section,kind] of sections){
   // illustrateSoundPanel moves section inside its new wrapper. Anchor the
   // original position *before* wrapping; replacing section afterward would
   // attempt to insert the wrapper into its own child.
@@ -119,6 +141,6 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  }
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
- root.append(action);
+ if(openUpload&&!vocal)root.append(action);
  mountSoundPanelView(root);
 }

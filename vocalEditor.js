@@ -1,10 +1,4 @@
-import {mountSoundPanelView} from "./soundPanelView.js";
-// Vocal clips share the same sampler tone, pitch and movement controls.
-// This is the Song context for the existing lower Beat editing workspace.
-import {renderAudioToneControls,renderAudioMovementControls,renderAudioArticulationControls,renderAudioDelayControls} from "./audioControlUI.js";
-import {illustrateSoundPanel} from "./soundIllustrations.js";
-import {collectSoundFields} from "./soundPanelLayout.js";
-import {assignSoundEdit} from "./soundEditPath.js";
+import {renderRecordedAudioEditor,disposeRecordedAudioEditor} from "./samplerUI.js";
 import {vocalDisplayPatch,vocalChangesFromControl} from "./vocalAudioView.js";
 import {recordingBytes} from "./recordingAssets.js";
 import {nativeEnabled} from "./src/hosts/native/session.js";
@@ -18,11 +12,6 @@ const el=(tag,name,className)=>{
  return node;
 };
 const button=(label,fn)=>{const b=el("button",label);b.type="button";b.addEventListener("click",fn);return b;};
-function section(root,title){
- const details=el("details",undefined,"synth-group"),summary=el("summary",title);
- details.open=true;const fields=el("div",undefined,"synth-fields dial-grid");
- details.append(summary,fields);root.append(details);return fields;
-}
 function labelledNumber(root,label,value,min,max,step,change){
  const wrap=el("label",undefined,"vocal-number");
  wrap.append(el("span",label));const input=el("input");
@@ -46,7 +35,7 @@ async function autoTrim(recording){
  return suggestVocalOnset(await decodedWaveformAsset(recording,()=>decodeVocalRecording(recording)),recording.trimSeconds);
 }
 export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo}){
- root.querySelector(".vocal-effect-sections")?.soundPanelView?.dispose();
+ disposeRecordedAudioEditor(root.querySelector(".vocal-effect-sections"));
  root.hidden=!selection;
  if(!selection){root.replaceChildren();return;}
  const {clip,track,recording}=selection,clipId=clip.id;
@@ -78,34 +67,8 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
  suggest.title="Find the first audible onset; keep the original recording";
  timing.append(suggest);root.append(timing);
  const sections=el("div",undefined,"vocal-effect-sections");
- const patch=vocalDisplayPatch(clip,recording),visuals=[];
+ const patch=vocalDisplayPatch(clip,recording);
  const apply=(path,value)=>onApply(clipId,vocalChangesFromControl(patch,path,value));
- const preview=(path,value)=>{
-  const next=structuredClone(patch);
-  assignSoundEdit(next,path,value);
-  next.audioFilterBypassed=next.filter===null;
-  for(const visual of visuals)visual.draw(next);
- };
- const shape=section(sections,"sample & articulation");
- renderAudioArticulationControls(shape,patch,apply,preview,{context:"vocal"});
- const tone=section(sections,"tone · filter & distortion");
- renderAudioToneControls(tone,patch,apply,preview,{allowBypass:true,showCutoff:true});
- const pitch=section(sections,"pitch & movement");
- renderAudioMovementControls(pitch,patch,apply,preview);
- const delay=section(sections,"delay");
- renderAudioDelayControls(delay,patch,apply,preview);
+ renderRecordedAudioEditor(sections,patch,apply,{soundId:clipId});
  root.append(sections);
- const soundFields=collectSoundFields(sections);
- // Exact same graph, gestures, and label linking used by the sampler Sound
- // inspector. Vocal-only source and trigger options are deliberately absent.
- for(const [details,kind] of [[shape.closest("details"),"sample"],
-  [tone.closest("details"),"filter"],[pitch.closest("details"),"movement"],
-  [delay.closest("details"),"delay"]]){
-  details.soundFields=soundFields;
-  const anchor=document.createComment("audio visual position");
-  details.before(anchor);
-  const visual=illustrateSoundPanel(details,kind,patch,apply,preview,clipId);
-  visuals.push(visual);anchor.replaceWith(visual.element);
- }
- mountSoundPanelView(sections);
 }

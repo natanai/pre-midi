@@ -266,6 +266,9 @@
   assert(!!wave,"Vocal editor has a reusable waveform editing surface");
   const handle=wave.querySelector('[role="slider"][aria-label="trim start"]');
   assert(!!handle,"Waveform trim marker is accessible by keyboard and pointer");
+  const painted=handle.getBoundingClientRect(),viewport=wave.querySelector("svg").getBoundingClientRect();
+  assert(painted.left-viewport.left<viewport.width*.05,
+   "A near-zero trim handle is painted at the left edge, without SVG letterboxing");
   assert(Math.abs(Number(handle.getAttribute("aria-valuenow"))-.02)<.0005,"Waveform marker reflects saved clip trim");
   const zoom=wave.querySelector('select[aria-label="waveform zoom"]');
   const initialViewport=wave.querySelector(".audio-waveform-tools").textContent;
@@ -282,7 +285,7 @@
   const pointerStart=dragBox.left+handleX/480*dragBox.width;
   // Synthetic PointerEvents don't register in Chromium's native capture table.
   // Shim capture only; exercise the actual source-time drag and single commit logic.
-  dragHandle.setPointerCapture=()=>{};
+  dragSvg.setPointerCapture=()=>{};
   const pointer=(type,x)=>new PointerEvent(type,{bubbles:true,pointerId:84,pointerType:"mouse",button:0,clientX:x});
   dragHandle.dispatchEvent(pointer("pointerdown",pointerStart));
   dragHandle.dispatchEvent(pointer("pointermove",pointerStart+20));

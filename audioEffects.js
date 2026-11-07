@@ -12,7 +12,7 @@ export function driveCurve(amount){
 }
 export function validateSampleTone(patch){
  const filter=patch.filter;
- if(filter!==undefined&&(!filter||!SAMPLE_FILTERS.includes(filter.type)||
+ if(filter!=null&&(!filter||!SAMPLE_FILTERS.includes(filter.type)||
   typeof filter.cutoff!=="number"||!Number.isFinite(filter.cutoff)||filter.cutoff<50||filter.cutoff>14000||
   typeof filter.resonance!=="number"||!Number.isFinite(filter.resonance)||filter.resonance<.1||filter.resonance>16))return "Invalid sample filter.";
  if(patch.drive!==undefined&&(typeof patch.drive!=="number"||!Number.isFinite(patch.drive)||patch.drive<0||patch.drive>1))return "Invalid sample distortion.";

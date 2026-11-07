@@ -66,6 +66,7 @@ Brittle copy/layout/roadmap audits and the generated phone action inventory were
 - [Canonical terminology](docs/terminology.json) — Sound, Rack, Instrument, Chunk, Beat, Song, Track, Clip, Recording, Asset.
 - [Song rollout and integration gates](docs/song-rollout.md), including the [current stabilization handoff](docs/song-stabilization-handoff-2026-11-05.md).
 - [Machine-readable native-first synthesis roadmap](docs/synthesis-roadmap.json).
+- [Sound editing feature-completion audit and roadmap](docs/synthesis-roadmap.json): `sound_editing` contains the professional-tool comparison, current vocal parity gaps, shared Inspector contract and ordered acceptance tasks.
 - [Sound-conversion method](docs/synth-conversion.md).
 - [Sample provenance and checksums](docs/sample-sources.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 - [Studio interface rules for contributors and agents](AGENTS.md).

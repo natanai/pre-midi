@@ -80,7 +80,7 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
  let value=normalizeTrimSeconds(trimStart,duration),zoom=zoomByAsset.get(recording.id)||1;
  let buffer=null,drag=null;
  const wrapper=element("div");wrapper.className="audio-waveform-editor";
- const svg=svgElement("svg",{viewBox:"0 0 480 100",role:"group","aria-label":"recording waveform and trim start"});
+ const svg=svgElement("svg",{viewBox:"0 0 480 100",preserveAspectRatio:"none",role:"group","aria-label":"recording waveform and trim start"});
  svg.classList.add("vocal-waveform");
  const center=svgElement("line",{x1:0,x2:480,y1:50,y2:50,stroke:"#777","stroke-opacity":".6"});
  const path=svgElement("path",{fill:"none",stroke:"#9bc3b8","stroke-width":1.5});
@@ -131,17 +131,19 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
  select.addEventListener("change",()=>{
   zoom=Number(select.value);zoomByAsset.set(recording.id,zoom);show();
  });
- hit.addEventListener("pointerdown",e=>{
-  if(e.pointerType==="mouse"&&e.button!==0)return;
+ svg.addEventListener("pointerdown",e=>{
+  if(drag||e.pointerType==="mouse"&&e.button!==0)return;
   e.preventDefault();
   const rect=svg.getBoundingClientRect();
   const window=waveformWindow(duration,value,zoom);
   const pointerX=(e.clientX-rect.left)/rect.width*480;
   drag={pointerId:e.pointerId,initial:value,window,left:rect.left,width:rect.width,
-   grabOffset:pointerX-waveformXAtTime(value,window)};
-  hit.setPointerCapture(e.pointerId);
+   grabOffset:e.target===hit?pointerX-waveformXAtTime(value,window):0};
+  hit.focus();
+  svg.setPointerCapture(e.pointerId);
+  if(e.target!==hit)preview(waveformTimeAtX(pointerX,window));
  });
- hit.addEventListener("pointermove",e=>{
+ svg.addEventListener("pointermove",e=>{
   if(!drag||e.pointerId!==drag.pointerId)return;
   const x=(e.clientX-drag.left)/drag.width*480-drag.grabOffset;
   preview(waveformTimeAtX(x,drag.window));
@@ -150,10 +152,11 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
   if(!drag||e.pointerId!==drag.pointerId)return;
   const previous=drag.initial;
   drag=null;
-  if(e.type==="pointercancel"){preview(previous);return;}
-  commit(value);
+  if(e.type!=="pointerup"){preview(previous);return;}
+  show();commit(value);
  };
- hit.addEventListener("pointerup",finish);hit.addEventListener("pointercancel",finish);
+ svg.addEventListener("pointerup",finish);svg.addEventListener("pointercancel",finish);
+ svg.addEventListener("lostpointercapture",finish);
  hit.addEventListener("keydown",e=>{
   let target;
   const delta=e.shiftKey?.01:.001;
@@ -163,7 +166,7 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
   else if(e.key==="PageUp")target=value+.05;
   else if(e.key==="Home")target=0;
   else if(e.key==="End")target=max;
-  else if(e.key==="Escape"&&drag){preview(drag.initial);drag=null;e.preventDefault();return;}
+  else if(e.key==="Escape"&&drag){const previous=drag.initial;drag=null;preview(previous);e.preventDefault();return;}
   else return;
   e.preventDefault();target=normalizeTrimSeconds(target,duration);
   commit(target);

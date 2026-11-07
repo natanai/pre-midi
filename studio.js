@@ -1196,7 +1196,7 @@ function renderVocalWorkspace(){
  const selected=songExpanded? songUI?.getSelectedVocal():null;
  const active=!!selected?.recording,root=$("vocal-editor");
  document.querySelector("main")?.classList.toggle("editing-vocal",active);
- if(!active){root.hidden=true;root.replaceChildren();return;}
+ if(!active){renderVocalEditor(root,null,{});return;}
  const target=clipId=>{const entry=songUI?.getSelectedVocal();return entry?.clip.id===clipId?entry:null;};
  renderVocalEditor(root,selected,{
   onApply:(clipId,changes)=>{

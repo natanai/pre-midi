@@ -1696,11 +1696,11 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
  color:var(--bright);font-size:11px;line-height:1.4}
 
 /* A compact alternative to independently foldable illustrated modules. */
-.sound-panel-view{display:flex;align-items:center;gap:6px;margin:8px 0;color:var(--muted);font-size:11px}
+.sound-panel-view{grid-column:1/-1;display:flex;align-items:center;gap:6px;margin:8px 0;color:var(--muted);font-size:11px}
 .sound-panel-view>span{margin-right:4px}
 .sound-panel-view button{padding:5px 8px;font-size:11px;color:var(--muted)}
 .sound-panel-view button[aria-pressed="true"]{color:var(--bright);border-color:var(--muted)}
-.sound-combined-panel{border:1px solid var(--line);background:#050505;min-width:0}
+.sound-combined-panel{grid-column:1/-1;border:1px solid var(--line);background:#050505;min-width:0}
 .sound-combined-illustrations{position:sticky;top:0;z-index:3;background:#050505;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));max-height:min(44dvh,420px);overflow:auto;overscroll-behavior:contain;border-bottom:1px solid var(--line)}
 .sound-combined-figure{min-width:0}
 .sound-combined-panel h3{font-size:11px;font-weight:normal;margin:0;padding:10px 12px;color:var(--muted)}

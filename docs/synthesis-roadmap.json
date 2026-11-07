@@ -18,7 +18,8 @@
     "audio_quality_reference": "tests/audio-quality/reference.json",
     "synth_execution_contract": "docs/dsp-host-contract.json",
     "synth_voice_planner": "src/dsp/synth-voice.js",
-    "desktop_host": "docs/desktop-host.md"
+    "desktop_host": "docs/desktop-host.md",
+    "sound_editing_program": "docs/synthesis-roadmap.json#/sound_editing"
   },
   "platform_policy": {
     "priority_order": [
@@ -35,7 +36,7 @@
     "professional_quality_gate": "native reference implementations must pass acoustic and CPU benchmarks even if web support requires an explicit degraded mode",
     "portability": "portable patch/automation/event semantics with host-specific DSP implementations verified by reference fixtures",
     "real_time": "avoid allocation, blocking I/O, locks and GC-sensitive work in audio callback",
-    "backwards_compatibility": "version schema when interpretation changes; maintain documented migrations and legacy reads",
+    "backwards_compatibility": "One current .premidi model; update current fixtures/examples and remove obsolete readers when consolidating. Do not add migrations for hypothetical saved archives; version changed semantics only as required by the current portable contract.",
     "data_storage": "store audio bytes as external assets; keep .premidi files declarative and inspectable",
     "current_preview": "Windows 11 x64 portable folder ZIP only; retain macOS/Linux architecture but defer their preview distributions",
     "active_prototyping_target": "windows_11_x64_portable_folder",
@@ -69,7 +70,7 @@
     },
     {
       "id": "ARCH-004",
-      "decision": "Introduce a new versioned synth patch schema only when its meaning changes; do not break existing v7 Beat/v8 Song imports.",
+      "decision": "Change patch schema only when semantics change; target one current .premidi model and current game integration contract, without preserving hypothetical historical project readers.",
       "status": "accepted"
     },
     {
@@ -1349,7 +1350,7 @@
   },
   "sound_panel_expansions": {
     "status": "scoped; not implemented",
-    "principle": "Each illustration owns a visible panel. Duplicate access to shared parameters is intentional; no graph paging and no dummy controls to fill axes.",
+    "principle": "Modules give each illustration its own visible panel; optional combined view follows the edited control. Repeated access edits shared parameters. No dummy controls to fill axes.",
     "candidates": [
       {
         "panel": "distortion",
@@ -1401,6 +1402,1559 @@
           "tempo sync"
         ],
         "scope": "Extend the existing feedback bus without rendering effects into project assets."
+      }
+    ],
+    "implementation_tracking": "/sound_editing/tasks"
+  },
+  "sound_editing": {
+    "schema_version": 1,
+    "program_id": "pre-midi-sound-editing-feature-complete",
+    "title": "Roadmap to feature-complete sound editing",
+    "updated_on": "2026-11-07",
+    "status": "in_progress",
+    "audit_commit": "bf28bf53de08f5eb514f8e4f778df711edc7aa8c",
+    "audit_scope": "Baseline source audit at audit_commit; subsequent changes and verification limits are recorded in implementation_updates.",
+    "ownership": {
+      "canonical_file": "docs/synthesis-roadmap.json",
+      "json_pointer": "/sound_editing",
+      "song_vocal_acceptance": "docs/song-rollout.md#vocal-completion-gate--browser-and-portable-windows-11-2026-11-04",
+      "illustration_log": "docs/sound-illustrations.md",
+      "relationship": "This object decomposes the existing SYN backlog for sound editing; it is not a second Song rollout or illustration plan. SE tasks own this focused acceptance; related_synthesis_tasks link broader work without copying its completion state."
+    },
+    "method": {
+      "professional_baseline": "Capability comparison with official Ableton Live 12, Bitwig Studio and Logic Pro documentation; not a universal certification or a claim of equivalent sound quality.",
+      "inference_policy": "Current claims reference audited code. Missing features mean not found in inspected production editors/validators/render paths, supported by a repository-wide processor-name search; tests passing do not close an identified capability gap.",
+      "professional_requirement_policy": "Professional documentation establishes comparable capabilities; selection of the required pre-midi feature set and task order is an engineering proposal, not a requirement imposed by those vendors.",
+      "audit_status_values": [
+        "partial",
+        "not_found"
+      ],
+      "task_status_values": [
+        "planned",
+        "in_progress",
+        "blocked",
+        "implemented_unverified",
+        "done",
+        "deferred"
+      ],
+      "completion_policy": "done requires all task acceptance criteria plus commit-specific evidence. Deferring a required task changes scope and must be recorded explicitly.",
+      "percentage": null,
+      "percentage_reason": "No feature-complete percentage inferred from test counts, historical rollout estimates or planned feature counts."
+    },
+    "scope": {
+      "required_hosts": [
+        "desktop_browser",
+        "windows_11_portable_native"
+      ],
+      "required_contexts": [
+        "beat_pitched_synth",
+        "beat_pitched_sample",
+        "beat_rack_sound",
+        "song_freeform_synth",
+        "song_freeform_sample",
+        "song_vocal_clip"
+      ],
+      "required_features": "All SE tasks, including current vocal parity and the production audio-processing gaps in the professional comparison.",
+      "deferred": [
+        {
+          "capability": "Additional wavetable/FM/granular/spectral sound-generation engines",
+          "owner_task_ids": [
+            "SYN-011",
+            "SYN-013"
+          ],
+          "reason": "New source engines are separate from completing the editor and common processing; their future controls must use the same Inspector."
+        },
+        {
+          "capability": "MIDI/MPE hardware performance",
+          "owner_task_ids": [
+            "SYN-016"
+          ],
+          "reason": "Separate performance input scope; preserve its future parameter/expression integration."
+        },
+        {
+          "capability": "Native pre-programmed execution and game-driven control",
+          "owner_task_ids": [
+            "SYN-020"
+          ],
+          "reason": "Portable contracts are required here; game-reader implementation/qualification stays a separate completion gate."
+        },
+        {
+          "capability": "Phone, Safari/Home Screen, macOS and Linux acceptance",
+          "owner_task_ids": [
+            "SYN-019"
+          ],
+          "reason": "Desktop browser and Windows are the active editing targets."
+        },
+        {
+          "capability": "Third-party VST/AU/CLAP hosting, convolution libraries and unlimited routing",
+          "owner_task_ids": [],
+          "reason": "No existing approved implementation scope; common native processors and bounded routing satisfy this roadmap without claiming complete commercial-DAW coverage."
+        }
+      ]
+    },
+    "shared_interface_contract": {
+      "renderer_owner": "soundInspector.js",
+      "context_adapter_owners": [
+        "studio.js",
+        "freeformSoundUI.js",
+        "vocalEditor.js"
+      ],
+      "rule": "The same applicable sound processor has the same definition, controls, illustration, bypass, preset, preview and edit semantics in every context. Adapters supply data, source/time mapping, mutation/history and permissions, not another editor.",
+      "vocal_source_policy": "A vocal Clip remains external recorded audio. Do not require conversion to a Beat or synthesis to unlock common effects.",
+      "permitted_source_differences": [
+        "Oscillators, harmonic partials and generated noise belong to synthesized sources.",
+        "Key/velocity zone mapping, note-follow, one-shot/gate and strum belong to triggered sampled instruments.",
+        "Source waveform, trim, clip position and source-time mapping belong to recordings; reusable waveform tools are shared where meaningful.",
+        "Synth note ADSR and continuous-clip fades have different triggers; explain these differences through capability metadata while sharing applicable processors."
+      ],
+      "forbidden_shortcuts": [
+        "Duplicate vocal-only Inspector",
+        "Hide a common effect only because the source is vocal",
+        "Add controls for unimplemented DSP",
+        "Silently ignore modulation fields",
+        "Flatten editable effects into WAV to claim parity",
+        "Remove existing controls or illustrations to make inventories match",
+        "Add legacy migrations for hypothetical user archives"
+      ],
+      "transaction_rule": "One gesture -> ephemeral preview -> one undoable commit in the selected document; cancel leaves the authored patch and immutable source bytes unchanged."
+    },
+    "references": [
+      {
+        "id": "REF-LIVE-FX",
+        "title": "Ableton Live 12 manual: audio effects",
+        "url": "https://www.ableton.com/en/live-manual/12/live-audio-effect-reference/",
+        "accessed_on": "2026-11-07",
+        "relevance": "Reference for multiband EQ, compression and sidechain, reverb, delay, dynamics and nonlinear processing. Device availability varies by edition."
+      },
+      {
+        "id": "REF-LIVE-AUTO",
+        "title": "Ableton Live 12 manual: automation",
+        "url": "https://www.ableton.com/en/live-manual/12/automation/",
+        "accessed_on": "2026-11-07",
+        "relevance": "Reference for broad parameter automation, recorded gestures, editable breakpoint envelopes and automation state feedback."
+      },
+      {
+        "id": "REF-BITWIG-MOD",
+        "title": "Bitwig Studio user guide: modulators",
+        "url": "https://www.bitwig.com/userguide/latest/modulator/",
+        "accessed_on": "2026-11-07",
+        "relevance": "Reference for assignable LFOs, envelopes, audio followers, tempo-synchronized random modulation and source/target control."
+      },
+      {
+        "id": "REF-BITWIG-FX",
+        "title": "Bitwig Studio user guide: modulation effects",
+        "url": "https://www.bitwig.com/userguide/latest/modulation_fx/",
+        "accessed_on": "2026-11-07",
+        "relevance": "Reference for chorus, flanger, phaser and tremolo with modulation and stereo controls."
+      },
+      {
+        "id": "REF-LIVE-INSTRUMENT",
+        "title": "Ableton Live 12 manual: instruments",
+        "url": "https://www.ableton.com/en/live-manual/12/live-instrument-reference/",
+        "accessed_on": "2026-11-07",
+        "relevance": "Reference for sampler zones, sample loops/crossfades, modulation and additional synthesis methods. Extra source engines are a separate backlog."
+      },
+      {
+        "id": "REF-LIVE-RACK",
+        "title": "Ableton Live 12 manual: instrument, drum and effect racks",
+        "url": "https://www.ableton.com/en/live-manual/12/instrument-drum-and-effect-racks/",
+        "accessed_on": "2026-11-07",
+        "relevance": "Reference for ordered serial devices, parallel chains, macro mappings and recallable variations."
+      },
+      {
+        "id": "REF-LOGIC-PITCH",
+        "title": "Logic Pro user guide: pitch effects",
+        "url": "https://support.apple.com/en-gb/guide/logicpro/lgce3ec4ee85/mac",
+        "accessed_on": "2026-11-07",
+        "relevance": "Reference for pitch correction, pitch shifting and vocal transformation."
+      },
+      {
+        "id": "REF-LOGIC-FORMANT",
+        "title": "Logic Pro user guide: Vocal Transformer",
+        "url": "https://support.apple.com/en-ca/guide/logicpro/lgcebe59db4a/mac",
+        "accessed_on": "2026-11-07",
+        "relevance": "Reference for independent pitch and formant controls. Retrieved through indexed official documentation; direct fetch was rate-limited."
+      },
+      {
+        "id": "REF-LOGIC-DEESS",
+        "title": "Logic Pro user guide: DeEsser 2",
+        "url": "https://support.apple.com/en-ae/guide/logicpro/lgcef1bec850/mac",
+        "accessed_on": "2026-11-07",
+        "relevance": "Reference for frequency-selective dynamics used to reduce vocal sibilance. Retrieved through indexed official documentation; direct fetch was rate-limited."
+      }
+    ],
+    "repository_evidence": [
+      {
+        "id": "E01",
+        "path": "soundInspector.js",
+        "symbol_or_excerpt": "export function renderSoundInspectorCore",
+        "line": 111,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/soundInspector.js#L111"
+      },
+      {
+        "id": "E02",
+        "path": "freeformSoundUI.js",
+        "symbol_or_excerpt": "renderSoundInspectorCore({",
+        "line": 232,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/freeformSoundUI.js#L232"
+      },
+      {
+        "id": "E03",
+        "path": "vocalEditor.js",
+        "symbol_or_excerpt": "export function renderVocalEditor",
+        "line": 48,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/vocalEditor.js#L48"
+      },
+      {
+        "id": "E04",
+        "path": "audioControlUI.js",
+        "symbol_or_excerpt": "export const AUDIO_MOVEMENT_CONTROLS",
+        "line": 7,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/audioControlUI.js#L7"
+      },
+      {
+        "id": "E05",
+        "path": "instrumentUI.js",
+        "symbol_or_excerpt": "const groups=",
+        "line": 18,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/instrumentUI.js#L18"
+      },
+      {
+        "id": "E06",
+        "path": "samplerUI.js",
+        "symbol_or_excerpt": "export function renderSamplerEditor",
+        "line": 26,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/samplerUI.js#L26"
+      },
+      {
+        "id": "E07",
+        "path": "src/dsp/modulation.js",
+        "symbol_or_excerpt": "export const MOD_SOURCES",
+        "line": 4,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/src/dsp/modulation.js#L4"
+      },
+      {
+        "id": "E08",
+        "path": "src/dsp/automation.js",
+        "symbol_or_excerpt": "export function validateCutoffAutomation",
+        "line": 6,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/src/dsp/automation.js#L6"
+      },
+      {
+        "id": "E09",
+        "path": "sampler.js",
+        "symbol_or_excerpt": "export function validateSamplerPatch",
+        "line": 75,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/sampler.js#L75"
+      },
+      {
+        "id": "E10",
+        "path": "sampler.js",
+        "symbol_or_excerpt": "let signal=src;const toneNodes=[]",
+        "line": 186,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/sampler.js#L186"
+      },
+      {
+        "id": "E11",
+        "path": "songAudio.js",
+        "symbol_or_excerpt": "export function scheduleVocal",
+        "line": 32,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/songAudio.js#L32"
+      },
+      {
+        "id": "E12",
+        "path": "src/hosts/native/sample-plan.js",
+        "symbol_or_excerpt": "export function planNativeSample",
+        "line": 8,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/src/hosts/native/sample-plan.js#L8"
+      },
+      {
+        "id": "E13",
+        "path": "src/hosts/native/sample-plan.js",
+        "symbol_or_excerpt": "export function planNativeVocal",
+        "line": 23,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/src/hosts/native/sample-plan.js#L23"
+      },
+      {
+        "id": "E14",
+        "path": "studio.js",
+        "symbol_or_excerpt": "Vocal delay remains on its Song clip",
+        "line": 1263,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/studio.js#L1263"
+      },
+      {
+        "id": "E15",
+        "path": "vocalEffects.js",
+        "symbol_or_excerpt": "export const VOCAL_EFFECT_DEFAULTS",
+        "line": 5,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/vocalEffects.js#L5"
+      },
+      {
+        "id": "E16",
+        "path": "vocalAudioView.js",
+        "symbol_or_excerpt": "export function vocalDisplayPatch",
+        "line": 10,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/vocalAudioView.js#L10"
+      },
+      {
+        "id": "E17",
+        "path": "soundPanelView.js",
+        "symbol_or_excerpt": "export function mountSoundPanelView",
+        "line": 9,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/soundPanelView.js#L9"
+      },
+      {
+        "id": "E18",
+        "path": "soundPanelLayout.js",
+        "symbol_or_excerpt": "export function soundPanelViews",
+        "line": 32,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/soundPanelLayout.js#L32"
+      },
+      {
+        "id": "E19",
+        "path": "sampler.js",
+        "symbol_or_excerpt": "export function sampleForNote",
+        "line": 63,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/sampler.js#L63"
+      },
+      {
+        "id": "E20",
+        "path": "sampleSlice.js",
+        "symbol_or_excerpt": "export const MAX_SAMPLE_SLICE_SECONDS",
+        "line": 3,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/sampleSlice.js#L3"
+      },
+      {
+        "id": "E21",
+        "path": "src/dsp/parameters.js",
+        "symbol_or_excerpt": "export const SYNTH_PARAMETERS",
+        "line": 6,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/src/dsp/parameters.js#L6"
+      },
+      {
+        "id": "E22",
+        "path": "audioEffects.js",
+        "symbol_or_excerpt": "export const DRIVE_OVERSAMPLE",
+        "line": 24,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/audioEffects.js#L24"
+      },
+      {
+        "id": "E23",
+        "path": "soundScope.js",
+        "symbol_or_excerpt": "export function createSignalDisplay",
+        "line": 174,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/soundScope.js#L174"
+      },
+      {
+        "id": "E24",
+        "path": "audioControlUI.js",
+        "symbol_or_excerpt": "export const AUDIO_VOCAL_ENVELOPE_CONTROLS",
+        "line": 30,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/audioControlUI.js#L30"
+      },
+      {
+        "id": "E25",
+        "path": "vocalBeatReuse.js",
+        "symbol_or_excerpt": "export function linkedVocalSample",
+        "line": 8,
+        "url": "https://github.com/natanai/pre-midi/blob/bf28bf53de08f5eb514f8e4f778df711edc7aa8c/vocalBeatReuse.js#L8"
+      }
+    ],
+    "capability_audit": [
+      {
+        "id": "CAP-01",
+        "title": "One Sound Inspector for all audio contexts",
+        "status": "partial",
+        "current": "Beat and Freeform mount soundInspector.js; vocals separately assemble controls in vocalEditor.js. All reuse some audio controls, illustrations and the modules/combined view.",
+        "gap": "Shared widgets are not identical editor ownership. Mount one canonical Inspector for synth Sounds, sample Sounds and timeline vocal Clips.",
+        "evidence_ids": [
+          "E01",
+          "E02",
+          "E03",
+          "E04",
+          "E17"
+        ],
+        "reference_ids": [],
+        "task_ids": [
+          "SE-01",
+          "SE-02"
+        ]
+      },
+      {
+        "id": "CAP-02",
+        "title": "Sound sources and harmonic editing",
+        "status": "partial",
+        "current": "Two oscillator slots, four basic waveforms plus 32-partial harmonic synthesis, source noise, oscillator levels/octaves/detune and ADSR.",
+        "gap": "Professional suites offer additional source engines; wavetable/FM/granular work remains in SYN-011/SYN-013 and is not required to unify existing audio processing.",
+        "evidence_ids": [
+          "E05",
+          "E21"
+        ],
+        "reference_ids": [
+          "REF-LIVE-INSTRUMENT"
+        ],
+        "task_ids": [
+          "SE-13"
+        ]
+      },
+      {
+        "id": "CAP-03",
+        "title": "Articulation, levels and sample identity",
+        "status": "partial",
+        "current": "Synth ADSR; sampled audio attack/release, transpose/gain/pan; note follow, one-shot, strum and dynamics preservation; sample roots and velocity selection.",
+        "gap": "Vocal fades use different names/ranges/defaults; sample normalization and voice gain differ from clip gain. Document source-specific triggers while sharing processor definitions and level semantics.",
+        "evidence_ids": [
+          "E04",
+          "E05",
+          "E09",
+          "E12",
+          "E13",
+          "E15",
+          "E19",
+          "E24"
+        ],
+        "reference_ids": [
+          "REF-LIVE-INSTRUMENT"
+        ],
+        "task_ids": [
+          "SE-01",
+          "SE-03",
+          "SE-14"
+        ]
+      },
+      {
+        "id": "CAP-04",
+        "title": "Filter and parametric EQ",
+        "status": "partial",
+        "current": "One four-type resonant filter; synth cutoff sweep and tone LFO. Sample/vocal filter bypass behavior differs in UI.",
+        "gap": "No production parametric EQ found; need editable bands, shelves, slopes and consistent bypass. Extra filter topologies remain linked to SYN-012.",
+        "evidence_ids": [
+          "E01",
+          "E04",
+          "E05",
+          "E10",
+          "E11"
+        ],
+        "reference_ids": [
+          "REF-LIVE-FX"
+        ],
+        "task_ids": [
+          "SE-03",
+          "SE-09"
+        ]
+      },
+      {
+        "id": "CAP-05",
+        "title": "Distortion and source noise",
+        "status": "partial",
+        "current": "Shared tanh drive curve with 4x Web Audio oversampling; synth noise amount/decay. Tone/drive panels and illustrations exist.",
+        "gap": "Missing input trim, dry/wet, selectable shapers, output compensation policy, noise color and bandwidth. Oversampling configuration alone is not listening or aliasing qualification.",
+        "evidence_ids": [
+          "E05",
+          "E10",
+          "E11",
+          "E22"
+        ],
+        "reference_ids": [
+          "REF-LIVE-FX"
+        ],
+        "task_ids": [
+          "SE-13",
+          "SE-17"
+        ]
+      },
+      {
+        "id": "CAP-06",
+        "title": "Pitch motion, tremolo and tone motion",
+        "status": "partial",
+        "current": "Bend shapes, glide, delayed vibrato and tremolo on synth/sample/vocal paths; tone motion exposed and executed on synths.",
+        "gap": "Shared audio movement UI omits tone/toneRate. Sample/vocal render paths do not schedule a tone LFO, although the movement object can carry its fields. A field accepted in JSON is not a working feature.",
+        "evidence_ids": [
+          "E04",
+          "E05",
+          "E10",
+          "E11",
+          "E12",
+          "E13"
+        ],
+        "reference_ids": [
+          "REF-BITWIG-MOD",
+          "REF-BITWIG-FX"
+        ],
+        "task_ids": [
+          "SE-03",
+          "SE-05",
+          "SE-06"
+        ]
+      },
+      {
+        "id": "CAP-07",
+        "title": "Assignable modulation matrix",
+        "status": "partial",
+        "current": "Synth-only maximum 16 routes; sine LFO, independent ADSR, velocity and key tracking; six destinations: oscillator pitch/level pairs, cutoff and pan; signed depth/polarity/smoothing.",
+        "gap": "Samples explicitly reject general routes; vocals lack route storage/editor. Broaden audio-relevant destinations and define per-note versus per-clip timing without artificial vocal velocity/key tracking.",
+        "evidence_ids": [
+          "E07",
+          "E09",
+          "E15"
+        ],
+        "reference_ids": [
+          "REF-BITWIG-MOD"
+        ],
+        "task_ids": [
+          "SE-05"
+        ]
+      },
+      {
+        "id": "CAP-08",
+        "title": "LFO shapes, sync, followers, randomness and macros",
+        "status": "partial",
+        "current": "Fixed-rate sine movement and modulation; per-note LFO onset and route smoothing exist.",
+        "gap": "Missing selectable shapes, beat sync, phase/retrigger modes, envelope followers/sidechains, deterministic random/steps and user macros.",
+        "evidence_ids": [
+          "E04",
+          "E05",
+          "E07"
+        ],
+        "reference_ids": [
+          "REF-BITWIG-MOD",
+          "REF-LIVE-RACK"
+        ],
+        "task_ids": [
+          "SE-06"
+        ]
+      },
+      {
+        "id": "CAP-09",
+        "title": "Automation and parameter gestures",
+        "status": "partial",
+        "current": "Two-point exponential synth cutoff automation plus captured note/source phase; Beat and Freeform editing paths exist.",
+        "gap": "Not general multipoint automation; no equivalent sample/vocal automation. Need common targets, curve editing, gesture recording, override state and phase-correct seek/loop/live edits.",
+        "evidence_ids": [
+          "E08",
+          "E21"
+        ],
+        "reference_ids": [
+          "REF-LIVE-AUTO"
+        ],
+        "task_ids": [
+          "SE-07"
+        ]
+      },
+      {
+        "id": "CAP-10",
+        "title": "Delay and reverberation",
+        "status": "partial",
+        "current": "Synths and vocals have mix/time/feedback delay; sampler UI/browser/native sample plan have no delay. Use in Beat explicitly leaves delay behind.",
+        "gap": "Close sample delay parity first; then tempo sync, feedback tone, ping-pong and shared algorithmic reverb with bounded tails.",
+        "evidence_ids": [
+          "E05",
+          "E06",
+          "E10",
+          "E11",
+          "E12",
+          "E13",
+          "E14"
+        ],
+        "reference_ids": [
+          "REF-LIVE-FX"
+        ],
+        "task_ids": [
+          "SE-03",
+          "SE-04",
+          "SE-11"
+        ]
+      },
+      {
+        "id": "CAP-11",
+        "title": "Compression, gate, de-essing and limiting",
+        "status": "not_found",
+        "current": "No implementation found in the audited production sound path.",
+        "gap": "Need compressor, expander/gate, frequency-selective de-esser and limiter, with sidechain routing and gain-reduction feedback. Sample dynamics preservation is not compression.",
+        "evidence_ids": [
+          "E05",
+          "E10",
+          "E11",
+          "E12",
+          "E13"
+        ],
+        "reference_ids": [
+          "REF-LIVE-FX",
+          "REF-LOGIC-DEESS"
+        ],
+        "task_ids": [
+          "SE-10"
+        ]
+      },
+      {
+        "id": "CAP-12",
+        "title": "Chorus, flanger, phaser and creative modulation effects",
+        "status": "not_found",
+        "current": "No implementation found in the audited production sound path.",
+        "gap": "Vibrato/tremolo do not substitute for these processors. Add common chorus, flanger, phaser, auto-pan and ring/frequency-shift processors with shared UI and bounded feedback.",
+        "evidence_ids": [
+          "E05",
+          "E10",
+          "E11"
+        ],
+        "reference_ids": [
+          "REF-BITWIG-FX",
+          "REF-LIVE-FX"
+        ],
+        "task_ids": [
+          "SE-12"
+        ]
+      },
+      {
+        "id": "CAP-13",
+        "title": "Effect order, bypass, sends and parallel routing",
+        "status": "partial",
+        "current": "Synth and recorded-audio paths use fixed processing order; synth/vocal delay may use session-owned shared buses.",
+        "gap": "No user-editable ordered effect chain, general sends, parallel chains or per-processor bypass/recall found. Distinguish clip, Sound, Instrument and bus ownership.",
+        "evidence_ids": [
+          "E01",
+          "E10",
+          "E11",
+          "E12",
+          "E13"
+        ],
+        "reference_ids": [
+          "REF-LIVE-RACK"
+        ],
+        "task_ids": [
+          "SE-08"
+        ]
+      },
+      {
+        "id": "CAP-14",
+        "title": "Independent pitch, time and formants",
+        "status": "partial",
+        "current": "Sample/vocal transpose changes playback rate and therefore duration. Vocal UI recalculates length after transpose.",
+        "gap": "No independent stretch, formant-preserving pitch, independent formant shift or scale-based monophonic pitch correction found.",
+        "evidence_ids": [
+          "E09",
+          "E11",
+          "E15"
+        ],
+        "reference_ids": [
+          "REF-LOGIC-PITCH",
+          "REF-LOGIC-FORMANT",
+          "REF-LIVE-INSTRUMENT"
+        ],
+        "task_ids": [
+          "SE-15"
+        ]
+      },
+      {
+        "id": "CAP-15",
+        "title": "Waveform, sampling and source regions",
+        "status": "partial",
+        "current": "Vocal waveform with source-time lead trim/onset suggestion; sample source excerpts, pitch roots and velocity selection; short compatible WAV vocals can reuse one external asset.",
+        "gap": "Need unified source-region editing, end trim/fade handles, reverse and sampler sustain loops/crossfades; complete velocity-zone editing. Keep current four-second excerpt and asset limits until explicitly replaced.",
+        "evidence_ids": [
+          "E03",
+          "E19",
+          "E20",
+          "E25"
+        ],
+        "reference_ids": [
+          "REF-LIVE-INSTRUMENT"
+        ],
+        "task_ids": [
+          "SE-14"
+        ]
+      },
+      {
+        "id": "CAP-16",
+        "title": "Stereo and gain staging",
+        "status": "partial",
+        "current": "Pan, recording gain, Sound gain and Instrument volume; Beat/Freeform gain-stage illustration; measured scope.",
+        "gap": "Vocal editor lacks the canonical overview/stage UI. Add stereo width/mid-side with real stereo inputs, mono-safe behavior and explicit gain ownership.",
+        "evidence_ids": [
+          "E01",
+          "E03",
+          "E12",
+          "E13",
+          "E23"
+        ],
+        "reference_ids": [
+          "REF-LIVE-FX"
+        ],
+        "task_ids": [
+          "SE-02",
+          "SE-13",
+          "SE-17"
+        ]
+      },
+      {
+        "id": "CAP-17",
+        "title": "Presets, reuse and undo",
+        "status": "partial",
+        "current": "Beat/Freeform share Sound catalog/save helpers and canonical patch edit callbacks. Vocal edits have Song undo and immutable external recording assets.",
+        "gap": "Vocal editor has no identical sound preset/audition surface. Conversion currently changes gain/envelope interpretation and omits delay; add portable shared processing presets and preserve all applicable edits.",
+        "evidence_ids": [
+          "E01",
+          "E03",
+          "E14",
+          "E16",
+          "E25"
+        ],
+        "reference_ids": [
+          "REF-LIVE-RACK"
+        ],
+        "task_ids": [
+          "SE-04"
+        ]
+      },
+      {
+        "id": "CAP-18",
+        "title": "Educational control and illustration parity",
+        "status": "partial",
+        "current": "Separate modules and combined-follow view reuse controls and illustration path linking; references are distinct from measured scope.",
+        "gap": "Retain this design for all added effects. Every applicable control needs a meaningful interactive illustration, synchronized copies, explicit inactive reason and accessible precise editing.",
+        "evidence_ids": [
+          "E04",
+          "E05",
+          "E17",
+          "E18",
+          "E23"
+        ],
+        "reference_ids": [],
+        "task_ids": [
+          "SE-16"
+        ]
+      },
+      {
+        "id": "CAP-19",
+        "title": "Host quality and portable playback",
+        "status": "partial",
+        "current": "Web and native sample/vocal planners implement existing filters, drive, pitch motion, envelopes and vocal delay; current tests cover selected behavior.",
+        "gap": "This audit did not measure audio quality or physical Windows behavior. Qualify each new processor in live playback, audition, WAV and current-format projects; game reader parity remains SYN-020.",
+        "evidence_ids": [
+          "E10",
+          "E11",
+          "E12",
+          "E13"
+        ],
+        "reference_ids": [],
+        "task_ids": [
+          "SE-17",
+          "SE-18"
+        ]
+      }
+    ],
+    "current_parity_matrix": [
+      {
+        "capability": "overview_scope_audition",
+        "synth": "partial",
+        "sample": "partial",
+        "song_vocal": "partial",
+        "gap": "separate_editor",
+        "task_ids": [
+          "SE-02"
+        ]
+      },
+      {
+        "capability": "levels_pan_fades",
+        "synth": "implemented",
+        "sample": "implemented",
+        "song_vocal": "implemented",
+        "gap": "definitions_differ",
+        "task_ids": [
+          "SE-01",
+          "SE-03"
+        ]
+      },
+      {
+        "capability": "filter_bypass_drive",
+        "synth": "implemented",
+        "sample": "implemented",
+        "song_vocal": "implemented",
+        "gap": "bypass_ui_differs",
+        "task_ids": [
+          "SE-03"
+        ]
+      },
+      {
+        "capability": "bend_glide_vibrato_tremolo",
+        "synth": "implemented",
+        "sample": "implemented",
+        "song_vocal": "implemented",
+        "gap": "phase_and_trigger_review_pending",
+        "task_ids": [
+          "SE-03"
+        ]
+      },
+      {
+        "capability": "filter_tone_motion",
+        "synth": "implemented",
+        "sample": "absent",
+        "song_vocal": "absent",
+        "gap": "processing_gap",
+        "task_ids": [
+          "SE-03"
+        ]
+      },
+      {
+        "capability": "delay",
+        "synth": "implemented",
+        "sample": "absent",
+        "song_vocal": "implemented",
+        "gap": "processing_and_reuse_gap",
+        "task_ids": [
+          "SE-03",
+          "SE-04"
+        ]
+      },
+      {
+        "capability": "general_modulation_routes",
+        "synth": "implemented_limited",
+        "sample": "rejected",
+        "song_vocal": "absent",
+        "gap": "processing_gap",
+        "task_ids": [
+          "SE-05",
+          "SE-06"
+        ]
+      },
+      {
+        "capability": "timeline_automation",
+        "synth": "two_point_cutoff",
+        "sample": "absent",
+        "song_vocal": "absent",
+        "gap": "processing_gap",
+        "task_ids": [
+          "SE-07"
+        ]
+      },
+      {
+        "capability": "preset_surface",
+        "synth": "implemented",
+        "sample": "implemented",
+        "song_vocal": "absent",
+        "gap": "ui_and_reuse_gap",
+        "task_ids": [
+          "SE-04"
+        ]
+      },
+      {
+        "capability": "modules_combined_illustrations",
+        "synth": "implemented",
+        "sample": "implemented",
+        "song_vocal": "implemented",
+        "gap": "shared_widgets_not_full_inspector",
+        "task_ids": [
+          "SE-02",
+          "SE-16"
+        ]
+      },
+      {
+        "capability": "eq_dynamics_reverb_modulation_fx",
+        "synth": "absent",
+        "sample": "absent",
+        "song_vocal": "absent",
+        "gap": "suite_gap",
+        "task_ids": [
+          "SE-09",
+          "SE-10",
+          "SE-11",
+          "SE-12"
+        ]
+      },
+      {
+        "capability": "independent_pitch_time_formants",
+        "synth": "absent",
+        "sample": "absent",
+        "song_vocal": "absent",
+        "gap": "suite_gap",
+        "task_ids": [
+          "SE-15"
+        ]
+      }
+    ],
+    "milestones": [
+      {
+        "id": "M1",
+        "title": "Existing sound features and identical vocal Inspector",
+        "required_task_ids": [
+          "SE-01",
+          "SE-02",
+          "SE-03",
+          "SE-04"
+        ],
+        "exit": "Song vocals and sampled Sounds use one editing surface and retain existing applicable processing through reuse; not yet a professional suite completion claim."
+      },
+      {
+        "id": "M2",
+        "title": "Modulation, automation and processor routing foundations",
+        "required_task_ids": [
+          "SE-05",
+          "SE-06",
+          "SE-07",
+          "SE-08"
+        ],
+        "exit": "Common parameter/clock/routing semantics support all sources without divergent editors."
+      },
+      {
+        "id": "M3",
+        "title": "Production sound-processing suite",
+        "required_task_ids": [
+          "SE-09",
+          "SE-10",
+          "SE-11",
+          "SE-12",
+          "SE-13",
+          "SE-14",
+          "SE-15",
+          "SE-16"
+        ],
+        "exit": "All in-scope professional comparison gaps are implemented and individually verified in the common Inspector."
+      },
+      {
+        "id": "M4",
+        "title": "Verified desktop feature completion",
+        "required_task_ids": [
+          "SE-17",
+          "SE-18"
+        ],
+        "exit": "End-to-end portable projects, host rendering, UI and physical desktop observations have matching evidence."
+      }
+    ],
+    "tasks": [
+      {
+        "id": "SE-01",
+        "title": "Consolidate parameter and capability definitions",
+        "status": "in_progress",
+        "priority": "P0",
+        "depends_on": [],
+        "related_synthesis_tasks": [
+          "SYN-006",
+          "SYN-009"
+        ],
+        "implementation_paths": [
+          "src/dsp/parameters.js",
+          "instrumentUI.js",
+          "audioControlUI.js",
+          "samplerUI.js",
+          "vocalEffects.js",
+          "vocalAudioView.js"
+        ],
+        "acceptance": [
+          "Replace duplicated definitions with one parameter authority used by validation, controls, modulation, automation and illustrations; do not add a second mirrored registry.",
+          "Declare stable IDs, units, defaults, ranges, interpolation, bypass and context applicability for each existing field; keep serialization mapping in context adapters.",
+          "Record source-only differences separately from shared post-source processing. Synth ADSR and clip fades retain explicit trigger contracts; opening an existing sound never silently rewrites its authored values.",
+          "Capability metadata distinguishes implemented, unsupported, inactive and source-only. Reject unsupported non-default processing rather than accepting inaudible state."
+        ],
+        "verification": [
+          "Focused validation and edit tests for defaults, boundary values and mixed multi-axis transactions."
+        ],
+        "completion_evidence": [],
+        "progress_note": "Sampled Sounds and vocals now share the recorded-audio module definitions/renderer and filter bypass support. Full parameter authority consolidation remains pending."
+      },
+      {
+        "id": "SE-02",
+        "title": "Mount Song vocals in the canonical Sound Inspector",
+        "status": "in_progress",
+        "priority": "P0",
+        "depends_on": [
+          "SE-01"
+        ],
+        "related_synthesis_tasks": [],
+        "implementation_paths": [
+          "soundInspector.js",
+          "vocalEditor.js",
+          "studio.js",
+          "freeformSoundUI.js"
+        ],
+        "acceptance": [
+          "Beat, Freeform and Song vocal selection mount the same Inspector chrome, control modules, overview, measured scope, level/pan, audition, preset actions and modules/combined preference.",
+          "Vocal adapter supplies clip identity, immutable asset, source-time viewport, context capabilities and Song mutations. It does not assemble another collection of knobs or illustrations.",
+          "Keep waveform/trim as a contextual source slot. Existing synth oscillators, rack actions and sample mapping remain available in their meaningful source contexts.",
+          "Preview is ephemeral; one committed gesture creates one correct Beat or Song undo step. Preserve focus; dispose old scopes/listeners and ignore stale decode/audition callbacks on selection change."
+        ],
+        "verification": [
+          "Focused context-switch interaction check and existing soundInspectorCore/songVocals behavior tests."
+        ],
+        "completion_evidence": [],
+        "progress_note": "Vocal modules delegate to renderRecordedAudioEditor in samplerUI.js, including illustrations, view preference and cleanup. Vocal overview/chrome, scope, audition and presets still need canonical Inspector integration."
+      },
+      {
+        "id": "SE-03",
+        "title": "Close existing sampled-audio and vocal processing gaps",
+        "status": "in_progress",
+        "priority": "P0",
+        "depends_on": [
+          "SE-01",
+          "SE-02"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-014",
+          "SYN-015"
+        ],
+        "implementation_paths": [
+          "sampler.js",
+          "songAudio.js",
+          "vocalEffects.js",
+          "audioEffects.js",
+          "src/hosts/native/sample-plan.js",
+          "audioControlUI.js"
+        ],
+        "acceptance": [
+          "Provide the same delay mix/time/feedback processing on sampled Sounds and vocals, including live/audition/WAV/native tails and serialization.",
+          "Implement filter tone motion for sampled Sounds and vocals using the shared movement contract; no accepted field may remain silently ignored.",
+          "Use consistent shared processor defaults, bypass, units/ranges, distortion compensation and pan semantics. Source onset/note-off differences are explicit adapters, not accidental divergent formulas.",
+          "Define exact effective gain across source normalization, clip/Sound level and Instrument/Track gain. Preserve source loudness intentionally and prevent double gain on conversion.",
+          "Match the original trimmed phrase when seeking/looping: do not restart fades, pitch curves or movement phase at the seek boundary."
+        ],
+        "verification": [
+          "PCM/plan fixtures for sample versus vocal treatment of the same source, nonzero delay and tone motion, bypass, short fades, seeks and tails."
+        ],
+        "completion_evidence": [],
+        "progress_note": "Shared sampled-audio filter editor now exposes off and the validator accepts explicit null bypass, matching browser/native rendering. Sample delay, tone motion, gain/fade and seek-phase parity remain pending."
+      },
+      {
+        "id": "SE-04",
+        "title": "Share presets and preserve processing through vocal reuse",
+        "status": "planned",
+        "priority": "P0",
+        "depends_on": [
+          "SE-03"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-014"
+        ],
+        "implementation_paths": [
+          "soundInspector.js",
+          "vocalBeatReuse.js",
+          "studio.js",
+          "userSoundLibrary.js"
+        ],
+        "acceptance": [
+          "Save/load/copy shared processing on vocals through the same preset surface as sampled Sounds; asset-bearing Sound presets and processing-only presets have explicit scopes.",
+          "Use in Beat retains every applicable effect, level, trim, pitch and fade; no delay-loss notice is needed once parity works. Source-trigger changes remain explicit.",
+          "Reuse compatible immutable assets once. Codec conversion may create an external asset, with no destructive source rewrite or audio bytes in JSON.",
+          "Current-format import/export, undo/redo, project reopen and relocation retain processor state and unique asset identity; do not add hypothetical historical migrations."
+        ],
+        "verification": [
+          "Existing vocalBeatReuse and Song IO behavior plus an effectful vocal-to-Sound round trip."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-05",
+        "title": "Extend assignable modulation to all sound sources",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-03"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-009"
+        ],
+        "implementation_paths": [
+          "src/dsp/modulation.js",
+          "modulationUI.js",
+          "sampler.js",
+          "vocalEffects.js",
+          "src/hosts/native/sample-plan.js"
+        ],
+        "acceptance": [
+          "Reuse the current matrix for synth, sampled Sound and vocal post-source parameters, with explicit destinations, depth, polarity, smoothing and clamp rules.",
+          "Add applicable gain, filter resonance, effect mix/time and stereo targets; oscillator destinations remain synth-only. Vocal inputs use clip/audio clocks instead of invented note velocity.",
+          "Specify base value -> automation -> modulation -> bounds composition. Preserve simultaneous routes, deterministic source phase and bounded CPU at declared route limits."
+        ],
+        "verification": [
+          "Portable source/target oracle cases plus audible sample/vocal modulation across playback, preview and export."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-06",
+        "title": "Add professional modulation sources and performance macros",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-05"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-009"
+        ],
+        "implementation_paths": [
+          "src/dsp/modulation.js",
+          "modulationUI.js",
+          "soundIllustrations.js"
+        ],
+        "acceptance": [
+          "LFOs expose sine/triangle/ramp/square, Hz or tempo division, phase, retrigger/free-run policy and smoothing. Note/clip/Song clocks remain stable through seek and loop.",
+          "Add envelope follower and selectable audio sidechain with attack/release, deterministic seeded random/sample-and-hold, and editable step modulation.",
+          "Provide bounded macro mappings to multiple parameters with min/max/polarity, reset and preset recall through the same Inspector; avoid mandatory beginner/expert modes.",
+          "Every source exposes its range, input availability and route impact; missing sidechain inputs fail visibly without silently changing the sound."
+        ],
+        "verification": [
+          "Source equations/phase fixtures and focused route/macro editing, save/load and undo scenarios."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-07",
+        "title": "Generalize automation beyond two-point synth cutoff",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-05"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-010"
+        ],
+        "implementation_paths": [
+          "src/dsp/automation.js",
+          "freeformNoteAutomation.js",
+          "soundInspector.js",
+          "songAudio.js"
+        ],
+        "acceptance": [
+          "Support multipoint clip/Sound/Instrument automation for all continuous automatable parameters and stepped discrete parameters with declared units/interpolation.",
+          "Reuse graph editing for insert/move/delete points, curves, gesture recording, bypass/remove and undo. Knobs and illustrations display base, automated and modulated states consistently.",
+          "Define shared Beat-source, Freeform Song-time and vocal source-time mapping, including trim, repetition, tempo, seek, loop and render tails.",
+          "Define live-edit override/rejoin behavior without resetting sustaining sources; automation and modulation serialize through one current project model."
+        ],
+        "verification": [
+          "Independent value/phase oracle plus edited Song seek/loop/export round trips for synth, sample and vocal."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-08",
+        "title": "Create one editable effects chain and routing model",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-03"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-015"
+        ],
+        "implementation_paths": [
+          "audio.js",
+          "sampler.js",
+          "songAudio.js",
+          "src/dsp/",
+          "src/hosts/native/",
+          "soundInspector.js"
+        ],
+        "acceptance": [
+          "Define one portable ordered processor graph with stable node IDs, add/remove/reorder, per-processor bypass, wet/dry and preset recall.",
+          "Expose serial processing plus bounded parallel chains/sends and sidechain inputs; distinguish per-voice, per-Sound/clip, Instrument/Track and shared-bus ownership.",
+          "The same processor editor is used wherever a processor is mounted. Shared buses do not leak state between unrelated Sounds or Clips.",
+          "Define latency reporting/compensation, tail lifetime, feedback bounds and resource cleanup before exposing routing; parsing/allocation stays off native audio callbacks."
+        ],
+        "verification": [
+          "Graph-order, bypass, parallel/send isolation, impulse/tail and undo/serialization fixtures."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-09",
+        "title": "Add parametric EQ and extend filter editing",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-08"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-012",
+          "SYN-015"
+        ],
+        "implementation_paths": [
+          "src/dsp/",
+          "audioEffects.js",
+          "soundInspector.js",
+          "soundIllustrations.js"
+        ],
+        "acceptance": [
+          "Provide at least four independently editable EQ bands with bell/shelf/high-pass/low-pass types, frequency, gain, Q and bypass; allow expansion without a new editor.",
+          "Use draggable frequency/gain nodes and Q editing, plus equivalent precise controls; measured spectrum and predicted response are visually distinguishable.",
+          "Expose filter slope and serial/parallel stages through common routing. Preserve existing cutoff/resonance/sweep behavior and stable extremes."
+        ],
+        "verification": [
+          "Frequency-response and stability fixtures at documented rates; contextual EQ edits on synth/sample/vocal."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-10",
+        "title": "Add production dynamics and vocal cleanup",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-08"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-005",
+          "SYN-015"
+        ],
+        "implementation_paths": [
+          "src/dsp/",
+          "soundInspector.js",
+          "soundIllustrations.js",
+          "src/hosts/native/"
+        ],
+        "acceptance": [
+          "Provide compressor threshold/ratio/knee/attack/release/makeup/mix and selectable sidechain; expander/gate threshold/range/hold; de-esser frequency/band/threshold/amount.",
+          "Provide limiter ceiling/release and explicit lookahead/latency policy. State whether protection is sample-peak or true-peak; measure rather than imply it.",
+          "All sources share these editors, including vocals; transfer curves and gain-reduction feedback have direct edits and ordinary controls.",
+          "Document detector, channel linking, headroom and compensation; silence, transients, bypass and extreme feedback remain bounded."
+        ],
+        "verification": [
+          "Static curve, transient, sibilance, sidechain-isolation and output-peak fixtures; matched-level listening."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-11",
+        "title": "Upgrade delay and add shared reverb",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-08"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-015"
+        ],
+        "implementation_paths": [
+          "src/dsp/effect-tail.js",
+          "audio.js",
+          "songAudio.js",
+          "soundInspector.js",
+          "src/hosts/native/"
+        ],
+        "acceptance": [
+          "Extend delay with tempo sync/divisions, feedback tone and stereo ping-pong without losing current controls.",
+          "Add algorithmic reverb with pre-delay, decay, damping/size, wet/dry and stereo controls; use common chain/bus ownership.",
+          "Define seek/loop/reset behavior and measured finite tails; preview, Song playback and WAV export retain tails under the same policy."
+        ],
+        "verification": [
+          "Impulse/echo timing, decay and tail-boundary cases; same effectful source in every context."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-12",
+        "title": "Add shared modulation effects",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-06",
+          "SE-08"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-015"
+        ],
+        "implementation_paths": [
+          "src/dsp/",
+          "soundInspector.js",
+          "soundIllustrations.js",
+          "src/hosts/native/"
+        ],
+        "acceptance": [
+          "Implement chorus, flanger, phaser and auto-pan with applicable rate/sync/depth/stereo/mix/feedback controls using the shared modulation clock.",
+          "Add ring modulation and frequency shifting as common audio processors with explicit Hz versus pitch semantics.",
+          "Use one interactive response/time illustration per meaningful effect relationship; parameter extremes remain stable and output/latency bounds are documented."
+        ],
+        "verification": [
+          "Sideband/notch, stereo phase, impulse and feedback stability fixtures plus audible reference phrases."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-13",
+        "title": "Finish scoped distortion, noise and stereo controls",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-08"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-002",
+          "SYN-012",
+          "SYN-015"
+        ],
+        "implementation_paths": [
+          "audioEffects.js",
+          "soundPanelModels.js",
+          "soundIllustrations.js",
+          "src/dsp/"
+        ],
+        "acceptance": [
+          "Implement input gain, compensated output, wet/dry and soft/hard/wavefold shapers with measured anti-alias behavior; preserve current drive.",
+          "Add white/pink/brown noise and source bandwidth while preserving level/decay. Noise generation remains a source feature, not a meaningless vocal setting.",
+          "Provide stereo width and mid/side balance with explicit mono-source behavior, clipping bounds and mono compatibility.",
+          "Carry all sound_panel_expansions candidate requirements into these tasks or SE-06/SE-11/SE-15; add no placeholder knobs solely to fill axes."
+        ],
+        "verification": [
+          "Transfer/spectrum and stereo correlation/mono fixtures; direct controls match interactive illustrations."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-14",
+        "title": "Unify waveform and sample-source editing",
+        "status": "in_progress",
+        "priority": "P1",
+        "depends_on": [
+          "SE-03"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-014"
+        ],
+        "implementation_paths": [
+          "audioWaveform.js",
+          "samplerUI.js",
+          "vocalEditor.js",
+          "sampleSlice.js",
+          "vocalBeatReuse.js"
+        ],
+        "acceptance": [
+          "Use a shared source viewport for non-destructive start/end regions, fade handles, reverse, zoom and numerical/keyboard editing; automatic onset trim stays optional.",
+          "Sampler sustain loops, loop crossfades, key/velocity zones and one-shot versus gate behavior remain contextual source features in this shared surface.",
+          "Clip crop versus source crop and source seconds versus Song time are explicit; multiple Clips sharing a recording retain independent processing.",
+          "Retain current source/asset limits until a measured replacement lands. Long vocal editing must not inherit the short Beat sample limit."
+        ],
+        "verification": [
+          "Boundary/quiet-onset/end-trim/loop-crossfade cases, duplicate independence, immutable bytes and reuse round trips."
+        ],
+        "completion_evidence": [],
+        "progress_note": "Fixed source-time waveform hit positioning by removing SVG letterboxing; waveform click/drag can position trim, pointer loss/Escape cancel preview, and one gesture commits once. End trim, shared sampler source viewport and loop editing remain pending."
+      },
+      {
+        "id": "SE-15",
+        "title": "Add independent time, pitch, formants and vocal tuning",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-08",
+          "SE-14"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-014"
+        ],
+        "implementation_paths": [
+          "src/dsp/",
+          "vocalEffects.js",
+          "sampler.js",
+          "songAudio.js",
+          "soundInspector.js"
+        ],
+        "acceptance": [
+          "Keep current rate-based transpose as an explicit mode; add pitch-independent stretch and duration-independent pitch with formant preservation and independent formant shift.",
+          "Provide scale/key-based monophonic pitch correction with amount/response and transparent unsupported-polyphony behavior; apply it to suitable samples as well as vocals.",
+          "Declare algorithm latency, supported pitch/time ranges and CPU/quality settings before exposing controls. Source offsets, fades and automation remain aligned after stretching.",
+          "All treatments stay editable and portable; preserve source audio externally rather than requiring a bounced WAV to play a project."
+        ],
+        "verification": [
+          "Pitch/duration/formant measurements, speech/consonant/transient listening and host comparisons at declared ranges."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-16",
+        "title": "Preserve one educational and accessible editing experience",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-02"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-022"
+        ],
+        "implementation_paths": [
+          "soundIllustrations.js",
+          "soundPanelLayout.js",
+          "soundPanelView.js",
+          "dial.js",
+          "soundInspector.js"
+        ],
+        "acceptance": [
+          "Every new applicable control has an interactive illustration or discrete diagram action plus equivalent ordinary precise control; use two axes only where both are meaningful.",
+          "Preserve independently foldable modules and combined controls that follow the edited parameter, including all related illustrations and synchronized duplicate access.",
+          "Keep volume/brightness/onset/fade immediate; use concise label help and unit help, keyboard control and visible focus. Inactive controls explain the actual dependency.",
+          "Measured scope/audition uses the real edited source and processing; synthetic lessons remain labeled references. Newcomer observation and listening review are recorded before completion."
+        ],
+        "verification": [
+          "Focused desktop control/illustration gestures, context switches and keyboard checks as each feature lands; observed review at completion."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-17",
+        "title": "Qualify common processing across editing and rendering paths",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-04",
+          "SE-07",
+          "SE-09",
+          "SE-10",
+          "SE-11",
+          "SE-12",
+          "SE-13",
+          "SE-15",
+          "SE-16"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-003",
+          "SYN-004",
+          "SYN-005",
+          "SYN-018",
+          "SYN-021"
+        ],
+        "implementation_paths": [
+          "tests/",
+          "native/",
+          "src/hosts/native/",
+          "audio.js",
+          "songAudio.js"
+        ],
+        "acceptance": [
+          "Compare the same source plus processor chain in Beat samples, Freeform samples and Song vocals for audition, live playback and WAV export with declared source-trigger differences.",
+          "Add independent DSP oracles and documented tolerances before numeric claims; include silence, clipping, extreme settings, automation, seeks/loops, overlap and effect tails.",
+          "Verify current .premidi/preset round trips, external asset deduplication, project undo/reopen and portable-folder relocation. New native processors never silently fall back to Web Audio.",
+          "Document callback allocation/CPU/latency at declared polyphony, sample rates and effect counts. Separate automated host evidence from physical Windows listening/microphone evidence."
+        ],
+        "verification": [
+          "Run only affected focused checks during implementation. Full processor/native qualification is a deliberate completion milestone, not a routine docs or UI push requirement."
+        ],
+        "completion_evidence": []
+      },
+      {
+        "id": "SE-18",
+        "title": "Record end-to-end feature completion and delivery evidence",
+        "status": "planned",
+        "priority": "P1",
+        "depends_on": [
+          "SE-17"
+        ],
+        "related_synthesis_tasks": [
+          "SYN-018",
+          "SYN-020",
+          "SYN-021"
+        ],
+        "implementation_paths": [
+          "docs/synthesis-roadmap.json",
+          "docs/song-rollout.md",
+          "docs/sound-illustrations.md",
+          "docs/desktop-release-notes.md"
+        ],
+        "acceptance": [
+          "All required sound-editing task criteria have commit-specific passing evidence; every audit gap is implemented or explicitly moved to agreed deferred scope without claiming it complete.",
+          "Reconcile the canonical Song vocal completion gates and illustration log; publish browser changes and, when the completed editor is being released, a matching requested Windows portable artifact.",
+          "Record real desktop browser and physical Windows playback/recording/listening observations for the completed editor; an automated build is not physical acceptance.",
+          "Keep game playback completion separately blocked on SYN-020 and mobile acceptance deferred; neither is implied by desktop sound-editing completion."
+        ],
+        "verification": [
+          "Review commit/version, deployment/release URLs and human observations once; do not package Windows or run broad qualification for this documentation-only audit."
+        ],
+        "completion_evidence": []
+      }
+    ],
+    "execution_policy": {
+      "next_task_ids": [
+        "SE-01",
+        "SE-02",
+        "SE-03"
+      ],
+      "first_implementation_milestone": "M1",
+      "no_runtime_change_this_audit": false,
+      "routine_validation": "Run the smallest relevant behavior or interaction check once per change; do not add tests that assert roadmap wording or markup.",
+      "release_validation": "Broad native/audio matrices and Windows packaging are deliberate qualification/release work, not prerequisites for this documentation-only update.",
+      "concurrency": "Re-read main before editing shared Inspector/illustration files; preserve concurrent work and keep one owner per implementation area."
+    },
+    "feature_complete_gate": {
+      "operator": "all_of",
+      "task_ids": [
+        "SE-01",
+        "SE-02",
+        "SE-03",
+        "SE-04",
+        "SE-05",
+        "SE-06",
+        "SE-07",
+        "SE-08",
+        "SE-09",
+        "SE-10",
+        "SE-11",
+        "SE-12",
+        "SE-13",
+        "SE-14",
+        "SE-15",
+        "SE-16",
+        "SE-17",
+        "SE-18"
+      ],
+      "additional_conditions": [
+        "All applicable shared processors use one canonical Inspector; source-only exceptions are enumerated above.",
+        "No known silent parameter loss in edit, preview, preset, conversion, save/load, seek/loop or export pathways.",
+        "Evidence distinguishes source inspection, automated behavior, measured DSP and real hardware/listening observations.",
+        "Deferred source engines, game integration and mobile platforms are not reported as completed."
+      ],
+      "current_result": "not_satisfied"
+    },
+    "audit_verification": {
+      "source_reviewed": true,
+      "runtime_features_changed": false,
+      "command": "node --test --test-reporter=dot tests/songVocals.test.js tests/vocalBeatReuse.test.js tests/soundInspectorCore.test.js tests/modulation.test.js tests/automation.test.js tests/sampler.test.js",
+      "result": "passed",
+      "tests": 41,
+      "limitations": [
+        "No browser UI observation performed in this audit.",
+        "No native audio benchmark, physical Windows or listening qualification performed.",
+        "No Windows build or release requested or produced."
+      ],
+      "roadmap_validation": "Validate JSON parse, unique IDs, task dependency DAG, referenced IDs and repository evidence paths before publishing."
+    },
+    "implementation_updates": [
+      {
+        "date": "2026-11-07",
+        "id": "VOCAL-PARITY-01",
+        "status": "implemented_pending_browser_observation",
+        "changes": [
+          "Replaced separately assembled vocal module UI with renderRecordedAudioEditor, shared with sampled Sounds; retained source-only articulation and mapping capabilities.",
+          "Sample filter off uses the same editor as vocal bypass, with validated null semantics and native-plan coverage.",
+          "Waveform now fills its viewport, so painted trim handle and source-time pointer mapping use the same coordinates. Added click-to-position trim and cancel on lost capture; retain numeric/keyboard editing.",
+          "Dispose recorded-audio views and illustrations when switching away from vocals."
+        ],
+        "files": [
+          "samplerUI.js",
+          "vocalEditor.js",
+          "audioEffects.js",
+          "audioWaveform.js",
+          "studio.js",
+          "tests/sampler.test.js",
+          "tests/song-check.html",
+          "style.css"
+        ],
+        "verification": [
+          {
+            "command": "npm run check",
+            "result": "passed"
+          },
+          {
+            "command": "node --test --test-reporter=dot tests/sampler.test.js tests/audioWaveform.test.js tests/vocalTiming.test.js tests/songVocals.test.js tests/vocalBeatReuse.test.js tests/soundInspectorCore.test.js",
+            "result": "passed",
+            "tests": 40
+          },
+          {
+            "check": "Real-pointer Chromium at normal and narrow desktop widths",
+            "result": "blocked_environment",
+            "detail": "Chromium aborted before loading the editor: process_singleton_posix socket() failed: Operation not permitted. No browser interaction pass claimed. Existing song-check.html now checks actual handle geometry and uses SVG pointer capture."
+          }
+        ],
+        "remaining": [
+          "Canonical vocal Inspector overview/scope/audition/presets",
+          "Sample delay and tone motion across browser/native paths",
+          "Vocal-to-Beat processing preservation",
+          "Real-browser trimming observation and physical Windows acceptance"
+        ]
       }
     ]
   }

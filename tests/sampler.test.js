@@ -77,3 +77,17 @@ test("sample preparation uses direct freeform notes and only placed freeform Chu
  assert.deepEqual(new Set(usedSampleIds({instruments:[freeformInst]})),new Set(["high","low"]),
   "freeform Chunks and direct notes both prime audible assets");
 });
+
+test("recorded sound filter bypass survives validation, current serialization and native planning",async()=>{
+ const {planNativeSample}=await import('../src/hosts/native/sample-plan.js');
+ const patch=makeSamplerPatch(SAMPLE_LIBRARY.find(entry=>entry.id==='real-piano'));
+ patch.filter=null;
+ assert.deepEqual(validatePatch(patch),[]);
+ const restored=JSON.parse(JSON.stringify(patch));
+ const zone=sampleForNote(restored,60,1);
+ const plan=planNativeSample({patch:restored,volume:1},{pitch:60,velocity:1},0,.5,
+  new Map([[zone.assetId,{id:1,duration:2,normalization:1}]]));
+ assert.equal(plan.filter,null);
+ patch.filter={type:'lowpass',cutoff:NaN,resonance:.7};
+ assert.ok(validatePatch(patch).length,'invalid enabled filters still fail');
+});
