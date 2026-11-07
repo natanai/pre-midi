@@ -1,3 +1,4 @@
+import {mountSoundPanelView} from "./soundPanelView.js";
 // Vocal clips share the same sampler tone, pitch and movement controls.
 // This is the Song context for the existing lower Beat editing workspace.
 import {renderAudioToneControls,renderAudioMovementControls,renderAudioArticulationControls,renderAudioDelayControls} from "./audioControlUI.js";
@@ -45,6 +46,7 @@ async function autoTrim(recording){
  return suggestVocalOnset(await decodedWaveformAsset(recording,()=>decodeVocalRecording(recording)),recording.trimSeconds);
 }
 export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo}){
+ root.querySelector(".vocal-effect-sections")?.soundPanelView?.dispose();
  root.hidden=!selection;
  if(!selection){root.replaceChildren();return;}
  const {clip,track,recording}=selection,clipId=clip.id;
@@ -105,4 +107,5 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
   const visual=illustrateSoundPanel(details,kind,patch,apply,preview,clipId);
   visuals.push(visual);anchor.replaceWith(visual.element);
  }
+ mountSoundPanelView(sections);
 }

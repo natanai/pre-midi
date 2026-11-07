@@ -90,6 +90,9 @@ export function layoutSoundPanels(details,kind,patch,onChange,onPreview,index,cr
   section.addEventListener("toggle",()=>openPanels.set(id,section.open));
   return createPanel(section,view.kind,patch,onChange,onPreview,index,{page:view.page,id});
  });
+ // Split views duplicate or move their controls, so retire the source group.
+ // Whole views already moved the source into their illustration wrapper.
+ if(!views.some(view=>view.whole))details.remove();
  if(panels.length===1)return panels[0];
  const element=document.createElement("div");element.className="sound-module-stack";
  element.append(...panels.map(panel=>panel.element));

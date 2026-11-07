@@ -1694,3 +1694,28 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .song-drop-hint{position:fixed;z-index:250;pointer-events:none;padding:6px 8px;
  max-width:calc(100vw - 16px);border:1px solid var(--bright);background:#080808;
  color:var(--bright);font-size:11px;line-height:1.4}
+
+/* A compact alternative to independently foldable illustrated modules. */
+.sound-panel-view{display:flex;align-items:center;gap:6px;margin:8px 0;color:var(--muted);font-size:11px}
+.sound-panel-view>span{margin-right:4px}
+.sound-panel-view button{padding:5px 8px;font-size:11px;color:var(--muted)}
+.sound-panel-view button[aria-pressed="true"]{color:var(--bright);border-color:var(--muted)}
+.sound-combined-panel{border:1px solid var(--line);background:#050505;min-width:0}
+.sound-combined-illustrations{position:sticky;top:0;z-index:3;background:#050505;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));max-height:min(44dvh,420px);overflow:auto;overscroll-behavior:contain;border-bottom:1px solid var(--line)}
+.sound-combined-figure{min-width:0}
+.sound-combined-panel h3{font-size:11px;font-weight:normal;margin:0;padding:10px 12px;color:var(--muted)}
+.sound-combined-figure>.visual-panel-area{position:relative;height:180px;background:#020304}
+.sound-combined-figure .visual-panel-expand{display:none}
+.sound-combined-group{border-bottom:1px solid var(--faint);min-width:0}
+.sound-combined-group:last-child{border-bottom:0}
+.sound-combined-group>.synth-fields{padding:12px;display:flex;flex-wrap:wrap;gap:14px 10px}
+.sound-combined-group>.synth-fields>.dial-field{flex:0 0 90px;min-width:0}
+.sound-combined-group>.synth-fields>.synth-field{flex:0 1 auto}
+.sound-combined-controls [hidden],.sound-combined-illustrations>[hidden]{display:none!important}
+[data-sound-panel-view="combined"]>.synth-grid{gap:0}
+[data-sound-panel-view="combined"] .sound-module-stack>.visual-sound-panel[hidden],
+[data-sound-panel-view="combined"] .visual-sound-panel[hidden]{display:none}
+
+.sound-section .sound-combined-illustrations{top:44px}
+
+.sound-section:has([data-sound-panel-view="combined"]) .sound-quick-controls{display:none}
