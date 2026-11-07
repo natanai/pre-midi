@@ -574,7 +574,11 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   scaleRoot.value=String(guide.root);scaleMode.value=guide.mode;
   scaleLock.checked=guide.lock;scaleLock.disabled=guide.mode==="chromatic";
   scales.hidden=inst.layout==="rack";
-  pianoTools.hidden=inst.layout==="rack";
+  // Rack hits still have editable note effects; only pitched-key controls
+  // disappear for sample rows.
+  pianoTools.hidden=false;
+  keysToggle.hidden=inst.layout==="rack";
+  qwertyToggle.hidden=inst.layout==="rack";
   if(inst.layout==="rack")keyboardPiano.stop();
   noteModeToggle.setAttribute("aria-pressed",String(editingFreeformNoteEffects));
   noteModeToggle.setAttribute("aria-label",
