@@ -15,6 +15,7 @@ import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js"
 import {renderPianoRollRows,createPianoNoteSurface,noteWindow,applyPianoNoteState,notesForPianoRow} from "./editorPianoRoll.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {createInstrumentCard,createInstrumentActionMenu} from "./editorInstrumentCard.js";
+import {renderNoteExpression} from "./expressionUI.js";
 import {installKeyboardPiano,pitchName} from "./keyboardPiano.js";
 import {normalizeScaleGuide,isPitchInScaleAtStep} from "./scaleGuide.js";
 import {audition,auditionHeld} from "./audio.js";
@@ -321,9 +322,25 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   section.append(field("length",input("number",note.duration,1,65536,v=>{
    if(Number.isInteger(v))changeNote(note.id,{duration:v});
   })));
-  section.append(field("level",input("range",note.velocity,0,1,v=>{
-   if(Number.isFinite(v))changeNote(note.id,{velocity:v});
-  })));
+  const active=instrument();
+  const entry=active?.sounds.find(sound=>note.soundId===sound.id)??active?.sounds[0];
+  const expression=el("div","note-expression freeform-note-expression");
+  renderNoteExpression(expression,note,
+   note.pitch!==undefined?pitchName(note.pitch):entry?.name??"Sound",
+   note.duration*60/(getSong()?.bpm??120)/4,
+   bend=>changeNote(note.id,{bend}),
+   ()=>mutate(()=>{
+    const inst=instrument();
+    inst.notes=inst.notes.filter(item=>item.id!==note.id);
+    selectedNoteId=null;
+   }),
+   ()=>void audition(active,note.pitch??entry?.referencePitch??60,
+    freeformPreviewContext(),{
+     soundId:note.soundId,velocity:note.velocity,bend:note.bend
+    }).catch(error=>onError("Couldn't preview note: "+error.message)),
+   entry?.patch?.bend,velocity=>changeNote(note.id,{velocity})
+  );
+  section.append(expression);
   section.append(action("+ layer note",()=>{
    const duplicate=structuredClone(note);
    duplicate.id=id();
@@ -331,10 +348,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
     selectedNoteId=duplicate.id;render();
    }
   },"freeform-duplicate-note"));
-  section.append(action("delete note",()=>mutate(()=>{
-   const inst=instrument();inst.notes=inst.notes.filter(item=>item.id!==note.id);
-   selectedNoteId=null;
-  }),"freeform-delete"));
+
   container.append(section);
  }
  function paintPosition(){
@@ -491,7 +505,12 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    noteWorkspace.append(el("p","freeform-empty","Add an instrument to draw Song-time notes."));
    return;
   }
-  inspector.append(soundUI.render());
+  const showingNoteEffects=editingFreeformNoteEffects&&!!currentNote();
+  // Keep the canonical Sound Inspector mounted (but hidden) while shaping
+  // a note so graph listeners are disposed through its normal render lifecycle.
+  const soundHost=soundUI.render();
+  soundHost.hidden=showingNoteEffects;
+  inspector.append(soundHost);
   const chunkControls=el("div","freeform-chunk-tools");
   chunkControls.append(action("make Chunk from this bar",makeChunkAtBar));
   const chunkPicker=el("select");chunkPicker.setAttribute("aria-label","Reusable Chunk");
@@ -555,7 +574,11 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   scaleRoot.value=String(guide.root);scaleMode.value=guide.mode;
   scaleLock.checked=guide.lock;scaleLock.disabled=guide.mode==="chromatic";
   scales.hidden=inst.layout==="rack";
-  pianoTools.hidden=inst.layout==="rack";
+  // Rack hits still have editable note effects; only pitched-key controls
+  // disappear for sample rows.
+  pianoTools.hidden=false;
+  keysToggle.hidden=inst.layout==="rack";
+  qwertyToggle.hidden=inst.layout==="rack";
   if(inst.layout==="rack")keyboardPiano.stop();
   noteModeToggle.setAttribute("aria-pressed",String(editingFreeformNoteEffects));
   noteModeToggle.setAttribute("aria-label",
@@ -812,7 +835,15 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   if(preservedTop!==null)roll.scrollTop=preservedTop;
   else if(inst.layout==="pitched")roll.scrollTop=(PITCH_MAX-72)*ROW_HEIGHT;
   if(editorScrollLeft!==null)roll.scrollLeft=editorScrollLeft;
-  const selected=currentNote();renderNoteFields(noteWorkspace,selected);
+  const selected=currentNote();
+  if(showingNoteEffects&&selected){
+   const back=action("× note effects",()=>{
+    editingFreeformNoteEffects=false;selectedNoteId=null;render();
+   },"freeform-note-close");
+   back.setAttribute("aria-label","close note effects and return to Sound");
+   inspector.append(back);
+   renderNoteFields(inspector,selected);
+  }
   keyboardPiano.refresh();paintPosition();
  }
  function renderAttached(track,width){
