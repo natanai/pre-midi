@@ -164,6 +164,18 @@
   assert(doc.querySelector(".freeform-note-mode").getAttribute("aria-pressed")==="true",
    "Freeform note effects mode is an explicit toolbar toggle");
   doc.querySelector(".freeform-roll-note").click();
+  const noteExpression=doc.querySelector(".freeform-sound-pane .freeform-note-expression");
+  assert(noteExpression&&noteExpression.querySelector(".expression-visual"),
+   "Freeform reuses the full Beat note bend and level visualization in the right Inspector");
+  assert(!doc.querySelector(".freeform-note-work > .freeform-note-details"),
+   "Selected note effects no longer steal piano roll height in a nested scrollbar");
+  const bendChoice=noteExpression.querySelector('select[aria-label="Held note bend shape"]');
+  assert(bendChoice,"Freeform note effects expose Beat's bend shape choices");
+  bendChoice.value="rise";bendChoice.dispatchEvent(new Event("change",{bubbles:true}));
+  await waitForDraft(saved=>saved?.tracks?.[0]?.freeform?.instruments?.[0]?.notes?.[0]?.bend?.shape==="rise",
+   "Bend set in freeform persists to the Song note");
+  assert(doc.querySelector(".freeform-sound-pane .freeform-note-expression .expression-level"),
+   "Freeform note level comes from the same Beat expression editor");
   const lengthField=[...doc.querySelectorAll(".freeform-note-details .freeform-field")]
    .find(item=>item.textContent.includes("length"));
   assert(lengthField,"Selected note has an editable length");
