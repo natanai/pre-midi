@@ -2,11 +2,13 @@
 // diagrams, not an alternate audio engine or a second source of patch state.
 import {movement,pitchCents,BEND_SHAPES} from "./expression.js";
 import {harmonicWave,harmonicRecipe} from "./harmonics.js";
-import {DEFAULT_SAMPLE_FILTER,driveCurve} from "./audioEffects.js";
+import {DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
 import {modeledFilterMagnitude,modeledFilterY} from "./filterIllustrationResponse.js";
 import {modeledDelayTaps} from "./delayIllustrationResponse.js";
+import {modeledToneWaveform,modeledDrive} from "./toneIllustrationResponse.js";
+import {modeledModulationTrace} from "./modulationIllustrationResponse.js";
 import {envelopeLevelAt,planAmplitudeEnvelope} from "./src/dsp/amplitude-envelope.js";
-import {routeValueAt,MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
+import {MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {cutoffAt} from "./src/dsp/automation.js";
 import {WAVES,FILTERS} from "./synth.js";
@@ -75,7 +77,7 @@ export function diagramPageCount(patch,type){
   const routes=patch.modulation?.routes??[];
   return Math.max(1,Math.ceil(routes.length/4))+routes.length;
  }
- if(type==="filter")return 2;
+ if(type==="filter")return patch.type==="synth"?3:2;
  if(type==="envelope")return 2;
  if(type==="movement")return 3;
  if(type==="sample")return 2;
@@ -208,17 +210,30 @@ export const diagram=(patch,type,page=0)=>{
    axis(["oscillators",index,"level"],0,1,"linearY",{from:60,to:22,step:.01})
   ],"detune / level");
   tag(14,14,"detune →");tag(294,14,"level ↑");
+ }else if(type==="filter"&&page===(p.type==="synth"?2:1)){
+  const synth=p.type==="synth",drive=synth?p.effects.drive:p.drive??0;
+  const f=p.filter??DEFAULT_SAMPLE_FILTER;
+  const drivePath=synth?["effects","drive"]:["drive"];
+  const links=["filter.cutoff","filter.resonance","filter.type",drivePath.join(".")];
+  const tone=modeledToneWaveform(p);
+  const scale=Math.max(1,...tone.input.map(Math.abs),...tone.output.map(Math.abs));
+  const wavePath=values=>pathFrom(values.map((value,i)=>
+   [22+316*i/(values.length-1),60-30*value/scale]));
+  line("M20 60 H342",true);
+  line(wavePath(tone.input),true);
+  line(wavePath(tone.output),false,links);
+  const cutoff=clamp(Math.log(f.cutoff/50)/Math.log(280));
+  const x=26+308*cutoff,y=104-78*drive;
+  handle(x,y,[
+   ...(!p.audioFilterBypassed?[axis(["filter","cutoff"],50,14000,"logX",
+    {from:26,to:334,step:1,unit:"Hz"})]:[]),
+   axis(drivePath,0,1,"linearY",{from:104,to:26,step:.01,unit:"percent"})
+  ],p.audioFilterBypassed?"distortion (filter off)":"brightness / distortion");
+  tag(18,14,"220 hz reference tone");tag(18,111,"drive ↑");
+  tag(340,111,p.audioFilterBypassed?"filter off":"brightness →");
+  tag(340,14,"before ··· / after");
+  tag(168,111,"±"+shortValue(scale));
  }else if(type==="filter"&&page===1){
-  if(p.type==="sample"||p.type==="vocal"){
-   const transfer=driveCurve(p.drive??0);
-   line("M20 100 H342 M180 16 V100",true);
-   line(pathRange(240,t=>[22+316*t,57-38*transfer[Math.round(t*(transfer.length-1))]]),
-    false,["drive"]);
-   handle(292,99-72*(p.drive??0),[
-    axis(["drive"],0,1,"linearY",{from:99,to:27,step:.01})
-   ],"recorded sound distortion");
-   tag(18,13,"shaping");tag(285,13,"drive ↑");
-  }else{
    const f=p.filter,sweep=f.sweep??0,time=f.sweepTime??.2;
    const noise=clamp(p.noise??0),decay=clamp(p.noiseDecay??0,0,4);
    line("M26 68 H164 M193 100 H341",true);
@@ -242,7 +257,6 @@ export const diagram=(patch,type,page=0)=>{
    ],"noise duration / level");
    tag(24,17,"filter sweep");tag(195,17,"noise");
    tag(22,111,"time →");tag(281,111,"decay →");
-  }
  }else if(type==="filter"){
   if(p.type==="vocal"&&p.audioFilterBypassed){
    // Preserve the vocal editor's existing neutral bypass representation.
@@ -275,8 +289,7 @@ export const diagram=(patch,type,page=0)=>{
   if(p.type==="vocal")
    action(189,103,["audioFilterBypassed"],[false,true],"turn filter off");
   if(p.type==="sample"||p.type==="vocal"){
-   const transfer=driveCurve(p.drive??0);
-   line(pathRange(121,t=>[205+t*123,99-13*transfer[Math.round(t*(transfer.length-1))]]),true,["drive"]);
+   line(pathRange(121,t=>[205+t*123,99-13*modeledDrive(2*t-1,p.drive??0)]),true,["drive"]);
    tag(217,110,"drive");
   }else{
    const sweep=f.sweep??0,sweepTime=f.sweepTime??.2;
@@ -500,17 +513,6 @@ export const diagram=(patch,type,page=0)=>{
   tag(20,79,"level");
   if(p.type==="synth")tag(20,96,"tone");
   tag(260,110,"l / r");
- }else if(type==="distortion"){
-  const drive=p.effects.drive||0,transfer=driveCurve(drive);
-  line("M18 96 H344 M180 17 V97",true);
-  line(pathRange(300,t=>{
-   const output=transfer[Math.round(t*(transfer.length-1))];
-   return [24+t*312,58-output*37];
-  }),false,["effects.drive"]);
-  handle(306,88-60*drive,[
-   axis(["effects","drive"],0,1,"linearY",{from:88,to:28,step:.01})
-  ],"drive");
-  tag(18,14,"output ↑");tag(294,108,"input →");
  }else if(type==="delay"){
   const e=p.effects,mix=e.delayMix||0,feedback=e.delayFeedback||0;
   const space=24+clamp((e.delayTime-.05)/.95)*66,origin=52;
@@ -570,7 +572,7 @@ export const diagram=(patch,type,page=0)=>{
   const routes=p.modulation?.routes??[];
   const routePages=Math.max(1,Math.ceil(routes.length/4));
   if(page<routePages){
-   tag(17,13,"source");tag(291,13,"target");
+   tag(17,13,"source");tag(161,13,"smoothed");tag(338,13,"target");
    if(!routes.length)line("M24 57 H336",true);
    // The four-route overview is a readable map of the real modulation signal.
    const start=Math.max(0,page)*4,shown=routes.slice(start,start+4),centers=[30,51,73,95];
@@ -578,21 +580,24 @@ export const diagram=(patch,type,page=0)=>{
     const i=start+j,center=centers[j];
     const target=MOD_TARGETS.find(t=>t.id===route.target),limit=target?.limit||1;
     line("M67 "+center+" H290",true);
-    line(pathRange(130,t=>{
-     const seconds=1.25*t;
-     const value=routeValueAt(route,{elapsed:seconds,gate:1,velocity:.7,pitch:65});
-     const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
-     return [67+223*t,center-9*Math.tanh(value/visualScale)];
-    }),false,["modulation.routes."+i]);
+    const trace=modeledModulationTrace(route);
+    const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
+    const tracePath=values=>pathFrom(values.map((value,n)=>
+     [67+223*n/(values.length-1),center-9*Math.tanh(value/visualScale)]));
+    line(tracePath(trace.raw),true);
+    line(tracePath(trace.smoothed),false,["modulation.routes."+i]);
     // Depth is always editable; a time-based source adds a genuine second axis.
     const depth=clamp(route.depth/limit,-1,1);
     const rate=route.source.kind==="lfo"?route.source.rate:null;
-    handle(rate===null?184:75+215*clamp((rate-.05)/19.95),center-8*depth,[
-     ...(rate===null?[]:[axis(["modulation","routes",i,"source","rate"],.05,20,
-      "linearX",{from:75,to:290,step:.05})]),
+    handle(rate===null?75+215*clamp((route.smoothing??0)/.1):
+     75+215*clamp((rate-.05)/19.95),center-8*depth,[
+     rate===null?axis(["modulation","routes",i,"smoothing"],0,.1,
+      "linearX",{from:75,to:290,step:.001,unit:"s"}):
+      axis(["modulation","routes",i,"source","rate"],.05,20,
+      "linearX",{from:75,to:290,step:.05,unit:"Hz"}),
      axis(["modulation","routes",i,"depth"],-limit,limit,
       "linearY",{from:center+8,to:center-8,step:target.unit==="cents"?1:.01})
-    ],"movement "+(i+1)+" "+(rate===null?"depth":"speed / depth"));
+    ],"movement "+(i+1)+" "+(rate===null?"smoothing / depth":"speed / depth"));
     const source=route.source.kind==="lfo"?"lfo":route.source.kind==="keytrack"?"keys":
      route.source.kind==="velocity"?"touch":"env";
     tag(18,center+3,source);
@@ -604,10 +609,11 @@ export const diagram=(patch,type,page=0)=>{
     const limit=target?.limit??1,depth=clamp(route.depth/limit,-1,1);
     const prefix=["modulation","routes",i],source=route.source;
     line("M24 61 H336",true);
-    line(pathRange(240,t=>{
-     const value=routeValueAt(route,{elapsed:t*1.25,gate:1,velocity:.7,pitch:65});
-     return [24+312*t,61-32*clamp(value/Math.max(.001,limit),-1,1)];
-    }),false,["modulation.routes."+i]);
+    const trace=modeledModulationTrace(route);
+    const tracePath=values=>pathFrom(values.map((value,n)=>
+     [24+312*n/(values.length-1),61-32*clamp(value/Math.max(.001,limit),-1,1)]));
+    line(tracePath(trace.raw),true);
+    line(tracePath(trace.smoothed),false,["modulation.routes."+i]);
     const primary=source.kind==="lfo"?
      [axis([...prefix,"source","rate"],.05,20,"linearX",{from:35,to:317,step:.05})]:
      [axis([...prefix,"smoothing"],0,.1,"linearX",{from:35,to:317,step:.001})];
@@ -618,10 +624,12 @@ export const diagram=(patch,type,page=0)=>{
     ],source.kind==="lfo"?"route speed / depth":"route smoothing / depth");
     if(source.kind==="lfo"){
      // Smoothing is independent of the oscillator speed and movement depth.
-     line("M35 104 H317",true,["modulation.routes."+i+".smoothing"]);
-     handle(35+282*clamp((route.smoothing??0)/.1),104,[
-      axis([...prefix,"smoothing"],0,.1,"linearX",{from:35,to:317,step:.001})
-     ],"movement smoothing");
+     line("M35 90 H317",true,["modulation.routes."+i+".smoothing"]);
+     handle(35+282*clamp((route.smoothing??0)/.1),90-18*depth,[
+      axis([...prefix,"smoothing"],0,.1,"linearX",{from:35,to:317,step:.001,unit:"s"}),
+      axis([...prefix,"depth"],-limit,limit,"linearY",
+       {from:108,to:72,step:target?.unit==="cents"?1:.01})
+     ],"movement smoothing / depth");
      tag(254,112,"smooth →");
     }
     if(source.kind==="envelope"){
@@ -703,9 +711,14 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  wrapper.dataset.visualKind=kind;
  wrapper.dataset.visualId=id;
  const area=document.createElement("div");area.className="visual-panel-area";
+ const plot=document.createElement("div");plot.className="visual-panel-plot";
  const graphic=svgNode("svg",{viewBox:"0 0 360 112",preserveAspectRatio:"none",
   role:"group","aria-label":kind.replace(/\\d+/g,"")+" interactive sound illustration"});
  graphic.classList.add("visual-panel-graph");
+ // Only the signal geometry scales. HTML captions keep their font metrics at
+ // inspector and expanded widths instead of stretching with the SVG viewBox.
+ const labelsRoot=document.createElement("div");labelsRoot.className="visual-graph-labels";
+ labelsRoot.setAttribute("aria-hidden","true");
  const handlesRoot=document.createElement("div");handlesRoot.className="visual-graph-points";
  const expand=document.createElement("button");expand.type="button";
  expand.className="visual-panel-expand";expand.textContent="⤢";
@@ -730,7 +743,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  next.addEventListener("click",()=>turn(1));
  const dragReadout=document.createElement("output");
  dragReadout.className="visual-drag-readout";dragReadout.hidden=true;
- area.append(graphic,handlesRoot,pages,expand,dragReadout);
+ plot.append(graphic,labelsRoot,handlesRoot,dragReadout);
+ area.append(plot,pages,expand);
  // The drawing belongs inside its accordion: closed sections stay compact.
  const summary=details.querySelector("summary");
  // A zoomed module must not collapse behind the modal backdrop.
@@ -757,6 +771,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    const grouped=kind==="mapping"||
     kind==="modulation"&&page<Math.max(1,Math.ceil(total/4));
    range.textContent=grouped?(page*4+1)+"–"+Math.min(total,(page+1)*4)+" / "+total:
+    (kind==="filter"?(current.type==="synth"?
+     ["response","sweep / noise","waveform"]:["response","waveform"])[page]+" · ":"")+
     (page+1)+" / "+count;
   }else pages.hidden=true;
   const {paths,handles,labels,actions,color}=diagram(current,kind,page);
@@ -764,7 +780,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   // Rebuilding the diagram for live previews must not steal keyboard focus.
   const focusedHandle=handlesRoot.contains(document.activeElement)?
    document.activeElement.dataset.handle:null;
-  graphic.replaceChildren();handlesRoot.replaceChildren();
+  graphic.replaceChildren();labelsRoot.replaceChildren();handlesRoot.replaceChildren();
   graphic.style.setProperty("--visual-color",color);
   for(const path of paths){
    const visible=svgNode("path",{d:path.d,
@@ -777,8 +793,12 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
     graphic.append(visible,hit);
    }else graphic.append(visible);
   }
-  for(const {x,y,value} of labels)graphic.append(svgNode("text",{x,y,
-   class:"visual-graph-label"},value));
+  for(const {x,y,value} of labels){
+   const label=document.createElement("span");label.className="visual-graph-label";
+   label.style.left=(x/360*100)+"%";label.style.top=(y/112*100)+"%";
+   if(x>=285)label.classList.add("visual-label-end");
+   label.textContent=value;labelsRoot.append(label);
+  }
   handles.forEach((point,i)=>{
    const button=document.createElement("button");button.type="button";
    button.className="visual-graph-point";
@@ -884,9 +904,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  }
  function highlight(keys){
   activeLink=keys?.length?keys:null;
-  // Leave conventional knobs visually unchanged when a diagram is hovered.
-  // The illustration can still highlight its own trace and focus the real
-  // control on activation; knob-to-illustration feedback remains available.
+  // Quiet focus/adjustment feedback only. Merely crossing a drawing or dial
+  // never illuminates its traces; activation still finds the real control.
   for(const item of graphic.querySelectorAll("[data-sound-links]")){
    const connected=item.dataset.soundLinks.split("|");
    item.classList.toggle("visual-linked",!!activeLink&&connected.some(key=>
@@ -941,27 +960,13 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   if(!hit)return;
   event.preventDefault();focusFeature(hit.dataset.soundLinks.split("|"));
  });
- graphic.addEventListener("pointerover",event=>{
-  const hit=event.target.closest?.(".visual-graph-hit");
-  if(hit)highlight(hit.dataset.soundLinks.split("|"));
- });
- graphic.addEventListener("pointerout",event=>{
-  if(!event.relatedTarget?.closest?.(".visual-graph-hit"))highlight(null);
- });
  const ownerListeners={
-  pointerover:event=>{
-   const control=event.target.closest?.("[data-sound-path]");
-   if(control&&controlOwner().contains(control))highlight([control.dataset.soundPath]);
-  },
-  pointerout:event=>{
-   if(!event.relatedTarget?.closest?.("[data-sound-path]"))highlight(null);
-  },
   focusin:event=>{
-   const control=event.target.closest?.("[data-sound-path]");
-   if(control)highlight([control.dataset.soundPath]);
+   const control=event.target.closest?.("[data-sound-path],[data-sound-links]");
+   if(control)highlight(control.dataset.soundLinks?.split("|")??[control.dataset.soundPath]);
   },
   focusout:event=>{
-   if(!controlOwner().contains(event.relatedTarget))highlight(null);
+   if(!event.relatedTarget?.closest?.("[data-sound-path],[data-sound-links]"))highlight(null);
   }
  };
  const listen=(root,operation)=>Object.entries(ownerListeners).forEach(([name,handler])=>

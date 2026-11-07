@@ -4,7 +4,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {makePatch} from "../synth.js";
-import {diagram} from "../soundIllustrations.js";
+import {diagram,diagramPageCount} from "../soundIllustrations.js";
 import {defaultSource} from "../src/dsp/modulation.js";
 
 const copy=value=>structuredClone(value);
@@ -79,7 +79,7 @@ const cases=[
  ["movement","movement.tone",.8],
  ["movement","movement.toneRate",7],
  ["movement","pan",-.7],
- ["distortion","effects.drive",.65],
+ ["filter","effects.drive",.65],
  ["delay","effects.delayMix",.85],
  ["delay","effects.delayTime",.85],
  ["delay","effects.delayFeedback",.75]
@@ -116,6 +116,10 @@ cases.push(...[
  ["modulation","modulation.routes.0.target","pan",()=>mod("lfo")],
  ["modulation","modulation.routes.0.source.rate",8,()=>mod("lfo")],
  ["modulation","modulation.routes.0.source.kind","velocity",()=>mod("lfo")],
+ ["modulation","modulation.routes.0.smoothing",.1,()=>mod("lfo")],
+ ["modulation","modulation.routes.0.smoothing",.1,()=>mod("velocity")],
+ ["modulation","modulation.routes.0.smoothing",.1,()=>mod("keytrack")],
+ ["modulation","modulation.routes.0.smoothing",.1,()=>mod("envelope")],
  ["modulation","modulation.routes.0.source.envelope.attack",2,()=>mod("envelope")],
  ["modulation","modulation.routes.0.source.envelope.decay",1.4,()=>mod("envelope")],
  ["modulation","modulation.routes.0.source.envelope.sustain",.2,()=>mod("envelope")],
@@ -127,16 +131,20 @@ test("every mapped sound control visibly changes its corresponding illustration"
   await t.test(item.create().type+" "+item.path,()=>{
    const before=item.create(),after=copy(before),path=item.path.split(".").map(p=>/^\\d+$/.test(p)?Number(p):p);
    set(after,path,item.value);
-   const a=diagram(before,item.kind),b=diagram(after,item.kind);
+   const allPages=patch=>Array.from({length:diagramPageCount(patch,item.kind)},
+    (_,page)=>diagram(patch,item.kind,page));
+   const a=allPages(before),b=allPages(after);
    const visual=o=>JSON.stringify({paths:o.paths,labels:o.labels,handles:o.handles});
-   assert.notEqual(visual(a),visual(b),item.path+" does not affect "+item.kind);
+   assert.notEqual(JSON.stringify(a.map(visual)),JSON.stringify(b.map(visual)),
+    item.path+" does not affect "+item.kind);
   });
  }
 });
 test("visual control map has unique context-qualified paths",()=>{
  const seen=new Set();
  for(const item of cases){
-  const key=item.create().type+"/"+item.kind+"/"+item.path;
+  const key=item.create().type+"/"+item.kind+"/"+item.path+"/"+
+   (item.create().modulation?.routes[0]?.source.kind??"");
   assert.ok(!seen.has(key),"duplicate visual coverage "+key);
   seen.add(key);
  }

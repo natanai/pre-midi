@@ -9,7 +9,7 @@ const TYPES=new Set(["lowpass","highpass","bandpass","notch"]);
 const TWO_PI=2*Math.PI;
 export const FILTER_ILLUSTRATION_SAMPLE_RATE=48000;
 
-export function modeledFilterMagnitude(filter,frequency,sampleRate=FILTER_ILLUSTRATION_SAMPLE_RATE){
+export function modeledFilterResponse(filter,frequency,sampleRate=FILTER_ILLUSTRATION_SAMPLE_RATE){
  const {type,cutoff,resonance}=filter;
  if(!TYPES.has(type)||!Number.isFinite(cutoff)||!Number.isFinite(resonance)||
   !Number.isFinite(frequency)||!Number.isFinite(sampleRate)||sampleRate<=0||
@@ -35,12 +35,13 @@ export function modeledFilterMagnitude(filter,frequency,sampleRate=FILTER_ILLUST
  const phase=TWO_PI*Math.max(0,Math.min(frequency,sampleRate/2))/sampleRate;
  const cosine=Math.cos(phase),sine=Math.sin(phase);
  const twiceCosine=Math.cos(2*phase),twiceSine=Math.sin(2*phase);
- const numerator=Math.hypot(b0+b1*cosine+b2*twiceCosine,
-  b1*sine+b2*twiceSine);
- const denominator=Math.hypot(1+a1*cosine+a2*twiceCosine,
-  a1*sine+a2*twiceSine);
- return numerator/Math.max(1e-15,denominator);
+ const nr=b0+b1*cosine+b2*twiceCosine,ni=-b1*sine-b2*twiceSine;
+ const dr=1+a1*cosine+a2*twiceCosine,di=-a1*sine-a2*twiceSine;
+ return {magnitude:Math.hypot(nr,ni)/Math.max(1e-15,Math.hypot(dr,di)),
+  phase:Math.atan2(ni,nr)-Math.atan2(di,dr)};
 }
+
+export const modeledFilterMagnitude=(...args)=>modeledFilterResponse(...args).magnitude;
 
 // A fixed, labeled dB viewport keeps pass bands and resonant peaks legible.
 // Values outside this teaching window are clipped visually, not in audio.

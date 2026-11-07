@@ -42,6 +42,8 @@ async function reportedTest(file,endpoint,width=1440,height=900,microphone=false
  }finally{clearTimeout(timer);pending.delete(endpoint);child.kill("SIGKILL");}
 }
 try{
+ await reportedTest("sound-illustration-polish-check","/__sound_illustration_polish_result",1440,900);
+ await reportedTest("sound-illustration-polish-check","/__sound_illustration_polish_result",780,900);
  await reportedTest("visual-links-check","/__visual_links_result",1440,900);
  await reportedTest("visual-links-check","/__visual_links_result",780,900);
  await reportedTest("visual-pages-check","/__visual_pages_result",1440,900);

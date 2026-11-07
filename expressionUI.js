@@ -119,8 +119,8 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
   onChange({...bend,shape:current.shape,amount:current.amount,rate:current.rate});
  });
  // All note controls share the Sound editor's bidirectional link contract.
- // Highlight only the parameter family under the pointer, rather than
- // implying that changing velocity also changes pitch bend.
+ // Identify only the deliberately focused/adjusted parameter family.
+ // Pointer travel across graphs and controls does not change their styling.
  let activeLink=null;
  function setLink(kind,enabled){
   if(enabled)activeLink=kind;
@@ -139,11 +139,6 @@ export function renderNoteExpression(root,note,pitchLabel,durationSeconds,onChan
  for(const [field,kind] of [[amount,"bend"],[rate,"bend"],
   [level,"level"],[choice,"shape"],[dot,"bend"],
   [levelDot,"level"],[shapeButton,"shape"]]){
-  field.addEventListener("pointerenter",()=>setLink(kind,true));
-  field.addEventListener("pointerleave",()=>{
-   if((kind==="bend"&&dragging)||(kind==="level"&&levelDragging))return;
-   setLink(kind,false);
-  });
   field.addEventListener("focusin",()=>setLink(kind,true));
   field.addEventListener("focusout",()=>setLink(kind,false));
  }

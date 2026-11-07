@@ -60,7 +60,7 @@ test("every synth knob has a direct path in an educational illustration",()=>{
   "movement.rate","movement.depth","movement.delay",
   "movement.tremolo","movement.tremoloRate","movement.tone","movement.toneRate","pan"],"movement");
  requirePaths(choices(p,"movement"),["bend.shape"],"movement");
- requirePaths(axes(p,"distortion"),["effects.drive"],"distortion");
+ requirePaths(axes(p,"filter"),["effects.drive"],"filter and distortion");
  requirePaths(axes(p,"delay"),["effects.delayMix","effects.delayTime","effects.delayFeedback"],"delay");
  assert.ok(pairs(p,"oscillators").length===2);
  assert.ok(pairs(p,"filter").length>=3);
@@ -116,7 +116,7 @@ test("all educational handles use actual existing bounded data and real X/Y dire
   target:"filter.cutoff",unit:"octaves",depth:2,polarity:"bipolar",smoothing:.005
  }]};
  const patches=[[p,["oscillators","harmonics0","harmonics1","envelope",
-  "filter","movement","distortion","delay","modulation"]],
+  "filter","movement","delay","modulation"]],
   [sample(),["sample","filter","movement","mapping"]]];
  for(const [patch,kinds] of patches)for(const kind of kinds){
   for(let page=0;page<diagramPageCount(patch,kind);page++){
@@ -209,7 +209,7 @@ test("moving each numeric knob to an extreme visibly changes its linked illustra
    unit:"octaves",depth:1,polarity:"unipolar",smoothing:.005}
  ]};
  const cases=[[synthPatch,["oscillators","harmonics0","harmonics1",
-  "envelope","filter","movement","distortion","delay","modulation"]],
+  "envelope","filter","movement","delay","modulation"]],
   [samplePatch,["filter","sample","movement","mapping"]]];
  let checked=0;
  for(const [patch,kinds] of cases)for(const kind of kinds)

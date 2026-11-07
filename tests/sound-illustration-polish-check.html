@@ -1,0 +1,117 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#000;color:#ddd;font:12px monospace}iframe{border:0;width:100%;height:90%}pre{white-space:pre-wrap;margin:8px}</style>
+<iframe title="Sound illustration polish"></iframe><pre id="result" role="status">checking sound illustrations</pre>
+<script>
+const frame=document.querySelector("iframe"),checks={};
+const requestedWidth=Number(new URLSearchParams(location.search).get("width"));
+if(requestedWidth>=600)frame.style.width="min(100%, "+requestedWidth+"px)";
+const pass=(name,value)=>{checks[name]=!!value;if(!value)throw Error(name)};
+const wait=async(fn,label)=>{for(let i=0;i<240;i++){if(fn())return;await new Promise(r=>setTimeout(r,35))}throw Error("Timed out: "+label)};
+frame.addEventListener("load",async()=>{
+ let status="FAIL";
+ const doc=frame.contentDocument,win=frame.contentWindow,get=id=>doc.getElementById(id);
+ const panel=kind=>doc.querySelector('.visual-sound-panel[data-visual-kind="'+kind+'"]');
+ const dial=path=>doc.querySelector('[data-sound-path="'+path+'"] [role="slider"]');
+ const value=path=>Number(dial(path).getAttribute("aria-valuenow"));
+ const settle=()=>new Promise(resolve=>win.requestAnimationFrame(()=>win.requestAnimationFrame(resolve)));
+ const pointer=(node,type,x,y,id=951)=>node.dispatchEvent(new win.PointerEvent(type,{
+  bubbles:true,cancelable:true,button:0,pointerId:id,clientX:x,clientY:y
+ }));
+ const mockCapture=node=>{node.setPointerCapture=()=>{};node.releasePointerCapture=()=>{};node.hasPointerCapture=()=>false;};
+ const dragDial=(path,pixels,checkPreview=()=>{})=>{
+  const knob=dial(path);mockCapture(knob);
+  pointer(knob,"pointerdown",100,300);
+  pointer(knob,"pointermove",100,300-pixels);
+  checkPreview();pointer(knob,"pointerup",100,300-pixels);
+ };
+ try{
+  await wait(()=>panel("filter"),"Sound inspector");
+  if(get("sound-toggle").getAttribute("aria-expanded")==="false")get("sound-toggle").click();
+  for(const module of doc.querySelectorAll("details.synth-group"))module.open=true;
+  await settle();
+  doc.activeElement?.blur();
+  const filter=panel("filter"),hit=filter.querySelector(".visual-graph-hit");
+  hit.dispatchEvent(new win.PointerEvent("pointerover",{bubbles:true}));
+  pass("crossing a graph causes no linked trace highlight",!doc.querySelector(".visual-linked"));
+  pass("graph traces have no glow",win.getComputedStyle(filter.querySelector(".visual-graph-line")).filter==="none");
+  pass("distortion belongs to the filter module beside its related controls",!!filter.querySelector('[data-sound-path="effects.drive"]')&&!panel("distortion"));
+  const next=filter.querySelector('button[aria-label="next filter page"]');
+  while(!next.disabled)next.click();
+  pass("waveform view is named and directly edits two axes",filter.querySelector(".visual-panel-range").textContent.includes("waveform")&&
+   filter.querySelector('.visual-graph-point[data-sound-links="filter.cutoff|effects.drive"]'));
+  const cutoffBefore=value("filter.cutoff"),driveBefore=value("effects.drive");
+  const point=filter.querySelector(".visual-graph-point"),area=filter.querySelector(".visual-panel-area");
+  const bounds=filter.querySelector(".visual-panel-graph").getBoundingClientRect();
+  const x=bounds.left+parseFloat(point.style.left)*bounds.width/100;
+  const y=bounds.top+parseFloat(point.style.top)*bounds.height/100;
+  mockCapture(area);
+  pointer(point,"pointerdown",x,y);
+  pointer(area,"pointermove",x-bounds.width*.15,y-bounds.height*.25);
+  pass("waveform drag previews both ordinary controls",value("filter.cutoff")<cutoffBefore&&value("effects.drive")>driveBefore);
+  pointer(area,"pointerup",x-bounds.width*.15,y-bounds.height*.25);
+  pass("waveform drag commits brightness and distortion",value("filter.cutoff")<cutoffBefore&&value("effects.drive")>driveBefore);
+  get("undo").click();
+  pass("one undo restores both waveform axes",value("filter.cutoff")===cutoffBefore&&value("effects.drive")===driveBefore);
+  // Added movement dials must update the actual smoothed trace *before* release.
+  const mod=panel("modulation");mod.querySelector("details").open=true;
+  mod.querySelector(".modulation-editor > button").click();
+  await settle();
+  const modulation=panel("modulation");modulation.querySelector("details").open=true;
+  const smoothingDials=[...modulation.querySelectorAll('[data-sound-path$=".smoothing"]')];
+  const smoothingPath=smoothingDials.at(-1).dataset.soundPath;
+  const routePath=smoothingPath.slice(0,-".smoothing".length);
+  const routeIndex=Number(routePath.split(".").at(-1));
+  const pages=modulation.querySelector(".visual-panel-pages");
+  const nextMovement=pages.querySelector('button[aria-label="next modulation page"]');
+  for(let i=0;i<Math.floor(routeIndex/4);i++)nextMovement.click();
+  const trace=()=>panel("modulation").querySelector('.visual-graph-line[data-sound-links="'+routePath+'"]').getAttribute("d");
+  const beforeSmooth=trace();
+  dragDial(smoothingPath,150,()=>
+   pass("smoothing changes the actual overview trace during the drag",trace()!==beforeSmooth));
+  pass("smoothing commits and retains the changed trace",value(smoothingPath)===.1&&trace()!==beforeSmooth);
+  // Reproduce the reported pointer-release jump deep down the real inspector.
+  const movement=panel("movement");movement.querySelector("details").open=true;
+  dial("movement.tremolo").dispatchEvent(new win.KeyboardEvent("keydown",{
+   key:"Home",bubbles:true,cancelable:true
+  }));
+  dragDial("movement.tremolo",30);
+  await settle();
+  const pulse=dial("movement.tremolo");pulse.scrollIntoView({block:"center"});pulse.focus({preventScroll:true});
+  await settle();
+  const scroller=get("sound-section"),scroll=scroller.scrollTop,top=pulse.getBoundingClientRect().top;
+  pass("pulse fixture is genuinely scrolled",scroll>100);
+  dragDial("movement.tremolo",15);
+  await settle();
+  const replaced=dial("movement.tremolo");
+  pass("pulse fixture commits a real value change and replaces the original knob",replaced!==pulse&&value("movement.tremolo")>.2);
+  pass("pulse release preserves inspector scroll position",Math.abs(scroller.scrollTop-scroll)<=1);
+  pass("pulse release preserves the knob's screen position",Math.abs(replaced.getBoundingClientRect().top-top)<=1);
+  pass("pulse release retains focus on the same control",doc.activeElement===replaced);
+  // The same promise holds while the module itself is the scroll container.
+  panel("movement").querySelector(".visual-panel-expand").click();
+  await settle();
+  const expanded=panel("movement");expanded.scrollTop=80;
+  const expandedScroll=expanded.scrollTop;
+  dragDial("movement.tremolo",10);
+  await settle();
+  pass("expanded module remains open after commit",panel("movement").classList.contains("zoomed"));
+  pass("expanded module retains its scroll offset",Math.abs(panel("movement").scrollTop-expandedScroll)<=1);
+  panel("movement").querySelector(".visual-panel-expand").click();
+  panel("oscillators").querySelector("details").open=true;
+  panel("oscillators").querySelector(".visual-panel-expand").click();
+  await settle();
+  const oscillator=panel("oscillators"),rect=oscillator.getBoundingClientRect();
+  const label=[...oscillator.querySelectorAll(".visual-graph-label")].find(item=>item.textContent==="mix");
+  pass("expanded module is bounded and centered "+JSON.stringify({
+   width:rect.width,left:rect.left,right:rect.right,viewport:win.innerWidth
+  }),rect.width<=1041&&rect.left>=10&&rect.right<=win.innerWidth-10);
+  pass("expanded labels use unscaled text outside the SVG",label?.tagName==="SPAN"&&!label.closest("svg")&&label.getBoundingClientRect().height<20&&label.getBoundingClientRect().width<40);
+  pass("expanded header remains within the viewport",rect.top>=0&&rect.bottom<=win.innerHeight+1);
+  oscillator.querySelector(".visual-panel-expand").click();
+  status="PASS";
+ }catch(error){checks.error=String(error.stack||error)}
+ document.documentElement.dataset.result=status;
+ document.querySelector("#result").textContent=status+" "+JSON.stringify(checks);
+ void fetch("/__sound_illustration_polish_result?status="+status+"&details="+encodeURIComponent(JSON.stringify(checks)));
+},{once:true});
+frame.src="../index.html";
+</script>

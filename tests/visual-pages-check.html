@@ -16,6 +16,7 @@ import {vocalDisplayPatch} from "../vocalAudioView.js";
 import {illustrateSoundPanel,diagram} from "../soundIllustrations.js";
 import {modeledFilterMagnitude} from "../filterIllustrationResponse.js";
 import {modeledDelayTaps} from "../delayIllustrationResponse.js";
+import {modeledModulationTrace} from "../modulationIllustrationResponse.js";
 import {createDial} from "../dial.js";
 import {renderVocalEditor} from "../vocalEditor.js";
 import {installFreeformSoundUI} from "../freeformSoundUI.js";
@@ -91,6 +92,28 @@ try{
    type:"synth",effects:delayFx
   },"delay").paths[i+1].d.endsWith("V"+(100-72*peak.level).toFixed(2))));
  void fetch("/__layout_progress?stage=delay-impulse-verified");
+ // Validate the new smoothing trace against a real Web Audio IIR filter,
+ // independently of the diagram's own recursive evaluator. Include a step
+ // from note onset and a negative-depth, audio-rate sine control signal.
+ for(const kind of ["velocity","lfo"]){
+  const duration=1.25,rate=48000,seconds=.08;
+  const offline=new OfflineAudioContext(1,Math.round(duration*rate)+1,rate);
+  const source=kind==="lfo"?offline.createOscillator():offline.createConstantSource();
+  if(kind==="lfo"){source.type="sine";source.frequency.value=12;}
+  else source.offset.value=.7;
+  const alpha=1-Math.exp(-1/(seconds*rate));
+  const smoother=offline.createIIRFilter([alpha],[1,-(1-alpha)]);
+  const gain=offline.createGain();gain.gain.value=kind==="lfo"?-2:2;
+  source.connect(smoother);smoother.connect(gain);gain.connect(offline.destination);source.start(0);
+  const measured=(await offline.startRendering()).getChannelData(0);
+  const route={id:"smoothing-reference",target:"filter.cutoff",unit:"octaves",
+   source:kind==="lfo"?{kind,rate:12,shape:"sine"}:{kind},
+   polarity:kind==="lfo"?"bipolar":"unipolar",depth:gain.gain.value,smoothing:seconds};
+  const modeled=modeledModulationTrace(route,{duration});
+  const error=Math.max(...modeled.smoothed.map((value,i)=>
+   Math.abs(value-measured[Math.round(modeled.times[i]*rate)])));
+  pass("48k smoothed "+kind+" trace matches real Web Audio IIR output (max error "+error+")",error<.001);
+ }
  const patch={type:"sample",zones:Array.from({length:10},(_,i)=>({assetId:"z"+i,root:40+i*4})),
   gain:.9,transpose:0,pan:0,strumMs:0,attack:.005,release:.17,
   followPitch:true,oneShot:false,preserveDynamics:false};
@@ -369,26 +392,29 @@ try{
  const noteLevelField=document.querySelector("#note .expression-level");
  const noteLevelLine=document.querySelector("#note .visual-graph-level");
  notePoint.dispatchEvent(new PointerEvent("pointerenter",{bubbles:true}));
- pass("note level diagram highlights only its real velocity knob",
+ pass("crossing a note graph does not highlight its knob",
+  !noteLevelField.classList.contains("sound-link-active"));
+ notePoint.dispatchEvent(new FocusEvent("focusin",{bubbles:true}));
+ pass("focusing note level diagram identifies only its real velocity knob",
   noteLevelField.classList.contains("sound-link-active")&&
   !document.querySelector("#note .expression-controls .dial-field").classList.contains("sound-link-active"));
- notePoint.dispatchEvent(new PointerEvent("pointerleave",{bubbles:true}));
- noteLevelField.dispatchEvent(new PointerEvent("pointerenter",{bubbles:true}));
- pass("hovering note velocity highlights its own level line",
+ notePoint.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));
+ noteLevelField.dispatchEvent(new FocusEvent("focusin",{bubbles:true}));
+ pass("focusing note velocity identifies its own level line",
   noteLevelLine.classList.contains("visual-graph-linked")&&
   !document.querySelector("#note .visual-graph-line").classList.contains("visual-graph-linked"));
- noteLevelField.dispatchEvent(new PointerEvent("pointerleave",{bubbles:true}));
+ noteLevelField.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));
  const bendDial=document.querySelector("#note .expression-controls .dial-field");
- bendDial.dispatchEvent(new PointerEvent("pointerenter",{bubbles:true}));
- pass("hovering note bend highlights its own pitch curve",
+ bendDial.dispatchEvent(new FocusEvent("focusin",{bubbles:true}));
+ pass("focusing note bend identifies its own pitch curve",
   document.querySelector("#note .visual-graph-line").classList.contains("visual-graph-linked")&&
   !noteLevelLine.classList.contains("visual-graph-linked"));
- bendDial.dispatchEvent(new PointerEvent("pointerleave",{bubbles:true}));
+ bendDial.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));
  const shapeField=document.querySelector('#note [data-sound-path="bend.shape"]');
- shapeField.dispatchEvent(new PointerEvent("pointerenter",{bubbles:true}));
+ shapeField.dispatchEvent(new FocusEvent("focusin",{bubbles:true}));
  pass("bend-shape selection points to the actual graph action",
   document.querySelector("#note .expression-shape-choice").classList.contains("visual-point-linked"));
- shapeField.dispatchEvent(new PointerEvent("pointerleave",{bubbles:true}));
+ shapeField.dispatchEvent(new FocusEvent("focusout",{bubbles:true}));
  const noteGraph=document.querySelector("#note .expression-visual svg");
  noteGraph.getBoundingClientRect=()=>({top:0,height:112,left:0,width:320});
  noteGraph.dispatchEvent(new MouseEvent("click",{clientY:95,bubbles:true}));

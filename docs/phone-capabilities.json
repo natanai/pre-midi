@@ -620,30 +620,6 @@
       "proof": "not-qualified"
     },
     {
-      "id": "event:expressionUI:field-pointerenter:1",
-      "source": "expressionUI.js",
-      "anchor": "field",
-      "kind": "listener",
-      "event": "pointerenter",
-      "desktopRoute": "expressionUI.js field.pointerenter",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "notes",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:expressionUI:field-pointerleave:1",
-      "source": "expressionUI.js",
-      "anchor": "field",
-      "kind": "listener",
-      "event": "pointerleave",
-      "desktopRoute": "expressionUI.js field.pointerleave",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "notes",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
       "id": "event:expressionUI:graph-click:1",
       "source": "expressionUI.js",
       "anchor": "graph",
@@ -2138,30 +2114,6 @@
       "kind": "listener",
       "event": "keydown",
       "desktopRoute": "soundIllustrations.js graphic.keydown",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:soundIllustrations:graphic-pointerout:1",
-      "source": "soundIllustrations.js",
-      "anchor": "graphic",
-      "kind": "listener",
-      "event": "pointerout",
-      "desktopRoute": "soundIllustrations.js graphic.pointerout",
-      "contract": "same semantic action or documented host-equivalent",
-      "phoneRoute": "sound",
-      "phoneStatus": "todo",
-      "proof": "not-qualified"
-    },
-    {
-      "id": "event:soundIllustrations:graphic-pointerover:1",
-      "source": "soundIllustrations.js",
-      "anchor": "graphic",
-      "kind": "listener",
-      "event": "pointerover",
-      "desktopRoute": "soundIllustrations.js graphic.pointerover",
       "contract": "same semantic action or documented host-equivalent",
       "phoneRoute": "sound",
       "phoneStatus": "todo",

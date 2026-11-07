@@ -20,7 +20,7 @@ const axesFor=(chart,keys)=>chart.handles.flatMap(item=>item.axes).find(a=>path(
 
 test("sound diagrams cover all real synth sections without inventing parameter paths",()=>{
  const patch=synth();
- for(const kind of ["oscillator1","oscillator2","filter","envelope","movement","distortion","delay","modulation"]){
+ for(const kind of ["oscillator1","oscillator2","filter","envelope","movement","delay","modulation"]){
   const chart=diagram(patch,kind);
   assert.ok(chart.paths.length,kind+" has no diagram");
   for(const point of chart.handles){
@@ -135,11 +135,15 @@ test("recording pitch illustrations show parameter geometry, never invented PCM"
   "voice pitch and level still support simultaneous x/y editing");
 });
 
-test("distortion has its own response curve and drive control",()=>{
- const patch=synth(),first=diagram(patch,"distortion");
+test("filter and distortion share a waveform comparison and two independent axes",()=>{
+ const patch=synth(),first=diagram(patch,"filter",2);
  assert.ok(axesFor(first,["effects","drive"]));
+ assert.ok(axesFor(first,["filter","cutoff"]).mode.endsWith("X"));
+ assert.equal(first.handles[0].axes.length,2);
  const stronger=synth();stronger.effects.drive=.95;
- assert.notEqual(first.paths[1].d,diagram(stronger,"distortion").paths[1].d);
+ assert.notEqual(first.paths[2].d,diagram(stronger,"filter",2).paths[2].d);
+ assert.equal(first.paths[1].d,diagram(stronger,"filter",2).paths[1].d,
+  "the dry reference stays fixed while the processed waveform changes");
 });
 
 test("combined oscillator illustration keeps source traces while exposing their actual mix",()=>{
@@ -164,6 +168,6 @@ test("illustrated sound features expose parameter links without changing user-fa
  assert.ok(diagram(patch,"filter").paths.some(p=>p.links?.includes("filter.cutoff")));
  assert.ok(diagram(patch,"envelope").paths.some(p=>p.links?.includes("envelope.attack")));
  assert.ok(diagram(patch,"movement").paths.some(p=>p.links?.includes("movement.tremolo")));
- assert.ok(diagram(patch,"distortion").paths.some(p=>p.links?.includes("effects.drive")));
+ assert.ok(diagram(patch,"filter",2).paths.some(p=>p.links?.includes("effects.drive")));
  assert.ok(diagram(patch,"delay").paths.some(p=>p.links?.includes("effects.delayTime")));
 });

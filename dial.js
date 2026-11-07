@@ -1,5 +1,6 @@
 // One reusable instrument dial. Native patch validation and the caller's
 // modify() remain the ONLY mutation path. Drag previews are transient.
+import {captureSoundControlView} from "./soundControlView.js";
 
 const labelHelp=Object.freeze({
  "cutoff timeline":"move brightness between two spots in this beat; presets keep the base sound",
@@ -12,6 +13,7 @@ const labelHelp=Object.freeze({
  "movement source":"choose what makes this sound move",
  "movement target":"choose which part of the sound moves",
  "movement range":"move in one direction or swing both ways",
+ "smoothing":"soften sudden movement changes and make fast changes gentler",
  "move attack":"how slowly the movement rises",
  "move decay":"how quickly the movement settles after rising",
  "move sustain":"where the movement stays while the note is held",
@@ -296,6 +298,11 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
  // triggering another undo entry. The ordinary dial remains fully editable.
  control.setDialDisplayValue=next=>update(next,false);
  const moveTo=(t)=>update(fromFraction(t,field),true);
+ const commit=next=>{
+  const restoreView=captureSoundControlView(knob);
+  onCommit(next);
+  restoreView();
+ };
  let pointerStart=null,startFraction=0,startValue=value;
  knob.addEventListener("pointerdown",event=>{
   if(field.disabled||event.button!==0)return;
@@ -317,7 +324,7 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
   if(!pointerStart||pointerStart.id!==event.pointerId)return;
   if(knob.hasPointerCapture(event.pointerId))knob.releasePointerCapture(event.pointerId);
   if(event.type==="pointercancel")update(startValue,true);
-  else if(current!==startValue)onCommit(current);
+  else if(current!==startValue)commit(current);
   pointerStart=null;control.classList.remove("adjusting");
  }
  knob.addEventListener("pointerup",finish);
@@ -336,13 +343,13 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
   if(next===null)return;
   event.preventDefault();
   const adjusted=fromFraction(fraction(clamp(next,field.min,field.max),field),field);
-  if(current!==adjusted){update(adjusted,true);onCommit(adjusted);}
+  if(current!==adjusted){update(adjusted,true);commit(adjusted);}
  });
  knob.addEventListener("dblclick",()=>{
   if(field.disabled)return;
   const reset=field.defaultValue??(field.min+field.max)/2;
   const next=fromFraction(fraction(reset,field),field);
-  if(current!==next){update(next,true);onCommit(next);}
+  if(current!==next){update(next,true);commit(next);}
  });
  control.append(title,knob,output);
  if(activityReason){
