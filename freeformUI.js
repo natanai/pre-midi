@@ -12,7 +12,7 @@ import {overlappingFreeformNotes,layoutFreeformNoteRow} from "./freeformLayerUIM
 import {createFreeformNoteCutoff,editFreeformNoteCutoff} from "./freeformNoteAutomation.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
-import {renderPianoRollRows,createPianoNoteSurface,noteWindow,applyPianoNoteState} from "./editorPianoRoll.js";
+import {renderPianoRollRows,createPianoNoteSurface,noteWindow,applyPianoNoteState,notesForPianoRow} from "./editorPianoRoll.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {createInstrumentCard,createInstrumentActionMenu} from "./editorInstrumentCard.js";
 import {installKeyboardPiano,pitchName} from "./keyboardPiano.js";
@@ -666,8 +666,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    noteRow.tabIndex=0;
    noteRow.setAttribute("aria-label","Place "+(rowData.pitch!==null?"pitch "+rowData.pitch:rowData.label)+
     " at Song bar "+(barStart+1)+" or a clicked position");
-   const rowNotes=inst.notes.filter(note=>rowData.pitch!==null?
-    note.pitch===rowData.pitch:note.soundId===rowData.soundId);
+   const rowNotes=notesForPianoRow(inst.notes,rowData);
    const stacks=layoutFreeformNoteRow(rowNotes);
    for(const note of rowNotes){
     const visible=noteWindow(note,viewStep(),VIEW_BARS*BAR_STEPS,STEP_WIDTH);
@@ -720,7 +719,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
       const resize=inst.layout!=="rack"&&event.clientX>=rect.right-edge;
       const mode=resize?"resize":"move";
       const start=note.start,pitch=note.pitch,duration=note.duration;
-      const initialWidth=n.style.width;
+      const initialWidth=n.style.width,initialOpacity=n.style.opacity;
       const nextValues=({steps,pitches})=>{
        if(mode==="resize")return {duration:Math.max(1,
         Math.min(FREEFORM_LIMIT_STEPS-start,duration+steps))};
@@ -735,13 +734,16 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
        preview:delta=>{
         const value=nextValues(delta);
         if(mode==="resize"){
-         const newLength=Math.min(value.duration,viewStep()+VIEW_BARS*16-Math.max(start,viewStep()));
-         n.style.width=Math.max(3,newLength*STEP_WIDTH)+"px";
+         const clipped=noteWindow({...note,duration:value.duration},
+          viewStep(),VIEW_BARS*BAR_STEPS,STEP_WIDTH);
+         n.style.width=(clipped?.width??0)+"px";
+         n.style.opacity=clipped?initialOpacity:"0";
         }else n.style.transform="translate("+
          ((value.start-start)*STEP_WIDTH)+"px,"+
          (pitch===undefined?0:(pitch-value.pitch)*ROW_HEIGHT)+"px)";
        },
        finish:({cancelled,grabbed,steps,pitches})=>{
+        n.style.opacity=initialOpacity;
         if(cancelled){
          n.style.transform="";n.style.width=initialWidth;
         }else if(grabbed){
@@ -775,7 +777,9 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
       mode:"paint",
       preview:({steps})=>{
        const length=Math.max(1,Math.min(FREEFORM_LIMIT_STEPS-step,1+steps));
-       ghost.style.width=length*STEP_WIDTH+"px";
+       const clipped=noteWindow({start:step,duration:length},
+        viewStep(),VIEW_BARS*BAR_STEPS,STEP_WIDTH);
+       ghost.style.width=(clipped?.width??0)+"px";
       },
       finish:({cancelled,steps})=>{
        ghost.remove();
