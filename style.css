@@ -1375,9 +1375,10 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .visual-graph-secondary {fill:none;stroke:#515151;stroke-width:.8;
  stroke-dasharray:3 4;vector-effect:non-scaling-stroke}
 .visual-graph-labels {position:absolute;inset:0;pointer-events:none}
-.visual-graph-label {position:absolute;transform:translateY(-100%);color:var(--muted);
+.visual-graph-label {fill:var(--muted);font-size:10px;pointer-events:none}
+.visual-graph-labels>.visual-graph-label {position:absolute;transform:translateY(-100%);color:var(--muted);
  font:10px/1.2 var(--mono,monospace);white-space:nowrap;pointer-events:none}
-.visual-graph-label.visual-label-end {transform:translate(-100%,-100%)}
+.visual-graph-labels>.visual-graph-label.visual-label-end {transform:translate(-100%,-100%)}
 .visual-graph-points {position:absolute;inset:0;pointer-events:none}
 .visual-graph-point {position:absolute;transform:translate(-50%,-50%);
  width:28px;height:28px;min-width:28px;min-height:28px;padding:0;border:0;
