@@ -3,6 +3,10 @@
 Status: **Phase 0 retired, Phase 1 source inventory gated, Phase 2 Notes editing partially Safari-qualified, Phases 3–5 feature slices in browser qualification; Phase 6 real-device parity still open** (2026-11-02).
 Owner document: **this file**. Do not create a second phone/mobile roadmap or parity matrix. Synthesizer/DSP work remains in `docs/synthesis-roadmap.json`; Song/game-engine integration remains in `docs/song-rollout.md`; naming follows `docs/terminology.json`.
 
+## Desktop gesture parity update (2026-11-06)
+
+Desktop Song now supports captured ruler/cursor dragging, a delayed Beat hold cue, attached-lane highlighting, exact-position drop previews, and Escape/pointer interruption cancellation. Ordinary lateral moves and resizing retain their own behavior. The phone equivalents remain open: provide accessible Song seek actions and explicit move-to-freeform/confirmation alternatives, and qualify any drag/hold feedback on real Safari. The shared gesture lifecycle is indexed in `docs/phone-capabilities.json`; desktop Pointer Events coverage does not qualify phone Freeform.
+
 ## Approved Song/freeform parity boundary (2026-11-04)
 
 The Song design in docs/song-rollout.md includes an attached freeform lane under each Beat Track. Phone must support empty freeform authoring, full/partial move-and-unpack, Instruments, direct Song-position notes, linked Chunks, passage movement, create Beat from selection, and a shared musical playhead. A labeled action must exist wherever desktop uses dragging or double-clicking. The phone host reuses the same .premidi schema and music commands, never a phone-only freeform implementation. The desktop implementation in PR #120 is not a phone equivalent. Every freeform action remains unqualified on iOS until the phone host implements and tests it. The desktop-only freeform key illumination and playback-follow controls from PR #126 are separate phone-parity items, not phone implementations.

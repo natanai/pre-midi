@@ -128,3 +128,11 @@ main.editing-freeform .beat-identity > label{display:none}
  display:block;max-width:calc(100% - 3px);overflow:hidden;white-space:nowrap;
  color:#d9d6c4;font-size:9px;line-height:12px;pointer-events:none}
 .song-freeform-passage.song-freeform-scan-incomplete{outline:1px dotted #bba57e}
+
+/* Drop previews never expand a dormant lane or move neighboring hit targets. */
+.song-freeform-row.drop-available .song-freeform-label{border-left-color:var(--bright)}
+.song-freeform-row.drop-available .song-freeform-lane{outline:1px dashed #83c6a9;outline-offset:-1px}
+.song-freeform-row.drop-available.drop-active .song-freeform-lane{outline:1px solid #83c6a9;outline-offset:-1px;background-color:#14251c}
+.song-freeform-row.drop-rejected .song-freeform-lane{outline:1px dashed var(--signal-pink);outline-offset:-1px}
+.song-freeform-drop-preview{position:absolute;inset-block:0;z-index:10;box-sizing:border-box;
+ min-width:9px;border:2px solid var(--bright);background:rgba(131,198,169,.28);pointer-events:none}
