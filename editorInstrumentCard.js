@@ -1,3 +1,6 @@
+const INSTRUMENT_SIGNALS=["#08e4ec","#ff416d","#ba82eb","#ffc266"];
+export const instrumentAccent=index=>INSTRUMENT_SIGNALS[Math.max(0,index)%INSTRUMENT_SIGNALS.length];
+
 // One Instrument card for Beat and Song-time freeform editors.
 // Hosts retain ownership of selection, Sound inspection, actions and undo.
 export function createInstrumentCard(instrument,{selected=false,accent=null,onSelect}={}){

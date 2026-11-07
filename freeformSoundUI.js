@@ -35,15 +35,15 @@ const initialSample=(assetId,root,layout)=>({
  gain:.9,attack:.005,release:.17,pan:0,strumMs:0,preserveDynamics:false,
  movement:{...movementDefaults},bend:{shape:"straight",amount:2,rate:4}
 });
-export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,onError,onBrowseSound=()=>{},onSaveSound=()=>{}}){
- const host=el("div","freeform-sound-host");
+export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,onError,onBrowseSound=()=>{},onSaveSound=()=>{},getAccent=()=>"#08e4ec",onClose=()=>{}}){
+ let host=el("section","sound-section freeform-sound-host");
  const scope=el("div","freeform-sound-scope");
  const input=el("input");input.type="file";
  input.accept=".wav,.ogg,.mp3,audio/wav,audio/ogg,audio/mpeg";input.hidden=true;
  input.setAttribute("aria-label","Import audio into freeform Sound");
  const selected=new Map(),previewPositions=new Map(),auditionRequests=new Map();
  const framePrefix="freeform-sound-"+id()+"-";
- let expanded=false,stagePanel=null,stageOpen=false;
+ let stagePanel=null,stageOpen=false;
  const current=()=>{
   const inst=getInstrument();
   if(!inst)return null;
@@ -59,7 +59,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   const key=ctx.sound.id+"|"+ctx.sound.patch.type+"|"+
    ctx.sound.referencePitch+"|"+ctx.layer.samples.map(asset=>asset.id).join(",");
   if(scopeKey!==key||!scopeUpdate){
-   scopeUpdate=createSignalDisplay(scope,patch,context(ctx),"#86c6a7",
+   scopeUpdate=createSignalDisplay(scope,patch,context(ctx),getAccent(),
     level,ctx.sound.referencePitch,null,ctx.sound.id);
    scopeKey=key;
   }else scopeUpdate(patch,level);
@@ -111,7 +111,8 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    },original.sound.id);
   }catch(error){onError("Audio import: "+error.message);}
  });
- function render(){
+ function render(target=host){
+  if(target!==host){host=target;host.classList.add("freeform-sound-host");}
   // The scope element survives Sound redraws to preserve A/B measurements.
   // Its old graph does not: detach listeners and rebuild the direct editor
   // for the currently selected Sound.
@@ -127,22 +128,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   const ctx=current();
   if(!ctx){host.hidden=true;host.replaceChildren();return host;}
   host.hidden=false;host.replaceChildren();
-  // Use an explicit disclosure button: sound edits rebuild this subtree, and
-  // HTML <details> dispatches delayed toggle events on replaced elements.
-  const details=el("section","freeform-sound-details");
-  const disclosure=button("sound · "+ctx.sound.name,()=>{
-   expanded=!expanded;render();
-  },"freeform-sound-summary");
-  disclosure.setAttribute("aria-expanded",String(expanded));
-  disclosure.setAttribute("aria-controls","freeform-sound-content");
-  details.append(disclosure);
-  host.append(details);
-  if(!expanded)return host;
-  // The Beat and Song contexts now mount one canonical Sound frame. The
-  // Freeform adapter supplies only Song-specific ownership and permissions.
-  const content=el("div","freeform-sound-content");
-  content.id="freeform-sound-content";
-  details.append(content);
+  const content=host;
   const frame=mountSoundInspectorChrome(content,{idPrefix:framePrefix});
   const get=frame.get;
   const modules=get("synth-editor");
@@ -159,8 +145,9 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   },ctx.sound.id);
   // Instrument conversion and deletion live in the parent freeform lane.
   // The shared Inspector must not invent another instrument command system.
-  content.querySelector(".sound-window-actions")?.remove();
-  get("sound-controls").hidden=false;
+  get("instrument-actions").remove();
+  get("sound-close").onclick=onClose;
+  get("sound-controls").hidden=ctx.inst.layout!=="rack";
   const nameInput=get("sound-name"),referenceInput=get("sound-reference");
   populateSoundInspectorReferenceNotes(referenceInput);
   bindSoundInspectorIdentity({
@@ -245,8 +232,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    instrument:ctx.inst,sound:ctx.sound,context:context(ctx),
    modulesRoot:modules,scopeRoot:scope,
    volumeRoot,gainRoot,primaryRoots,
-   accent:"#86c6a7",
-   stageLayout:ctx.inst.layout==="rack"?"rack":"levels",
+   accent:getAccent(),
    sampleNames:ctx.sound.patch.type==="sample"?ctx.sound.patch.zones.map(zone=>
     ctx.layer.samples.find(asset=>asset.id===zone.assetId)?.name||zone.assetId).join(" / "):"",
    onReplaceSample:()=>input.click(),

@@ -687,8 +687,7 @@ try{
  });
  const freeformHost=freeformUi.render();
  document.body.append(freeformHost);
- freeformHost.querySelector(".freeform-sound-summary").click();
- const frameRoot=freeformHost.querySelector(".freeform-sound-content");
+ const frameRoot=freeformHost;
  const sharedName=frameRoot.querySelector('[aria-label="Selected sound name"]');
  const sharedPitch=frameRoot.querySelector('[aria-label="Sound reference note"]');
  pass("freeform mounts canonical Beat Sound chrome with isolated IDs",
@@ -710,6 +709,7 @@ try{
   freeformInst.sounds[0].referencePitch===72);
  const realStage=freeformHost.querySelector('.visual-sound-panel[data-visual-kind="stage"]');
  pass("real Freeform Sound mounts gain staging",!!realStage);
+ realStage.querySelector('[aria-label="next stage page"]').click();
  const freeformAudit=auditSoundVisualCoverage(freeformHost,{context:"live freeform synth"});
  checks["live freeform synth inventory"]=freeformAudit.summary;
  pass("real Freeform Sound has every knob visualized: "+

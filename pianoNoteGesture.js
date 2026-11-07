@@ -16,8 +16,8 @@ export function noteDragDelta(dx,dy,stepWidth,rowHeight){
 
 export function noteEndGrabWidth(width,pointerType){
  if(!Number.isFinite(width)||width<=0)return 0;
- // Freeform one-step notes can be only eight pixels wide. Keep a usable body
- // for moving them instead of allowing the resize handle to eat the note.
+ // Keep a usable note body at every zoom level instead of allowing the
+ // resize handle to consume the full move target.
  return Math.min(pointerType==="touch"?18:13,Math.max(3,Math.floor(width*.24)));
 }
 

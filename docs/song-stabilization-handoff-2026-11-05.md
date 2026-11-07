@@ -2,6 +2,10 @@
 
 **Purpose:** One actionable handoff for the remaining desktop Song/freeform and native Windows rollout. Read alongside [song-rollout.md](song-rollout.md), [native-onset-paging.md](native-onset-paging.md), [terminology.json](terminology.json), and [synthesis-roadmap.json](synthesis-roadmap.json). This note records verified distinctions; it does **not** supersede the approved architecture.
 
+## Desktop workspace consolidation (2026-11-06)
+
+The current desktop UI consolidation is documented in `song-rollout.md` under Shared desktop workspace. Beat/freeform share `editorWorkspace.js`, pitched/Rack row DOM, scale/key painting, history controls and Inspector visibility; the competing Freeform layout and Sound disclosure are removed. Keep the intentional local-Chunk and absolute-Song timing adapters. Existing immutable Windows ZIPs do not change, and physical Windows/native long-Song acceptance below remains open. Local Node and Chrome qualification is recorded in the canonical rollout document. GitHub publication is now explicitly authorized. Confirm the exact deployed commit through the Pages workflow before claiming that the live studio contains this workspace change.
+
 ## Preview.20 field-test candidate (2026-11-05 local)
 
 - The next intended immutable portable ZIP is `v0.14.1-preview.20`, prepared from an exact-commit PR and required to pass Node/Chrome/native plus Windows portable packaging/recovery **before publication**. Do not claim the ZIP is available until the GitHub release contains it.

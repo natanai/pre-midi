@@ -208,9 +208,8 @@ test("freeform Sound editor reuses canonical controls instead of duplicating eff
  const ui=read("freeformUI.js"),shared=read("freeformSoundUI.js"),
   inspector=read("soundInspector.js"),css=read("freeform.css");
  assert.match(ui,/installFreeformSoundUI/);
- assert.match(ui,/const soundHost=soundUI\.render\(\)/);
- assert.match(ui,/soundHost\.hidden=showingNoteEffects/);
- assert.match(ui,/inspector\.append\(soundHost\)/);
+ assert.match(ui,/soundUI\.render\(inspector\)/);
+ assert.match(ui,/syncEditorInspector\(editor,/);
  assert.match(shared,/renderSoundInspectorCore\(\{/);
  assert.match(inspector,/renderPatchEditor\(modulesRoot/);
  assert.match(inspector,/renderSamplerEditor\(modulesRoot/);
@@ -221,7 +220,7 @@ test("freeform Sound editor reuses canonical controls instead of duplicating eff
  assert.match(inspector,/nextRackPreview\(previewPositions/);
  assert.match(shared,/makeSampleAsset\(/);
  assert.match(shared,/referencedSampleIds\(layer\.instruments\)/);
- assert.match(css,/\.freeform-sound-details/);
+ assert.doesNotMatch(shared,/freeform-sound-summary|freeform-sound-details/);
  assert.doesNotMatch(shared,/new AudioContext\(/);
 });
 
@@ -279,10 +278,10 @@ test("freeform and Beat edit the same note expression surface without an inset s
  assert.match(freeform,/note\.duration\*60\/\(getSong\(\)\?\.bpm\?\?120\)\/4/);
  assert.match(freeform,/bend=>changeNote\(note\.id,\{bend\}\)/);
  assert.match(freeform,/velocity=>changeNote\(note\.id,\{velocity\}\)/);
- assert.match(freeform,/renderNoteFields\(inspector,selected\)/);
+ assert.match(freeform,/renderNoteFields\(effects,selected\)/);
  assert.match(freeform,/keysToggle\.hidden=inst\.layout==="rack"/);
  assert.match(freeform,/qwertyToggle\.hidden=inst\.layout==="rack"/);
  assert.match(shared,/onLevelChange\?\.\(noteLevel\)/);
- assert.match(styles,/\.freeform-sound-pane>\.freeform-note-details/);
+ assert.match(styles,/\.freeform-note-details\{/);
  assert.doesNotMatch(styles,/max-height:160px;overflow-y:auto/);
 });

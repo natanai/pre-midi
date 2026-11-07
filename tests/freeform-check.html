@@ -11,7 +11,7 @@
   while(Date.now()<end){if(fn())return;await pause(35);}
   throw Error("Timed out: "+label);
  };
- const report=(status,details)=>fetch("/__song_result?status="+status+"&details="+encodeURIComponent(details)).catch(()=>{});
+ const report=(status,details)=>{document.title=status+": "+details;return fetch("/__song_result?status="+status+"&details="+encodeURIComponent(details)).catch(()=>{});};
  try{
   frame.src="/index.html";
   await new Promise((resolve,reject)=>{frame.onload=resolve;frame.onerror=()=>reject(Error("Studio did not load"));});
@@ -48,6 +48,17 @@
    !!freeform.querySelector(".freeform-note-work")&&
    !!freeform.querySelector(".freeform-sound-pane"),
    "Freeform has Beat-style instrument, note and Sound workspaces");
+  const sharedWorkspace=freeform.querySelector(".work.song-time-editor");
+  assert(sharedWorkspace&&freeform.querySelector(".heading.notes-heading .history-actions"),
+   "Both time modes mount the one canonical workspace and Notes heading");
+  assert(!freeform.querySelector(".freeform-sound-summary"),"Sound needs no second disclosure");
+  assert(!freeform.querySelector(".instrument-pane .freeform-selection-tools"),
+   "Selection operations no longer compete with Instrument cards");
+  assert(win.getComputedStyle(freeform.querySelector(".piano-row")).height===
+   win.getComputedStyle(doc.querySelector("#piano .piano-row")).height,
+   "Beat and freeform use the same pitch row height");
+  assert(freeform.querySelector(".freeform-selection-menu")&&!freeform.querySelector(".freeform-selection-menu").open,
+   "Selection tools begin closed in their contextual menu");
   const pianoToggle=freeform.querySelector(".freeform-piano-tools .piano-keys-toggle");
   assert(pianoToggle?.getAttribute("aria-pressed")==="true"&&
    !!freeform.querySelector(".freeform-roll-content .piano-keys-overlay"),
@@ -82,9 +93,22 @@
   assert(row,"C4 has an editable Song row");
   row.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));
   await wait(()=>doc.querySelectorAll(".freeform-roll-note").length===1,"Direct freeform note created");
-  const soundSummary=doc.querySelector(".freeform-sound-summary");
+  const songRoll=freeform.querySelector(".freeform-roll-scroll");
+  songRoll.scrollLeft=320;
+  pianoToggle.click();pianoToggle.click();
+  assert(parseFloat(songRoll.querySelector(".piano-keys-overlay").style.left)===songRoll.scrollLeft,
+   "The keyboard remains pinned after editing or redrawing a horizontally scrolled Song roll");
+  songRoll.scrollLeft=0;
+  const historyCount=doc.querySelectorAll("#piano .note.filled").length;
+  assert(!doc.getElementById("freeform-undo").disabled,"Song undo is reachable in the shared heading");
+  doc.getElementById("freeform-undo").click();
+  assert(doc.querySelectorAll(".freeform-roll-note").length===0,"Freeform undo removes the Song note");
+  assert(doc.querySelectorAll("#piano .note.filled").length===historyCount,"Song undo retains Beat notes");
+  doc.getElementById("freeform-redo").click();
+  assert(doc.querySelectorAll(".freeform-roll-note").length===1,"Freeform redo restores the same Song edit");
+  const soundSummary=doc.getElementById("freeform-sound-toggle");
   assert(soundSummary,"Freeform Sound editor shares the existing workspace");
-  soundSummary.click();
+  if(soundSummary.getAttribute("aria-expanded")!=="true")soundSummary.click();
   await wait(()=>!!doc.querySelector(".freeform-sound-modules .synth-grid"),"Canonical synth editor visible");
   assert(doc.querySelector(".freeform-sound-scope .signal-scope"),"Measured sound waveform is present");
   const {loadDraft}=await import("/storage.js");
@@ -164,7 +188,7 @@
   assert(doc.querySelector(".freeform-note-mode").getAttribute("aria-pressed")==="true",
    "Freeform note effects mode is an explicit toolbar toggle");
   doc.querySelector(".freeform-roll-note").click();
-  const noteExpression=doc.querySelector(".freeform-sound-pane .freeform-note-expression");
+  const noteExpression=doc.querySelector(".song-freeform-editor .note-effects-section .freeform-note-expression");
   assert(noteExpression&&noteExpression.querySelector(".expression-visual"),
    "Freeform reuses the full Beat note bend and level visualization in the right Inspector");
   assert(!doc.querySelector(".freeform-note-work > .freeform-note-details"),
@@ -174,7 +198,7 @@
   bendChoice.value="rise";bendChoice.dispatchEvent(new Event("change",{bubbles:true}));
   await waitForDraft(saved=>saved?.tracks?.[0]?.freeform?.instruments?.[0]?.notes?.[0]?.bend?.shape==="rise",
    "Bend set in freeform persists to the Song note");
-  assert(doc.querySelector(".freeform-sound-pane .freeform-note-expression .expression-level"),
+  assert(doc.querySelector(".song-freeform-editor .note-effects-section .freeform-note-expression .expression-level"),
    "Freeform note level comes from the same Beat expression editor");
   const lengthField=[...doc.querySelectorAll(".freeform-note-details .freeform-field")]
    .find(item=>item.textContent.includes("length"));
@@ -185,7 +209,7 @@
   scrubForward.value="5";
   scrubForward.dispatchEvent(new Event("change",{bubbles:true}));
   const clippedNote=doc.querySelector(".freeform-roll-note");
-  assert(clippedNote?.style.left==="0px"&&clippedNote?.style.width==="128px",
+  assert(clippedNote?.style.left==="0px"&&clippedNote?.style.width==="640px",
    "Long Song note beginning before bar five clips to the visible 16-step tail");
   const scrubBack=doc.querySelector('input[aria-label="Song scrubber bar"]');
   scrubBack.value="1";scrubBack.dispatchEvent(new Event("change",{bubbles:true}));
@@ -217,6 +241,7 @@
   const create=doc.querySelector(".freeform-create-beat");
   assert(create&&doc.querySelector('.freeform-selection-tools input[aria-label="Selection length in bars"]'),
    "Song selection has an explicit reusable Beat creation control");
+  doc.querySelector(".freeform-selection-menu").open=true;
   create.click();
   await wait(()=>get("title").value==="Beat 1 selection","New reusable Beat opens in the shared Beat editor");
   assert(doc.querySelector(".song-freeform-editor").hidden,
@@ -253,7 +278,7 @@
   doc.querySelector(".song-freeform-toggle").click();
   await wait(()=>!doc.querySelector(".song-freeform-editor").hidden,
    "Freeform opens again for sample editing");
-  const soundToggle=doc.querySelector(".freeform-sound-summary");
+  const soundToggle=doc.getElementById("freeform-sound-toggle");
   if(soundToggle.getAttribute("aria-expanded")!=="true")soundToggle.click();
   await wait(()=>!!doc.querySelector(".freeform-sound-host input[type=file]"),
    "Freeform sampler import is available");
@@ -312,7 +337,7 @@
    const free=stored?.tracks?.[0]?.freeform;
    debug={storedType:free?.instruments?.[0]?.sounds?.[0]?.patch?.type,
     assetCount:free?.samples?.length,
-    detailsOpen:frame.contentDocument?.querySelector(".freeform-sound-details")?.open,
+    soundOpen:frame.contentDocument?.getElementById("freeform-sound-toggle")?.getAttribute("aria-expanded"),
     moduleChildren:frame.contentDocument?.querySelector(".freeform-sound-modules")?.children?.length,
     moduleStart:frame.contentDocument?.querySelector(".freeform-sound-modules")?.innerHTML?.slice(0,200),
     sampleUploadNode:!!frame.contentDocument?.querySelector(".freeform-sound-host input[type=file]"),

@@ -1,6 +1,8 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Attached freeform layering and keyboard movement</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/studioAlignment.css">
 <link rel="stylesheet" href="/freeform.css">
 <div id="root"></div>
 <script type="module">
@@ -10,8 +12,8 @@ import {attachBeatInstruments,addFreeformNote,
  eventsAtFreeformStep} from "/freeformModel.js";
 import {installFreeformUI} from "/freeformUI.js";
 const assert=(ok,message)=>{if(!ok)throw Error(message)};
-const report=(status,details)=>fetch("/__song_result?status="+status+
- "&details="+encodeURIComponent(details)).catch(()=>{});
+const report=(status,details)=>{document.title=status+": "+details;return fetch("/__song_result?status="+status+
+ "&details="+encodeURIComponent(details)).catch(()=>{});};
 try{
  const song=createSong(create()),track=song.tracks[0];
  track.clips[0].startStep=16;
@@ -194,9 +196,8 @@ try{
   "Removing placement never deletes or modifies its reusable Chunk");
  // Freeform must show the same canonical Sound Inspector controls and
  // interactive parameter diagrams that the Beat Sound editor renders.
- root.querySelector(".freeform-sound-summary").click();
- const owner=root.querySelector("#freeform-sound-content");
- assert(owner,"The common Inspector mounts under the existing Song Sound disclosure");
+ const owner=root.querySelector("#freeform-sound-section");
+ assert(owner,"The common Inspector mounts in the same workspace as Beat");
  const paths=["volume","gain","filter.cutoff","envelope.attack","envelope.release"];
  for(const path of paths)
   assert(owner.querySelector('[data-sound-path="'+path+'"]'),
@@ -219,7 +220,7 @@ try{
  ));
  assert(parentSound.patch.filter.cutoff!==originalCutoff,
   "Editing freeform brightness changes the live parent Beat Sound, not a copied patch");
- const refreshed=root.querySelector("#freeform-sound-content");
+ const refreshed=root.querySelector("#freeform-sound-section");
  assert(refreshed.querySelector('.visual-sound-panel[data-visual-kind="filter"]'),
   "Editing a Sound preserves the shared educational panel");
  // Song notes now use the same explicit effects mode and delete/resize

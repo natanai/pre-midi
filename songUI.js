@@ -7,7 +7,7 @@ import {installFreeformUI} from "./freeformUI.js";
 // determines how much empty timeline is visible. There is no fixed song end.
 const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
 const integer=(value,fallback)=>Number.isFinite(value)?Math.max(0,Math.round(value)):fallback;
-export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{},onSelectionChange=()=>{},onError=()=>{},onFreeformActiveChange=()=>{},onFreeformBeatCreated=()=>{},onBrowseFreeform=()=>{},onSaveFreeform=()=>{},getFreeformScaleGuide=()=>null,setFreeformScaleGuide=()=>{},getShowPianoKeys=()=>true,setShowPianoKeys=()=>{}}){
+export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{},onSelectionChange=()=>{},onError=()=>{},onFreeformActiveChange=()=>{},onFreeformBeatCreated=()=>{},onBrowseFreeform=()=>{},onSaveFreeform=()=>{},getFreeformScaleGuide=()=>null,setFreeformScaleGuide=()=>{},getShowPianoKeys=()=>true,setShowPianoKeys=()=>{},onUndo=()=>{},onRedo=()=>{},getHistoryState=()=>({}),getInspectorOpen,setInspectorOpen}={}){
  const $=id=>root.querySelector("#"+id);
  const viewport=$("song-scroll"),tracks=$("song-tracks"),ruler=$("song-ruler"),footer=$("song-timeline-footer");
  let selectedClipId=null,dragging=false,ignoreClick=false,playPosition=-1,seekStep=0;
@@ -45,7 +45,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   getScaleGuide:getFreeformScaleGuide,setScaleGuide:setFreeformScaleGuide,
   getSongStep:()=>seekStep,seekSongStep:step=>setStartStep(step),
   onSelectSourceBeat:onSelectBeat,
-  getShowPianoKeys,setShowPianoKeys,
+  getShowPianoKeys,setShowPianoKeys,onUndo,onRedo,getHistoryState,getInspectorOpen,setInspectorOpen,
   onActiveChange:active=>{
    if(active)selectedClipId=null;
    onFreeformActiveChange(active);
@@ -458,7 +458,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const value=event.target.value.trim()||"Untitled song";
   apply(()=>{getSong().title=value;});
  });
- return {render,select,
+ return {render,select,syncInspector:()=>freeformUI.syncInspector(),
   focusFreeformInstrument(trackId,instrumentId,soundId){
    freeformUI.focusInstrument(trackId,instrumentId,soundId);
   },

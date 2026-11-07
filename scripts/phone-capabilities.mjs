@@ -5,6 +5,7 @@ import {resolve,dirname} from "node:path";
 const SOURCE_FILES=[
  "index.html",
  "soundInspector.js",
+ "editorWorkspace.js",
  "studio.js",
  "songUI.js",
  "freeformUI.js",
@@ -56,8 +57,10 @@ function buildInventory(sources){
  // must not silently disappear from the phone capability inventory.
  const chrome=sources["soundInspector.js"].match(/const SOUND_INSPECTOR_CHROME=String\.raw`([\s\S]*?)`;/)?.[1];
  if(!chrome)throw Error("Canonical Sound Inspector template is missing.");
+ const workspace=sources["editorWorkspace.js"].match(/const EDITOR_WORKSPACE_CHROME=`([\s\S]*?)`;/)?.[1];
+ if(!workspace)throw Error("Canonical editor workspace is missing.");
  const tag=/<(button|input|select|textarea|dialog|details|summary)\b([^>]*?)>/gi;
- for(const [path,html] of [["index.html",sources["index.html"]],["soundInspector.js",chrome]]){
+ for(const [path,html] of [["index.html",sources["index.html"]],["soundInspector.js",chrome],["editorWorkspace.js",workspace]]){
   for(const m of html.matchAll(tag)){
    const id=m[2].match(/\bid\s*=\s*["']([^"']+)["']/)?.[1];
    if(!id)continue;
@@ -67,7 +70,7 @@ function buildInventory(sources){
     contract:kind==="dialog"?"dialog accessibility and dismiss":"user control; canonical project/UI state"});
   }
  }
- for(const path of SOURCE_FILES.filter(p=>p!=="index.html"&&p!=="soundInspector.js")){
+ for(const path of SOURCE_FILES.filter(p=>p!=="index.html"&&p!=="soundInspector.js"&&p!=="editorWorkspace.js")){
   const src=sources[path],counts=new Map();
   const eventPattern=/\.addEventListener\s*\(\s*["']([a-zA-Z-]+)["']/g;
   for(const m of src.matchAll(eventPattern)){
