@@ -91,6 +91,9 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
   "aria-description":"drag to trim, arrows adjust one millisecond, shift arrows ten milliseconds, home resets"});
  hit.classList.add("audio-trim-handle");
  svg.append(center,path,shade,marker,hit);
+ const plot=element("div");plot.className="audio-waveform-plot";
+ const flag=element("span","start");flag.className="audio-trim-label";flag.setAttribute("aria-hidden","true");
+ plot.append(svg,flag);
  const toolbar=element("div");toolbar.className="audio-waveform-tools";
  const startLabel=element("span"),endLabel=element("span");
  const zoomLabel=element("label","zoom ");
@@ -100,14 +103,15 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
  const time=element("output");time.className="audio-trim-readout";
  time.setAttribute("aria-label","trim start time");
  toolbar.append(startLabel,zoomLabel,endLabel,time);
- wrapper.append(svg,toolbar);
+ wrapper.append(plot,toolbar);
  const show=()=>{
   // Keep the visible source-time window fixed while dragging the trim handle.
   const w=drag?.window??waveformWindow(duration,value,zoom);
   startLabel.textContent=w.start.toFixed(3)+"s";
   endLabel.textContent=w.end.toFixed(3)+"s";
-  time.textContent="trim "+value.toFixed(3)+"s";
+  time.textContent=(Math.abs(value-trimStart)<.0005?"start ":"preview start ")+value.toFixed(3)+"s · keep "+(duration-value).toFixed(3)+"s";
   const x=waveformXAtTime(value,w);
+  flag.style.left=Math.min(92,x/480*100)+"%";
   shade.setAttribute("width",String(x));marker.setAttribute("x1",String(x));marker.setAttribute("x2",String(x));
   hit.setAttribute("x",String(clamp(x-12,0,456)));
   hit.setAttribute("aria-valuenow",String(value));hit.setAttribute("aria-valuetext",value.toFixed(3)+" seconds");
@@ -124,6 +128,7 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
   value=normalizeTrimSeconds(next,duration);
   show();onPreview(value);
  };
+ wrapper.setTrimPreview=preview;
  const commit=next=>{
   const valueToSave=normalizeTrimSeconds(next,duration);
   if(valueToSave!==normalizeTrimSeconds(trimStart,duration))onTrim(valueToSave);

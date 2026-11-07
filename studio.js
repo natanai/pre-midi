@@ -33,7 +33,7 @@ import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
 import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,setSongTempo,pruneUnusedRecordings,validateSong} from "./songModel.js";
-import {renderVocalEditor,decodeVocalRecording} from "./vocalEditor.js";
+import {renderVocalEditor,syncVocalInspector,decodeVocalRecording} from "./vocalEditor.js";
 import {vocalEffects} from "./vocalEffects.js";
 import {encodePcmWav,RECORDING_RATE} from "./recording.js";
 import {makeRecordingAsset} from "./recordingAssets.js";
@@ -1203,6 +1203,7 @@ function renderVocalWorkspace(){
  const selected=songExpanded? songUI?.getSelectedVocal():null;
  const active=!!selected?.recording,root=$("vocal-editor");
  document.querySelector("main")?.classList.toggle("editing-vocal",active);
+ if(active)keyboardPiano?.stop();
  if(!active){renderVocalEditor(root,null,{});if(soundInspectorOwner()==="vocal")renderSound();return;}
  const target=clipId=>{const entry=songUI?.getSelectedVocal();return entry?.clip.id===clipId?entry:null;};
  renderVocalEditor(root,selected,{
@@ -1274,7 +1275,11 @@ function renderVocalWorkspace(){
    }catch(error){message("Could not use vocal in Beat: "+error.message,true);}
   },
   onBack:()=>songUI.select(null),
-  onUndo:undo,onRedo:redo,bpm:song.bpm,
+  onUndo:undo,onRedo:redo,bpm:song.bpm,song,
+  onSelect:clipId=>songUI.select(clipId),onRecord:()=>$("song-record").click(),
+  onMove:(clipId,step)=>{const entry=target(clipId);if(entry)modifySong(()=>{entry.clip.startStep=step;});},
+  inspectorOpen:inspectorState!=="closed",wide:inspectorViewport.matches,canUndo:history.length>0,canRedo:future.length>0,
+  onInspectorOpen:open=>setInspector(open?"expanded":"closed"),
   onSave:clipId=>openPresetSave(false,{kind:"vocal",clipId}),
   onBrowse:clipId=>openLibrary("replace",{kind:"vocal",clipId})
  });
@@ -1320,6 +1325,7 @@ function setInspector(state){
  inspectorState=state;
  syncInspector();
  songUI?.syncInspector();
+ syncVocalInspector($("vocal-editor"),{open:state!=="closed",wide:inspectorViewport.matches});
 }
 inspectorViewport.addEventListener("change",event=>{
  // Wide and narrow desktop layouts use the same Sound element and editor.

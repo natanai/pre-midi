@@ -1548,18 +1548,10 @@ body.keyboard-piano-active .piano-scroll {pointer-events:none}
 
 
 /* One shared lower editing space for a selected Song vocal Clip. */
-main.editing-vocal > .work{display:none}
+main.editing-vocal > #beat-workspace{display:none}
 main.editing-vocal .beat-identity > label{display:none}
 main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .vocal-editor[hidden]{display:none!important}
-.vocal-editor{
- border-top:1px solid var(--line);padding:12px 14px 20px;
- display:grid;gap:13px;max-width:100%;min-width:0;
-}
-.vocal-editor-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.vocal-editor-identity{display:flex;align-items:center;gap:6px;min-width:0;font-size:12px}
-.vocal-editor-identity strong{color:var(--bright);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vocal-editor-identity span{font-size:11px;color:var(--muted)}
 .vocal-editor-actions{display:flex;gap:6px;flex-wrap:wrap}
 .vocal-editor-actions button,.vocal-timing button{
  border:1px solid var(--line);padding:7px 10px;min-height:32px;color:var(--bright);
@@ -1718,4 +1710,21 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 
 /* A single Inspector frame is reparented between active editing contexts. */
 .sound-inspector-frame{display:contents}
-.vocal-editor>.sound-inspector-frame>.sound-overview{min-width:0}
+
+/* Vocal sources occupy the existing workspace slots and Inspector column. */
+.vocal-track-name{font-size:11px;font-weight:normal;color:var(--muted);margin:14px 14px 6px}
+.recording-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;width:100%;text-align:left}
+.recording-card small{font-size:10px;color:var(--muted)}
+.vocal-clip-tools{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px}
+.vocal-position-fields{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+.vocal-position-fields .vocal-number input{width:82px}
+.vocal-kept-duration{font-size:11px;color:var(--muted);padding-bottom:8px;font-variant-numeric:tabular-nums}
+.recording-scroll{padding:14px;overflow:auto}
+.recording-source{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:100%}
+.recording-source .audio-waveform-editor{display:flex;flex-direction:column;flex:1;min-height:230px}
+.audio-waveform-plot{position:relative;min-width:0}
+.recording-source .audio-waveform-plot{flex:1;min-height:200px}
+.recording-source .audio-waveform-plot .vocal-waveform{position:absolute;inset:0;height:100%}
+.audio-trim-label{position:absolute;top:5px;padding:3px 6px;background:#ddd;color:#080808;font-size:11px;pointer-events:none;transform:translateX(3px)}
+.audio-trim-legend{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:var(--muted)}
+.vocal-timing button:disabled{opacity:.4}

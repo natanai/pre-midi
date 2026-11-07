@@ -55,7 +55,7 @@ const EDITOR_WORKSPACE_CHROME=`
    </section>
   </div>
 `;
-export function mountEditorWorkspace(root,{idPrefix="",songTime=false}={}){
+export function mountEditorWorkspace(root,{idPrefix="",songTime=false,recording=false}={}){
  if(!root)throw Error("Editor workspace requires a mount element.");
  root.classList.add("work");
  root.classList.toggle("song-time-editor",songTime);
@@ -79,6 +79,22 @@ export function mountEditorWorkspace(root,{idPrefix="",songTime=false}={}){
   fragment.querySelector(".chunk-tools").remove();
   fragment.querySelector(".notes-section").setAttribute("aria-label","Song-time note editor");
   fragment.querySelector(".scale-controls").setAttribute("aria-label","Song scale guide");
+ }
+ if(recording){
+  fragment.querySelector(".instrument-pane").setAttribute("aria-label","Song recordings");
+  fragment.querySelector(".instrument-pane h2").textContent="recordings";
+  nodes.get("add-instrument").textContent="+ record";
+  nodes.get("instrument-list").setAttribute("aria-label","Recorded clips");
+  fragment.querySelector(".timeline-section").setAttribute("aria-label","Vocal clip placement");
+  fragment.querySelector(".timeline-section h2").textContent="clip";
+  fragment.querySelector(".timeline-tick-label").textContent="song time";
+  fragment.querySelector(".notes-section").setAttribute("aria-label","Recording waveform and trim editor");
+  fragment.querySelector(".notes-section h2").textContent="recording";
+  nodes.get("note-mode").remove();
+  fragment.querySelector(".notes-toolbar").remove();
+  fragment.querySelector(".piano-tools").remove();
+  fragment.querySelector(".piano-scroll").classList.add("recording-scroll");
+  nodes.get("piano").classList.add("recording-source");
  }
  root.replaceChildren(fragment);
  return {root,get:key=>nodes.get(key)??null};

@@ -2967,6 +2967,24 @@
         "summary": "One physical Inspector across Beat, Freeform and vocals; one recorded-audio processing implementation; closed current effect and reuse gaps.",
         "details_reference": "/sound_editing/vocal_parity_milestone",
         "publication_policy": "Major milestone merge only; minimal checks per user direction."
+      },
+      {
+        "date": "2026-11-07",
+        "id": "VOCAL-WORKSPACE-03",
+        "status": "implemented_pending_visual_observation",
+        "summary": "Place vocal editing in the same three-column workspace template as Beat editing, with explicit trim application.",
+        "changes": [
+          "editorWorkspace.js recording context reuses the exact Instrument/mainwork/Sound grid and Inspector sizing rules; retired the full-width vocal layout override.",
+          "Left column lists recorded clips grouped by Song Track and ordered by Song position, supports selection and the existing record action.",
+          "Center replaces note tools and piano roll with clip placement/actions and a large recording waveform; the same physical Sound Inspector stays in the right slot.",
+          "Added visible start handle, trimmed/kept feedback, a start time field and set start action (also Enter). Number edits and onset suggestions preview without writing until applied; pointer trim still commits on release.",
+          "Close/toggle, history state and responsive Inspector behavior use the same workspace controller as Beat/Freeform. Stop QWERTY performance when entering vocal editing so its pointer lock does not affect waveform tools."
+        ],
+        "verification": {
+          "routine_check": "npm run check: passed",
+          "focused_models": "tests/audioWaveform.test.js and tests/vocalTiming.test.js: 6 passed",
+          "visual_browser": "Blocked by automatic approval review: exposing the local development origin to the cloud browser was not approved. No browser screenshot/interaction pass claimed."
+        }
       }
     ],
     "vocal_parity_milestone": {
@@ -3014,7 +3032,9 @@
         "Commercial DAW feature equivalence",
         "All 18 sound-editing roadmap tasks complete",
         "Full physical browser/Windows release qualification"
-      ]
+      ],
+      "workspace_layout": "editorWorkspace.js recording context: takes/recordings sidebar, center waveform/trim tools and the same right-hand Sound Inspector slot/width. Uses syncEditorInspector for open/close and responsive placement.",
+      "trim_interaction": "Drag the visibly labeled start handle, or enter a start time and choose set start/Enter. Find sound start previews a suggestion; restore start resets leading trim. No destructive source editing."
     }
   }
 }
