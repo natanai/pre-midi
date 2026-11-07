@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {pianoRollRows,noteWindow} from "../editorPianoRoll.js";
+import {pianoRollRows,noteWindow,notesForPianoRow,noteAtPianoStep} from "../editorPianoRoll.js";
 const source=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 
 test("the actual Beat and freeform note surfaces share one renderer",()=>{
@@ -41,4 +41,41 @@ test("Song-time note projection retains actual absolute steps and long sustains"
  });
  assert.equal(noteWindow({start:0,duration:4},48,16,8),null);
  assert.throws(()=>noteWindow({start:1,duration:1},-1,16,8),RangeError);
+});
+
+test("Beat cells and freeform row blocks resolve the same pitched and Rack note identities",()=>{
+ const notes=[
+  {id:"a",pitch:60,start:4,duration:12},
+  {id:"b",pitch:61,start:10,duration:3},
+  {id:"c",soundId:"kick",start:4,duration:2},
+  {id:"d",soundId:"hat",start:4,duration:1},
+  {id:"e",pitch:60,start:6,duration:5}
+ ];
+ const pitched={pitch:60,soundId:null},rack={pitch:null,soundId:"kick"};
+ assert.deepEqual(notesForPianoRow(notes,pitched).map(n=>n.id),["a","e"]);
+ assert.deepEqual(notesForPianoRow(notes,rack).map(n=>n.id),["c"]);
+ assert.equal(noteAtPianoStep(notes,pitched,4)?.id,"a");
+ assert.equal(noteAtPianoStep(notes,pitched,10)?.id,"a");
+ assert.equal(noteAtPianoStep(notes,pitched,16),null);
+ assert.equal(noteAtPianoStep(notes,rack,5)?.id,"c");
+ assert.equal(noteAtPianoStep(notes,rack,6),null);
+ assert.equal(noteAtPianoStep(notes,pitched,-1),null);
+});
+test("Song-time resize and paint clipping retains absolute time for notes crossing a viewport",()=>{
+ const from=16*10,steps=16*8,width=8;
+ assert.deepEqual(noteWindow({start:from-24,duration:27},from,steps,width),{
+  start:from,end:from+3,left:0,width:24,clippedStart:true,clippedEnd:false
+ });
+ assert.equal(noteWindow({start:from-24,duration:20},from,steps,width),null);
+ assert.deepEqual(noteWindow({start:from+steps-1,duration:64},from,steps,width),{
+  start:from+steps-1,end:from+steps,left:(steps-1)*width,width:8,
+  clippedStart:false,clippedEnd:true
+ });
+});
+test("Beat and Song-time editors share note membership while keeping their timing adapters",()=>{
+ const beat=source("studio.js"),song=source("freeformUI.js");
+ assert.match(beat,/noteAtPianoStep\(chunk\.notes,rowData,/);
+ assert.match(song,/notesForPianoRow\(inst\.notes,rowData\)/);
+ assert.match(song,/noteWindow\(\{\.\.\.note,duration:value\.duration\}/);
+ assert.match(song,/noteWindow\(\{start:step,duration:length\}/);
 });
