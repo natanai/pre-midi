@@ -1,0 +1,86 @@
+name: Optional full qualification
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  catalog-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Report catalog source overlap
+        run: node scripts/sound-catalog-audit.mjs
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run check:all
+      - name: Qualify bounded native Song page publication without callback allocations
+        run: node scripts/native-page-mailbox-check.mjs
+      - name: Verify late native Song page-local synth/sample/vocal PCM
+        run: node scripts/native-page-plan-check.mjs
+      - name: Qualify pinned C++ Song page resources after metadata retirement
+        run: node scripts/native-prepared-page-check.mjs
+      - name: Verify real native Song page ingestion through one persistent C++ mixer
+        run: node scripts/native-persistent-session-check.mjs
+      - name: Fetch pinned CC0 recordings
+        run: node scripts/fetch-samples.mjs
+      - name: Stage minimal Pages build
+        run: node scripts/prepare-pages.mjs
+      - name: Check Song recording, transport and actual WAV downloads
+        run: node tests/song.browser.mjs
+      - name: Check desktop and narrow-desktop studio in Chrome
+        run: PREMIDI_APP_ROOT=dist node tests/layout.browser.mjs
+      - name: Verify first phone composer in Chrome (not iOS qualification)
+        run: PREMIDI_APP_ROOT=dist node tests/phone.browser.mjs
+      - name: Fetch verified native device dependency
+        run: node scripts/fetch-miniaudio.mjs
+      - name: Qualify actual miniaudio native Song stream page publication and cancellation
+        run: node scripts/native-stream-device-check.mjs
+      - name: Test native control ownership, codecs and offline export
+        run: cargo test --manifest-path native/control-tests/Cargo.toml --locked
+      - name: Qualify native mixer and miniaudio callback lifecycle
+        run: node scripts/native-device-check.mjs
+      - name: Qualify native count-in and capture timing
+        run: node scripts/native-capture-check.mjs
+      - name: Measure actual offline audio against versioned reference fixtures
+        run: npm run benchmark:audio -- --require-clean
+      - name: Verify musical compatibility with the previous renderer
+        run: npm run benchmark:musical -- --require-clean
+      - name: Qualify voice lifecycle and real-time browser graph
+        run: npm run benchmark:voices -- --require-clean
+      - name: Compare native C++ synthesis with browser reference
+        run: npm run benchmark:native -- --require-clean
+      - name: Verify native and browser oscillator onset traces
+        run: npm run benchmark:onsets -- --require-clean
+      - name: Verify audible canonical modulation
+        run: npm run benchmark:modulation -- --require-clean
+      - name: Verify cutoff automation playback, seeking and export
+        run: npm run benchmark:automation -- --require-clean
+      - name: Record source-attributed raw measurements
+        if: always()
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir, readFile } from 'node:fs/promises';
+          for (const name of (await readdir('benchmarks')).filter(name => name.endsWith('.latest.json')).sort()) {
+            console.log('::group::' + name);
+            console.log('AUDIO_REPORT ' + name + ' ' + JSON.stringify(JSON.parse(await readFile('benchmarks/' + name, 'utf8'))));
+            console.log('::endgroup::');
+          }
+          NODE
+      - name: Upload audio qualification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audio-quality
+          path: benchmarks/*.latest.json
+          if-no-files-found: error
