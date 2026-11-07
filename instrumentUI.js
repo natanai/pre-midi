@@ -205,7 +205,7 @@ function harmonicControls(patch,index,onChange,preview,expanded,panels,soundId){
  details.append(recipes,first);
  return section;
 }
-export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=null) {
+export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=null,{deferView=false}={}) {
  root.soundPanelView?.dispose();
  root.replaceChildren();
  const grid=document.createElement("div");
@@ -278,5 +278,5 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
   panels.push(panel);anchor.replaceWith(panel.element);
  }
  root.append(grid);
- mountSoundPanelView(root);
+ if(!deferView)mountSoundPanelView(root);
 }

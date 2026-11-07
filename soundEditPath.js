@@ -7,7 +7,7 @@ export function assignSoundEdit(patch,path,value){
   let owner=patch;
   for(const key of keys.slice(0,-1)){
    if(owner[key]===undefined||owner[key]===null)
-    owner[key]=patch.type==="sample"&&owner===patch&&key==="filter"?
+    owner[key]=(patch.type==="sample"||patch.type==="vocal")&&owner===patch&&key==="filter"?
      {...DEFAULT_SAMPLE_FILTER}:{};
    owner=owner[key];
   }

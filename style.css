@@ -1572,10 +1572,6 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
  min-height:32px;padding:6px 7px;border:1px solid var(--line);background:#0b0b0b;
  color:var(--bright);max-width:100%;width:140px;
 }
-.vocal-effect-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.vocal-effect-sections .synth-group{margin:0;min-width:0}
-.vocal-effect-sections .synth-fields{min-width:0}
-@media(max-width:850px){.vocal-effect-sections{grid-template-columns:minmax(0,1fr)}}
 
 /* Repeated setting widgets share canonical values and focus stays local. */
 .sound-module-stack{display:contents}
@@ -1719,3 +1715,7 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .sound-section .sound-combined-illustrations{top:44px}
 
 .sound-section:has([data-sound-panel-view="combined"]) .sound-quick-controls{display:none}
+
+/* A single Inspector frame is reparented between active editing contexts. */
+.sound-inspector-frame{display:contents}
+.vocal-editor>.sound-inspector-frame>.sound-overview{min-width:0}

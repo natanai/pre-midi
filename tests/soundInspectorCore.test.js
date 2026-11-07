@@ -181,23 +181,30 @@ test("changing Sound before a host rejection suppresses stale error feedback",as
  assert.deepEqual(errors,[]);
 });
 
-test("Beat and freeform mount one canonical Sound header and controls template",()=>{
- const core=source("soundInspector.js"),beat=source("studio.js"),
-  freeform=source("freeformSoundUI.js"),html=source("index.html");
- const start=core.indexOf("const SOUND_INSPECTOR_CHROME=");
- const end=core.indexOf("export function populateSoundInspectorReferenceNotes");
- assert.ok(start>=0&&end>start,"the Sound header must have one canonical source");
- const controls=[...core.slice(start,end).matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]);
- assert.equal(controls.length,new Set(controls).size,"the canonical Sound surface has unique IDs");
- for(const id of ["sound-name","sound-reference","instrument-name","hear-sound",
-  "save-sound","change-sound","sound-volume-dial","instrument-volume-dial",
-  "sound-visualizer","synth-editor","move-sound-up","remove-sound"])
-  assert.ok(controls.includes(id),"shared Sound surface missing "+id);
- assert.match(beat,/mountSoundInspectorChrome\(\$\("sound-section"\)\)/);
- assert.match(freeform,/mountSoundInspectorChrome\(content,\{idPrefix:framePrefix\}\)/);
- assert.match(freeform,/renderSoundInspectorCore\(\{/);
- assert.match(beat,/renderSoundInspectorCore\(\{/);
- assert.doesNotMatch(html,/class="sound-primary-controls"/,"Beat must not maintain a second Sound HTML template");
- assert.doesNotMatch(freeform,/const tools=el\("div","freeform-sound-tools"\)/);
- assert.doesNotMatch(freeform,/const dials=el\("div","freeform-sound-levels"\)/);
+// DOM identity is behavioral: switching contexts must move, not clone, controls.
+test("desktop contexts acquire the identical Inspector node and clear prior adapters",async()=>{
+ const {mountSoundInspectorChrome,soundInspectorOwner}=await import('../soundInspector.js');
+ const prior=globalThis.document;
+ class Node{
+  constructor(tag='div',id=''){this.tag=tag;this.id=id;this.children=[];this.parentElement=null;}
+  append(node){if(node.parentElement)node.parentElement.children=node.parentElement.children.filter(n=>n!==node);this.children.push(node);node.parentElement=this;}
+  querySelectorAll(selector){const all=this.children.flatMap(n=>[n,...n.querySelectorAll('*')]);
+   if(selector==='*')return all;if(selector==='[id]')return all.filter(n=>n.id);
+   if(selector==='button,input,select')return all.filter(n=>['button','input','select'].includes(n.tag));return [];}
+  cloneNode(){const clone=new Node(this.tag,this.id);for(const node of this.children)clone.append(node.cloneNode());return clone;}
+  set innerHTML(html){this.content=new Node();for(const match of html.matchAll(/<(\w+)\b[^>]*\bid="([^"]+)"/g))this.content.append(new Node(match[1],match[2]));}
+ }
+ globalThis.document={createElement:tag=>new Node(tag)};
+ try{
+  const beat=new Node(),song=new Node(),vocal=new Node();
+  const first=mountSoundInspectorChrome(beat,{owner:'beat'}),node=first.element,control=first.get('hear-sound');
+  control.onclick=()=>{throw Error('stale Beat audition');};
+  const second=mountSoundInspectorChrome(song,{owner:'freeform'});
+  assert.equal(second.element,node);assert.equal(second.get('hear-sound'),control);assert.equal(control.onclick,null);
+  assert.equal(beat.children.length,0);assert.equal(soundInspectorOwner(),'freeform');
+  mountSoundInspectorChrome(vocal,{owner:'vocal'});
+  assert.equal(vocal.children[0],node);assert.equal(song.children.length,0);
+  mountSoundInspectorChrome(beat,{owner:'beat'});
+  assert.equal(beat.children[0],node);assert.equal(vocal.children.length,0);
+ }finally{globalThis.document=prior;}
 });

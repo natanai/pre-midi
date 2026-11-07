@@ -3,7 +3,7 @@ import {illustrateSoundPanel} from './soundIllustrations.js';
 import {assignSoundEdit} from './soundEditPath.js';
 const opened=new Set();
 export function renderCutoffAutomation(root,instrument,beat,onChange){
- if(instrument.layout!=='pitched'||instrument.sounds[0].patch.type!=='synth')return;
+ if(instrument.layout!=='pitched')return;
  const patch=instrument.sounds[0].patch,block=instrument.automation;
  // Anchor to the shared filter module identity. Its visible title may change
  // as related tone controls are grouped without changing automation ownership.
@@ -12,7 +12,7 @@ export function renderCutoffAutomation(root,instrument,beat,onChange){
  const fields=group.querySelector('.synth-fields')??group;
  const toggle=document.createElement('button');toggle.type='button';toggle.className='automation-toggle';toggle.textContent=block?'cutoff over time':'move over time';toggle.setAttribute('aria-label',block?'Edit cutoff automation':'Automate cutoff');
  toggle.addEventListener('click',()=>{
-  if(!block){group.open=true;opened.add(instrument.id);onChange({version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:[{id:crypto.randomUUID(),step:0,value:patch.filter.cutoff},{id:crypto.randomUUID(),step:Math.min(16,beat.bars*16),value:Math.max(50,patch.filter.cutoff/4)}]});}
+  if(!block){group.open=true;opened.add(instrument.id);onChange({version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:[{id:crypto.randomUUID(),step:0,value:(patch.filter?.cutoff??14000)},{id:crypto.randomUUID(),step:Math.min(16,beat.bars*16),value:Math.max(50,(patch.filter?.cutoff??14000)/4)}]});}
   else{const panel=root.querySelector('.cutoff-automation');panel.open=!panel.open;if(panel.open)panel.scrollIntoView({block:'nearest'});}
  });if(!block)fields.append(toggle);
  if(!block)return;

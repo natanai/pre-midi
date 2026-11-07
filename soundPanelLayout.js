@@ -46,9 +46,9 @@ export function soundPanelViews(patch,kind){
   view("bend","pitch bend",["bend.shape","bend.amount","bend.rate"],"bend"),
   view("vibrato","vibrato",["movement.depth","movement.rate","movement.delay"],"vibrato"),
   view("pulse","volume pulse",["movement.tremolo","movement.tremoloRate"],"pulse"),
-  ...(patch.type==="synth"?[
+  ...([
    view("tone","tone movement",["filter.cutoff","movement.tone","movement.toneRate"],"tone-movement"),
-   view("pan","stereo",["pan"],"stereo")]:[])
+   ...(patch.type==="synth"?[view("pan","stereo",["pan"],"stereo")]:[])])
  ];
  if(kind==="sample")return [
   view("envelope",patch.type==="vocal"?"recording fades":"recording envelope",["attack","release","oneShot","followPitch"]),

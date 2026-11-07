@@ -1,10 +1,11 @@
+import {processingFromPatch,applyProcessingToPatch} from "./recordedAudio.js";
 import {renderCutoffAutomation} from "./automationUI.js";
 import {upgradeBeatFeatures,resizeBeatBars,MAX_BEAT_BARS,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION} from "./schema.js";
 import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll,moveRackSoundRow} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, auditionChord, auditionHeld, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
+import { play, audition, auditionChord, auditionHeld, auditionVocal, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
 import { installKeyboardPiano } from "./keyboardPiano.js";
 import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
@@ -17,7 +18,7 @@ import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
-import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity,bindSoundInspectorCatalogActions,mountSoundInspectorChrome,populateSoundInspectorReferenceNotes,noteLabelForPitch} from "./soundInspector.js";
+import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity,bindSoundInspectorCatalogActions,mountSoundInspectorChrome,soundInspectorOwner,populateSoundInspectorReferenceNotes,noteLabelForPitch} from "./soundInspector.js";
 import { SAMPLE_LIBRARY, makeSamplerPatch } from "./samples.js";
 import {FACTORY_SOUND_CATALOG} from "./soundCatalog.js";
 import { nextRackPreview } from "./rackPreview.js";
@@ -25,7 +26,7 @@ import { loadLibrarySample, makeSampleAsset, MAX_BEAT_BYTES, sampleForNote } fro
 import { sampleAsset } from "./samples.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import { loadDraft, saveDraft, savePresetAssets } from "./storage.js";
-import {loadUserSounds,writeUserSounds,presetFromInstrument} from "./userSoundLibrary.js";
+import {loadUserSounds,writeUserSounds,presetFromInstrument,presetFromProcessing} from "./userSoundLibrary.js";
 import { renderNoteExpression } from "./expressionUI.js";
 import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
@@ -34,7 +35,7 @@ import {getAsset} from "./assetRegistry.js";
 import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,setSongTempo,pruneUnusedRecordings,validateSong} from "./songModel.js";
 import {renderVocalEditor,decodeVocalRecording} from "./vocalEditor.js";
 import {vocalEffects} from "./vocalEffects.js";
-import {encodeMonoWav,RECORDING_RATE} from "./recording.js";
+import {encodePcmWav,RECORDING_RATE} from "./recording.js";
 import {makeRecordingAsset} from "./recordingAssets.js";
 import {linkedVocalSample} from "./vocalBeatReuse.js";
 import {prepareSongTake,waveformForTake,songCountIn} from "./songRecorder.js";
@@ -46,11 +47,15 @@ import {synchronizeLinkedFreeform} from "./freeformModel.js";
 import {applyFreeformPreset} from "./freeformPresets.js";
 import {installDesktopUI} from "./desktopUI.js";
 
-const $ = key => document.getElementById(key);
+let beatSoundFrame;
+const $ = key => beatSoundFrame?.get(key)??document.getElementById(key);
+const bindBeatSound=(key,event,callback)=>$(key).addEventListener(event,e=>{
+ if(soundInspectorOwner()==="beat")callback(e);
+});
 const beatEditor=mountEditorWorkspace($("beat-workspace"));
 const beatWorkspace=beatEditor.root;
 // Install the common Sound frame before any of the existing Beat controls bind.
-mountSoundInspectorChrome($("sound-section"));
+beatSoundFrame=mountSoundInspectorChrome($("sound-section"),{owner:"beat"});
 let assetsReady=Promise.resolve();
 const CACHE = "premidi-v5-draft";
 // Retain the previous fallback draft for desktop compatibility.
@@ -1090,6 +1095,8 @@ function renderChunkEditor() {
  renderNotes();
 }
 function renderSound() {
+ if(document.querySelector("main")?.matches(".editing-freeform,.editing-vocal"))return;
+ mountSoundInspectorChrome($("sound-section"),{owner:"beat"});
  const inst=instrument(),entry=sound(inst),patch=entry.patch;
  const hear=$("hear-sound");
  hear.textContent="▶";
@@ -1196,7 +1203,7 @@ function renderVocalWorkspace(){
  const selected=songExpanded? songUI?.getSelectedVocal():null;
  const active=!!selected?.recording,root=$("vocal-editor");
  document.querySelector("main")?.classList.toggle("editing-vocal",active);
- if(!active){renderVocalEditor(root,null,{});return;}
+ if(!active){renderVocalEditor(root,null,{});if(soundInspectorOwner()==="vocal")renderSound();return;}
  const target=clipId=>{const entry=songUI?.getSelectedVocal();return entry?.clip.id===clipId?entry:null;};
  renderVocalEditor(root,selected,{
   onApply:(clipId,changes)=>{
@@ -1238,14 +1245,15 @@ function renderVocalWorkspace(){
     if(!reference){
      const decoded=await decodeVocalRecording(recording);
      const from=recording.trimSeconds+(clip.trimStartSeconds??0);
-     const frames=Math.round(remaining*RECORDING_RATE),input=new Float32Array(frames);
+     const frames=Math.round(remaining*RECORDING_RATE);
      const channels=Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i));
+     const input=channels.map(()=>new Float32Array(frames));
      for(let n=0;n<frames;n++){
       const pos=(from+n/RECORDING_RATE)*decoded.sampleRate,lo=Math.floor(pos),hi=Math.min(decoded.length-1,lo+1),frac=pos-lo;
       if(lo<0||lo>=decoded.length)continue;
-      for(const channel of channels)input[n]+=(channel[lo]*(1-frac)+channel[hi]*frac)/channels.length;
+      for(let ch=0;ch<channels.length;ch++)input[ch][n]=channels[ch][lo]*(1-frac)+channels[ch][hi]*frac;
      }
-     const wav=encodeMonoWav(input);
+     const wav=encodePcmWav(input);
      asset=makeSampleAsset("voice-sample-"+id(),recording.name.slice(0,60),"audio/wav",wav,
       "Excerpt from Song vocal "+recording.id);
      zone={assetId:asset.id,root:60};
@@ -1253,19 +1261,22 @@ function renderVocalWorkspace(){
     const fx=vocalEffects(clip);
     const patch={type:"sample",presetId:"custom",zones:[zone],
      followPitch:false,oneShot:true,transpose:fx.transpose,gain:clip.gain,
-     attack:fx.attack,release:Math.max(.01,fx.release),pan:fx.pan,drive:fx.drive,
+     audioMode:"clip",attack:fx.attack,release:fx.release,pan:fx.pan,drive:fx.drive,
+     delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,modulation:fx.modulation,automation:fx.automation,
      movement:fx.movement,bend:fx.bend};
     if(fx.filter)patch.filter=fx.filter;
     const ok=applySoundSelection(patch,recording.name.slice(0,60),"hit",[asset],
-      {mode:"add",instrumentId:instrument().id,soundId:sound().id});
+      {mode:"add",instrumentId:instrument().id,soundId:sound().id},null,{volume:1,gain:1});
     if(ok){
      songUI.select(null);message(reference?"Linked vocal to Beat without copying audio.":"Added a vocal excerpt to Beat.");
-     if(fx.delayMix>0)message("Vocal delay remains on its Song clip; Beat sample delay is not yet available.");
+
     }
    }catch(error){message("Could not use vocal in Beat: "+error.message,true);}
   },
   onBack:()=>songUI.select(null),
-  onUndo:undo,onRedo:redo
+  onUndo:undo,onRedo:redo,bpm:song.bpm,
+  onSave:clipId=>openPresetSave(false,{kind:"vocal",clipId}),
+  onBrowse:clipId=>openLibrary("replace",{kind:"vocal",clipId})
  });
 }
 function render() {
@@ -1317,7 +1328,7 @@ inspectorViewport.addEventListener("change",event=>{
 $("sound-toggle").addEventListener("click",()=>{
  setInspector(inspectorState==="closed"?"expanded":"closed");
 });
-$("sound-close").addEventListener("click",()=>setInspector("closed"));
+bindBeatSound("sound-close","click",()=>setInspector("closed"));
 function showExamples(){
  const root=$("example-list");root.replaceChildren();
  for(const example of EXAMPLES){
@@ -1754,6 +1765,14 @@ $("import-as-synth").addEventListener("click",()=>{
 });
 $("cancel-audio-kind").addEventListener("click",()=>{$("audio-kind-dialog").close();pendingImport=null;});
 async function savePreset(name,wholeRack=false){
+ if(presetSource?.kind==="vocal"){
+  const selected=songUI?.getSelectedVocal();
+  if(selected?.clip.id!==presetSource.clipId){message("Choose that vocal again before saving.",true);return false;}
+  try{const item=presetFromProcessing(processingFromPatch({...vocalEffects(selected.clip),type:"sample"}),name);
+   writeUserSounds([...savedSounds,item]);savedSounds.push(item);message("Saved "+name+" locally.");return true;
+  }catch(error){message(error.message,true);return false;}
+ }
+
  const freeLayer=presetSource?.kind==="freeform"?
   song?.tracks.find(track=>track.id===presetSource.trackId)?.freeform:null;
  const inst=presetSource?freeLayer?.instruments.find(item=>item.id===presetSource.instrumentId):instrument();
@@ -1772,6 +1791,14 @@ async function savePreset(name,wholeRack=false){
 const presetDialog=$("save-preset-dialog"),presetForm=$("save-preset-form");
 let presetRack=false,presetSaving=false,presetSource=null;
 function openPresetSave(wholeRack=false,sourceOverride=null){
+ if(sourceOverride?.kind==="vocal"){
+  const selected=songUI?.getSelectedVocal();if(selected?.clip.id!==sourceOverride.clipId)return;
+  presetSource=sourceOverride;presetRack=false;
+  $("save-preset-title").textContent="save processing preset";
+  $("save-preset-name").value=selected.recording.name+" variation";
+  $("save-preset-confirm").disabled=false;presetDialog.showModal();$("save-preset-name").select();return;
+ }
+
  const freeLayer=sourceOverride?.kind==="freeform"?
   song?.tracks.find(track=>track.id===sourceOverride.trackId)?.freeform:null;
  const inst=sourceOverride?freeLayer?.instruments.find(item=>item.id===sourceOverride.instrumentId):instrument();
@@ -1796,7 +1823,7 @@ presetForm.addEventListener("submit",async event=>{
  try{if(await savePreset(name,presetRack))presetDialog.close();}
  finally{presetSaving=false;$("save-preset-confirm").disabled=false;}
 });
-$("hear-sound").addEventListener("click",()=>{
+bindBeatSound("hear-sound","click",()=>{
  const inst=instrument(),currentEntry=sound(inst);
  void auditionSoundInspector({
   instrument:inst,sound:sound(inst),context:beat,
@@ -1845,6 +1872,20 @@ async function chooseSound(preset) {
  const dialog=$("instrument-dialog");
  message("Loading "+preset.name+"...");
  try {
+  if(context.kind==="vocal"||preset.processing){
+   const source=preset.processing??processingFromPatch(preset.patch??(preset.assets?makeSamplerPatch(preset):makePatch(preset.id)));
+   let ok=false;
+   if(context.kind==="vocal"){
+    const selected=songUI?.getSelectedVocal();if(selected?.clip.id!==context.clipId)throw Error("Vocal selection changed");
+    ok=modifySong(()=>{selected.clip.effects=structuredClone(source);
+     const remaining=selected.recording.durationSeconds-selected.recording.trimSeconds-(selected.clip.trimStartSeconds??0);
+     selected.clip.lengthSteps=Math.max(1,Math.ceil(remaining/2**((source.transpose??0)/12)*song.bpm*4/60));});
+   }else if(context.kind==="freeform")ok=modifySong(()=>{
+    const inst=song.tracks.find(t=>t.id===context.trackId)?.freeform?.instruments.find(i=>i.id===context.instrumentId);
+    const entry=inst?.sounds.find(s=>s.id===context.soundId);if(!entry)throw Error("Sound selection changed");applyProcessingToPatch(entry.patch,source);
+   });else ok=modify(()=>applyProcessingToPatch(sound().patch,source));
+   if(ok){dialog.close();message("Loaded "+preset.name);}return;
+  }
   const assets=await resolveSamples(preset,context);
   const patch=preset.sounds?patchCopy(preset.sounds[0].patch):getPreset(preset.id)?makePatch(preset.id):preset.patch?patchCopy(preset.patch):
    preset.assets?makeSamplerPatch(preset):makePatch(preset.id);
@@ -1880,6 +1921,17 @@ async function chooseSound(preset) {
  }catch(error){message("Couldn't load "+preset.name+": "+error.message,true);}
 }
 async function auditionPreset(preset,previewControl=null) {
+ if(libraryContext?.kind==="vocal"){
+  const selected=songUI?.getSelectedVocal();if(!selected)return;
+  const fx=preset.processing??processingFromPatch(preset.patch??(preset.assets?makeSamplerPatch(preset):makePatch(preset.id)));
+  try{await auditionVocal({...selected,clip:{...selected.clip,effects:fx}},song.bpm);}catch(error){message(error.message,true);}return;
+ }
+ if(preset.processing){
+  const inst=clone(instrument()),entry=inst.sounds.find(s=>s.id===sound().id)||inst.sounds[0];
+  applyProcessingToPatch(entry.patch,preset.processing);
+  try{await audition(inst,entry.referencePitch,beat,{soundId:entry.id,duration:.6});}catch(error){message(error.message,true);}return;
+ }
+
  try {
   if(preset.sounds){
    const key="preset:"+preset.id;
@@ -1932,7 +1984,7 @@ function renderLibrary() {
   control.setAttribute("aria-pressed",String(libraryCategory===category));
   filters.append(control);
  }
- if(libraryContext?.kind!=="freeform"&&["add","replace","replace-row"].includes(libraryMode)) {
+ if(!["freeform","vocal"].includes(libraryContext?.kind)&&["add","replace","replace-row"].includes(libraryMode)) {
   const record=button("● Record a sound",()=>openRecorder(libraryMode),"library-import library-record");
   const personal=button("＋ Import audio file",()=>$("sample-file").click(),"library-import");
   list.append(record,personal);
@@ -1940,6 +1992,8 @@ function renderLibrary() {
  // Both entry points share a catalog. Only the explicitly row-scoped
  // Replace sound action excludes full racks.
  const matching=allSounds().filter(p=>
+  (!p.processing||libraryMode!=="add")&&
+  (libraryContext?.kind!=="vocal"||!p.sounds)&&
   (libraryMode!=="replace-row" || !p.sounds) &&
   (libraryCategory==="All" || p.category===libraryCategory ||
    (libraryCategory==="Drums" && p.category==="Mine" && !!p.sounds)));
@@ -1998,7 +2052,7 @@ function removeInstrument(instrumentId){
   }
  });
 }
-$("remove-instrument").addEventListener("click",()=>removeInstrument(instrument().id));
+bindBeatSound("remove-instrument","click",()=>removeInstrument(instrument().id));
 $("chunk").addEventListener("click",()=>{
  const menu=$("chunk-menu"),opening=menu.hidden;
  menu.hidden=!opening;
@@ -2064,11 +2118,11 @@ function removeRackSound(instrumentId,soundId){
   selectedSounds.delete(instrumentId);
  });
 }
-$("move-sound-up").addEventListener("click",()=>moveRackSound(instrument().id,sound().id,-1));
-$("move-sound-down").addEventListener("click",()=>moveRackSound(instrument().id,sound().id,1));
-$("duplicate-sound").addEventListener("click",()=>duplicateRackSound(instrument().id,sound().id));
-$("remove-sound").addEventListener("click",()=>removeRackSound(instrument().id,sound().id));
-$("convert-rack").addEventListener("click",()=>{
+bindBeatSound("move-sound-up","click",()=>moveRackSound(instrument().id,sound().id,-1));
+bindBeatSound("move-sound-down","click",()=>moveRackSound(instrument().id,sound().id,1));
+bindBeatSound("duplicate-sound","click",()=>duplicateRackSound(instrument().id,sound().id));
+bindBeatSound("remove-sound","click",()=>removeRackSound(instrument().id,sound().id));
+bindBeatSound("convert-rack","click",()=>{
  $("instrument-actions").open=false;
  if(!canConvertToRack(instrument()))return;
  modify(()=>convertToRack(instrument()));
@@ -2093,11 +2147,11 @@ function extractSoundToPianoRoll(instrumentId,soundId){
    selectedChunks.delete(instrumentId);
  });
 }
-$("convert-pitched").addEventListener("click",()=>{
+bindBeatSound("convert-pitched","click",()=>{
  $("instrument-actions").open=false;
  extractSoundToPianoRoll(instrument().id,sound().id);
 });
-$("instrument-name").addEventListener("change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
+bindBeatSound("instrument-name","change", event => modify(() => instrument().name = event.target.value.trim() || "Instrument"));
 
 
 $("undo").addEventListener("click", undo);
@@ -2134,7 +2188,7 @@ songUI=installSongUI({
   const main=document.querySelector("main");
   main?.classList.toggle("editing-freeform",active);
   if(active)keyboardPiano?.stop();
-  else renderNotes();
+  else{renderNotes();renderSound();}
   if(active)main?.classList.remove("editing-vocal");
  },
  onSeek:step=>{

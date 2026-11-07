@@ -1,3 +1,4 @@
+import {renderModulationEditor} from "./modulationUI.js";
 import {mountSoundPanelView} from "./soundPanelView.js";
 import {movement,movementDefaults} from "./expression.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
@@ -28,13 +29,14 @@ export function disposeRecordedAudioEditor(root){
  for(const panel of root?.querySelectorAll(".visual-sound-panel")??[])
   panel.disposeSoundIllustration?.();
 }
-export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{},soundId=null){
- return renderRecordedAudioEditor(root,patch,onChange,{metadata,openUpload,onPreview,soundId});
+export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{},soundId=null,{deferView=false}={}){
+ return renderRecordedAudioEditor(root,patch,onChange,{metadata,openUpload,onPreview,soundId,deferView});
 }
 // One module renderer for triggered sampled Sounds and timeline vocal Clips.
 // Adapters own source selection, storage and undo; controls and diagrams live here.
-export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openUpload=null,onPreview=()=>{},soundId=null}={}){
+export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openUpload=null,onPreview=()=>{},soundId=null,deferView=false}={}){
  const vocal=patch.type==="vocal";
+ patch={...patch,audioFilterBypassed:patch.filter==null};
  const stateKey=soundId??patch;
  let expanded=sampleOpenStates.get(stateKey);
  if(!expanded){expanded=activeSamplePanels(patch);sampleOpenStates.set(stateKey,expanded);}
@@ -43,7 +45,7 @@ export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openU
   onPreview(path,value);
   if(!path?.length)return;
   const next=structuredClone(patch);assignSoundEdit(next,path,value);
-  if(vocal)next.audioFilterBypassed=next.filter===null;
+  next.audioFilterBypassed=next.filter==null;
   for(const visual of visuals)visual.draw(next);
  };
 
@@ -118,13 +120,15 @@ export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openU
  if(!vocal)mapDetails.populateMapping();
  if(!vocal)root.append(mapDetails);
  const sections=[[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"]];
- if(vocal){
+ {
   const delay=document.createElement("details");delay.className="synth-group";delay.open=true;
   const title=document.createElement("summary");title.textContent="delay";
   const controls=document.createElement("div");controls.className="synth-fields dial-grid";
   renderAudioDelayControls(controls,patch,onChange,preview);
   delay.append(title,controls);root.append(delay);sections.push([delay,"delay"]);
- }else sections.push([mapDetails,"mapping"]);
+ }
+ if(!vocal)sections.push([mapDetails,"mapping"]);
+ const modulation=renderModulationEditor(patch,onChange,soundId,preview);root.append(modulation);sections.push([modulation,"modulation"]);
  const soundFields=collectSoundFields(root);
  // Keep the same diagrams and direct manipulation for recorded instruments.
  // These wrappers leave the actual sampler dials and mapping controls intact.
@@ -142,5 +146,5 @@ export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openU
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
  if(openUpload&&!vocal)root.append(action);
- mountSoundPanelView(root);
+ if(!deferView)mountSoundPanelView(root);
 }

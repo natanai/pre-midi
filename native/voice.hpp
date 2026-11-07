@@ -160,9 +160,10 @@ public:
     if(plan.sample->channels==4){sample=.5f*(sample+additional[0]);other=.5f*(other+additional[1]);}
     else{const float factor=static_cast<float>(std::sqrt(.5));sample+=factor*(additional[0]+additional[2]);other+=factor*(additional[0]+additional[3]);}
    }
-   if(stereo||plan.kind==2){
-    if(plan.pan<=0){const double angle=(plan.pan+1)*pi/2;interleavedStereo[2*i]=static_cast<float>(sample+other*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other*std::sin(angle));}
-    else{const double angle=plan.pan*pi/2;interleavedStereo[2*i]=static_cast<float>(sample*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other+sample*std::sin(angle));}
+   const double renderedPan=std::clamp(plan.pan+std::clamp(static_cast<double>(offsets[5]),-2.,2.),-1.,1.);
+   if(stereo){
+    if(renderedPan<=0){const double angle=(renderedPan+1)*pi/2;interleavedStereo[2*i]=static_cast<float>(sample+other*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other*std::sin(angle));}
+    else{const double angle=renderedPan*pi/2;interleavedStereo[2*i]=static_cast<float>(sample*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other+sample*std::sin(angle));}
    }else{interleavedStereo[2*i]=static_cast<float>(sample*left);interleavedStereo[2*i+1]=static_cast<float>(sample*right);}
   }
  }

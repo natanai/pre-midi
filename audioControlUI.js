@@ -11,7 +11,9 @@ export const AUDIO_MOVEMENT_CONTROLS=Object.freeze([
  ["rate","Vibrato speed",.1,20,.1,"hz"],
  ["delay","Vibrato waits",0,3,.05,"seconds"],
  ["tremolo","Pulse",0,1,.01,"percent"],
- ["tremoloRate","Pulse speed",.1,20,.1,"hz"]
+ ["tremoloRate","Pulse speed",.1,20,.1,"hz"],
+ ["tone","Tone wave",0,1,.01,"percent"],
+ ["toneRate","Tone speed",.1,20,.1,"hz"]
 ].map(Object.freeze));
 export const AUDIO_BEND_CONTROLS=Object.freeze([
  ["amount","Bend amount",0,12,.25,"semitones"],
@@ -25,12 +27,9 @@ export const AUDIO_COMMON_CONTROLS=Object.freeze([
 export const AUDIO_SAMPLE_EXTRA_CONTROLS=Object.freeze([
  ["strumMs","Strum",-25,25,1,"number"],
  ["attack","Attack",0,2,.005,"seconds"],
- ["release","Release",.01,3,.01,"seconds"]
+ ["release","Release",0,3,.01,"seconds"]
 ].map(Object.freeze));
-export const AUDIO_VOCAL_ENVELOPE_CONTROLS=Object.freeze([
- ["attack","Rise",0,2,.005,"seconds"],
- ["release","Fade",0,3,.005,"seconds"]
-].map(Object.freeze));
+export const AUDIO_VOCAL_ENVELOPE_CONTROLS=Object.freeze(AUDIO_SAMPLE_EXTRA_CONTROLS.filter(([key])=>key!=="strumMs"));
 export const AUDIO_DELAY_CONTROLS=Object.freeze([
  ["delayMix","Delay",0,1,.01,"percent"],
  ["delayTime","Delay time",.05,1,.01,"seconds"],
@@ -80,13 +79,13 @@ export function renderAudioMovementControls(root,patch,onChange,onPreview=()=>{}
  for(const item of AUDIO_MOVEMENT_CONTROLS){
   const [key]=item;
   const parent=key==="glideTime"?"Glide from":
-   ["rate","delay"].includes(key)?"Vibrato":key==="tremoloRate"?"Pulse":null;
+   ["rate","delay"].includes(key)?"Vibrato":key==="tremoloRate"?"Pulse":key==="toneRate"?"Tone wave":null;
   const inactive=parent==="Glide from"&&m.glide===0||
-   parent==="Vibrato"&&m.depth===0||parent==="Pulse"&&m.tremolo===0;
+   parent==="Vibrato"&&m.depth===0||parent==="Pulse"&&m.tremolo===0||parent==="Tone wave"&&m.tone===0;
   slider(root,item,m[key],["movement",key],
    (path,value)=>onChange(["movement"],{...m,[key]:value}),
    (path,value)=>onPreview(["movement",key],value),
-   {inactiveReason:inactive?"Change "+parent+" from zero to hear this setting; the dashed curve is a reference guide":undefined,
+   {inactiveReason:["tone","toneRate"].includes(key)&&patch.filter==null?"Turn the filter on to hear tone movement":inactive?"Change "+parent+" from zero to hear this setting; the dashed curve is a reference guide":undefined,
     inactiveLabel:inactive?"inactive · "+parent.toLowerCase()+" is 0":undefined});
  }
  const bend=patch.bend??{shape:"straight",amount:2,rate:4};
@@ -129,7 +128,7 @@ export function renderAudioDelayControls(root,patch,onChange,onPreview=()=>{}){
   // illustration does. A path and value mismatch left these three dials
   // unlinked (and without an initial numerical value).
   const vocal=patch.type==="vocal";
-  slider(root,item,vocal?patch.effects?.[key]:patch[key],
+  slider(root,item,vocal?patch.effects?.[key]:(patch[key]??({delayMix:0,delayTime:.24,delayFeedback:.26})[key]),
    vocal?["effects",key]:[key],onChange,onPreview);
  }
 }

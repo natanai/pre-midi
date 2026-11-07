@@ -1,3 +1,4 @@
+import {connectRecordedAudio,recordingEnvelope,validateRecordedModulation,validateRecordingAutomation} from "./recordedAudio.js";
 import {ownVoice} from "./src/hosts/web/voice-session.js";
 import {resolveEvent} from "./soundModel.js";
 import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
@@ -75,7 +76,10 @@ export function sampleForNote(patch,pitch,velocity=.8){
 export function validateSamplerPatch(patch){
  if(!patch||patch.type!=="sample")return ["Invalid sampler instrument."];
  const errors=[];
- if(patch.modulation!==undefined)errors.push("General modulation currently requires a synth sound.");
+ errors.push(...validateRecordedModulation(patch.modulation),...validateRecordingAutomation(patch.automation));
+ if(patch.audioMode!==undefined&&patch.audioMode!=="clip")errors.push("Invalid recorded envelope mode.");
+ for(const [key,min,max] of [["delayMix",0,1],["delayTime",.05,1],["delayFeedback",0,.8]])
+  if(patch[key]!==undefined&&(!Number.isFinite(patch[key])||patch[key]<min||patch[key]>max))errors.push("Invalid sample delay.");
  if(typeof patch.presetId!=="string"||patch.presetId.length>100)errors.push("Invalid sample preset.");
  if(!Array.isArray(patch.zones)||patch.zones.length<1||patch.zones.length>64||
    patch.zones.some(zone=>typeof zone?.assetId!=="string"||!zone.assetId||
@@ -90,7 +94,7 @@ export function validateSamplerPatch(patch){
  const toneError=validateSampleTone(patch);if(toneError)errors.push(toneError);
  if(patch.preserveDynamics!==undefined && typeof patch.preserveDynamics!=="boolean")errors.push("Invalid recorded dynamic preservation.");
  if(patch.strumMs!==undefined && (!Number.isFinite(patch.strumMs)||patch.strumMs < -25||patch.strumMs > 25)) errors.push("Invalid strum timing.");
- for(const [field,lo,hi] of [["transpose",-24,24],["gain",0,2],["attack",0,2],["release",.01,3],["pan",-1,1]]){
+ for(const [field,lo,hi] of [["transpose",-24,24],["gain",0,2],["attack",0,2],["release",0,3],["pan",-1,1]]){
   const value=patch[field];
   if(typeof value!=="number"||!Number.isFinite(value)||value<lo||value>hi)errors.push("Invalid sample "+field+".");
  }
@@ -163,7 +167,7 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
  const src=context.createBufferSource(),amp=context.createGain(),pan=context.createStereoPanner(),gate=context.createGain();
  const owner={sources:[src],nodes:[amp,pan,gate]};
  const recordedGain=patch.preserveDynamics?3.5:sampleNormalization(buffer);
- const gain=Math.min(2,inst.volume*patch.gain*event.velocity*.7*recordedGain);
+ const gain=patch.audioMode==="clip"?Math.min(2,inst.volume*patch.gain*event.velocity):Math.min(2,inst.volume*patch.gain*event.velocity*.7*recordedGain);
  src.buffer=buffer;src.playbackRate.value=playbackRate;
  const motion=movement(patch);
  pan.pan.value=patch.pan;
@@ -172,34 +176,17 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
  // The whole recording keeps pitch modulation, not only the short grid note.
  schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,life),0,owner,{controlRate:'k'});
  const at=start+Math.min(patch.attack,life*.5);
- amp.gain.setValueAtTime(0,start);
- amp.gain.linearRampToValueAtTime(gain,at+0.001);
- // One-shot percussion sounds naturally tail off; keyed samples can be released early.
  const releaseStart=patch.oneShot?start+Math.max(0,life-patch.release):
   patch.followPitch?Math.min(start+duration,start+life-.01):start+life-.01;
- amp.gain.setValueAtTime(gain,Math.max(at+.001,releaseStart));
- amp.gain.linearRampToValueAtTime(0,start+life);
- const pulse=context.createGain();
- pulse.gain.setValueAtTime(1,start);
- scheduleMovementLfo(context,pulse.gain,start,life,motion.tremoloRate,motion.tremolo*.45,owner);
- // Unedited legacy samples preserve the original signal path.
- let signal=src;const toneNodes=[];
- if(patch.filter){
-  const filter=context.createBiquadFilter();filter.type=patch.filter.type;
-  filter.frequency.setValueAtTime(patch.filter.cutoff,start);
-  filter.Q.setValueAtTime(patch.filter.resonance,start);
-  signal.connect(filter);signal=filter;toneNodes.push(filter);
+ if(patch.audioMode==="clip"){
+  for(const e of recordingEnvelope(start,life,gain,patch.attack,patch.release))
+   amp.gain[e.kind?"linearRampToValueAtTime":"setValueAtTime"](e.value,e.time);
+ }else{
+  amp.gain.setValueAtTime(0,start);amp.gain.linearRampToValueAtTime(gain,at+.001);
+  amp.gain.setValueAtTime(gain,Math.max(at+.001,releaseStart));amp.gain.linearRampToValueAtTime(0,start+life);
  }
- if((patch.drive??0)>0){
-  const shaper=context.createWaveShaper(),compensation=context.createGain();
-  configureDriveShaper(shaper,patch.drive);
-  compensation.gain.value=1/(1+patch.drive*1.1);
-  signal.connect(shaper);shaper.connect(compensation);signal=compensation;
-  toneNodes.push(shaper,compensation);
- }
- signal.connect(amp);amp.connect(pulse);pulse.connect(gate);gate.connect(pan);pan.connect(out);
- owner.nodes.push(pulse,...toneNodes);
+ const graph=connectRecordedAudio(context,{source:src,amp,gate,pan,out,patch,start,duration:life,owner,expression:event,unit:60/(beat?.bpm??120)/4});
  src.start(start,region.offset,region.sourceLength);src.stop(start+life+.01);
- const voice=ownVoice(context,{...owner,gate,start,release:Math.max(start,Math.min(start+life,releaseStart)),end:start+life+.01});
- return session?session.adopt(voice):voice;
+ const voice=ownVoice(context,{...owner,gate,start,release:Math.max(start,Math.min(start+life,releaseStart)),end:start+life+.01+(session?0:graph.tail)});
+ if(session)session.adopt(voice);graph.connectDelay(session,voice);return voice;
 }

@@ -1,4 +1,5 @@
-import {renderRecordedAudioEditor,disposeRecordedAudioEditor} from "./samplerUI.js";
+import {mountSoundInspectorChrome,renderSoundInspectorCore} from "./soundInspector.js";
+import {auditionVocal} from "./audio.js";
 import {vocalDisplayPatch,vocalChangesFromControl} from "./vocalAudioView.js";
 import {recordingBytes} from "./recordingAssets.js";
 import {nativeEnabled} from "./src/hosts/native/session.js";
@@ -34,8 +35,8 @@ export async function decodeVocalRecording(recording){
 async function autoTrim(recording){
  return suggestVocalOnset(await decodedWaveformAsset(recording,()=>decodeVocalRecording(recording)),recording.trimSeconds);
 }
-export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo}){
- disposeRecordedAudioEditor(root.querySelector(".vocal-effect-sections"));
+export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo,onSave,onBrowse,bpm=120}){
+ root.classList.add("sound-section");
  root.hidden=!selection;
  if(!selection){root.replaceChildren();return;}
  const {clip,track,recording}=selection,clipId=clip.id;
@@ -66,9 +67,20 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
  });
  suggest.title="Find the first audible onset; keep the original recording";
  timing.append(suggest);root.append(timing);
- const sections=el("div",undefined,"vocal-effect-sections");
  const patch=vocalDisplayPatch(clip,recording);
  const apply=(path,value)=>onApply(clipId,vocalChangesFromControl(patch,path,value));
- renderRecordedAudioEditor(sections,patch,apply,{soundId:clipId});
- root.append(sections);
+ const frame=mountSoundInspectorChrome(root,{owner:"vocal"}),get=frame.get;
+ get("instrument-name").value=recording.name;get("instrument-name").disabled=true;
+ get("instrument-actions").hidden=true;get("sound-controls").hidden=true;
+ get("sound-close").onclick=onBack;
+ get("change-sound").textContent="browse processing";get("change-sound").onclick=()=>onBrowse?.(clipId);
+ get("save-sound").onclick=()=>onSave?.(clipId);
+ get("hear-sound").onclick=()=>{void auditionVocal({clip,recording,track},bpm).catch(error=>window.alert(error.message));};
+ renderSoundInspectorCore({instrument:{id:track.id,volume:clip.gain??1,layout:"pitched"},
+  sound:{id:clipId,patch,gain:1,referencePitch:60},context:{bpm,vocal:{clip,recording}},
+  modulesRoot:get("synth-editor"),scopeRoot:get("sound-visualizer"),
+  volumeRoot:get("instrument-volume-dial"),gainRoot:get("sound-volume-dial"),
+  primaryRoots:["primary-brightness-dial","primary-attack-dial","primary-release-dial"].map(get),
+  onPatchChange:apply,onLevelChange:(key,value)=>apply(["gain"],value),
+  onStageChange:()=>{},includeStage:false});
 }

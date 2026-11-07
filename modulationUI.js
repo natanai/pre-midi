@@ -2,6 +2,8 @@ import {MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {createDial,explainLabel} from "./dial.js";
 const openBySound=new Map();
 export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=>{}){
+ const targets=patch.type==="synth"?MOD_TARGETS:MOD_TARGETS.filter(t=>["filter.cutoff","pan"].includes(t.id));
+ const sources=patch.type==="vocal"?MOD_SOURCES.filter(k=>["lfo","envelope"].includes(k)):MOD_SOURCES;
  const key=soundId??patch;
  if(!openBySound.has(key))openBySound.set(key,!!patch.modulation?.routes?.length);
  const details=document.createElement("details");details.className="synth-group modulation-editor";details.open=openBySound.get(key);
@@ -37,8 +39,8 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
    for(const [value,text] of values){const option=document.createElement("option");option.value=value;option.textContent=text;input.append(option);}
    input.value=current;input.addEventListener("change",()=>apply(input.value));field.append(title,input);settings.append(field);
   };
-  select("movement source",MOD_SOURCES.map(kind=>[kind,kind==="keytrack"?"key tracking":kind]),route.source.kind,kind=>update(index,{source:defaultSource(kind)}));
-  select("movement target",MOD_TARGETS.map(target=>[target.id,target.name]),route.target,id=>{const next=MOD_TARGETS.find(t=>t.id===id);update(index,{target:id,unit:next.unit,depth:Math.max(-next.limit,Math.min(next.limit,route.depth))});});
+  select("movement source",sources.map(kind=>[kind,kind==="keytrack"?"key tracking":kind]),route.source.kind,kind=>update(index,{source:defaultSource(kind)}));
+  select("movement target",targets.map(target=>[target.id,target.name]),route.target,id=>{const next=MOD_TARGETS.find(t=>t.id===id);update(index,{target:id,unit:next.unit,depth:Math.max(-next.limit,Math.min(next.limit,route.depth))});});
   select("movement range",[["unipolar","one way"],["bipolar","both ways"]],route.polarity,polarity=>update(index,{polarity}));
   if(route.source.kind==="envelope")for(const [field,max] of [["attack",3],["decay",3],["sustain",1],["release",4]]){
    const dial=createDial({label:"Move "+field,min:field==="release"?.01:0,max,step:.01,display:field==="sustain"?"percent":"seconds"},

@@ -1,11 +1,9 @@
+import {RECORDING_DEFAULTS,validateRecordedModulation,validateRecordingAutomation} from "./recordedAudio.js";
 // Clip audio processing uses the sampler's filter, drive and movement contracts,
 // plus the synthesizer's existing delay bus. Source recordings remain immutable.
 import {validateSampleTone} from "./audioEffects.js";
 import {validateMovement,validateBend,movement} from "./expression.js";
-export const VOCAL_EFFECT_DEFAULTS=Object.freeze({
- pan:0,transpose:0,attack:0.005,release:0.03,drive:0,
- delayMix:0,delayTime:0.24,delayFeedback:0.26
-});
+export const VOCAL_EFFECT_DEFAULTS=RECORDING_DEFAULTS;
 export function vocalEffects(clip){
  const fx=clip?.effects||{};
  return {...VOCAL_EFFECT_DEFAULTS,...fx,movement:movement(fx),
@@ -24,7 +22,8 @@ export function validateVocalEffects(fx){
  ])value(name,min,max);
  errors.push(...validateMovement(fx.movement),...validateBend(fx.bend));
  const tone=validateSampleTone({...fx,filter:fx.filter??undefined});if(tone)errors.push(tone);
- const allowed=new Set(["pan","transpose","attack","release","drive","delayMix","delayTime","delayFeedback","filter","movement","bend"]);
+ errors.push(...validateRecordedModulation(fx.modulation,{vocal:true}),...validateRecordingAutomation(fx.automation));
+ const allowed=new Set(["automation","modulation","pan","transpose","attack","release","drive","delayMix","delayTime","delayFeedback","filter","movement","bend"]);
  for(const key of Object.keys(fx))if(!allowed.has(key))errors.push("Unknown vocal effect "+key+".");
  return errors;
 }

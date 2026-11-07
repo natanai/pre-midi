@@ -2,7 +2,6 @@
 // This is a desktop panel, not a second sound-engine implementation.
 import {renderSoundInspectorCore,auditionSoundInspector,bindSoundInspectorIdentity,bindSoundInspectorCatalogActions,mountSoundInspectorChrome,populateSoundInspectorReferenceNotes} from "./soundInspector.js";
 import {assignSoundEdit} from "./soundEditPath.js";
-import {createSignalDisplay} from "./soundScope.js";
 import {audition} from "./audio.js";
 import {clone,id,makeSound} from "./schema.js";
 import {makePatch} from "./synth.js";
@@ -37,12 +36,10 @@ const initialSample=(assetId,root,layout)=>({
 });
 export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,onError,onBrowseSound=()=>{},onSaveSound=()=>{},getAccent=()=>"#08e4ec",onClose=()=>{}}){
  let host=el("section","sound-section freeform-sound-host");
- const scope=el("div","freeform-sound-scope");
  const input=el("input");input.type="file";
  input.accept=".wav,.ogg,.mp3,audio/wav,audio/ogg,audio/mpeg";input.hidden=true;
  input.setAttribute("aria-label","Import audio into freeform Sound");
  const selected=new Map(),previewPositions=new Map(),auditionRequests=new Map();
- const framePrefix="freeform-sound-"+id()+"-";
  let stagePanel=null,stageOpen=false;
  const current=()=>{
   const inst=getInstrument();
@@ -51,19 +48,6 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   return sound?{inst,sound,layer:getLayer(),song:getSong()}:null;
  };
  const context=ctx=>({samples:ctx.layer.samples,bpm:ctx.song.bpm,bars:1,instruments:[ctx.inst]});
- let scopeUpdate=null,scopeKey="";
- const visualize=(ctx,patch=ctx.sound.patch,level=ctx.inst.volume*ctx.sound.gain)=>{
-  // The existing scope is the real PCM measurement. Keep its SVG and A/B
-  // state during dial previews, but recreate it when the sound identity,
-  // sample asset set or reference pitch changes.
-  const key=ctx.sound.id+"|"+ctx.sound.patch.type+"|"+
-   ctx.sound.referencePitch+"|"+ctx.layer.samples.map(asset=>asset.id).join(",");
-  if(scopeKey!==key||!scopeUpdate){
-   scopeUpdate=createSignalDisplay(scope,patch,context(ctx),getAccent(),
-    level,ctx.sound.referencePitch,null,ctx.sound.id);
-   scopeKey=key;
-  }else scopeUpdate(patch,level);
- };
  const mutateSelected=(callback,expectedId=null)=>mutate(()=>{
   const ctx=current();
   if(!ctx||expectedId&&ctx.sound.id!==expectedId)throw Error("Sound selection changed.");
@@ -130,7 +114,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   if(!ctx){host.hidden=true;host.replaceChildren();return host;}
   host.hidden=false;host.replaceChildren();
   const content=host;
-  const frame=mountSoundInspectorChrome(content,{idPrefix:framePrefix});
+  const frame=mountSoundInspectorChrome(content,{owner:"freeform"});
   const get=frame.get;
   const modules=get("synth-editor");
   modules.classList.add("freeform-sound-modules");
@@ -138,7 +122,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   const gainRoot=get("sound-volume-dial");
   const primaryRoots=["primary-brightness-dial","primary-attack-dial",
    "primary-release-dial"].map(get);
-  get("sound-visualizer").append(scope);
+  const scope=get("sound-visualizer");scope.classList.add("freeform-sound-scope");
   const instrumentName=get("instrument-name");
   instrumentName.value=ctx.inst.name;
   instrumentName.onchange=()=>mutateSelected(({inst})=>{
@@ -146,7 +130,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   },ctx.sound.id);
   // Instrument conversion and deletion live in the parent freeform lane.
   // The shared Inspector must not invent another instrument command system.
-  get("instrument-actions").remove();
+  get("instrument-actions").hidden=true;
   get("sound-close").onclick=onClose;
   get("sound-controls").hidden=ctx.inst.layout!=="rack";
   const nameInput=get("sound-name"),referenceInput=get("sound-reference");
@@ -165,7 +149,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   // aliases on the exact same canonical controls, never duplicate buttons.
   browse.classList.add("freeform-sound-browse");
   save.classList.add("freeform-sound-save");
-  const importAudio=button("use audio",null,"freeform-sound-load");
+  const importAudio=button("use audio",null,"freeform-sound-load sound-context-action");
   content.querySelector(".sound-actions").append(importAudio);
   const rackActions=content.querySelector(".rack-sound-actions");
   const rack=ctx.inst.layout==="rack";
@@ -180,8 +164,8 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
    }
    pick.value=ctx.sound.id;
    pick.onchange=()=>{selected.set(ctx.inst.id,pick.value);render();};
-   get("sound-controls").prepend(field("rack sound",pick));
-   saveRack=button("save rack",null,"freeform-rack-save");
+   const choice=field("rack sound",pick);choice.classList.add("sound-context-action");get("sound-controls").prepend(choice);
+   saveRack=button("save rack",null,"freeform-rack-save sound-context-action");
    rackActions.append(saveRack);
    const index=ctx.inst.sounds.findIndex(entry=>entry.id===ctx.sound.id);
    get("move-sound-up").disabled=index<=0;
@@ -196,7 +180,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
     if(inst.sounds.length>=MAX_SOUNDS)throw Error("Rack holds at most 64 Sounds.");
     const entry=makeSound("Sound "+(inst.sounds.length+1),makePatch(),"hit");
     inst.sounds.push(entry);selected.set(inst.id,entry.id);
-   },ctx.sound.id),"freeform-sound-add");
+   },ctx.sound.id),"freeform-sound-add sound-context-action");
    rackActions.append(add);
    get("duplicate-sound").disabled=ctx.inst.sounds.length>=MAX_SOUNDS;
    get("duplicate-sound").onclick=()=>mutateSelected(({inst,sound})=>{
@@ -238,10 +222,6 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
     ctx.layer.samples.find(asset=>asset.id===zone.assetId)?.name||zone.assetId).join(" / "):"",
    onReplaceSample:()=>input.click(),
    onPatchChange:patchChange,
-   scopeRenderer:(patch,level)=>{
-    visualize(ctx,patch,level);
-    return (next,amount)=>visualize(ctx,next,amount);
-   },
    stageOpen,
    onLevelChange:(key,value)=>mutateSelected(({inst,sound})=>{
     if(key==="volume")inst.volume=value;

@@ -39,7 +39,7 @@ export function nativePlans(events,assets=new Map(),unit=.125){
   if(!resolved)throw Error('Native playback found an unresolved sound identity');
   const {voice,note}=resolved,unsupported=unsupportedNativeFeatures(voice.patch);
   if(unsupported.length)throw Error(`${event.instrument.name||'Sound'}: native playback does not yet support ${unsupported.join(', ')}.`);
-  if(voice.patch.type==='sample')return planNativeSample(voice,note,event.at,event.duration,assets);
+  if(voice.patch.type==='sample')return planNativeSample(voice,note,event.at,event.duration,assets,{unit:event.timeline?.unit??unit});
   const duration=event.instrument.layout==='rack'?Math.max(.015,voice.patch.envelope.attack+voice.patch.envelope.decay):event.duration;
   return planSynthVoice(voice,note,event.at,duration,
     noteCutoffAutomation(event.instrument,event.note,event.timeline));
@@ -80,12 +80,12 @@ export async function ensureNativeOutput(){
  }
  return nativeRequest({action:'configure',device,rate:saved?.rate??0,buffer:saved?.buffer??0});
 }
-export async function auditionNative(instrument,notes,{duration=.24}={}){
+export async function auditionNative(instrument,notes,{duration=.24,bpm=120}={}){
  const unsupported=unsupportedNativeFeatures(instrument.patch);
  if(unsupported.length)throw Error('Native preview does not yet support '+unsupported.join(', ')+'.');
  const status=await ensureNativeOutput();
  const events=notes.map(note=>({kind:'note',instrument,note,at:note.at??0,duration:note.duration??duration}));
- const assets=await prepareNativeAssets(nativeRequiredAssets(events),status),plans=nativePlans(events,assets);
+ const assets=await prepareNativeAssets(nativeRequiredAssets(events),status),plans=nativePlans(events,assets,60/bpm/4);
  const cycle=Math.max(.05,...plans.map(plan=>plan.graphEnd));
  const {owner}=await nativeRequest({action:'begin'});
  return nativeRequest({action:'play',data:Array.from(encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true,owner});

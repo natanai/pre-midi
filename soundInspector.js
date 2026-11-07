@@ -1,12 +1,14 @@
+import {mountSoundPanelView} from "./soundPanelView.js";
+import {renderCutoffAutomation} from "./automationUI.js";
 // One canonical Sound Inspector renderer for both the Beat and the attached
 // freeform Song context. Context adapters own undo, selection and asset access;
 // this module alone owns the common controls, illustrations and scope layout.
 // Do not add a second collection of sound controls in either caller.
 import {renderPatchEditor,PRIMARY_SYNTH_FIELDS} from "./instrumentUI.js";
-import {renderSamplerEditor} from "./samplerUI.js";
+import {renderSamplerEditor,renderRecordedAudioEditor} from "./samplerUI.js";
 import {sampleTone} from "./audioEffects.js";
 import {createDial} from "./dial.js";
-import {createSignalDisplay} from "./soundScope.js";
+import {createSignalDisplay,disposeSignalDisplay} from "./soundScope.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {clone} from "./schema.js";
@@ -15,7 +17,7 @@ import {nextRackPreview} from "./rackPreview.js";
 const sampleFields=[
  {label:"brightness",path:["filter"],min:50,max:14000,step:1,display:"hz",log:true},
  {label:"attack",path:["attack"],min:0,max:2,step:.005,display:"seconds"},
- {label:"release",path:["release"],min:.01,max:3,step:.01,display:"seconds"}
+ {label:"release",path:["release"],min:0,max:3,step:.01,display:"seconds"}
 ];
 
 function stageState(instrument,patch,volume,gain,layout=instrument.layout){
@@ -113,7 +115,7 @@ export function renderSoundInspectorCore({
  volumeRoot,gainRoot,primaryRoots,
  accent="#86c6a7",sampleNames="",onReplaceSample=()=>{},stageLayout=null,
  onPatchChange,onLevelChange,onStageChange,
- onCutoffAutomation=null,scopeRenderer=null,stageOpen=null
+ onCutoffAutomation=null,scopeRenderer=null,stageOpen=null,includeStage=true
 }){
  if(!instrument||!sound||!context||!modulesRoot||!scopeRoot||
   !volumeRoot||!gainRoot||primaryRoots?.length!==3||
@@ -123,7 +125,7 @@ export function renderSoundInspectorCore({
  for(const panel of [modulesRoot,scopeRoot])
   for(const illustration of panel.querySelectorAll(".visual-sound-panel"))
    illustration.disposeSoundIllustration?.();
- const patch=sound.patch;
+ const patch=sound.patch,recorded=patch.type!=="synth",vocal=patch.type==="vocal";
  const oldStage=stageOpen??modulesRoot.querySelector(
   '.visual-sound-panel[data-visual-kind="stage"] details')?.open??false;
  const level=instrument.volume*sound.gain;
@@ -133,7 +135,7 @@ export function renderSoundInspectorCore({
    sound.referencePitch,instrument.automation??null,sound.id);
  let stagePanel=null;
  const redraw=(next,volume=instrument.volume,gain=sound.gain)=>{
-  updateScope(next,volume*gain);
+  updateScope(next,vocal&&next!==patch?next.gain:volume*gain);
   stagePanel?.draw(stageState(instrument,next,volume,gain,stageLayout??instrument.layout));
  };
  const preview=(path,value)=>{
@@ -141,13 +143,14 @@ export function renderSoundInspectorCore({
   // to the Beat or Song history through its context-specific adapter.
   const next=clone(patch);
   assignSoundEdit(next,path,value);
+  if(vocal)next.audioFilterBypassed=next.filter===null;
   redraw(next);
   for(const panel of modulesRoot.querySelectorAll(".visual-sound-panel"))
    panel.drawSoundIllustration?.(next);
  };
  volumeRoot.replaceChildren(createDial({
   label:instrument.layout==="rack"?"rack volume":"volume",
-  min:0,max:1,step:.01,display:"percent"
+  min:0,max:vocal?2:1,step:.01,display:"percent"
  },instrument.volume,value=>onLevelChange("volume",value),
  value=>redraw(patch,value,sound.gain)));
  volumeRoot.dataset.soundPath="volume";
@@ -161,34 +164,38 @@ export function renderSoundInspectorCore({
  const fields=patch.type==="synth"?PRIMARY_SYNTH_FIELDS:sampleFields;
  fields.forEach((field,index)=>{
   const root=primaryRoots[index];root.replaceChildren();
-  const sampleFilter=patch.type==="sample"&&index===0;
+  const sampleFilter=recorded&&index===0;
   const current=sampleFilter?sampleTone(patch).filter.cutoff:
    field.path.reduce((value,key)=>value?.[key],patch);
   const update=(value,apply)=>{
    if(sampleFilter)apply(["filter"],{...sampleTone(patch).filter,cutoff:value});
    else apply(field.path,value);
   };
-  const filterType=patch.type==="sample"?sampleTone(patch).filter.type:patch.filter.type;
+  const filterType=recorded?sampleTone(patch).filter.type:patch.filter.type;
   const help=index===0?(filterType==="lowpass"?
    "turn it down to muffle the high stuff":"move the filter to reshape the sound"):undefined;
-  root.append(createDial({...field,help},current,
+  root.append(createDial({...field,...(vocal&&index===2?{min:0}:{}),help},current,
    value=>update(value,onPatchChange),value=>update(value,preview)));
  });
- if(patch.type==="sample")
+ if(vocal)renderRecordedAudioEditor(modulesRoot,patch,onPatchChange,{onPreview:preview,soundId:sound.id,deferView:true});
+ else if(patch.type==="sample")
   renderSamplerEditor(modulesRoot,patch,onPatchChange,sampleNames,
-   onReplaceSample,preview,sound.id);
+   onReplaceSample,preview,sound.id,{deferView:true});
  else{
-  renderPatchEditor(modulesRoot,patch,onPatchChange,preview,sound.id);
+  renderPatchEditor(modulesRoot,patch,onPatchChange,preview,sound.id,{deferView:true});
   onCutoffAutomation?.(modulesRoot,instrument,context);
  }
- const paths=["filter.cutoff",patch.type==="sample"?"attack":"envelope.attack",
-  patch.type==="sample"?"release":"envelope.release"];
+ if(recorded)renderCutoffAutomation(modulesRoot,{id:sound.id,layout:"pitched",sounds:[sound],automation:patch.automation},
+  {bars:context.bars??Math.max(1,Math.ceil((context.vocal?.clip.lengthSteps??16)/16))},block=>onPatchChange(["automation"],block??undefined));
+ const paths=["filter.cutoff",recorded?"attack":"envelope.attack",
+  recorded?"release":"envelope.release"];
  primaryRoots.forEach((root,index)=>{
   root.dataset.soundPath=paths[index];
 
  });
  // The same real gain and pan illustration edits the corresponding ordinary
  // controls. Multi-axis gesture edits commit in one context transaction.
+ if(!includeStage){mountSoundPanelView(modulesRoot);return {preview,redraw,stagePanel:null};}
  const details=document.createElement("details");details.className="synth-group";
  details.open=oldStage;
  const summary=document.createElement("summary");
@@ -218,7 +225,7 @@ export function renderSoundInspectorCore({
   (path,value)=>editStage(path,value,true),
   (path,value)=>editStage(path,value,false),sound.id);
  (modulesRoot.querySelector(".synth-grid")??modulesRoot).append(stagePanel.element);
- modulesRoot.soundPanelView?.refresh();
+ mountSoundPanelView(modulesRoot);
  return {preview,redraw,stagePanel};
 }
 
@@ -290,25 +297,30 @@ export function populateSoundInspectorReferenceNotes(control){
  }
  control.value="60";
 }
-export function mountSoundInspectorChrome(root,{idPrefix=""}={}){
+// One physical desktop Inspector. Hosts move it rather than clone it.
+let sharedFrame=null;
+export const soundInspectorOwner=()=>sharedFrame?.owner??null;
+export function mountSoundInspectorChrome(root,{owner="beat"}={}){
  if(!root)throw Error("Sound Inspector requires a mount element.");
- const template=document.createElement("template");
- template.innerHTML=SOUND_INSPECTOR_CHROME;
- const fragment=template.content.cloneNode(true);
- const nodes=new Map();
- for(const node of fragment.querySelectorAll("[id]")){
-  const id=node.id;
-  if(nodes.has(id))throw Error("Duplicate Sound Inspector control: "+id);
-  nodes.set(id,node);
-  node.id=idPrefix+id;
+ if(!sharedFrame){
+  const template=document.createElement("template");template.innerHTML=SOUND_INSPECTOR_CHROME;
+  const element=document.createElement("div");element.className="sound-inspector-frame";
+  element.append(template.content.cloneNode(true));
+  const nodes=new Map([...element.querySelectorAll("[id]")].map(node=>[node.id,node]));
+  sharedFrame={element,owner,get:id=>nodes.get(id)??null};
  }
- for(const node of fragment.querySelectorAll("[for],[aria-controls],[aria-labelledby],[aria-describedby]")){
-  for(const attribute of ["for","aria-controls","aria-labelledby","aria-describedby"]){
-   const value=node.getAttribute(attribute);
-   if(value)node.setAttribute(attribute,value.split(/\s+/).map(id=>
-    nodes.has(id)?idPrefix+id:id).join(" "));
-  }
- }
- root.replaceChildren(fragment);
- return {root,get:id=>nodes.get(id)??null};
+ const frame=sharedFrame;
+ disposeSignalDisplay(frame.get("sound-visualizer"));
+ frame.get("synth-editor").soundPanelView?.dispose();
+ for(const visual of frame.element.querySelectorAll(".visual-sound-panel"))visual.disposeSoundIllustration?.();
+ for(const node of frame.element.querySelectorAll(".sound-context-action"))node.remove();
+ for(const node of frame.element.querySelectorAll("button,input,select")){node.onclick=null;node.onchange=null;}
+ frame.get("instrument-actions").hidden=false;
+ frame.get("change-sound").hidden=false;frame.get("change-sound").textContent="browse sounds";
+ frame.get("instrument-name").disabled=false;
+ frame.get("sound-close").hidden=false;
+ frame.owner=owner;
+ if(frame.element.parentElement!==root)root.append(frame.element);
+ frame.root=root;
+ return frame;
 }

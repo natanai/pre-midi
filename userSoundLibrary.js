@@ -1,3 +1,4 @@
+import {validateVocalEffects} from "./vocalEffects.js";
 // One browser-local user sound catalog for both desktop and phone hosts.
 // Presets are musical instructions + Asset metadata only, never sample bytes.
 // Sample data persists separately via storage.js and must travel in exported ZIPs.
@@ -11,6 +12,7 @@ export function validUserSound(item){
  if(!item||typeof item!=="object"||typeof item.id!=="string"||
   !item.id||item.id.length>=80||typeof item.name!=="string"||
   !item.name.trim()||item.name.length>60)return false;
+ if(item.processing)return validateVocalEffects(item.processing).length===0;
  if(item.sounds){
   const trial=create(),instrument=trial.instruments[0];
   instrument.layout="rack";instrument.sounds=clone(item.sounds);
@@ -54,4 +56,9 @@ export function presetFromInstrument(instrument,beat,{name,wholeRack=false,sound
  }
  if(!validUserSound(preset))throw Error("Preset cannot be saved in the current format.");
  return preset;
+}
+
+export function presetFromProcessing(processing,name){
+ const preset={id:"user-"+id(),name:name.trim(),category:"Mine",description:"Saved processing",processing:clone(processing),samples:[]};
+ if(!validUserSound(preset))throw Error("Invalid processing preset");return preset;
 }

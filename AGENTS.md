@@ -4,6 +4,8 @@ This is the native music studio for pre-programmed. The music, its controls, and
 
 ## Rapid prototype workflow (user decision, 2026-11-07)
 
+Publish changes as authorized, but merge into main only at major milestones. Keep ordinary checks minimal during rapid prototyping; do not impose release qualification on each iteration.
+
 Prioritize working features, short iterations and the user's ChatGPT time. Routine edits use `npm run check`: edited-JavaScript syntax plus a small data/editing smoke suite. For a small UI change, one relevant check is enough. Do not add tests that mirror markup, wording, CSS, documentation or implementation details. Add a regression only for a meaningful bug or data/audio behavior that warrants one.
 
 Do not run or wait for full browser matrices, native PCM benchmarks, Windows packaging or phone parity inventories for ordinary changes. Those are explicit opt-in qualification tasks: `npm run check:all`, individual browser scripts, or the manual full-qualification workflow. A routine push does not justify broadening validation. Finish the requested work, run the smallest useful check once, publish, and give a short result. Do not keep polling successful or optional workflows, repeat earlier checks, regenerate ledgers, or write long audit/handoff reports. Historical release-gate instructions in older documents do not override this policy.

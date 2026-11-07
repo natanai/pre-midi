@@ -323,7 +323,7 @@ export const diagram=(patch,type,page=0)=>{
    tag(195,17,noise===0?"noise off · guide":"noise");
    tag(22,111,"time →");tag(281,111,"decay →");
  }else if(type==="filter"){
-  if(p.type==="vocal"&&p.audioFilterBypassed){
+  if(p.type!=="synth"&&p.audioFilterBypassed){
    // Preserve the vocal editor's existing neutral bypass representation.
    line("M18 95 H344 M18 22 V95",true);
    line("M18 35 H342",false,["filter.type"]);
@@ -351,7 +351,7 @@ export const diagram=(patch,type,page=0)=>{
   ],"cutoff / resonance");
   tag(18,15,"low");tag(308,15,"high");tag(146,15,"48k model");
   action(90,103,["filter","type"],FILTERS,"filter shape");
-  if(p.type==="vocal")
+  if(p.type!=="synth")
    action(189,103,["audioFilterBypassed"],[false,true],"turn filter off");
   }
  }else if(type==="sample"&&page===0){

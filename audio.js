@@ -17,7 +17,7 @@ import {applyAmplitudePlan} from "./envelope.js";
 import {planSynthVoice,noteFrequency,extendedSynthExecution} from "./src/dsp/synth-voice.js";
 import {attachModulation} from "./src/hosts/web/modulation.js";
 import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
-import {nativeEnabled,auditionNative,playNative,renderNative,nativeRequest,prepareNativeAssets,nativeRequiredAssets,nativePlans} from "./src/hosts/native/session.js";
+import {nativeEnabled,auditionNative,playNative,renderNative,nativeRequest,prepareNativeAssets,ensureNativeOutput,nativeRequiredAssets,nativePlans} from "./src/hosts/native/session.js";
 import {playNativeSongStreamExperimental} from "./src/hosts/native/song-stream-control.js";
 export {nativeEnabled,cancelNativeTransport} from './src/hosts/native/session.js';
 // Canonical plans are shared by native desktop playback and the web adapter.
@@ -194,7 +194,7 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
   if(instrument.layout==="rack"&&sound.patch.type==="synth")hitDuration=Math.max(.015,sound.patch.envelope.attack+sound.patch.envelope.decay);
   instrument={patch:sound.patch,volume:instrument.volume*sound.gain};
  }
- if(nativeEnabled())return auditionNative(instrument,[{pitch,velocity:expression?.velocity??.8,bend:expression?.bend}],{duration:hitDuration??expression?.duration??.24});
+ if(nativeEnabled())return auditionNative(instrument,[{pitch,velocity:expression?.velocity??.8,bend:expression?.bend}],{duration:hitDuration??expression?.duration??.24,bpm:beat?.bpm??120});
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
  if(beat){
@@ -206,6 +206,20 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
   context.currentTime+.01,hitDuration??expression?.duration??.24,beat,previews());
 }
 // Performance-only held notes, without changing the saved Beat.
+export async function auditionVocal(event,bpm=120){
+ const unit=60/bpm/4;
+ if(nativeEnabled()){
+  const onset={kind:"vocal",event,at:0},status=await ensureNativeOutput();
+  const assets=await prepareNativeAssets(nativeRequiredAssets([onset]),status),plans=nativePlans([onset],assets,unit);
+  const cycle=Math.max(.05,...plans.map(p=>p.graphEnd+(p.tail??0)));
+  const {owner}=await nativeRequest({action:"begin"});
+  return nativeRequest({action:"play",data:Array.from((await import('./src/hosts/native/session.js')).encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true,owner});
+ }
+ context||=new AudioContext();if(context.state!=="running")await context.resume();
+ const song={kind:"song",recordings:[event.recording]};
+ const decoded=await decodeSongRecordings(context,song);
+ return scheduleVocal(context,context.destination,event,context.currentTime+.01,unit,decoded,{session:previews()});
+}
 export async function auditionHeld(instrument,pitch,beat=null){
  let patch=instrument.patch,volume=instrument.volume;
  if(instrument.sounds){
@@ -425,7 +439,7 @@ export function renderEndSeconds(document,events,decoded){
    const rate=zone?(patch.followPitch?2**((resolved.note.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12)):1;
    const length=buffer?buffer.duration/rate:0;
    const life=patch.oneShot?length:Math.min(length,Math.max(.015,event.duration+patch.release));
-   end=Math.max(end,event.at+life+.03);
+   end=Math.max(end,event.at+life+delayTailSeconds(patch)+.03);
   }else{
    const duration=event.instrument.layout==="rack"?Math.max(.015,patch.envelope.attack+patch.envelope.decay):event.duration;
    end=Math.max(end,planSynthVoice(resolved.voice,resolved.note,event.at,duration).audibleEnd+.02);

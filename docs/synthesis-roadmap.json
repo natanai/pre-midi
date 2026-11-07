@@ -1516,7 +1516,9 @@
         "Remove existing controls or illustrations to make inventories match",
         "Add legacy migrations for hypothetical user archives"
       ],
-      "transaction_rule": "One gesture -> ephemeral preview -> one undoable commit in the selected document; cancel leaves the authored patch and immutable source bytes unchanged."
+      "transaction_rule": "One gesture -> ephemeral preview -> one undoable commit in the selected document; cancel leaves the authored patch and immutable source bytes unchanged.",
+      "physical_instance": "soundInspector.js owns one sound-inspector-frame and one control-node map. Beat, Freeform and vocal adapters move that same node; mount never clones a second desktop Inspector. Beat listeners are owner-guarded and adapter handlers clear on ownership change.",
+      "processor_owner": "recordedAudio.js: common sampled/vocal filter, drive, tone/tremolo, delay, modulation, cutoff automation and clip-envelope definitions; C++ reads a shared current sample-processing packet."
     },
     "references": [
       {
@@ -2146,10 +2148,10 @@
     "current_parity_matrix": [
       {
         "capability": "overview_scope_audition",
-        "synth": "partial",
-        "sample": "partial",
-        "song_vocal": "partial",
-        "gap": "separate_editor",
+        "synth": "implemented",
+        "sample": "implemented",
+        "song_vocal": "implemented",
+        "gap": "live_browser_observation_pending",
         "task_ids": [
           "SE-02"
         ]
@@ -2188,9 +2190,9 @@
       {
         "capability": "filter_tone_motion",
         "synth": "implemented",
-        "sample": "absent",
-        "song_vocal": "absent",
-        "gap": "processing_gap",
+        "sample": "implemented",
+        "song_vocal": "implemented",
+        "gap": "listening_qualification_pending",
         "task_ids": [
           "SE-03"
         ]
@@ -2198,9 +2200,9 @@
       {
         "capability": "delay",
         "synth": "implemented",
-        "sample": "absent",
+        "sample": "implemented",
         "song_vocal": "implemented",
-        "gap": "processing_and_reuse_gap",
+        "gap": "live_browser_reuse_observation_pending",
         "task_ids": [
           "SE-03",
           "SE-04"
@@ -2209,9 +2211,9 @@
       {
         "capability": "general_modulation_routes",
         "synth": "implemented_limited",
-        "sample": "rejected",
-        "song_vocal": "absent",
-        "gap": "processing_gap",
+        "sample": "cutoff_pan_routes",
+        "song_vocal": "cutoff_pan_time_sources",
+        "gap": "broader_targets_and_professional_sources_still_planned",
         "task_ids": [
           "SE-05",
           "SE-06"
@@ -2220,9 +2222,9 @@
       {
         "capability": "timeline_automation",
         "synth": "two_point_cutoff",
-        "sample": "absent",
-        "song_vocal": "absent",
-        "gap": "processing_gap",
+        "sample": "two_point_cutoff",
+        "song_vocal": "two_point_cutoff",
+        "gap": "general_multipoint_automation_still_planned",
         "task_ids": [
           "SE-07"
         ]
@@ -2231,8 +2233,8 @@
         "capability": "preset_surface",
         "synth": "implemented",
         "sample": "implemented",
-        "song_vocal": "absent",
-        "gap": "ui_and_reuse_gap",
+        "song_vocal": "implemented",
+        "gap": "live_browser_observation_pending",
         "task_ids": [
           "SE-04"
         ]
@@ -2354,7 +2356,7 @@
       {
         "id": "SE-02",
         "title": "Mount Song vocals in the canonical Sound Inspector",
-        "status": "in_progress",
+        "status": "implemented_unverified",
         "priority": "P0",
         "depends_on": [
           "SE-01"
@@ -2376,12 +2378,12 @@
           "Focused context-switch interaction check and existing soundInspectorCore/songVocals behavior tests."
         ],
         "completion_evidence": [],
-        "progress_note": "Vocal modules delegate to renderRecordedAudioEditor in samplerUI.js, including illustrations, view preference and cleanup. Vocal overview/chrome, scope, audition and presets still need canonical Inspector integration."
+        "progress_note": "All desktop contexts acquire the same physical Inspector frame, controls and core. Vocal chrome no longer assembles modules; its adapter supplies source waveform/trim, mutations and source-aware audition/presets. Focused node-identity test passes; live browser observation remains pending."
       },
       {
         "id": "SE-03",
         "title": "Close existing sampled-audio and vocal processing gaps",
-        "status": "in_progress",
+        "status": "implemented_unverified",
         "priority": "P0",
         "depends_on": [
           "SE-01",
@@ -2410,12 +2412,12 @@
           "PCM/plan fixtures for sample versus vocal treatment of the same source, nonzero delay and tone motion, bypass, short fades, seeks and tails."
         ],
         "completion_evidence": [],
-        "progress_note": "Shared sampled-audio filter editor now exposes off and the validator accepts explicit null bypass, matching browser/native rendering. Sample delay, tone motion, gain/fade and seek-phase parity remain pending."
+        "progress_note": "One recordedAudio.js graph serves sampled Sounds and vocals; native current packet includes tone, routes, automation and delay. Added sample delay, audio tone movement, cutoff/pan routes and two-point cutoff automation; clip-preserving gain/fade mode avoids reuse reinterpretation. Mono native pan corrected; focused native PCM comparison matches. Broad seek/loop and listening qualification remains pending."
       },
       {
         "id": "SE-04",
         "title": "Share presets and preserve processing through vocal reuse",
-        "status": "planned",
+        "status": "implemented_unverified",
         "priority": "P0",
         "depends_on": [
           "SE-03"
@@ -2438,7 +2440,8 @@
         "verification": [
           "Existing vocalBeatReuse and Song IO behavior plus an effectful vocal-to-Sound round trip."
         ],
-        "completion_evidence": []
+        "completion_evidence": [],
+        "progress_note": "Vocal shared preset save/browse uses processing-only presets in the existing dialog/catalog, with no source audio in JSON. Reuse keeps delay, movement, routing, automation, gain/fades and stereo; compatible WAV assets remain linked once. Full live browser/portable relocation observation remains pending."
       },
       {
         "id": "SE-05",
@@ -2867,7 +2870,8 @@
       "no_runtime_change_this_audit": false,
       "routine_validation": "Run the smallest relevant behavior or interaction check once per change; do not add tests that assert roadmap wording or markup.",
       "release_validation": "Broad native/audio matrices and Windows packaging are deliberate qualification/release work, not prerequisites for this documentation-only update.",
-      "concurrency": "Re-read main before editing shared Inspector/illustration files; preserve concurrent work and keep one owner per implementation area."
+      "concurrency": "Re-read main before editing shared Inspector/illustration files; preserve concurrent work and keep one owner per implementation area.",
+      "merge_policy": "Publish within authorized scope; merge only major milestones. Minimal focused checks, no full qualification on routine edits."
     },
     "feature_complete_gate": {
       "operator": "all_of",
@@ -2955,7 +2959,62 @@
           "Vocal-to-Beat processing preservation",
           "Real-browser trimming observation and physical Windows acceptance"
         ]
+      },
+      {
+        "date": "2026-11-07",
+        "id": "VOCAL-PARITY-02",
+        "status": "implemented_pending_observation",
+        "summary": "One physical Inspector across Beat, Freeform and vocals; one recorded-audio processing implementation; closed current effect and reuse gaps.",
+        "details_reference": "/sound_editing/vocal_parity_milestone",
+        "publication_policy": "Major milestone merge only; minimal checks per user direction."
       }
-    ]
+    ],
+    "vocal_parity_milestone": {
+      "id": "VOCAL-PARITY-SHARED-INSPECTOR",
+      "status": "implemented_pending_observation",
+      "scope": "Existing applicable Sound editing on desktop browser and native Windows source; does not imply the future professional effects suite is shipped.",
+      "single_dom_instance": true,
+      "separate_vocal_sound_panel": false,
+      "shared_features": [
+        "Canonical overview, brightness/attack/release, source gain and pan",
+        "Measured source scope using the actual vocal processing path",
+        "Native-aware vocal audition",
+        "Modules/combined view and shared interactive illustrations",
+        "Filter bypass, drive, pitch/bend, glide, vibrato, pulse and tone movement",
+        "Delay for vocals and sampled Sounds, including export tails",
+        "LFO/envelope routing to cutoff and pan; triggered samples additionally expose note-derived sources",
+        "Shared two-point cutoff automation editor and browser/native rendering",
+        "Processing-only presets through the common preset dialog/catalog",
+        "Vocal-to-Beat reuse retains processors, clip gain/envelope, source trim and stereo channels"
+      ],
+      "source_only_exceptions": [
+        "Oscillators, harmonic partials and generated noise require a synth source",
+        "Note velocity/key tracking, sample mapping, one-shot/note-follow and strum require triggered Sounds",
+        "Timeline vocal source waveform and trim remain contextual controls in the same Inspector host"
+      ],
+      "verification": {
+        "routine_check": "npm run check",
+        "focused_tests": "tests/recordedAudio.test.js plus affected existing Sound/vocal/model tests",
+        "native_check": "node tests/recordedAudio.native.mjs",
+        "native_reference_result": {
+          "sample_rate": 22050,
+          "source": "One-second 220 Hz mono sine; clip-preserving sampled Sound versus vocal; drive/filter/tone/pulse/delay and smoothed pan route",
+          "max_pcm_difference": 0,
+          "peak": 0.5345496535301208
+        },
+        "browser_interaction": "unverified; Chromium startup in this workspace is denied socket access",
+        "physical_windows": "unverified; no new Windows ZIP built"
+      },
+      "remaining_qualification": [
+        "Observe live-site trimming and context switching in a real browser",
+        "Physical Windows playback/recording observations and future requested portable build",
+        "Broader seek/loop, live-edit and source conversion qualification remains in the Song reliability gates"
+      ],
+      "not_claimed": [
+        "Commercial DAW feature equivalence",
+        "All 18 sound-editing roadmap tasks complete",
+        "Full physical browser/Windows release qualification"
+      ]
+    }
   }
 }

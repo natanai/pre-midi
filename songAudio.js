@@ -1,3 +1,4 @@
+import {connectRecordedAudio} from "./recordedAudio.js";
 import {ownVoice} from "./src/hosts/web/voice-session.js";
 import {vocalEffects,vocalSourceRange} from "./vocalEffects.js";
 import {configureDriveShaper} from "./audioEffects.js";
@@ -51,37 +52,10 @@ export function scheduleVocal(context,destination,event,startTime,unit,decoded,{
   level.gain.setValueAtTime(gain,Math.max(startTime+attack,end-release));
   level.gain.linearRampToValueAtTime(0,end);
  }
- let signal=source;
- if(fx.filter){
-  const filter=context.createBiquadFilter();
-  filter.type=fx.filter.type;filter.frequency.setValueAtTime(fx.filter.cutoff,startTime);
-  filter.Q.setValueAtTime(fx.filter.resonance,startTime);
-  signal.connect(filter);signal=filter;nodes.push(filter);
- }
- if(fx.drive>0){
-  const shaper=context.createWaveShaper(),comp=context.createGain();
-  configureDriveShaper(shaper,fx.drive);comp.gain.value=1/(1+fx.drive*1.1);
-  signal.connect(shaper);shaper.connect(comp);signal=comp;nodes.push(shaper,comp);
- }
- signal.connect(level);
- let tail=level;
- if(motion.tremolo>0){
-  const pulse=context.createGain();pulse.gain.setValueAtTime(1,startTime);
-  scheduleMovementLfo(context,pulse.gain,startTime,duration,motion.tremoloRate,motion.tremolo*.45,owner);
-  level.connect(pulse);tail=pulse;nodes.push(pulse);
- }
- tail.connect(gate);gate.connect(pan);pan.pan.value=fx.pan;
- const dry=context.createGain();dry.gain.value=1-fx.delayMix*.4;
- pan.connect(dry);dry.connect(destination);nodes.push(dry);
- const delayTail=delayTailSeconds(fx);
- if(!session&&fx.delayMix>0){
-  const send=context.createGain(),delay=context.createDelay(1.2),feedback=context.createGain(),wet=context.createGain();
-  send.gain.value=fx.delayMix*.55;delay.delayTime.value=fx.delayTime;feedback.gain.value=fx.delayFeedback;wet.gain.value=.8;
-  pan.connect(send);send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination);
-  nodes.push(send,delay,feedback,wet);
- }
+ const graph=connectRecordedAudio(context,{source,amp:level,gate,pan,out:destination,patch:fx,start:startTime,duration,owner,unit,elapsedSteps});
+ const delayTail=graph.tail;
  source.start(startTime,offset,duration*rate);source.stop(end);
  const voice=ownVoice(context,{sources,nodes,gate,priority:1,start:startTime,release:end,end:session?end:end+delayTail});
- if(session){session.adopt(voice);if(voice.admitted&&fx.delayMix>0)pan.connect(session.delay(fx,voice));}
+ if(session)session.adopt(voice);graph.connectDelay(session,voice);
  return voice;
 }

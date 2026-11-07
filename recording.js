@@ -74,19 +74,23 @@ export function estimatePitch(samples,sampleRate){
  };
 }
 export function encodeMonoWav(samples,sampleRate=RECORDING_RATE){
- if(!samples||!samples.length||samples.length>sampleRate*4+5)
-  throw Error("Record up to four seconds of audio.");
+ return encodePcmWav([samples],sampleRate);
+}
+export function encodePcmWav(channels,sampleRate=RECORDING_RATE){
+ const frames=channels?.[0]?.length,count=channels?.length;
+ if(!frames||frames>sampleRate*4+5)throw Error("Record up to four seconds of audio.");
  if(sampleRate!==RECORDING_RATE)throw Error("Unexpected sample rate.");
- const length=44+samples.length*2,buffer=new ArrayBuffer(length),view=new DataView(buffer);
+ if(!count||count>32||channels.some(channel=>channel.length!==frames))throw Error("Invalid recording channels.");
+ const length=44+frames*count*2,buffer=new ArrayBuffer(length),view=new DataView(buffer);
  const label=(pos,value)=>{for(let i=0;i<value.length;i++)view.setUint8(pos+i,value.charCodeAt(i));};
  label(0,"RIFF");view.setUint32(4,length-8,true);label(8,"WAVE");
  label(12,"fmt ");view.setUint32(16,16,true);view.setUint16(20,1,true);
- view.setUint16(22,1,true);view.setUint32(24,sampleRate,true);
- view.setUint32(28,sampleRate*2,true);view.setUint16(32,2,true);
- view.setUint16(34,16,true);label(36,"data");view.setUint32(40,samples.length*2,true);
- for(let i=0;i<samples.length;i++){
-  const value=Math.max(-1,Math.min(1,samples[i]));
-  view.setInt16(44+i*2,value<0?Math.round(value*32768):Math.round(value*32767),true);
+ view.setUint16(22,count,true);view.setUint32(24,sampleRate,true);
+ view.setUint32(28,sampleRate*count*2,true);view.setUint16(32,count*2,true);
+ view.setUint16(34,16,true);label(36,"data");view.setUint32(40,frames*count*2,true);
+ for(let i=0;i<frames;i++)for(let ch=0;ch<count;ch++){
+  const value=Math.max(-1,Math.min(1,channels[ch][i]));
+  view.setInt16(44+(i*count+ch)*2,value<0?Math.round(value*32768):Math.round(value*32767),true);
  }
  return new Uint8Array(buffer);
 }

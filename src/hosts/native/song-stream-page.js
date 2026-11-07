@@ -41,8 +41,10 @@ export function nativeSongDelayRecipes(song){
   // Instruments own their Sound patches. Both use the same native renderer.
   const patches=instrument.sounds?.length?
    instrument.sounds.map(sound=>sound.patch):instrument.patch?[instrument.patch]:[];
-  for(const patch of patches)if(patch?.type==="synth"&&patch.effects)
-   add(patch.effects.delayMix,patch.effects.delayTime,patch.effects.delayFeedback,true);
+  for(const patch of patches){
+   if(patch?.type==="synth"&&patch.effects)add(patch.effects.delayMix,patch.effects.delayTime,patch.effects.delayFeedback,true);
+   else if(patch?.type==="sample")add(patch.delayMix??0,patch.delayTime??.24,patch.delayFeedback??.26);
+  }
  }
  for(const track of song.tracks??[])if(track.kind==="vocal")
   for(const clip of track.clips??[]){

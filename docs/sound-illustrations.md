@@ -4,7 +4,7 @@ The Sound view toggle offers modules or combined. Modules keep each illustration
 
 Combined gathers unique controls into one panel and shows the illustration(s) related to the focused or edited control above them. The illustration area stays visible while scrolling its controls. This is a local layout preference, not authored sound state or history. Switching back restores the separate modules and their folding state.
 
-The shared Beat/freeform Inspector, sampler and vocal editor use `soundPanelView.js`, `soundPanelLayout.js` and `soundIllustrations.js`. `soundPanelModels.js` supplies isolated reference lessons using the existing playback equations. The measured scope remains separate from labeled synthetic references.
+One physical desktop Inspector is moved between Beat, Freeform and vocal editing contexts. The canonical Inspector and its recorded-audio modules use `soundPanelView.js`, `soundPanelLayout.js` and `soundIllustrations.js`. `soundPanelModels.js` supplies isolated reference lessons using the existing playback equations. The measured scope remains separate from labeled synthetic references.
 
 Visible modules include filter response, filter sweep, distortion, noise, held/short-note amplitude envelopes, glide, pitch bend, vibrato, volume pulse, tone movement, stereo and delay. Recordings have separate envelope, pitch/onset, level/dynamics and stereo panels. Each added movement has its own route graph and controls. Sample-root groups have their own panels, and all 32 harmonic nodes are visible in a single spectrum.
 

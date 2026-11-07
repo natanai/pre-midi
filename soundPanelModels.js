@@ -82,7 +82,7 @@ export function isolatedSoundDiagram(p,type){
    axis(["movement","tremolo"],0,1,"linearY",100,25,.01,"percent")],"pulse speed / amount");
   tag(18,14,"25 hz reference");tag(290,111,"1.3 s");
  }else if(type==="tone-movement"){
-  const cutoff=p.filter.cutoff;
+  const cutoff=p.filter?.cutoff??14000;
   const curve=amount=>trace(t=>[18+324*t,frequencyY(cutoff*(1+.8*amount*Math.sin(t*1.3*2*Math.PI*m.toneRate)))],
    ["filter.cutoff","movement.tone","movement.toneRate"],amount===m.tone?"signal":"reference");
   curve(m.tone);if(m.tone===0){curve(.7);dormant("movement.toneRate","tone amount is zero; the dashed curve isolates its speed");}
