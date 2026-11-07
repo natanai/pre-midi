@@ -10,7 +10,7 @@ import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
 import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
-import {renderPianoRollRows,createPianoNoteSurface,applyPianoNoteState} from "./editorPianoRoll.js";
+import {renderPianoRollRows,pianoRollRows,createPianoNoteSurface,applyPianoNoteState,noteAtPianoStep,noteStartingAtPianoStep} from "./editorPianoRoll.js";
 import {createInstrumentCard,createInstrumentActionMenu} from "./editorInstrumentCard.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
@@ -678,7 +678,9 @@ function renderRack(root,inst,chunk){
  const scroll=root.parentElement,top=scroll.scrollTop,left=scroll.scrollLeft;
  root.replaceChildren();root.style.setProperty("--track-accent",signal(inst));
  root.setAttribute("aria-label","Sound rack · "+inst.name);
- for(const entry of inst.sounds){
+ for(const rowData of pianoRollRows(inst)){
+  const entry=inst.sounds.find(sound=>sound.id===rowData.soundId);
+  if(!entry)continue;
   const row=element("div",undefined,"rack-row"+(sound(inst).id===entry.id?" selected-sound":""));
   row.dataset.soundId=entry.id;
   const name=button((sound(inst).id===entry.id?"✓ ":"")+entry.name,()=>selectSound(entry),"rack-name");
@@ -698,8 +700,8 @@ function renderRack(root,inst,chunk){
   ],"rack-actions"));
   row.append(head);
   for(let step=0;step<16;step++){
-   const existing=chunk.notes.find(note=>note.soundId===entry.id&&note.start===step);
-   const cell=button(existing?"●":"",event=>{
+   const existing=noteStartingAtPianoStep(chunk.notes,rowData,step);
+   const cell=createPianoNoteSurface({className:"note rack-step"+(step%4===0?" beat":""),onClick:event=>{
     selectedSounds.set(inst.id,entry.id);
     if(existing&&editingNoteEffects){selectedNoteId=existing.id;renderNotes();renderSound();return;}
     if(existing){selectedNoteId=null;modify(()=>applyNoteCommand(chunk,{type:"note.delete",noteId:existing.id}));return;}
@@ -707,15 +709,18 @@ function renderRack(root,inst,chunk){
     selectedNoteId=editingNoteEffects?note.id:null;
     if(modify(()=>applyNoteCommand(chunk,{type:"note.add",note},{layout:"rack",sounds:inst.sounds}))&&!playback&&!pendingPlay)
      void audition(inst,entry.referencePitch,beat,{soundId:entry.id,velocity:note.velocity}).catch(()=>{});
-   },"note rack-step"+(step%4===0?" beat":"")+(existing?" filled":"")+
-    (editingNoteEffects&&existing?.id===selectedNoteId?" selected":"")+
-    (existing?.bend?.shape&&existing.bend.shape!=="straight"?" bent":""));
+   }});
+   cell.textContent=existing?"●":"";
+   applyPianoNoteState(cell,{
+    head:!!existing,selected:editingNoteEffects&&existing?.id===selectedNoteId,
+    bent:!!existing?.bend?.shape&&existing.bend.shape!=="straight"
+   });
    cell.setAttribute("aria-label",entry.name+", step "+(step+1)+(existing?", hit; "+Math.round(existing.velocity*100)+"% level":"; add hit"));
    cell.setAttribute("aria-pressed",String(!!existing));
    cell.title=existing?(editingNoteEffects?"Edit hit effects":"Remove hit")+" · right-click effects":"Add hit";
    cell.addEventListener("contextmenu",event=>{
     // Only actual hits open the inspector; retain the native menu on empty steps.
-    const hit=chunk.notes.find(note=>note.soundId===entry.id&&note.start===step);
+    const hit=noteStartingAtPianoStep(chunk.notes,rowData,step);
     if(!hit)return;
     event.preventDefault();
     selectedSounds.set(inst.id,entry.id);
@@ -842,7 +847,7 @@ function renderNotes() {
   const cells = [];
   function previewRow() {
    for (let pos = 0; pos < 16; pos++) {
-    const present = chunk.notes.find(n => n.pitch === pitch && pos >= n.start && pos < n.start + n.duration);
+    const present = noteAtPianoStep(chunk.notes,rowData,pos);
     const cell = cells[pos];
     applyPianoNoteState(cell,{
      head:!!present&&present.start===pos,
@@ -875,7 +880,7 @@ function renderNotes() {
     if (ignoreClick) return;
     const targetInst = instrument();
     const editedChunk = chunkFor(targetInst);
-    const existing = editedChunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start + n.duration);
+    const existing = noteAtPianoStep(editedChunk.notes,rowData,step);
     if(existing && editingNoteEffects){
      selectedNoteId=existing.id;
      renderNotes();
@@ -899,7 +904,7 @@ function renderNotes() {
    cells.push(cell);
    cell.addEventListener("contextmenu",event=>{
     // A note tail is still the same note. Never add/remove on a right-click.
-    const note=chunk.notes.find(n=>n.pitch===pitch&&step>=n.start&&step<n.start+n.duration);
+    const note=noteAtPianoStep(chunk.notes,rowData,step);
     if(!note)return;
     event.preventDefault();
     setNoteEffectsMode(true,note.id,false);
@@ -913,7 +918,7 @@ function renderNotes() {
     stepWidth:()=>cell.getBoundingClientRect().width,
     rowHeight:()=>cell.getBoundingClientRect().height,
     begin:event=>{
-     const existing=chunk.notes.find(n=>n.pitch===pitch && step>=n.start && step<n.start+n.duration);
+     const existing=noteAtPianoStep(chunk.notes,rowData,step);
      if(!existing && (cell.disabled ||
       (scaleGuide.lock && !isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step))))return null;
      const bounds=cell.getBoundingClientRect();
@@ -983,7 +988,7 @@ function renderNotes() {
    // Keyboard support is also immediate and uses the canonical undo pathway.
    cell.addEventListener("keydown", event => {
     if (!event.altKey || !["ArrowLeft","ArrowRight"].includes(event.key)) return;
-    const target = chunk.notes.find(n => n.pitch === pitch && step >= n.start && step < n.start+n.duration);
+    const target = noteAtPianoStep(chunk.notes,rowData,step);
     if (!target) return;
     event.preventDefault();
     const delta = event.key === "ArrowRight" ? 1 : -1;

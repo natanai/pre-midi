@@ -21,6 +21,30 @@ export function pianoRollRows(instrument,{low=36,high=83,noteLabel=pitch=>String
  });
 }
 
+// Row membership and hit-testing share the same pitched/Rack Sound identity
+// in Beat-local Chunks and absolute Song-time freeform notes.
+export function pianoRowMatchesNote(note,rowData){
+ if(!note||!rowData)return false;
+ if(rowData.soundId!==null&&rowData.soundId!==undefined)
+  return note.soundId===rowData.soundId;
+ return Number.isInteger(rowData.pitch)&&note.pitch===rowData.pitch;
+}
+export function notesForPianoRow(notes,rowData){
+ return notes.filter(note=>pianoRowMatchesNote(note,rowData));
+}
+export function noteAtPianoStep(notes,rowData,step){
+ if(!Number.isInteger(step)||step<0)return null;
+ return notes.find(note=>pianoRowMatchesNote(note,rowData)&&
+  note.start<=step&&step<note.start+note.duration)??null;
+}
+
+// Rack steps are discrete sample triggers: a hit belongs to its onset cell,
+// even if its recorded sample has a longer natural playback duration.
+export function noteStartingAtPianoStep(notes,rowData,step){
+ if(!Number.isInteger(step)||step<0)return null;
+ return notes.find(note=>pianoRowMatchesNote(note,rowData)&&note.start===step)??null;
+}
+
 export function createPianoRollRow(rowData,{mode="song",keyboard=false,onPlay}={}){
  if(mode!=="beat"&&mode!=="song")throw Error("Unknown piano roll mode");
  if(mode==="beat"){

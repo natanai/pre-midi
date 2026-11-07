@@ -167,8 +167,21 @@
   const lengthField=[...doc.querySelectorAll(".freeform-note-details .freeform-field")]
    .find(item=>item.textContent.includes("length"));
   assert(lengthField,"Selected note has an editable length");
-  lengthField.querySelector("input").value="16";
+  lengthField.querySelector("input").value="80";
   lengthField.querySelector("input").dispatchEvent(new Event("change",{bubbles:true}));
+  const scrubForward=doc.querySelector('input[aria-label="Song scrubber bar"]');
+  scrubForward.value="5";
+  scrubForward.dispatchEvent(new Event("change",{bubbles:true}));
+  const clippedNote=doc.querySelector(".freeform-roll-note");
+  assert(clippedNote?.style.left==="0px"&&clippedNote?.style.width==="128px",
+   "Long Song note beginning before bar five clips to the visible 16-step tail");
+  const scrubBack=doc.querySelector('input[aria-label="Song scrubber bar"]');
+  scrubBack.value="1";scrubBack.dispatchEvent(new Event("change",{bubbles:true}));
+  const resetLength=[...doc.querySelectorAll(".freeform-note-details .freeform-field")]
+   .find(item=>item.textContent.includes("length"))?.querySelector("input");
+  assert(resetLength,"Selected long note remains editable after seeking the Song scrubber");
+  resetLength.value="16";
+  resetLength.dispatchEvent(new Event("change",{bubbles:true}));
   get("play").click();
   await wait(()=>get("play").getAttribute("aria-label")==="stop song","Freeform Song starts");
   await wait(()=>doc.querySelector(".freeform-key.sounding")&&
