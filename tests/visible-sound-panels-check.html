@@ -16,6 +16,8 @@ frame.addEventListener("load",async()=>{
    (el.dataset.soundPath||el.parentElement?.closest("[data-sound-path]")?.dataset.soundPath)===path);
   const value=field=>Number(field.querySelector('[role="slider"]').getAttribute("aria-valuenow"));
   const key=(node,key)=>node.dispatchEvent(new w.KeyboardEvent("keydown",{key,bubbles:true,cancelable:true}));
+  root.querySelector(".sound-panel-view button").click();
+  pass("no leftover controls-only groups",!root.querySelector(".synth-grid > details"));
   pass("no illustration pager",!root.querySelector(".visual-panel-pages"));
   pass("each main illustration has an independently visible panel",["filter","filter-sweep","distortion","noise","glide","bend","vibrato","pulse","tone-movement","stereo","delay"].every(kind=>
    panel(kind)?.querySelector("details")?.open));
@@ -42,12 +44,36 @@ frame.addEventListener("load",async()=>{
   pass("duplicated selectors use the canonical edit",[...root.querySelectorAll('[data-sound-path="filter.type"] select')].every(select=>select.value===type));
   pass("selector focus stays in its own panel",d.activeElement.closest(".visual-sound-panel")===panel("distortion"));
   panel("filter").querySelector("details").open=false;
+  await new Promise(resolve=>setTimeout(resolve,0));
   pass("folding one panel leaves the other graph visible",panel("distortion").querySelector("details").open);
   panel("distortion").querySelector(".visual-panel-expand").click();
   pass("expanded module stays within viewport",panel("distortion").getBoundingClientRect().width<=1041);
   pass("expanded module has no horizontal overflow",panel("distortion").scrollWidth<=panel("distortion").clientWidth+1);
   panel("distortion").querySelector(".visual-panel-expand").click();
   pass("overview quick controls fit",root.scrollWidth<=root.clientWidth+1);
+
+  const viewButton=name=>[...root.querySelectorAll(".sound-panel-view button")].find(b=>b.textContent===name);
+  viewButton("combined").click();
+  const figures=()=>[...root.querySelectorAll(".sound-combined-figure")].filter(el=>!el.hidden);
+  const combinedField=path=>[...root.querySelectorAll('.sound-combined-controls [data-sound-path="'+path+'"]')].find(el=>!el.closest("[hidden]"));
+  pass("combined keeps one editable copy per parameter",root.querySelectorAll('.sound-combined-controls [data-sound-path="envelope.attack"]:not([hidden])').length===1);
+  const pulse=combinedField("movement.tremolo");pulse.querySelector('[role="slider"]').focus();
+  pass("combined follows pulse without unrelated graphs",figures().length===1&&figures()[0].textContent.includes("volume pulse"));
+  key(pulse.querySelector('[role="slider"]'),"ArrowUp");
+  pass("combined survives commit and keeps the edited control focused",d.activeElement.closest(".sound-combined-controls")&&figures().length===1&&figures()[0].textContent.includes("volume pulse"));
+  combinedField("envelope.attack").querySelector('[role="slider"]').focus();
+  pass("shared envelope control shows both educational examples",figures().length===2&&figures().every(el=>el.textContent.includes("envelope")));
+  combinedField("filter.cutoff").querySelector('[role="slider"]').focus();
+  pass("shared brightness shows every related illustration",figures().length===4);
+  const combinedDrive=()=>combinedField("effects.drive").querySelector('[role="slider"]');
+  combinedDrive().focus();
+  const driveFigure=figures()[0],driveNode=driveFigure.querySelector('.visual-graph-point[data-sound-links*="effects.drive"]');
+  const driveBefore=Number(combinedDrive().getAttribute("aria-valuenow"));driveNode.focus();key(driveNode,"ArrowDown");
+  pass("combined graph remains a real editing surface",Number(combinedDrive().getAttribute("aria-valuenow"))!==driveBefore);
+  pass("combined graph keeps keyboard focus after committing",d.activeElement.classList.contains("visual-graph-point")&&!!d.activeElement.closest(".sound-combined-figure"));
+  pass("combined fits the inspector width",root.scrollWidth<=root.clientWidth+1);
+  viewButton("modules").click();
+  pass("switching back restores illustrations and folding state",!panel("filter").querySelector("details").open&&panel("distortion").querySelector(":scope > details > .visual-panel-area")&&panel("pulse").querySelector('[data-sound-path="movement.tremolo"]'));
 
   const {renderSamplerEditor}=await import("../samplerUI.js"),{renderPatchEditor}=await import("../instrumentUI.js");
   const {assignSoundEdit}=await import("../soundEditPath.js"),{makePatch}=await import("../synth.js");

@@ -1,3 +1,4 @@
+import {captureSoundGraphView} from "./soundControlView.js";
 // Reusable illustrations for the existing sound controls. These are teaching
 // diagrams, not an alternate audio engine or a second source of patch state.
 import {movement,pitchCents,BEND_SHAPES} from "./expression.js";
@@ -816,6 +817,11 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview=()=>{
  return layoutSoundPanels(details,kind,patch,onChange,onPreview,index,createSoundPanel);
 }
 function createSoundPanel(details,kind,patch,onChange,onPreview,index,options){
+ const commitSoundEdit=onChange;
+ onChange=(path,value)=>{
+  const restore=captureSoundGraphView(document.activeElement);
+  commitSoundEdit(path,value);restore();
+ };
  // The Beat's primary brightness/rise/fade dials sit above the accordion.
  // Capture their common owner before the accordion is moved into its wrapper.
  // Song/freeform Sound also nests its diagram and controls in one content root.
@@ -1003,7 +1009,7 @@ function createSoundPanel(details,kind,patch,onChange,onPreview,index,options){
  function targetFields(keys){
   const fields=[...controlOwner().querySelectorAll("[data-sound-path]")];
   fields.sort((a,b)=>Number(wrapper.contains(b))-Number(wrapper.contains(a)));
-  return fields.filter(field=>keys.some(key=>{
+  return fields.filter(field=>!field.closest("[hidden]")&&keys.some(key=>{
    const path=field.dataset.soundPath;
    if((field.closest("[data-sound-domain]")?.dataset.soundDomain??"patch")!==
     soundControlDomain(kind,key))return false;

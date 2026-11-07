@@ -112,6 +112,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   }catch(error){onError("Audio import: "+error.message);}
  });
  function render(target=host){
+  for(const editor of host.querySelectorAll("[data-sound-panel-view]"))editor.soundPanelView?.dispose();
   if(target!==host){host=target;host.classList.add("freeform-sound-host");}
   // The scope element survives Sound redraws to preserve A/B measurements.
   // Its old graph does not: detach listeners and rebuild the direct editor

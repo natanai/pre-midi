@@ -1,3 +1,4 @@
+import {mountSoundPanelView} from "./soundPanelView.js";
 import {renderModulationEditor} from "./modulationUI.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {collectSoundFields} from "./soundPanelLayout.js";
@@ -205,6 +206,7 @@ function harmonicControls(patch,index,onChange,preview,expanded,panels,soundId){
  return section;
 }
 export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=null) {
+ root.soundPanelView?.dispose();
  root.replaceChildren();
  const grid=document.createElement("div");
  grid.className="synth-grid";
@@ -276,4 +278,5 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
   panels.push(panel);anchor.replaceWith(panel.element);
  }
  root.append(grid);
+ mountSoundPanelView(root);
 }

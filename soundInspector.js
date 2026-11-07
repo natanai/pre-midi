@@ -218,6 +218,7 @@ export function renderSoundInspectorCore({
   (path,value)=>editStage(path,value,true),
   (path,value)=>editStage(path,value,false),sound.id);
  (modulesRoot.querySelector(".synth-grid")??modulesRoot).append(stagePanel.element);
+ modulesRoot.soundPanelView?.refresh();
  return {preview,redraw,stagePanel};
 }
 

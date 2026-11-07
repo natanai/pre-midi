@@ -1,3 +1,4 @@
+import {mountSoundPanelView} from "./soundPanelView.js";
 import {movement,movementDefaults} from "./expression.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
 import {collectSoundFields} from "./soundPanelLayout.js";
@@ -34,6 +35,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
   for(const visual of visuals)visual.draw(next);
  };
 
+ root.soundPanelView?.dispose();
  root.replaceChildren();
  const header=document.createElement("div");header.className="sampler-description";
  const count=new Set(patch.zones.map(zone=>zone.root)).size;
@@ -118,4 +120,5 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
  root.append(action);
+ mountSoundPanelView(root);
 }
