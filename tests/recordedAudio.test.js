@@ -6,17 +6,17 @@ import {validatePatch} from '../synth.js';
 import {planNativeSample,planNativeVocal,encodeNativeSample} from '../src/hosts/native/sample-plan.js';
 import {presetFromProcessing,validUserSound} from '../userSoundLibrary.js';
 const routes={version:1,routes:[{id:'pan',source:{kind:'lfo',shape:'sine',rate:2},target:'pan',unit:'pan',depth:.5,polarity:'bipolar',smoothing:.01}]};
-const processing={pan:.2,transpose:0,attack:.03,release:.1,drive:.2,filter:{type:'lowpass',cutoff:2400,resonance:1},delayMix:.25,delayTime:.2,delayFeedback:.3,movement:{tone:.5,toneRate:2},modulation:routes,
+const processing={pan:.2,transpose:0,attack:.03,release:.1,drive:.2,filter:{type:'lowpass',cutoff:2400,resonance:1,sweep:-2,sweepTime:.6},delayMix:.25,delayTime:.2,delayFeedback:.3,movement:{tone:.5,toneRate:2},modulation:routes,
  automation:{version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:[{id:'a',step:0,value:2400},{id:'b',step:16,value:600}]}};
 const patch={type:'sample',presetId:'custom',zones:[{assetId:'voice',root:60,startSeconds:.2,durationSeconds:1}],followPitch:false,oneShot:true,audioMode:'clip',gain:.8,...processing};
 test('a reused vocal and sampled Sound retain identical current processing and gain envelopes',()=>{
  const assets=new Map([['voice',{id:1,duration:1.2,normalization:3.7}]]);
  const vocal=planNativeVocal({recording:{id:'voice',durationSeconds:1.2,trimSeconds:.2},clip:{gain:.8,lengthSteps:8,effects:processing}},0,.125,assets);
  const sample=planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets);
- for(const key of ['filter','drive','movement','pan','playbackRate','offset','sourceLimit','delayMix','delayTime','delayFeedback','modulation'])assert.deepEqual(sample[key],vocal[key],key);
+ for(const key of ['filter','sweep','drive','movement','pan','playbackRate','offset','sourceLimit','delayMix','delayTime','delayFeedback','modulation'])assert.deepEqual(sample[key],vocal[key],key);
  assert.deepEqual(sample.events,vocal.events);
  assert.deepEqual(validatePatch(patch),[]);assert.deepEqual(validateVocalEffects(processing),[]);
- assert.equal(new DataView(encodeNativeSample(sample,44100).buffer).getUint32(12,true),12);
+ assert.equal(new DataView(encodeNativeSample(sample,44100).buffer).getUint32(12,true),13);
 });
 test('processing-only presets preserve modulation, tone, delay and automation without source assets',()=>{
  const fx=processingFromPatch(patch),preset=presetFromProcessing(fx,'voice processing');
@@ -25,6 +25,7 @@ test('processing-only presets preserve modulation, tone, delay and automation wi
  applyProcessingToPatch(other,JSON.parse(JSON.stringify(preset)).processing);
  assert.equal(other.zones[0].assetId,'different-voice');
  assert.deepEqual(other.modulation,routes);assert.equal(other.delayMix,.25);assert.deepEqual(other.automation,processing.automation);
+ assert.deepEqual(other.filter,processing.filter);
 });
 test('recorded-audio routing rejects oscillator destinations and timeline note-only sources',()=>{
  const bad=structuredClone(routes);bad.routes[0]={...bad.routes[0],target:'oscillators.0.level',unit:'linear_gain'};

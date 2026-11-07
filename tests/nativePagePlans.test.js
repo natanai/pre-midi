@@ -24,10 +24,10 @@ const times=plan=>{
   values.push(plan.filter.sweepEnd,plan.amplitude.end);
   values.push(...plan.amplitude.events.map(x=>x.time));
   values.push(...plan.oscillators.map(x=>x.pitch.start));
-  values.push(...(plan.automation?.points??[]).map(x=>x.time));
  }else{
-  values.push(...plan.events.map(x=>x.time),plan.pitch.start);
+  values.push(...plan.events.map(x=>x.time),plan.pitch.start,plan.sweep.sweepEnd);
  }
+ values.push(...(plan.automation?.points??[]).map(x=>x.time));
  return values;
 };
 
@@ -58,11 +58,13 @@ test("Song pages after ten minutes rebase every synth/automation time without fr
 test("Sample and vocal page rebasing retains source offsets and absolute release frames",()=>{
  const rate=48000,base=875.713,start=base+.075,frame=nativeFrameAt(base,rate);
  const asset={id:1,rate,channels:2,frames:4800,duration:.1,normalization:2.6},assets=new Map([["recorded",asset]]);
+ const effects={filter:{type:"lowpass",cutoff:1200,resonance:.7,sweep:1,sweepTime:.05},
+  automation:{version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",points:[{id:"a",step:0,value:1200},{id:"b",step:1,value:600}]}};
  const patch={type:"sample",presetId:"test",zones:[{assetId:"recorded",root:60}],
-  followPitch:true,oneShot:true,transpose:0,gain:.9,attack:0,release:.025,pan:0};
+  followPitch:true,oneShot:true,transpose:0,gain:.9,attack:0,release:.025,pan:0,...effects};
  const sample=planNativeSample({patch,volume:.2},{pitch:60,velocity:.8},start,.05,assets);
  const vocal=planNativeVocal({recording:{id:"recorded",trimSeconds:0,durationSeconds:.1},
-  clip:{lengthSteps:1,gain:.004}},start,.125,assets);
+  clip:{lengthSteps:1,gain:.004,effects}},start,.125,assets);
  for(const original of [sample,vocal]){
   const snapshot=JSON.stringify(original),local=rebaseNativePlanToPage(original,frame,rate);
   assert.equal(JSON.stringify(original),snapshot);

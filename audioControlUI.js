@@ -65,6 +65,13 @@ export function renderAudioToneControls(root,patch,onChange,onPreview=()=>{},
   slider(root,config("filter.resonance","Resonance"),tone.filter.resonance,
    ["filter","resonance"],(path,value)=>onChange(["filter"],{...tone.filter,resonance:value}),
    (path,value)=>onPreview(["filter"],{...tone.filter,resonance:value}));
+  for(const [key,label] of [["sweep","Filter sweep"],["sweepTime","Sweep time"]]){
+   const capability=soundCapability(patch,["filter",key]);
+   slider(root,config("filter."+key,label),tone.filter[key],["filter",key],
+    (path,value)=>onChange(["filter"],{...tone.filter,[key]:value}),
+    (path,value)=>onPreview(["filter"],{...tone.filter,[key]:value}),
+    {inactiveReason:capability.state==="inactive"?capability.reason:undefined});
+  }
  }
  slider(root,config("effects.drive","Distortion"),tone.drive,["drive"],onChange,onPreview);
 }

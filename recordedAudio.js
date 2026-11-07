@@ -1,8 +1,9 @@
 import {parameterFor,parameterDefaults,clampParameterValue,modulationTargetsFor,modulationSourcesFor} from "./src/dsp/parameters.js";
 import {windowEnvelope} from "./src/dsp/envelope-window.js";
+import {planFilterSweep,filterSweepRatioAt} from "./src/dsp/filter-sweep.js";
 import {validateCutoffAutomation,planCutoffAutomation} from "./src/dsp/automation.js";
 // Canonical post-source processing for sampled Sounds and timeline recordings.
-import {configureDriveShaper} from './audioEffects.js';
+import {configureDriveShaper,sampleTone} from './audioEffects.js';
 import {movement,scheduleMovementLfo} from './expression.js';
 import {attachModulation} from './src/hosts/web/modulation.js';
 import {validateModulation} from './src/dsp/modulation.js';
@@ -13,7 +14,7 @@ export const RECORDING_DEFAULTS=Object.freeze({
  ...parameterDefaults("effects","vocal")
 });
 export function recordedEffects(patch){
- return {...RECORDING_DEFAULTS,...patch,movement:movement(patch),filter:patch.filter??null,
+ return {...RECORDING_DEFAULTS,...patch,movement:movement(patch),filter:patch.filter?sampleTone(patch).filter:null,
   bend:patch.bend??parameterDefaults('bend')};
 }
 export function validateRecordedModulation(block,{vocal=false}={}){
@@ -39,9 +40,15 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  let signal=source,filter=null;
  if(fx.filter){
   filter=add(context.createBiquadFilter());filter.type=fx.filter.type;
-  filter.frequency.setValueAtTime(fx.filter.cutoff,start);
+  filter.frequency.value=0;
+  const base=context.createConstantSource(),sweep=add(context.createGain());
+  owner.sources.push(base);base.offset.setValueAtTime(fx.filter.cutoff,start);
+  const sweepPlan=planFilterSweep(fx.filter,start,duration+elapsed,"sample");
+  sweep.gain.setValueAtTime(filterSweepRatioAt(sweepPlan,fx.filter.cutoff,elapsed),start);
+  if(elapsed<sweepPlan.sweepDuration)sweep.gain.exponentialRampToValueAtTime(1,start+sweepPlan.sweepDuration-elapsed);
+  base.connect(sweep);sweep.connect(filter.frequency);base.start(start);base.stop(start+duration+.04);
   if(fx.automation){const plan=planCutoffAutomation(fx.automation,{start,end:start+duration,step:elapsedSteps,unit,limitStep:Math.max(elapsedSteps+duration/unit,fx.automation.points.at(-1).step)});
-   for(const [i,point] of plan.points.entries())filter.frequency[i?'exponentialRampToValueAtTime':'setValueAtTime'](point.value,point.time);
+   for(const [i,point] of plan.points.entries())base.offset[i?'exponentialRampToValueAtTime':'setValueAtTime'](point.value,point.time);
   }
   filter.Q.setValueAtTime(fx.filter.resonance,start);
   if(motion.tone>0)scheduleMovementLfo(context,filter.frequency,start,duration,motion.toneRate,fx.filter.cutoff*motion.tone*.8,owner,{elapsed});
@@ -73,7 +80,7 @@ export function processingFromPatch(patch){
  const keys=['pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
  const result=Object.fromEntries(keys.filter(key=>fx[key]!==undefined).map(key=>[key,structuredClone(fx[key])]));
  if(result.modulation)result.modulation.routes=result.modulation.routes.filter(route=>modulationTargetsFor('vocal').some(target=>target.id===route.target)&&modulationSourcesFor('vocal').includes(route.source.kind));
- if(result.filter)result.filter={type:result.filter.type,cutoff:result.filter.cutoff,resonance:result.filter.resonance};
+ if(result.filter)result.filter={...sampleTone({filter:result.filter}).filter};
  result.attack=clampParameterValue('envelope.attack',result.attack,'vocal');result.release=clampParameterValue('envelope.release',result.release,'vocal');
  return result;
 }

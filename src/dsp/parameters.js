@@ -50,8 +50,8 @@ export const SOUND_PARAMETERS=freeze([
  parameter("filter.resonance","filter_resonance",.1,16,.7,.1,"number",{
   bypass:filterBypass,interpretation:{lowpass:"db",highpass:"db",bandpass:"linear_q",notch:"linear_q"}
  }),
- parameter("filter.sweep","octaves",-5,5,0,.1,"number",{contexts:["synth"],bypass:{mode:"zero"}}),
- parameter("filter.sweepTime","seconds",.01,3,.2,.01,"seconds",{contexts:["synth"],inactiveWhen:[nonzero("filter.sweep","filter sweep is zero")]}),
+ parameter("filter.sweep","octaves",-5,5,0,.1,"number",{bypass:{mode:"zero"}}),
+ parameter("filter.sweepTime","seconds",.01,3,.2,.01,"seconds",{inactiveWhen:[nonzero("filter.sweep","filter sweep is zero")]}),
  parameter("noise","linear_gain",0,1,0,.01,"percent",{contexts:["synth"],scope:"source",bypass:{mode:"zero"}}),
  parameter("noiseDecay","seconds",0,4,0,.01,"seconds",{contexts:["synth"],scope:"source",bypass:{mode:"zero",meaning:"continuous noise"},inactiveWhen:[nonzero("noise","noise level is zero")]}),
  parameter("pan","pan",-1,1,0,.01,"pan",{modulation:{index:5,name:"pan",unit:"pan",limit:2}}),

@@ -37,7 +37,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
 // Adapters own source selection, storage and undo; controls and diagrams live here.
 export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openUpload=null,onPreview=()=>{},soundId=null,deferView=false}={}){
  const vocal=patch.type==="vocal";
- patch={...patch,audioFilterBypassed:patch.filter==null};
+ patch={...patch,filter:patch.filter?sampleTone(patch).filter:null,audioFilterBypassed:patch.filter==null};
  const stateKey=soundId??patch;
  let expanded=sampleOpenStates.get(stateKey);
  if(!expanded){expanded=activeSamplePanels(patch);sampleOpenStates.set(stateKey,expanded);}

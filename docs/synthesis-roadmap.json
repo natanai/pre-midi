@@ -2163,18 +2163,19 @@
         "synth": "implemented",
         "sample": "implemented",
         "song_vocal": "implemented",
-        "gap": "definitions_differ",
+        "gap": "none_for_current_vocal_scope",
         "task_ids": [
           "SE-01",
           "SE-03"
-        ]
+        ],
+        "source_semantics": "Synth note ADSR and triggered-sample envelope differ intentionally from continuous-Clip fades; applicable parameters share definitions."
       },
       {
         "capability": "filter_bypass_drive",
         "synth": "implemented",
         "sample": "implemented",
         "song_vocal": "implemented",
-        "gap": "bypass_ui_differs",
+        "gap": "none_for_current_vocal_scope",
         "task_ids": [
           "SE-03"
         ]
@@ -2184,7 +2185,7 @@
         "synth": "implemented",
         "sample": "implemented",
         "song_vocal": "implemented",
-        "gap": "phase_and_trigger_review_pending",
+        "gap": "none_for_current_vocal_scope",
         "task_ids": [
           "SE-03"
         ]
@@ -2195,6 +2196,16 @@
         "sample": "implemented",
         "song_vocal": "implemented",
         "gap": "listening_qualification_pending",
+        "task_ids": [
+          "SE-03"
+        ]
+      },
+      {
+        "capability": "filter_sweep",
+        "synth": "implemented",
+        "sample": "implemented",
+        "song_vocal": "implemented",
+        "gap": "none_for_current_vocal_scope",
         "task_ids": [
           "SE-03"
         ]
@@ -2246,11 +2257,12 @@
         "synth": "implemented",
         "sample": "implemented",
         "song_vocal": "implemented",
-        "gap": "shared_widgets_not_full_inspector",
+        "gap": "live_browser_observation_pending",
         "task_ids": [
           "SE-02",
           "SE-16"
-        ]
+        ],
+        "implementation": "one_physical_sound_inspector"
       },
       {
         "capability": "eq_dynamics_reverb_modulation_fx",
@@ -2410,7 +2422,7 @@
       {
         "id": "SE-03",
         "title": "Close existing sampled-audio and vocal processing gaps",
-        "status": "in_progress",
+        "status": "implemented_unverified",
         "priority": "P0",
         "depends_on": [
           "SE-01",
@@ -2459,19 +2471,27 @@
               "tests/recordedAudio.native.mjs"
             ],
             "result": "Same-source sampled/vocal fixture remains PCM-identical at 22050 Hz. A cropped silent excerpt under upward pitch motion cannot emit a loud signal located after its source-time endpoint; excludes the final interpolation footprint from the fixture."
+          },
+          {
+            "type": "focused_audio",
+            "paths": [
+              "tests/vocalSeek.test.js",
+              "tests/vocalSeek.audio.mjs",
+              "tests/recordedAudio.native.mjs",
+              "tests/nativePagePlans.test.js"
+            ],
+            "result": "Browser-compatible OfflineAudioContext: ongoing effectful seek maximum difference 1.66893e-5; ended-Clip echo 6.46791e-7 at 24000 Hz. Native sampled/vocal PCM difference 0 at 22050 Hz with nonzero filter sweep; sweep changes PCM by 0.813198 peak. Native page rebase preserves sample/vocal sweep and cutoff automation clocks. Cache invalidation/bounds/cancellation and vocal-only voice/echo retirement pass."
           }
         ],
-        "progress_note": "Existing processors and Clip fades share recordedAudio.js. Browser resumes preserve the original full-Clip pitch knots and integrate transpose, glide/bend and delayed vibrato using the host sample rate and 128-frame control quanta. Song-time-zero is quantum-aligned so seeks keep each Clip control phase. Source content length is independent from the authored wall-time gate, preventing pitch motion from truncating a resumed phrase. Native current sample packet 12 carries an explicit source-time endpoint, preventing pitch motion from escaping reused excerpts. Browser filter/delay audio-buffer history restoration and observed listening/loop qualification remain open.",
-        "remaining_implementation": [
-          "Reconstruct browser filter and delay audio-buffer history on seek, or agree and document a deliberate transport reset policy; current native Session already warms its history."
-        ],
+        "progress_note": "Current vocal processing parity is implemented: shared filter sweep, tone/drive/movement/delay, original-age source/pitch/envelope/modulation, stateful browser seek continuations and echo tails, live-edit replacement/cancellation, and native current packet 13. Focused data/DSP checks pass; public browser interaction observation is next. Physical Windows listening remains separate.",
+        "remaining_implementation": [],
         "source_clock_contract": {
           "owner": "src/dsp/recorded-source-clock.js",
           "pitch_owner": "src/dsp/expression.js: full-Clip Float32 pitch knots, vibrato onset/gain and original-time interpolation",
           "source_position": "Accumulate playbackRate * 2^(detune/1200) over 128-frame host control quanta; use the original Clip gate to evaluate progress. Source seconds and Song/wall seconds remain separate.",
           "web_transport": "src/hosts/web/timeline-clock.js aligns virtual Song time zero to a render-quantum boundary on initial playback and seeks. Initial overlapping source windows are prepared before choosing the audible start time, outside the lookahead scheduler.",
           "bounds": "Eight cached control clocks with sparse checkpoints every 256 control quanta; no asset copies, audio callback allocations or sample-sized control arrays. Existing source/host limits remain.",
-          "current_native_sample_packet": 12,
+          "current_native_sample_packet": 13,
           "qualification": "Focused model and C++ regressions; no physical browser/Windows listening or complete seek PCM equivalence claim."
         }
       },
@@ -3122,11 +3142,25 @@
           "Browser filter/delay audio-buffer history restoration on seek remains SE-03 implementation work.",
           "End-trim/shared source editing and expanded modulation remain on the roadmap."
         ]
+      },
+      {
+        "date": "2026-11-07",
+        "id": "VOCAL-PARITY-CLOSURE-07",
+        "status": "implemented_pending_browser_observation",
+        "summary": "Close stateful seek, live editing, filter sweep and shared recording identity gaps.",
+        "task_ids": [
+          "SE-02",
+          "SE-03",
+          "SE-04"
+        ],
+        "verification": {
+          "status": "Routine 44-case smoke passes; affected data/audio behavior passes; native same-source PCM difference 0; browser-compatible effectful seek/tail continuation within 2e-5 peak difference. Public desktop UI observation pending."
+        }
       }
     ],
     "vocal_parity_milestone": {
       "id": "VOCAL-PARITY-SHARED-INSPECTOR",
-      "status": "implemented_pending_observation",
+      "status": "implemented_pending_browser_observation",
       "scope": "Existing applicable Sound editing on desktop browser and native Windows source; does not imply the future professional effects suite is shipped.",
       "single_dom_instance": true,
       "separate_vocal_sound_panel": false,
@@ -3135,12 +3169,14 @@
         "Measured source scope using the actual vocal processing path",
         "Native-aware vocal audition",
         "Modules/combined view and shared interactive illustrations",
-        "Filter bypass, drive, pitch/bend, glide, vibrato, pulse and tone movement",
+        "Filter bypass and sweep, drive, pitch/bend, glide, vibrato, pulse and tone movement",
         "Delay for vocals and sampled Sounds, including export tails",
         "LFO/envelope routing to cutoff and pan; triggered samples additionally expose note-derived sources",
         "Shared two-point cutoff automation editor and browser/native rendering",
         "Processing-only presets through the common preset dialog/catalog",
-        "Vocal-to-Beat reuse retains processors, clip gain/envelope, source trim and stereo channels"
+        "Vocal-to-Beat reuse retains processors, clip gain/envelope, source trim and stereo channels",
+        "Editable recording identity through shared header, Song history and linked external-asset metadata",
+        "Effectful browser seek continuations retain original filter/drive/echo history, including completed-Clip echoes; live edits crossfade only vocal voices"
       ],
       "source_only_exceptions": [
         "Oscillators, harmonic partials and generated noise require a synth source",
@@ -3153,18 +3189,17 @@
         "native_check": "node tests/recordedAudio.native.mjs",
         "native_reference_result": {
           "sample_rate": 22050,
-          "source": "One-second 220 Hz mono sine; clip-preserving sampled Sound versus vocal; drive/filter/tone/pulse/delay and smoothed pan route",
+          "source": "One-second 220 Hz mono sine; clip-preserving sampled Sound versus vocal with filter sweep, drive, tone, pulse, delay and smoothed pan route",
           "max_pcm_difference": 0,
-          "peak": 0.5345496535301208
+          "peak": 0.5351325869560242
         },
-        "browser_interaction": "unverified; Chromium startup in this workspace is denied socket access",
-        "physical_windows": "unverified; no new Windows ZIP built"
+        "browser_interaction": "Public Pages is accessible; current implementation observation pending deployment",
+        "physical_windows": "unverified; no new Windows ZIP built",
+        "browser_dsp": "tests/vocalSeek.audio.mjs using externally installed node-web-audio-api 2.2.0; ongoing seek max difference 1.66893e-5; completed-Clip echo max difference 6.46791e-7 at 24000 Hz"
       },
       "remaining_qualification": [
-        "Observe live-site trimming and context switching in a real browser",
-        "Physical Windows playback/recording observations and future requested portable build",
-        "Broader seek/loop, live-edit and source conversion qualification remains in the Song reliability gates",
-        "Source-clock and native excerpt-end changes have focused model/C++ checks. Browser filter/delay seek-history restoration remains an implementation gap under SE-03; physical listening and full seek equivalence are unqualified."
+        "Observe current live-site trim, context switching, controls, presets/reuse and playback edits",
+        "Physical Windows playback/recording observation on a future requested portable build"
       ],
       "not_claimed": [
         "Commercial DAW feature equivalence",

@@ -1,3 +1,4 @@
+import {planFilterSweep} from "../../dsp/filter-sweep.js";
 import {planCutoffAutomation} from "../../dsp/automation.js";
 import {recordedEffects,recordingEnvelope} from "../../../recordedAudio.js";
 import {MOD_TARGETS,MOD_SOURCES} from "../../dsp/modulation.js";
@@ -21,7 +22,8 @@ export function planNativeSample(instrument,note,start,duration,assets,{unit=.12
  return {contract:'pre-midi-sample-voice',version:1,kind:1,asset:asset.id,start,duration:Math.max(.02,life),off:patch.audioMode==="clip"?start+life:Math.max(start,releaseStart),end:start+life+.01,graphEnd:start+life+.01,
   automation:patch.automation?planCutoffAutomation(patch.automation,{start,end:start+life+.01,step:0,unit,limitStep:life/unit}):undefined,
   delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,tail:delayTailSeconds(fx),modulation:patch.modulation,pitchValue:note.pitch,velocity:note.velocity,
-  playbackRate:rate,offset:region.offset,sourceLimit:region.offset+region.sourceLength,pan:patch.pan,filter:patch.filter??null,drive:patch.drive??0,movement:motion,
+  sweep:planFilterSweep(fx.filter,start,life,"sample"),
+  playbackRate:rate,offset:region.offset,sourceLimit:region.offset+region.sourceLength,pan:patch.pan,filter:fx.filter,drive:patch.drive??0,movement:motion,
   pitch:planPitch({...note,bend:note.bend??patch.bend},motion,start,Math.max(.02,life)),
   events:patch.audioMode==="clip"?recordingEnvelope(start,life,peak,patch.attack,patch.release):[{kind:0,time:start,value:0},{kind:1,time:at,value:peak},{kind:0,time:Math.max(at,releaseStart),value:peak},{kind:1,time:start+life,value:0}].sort((a,b)=>a.time-b.time)};
 }
@@ -41,7 +43,7 @@ export function planNativeVocal(event,start,unit,assets){
  const tail=delayTailSeconds(fx);
  return {contract:'pre-midi-sample-voice',version:1,kind:2,asset:asset.id,start,duration,
   off:end,end,graphEnd:end,playbackRate:range.rate,offset,sourceLimit:range.sourceEnd,pan:fx.pan,
-  filter:fx.filter,drive:fx.drive,movement:movement(fx),
+  filter:fx.filter,drive:fx.drive,movement:movement(fx),sweep:planFilterSweep(fx.filter,start,duration,"vocal"),
   pitch:{...range.pitch,start,duration},
   delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,tail,
   automation:fx.automation?planCutoffAutomation(fx.automation,{start,end,step:0,unit,limitStep:duration/unit}):undefined,
@@ -50,9 +52,9 @@ export function planNativeVocal(event,start,unit,assets){
 export function encodeNativeSample(plan,rate){
  if(plan.contract!=='pre-midi-sample-voice'||plan.version!==1)throw Error('Unknown native sample voice contract');
  const parts=[],u32=n=>{if(!Number.isInteger(n)||n<0||n>0xffffffff)throw Error('Invalid native sample integer');const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n,true);parts.push(b);},f64=n=>{if(!Number.isFinite(n))throw Error('Invalid native sample number');const b=new Uint8Array(8);new DataView(b.buffer).setFloat64(0,n,true);parts.push(b);};
- u32(0x38564d50);u32(rate);u32(1);u32(12);u32(plan.kind);u32(plan.asset);
+ u32(0x38564d50);u32(rate);u32(1);u32(13);u32(plan.kind);u32(plan.asset);
  for(const n of [plan.start,plan.duration,plan.end,plan.graphEnd,plan.off,plan.pan,plan.playbackRate,plan.offset,plan.sourceLimit,plan.filter?.cutoff??14000,plan.filter?.resonance??.7,plan.drive,plan.movement.rate,plan.movement.depth,plan.movement.delay,plan.movement.tremolo,plan.movement.tremoloRate])f64(n);
- for(const value of [plan.delayMix??0,plan.delayTime??.24,plan.delayFeedback??.26,plan.movement.tone,plan.movement.toneRate])f64(value);
+ for(const value of [plan.delayMix??0,plan.delayTime??.24,plan.delayFeedback??.26,plan.movement.tone,plan.movement.toneRate,plan.sweep.startCutoff,plan.sweep.sweepEnd])f64(value);
  u32(['lowpass','highpass','bandpass','notch'].indexOf(plan.filter?.type??'lowpass'));u32(plan.filter?0:1);
  const curve=plan.pitch.values??[];if(curve.length>600)throw Error('Native sample pitch curve exceeds 600 points');u32(curve.length);curve.forEach(f64);
  u32(plan.events.length);for(const event of plan.events){u32(event.kind);f64(event.time);f64(Math.fround(event.value));}

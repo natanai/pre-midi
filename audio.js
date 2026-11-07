@@ -7,6 +7,8 @@ import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
 import {scheduledSongOnsets,scheduledSongOnsetsInWindow,createLiveSongScheduler} from "./songSchedule.js";
 import {decodeSongRecordings,recordingEventsAtStep,scheduleVocal} from "./songAudio.js";
 import {alignedTimelineStart} from "./src/hosts/web/timeline-clock.js";
+import {prepareVocalSeek,scheduleVocalSeek} from "./src/hosts/web/vocal-seek.js";
+import {createVocalLiveEditor,vocalPlaybackSignature} from "./src/hosts/web/vocal-live-edit.js";
 import {vocalSourceRange} from "./vocalEffects.js";
 import {delayTailSeconds} from "./src/dsp/effect-tail.js";
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
@@ -21,6 +23,8 @@ import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
 import {nativeEnabled,auditionNative,playNative,renderNative,nativeRequest,prepareNativeAssets,ensureNativeOutput,nativeRequiredAssets,nativePlans} from "./src/hosts/native/session.js";
 import {playNativeSongStreamExperimental} from "./src/hosts/native/song-stream-control.js";
 export {nativeEnabled,cancelNativeTransport} from './src/hosts/native/session.js';
+let webTransportEpoch=0;
+export const cancelWebTransport=()=>{webTransportEpoch++;};
 // Canonical plans are shared by native desktop playback and the web adapter.
 // Everything audible comes from the resolved sound patch stored in the beat.
 export const secondsPerStep = doc => 60/doc.bpm/4;
@@ -288,30 +292,43 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
   handle.refresh=()=>{const next=read();checkAudioTimelineLength(next);
    return handle.update(prepare(next),renderEvents(next,{maxEvents:4096}));};return handle;
  }
+ const epoch=++webTransportEpoch,isCurrent=()=>epoch===webTransportEpoch;
  context||=new AudioContext();
  if(context.state!=="running")await context.resume();
+ if(!isCurrent())throw Error("Playback request cancelled");
  const ctx=context,out=ctx.createGain(),read=typeof beat==="function"?beat:()=>beat;
  const liveSong=typeof getRevision==="function"?createLiveSongScheduler(read,getRevision):null;
  await Promise.all(musicSampleContexts(read()).map(entry=>decodeSamples(ctx,entry,bufferCache(ctx))));
  const vocalBuffers=await decodeSongRecordings(ctx,read());
  const loops=()=>typeof loop==="function"?loop():loop;
- out.gain.value=.85;out.connect(ctx.destination);
+ out.gain.value=.85;
  const start=Number.isSafeInteger(startStep)&&startStep>=0?startStep:0;
  // Reconstruct long source clocks before choosing the audible start time.
  // The scheduling lookahead must not be consumed by seek preparation.
- const initial=read(),initialCycle=initial.kind==='song'?songDurationSteps(initial):0,
-  initialUnit=secondsPerStep(initial),initialStep=initialCycle?start%initialCycle:0,
-  initialSources=new Map();
+ let initial,initialCycle,initialUnit,initialStep,continuations;
+ for(;;){
+  initial=read();initialCycle=initial.kind==='song'?songDurationSteps(initial):0;
+  initialUnit=secondsPerStep(initial);initialStep=initialCycle?start%initialCycle:0;
+  const signature=vocalPlaybackSignature(initial);
+  await decodeSongRecordings(ctx,initial);
+  if(!isCurrent())throw Error("Playback request cancelled");
+  continuations=await prepareVocalSeek(initial,initialStep,vocalBuffers,ctx.sampleRate,{cycleStart:start-initialStep,isCurrent});
+  if(!isCurrent())throw Error("Playback request cancelled");
+  if(signature===vocalPlaybackSignature(read()))break;
+ }
+ const initialSources=new Map();
  if(initialCycle)for(const event of recordingEventsAtStep(initial,initialStep,{includeOverlapping:true})){
+  if(continuations.has(event.clip.id))continue;
   const buffer=vocalBuffers.get(event.recording.id);if(!buffer)continue;
   initialSources.set(event.clip.id,vocalSourceRange(event.recording,event.clip,initialUnit,initialStep-event.clip.startStep,
    {sampleRate:ctx.sampleRate,controlStart:(start-initialStep+event.clip.startStep)*initialUnit,sourceDuration:buffer.duration}));
  }
  let scheduled=start,nextTime=alignedTimelineStart(ctx,start,secondsPerStep(read())),shown=-1,stopped=false,timer,activeStep=null;
- onStart({context:ctx,startTime:nextTime});
+ out.connect(ctx.destination);onStart({context:ctx,startTime:nextTime});
  const queue=[],session=new VoiceSession(ctx,out);
  function stop() {
   if(stopped)return;
+  if(isCurrent())webTransportEpoch++;
   stopped=true;clearInterval(timer);session.stop();
   const now=ctx.currentTime;
   out.gain.cancelScheduledValues(now);
@@ -333,16 +350,18 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
     void decodeSamples(ctx,entry,bufferCache(ctx)).catch(console.warn);
    const sparse=current.kind==="song"&&liveSong?liveSong.atStep(step):null;
    const events=current.kind==="song"?(sparse?.notes??eventsAtSongStep(current,step)):stepEvents(current,scheduled);
+   if(scheduled===start)for(const prepared of continuations.values())
+    scheduleVocalSeek(ctx,out,prepared,nextTime,session);
    // On initial playback/seek, preserve vocals already sounding before this
    // step. Subsequent vocal starts come directly from the indexed Song onset.
    if(current.kind==="song")for(const event of (
     scheduled===start?recordingEventsAtStep(current,step,{includeOverlapping:true}):
      sparse?.vocals??recordingEventsAtStep(current,step)
    ))
-    scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers,{elapsedSteps:step-event.clip.startStep,session,
+    if(scheduled!==start||!continuations.has(event.clip.id))scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers,{elapsedSteps:step-event.clip.startStep,session,
      sourceRange:scheduled===start?initialSources.get(event.clip.id):null,
      controlStart:(scheduled-step+event.clip.startStep)*unit});
-   if(scheduled===start)initialSources.clear();
+   if(scheduled===start){initialSources.clear();continuations.clear();}
    for(const event of events)
     scheduleNote(ctx,out,event.instrument,event.note,
      nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),
@@ -362,7 +381,11 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
   const current=read();
   if(!loops()&&scheduled>=(current.kind==="song"?songDurationSteps(current):current.bars*16)&&ctx.currentTime>=Math.max(nextTime,session.end))stop();
  }
- timer=setInterval(tick,25);tick();return {stop,get diagnostics(){return session.diagnostics;}};
+ const firstTime=nextTime,firstUnit=secondsPerStep(read());
+ const refresh=createVocalLiveEditor({context:ctx,destination:out,read,decoded:vocalBuffers,session,looping:loops,
+  isCurrent:()=>!stopped&&isCurrent(),scheduled:()=>scheduled,
+  position:at=>activeStep?activeStep.absolute+(at-activeStep.time)/activeStep.unit:start+(at-firstTime)/firstUnit});
+ timer=setInterval(tick,25);tick();return {backend:"web-audio",stop,refresh,get diagnostics(){return session.diagnostics;}};
 }
 function pcmWav(buffer) {
  const ch=Math.min(2,buffer.numberOfChannels),size=buffer.length*ch*2;

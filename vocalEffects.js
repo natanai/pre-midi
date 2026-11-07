@@ -4,13 +4,13 @@ import {recordedSourceTravel} from "./src/dsp/recorded-source-clock.js";
 import {RECORDING_DEFAULTS,validateRecordedModulation,validateRecordingAutomation} from "./recordedAudio.js";
 // Clip audio processing uses the sampler's filter, drive and movement contracts,
 // plus the synthesizer's existing delay bus. Source recordings remain immutable.
-import {validateSampleTone} from "./audioEffects.js";
+import {validateSampleTone,sampleTone} from "./audioEffects.js";
 import {validateMovement,validateBend,movement} from "./expression.js";
 export const VOCAL_EFFECT_DEFAULTS=RECORDING_DEFAULTS;
 export function vocalEffects(clip){
  const fx=clip?.effects||{};
  return {...VOCAL_EFFECT_DEFAULTS,...fx,movement:movement(fx),
-  filter:fx.filter??null,bend:fx.bend??parameterDefaults("bend","vocal")};
+  filter:fx.filter?sampleTone(fx).filter:null,bend:fx.bend??parameterDefaults("bend","vocal")};
 }
 export function validateVocalEffects(fx){
  if(fx===undefined)return [];

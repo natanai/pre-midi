@@ -2,7 +2,7 @@ import {parameterFor,parameterDefaults,validParameterValue,validateParameterBloc
 // A single drive characteristic shared by synth and sample playback.
 export const SAMPLE_FILTERS=parameterFor("filter.type","sample").values;
 export const DEFAULT_SAMPLE_FILTER=Object.freeze(parameterDefaults("filter","sample"));
-export const sampleTone=patch=>({filter:patch.filter??DEFAULT_SAMPLE_FILTER,drive:patch.drive??0});
+export const sampleTone=patch=>({filter:patch.filter?{...DEFAULT_SAMPLE_FILTER,...patch.filter}:DEFAULT_SAMPLE_FILTER,drive:patch.drive??0});
 const curves=new Map();
 export function driveCurve(amount){
  const strength=Math.round(amount*100);
@@ -13,7 +13,7 @@ export function driveCurve(amount){
 }
 export function validateSampleTone(patch){
  const filter=patch.filter;
- if(filter!=null&&validateParameterBlock(filter,"filter",{context:"sample"}).length)return "Invalid sample filter.";
+ if(filter!=null&&validateParameterBlock(filter,"filter",{context:"sample",optional:["sweep","sweepTime"]}).length)return "Invalid sample filter.";
  if(patch.drive!==undefined&&!validParameterValue("effects.drive",patch.drive,"sample"))return "Invalid sample distortion.";
  return null;
 }

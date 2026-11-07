@@ -2,6 +2,7 @@ import {planCutoffAutomation} from "./automation.js";
 import {movement,planPitch} from "./expression.js";
 import {planAmplitudeEnvelope} from "./amplitude-envelope.js";
 import {delayTailSeconds} from "./effect-tail.js";
+import {planFilterSweep} from "./filter-sweep.js";
 export const SYNTH_VOICE_CONTRACT_VERSION=1;
 export const noteFrequency=pitch=>440*2**((pitch-69)/12);
 // Called after patch validation at the document/preview boundary. Plain musical
@@ -20,9 +21,7 @@ export function planSynthVoice(instrument,event,start,duration,{automation,timel
  const norm=sourceLevel>0?1/Math.max(1,sourceLevel):0;
  const peak=Math.max(.000001,Math.min(.31,instrument.volume*event.velocity*.27)*norm);
  const amplitude=planAmplitudeEnvelope({start,off,peak,envelope:patch.envelope});
- const sweep=patch.filter.sweep??0;
- const filter={...patch.filter,startCutoff:sweep===0?patch.filter.cutoff:Math.max(50,Math.min(14000,patch.filter.cutoff*2**sweep)),
-  sweepEnd:start+Math.min(duration,patch.filter.sweepTime??.2)};
+ const filter={...patch.filter,...planFilterSweep(patch.filter,start,duration)};
  const result={contract:"pre-midi-synth-voice",version:SYNTH_VOICE_CONTRACT_VERSION,
   patch,presetId:patch.presetId,start,duration,off,end,graphEnd:end+.15,
   audibleEnd:end+.15+delayTailSeconds(patch.effects),peak,amplitude,filter,movement:motion,

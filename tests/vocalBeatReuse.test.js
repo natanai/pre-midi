@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {create,upgradeBeatFeatures,validate as validateBeat,parse as parseBeat,
  SAMPLE_SLICE_BEAT_VERSION} from "../schema.js";
-import {createSong,addVocalTake,removeSongClip,pruneUnusedRecordings,upgradeSongFeatures,validateSong,
+import {createSong,addVocalTake,removeSongClip,pruneUnusedRecordings,upgradeSongFeatures,validateSong,renameVocalRecording,
  SAMPLE_SLICE_SONG_VERSION} from "../songModel.js";
 import {linkedVocalSample} from "../vocalBeatReuse.js";
 import {makeRecordingAsset} from "../recordingAssets.js";
@@ -78,12 +78,15 @@ test("web and native sample playback use the identical source-time region",()=>{
  assert.equal(plan.end, .75+region.length+.01);
  const packet=encodeNativeSample(plan,44100);
  const view=new DataView(packet.buffer,packet.byteOffset,packet.byteLength);
- assert.equal(view.getUint32(12,true),12,"Current native sampler packet preserves source offset");
+ assert.equal(view.getUint32(12,true),13,"Current native sampler packet preserves source offset");
  assert.equal(view.getUint32(16,true),1);
  assert.deepEqual(validateBeat(beat),[]);
 });
 test("Song ZIP bundles a linked WAV once and both Song and standalone Beat round-trip",async()=>{
  const {song,rec,original,beat}=fixture();
+ renameVocalRecording(song,song.tracks.find(t=>t.kind==="vocal").clips[0].id,"  sung phrase  ");
+ assert.equal(song.recordings[0].name,"sung phrase");assert.equal(beat.samples[0].name,song.recordings[0].name);
+ assert.deepEqual(validateSong(song),[]);
  const packed=exportSongProject(song);
  const items=await readZip(packed.blob);
  assert.equal(items.size,2,"One instructions file and one shared WAV");

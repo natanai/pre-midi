@@ -152,6 +152,18 @@ export function duplicateVocalClip(song,clipId){
  track.clips.push(copy);
  return copy;
 }
+export function renameVocalRecording(song,clipId,name){
+ const clip=song.tracks.filter(track=>track.kind==="vocal").flatMap(track=>track.clips).find(clip=>clip.id===clipId);
+ const recording=clip&&song.recordings.find(recording=>recording.id===clip.recordingId);
+ const value=String(name??"").trim();
+ if(!recording)throw Error("Vocal Clip references a missing Recording.");
+ if(!value||value.length>60)throw Error("Recording names need 1–60 characters.");
+ recording.name=value;
+ // A zero-copy WAV alias is the same external asset, including its metadata.
+ for(const owner of [...song.beats,...song.tracks.flatMap(track=>track.freeform?[track.freeform]:[])])
+  for(const asset of owner.samples??[])if(asset.sourceRecordingId===recording.id)asset.name=value;
+ return recording;
+}
 export function trimVocalClip(song,clipId,seconds){
  const track=song?.tracks?.find(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.id===clipId));
  if(!track)throw Error("Vocal Clip does not exist.");

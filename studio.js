@@ -5,7 +5,7 @@ import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll,moveRackSoundRow} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, auditionChord, auditionHeld, auditionVocal, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
+import { play, audition, auditionChord, auditionHeld, auditionVocal, wav, primeSamples, nativeEnabled, cancelNativeTransport, cancelWebTransport } from "./audio.js";
 import { installKeyboardPiano } from "./keyboardPiano.js";
 import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
@@ -32,7 +32,7 @@ import {EXAMPLES,EXAMPLE_SOUND_PRESETS,buildExample} from "./examples.js";
 import {exportProject,importProject} from "./packageIO.js";
 import {installMicrophoneRecorder} from "./microphoneUI.js";
 import {getAsset} from "./assetRegistry.js";
-import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,trimVocalClip,setSongTempo,pruneUnusedRecordings,validateSong} from "./songModel.js";
+import {createSong,addBeat,addSongTrack,addBeatClip,addVocalTake,duplicateVocalClip,renameVocalRecording,trimVocalClip,setSongTempo,pruneUnusedRecordings,validateSong} from "./songModel.js";
 import {renderVocalEditor,syncVocalInspector,decodeVocalRecording} from "./vocalEditor.js";
 import {vocalEffects} from "./vocalEffects.js";
 import {encodePcmWav,RECORDING_RATE} from "./recording.js";
@@ -295,7 +295,7 @@ async function finalizeVocalTake(){
  finally{vocalFinalizing=false;vocalTargetTrackId=null;showVocalState(false);}
 }
 function stop() {
- playbackGeneration++;
+ playbackGeneration++;cancelWebTransport();
  if(window.__TAURI__)void cancelNativeTransport().catch(error=>console.warn('Native stop:',error));
  if(vocalTake&&!playback)void finalizeVocalTake();
  if (playback) playback.stop();
@@ -309,10 +309,10 @@ function stop() {
  songUI?.setPosition(-1);
  paintPlayhead();
 }
-let nativeEditTimer;
-function refreshNativePlayback(){
- clearTimeout(nativeEditTimer);const current=playback;if(current?.backend!=='native-cpp')return;
- nativeEditTimer=setTimeout(()=>{if(playback===current)void current.refresh().catch(error=>{if(playback===current)message('playback edit: '+error.message,true);});},90);
+let playbackEditTimer;
+function refreshPlayback(){
+ clearTimeout(playbackEditTimer);const current=playback;if(typeof current?.refresh!=='function')return;
+ playbackEditTimer=setTimeout(()=>{if(playback===current)void current.refresh().catch(error=>{if(playback===current)message('playback edit: '+error.message,true);});},90);
 }
 function commitChange(before){
  // A keyboard edit commits through the canonical document path and redraws
@@ -332,7 +332,7 @@ function commitChange(before){
   replacement?.querySelector('.visual-graph-point[data-handle="'+graphFocus.handle+'"]')
    ?.focus({preventScroll:true});
  }
- refreshNativePlayback();
+ refreshPlayback();
  return true;
 }
 function modify(change){
@@ -402,7 +402,7 @@ function undo() {
  restoreDocument(history.pop());songEditRevision++;
  store();
  render();
- refreshNativePlayback();
+ refreshPlayback();
 }
 function redo() {
  if (!future.length) return;
@@ -411,7 +411,7 @@ function redo() {
  restoreDocument(future.pop());songEditRevision++;
  store();
  render();
- refreshNativePlayback();
+ refreshPlayback();
 }
 function repairSelection() {
  if (!beat.instruments.some(entry => entry.id === selectedInstrumentId)) selectedInstrumentId = beat.instruments[0].id;
@@ -1276,6 +1276,7 @@ function renderVocalWorkspace(){
   },
   onBack:()=>songUI.select(null),
   onUndo:undo,onRedo:redo,bpm:song.bpm,song,
+  onRename:(clipId,value)=>{if(target(clipId))modifySong(()=>renameVocalRecording(song,clipId,value));},
   onSelect:clipId=>songUI.select(clipId),onRecord:()=>$("song-record").click(),
   onMove:(clipId,step)=>{const entry=target(clipId);if(entry)modifySong(()=>{entry.clip.startStep=step;});},
   inspectorOpen:inspectorState!=="closed",wide:inspectorViewport.matches,canUndo:history.length>0,canRedo:future.length>0,

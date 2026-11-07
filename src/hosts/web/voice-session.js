@@ -56,14 +56,15 @@ export class VoiceSession{
  constructor(context,destination,{maxVoices=64,chronological=false}={}){
   this.context=context;this.destination=destination;this.allocator=new VoiceAllocator(maxVoices);
   this.voices=new Map();this.buses=new Map();this.admitted=0;this.rejected=0;this.closed=false;this.steals=0;this.chronological=chronological;
+  this.history=new Set();
  }
- adopt(voice){
+ adopt(voice,{allocationEnd=voice?.end}={}){
   if(!voice)return;
   if(this.closed){voice.discard();this.rejected++;return voice;}
   const now=isOffline(this.context)&&this.chronological?voice.start:this.context.currentTime;
   if(voice.end<=now){voice.dispose();return voice;}
   const start=Math.max(voice.start,now);
-  const allocation=this.allocator.admit({start,release:Math.max(start,voice.release),end:voice.end,priority:voice.priority},now);
+  const allocation=this.allocator.admit({start,release:Math.max(start,Math.min(allocationEnd,voice.release)),end:allocationEnd,priority:voice.priority},now);
   if(allocation.status==="rejected"){voice.discard();this.rejected++;return voice;}
   voice.admitted=true;this.admitted++;
   for(const steal of allocation.steals){this.voices.get(steal.id)?.stop(steal.at);this.steals++;}
@@ -71,8 +72,12 @@ export class VoiceSession{
   voice.onDispose=()=>this.voices.delete(allocation.id);
   return voice;
  }
+ addHistory(voice){
+  if(this.closed){voice.discard();return voice;}
+  voice.admitted=true;this.history.add(voice);voice.onDispose=()=>this.history.delete(voice);return voice;
+ }
  get end(){
-  return Math.max(0,...[...this.voices.values()].map(voice=>voice.end),...[...this.buses.values()].map(bus=>bus.end));
+  return Math.max(0,...[...this.voices.values(),...this.history].map(voice=>voice.end),...[...this.buses.values()].map(bus=>bus.end));
  }
  get diagnostics(){
   const now=this.context.currentTime;
@@ -82,18 +87,32 @@ export class VoiceSession{
    retiring:[...this.voices.values()].filter(voice=>voice.retiring&&voice.end>now).length};
  }
  delay(effects,voice){
-  const key=JSON.stringify([effects.delayMix,effects.delayTime,effects.delayFeedback]);
+  const domain=voice.vocalClipId===undefined?"sound":"vocal";
+  const key=JSON.stringify([domain,effects.delayMix,effects.delayTime,effects.delayFeedback]);
   let bus=this.buses.get(key);
   if(!bus){
    const context=this.context,send=context.createGain(),delay=context.createDelay(1.2),feedback=context.createGain(),wet=context.createGain();
    send.gain.value=effects.delayMix*.55;delay.delayTime.value=effects.delayTime;
    feedback.gain.value=effects.delayFeedback;wet.gain.value=.8;
    send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(this.destination);
-   bus={input:send,nodes:[send,delay,feedback,wet],inputs:new Set(),tail:delayTailSeconds(effects),
+   bus={domain,input:send,nodes:[send,delay,feedback,wet],inputs:new Set(),tail:delayTailSeconds(effects),
     get end(){return Math.max(0,...[...this.inputs].filter(voice=>!voice.cancelled).map(voice=>voice.end+this.tail));}};this.buses.set(key,bus);
   }
   bus.inputs.add(voice);
   return bus.input;
+ }
+ replaceVocalVoices(at){
+  for(const [id,voice] of this.voices)if(voice.vocalClipId!==undefined){
+   voice.stop(at);const reservation=this.allocator.records.find(record=>record.id===id);
+   if(reservation)reservation.end=Math.min(reservation.end,at);
+  }
+  for(const voice of this.history)if(voice.vocalClipId!==undefined)voice.stop(at);
+  for(const [key,bus] of this.buses)if(bus.domain==="vocal"){
+   const wet=bus.nodes.at(-1);wet.gain.cancelScheduledValues(at);wet.gain.setValueAtTime(.8,at);wet.gain.linearRampToValueAtTime(0,at+STEAL_FADE_SECONDS);
+   this.buses.delete(key);
+   const deadline=this.context.createBufferSource();deadline.buffer=this.context.createBuffer(1,1,this.context.sampleRate);
+   deadline.onended=()=>{bus.nodes.forEach(disconnect);disconnect(deadline);};deadline.start(at+STEAL_FADE_SECONDS+.001);
+  }
  }
  sweep(){
   const now=this.context.currentTime;this.allocator.prune(now);
@@ -104,15 +123,15 @@ export class VoiceSession{
  }
  stop(at=this.context.currentTime){
   if(this.closed)return;this.closed=true;
-  if(!this.voices.size&&!this.buses.size){this.allocator.clear();return;}
+  if(!this.voices.size&&!this.buses.size&&!this.history.size){this.allocator.clear();return;}
   let end=at;
-  for(const voice of this.voices.values())end=Math.max(end,voice.stop(at));
+  for(const voice of [...this.voices.values(),...this.history])end=Math.max(end,voice.stop(at));
   for(const bus of this.buses.values()){
    const wet=bus.nodes.at(-1);wet.gain.cancelScheduledValues(at);wet.gain.setValueAtTime(.8,at);wet.gain.linearRampToValueAtTime(0,at+STEAL_FADE_SECONDS);
   }
   // Audio-time cleanup keeps working if the UI timer is throttled or suspended.
   const deadline=this.context.createBufferSource();deadline.buffer=this.context.createBuffer(1,1,this.context.sampleRate);
-  deadline.onended=()=>{for(const voice of this.voices.values())voice.dispose();this.voices.clear();for(const bus of this.buses.values())bus.nodes.forEach(disconnect);this.buses.clear();this.allocator.clear();disconnect(deadline);};
+  deadline.onended=()=>{for(const voice of [...this.voices.values(),...this.history])voice.dispose();this.voices.clear();this.history.clear();for(const bus of this.buses.values())bus.nodes.forEach(disconnect);this.buses.clear();this.allocator.clear();disconnect(deadline);};
   deadline.start(Math.max(end,at+STEAL_FADE_SECONDS)+.001);
  }
 }

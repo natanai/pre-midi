@@ -318,6 +318,7 @@ export function mountSoundInspectorChrome(root,{owner="beat"}={}){
  frame.get("instrument-actions").hidden=false;
  frame.get("change-sound").hidden=false;frame.get("change-sound").textContent="browse sounds";
  frame.get("instrument-name").disabled=false;
+ frame.get("instrument-name").setAttribute("aria-label",owner==="vocal"?"Recording name":"Instrument name");
  frame.get("sound-close").hidden=false;
  frame.owner=owner;
  if(frame.element.parentElement!==root)root.append(frame.element);

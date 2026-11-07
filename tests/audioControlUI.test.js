@@ -45,7 +45,7 @@ test("two-axis sound-graph drags are one atomic vocal edit with shared parameter
  const {clip,recording}=voice();
  const original=vocalDisplayPatch(clip,recording);
  const delta=vocalChangesFromControl(original,[["filter","cutoff"],["filter","resonance"]],[1750,4.5]);
- assert.deepEqual(delta,{filter:{type:"lowpass",cutoff:1750,resonance:4.5}});
+ assert.deepEqual(delta,{filter:{type:"lowpass",cutoff:1750,resonance:4.5,sweep:0,sweepTime:.2}});
  assert.equal(validateVocalEffects(delta).length,0);
  assert.equal(clip.effects,undefined,"Projected editor changes never mutate Song source objects");
  const rise=vocalChangesFromControl(original,["attack"],.6);

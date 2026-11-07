@@ -49,12 +49,13 @@ export function rebaseNativePlanToPage(plan,pageStartFrame,sampleRate){
    ...oscillator,pitch:{...oscillator.pitch,
     start:localTime(oscillator.pitch.start)}
   }));
-  if(plan.automation)rebased.automation={...plan.automation,
-   points:plan.automation.points.map(point=>({...point,time:localTime(point.time)}))};
  }else{
   rebased.events=plan.events.map(event=>({...event,time:localTime(event.time)}));
   rebased.pitch={...plan.pitch,start:localTime(plan.pitch.start)};
+  if(plan.sweep)rebased.sweep={...plan.sweep,sweepEnd:localTime(plan.sweep.sweepEnd)};
  }
+ if(plan.automation)rebased.automation={...plan.automation,
+  points:plan.automation.points.map(point=>({...point,time:localTime(point.time)}))};
  if(rebased.start>601)
   throw Error("Native page voice starts beyond the bounded session-local clock");
  return rebased;

@@ -33,7 +33,7 @@ export function soundPanelViews(patch,kind){
  const view=(id,title,keys,model=kind,page=0)=>({id,title,keys,kind:model,page});
  if(kind==="filter")return [
   view("response","filter",["filter.type","filter.cutoff","filter.resonance"]),
-  ...(patch.type==="synth"?[view("sweep","filter sweep",["filter.cutoff","filter.sweep","filter.sweepTime"],"filter-sweep")]:[]),
+  ...(patch.type==="synth"||patch.filter?[view("sweep","filter sweep",["filter.cutoff","filter.sweep","filter.sweepTime"],"filter-sweep")]:[]),
   view("drive","distortion",["filter.type","filter.cutoff","filter.resonance",patch.type==="synth"?"effects.drive":"drive"],"distortion"),
   ...(patch.type==="synth"?[view("noise","noise",["noise","noiseDecay"],"noise")]:[])
  ];

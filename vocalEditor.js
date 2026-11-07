@@ -42,7 +42,7 @@ export function syncVocalInspector(root,{open=true,wide=true}={}){
  if(root.vocalWorkspaceEditor&&!root.hidden)syncEditorInspector(root.vocalWorkspaceEditor,{open,wide});
 }
 export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo,onSave,onBrowse,
- onSelect,onRecord,onMove,song=null,bpm=120,inspectorOpen=true,wide=true,onInspectorOpen=()=>{},canUndo=true,canRedo=true}){
+ onSelect,onRecord,onMove,onRename,song=null,bpm=120,inspectorOpen=true,wide=true,onInspectorOpen=()=>{},canUndo=true,canRedo=true}){
  root.classList.remove("sound-section");
  root.hidden=!selection;
  if(!selection){root.replaceChildren();root.vocalWorkspaceEditor=null;return;}
@@ -102,7 +102,8 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
  const patch=vocalDisplayPatch(clip,recording);
  const apply=(path,value)=>onApply(clipId,vocalChangesFromControl(patch,path,value));
  const frame=mountSoundInspectorChrome(getWorkspace("sound-section"),{owner:"vocal"}),get=frame.get;
- get("instrument-name").value=recording.name;get("instrument-name").disabled=true;
+ const name=get("instrument-name");name.value=recording.name;name.disabled=false;
+ name.onchange=()=>onRename?.(clipId,name.value.trim()||recording.name);
  get("instrument-actions").hidden=true;get("sound-controls").hidden=true;
  get("sound-close").onclick=()=>toggleInspector(false);
  get("change-sound").textContent="browse processing";get("change-sound").onclick=()=>onBrowse?.(clipId);
