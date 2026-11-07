@@ -802,6 +802,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   handles.forEach((point,i)=>{
    const button=document.createElement("button");button.type="button";
    button.className="visual-graph-point";
+   if(point.x<115)button.classList.add("visual-point-start");
+   if(point.x>245)button.classList.add("visual-point-end");
    button.style.left=(point.x/360*100)+"%";
    button.style.top=(point.y/112*100)+"%";
    button.dataset.handle=String(i);
@@ -1014,6 +1016,12 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const snapped=Math.round(raw/axis.step)*axis.step;
   return clamp(Number(snapped.toFixed(4)),axis.hardMin??axis.min,axis.hardMax??axis.max);
  };
+ const placeDragReadout=(position,commit)=>{
+  const width=plot.clientWidth,half=Math.min(245,Math.max(0,width-16))/2;
+  dragReadout.style.left=clamp(position.x/360*width,half+8,width-half-8)+"px";
+  dragReadout.style.top=(clamp(position.y,14,91)/112*100)+"%";
+  dragReadout.hidden=commit;
+ };
  // A spectral drawing can be painted in two dimensions: moving horizontally
  // selects neighboring harmonics while vertical movement changes their levels.
  // Consecutive partials are interpolated so fast strokes do not leave holes.
@@ -1038,9 +1046,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   draw(updated);
   dragReadout.textContent="harmonics "+(stroke.base+1)+"–"+(stroke.base+8)+
    " · h"+(index+1)+" "+Math.round(level*100)+"%";
-  dragReadout.style.left=(clamp(position.x,24,336)/360*100)+"%";
-  dragReadout.style.top=(clamp(position.y,14,91)/112*100)+"%";
-  dragReadout.hidden=commit;
+  placeDragReadout(position,commit);
   const key=paths.length===1?paths[0]:paths;
   const value=paths.length===1?values[0]:values;
   if(commit&&paths.every((path,i)=>values[i]===at(patch,path))){
@@ -1059,9 +1065,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   // A persistent readout survives the redraw while the pointer is captured.
   dragReadout.textContent=point.label+" · "+
    point.axes.map((axis,i)=>axisReadout(axis,values[i])).join(" · ");
-  dragReadout.style.left=(clamp(position.x,24,336)/360*100)+"%";
-  dragReadout.style.top=(clamp(position.y,14,91)/112*100)+"%";
-  dragReadout.hidden=commit;
+  placeDragReadout(position,commit);
   // Two axes are one sound edit and one undo step, never two disconnected edits.
   const key=paths.length===1?paths[0]:paths;
   const value=paths.length===1?values[0]:values;
