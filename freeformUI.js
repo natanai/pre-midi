@@ -506,7 +506,11 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
    return;
   }
   const showingNoteEffects=editingFreeformNoteEffects&&!!currentNote();
-  if(!showingNoteEffects)inspector.append(soundUI.render());
+  // Keep the canonical Sound Inspector mounted (but hidden) while shaping
+  // a note so graph listeners are disposed through its normal render lifecycle.
+  const soundHost=soundUI.render();
+  soundHost.hidden=showingNoteEffects;
+  inspector.append(soundHost);
   const chunkControls=el("div","freeform-chunk-tools");
   chunkControls.append(action("make Chunk from this bar",makeChunkAtBar));
   const chunkPicker=el("select");chunkPicker.setAttribute("aria-label","Reusable Chunk");
