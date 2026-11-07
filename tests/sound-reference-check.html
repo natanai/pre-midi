@@ -1,0 +1,107 @@
+<!doctype html><meta charset="utf-8">
+<style>body{margin:0;background:#080808;color:#ddd;font:12px monospace}
+.mount{max-width:680px;margin:8px auto}button{cursor:pointer}</style>
+<pre id="result"></pre>
+<script type="module">
+import {illustrateSoundPanel,diagram} from "../soundIllustrations.js";
+import {modeledFilterMagnitude} from "../filterIllustrationResponse.js";
+import {modeledDelayTaps} from "../delayIllustrationResponse.js";
+import {modeledModulationTrace} from "../modulationIllustrationResponse.js";
+const checks={},pass=(label,value)=>{checks[label]=!!value;if(!value)throw Error(label);};
+let status="FAIL";
+
+try{
+ // Verify the teaching curve against the browser's real Web Audio filter,
+ // independently of the repository's matching native C++ coefficients.
+ const reference=new OfflineAudioContext(1,128,48000);
+ const frequencies=new Float32Array([70,180,900,1700,2300,4800,11500]);
+ let filterChecks=0;
+ for(const type of ["lowpass","highpass","bandpass","notch"])
+  for(const q of [.1,5,16]){
+   const biquad=reference.createBiquadFilter();
+   biquad.type=type;biquad.frequency.value=2300;biquad.Q.value=q;
+   const mags=new Float32Array(frequencies.length),phases=new Float32Array(frequencies.length);
+   biquad.getFrequencyResponse(frequencies,mags,phases);
+   let firstMismatch=null;
+   for(let i=0;i<frequencies.length;i++){
+    const expected=modeledFilterMagnitude({type,cutoff:2300,resonance:q},frequencies[i]);
+    const observed=mags[i];
+    if(firstMismatch===null&&Math.abs(observed-expected)>=Math.max(.002,expected*.012))
+     firstMismatch={hz:frequencies[i],expected,observed};
+    filterChecks++;
+   }
+   // Assert all seven frequencies per type/Q; only transmit twelve concise
+   // pass/fail summaries over the local browser-test reporting endpoint.
+   pass("48k Biquad model matches Web Audio "+type+" q="+q+
+    (firstMismatch?" "+JSON.stringify(firstMismatch):""),firstMismatch===null);
+  }
+ pass("all four Sound filter types and their resonance values are physically qualified",
+  filterChecks===84);
+ void fetch("/__layout_progress?stage=filter-magnitude-verified");
+ // Independently render a unit impulse through the same browser DelayNode
+ // send/feedback/wet/dry graph used for studio playback. This validates the
+ // educational dry and wet stem heights, not just matching hard-coded math.
+ const delayFx={delayMix:.5,delayTime:.1,delayFeedback:.5};
+ const delayRate=48000,delayOffline=new OfflineAudioContext(1,delayRate,delayRate);
+ const impulse=delayOffline.createBuffer(1,1,delayRate);
+ impulse.getChannelData(0)[0]=1;
+ const source=delayOffline.createBufferSource();source.buffer=impulse;
+ const dry=delayOffline.createGain();
+ dry.gain.value=1-delayFx.delayMix*.4;
+ source.connect(dry);dry.connect(delayOffline.destination);
+ const send=delayOffline.createGain(),delay=delayOffline.createDelay(1.2);
+ const feedback=delayOffline.createGain(),wet=delayOffline.createGain();
+ send.gain.value=delayFx.delayMix*.55;
+ delay.delayTime.value=delayFx.delayTime;
+ feedback.gain.value=delayFx.delayFeedback;
+ wet.gain.value=.8;
+ source.connect(send);send.connect(delay);
+ delay.connect(feedback);feedback.connect(delay);
+ delay.connect(wet);wet.connect(delayOffline.destination);
+ source.start(0);
+ const delayAudio=(await delayOffline.startRendering()).getChannelData(0);
+ const delayPeaks=modeledDelayTaps(delayFx);
+ const delayResiduals=[];
+ for(const peak of delayPeaks){
+  const center=Math.round(peak.time*delayRate),tolerance=peak.index?256:1;
+  let observed=0;
+  for(let i=Math.max(0,center-tolerance);
+   i<Math.min(delayAudio.length,center+tolerance+1);i++)
+   observed=Math.max(observed,Math.abs(delayAudio[i]));
+  delayResiduals.push({echo:peak.index,expected:peak.level,observed});
+ }
+ pass("48k delay model agrees with Web Audio dry and three feedback echo gains "+
+  JSON.stringify(delayResiduals),delayResiduals.every(x=>
+   Math.abs(x.observed-x.expected)<Math.max(.004,x.expected*.08)));
+ pass("delay illustration maps the actual modeled echo levels",
+  delayPeaks.every((peak,i)=>diagram({
+   type:"synth",effects:delayFx
+  },"delay").paths[i+1].d.endsWith("V"+(100-72*peak.level).toFixed(2))));
+ void fetch("/__layout_progress?stage=delay-impulse-verified");
+ // Validate the new smoothing trace against a real Web Audio IIR filter,
+ // independently of the diagram's own recursive evaluator. Include a step
+ // from note onset and a negative-depth, audio-rate sine control signal.
+ for(const kind of ["velocity","lfo"]){
+  const duration=1.25,rate=48000,seconds=.08;
+  const offline=new OfflineAudioContext(1,Math.round(duration*rate)+1,rate);
+  const source=kind==="lfo"?offline.createOscillator():offline.createConstantSource();
+  if(kind==="lfo"){source.type="sine";source.frequency.value=12;}
+  else source.offset.value=.7;
+  const alpha=1-Math.exp(-1/(seconds*rate));
+  const smoother=offline.createIIRFilter([alpha],[1,-(1-alpha)]);
+  const gain=offline.createGain();gain.gain.value=kind==="lfo"?-2:2;
+  source.connect(smoother);smoother.connect(gain);gain.connect(offline.destination);source.start(0);
+  const measured=(await offline.startRendering()).getChannelData(0);
+  const route={id:"smoothing-reference",target:"filter.cutoff",unit:"octaves",
+   source:kind==="lfo"?{kind,rate:12,shape:"sine"}:{kind},
+   polarity:kind==="lfo"?"bipolar":"unipolar",depth:gain.gain.value,smoothing:seconds};
+  const modeled=modeledModulationTrace(route,{duration});
+  const error=Math.max(...modeled.smoothed.map((value,i)=>
+   Math.abs(value-measured[Math.round(modeled.times[i]*rate)])));
+  pass("48k smoothed "+kind+" trace matches real Web Audio IIR output (max error "+error+")",error<.001);
+ }
+ status="PASS";
+}catch(error){checks.error=String(error.stack||error)}
+document.querySelector("#result").textContent=status+" "+JSON.stringify(checks);
+void fetch("/__sound_reference_result?status="+status+"&details="+encodeURIComponent(JSON.stringify(checks)));
+</script>

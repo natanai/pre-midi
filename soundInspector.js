@@ -19,7 +19,7 @@ const sampleFields=[
 ];
 
 function stageState(instrument,patch,volume,gain,layout=instrument.layout){
- return {type:"stage",layout,pan:patch.pan??0,volume,gain};
+ return {type:"stage",layout:layout==="rack"?"rack":"levels",pan:0,volume,gain};
 }
 function entries(path,value){
  return Array.isArray(path?.[0])?path.map((keys,i)=>[keys,value[i]]):[[path,value]];
@@ -124,7 +124,7 @@ export function renderSoundInspectorCore({
   for(const illustration of panel.querySelectorAll(".visual-sound-panel"))
    illustration.disposeSoundIllustration?.();
  const patch=sound.patch;
- const oldStage=stageOpen??scopeRoot.querySelector(
+ const oldStage=stageOpen??modulesRoot.querySelector(
   '.visual-sound-panel[data-visual-kind="stage"] details')?.open??false;
  const level=instrument.volume*sound.gain;
  const updateScope=scopeRenderer?
@@ -181,22 +181,18 @@ export function renderSoundInspectorCore({
   renderPatchEditor(modulesRoot,patch,onPatchChange,preview,sound.id);
   onCutoffAutomation?.(modulesRoot,instrument,context);
  }
- const kinds=["filter",patch.type==="sample"?"sample":"envelope",
-  patch.type==="sample"?"sample":"envelope"];
  const paths=["filter.cutoff",patch.type==="sample"?"attack":"envelope.attack",
   patch.type==="sample"?"release":"envelope.release"];
  primaryRoots.forEach((root,index)=>{
   root.dataset.soundPath=paths[index];
-  const container=modulesRoot.querySelector(
-   '.visual-sound-panel[data-visual-kind="'+kinds[index]+'"] .synth-fields');
-  if(container)container.prepend(root);
+
  });
  // The same real gain and pan illustration edits the corresponding ordinary
  // controls. Multi-axis gesture edits commit in one context transaction.
  const details=document.createElement("details");details.className="synth-group";
  details.open=oldStage;
  const summary=document.createElement("summary");
- summary.textContent=instrument.layout==="rack"?"gain staging":"stereo & volume";
+ summary.textContent="gain staging";
  details.append(summary);
  scopeRoot.append(details);
  const editStage=(path,value,commit)=>{
@@ -210,11 +206,18 @@ export function renderSoundInspectorCore({
   if(commit)onStageChange(edits);
   else redraw(next,volume,gain);
  };
+ const stageFields=document.createElement("div");stageFields.className="synth-fields";
+ for(const [name,value,label] of [["volume",instrument.volume,"Instrument volume"],["gain",sound.gain,"Sound level"]]){
+  const control=createDial({label,min:0,max:1,step:.01,display:"percent"},value,
+   amount=>editStage([name],amount,true),amount=>editStage([name],amount,false));
+  control.dataset.soundPath=name;control.dataset.soundDomain="stage";stageFields.append(control);
+ }
+ details.append(stageFields);
  stagePanel=illustrateSoundPanel(details,"stage",
   stageState(instrument,patch,instrument.volume,sound.gain,stageLayout??instrument.layout),
   (path,value)=>editStage(path,value,true),
   (path,value)=>editStage(path,value,false),sound.id);
- scopeRoot.append(stagePanel.element);
+ (modulesRoot.querySelector(".synth-grid")??modulesRoot).append(stagePanel.element);
  return {preview,redraw,stagePanel};
 }
 
@@ -250,11 +253,13 @@ const SOUND_INSPECTOR_CHROME=String.raw`
         <path d="M7 3v6h9V3M7 21v-8h10v8"/>
        </svg>
       </button>
+     </div>
+     <div id="sound-visualizer" class="sound-visualizer" aria-label="Measured waveform and pitch"></div>
+     <div class="sound-quick-controls">
       <div id="primary-brightness-dial"></div>
       <div id="primary-attack-dial"></div>
       <div id="primary-release-dial"></div>
      </div>
-     <div id="sound-visualizer" class="sound-visualizer" aria-label="Measured waveform and pitch"></div>
     </div>
     <div id="sound-controls" class="rack-sound-controls" hidden>
      <label>Sound name <input id="sound-name" maxlength="60" aria-label="Selected sound name"></label>

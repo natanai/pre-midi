@@ -15,6 +15,9 @@ import {assignSoundEdit} from "./soundEditPath.js";
 import {cutoffAt} from "./src/dsp/automation.js";
 import {WAVES,FILTERS} from "./synth.js";
 
+import {ISOLATED_SOUND_PANELS,isolatedSoundDiagram} from "./soundPanelModels.js";
+import {layoutSoundPanels} from "./soundPanelLayout.js";
+
 const NS="http://www.w3.org/2000/svg";
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 const at=(patch,path)=>path.reduce((value,key)=>value?.[key],patch);
@@ -117,11 +120,13 @@ export function diagramPageCount(patch,type){
  if(type==="movement")return 3;
  if(type==="sample")return 2;
  if(type==="automation")return 1;
- if(type.startsWith("harmonics"))return 4;
+ if(type.startsWith("harmonics"))return 1;
  return 1;
 }
 // Diagrams respond to canonical parameters; the measured scope is separate.
 export const diagram=(patch,type,page=0)=>{
+ if(ISOLATED_SOUND_PANELS.has(type))return isolatedSoundDiagram(patch,type);
+ if(type==="distortion")return diagram(patch,"filter",patch.type==="synth"?2:1);
  const color=type==="movement"?"var(--signal-mauve)":"var(--track-accent,#08e4ec)";
  const paths=[],handles=[],labels=[],actions=[],inactive=[];
  const dormant=(path,reason)=>inactive.push({path,reason});
@@ -137,7 +142,7 @@ export const diagram=(patch,type,page=0)=>{
   // explanatory field makes the level knobs directly editable.
   const rack=p.layout==="rack",levels=rack||p.layout==="levels"||page===1,
    volume=clamp(p.volume??1),gain=clamp(p.gain??1),
-   pan=clamp(p.pan??0,-1,1);
+   pan=levels?0:clamp(p.pan??0,-1,1);
   // Beat stereo edits pan/volume; freeform's two directly visible level
   // knobs instead edit instrument volume and Sound gain. Both are genuine
   // signal stages and their product determines the measured waveform level.
@@ -197,15 +202,14 @@ export const diagram=(patch,type,page=0)=>{
   line("M18 50 H342 M18 100 H342",true);
   line(pathRange(256,t=>[18+t*324,32-17*harmonicWave(harmonicValues,2*Math.PI*t)]),
    false,["oscillators."+index+".harmonics"]);
-  const start=clamp(page,0,3)*8;
-  for(let j=0;j<8;j++){
-   const n=start+j,x=37+j*41,value=clamp(harmonicValues[n]??0);
+  for(let j=0;j<32;j++){
+   const n=j,x=23+j*314/31,value=clamp(harmonicValues[n]??0);
    line("M"+x+" 100 V"+(100-41*value).toFixed(2),false,
     ["oscillators."+index+".harmonics."+n]);
    handle(x,100-41*value,[
     axis(["oscillators",index,"harmonics",n],0,1,"linearY",{from:100,to:59,step:.01,unit:"percent"})
    ],"harmonic "+(n+1)+" level");
-   tag(x-8,111,"h"+(n+1));
+   if(n===0||n===31||n%8===7)tag(x-5,111,"h"+(n+1));
   }
   tag(18,12,"waveform · 32 harmonics");
  }else if(type==="oscillators"){
@@ -273,6 +277,10 @@ export const diagram=(patch,type,page=0)=>{
   tag(18,14,"220 hz reference tone");tag(18,111,"drive ↑");
   tag(340,111,p.audioFilterBypassed?"filter off":"brightness →");
   tag(340,14,"before ··· / after");
+  if(!p.audioFilterBypassed){
+   handle(26+308*(f.resonance-.1)/15.9,92,[axis(["filter","resonance"],.1,16,"linearX",{from:26,to:334,step:.1})],"resonance");
+   action(180,105,["filter","type"],FILTERS,"filter shape");
+  }else action(180,105,["audioFilterBypassed"],[true,false],"turn filter on");
   tag(168,111,"±"+shortValue(scale));
  }else if(type==="filter"&&page===1){
    const f=p.filter,sweep=f.sweep??0,time=f.sweepTime??.2;
@@ -360,7 +368,10 @@ export const diagram=(patch,type,page=0)=>{
   tag(18,14,"on");tag(115,14,"time guide");
   tag(px(e.fadeStart),14,vocal?"fade":p.oneShot?"tail":p.followPitch===false?"end":"off");
   tag(340,111,"8s reference take");
-  if(!vocal)action(190,106,["oneShot"],[false,true],"play entire recording");
+  if(!vocal){
+   action(140,106,["oneShot"],[false,true],"play entire recording");
+   action(250,106,["followPitch"],[true,false],"follow played note");
+  }
   tag(18,111,vocal?"voice":(p.followPitch===false?"root ":"pitch ")+(p.zones?.[0]?.root??60));
  }else if(type==="envelope"&&page===1){
   const e=p.envelope,off=.25;
@@ -769,9 +780,7 @@ export const diagram=(patch,type,page=0)=>{
  }
  return {paths,handles,labels,actions,color,inactive};
 };
-const pageState=new Map();
 let zoomId=null;
-const idFor=(kind,index)=>kind+"-"+index;
 function setZoom(wrapper,id,enabled){
  // The regular disclosure is still present inside a zoomed panel, but zoom
  // has one exit: its X. Restore any prior panel's normal expand control.
@@ -803,18 +812,19 @@ if(typeof document!=="undefined")document.addEventListener("keydown",event=>{
   if(wrapper){setZoom(wrapper,zoomId,false);event.stopPropagation();}
  }
 });
-export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index=0){
+export function illustrateSoundPanel(details,kind,patch,onChange,onPreview=()=>{},index=0){
+ return layoutSoundPanels(details,kind,patch,onChange,onPreview,index,createSoundPanel);
+}
+function createSoundPanel(details,kind,patch,onChange,onPreview,index,options){
  // The Beat's primary brightness/rise/fade dials sit above the accordion.
  // Capture their common owner before the accordion is moved into its wrapper.
  // Song/freeform Sound also nests its diagram and controls in one content root.
  // Modules are frequently constructed off-DOM and inserted after the
  // illustration wrapper exists. Resolve its final owner when handling input.
- const initiallyAttachedOwner=details.closest(".sound-section,.freeform-sound-content")??details;
- const id=idFor(kind,index);
- let page=pageState.get(id)??0;
- const paginated=diagramPageCount(patch,kind)>1;
+ const initiallyAttachedOwner=details.closest(".sound-section,.freeform-sound-content,.vocal-editor,.phone-patch-editor")??details;
+ const id=options.id,page=options.page;
  const wrapper=document.createElement("section");wrapper.className="visual-sound-panel";
- const controlOwner=()=>wrapper.closest(".sound-section,.freeform-sound-content")??
+ const controlOwner=()=>wrapper.closest(".sound-section,.freeform-sound-content,.vocal-editor,.phone-patch-editor")??
   initiallyAttachedOwner;
  wrapper.dataset.visualKind=kind;
  wrapper.dataset.visualId=id;
@@ -835,24 +845,10 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const next=!wrapper.classList.contains("zoomed");
   if(next)details.open=true;setZoom(wrapper,id,next);
  });
- const pages=document.createElement("div");pages.className="visual-panel-pages";
- pages.setAttribute("aria-label",kind+" pages");
- const previous=document.createElement("button");previous.type="button";
- previous.textContent="‹";previous.setAttribute("aria-label","previous "+kind+" page");
- const range=document.createElement("span");range.className="visual-panel-range";
- const next=document.createElement("button");next.type="button";
- next.textContent="›";next.setAttribute("aria-label","next "+kind+" page");
- pages.append(previous,range,next);
- const turn=delta=>{
-  page=clamp(page+delta,0,diagramPageCount(latestPatch,kind)-1);
-  pageState.set(id,page);draw(latestPatch);
- };
- previous.addEventListener("click",()=>turn(-1));
- next.addEventListener("click",()=>turn(1));
  const dragReadout=document.createElement("output");
  dragReadout.className="visual-drag-readout";dragReadout.hidden=true;
  plot.append(graphic,labelsRoot,handlesRoot,dragReadout);
- area.append(plot,pages,expand);
+ area.append(plot,expand);
  // The drawing belongs inside its accordion: closed sections stay compact.
  const summary=details.querySelector("summary");
  // A zoomed module must not collapse behind the modal backdrop.
@@ -869,20 +865,6 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  };
  function draw(current=latestPatch){
   latestPatch=current;
-  const total=kind==="mapping"?(current.zones?.length??0):
-   kind==="modulation"?(current.modulation?.routes?.length??0):0;
-  if(paginated){
-   const count=diagramPageCount(current,kind),maxPage=count-1;
-   page=clamp(page,0,maxPage);
-   pages.hidden=count<=1;
-   previous.disabled=page===0;next.disabled=page===maxPage;
-   const grouped=kind==="mapping"||
-    kind==="modulation"&&page<Math.max(1,Math.ceil(total/4));
-   range.textContent=grouped?(page*4+1)+"–"+Math.min(total,(page+1)*4)+" / "+total:
-    (kind==="filter"?(current.type==="synth"?
-     ["response","sweep / noise","waveform"]:["response","waveform"])[page]+" · ":"")+
-    (page+1)+" / "+count;
-  }else pages.hidden=true;
   const {paths,handles,labels,actions,color,inactive}=diagram(current,kind,page);
   graphic.setAttribute("aria-description",[...labels.map(label=>label.value),
    ...inactive.map(item=>item.reason)].join("; "));
@@ -1020,6 +1002,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  }
  function targetFields(keys){
   const fields=[...controlOwner().querySelectorAll("[data-sound-path]")];
+  fields.sort((a,b)=>Number(wrapper.contains(b))-Number(wrapper.contains(a)));
   return fields.filter(field=>keys.some(key=>{
    const path=field.dataset.soundPath;
    if((field.closest("[data-sound-domain]")?.dataset.soundDomain??"patch")!==
@@ -1086,9 +1069,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   event.preventDefault();focusFeature(hit.dataset.soundLinks.split("|"));
  });
  const ownerListeners={
-  "sound-control-input":event=>revealControl(event.target),
   focusin:event=>{
-   revealControl(event.target);
    const control=event.target.closest?.("[data-sound-path],[data-sound-links]");
    if(control)highlight(control.dataset.soundLinks?.split("|")??[control.dataset.soundPath]);
   },
@@ -1096,19 +1077,6 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    if(!event.relatedTarget?.closest?.("[data-sound-path],[data-sound-links]"))highlight(null);
   }
  };
- function revealControl(target){
-  const control=target.closest?.("[data-sound-path]");
-  if(!control||control.closest(".visual-panel-area"))return;
-  const path=control.dataset.soundPath;
-  const domain=control.closest("[data-sound-domain]")?.dataset.soundDomain??"patch";
-  if(domain!==soundControlDomain(kind,path))return;
-  const owner=control.closest(".visual-sound-panel");
-  if(owner!==wrapper&&!(kind==="stage"&&["volume","gain","pan"].includes(path)))return;
-  const selected=diagramPageForControl(latestPatch,kind,path,page);
-  if(selected!==null&&selected!==page){
-   page=selected;pageState.set(id,page);draw(latestPatch);
-  }
- }
  const listen=(root,operation)=>Object.entries(ownerListeners).forEach(([name,handler])=>
   root[operation](name,handler));
  let listenerOwner=controlOwner(),linksDisposed=false;
@@ -1164,7 +1132,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
  // selects neighboring harmonics while vertical movement changes their levels.
  // Consecutive partials are interpolated so fast strokes do not leave holes.
  const paintHarmonics=(stroke,position,commit)=>{
-  const local=clamp(Math.round((position.x-37)/41),0,7);
+  const local=clamp(Math.round((position.x-23)/(314/31)),0,31);
   const index=stroke.base+local;
   const level=clamp(Math.round((100-position.y)/41*100)/100);
   if(stroke.last){
@@ -1182,7 +1150,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const updated=structuredClone(patch);
   assignSoundEdit(updated,paths,values);
   draw(updated);
-  dragReadout.textContent="harmonics "+(stroke.base+1)+"–"+(stroke.base+8)+
+  dragReadout.textContent="harmonics "+(stroke.base+1)+"–"+(stroke.base+32)+
    " · h"+(index+1)+" "+Math.round(level*100)+"%";
   placeDragReadout(position,commit);
   const key=paths.length===1?paths[0]:paths;
@@ -1226,8 +1194,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   active={pointerId:event.pointerId,point,grab,offset,moved:false};
   if(kind.startsWith("harmonics")){
    const oscillator=Number(kind.slice("harmonics".length));
-   const index=page*8+Number(button.dataset.handle);
-   active.stroke={oscillator,base:page*8,values:new Map(),
+   const index=Number(button.dataset.handle);
+   active.stroke={oscillator,base:0,values:new Map(),
     last:{index,level:at(latestPatch,["oscillators",oscillator,"harmonics",index])}};
   }
   area.setPointerCapture(event.pointerId);event.preventDefault();

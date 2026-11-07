@@ -22,10 +22,11 @@ export function captureSoundControlView(knob){
   const replacement=panels.find(item=>item.dataset.visualId===visualId);
   const owner=root.isConnected?root:replacement?.parentElement;
   const candidates=[...(owner?.querySelectorAll("[data-sound-path]")??[])];
-  const target=candidates.find(item=>item.dataset.soundPath===path&&
+  const matches=candidates.filter(item=>item.dataset.soundPath===path&&
    (item.closest("[data-sound-domain]")?.dataset.soundDomain??"patch")===domain&&
-   !item.classList.contains("visual-graph-action")&&item.querySelector('[role="slider"]'));
-  target?.querySelector('[role="slider"]')?.focus({preventScroll:true});
+   !item.classList.contains("visual-graph-action")&&item.querySelector('select,input,[role="slider"]'));
+  const target=matches.find(item=>item.closest(".visual-sound-panel")?.dataset.visualId===visualId)??matches[0];
+  target?.querySelector('select,input,[role="slider"]')?.focus({preventScroll:true});
   // Force layout after replacement before restoring scroll extents. The old
   // zoomed panel may have been replaced while its surrounding scroller lives.
   owner?.getBoundingClientRect();

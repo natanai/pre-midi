@@ -23,7 +23,9 @@ export const AUDIO_COMMON_CONTROLS=Object.freeze([
  ["pan","Pan",-1,1,.01,"pan"]
 ].map(Object.freeze));
 export const AUDIO_SAMPLE_EXTRA_CONTROLS=Object.freeze([
- ["strumMs","Strum",-25,25,1,"number"]
+ ["strumMs","Strum",-25,25,1,"number"],
+ ["attack","Attack",0,2,.005,"seconds"],
+ ["release","Release",.01,3,.01,"seconds"]
 ].map(Object.freeze));
 export const AUDIO_VOCAL_ENVELOPE_CONTROLS=Object.freeze([
  ["attack","Rise",0,2,.005,"seconds"],

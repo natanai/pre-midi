@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#000;color:#ddd;font:12px monospace}iframe{border:0;width:100%;height:90vh}pre{white-space:pre-wrap}</style>
+<iframe title="Visible Sound panels"></iframe><pre id="result">checking panels</pre>
+<script>
+const frame=document.querySelector("iframe"),checks={};
+const pass=(name,ok)=>{checks[name]=!!ok;if(!ok)throw Error(name)};
+const wait=async fn=>{for(let i=0;i<240;i++){if(fn())return;await new Promise(r=>setTimeout(r,25))}throw Error("Sound editor did not load")};
+frame.addEventListener("load",async()=>{
+ let status="FAIL";
+ try{
+  const d=frame.contentDocument,w=frame.contentWindow;
+  await wait(()=>d.querySelector('[data-visual-kind="distortion"]'));
+  const root=d.getElementById("sound-section");
+  if(d.getElementById("sound-toggle").getAttribute("aria-expanded")==="false")d.getElementById("sound-toggle").click();
+  const panel=kind=>root.querySelector('[data-visual-kind="'+kind+'"]');
+  const controls=path=>[...root.querySelectorAll(".dial-field")].filter(el=>
+   (el.dataset.soundPath||el.parentElement?.closest("[data-sound-path]")?.dataset.soundPath)===path);
+  const value=field=>Number(field.querySelector('[role="slider"]').getAttribute("aria-valuenow"));
+  const key=(node,key)=>node.dispatchEvent(new w.KeyboardEvent("keydown",{key,bubbles:true,cancelable:true}));
+  pass("no illustration pager",!root.querySelector(".visual-panel-pages"));
+  pass("each main illustration has an independently visible panel",["filter","filter-sweep","distortion","noise","glide","bend","vibrato","pulse","tone-movement","stereo","delay"].every(kind=>
+   panel(kind)?.querySelector("details")?.open));
+  pass("both envelope examples are visible",root.querySelectorAll('[data-visual-kind="envelope"]').length===2);
+  pass("brightness is available beside its related graphs",["filter","filter-sweep","distortion","tone-movement"].every(kind=>
+   panel(kind).querySelector('[data-sound-path="filter.cutoff"] [role="slider"]')));
+  const drive=()=>panel("distortion").querySelector('[data-sound-path="effects.drive"] [role="slider"]');
+  const shape=()=>panel("distortion").querySelector('.visual-graph-line[data-sound-links*="effects.drive"]').getAttribute("d");
+  const before=shape();key(drive(),"ArrowUp");
+  pass("distortion changes its always-visible waveform",shape()!==before);
+  const cutoff=()=>panel("distortion").querySelector('[data-sound-path="filter.cutoff"]');
+  const original=value(cutoff());key(cutoff().querySelector('[role="slider"]'),original>50?"ArrowLeft":"ArrowRight");
+  const changed=value(cutoff());
+  pass("every brightness copy updates from one ordinary knob edit",changed!==original&&controls("filter.cutoff").every(field=>value(field)===changed));
+  pass("commit focus stays in the originating module",d.activeElement.closest(".visual-sound-panel")===panel("distortion"));
+  d.getElementById("undo").click();
+  pass("one undo restores every copy",controls("filter.cutoff").every(field=>value(field)===original));
+  const node=panel("distortion").querySelector('.visual-graph-point[data-sound-links*="effects.drive"]');
+  key(node,original>50?"ArrowLeft":"ArrowRight");
+  const fromNode=value(cutoff());
+  pass("graph edits synchronize all ordinary controls",fromNode!==original&&controls("filter.cutoff").every(field=>value(field)===fromNode));
+  const select=panel("distortion").querySelector('[data-sound-path="filter.type"] select');
+  const type=select.value==="highpass"?"lowpass":"highpass";select.value=type;select.dispatchEvent(new w.Event("change",{bubbles:true}));
+  pass("duplicated selectors use the canonical edit",[...root.querySelectorAll('[data-sound-path="filter.type"] select')].every(select=>select.value===type));
+  pass("selector focus stays in its own panel",d.activeElement.closest(".visual-sound-panel")===panel("distortion"));
+  panel("filter").querySelector("details").open=false;
+  pass("folding one panel leaves the other graph visible",panel("distortion").querySelector("details").open);
+  panel("distortion").querySelector(".visual-panel-expand").click();
+  pass("expanded module stays within viewport",panel("distortion").getBoundingClientRect().width<=1041);
+  pass("expanded module has no horizontal overflow",panel("distortion").scrollWidth<=panel("distortion").clientWidth+1);
+  panel("distortion").querySelector(".visual-panel-expand").click();
+  pass("overview quick controls fit",root.scrollWidth<=root.clientWidth+1);
+
+  const {renderSamplerEditor}=await import("../samplerUI.js"),{renderPatchEditor}=await import("../instrumentUI.js");
+  const {assignSoundEdit}=await import("../soundEditPath.js"),{makePatch}=await import("../synth.js");
+  const mount=document.createElement("div");mount.className="sound-section";document.body.append(mount);
+  const sample={type:"sample",zones:Array.from({length:10},(_,i)=>({assetId:"z"+i,root:40+i*4})),gain:.9,transpose:0,pan:0,strumMs:0,attack:.005,release:.17,followPitch:true,oneShot:false,preserveDynamics:false};
+  const render=()=>renderSamplerEditor(mount,sample,(path,value)=>{assignSoundEdit(sample,path,value);render()},null,()=>{},()=>{},"visible-sample");
+  render();await Promise.resolve();
+  pass("all sample mapping graphs are visible without paging",mount.querySelectorAll('[data-visual-kind="mapping"]').length===3&&!!mount.querySelector('.visual-graph-point[data-sound-links="zones.9.root"]'));
+  pass("recording lessons each have their own module",["sample","recording-pitch","recording-level","stereo"].every(kind=>mount.querySelector('[data-visual-kind="'+kind+'"]')));
+  const level=mount.querySelector('[data-visual-kind="recording-level"] [data-sound-path="gain"] [role="slider"]');key(level,"ArrowUp");
+  pass("recording gain copies stay synchronized",[...mount.querySelectorAll('[data-sound-path="gain"] [role="slider"]')].every(el=>Number(el.getAttribute("aria-valuenow"))===sample.gain));
+  const harmonic=makePatch("init");harmonic.oscillators[0].wave="harmonic";harmonic.oscillators[0].harmonics=Array.from({length:32},(_,i)=>i===0?1:0);
+  renderPatchEditor(mount,harmonic,()=>{},()=>{},"visible-harmonics");
+  pass("all 32 harmonic nodes share one spectrum",mount.querySelectorAll('[data-visual-kind="harmonics0"] .visual-graph-point').length===32);
+  mount.remove();status="PASS";
+ }catch(error){checks.error=String(error.stack||error)}
+ document.documentElement.dataset.result=status;document.querySelector("#result").textContent=status+" "+JSON.stringify(checks);
+ void fetch("/__visible_sound_panels_result?status="+status+"&details="+encodeURIComponent(JSON.stringify(checks)));
+},{once:true});frame.src="../index.html";
+</script>

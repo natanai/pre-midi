@@ -1119,7 +1119,7 @@ function renderSound() {
  // The persistent Beat header hosts the same Inspector's primary controls
  // that the attached freeform Song editor mounts in its own Sound view.
  // Reparent the nodes before rebuilding their previous illustration owners.
- const primary=document.querySelector(".sound-primary-controls");
+ const primary=document.querySelector(".sound-quick-controls");
  const primaryKeys=["primary-brightness-dial","primary-attack-dial","primary-release-dial"];
  for(const key of primaryKeys){
   const node=$(key);

@@ -2,6 +2,7 @@
 // This is the Song context for the existing lower Beat editing workspace.
 import {renderAudioToneControls,renderAudioMovementControls,renderAudioArticulationControls,renderAudioDelayControls} from "./audioControlUI.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
+import {collectSoundFields} from "./soundPanelLayout.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {vocalDisplayPatch,vocalChangesFromControl} from "./vocalAudioView.js";
 import {recordingBytes} from "./recordingAssets.js";
@@ -92,11 +93,13 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
  const delay=section(sections,"delay");
  renderAudioDelayControls(delay,patch,apply,preview);
  root.append(sections);
+ const soundFields=collectSoundFields(sections);
  // Exact same graph, gestures, and label linking used by the sampler Sound
  // inspector. Vocal-only source and trigger options are deliberately absent.
  for(const [details,kind] of [[shape.closest("details"),"sample"],
   [tone.closest("details"),"filter"],[pitch.closest("details"),"movement"],
   [delay.closest("details"),"delay"]]){
+  details.soundFields=soundFields;
   const anchor=document.createComment("audio visual position");
   details.before(anchor);
   const visual=illustrateSoundPanel(details,kind,patch,apply,preview,clipId);
