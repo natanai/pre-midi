@@ -6,6 +6,7 @@ import {eventsAtStep} from "./arrangement.js";
 import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
 import {scheduledSongOnsets,scheduledSongOnsetsInWindow,createLiveSongScheduler} from "./songSchedule.js";
 import {decodeSongRecordings,recordingEventsAtStep,scheduleVocal} from "./songAudio.js";
+import {alignedTimelineStart} from "./src/hosts/web/timeline-clock.js";
 import {vocalSourceRange} from "./vocalEffects.js";
 import {delayTailSeconds} from "./src/dsp/effect-tail.js";
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
@@ -296,7 +297,17 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  const loops=()=>typeof loop==="function"?loop():loop;
  out.gain.value=.85;out.connect(ctx.destination);
  const start=Number.isSafeInteger(startStep)&&startStep>=0?startStep:0;
- let scheduled=start,nextTime=ctx.currentTime+.07,shown=-1,stopped=false,timer,activeStep=null;
+ // Reconstruct long source clocks before choosing the audible start time.
+ // The scheduling lookahead must not be consumed by seek preparation.
+ const initial=read(),initialCycle=initial.kind==='song'?songDurationSteps(initial):0,
+  initialUnit=secondsPerStep(initial),initialStep=initialCycle?start%initialCycle:0,
+  initialSources=new Map();
+ if(initialCycle)for(const event of recordingEventsAtStep(initial,initialStep,{includeOverlapping:true})){
+  const buffer=vocalBuffers.get(event.recording.id);if(!buffer)continue;
+  initialSources.set(event.clip.id,vocalSourceRange(event.recording,event.clip,initialUnit,initialStep-event.clip.startStep,
+   {sampleRate:ctx.sampleRate,controlStart:(start-initialStep+event.clip.startStep)*initialUnit,sourceDuration:buffer.duration}));
+ }
+ let scheduled=start,nextTime=alignedTimelineStart(ctx,start,secondsPerStep(read())),shown=-1,stopped=false,timer,activeStep=null;
  onStart({context:ctx,startTime:nextTime});
  const queue=[],session=new VoiceSession(ctx,out);
  function stop() {
@@ -328,7 +339,10 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
     scheduled===start?recordingEventsAtStep(current,step,{includeOverlapping:true}):
      sparse?.vocals??recordingEventsAtStep(current,step)
    ))
-    scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers,{elapsedSteps:step-event.clip.startStep,session});
+    scheduleVocal(ctx,out,event,nextTime,unit,vocalBuffers,{elapsedSteps:step-event.clip.startStep,session,
+     sourceRange:scheduled===start?initialSources.get(event.clip.id):null,
+     controlStart:(scheduled-step+event.clip.startStep)*unit});
+   if(scheduled===start)initialSources.clear();
    for(const event of events)
     scheduleNote(ctx,out,event.instrument,event.note,
      nextTime+eventOffset(event.instrument,event.note,event.chunk.notes),

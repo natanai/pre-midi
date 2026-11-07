@@ -1,4 +1,6 @@
 import {validParameterValue,parameterDefaults} from "./src/dsp/parameters.js";
+import {planPitch} from "./src/dsp/expression.js";
+import {recordedSourceTravel} from "./src/dsp/recorded-source-clock.js";
 import {RECORDING_DEFAULTS,validateRecordedModulation,validateRecordingAutomation} from "./recordedAudio.js";
 // Clip audio processing uses the sampler's filter, drive and movement contracts,
 // plus the synthesizer's existing delay bus. Source recordings remain immutable.
@@ -25,12 +27,14 @@ export function validateVocalEffects(fx){
  for(const key of Object.keys(fx))if(!allowed.has(key))errors.push("Unknown vocal effect "+key+".");
  return errors;
 }
-export function vocalSourceRange(recording,clip,unit,elapsedSteps=0){
+export function vocalSourceRange(recording,clip,unit,elapsedSteps=0,{sampleRate=48000,controlStart=0,sourceDuration=recording.durationSeconds}={}){
  const fx=vocalEffects(clip),rate=Math.pow(2,fx.transpose/12);
  const elapsed=Math.max(0,elapsedSteps)*unit;
  const sourceOffset=recording.trimSeconds+(clip.trimStartSeconds??0);
- const offset=sourceOffset+elapsed*rate;
- const natural=Math.max(0,(recording.durationSeconds-offset)/rate);
- const duration=Math.max(0,Math.min(natural,clip.lengthSteps*unit-elapsed));
- return {offset,duration,rate,fx};
+ const sourceEnd=Math.min(recording.durationSeconds,sourceDuration);
+ const totalDuration=Math.max(0,Math.min((sourceEnd-sourceOffset)/rate,clip.lengthSteps*unit));
+ const pitch=planPitch({bend:fx.bend},fx.movement,0,totalDuration,0,{elapsed,totalDuration});
+ const offset=sourceOffset+recordedSourceTravel(pitch,rate,elapsed,{sampleRate,controlStart});
+ const duration=offset>=sourceEnd?0:Math.max(0,totalDuration-elapsed);
+ return {offset,duration,rate,fx,elapsed,totalDuration,pitch,sourceEnd,sourceRemaining:Math.max(0,sourceEnd-offset)};
 }

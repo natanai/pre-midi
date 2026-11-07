@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {recordingEnvelope} from "../recordedAudio.js";
 import {envelopeValueAt} from "../src/dsp/envelope-window.js";
-import {planPitch,pitchCents} from "../src/dsp/expression.js";
+import {planPitch,pitchPlanValueAt,pitchPlanPoints} from "../src/dsp/expression.js";
 import {prepareControlLfo} from "../src/hosts/web/oscillator.js";
 import {modulationStateBefore,routeValueAt,smoothingAlpha} from "../src/dsp/modulation.js";
 
@@ -22,8 +22,10 @@ test("seeking into an attack, sustain or fade preserves the original clip envelo
 test("resumed glide, bend and LFO phases follow clip age rather than a new onset",()=>{
  const note={bend:{shape:"wave",amount:3,rate:2}},motion={glide:-4,glideTime:1},elapsed=.35;
  const plan=planPitch(note,motion,10,1.65,0,{elapsed,totalDuration:2});
- near(plan.values[0],pitchCents(note,motion,elapsed,2),1e-4);
- near(plan.values.at(-1),pitchCents(note,motion,2,2),1e-4);
+ const original=planPitch(note,motion,0,2),points=pitchPlanPoints(plan);
+ assert.deepEqual(plan.values,original.values);
+ near(points[0].value,pitchPlanValueAt(original,elapsed));
+ near(points.at(-1).value,pitchPlanValueAt(original,2));
  let wave;
  const context={sampleRate:48000,createOscillator:()=>({frequency:{value:0},setPeriodicWave:next=>{wave=next;}}),
   createPeriodicWave:(real,imag)=>({real,imag})};

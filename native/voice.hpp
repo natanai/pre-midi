@@ -16,7 +16,7 @@ struct Oscillator {double frequency=440,level=0,detune=0;std::uint32_t wave=0,co
 struct Plan {
  double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0,delayMix=0,delayTime=.24,delayFeedback=.26;
  double drive=0,vibratoRate=5,vibratoDepth=0,vibratoDelay=0,tone=0,toneRate=2,tremolo=0,tremoloRate=5;
- unsigned kind=0,asset=0;double playbackRate=1,sampleOffset=0;bool bypassFilter=false;const SampleData* sample=nullptr;
+ unsigned kind=0,asset=0;double playbackRate=1,sampleOffset=0,sampleLimit=301;bool bypassFilter=false;const SampleData* sample=nullptr;
  std::uint32_t version=1,routeCount=0,automationCount=0;std::array<Event,6> automation{};double off=1,pitch=60,velocity=1;std::array<Route,16> routes{};
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
  std::uint32_t eventCount=0;std::array<Event,6> events{};
@@ -123,7 +123,10 @@ public:
       sampleStep=std::clamp(static_cast<float>(plan.playbackRate)*std::pow(2.,detune/1200.)*plan.sample->rate/rate,0.,1024.);
      }
      if(beginning)samplePosition=plan.sampleOffset*plan.sample->rate+std::max(0.,t-plan.start)*rate*sampleStep;
-     mix=plan.sample->at(samplePosition,0);mixRight=plan.sample->at(samplePosition,std::min(1u,plan.sample->channels-1));for(unsigned ch=0;ch<extraCount();ch++)additional[ch]=plan.sample->at(samplePosition,ch+2);samplePosition+=sampleStep;
+     if(samplePosition<plan.sampleLimit*plan.sample->rate){
+      mix=plan.sample->at(samplePosition,0);mixRight=plan.sample->at(samplePosition,std::min(1u,plan.sample->channels-1));for(unsigned ch=0;ch<extraCount();ch++)additional[ch]=plan.sample->at(samplePosition,ch+2);
+     }
+     samplePosition+=sampleStep;
     }else for(std::size_t j=0;j<2;j++){
      const auto& osc=plan.oscillators[j];
      const float normalized=std::clamp(offsets[2*j]*(1.f/2400),-1.f,1.f);

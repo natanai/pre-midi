@@ -2445,13 +2445,35 @@
               "tests/vocalResume.test.js"
             ],
             "result": "Resumed clip envelope matches original attack/sustain/release values; glide/bend and sine phase use original Clip age; modulation smoothing history matches full recurrence within 2e-6."
+          },
+          {
+            "type": "focused_behavior",
+            "paths": [
+              "tests/recordedSourceClock.test.js"
+            ],
+            "result": "K-rate source-travel oracle at 8000/48000 Hz includes transpose, glide, bend, delayed vibrato and backward seeks; original pitch knots and immutable source data are retained. Browser scheduling uses integrated source offset and remaining buffer content; transport seeks retain the control-quantum phase."
+          },
+          {
+            "type": "focused_native",
+            "paths": [
+              "tests/recordedAudio.native.mjs"
+            ],
+            "result": "Same-source sampled/vocal fixture remains PCM-identical at 22050 Hz. A cropped silent excerpt under upward pitch motion cannot emit a loud signal located after its source-time endpoint; excludes the final interpolation footprint from the fixture."
           }
         ],
-        "progress_note": "Existing filter/drive/tone/pulse/delay, gain/envelope preservation and routing share recordedAudio.js. Browser mid-Clip playback now resumes the authored fade, glide/bend, vibrato onset/phase, tone/pulse phase and route envelopes instead of retriggering them. Route smoothing restores bounded recent control history (14 time constants, less than 1e-6 normalized omitted-history contribution); native already reconstructs voice history on seek. Exact pitch-modulated source-readhead integration and browser filter/delay buffer history remain implementation gaps, in addition to listening/loop qualification.",
+        "progress_note": "Existing processors and Clip fades share recordedAudio.js. Browser resumes preserve the original full-Clip pitch knots and integrate transpose, glide/bend and delayed vibrato using the host sample rate and 128-frame control quanta. Song-time-zero is quantum-aligned so seeks keep each Clip control phase. Source content length is independent from the authored wall-time gate, preventing pitch motion from truncating a resumed phrase. Native current sample packet 12 carries an explicit source-time endpoint, preventing pitch motion from escaping reused excerpts. Browser filter/delay audio-buffer history restoration and observed listening/loop qualification remain open.",
         "remaining_implementation": [
-          "Account for accumulated bend/glide/vibrato playback-rate changes in a browser mid-Clip source offset; current vocalSourceRange projects source position using base transpose only.",
           "Reconstruct browser filter and delay audio-buffer history on seek, or agree and document a deliberate transport reset policy; current native Session already warms its history."
-        ]
+        ],
+        "source_clock_contract": {
+          "owner": "src/dsp/recorded-source-clock.js",
+          "pitch_owner": "src/dsp/expression.js: full-Clip Float32 pitch knots, vibrato onset/gain and original-time interpolation",
+          "source_position": "Accumulate playbackRate * 2^(detune/1200) over 128-frame host control quanta; use the original Clip gate to evaluate progress. Source seconds and Song/wall seconds remain separate.",
+          "web_transport": "src/hosts/web/timeline-clock.js aligns virtual Song time zero to a render-quantum boundary on initial playback and seeks. Initial overlapping source windows are prepared before choosing the audible start time, outside the lookahead scheduler.",
+          "bounds": "Eight cached control clocks with sparse checkpoints every 256 control quanta; no asset copies, audio callback allocations or sample-sized control arrays. Existing source/host limits remain.",
+          "current_native_sample_packet": 12,
+          "qualification": "Focused model and C++ regressions; no physical browser/Windows listening or complete seek PCM equivalence claim."
+        }
       },
       {
         "id": "SE-04",
@@ -2766,7 +2788,7 @@
           "Boundary/quiet-onset/end-trim/loop-crossfade cases, duplicate independence, immutable bytes and reuse round trips."
         ],
         "completion_evidence": [],
-        "progress_note": "Fixed source-time waveform hit positioning by removing SVG letterboxing; waveform click/drag can position trim, pointer loss/Escape cancel preview, and one gesture commits once. End trim, shared sampler source viewport and loop editing remain pending."
+        "progress_note": "Leading trim, source-time waveform gestures and accessible keyboard/numeric editing are implemented. Native current sample packet 12 now enforces source-time excerpt ends even under pitch movement, matching the browser source-window constraint. End-trim controls, a shared sampler source viewport, reverse and loop editing remain pending."
       },
       {
         "id": "SE-15",
@@ -3069,6 +3091,37 @@
           "SE-03 still includes browser source-readhead integration for pitch movement and filter/delay history; this milestone does not declare full seek parity.",
           "SE-05 extended modulation targets, SE-14 source end trimming/loops and the remaining professional suite are still open."
         ]
+      },
+      {
+        "date": "2026-11-07",
+        "id": "VOCAL-SOURCE-CLOCK-06",
+        "status": "implemented_pending_observation",
+        "summary": "Preserve pitch-modulated vocal source position on seek and bound native excerpt playback.",
+        "task_ids": [
+          "SE-03",
+          "SE-14"
+        ],
+        "changes": [
+          "Use a shared source clock to integrate the original pitch trajectory, including glide/bend and delayed vibrato. Keep the full original pitch knots when resuming instead of rebuilding a different curve for the remaining duration.",
+          "Align browser transport Song-time-zero to the control quantum so seek starts retain the same Clip phase. Use the integrated source offset and actual remaining source content; the Clip gate continues to set wall-time duration.",
+          "Use native sample packet 12 with an explicit source-time endpoint for both sampled Sounds and vocals. The C++ voice cannot read through the rest of a shared recording when pitch motion speeds up a selected excerpt. Replace the current packet reader directly; no legacy reader or project migration."
+        ],
+        "verification": {
+          "routine_check": "npm run check: passed",
+          "focused_behavior": "32 focused source-clock, resume, timing/display, processing/reuse and Song vocal cases passed; the source-clock/resume subset also passed after the final transport-preparation change.",
+          "native_same_source": "22050 Hz: peak 0.5345496535301208, max PCM difference 0",
+          "native_excerpt_end": "Cropped silent region under upward glide: no out-of-region signal after the excerpt endpoint",
+          "browser_interaction": "Not run; real browser/listening observation remains pending",
+          "windows_package": "Not built; source and C++ renderer only"
+        },
+        "references": [
+          "https://www.w3.org/TR/webaudio/#dom-audiobuffersourcenode-start",
+          "https://www.w3.org/TR/webaudio/#playback-AudioBufferSourceNode"
+        ],
+        "remaining": [
+          "Browser filter/delay audio-buffer history restoration on seek remains SE-03 implementation work.",
+          "End-trim/shared source editing and expanded modulation remain on the roadmap."
+        ]
       }
     ],
     "vocal_parity_milestone": {
@@ -3111,7 +3164,7 @@
         "Observe live-site trimming and context switching in a real browser",
         "Physical Windows playback/recording observations and future requested portable build",
         "Broader seek/loop, live-edit and source conversion qualification remains in the Song reliability gates",
-        "New parameter/control-clock code has focused model checks; pitch-modulated browser source-readhead and filter/delay seek-history implementation gaps remain under SE-03."
+        "Source-clock and native excerpt-end changes have focused model/C++ checks. Browser filter/delay seek-history restoration remains an implementation gap under SE-03; physical listening and full seek equivalence are unqualified."
       ],
       "not_claimed": [
         "Commercial DAW feature equivalence",

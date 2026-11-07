@@ -18,4 +18,18 @@ const vocal=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds
 const render=plan=>{const data=encodeNativeSession([plan],rate,[{rate,frames,channels:1,pcm}]);const r=spawnSync(binary,[String(rate),'2','0','0',String(rate*2),'128','0'],{input:data,maxBuffer:4e6});if(r.status)throw Error(r.stderr.toString());return new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset,r.stdout.byteOffset+r.stdout.byteLength));};
 const a=render(sample),b=render(vocal);let peak=0,diff=0;for(let i=0;i<a.length;i++){peak=Math.max(peak,Math.abs(a[i]));diff=Math.max(diff,Math.abs(a[i]-b[i]));}if(!(peak>.01)||diff>1e-5)throw Error(JSON.stringify({peak,diff}));console.log('PASS native sampled/vocal processing PCM parity',JSON.stringify({peak,maxDifference:diff}));
 
+// A half-second excerpt starts in silence and ends immediately before a loud
+// out-of-region signal. A 10 ms gap excludes normal interpolation across the
+// final source frame; pitch motion must never pull the later signal in.
+const outside=Float32Array.from({length:rate},(_,i)=>i/rate>=.76?.8:0);
+const cropped={type:'sample',presetId:'custom',zones:[{assetId:'voice',root:60,startSeconds:.25,durationSeconds:.5}],followPitch:false,oneShot:true,audioMode:'clip',transpose:0,gain:1,pan:0,attack:0,release:0,movement:{glide:12,glideTime:1}};
+const bounded=planNativeSample({patch:cropped,volume:1},{pitch:60,velocity:1},0,.5,assets);
+const packet=encodeNativeSession([bounded],rate,[{rate,frames,channels:1,pcm:outside}]);
+const boundedResult=spawnSync(binary,[String(rate),'2','0','0',String(rate),'128','0'],{input:packet,maxBuffer:4e6});
+if(boundedResult.status)throw Error(boundedResult.stderr.toString());
+const boundedPcm=new Float32Array(boundedResult.stdout.buffer.slice(boundedResult.stdout.byteOffset,boundedResult.stdout.byteOffset+boundedResult.stdout.byteLength));
+const outsidePeak=boundedPcm.reduce((peak,value)=>Math.max(peak,Math.abs(value)),0);
+if(outsidePeak>1e-7)throw Error('Native source excerpt leaked '+outsidePeak);
+console.log('PASS native pitch movement respects excerpt end',JSON.stringify({sourceLimit:bounded.sourceLimit,outsidePeak}));
+
 }finally{await rm(temp,{recursive:true,force:true});}

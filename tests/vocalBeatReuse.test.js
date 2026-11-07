@@ -78,7 +78,7 @@ test("web and native sample playback use the identical source-time region",()=>{
  assert.equal(plan.end, .75+region.length+.01);
  const packet=encodeNativeSample(plan,44100);
  const view=new DataView(packet.buffer,packet.byteOffset,packet.byteLength);
- assert.equal(view.getUint32(12,true),11,"Current native sampler packet preserves source offset");
+ assert.equal(view.getUint32(12,true),12,"Current native sampler packet preserves source offset");
  assert.equal(view.getUint32(16,true),1);
  assert.deepEqual(validateBeat(beat),[]);
 });

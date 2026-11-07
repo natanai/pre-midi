@@ -41,8 +41,32 @@ export function planPitch(note,motion,start,duration,base=0,{elapsed=0,totalDura
  const expressive=Boolean(note?.bend&&note.bend.shape!=="straight")||m.glide!==0;
  let values=null;
  if(expressive){
-  const count=Math.max(16,Math.min(600,Math.ceil(duration*80)));
-  values=Array.from({length:count},(_,i)=>Math.fround(base+pitchCents(note,m,elapsed+i/(count-1)*duration,totalDuration)));
+  // A resumed voice keeps the original knots. Resampling the remaining
+  // phrase onto another grid subtly changes both pitch and source travel.
+  const count=Math.max(16,Math.min(600,Math.ceil(totalDuration*80)));
+  values=Array.from({length:count},(_,i)=>Math.fround(base+pitchCents(note,m,i/(count-1)*totalDuration,totalDuration)));
  }
  return {start,duration,base,values,movement:m,elapsed,totalDuration};
 }
+export function pitchPlanValueAt(plan,age){
+ const values=plan.values;if(!values)return plan.base;
+ const duration=plan.totalDuration??plan.duration,position=clamp(age/duration)*(values.length-1);
+ const index=Math.floor(position),next=Math.min(index+1,values.length-1);
+ return values[index]+(values[next]-values[index])*(position-index);
+}
+export function pitchPlanPoints(plan){
+ const elapsed=plan.elapsed??0,total=plan.totalDuration??plan.duration;
+ const points=[{time:plan.start,value:pitchPlanValueAt(plan,elapsed)}];
+ if(plan.values)for(let i=1;i<plan.values.length;i++){
+  const age=i/(plan.values.length-1)*total;
+  if(age>elapsed)points.push({time:plan.start+age-elapsed,value:plan.values[i]});
+ }
+ return points;
+}
+export function vibratoGainAt(plan,age){
+ const m=plan.movement,total=plan.totalDuration??plan.duration;
+ const enter=Math.min(m.delay,Math.max(0,total-.005)),rampEnd=Math.min(total,enter+.13);
+ return age<total?clamp((age-enter)/Math.max(1e-9,rampEnd-enter)):clamp(1-(age-total)/.02);
+}
+export const vibratoCentsAt=(plan,age)=>age<0?0:
+ Math.sin(2*Math.PI*plan.movement.rate*age)*plan.movement.depth*vibratoGainAt(plan,age);

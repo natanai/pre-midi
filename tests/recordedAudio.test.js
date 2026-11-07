@@ -13,10 +13,10 @@ test('a reused vocal and sampled Sound retain identical current processing and g
  const assets=new Map([['voice',{id:1,duration:1.2,normalization:3.7}]]);
  const vocal=planNativeVocal({recording:{id:'voice',durationSeconds:1.2,trimSeconds:.2},clip:{gain:.8,lengthSteps:8,effects:processing}},0,.125,assets);
  const sample=planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets);
- for(const key of ['filter','drive','movement','pan','playbackRate','offset','delayMix','delayTime','delayFeedback','modulation'])assert.deepEqual(sample[key],vocal[key],key);
+ for(const key of ['filter','drive','movement','pan','playbackRate','offset','sourceLimit','delayMix','delayTime','delayFeedback','modulation'])assert.deepEqual(sample[key],vocal[key],key);
  assert.deepEqual(sample.events,vocal.events);
  assert.deepEqual(validatePatch(patch),[]);assert.deepEqual(validateVocalEffects(processing),[]);
- assert.equal(new DataView(encodeNativeSample(sample,44100).buffer).getUint32(12,true),11);
+ assert.equal(new DataView(encodeNativeSample(sample,44100).buffer).getUint32(12,true),12);
 });
 test('processing-only presets preserve modulation, tone, delay and automation without source assets',()=>{
  const fx=processingFromPatch(patch),preset=presetFromProcessing(fx,'voice processing');
