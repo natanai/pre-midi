@@ -5,10 +5,9 @@ const opened=new Set();
 export function renderCutoffAutomation(root,instrument,beat,onChange){
  if(instrument.layout!=='pitched'||instrument.sounds[0].patch.type!=='synth')return;
  const patch=instrument.sounds[0].patch,block=instrument.automation;
- // Brightness now lives in the primary Sound row, not inside the filter
- // accordion. Keep the automation action in the actual Filter & noise group.
- const group=[...root.querySelectorAll('.synth-group')].find(section=>
-  section.querySelector('summary')?.textContent?.trim()==='Filter & noise');
+ // Anchor to the shared filter module identity. Its visible title may change
+ // as related tone controls are grouped without changing automation ownership.
+ const group=root.querySelector('.visual-sound-panel[data-visual-kind="filter"] > .synth-group');
  if(!group)return;
  const fields=group.querySelector('.synth-fields')??group;
  const toggle=document.createElement('button');toggle.type='button';toggle.className='automation-toggle';toggle.textContent=block?'cutoff over time':'move over time';toggle.setAttribute('aria-label',block?'Edit cutoff automation':'Automate cutoff');

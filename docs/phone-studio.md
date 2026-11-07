@@ -17,6 +17,8 @@ Desktop Beat/freeform originally shared Instrument cards in PR #199. The approve
 
 ## Intended result
 
+The 2026-11-06 shared illustration pass groups filter/distortion with a two-axis reference-waveform page, renders correctly smoothed movement traces, quiets incidental graph hover, and preserves Sound dial focus/scroll on commit. Phone caption styles follow the new unscaled overlay structure in `phone/phone.css`; the generated action inventory reflects removed hover handlers. Expanded overlays, spectral painting and all new graph gestures still require Safari/Home Screen touch qualification. Desktop browser regressions do not advance this phone acceptance ledger.
+
 An iPhone user opens the published website in Safari, chooses **Add to Home Screen → Open as Web App**, and launches a local-first, fully functional music studio. Without a computer, they can create Beats and Songs, place and edit notes, design synthesizers, use sample racks, record sounds and vocals, hear playback, save and restore sessions, import/export `.premidi` and asset ZIPs, and render WAVs. Audio and project semantics match desktop, even though navigation and layout are purpose-built for touch.
 
 **Not the goal:** a miniaturized desktop app, duplicated synth code, a less capable “lite” editor, new phone-only file formats, or an account-dependent cloud product. Offline support, installation metadata and robust iOS file handling are delivery requirements, not claims about the current shell.

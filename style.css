@@ -1367,13 +1367,18 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .visual-sound-panel>.synth-group>summary {text-transform:lowercase}
 .visual-sound-panel>.synth-group[open]>summary {border-bottom:1px solid var(--faint)}
 .visual-sound-panel>.synth-group>.visual-panel-area {
- position:relative;height:160px;background:#020304;border-bottom:1px solid var(--faint)}
+ position:relative;height:180px;background:#020304;border-bottom:1px solid var(--faint)}
+.visual-panel-plot {position:absolute;inset:30px 0 0}
 .visual-panel-graph {display:block;width:100%;height:100%;pointer-events:none}
 .visual-graph-line {fill:none;stroke:var(--visual-color,var(--track-accent,#08e4ec));
  stroke-width:1.7;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .visual-graph-secondary {fill:none;stroke:#515151;stroke-width:.8;
  stroke-dasharray:3 4;vector-effect:non-scaling-stroke}
-.visual-graph-label {fill:var(--muted);font-size:10px}
+.visual-graph-labels {position:absolute;inset:0;pointer-events:none}
+.visual-graph-label {fill:var(--muted);font-size:10px;pointer-events:none}
+.visual-graph-labels>.visual-graph-label {position:absolute;transform:translateY(-100%);color:var(--muted);
+ font:10px/1.2 var(--mono,monospace);white-space:nowrap;pointer-events:none}
+.visual-graph-labels>.visual-graph-label.visual-label-end {transform:translate(-100%,-100%)}
 .visual-graph-points {position:absolute;inset:0;pointer-events:none}
 .visual-graph-point {position:absolute;transform:translate(-50%,-50%);
  width:28px;height:28px;min-width:28px;min-height:28px;padding:0;border:0;
@@ -1382,8 +1387,9 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .visual-graph-point::after {content:"";display:block;width:7px;height:7px;
  border:1px solid var(--track-accent,#08e4ec);border-radius:50%;
  background:#050505;box-sizing:border-box;transition:transform .1s ease}
-.visual-graph-point:hover::after,.visual-graph-point:focus-visible::after {
- transform:scale(1.5);background:var(--track-accent,#08e4ec);border-color:var(--bright)}
+.visual-graph-point:hover::after {border-color:var(--bright)}
+.visual-graph-point:focus-visible::after,.visual-graph-point:active::after {
+ background:var(--track-accent,#08e4ec);border-color:var(--bright)}
 .visual-graph-point:focus-visible {outline:1px dotted var(--bright);outline-offset:0}
 .visual-graph-point:active {cursor:grabbing}
 .visual-graph-action{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;
@@ -1393,18 +1399,20 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .visual-graph-action:hover,.visual-graph-action:focus-visible{border-color:var(--track-accent,#08e4ec);
  outline:1px solid var(--track-accent,#08e4ec);outline-offset:1px}
 .visual-graph-point[aria-description]{z-index:1}
-.visual-point-readout{display:none;position:absolute;left:50%;bottom:calc(100% + 4px);
- transform:translateX(-50%);width:max-content;max-width:250px;
+.visual-point-readout{visibility:hidden;position:absolute;left:50%;bottom:calc(100% + 4px);
+ transform:translateX(-50%);width:max-content;max-width:160px;
  padding:4px 6px;border:1px solid var(--line);background:#090b0b;
  color:var(--bright);font:10px/1.3 monospace;pointer-events:none;
- white-space:nowrap;z-index:9}
-.visual-graph-point:hover .visual-point-readout,
+ white-space:normal;overflow-wrap:anywhere;z-index:9}
+.visual-point-start .visual-point-readout{left:50%;transform:none}
+.visual-point-end .visual-point-readout{left:auto;right:50%;transform:none}
+.visual-graph-point:hover .visual-point-readout{visibility:visible;transition:visibility 0s .55s}
 .visual-graph-point:focus-visible .visual-point-readout,
-.visual-graph-point:active .visual-point-readout{display:block}
+.visual-graph-point:active .visual-point-readout{visibility:visible;transition:none}
 .visual-drag-readout{position:absolute;transform:translate(-50%,calc(-100% - 13px));
  z-index:5;pointer-events:none;max-width:245px;padding:4px 7px;
  border:1px solid var(--track-accent,#08e4ec);background:#080c0c;
- color:var(--bright);font:10px/1.35 monospace;white-space:nowrap}
+ color:var(--bright);font:10px/1.35 monospace;white-space:normal;overflow-wrap:anywhere}
 .visual-drag-readout[hidden]{display:none}
 .visual-panel-area:has(.visual-graph-action){isolation:isolate}
 .visual-panel-expand {position:absolute;right:8px;top:6px;z-index:2;
@@ -1416,12 +1424,20 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 body.sound-visual-zoom::before {content:"";position:fixed;inset:0;
  z-index:199;background:#000e}
 body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:210}
-.visual-sound-panel.zoomed {position:fixed;z-index:220;left:50%;top:5dvh;
- transform:translateX(-50%);width:min(850px,calc(100vw - 22px));
+body.sound-visual-zoom .visual-sound-panel.zoomed {position:fixed;z-index:220;left:50%;top:5dvh;
+ transform:translateX(-50%);width:min(1040px,calc(100% - 32px));margin:0;
  max-height:90dvh;overflow-y:auto;overscroll-behavior:contain;
  border-color:var(--bright);box-shadow:0 12px 60px #000}
 .visual-sound-panel.zoomed>.synth-group>.visual-panel-area {height:clamp(220px,37dvh,380px)}
-.visual-sound-panel.zoomed>.synth-group>.synth-fields {grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+.visual-sound-panel.zoomed>.synth-group>.synth-fields {display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,120px));justify-content:start;gap:18px}
+.visual-sound-panel.zoomed .synth-fields>.dial-field {min-width:0;width:100%}
+.visual-sound-panel.zoomed .synth-fields>.synth-field {min-width:0;max-width:100%}
+.visual-sound-panel.zoomed .oscillator-stack {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));align-items:start}
+.visual-sound-panel.zoomed .oscillator-unit {min-width:0;border-bottom:0}
+.visual-sound-panel.zoomed .oscillator-unit>.synth-fields {display:grid;grid-template-columns:repeat(auto-fit,minmax(82px,1fr));gap:14px 10px}
+.visual-sound-panel.zoomed .automation-toggle {grid-column:1/-1;justify-self:start}
+.visual-sound-panel.zoomed .visual-graph-label {font-size:11px}
+.sound-section,.freeform-sound-host {overflow-anchor:none}
 .visual-sound-panel.zoomed>.synth-group>summary {cursor:default;padding-right:44px}
 .visual-sound-panel.zoomed>.synth-group>summary::after {display:none}
 .visual-sound-panel.zoomed>.visual-panel-expand {top:6px;right:8px;font-size:22px;color:var(--bright)}
@@ -1567,8 +1583,7 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .visual-graph-hit{fill:none;stroke:transparent;stroke-width:14px;
  vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:pointer;outline:none}
 .visual-graph-line.visual-linked,.visual-graph-secondary.visual-linked{
- stroke:var(--track-accent,#08e4ec);stroke-width:2.8;opacity:1;
- filter:drop-shadow(0 0 2px var(--track-accent,#08e4ec))}
+ stroke:var(--visual-color,var(--track-accent,#08e4ec));stroke-width:1.9;opacity:1}
 .visual-graph-hit:focus-visible{stroke:#ffffff24}
 /* Graph links highlight their traces instead of outlining ordinary knobs.
    Keyboard focus still uses the controls' normal focus indicator. */
@@ -1618,10 +1633,10 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
  outline:1px solid var(--signal-mauve);outline-offset:2px
 }
 .note-expression .expression-visual .visual-graph-level.visual-graph-linked{
- stroke-width:3.2;filter:drop-shadow(0 0 2px var(--signal-mauve))
+ stroke-width:2.2
 }
 .note-expression .expression-visual .visual-graph-point.visual-point-linked::after{
- transform:scale(1.5);background:var(--signal-mauve);border-color:var(--bright)
+ background:var(--signal-mauve);border-color:var(--bright)
 }
 .note-expression .expression-visual .visual-graph-action.visual-point-linked{
  outline:1px solid var(--signal-mauve);outline-offset:2px

@@ -23,6 +23,7 @@ const groups=[
  {name:"Filter & noise",open:false,fields:[
   {path:["filter","type"],label:"Filter",options:FILTERS},
   {path:["filter","resonance"],label:"Resonance",min:.1,max:16,step:.1,display:"number"},
+  {path:["effects","drive"],label:"Distortion",min:0,max:1,step:.01,display:"percent"},
   {path:["filter","sweep"],label:"Filter sweep",min:-5,max:5,step:.1,display:"number",defaultValue:0},
   {path:["filter","sweepTime"],label:"Sweep time",min:.01,max:3,step:.01,display:"seconds",defaultValue:.2},
   {path:["noise"],label:"Noise",min:0,max:1,step:.01,display:"percent"},
@@ -42,9 +43,6 @@ const groups=[
   {path:["movement","tone"],label:"Tone wave",min:0,max:1,step:.01,display:"percent"},
   {path:["movement","toneRate"],label:"Tone speed",min:.1,max:20,step:.1,display:"hz"},
   {path:["pan"],label:"Pan",min:-1,max:1,step:.01,display:"pan"}
- ]},
- {name:"Distortion",open:false,fields:[
-  {path:["effects","drive"],label:"Distortion",min:0,max:1,step:.01,display:"percent"}
  ]},
  {name:"Delay",open:false,fields:[
   {path:["effects","delayMix"],label:"Delay",min:0,max:1,step:.01,display:"percent"},
@@ -69,10 +67,10 @@ export function activeSoundPanels(patch){
  if(!equal(patch.oscillators,init.oscillators))active.add("Oscillators");
  if(!equal(patch.envelope,init.envelope))active.add("Envelope");
  if(!equal(patch.filter,init.filter)||patch.noise!==init.noise||
-    (patch.noiseDecay??0)!==(init.noiseDecay??0))active.add("Filter & noise");
+    (patch.noiseDecay??0)!==(init.noiseDecay??0)||
+    (patch.effects?.drive??0)!==init.effects.drive)active.add("Filter & noise");
  if(!equal({...init.movement,...patch.movement},init.movement)||
     !equal(patch.bend,init.bend)||(patch.pan??0)!==(init.pan??0))active.add("Pitch & movement");
- if((patch.effects?.drive??0)!==init.effects.drive)active.add("Distortion");
  if((patch.effects?.delayMix??0)!==init.effects.delayMix||
     (patch.effects?.delayTime??init.effects.delayTime)!==init.effects.delayTime||
     (patch.effects?.delayFeedback??init.effects.delayFeedback)!==init.effects.delayFeedback)
@@ -217,7 +215,8 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
   const details=document.createElement("details");details.className="synth-group";
   details.open=expanded.has(group.name);
   details.addEventListener("toggle",()=>details.open?expanded.add(group.name):expanded.delete(group.name));
-  const summary=document.createElement("summary");summary.textContent=group.name;
+  const summary=document.createElement("summary");
+  summary.textContent=group.name==="Filter & noise"?"filter, distortion & noise":group.name;
   details.append(summary);
   if(group.name==="Oscillators"){
    const container=document.createElement("div");container.className="oscillator-stack";
@@ -256,12 +255,11 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
   }
   const kind=group.name==="Oscillators"?"oscillators":
    group.name==="Envelope"?"envelope":group.name==="Filter & noise"?"filter":
-   group.name==="Pitch & movement"?"movement":
-   group.name==="Distortion"?"distortion":"delay";
+   group.name==="Pitch & movement"?"movement":"delay";
   const panel=illustrateSoundPanel(details,kind,patch,onChange,preview,soundId??0);
   panels.push(panel);grid.append(panel.element);
  }
- const modulation=illustrateSoundPanel(renderModulationEditor(patch,onChange,soundId),
+ const modulation=illustrateSoundPanel(renderModulationEditor(patch,onChange,soundId,preview),
   "modulation",patch,onChange,preview,soundId);
  panels.push(modulation);grid.append(modulation.element);
  root.append(grid);

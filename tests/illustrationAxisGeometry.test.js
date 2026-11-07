@@ -76,7 +76,7 @@ test("every Sound teaching handle is physically aligned with the numeric axis it
   points:[{id:"first",step:5,value:3800},{id:"last",step:42,value:500}]};
  const cases=[
   [patch,["oscillators","oscillator1","oscillator2","harmonics0","harmonics1",
-   "envelope","filter","movement","distortion","delay","modulation"]],
+   "envelope","filter","movement","delay","modulation"]],
   [recording,["filter","sample","movement","mapping"]],
   [voice,["filter","sample","movement"]],
   [automation,["automation"]],

@@ -108,6 +108,10 @@ button:active{background:#252525}
 .phone-patch-editor .visual-sound-panel{display:flex;flex-direction:column;gap:0;border:1px solid #343434;background:#060606;position:relative}
 .phone-patch-editor .visual-panel-area{min-height:128px;max-height:190px;position:relative;border-bottom:1px solid #282828;overflow:hidden}
 .phone-patch-editor .visual-panel-graph{display:block;width:100%;height:160px}
+.phone-patch-editor .visual-panel-plot{position:relative;height:160px;margin-top:30px}
+.phone-patch-editor .visual-graph-labels{position:absolute;inset:0;pointer-events:none}
+.phone-patch-editor .visual-graph-labels>.visual-graph-label{position:absolute;transform:translateY(-100%);font:10px/1.2 monospace;color:var(--sub);white-space:nowrap}
+.phone-patch-editor .visual-label-end{transform:translate(-100%,-100%)}
 .phone-patch-editor .visual-graph-points{position:absolute;inset:0;pointer-events:none}
 .phone-patch-editor .visual-graph-point{position:absolute;pointer-events:auto;min-height:24px;min-width:24px;padding:2px;border-color:#777;color:var(--accent)}
 .phone-patch-editor .visual-panel-expand{position:absolute;top:5px;right:5px;z-index:2;min-height:29px;width:31px;background:#050505cc}

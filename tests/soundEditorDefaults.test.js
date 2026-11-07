@@ -23,7 +23,7 @@ test("only customized synth sections open, using canonical patch defaults",()=>{
 test("synth sections open for nondefault noise, drive or modulation without opening unrelated modules",()=>{
  const p=makePatch("init");
  p.noise=.25;p.effects.drive=.5;
- assert.deepEqual([...activeSoundPanels(p)],["Filter & noise","Distortion"]);
+ assert.deepEqual([...activeSoundPanels(p)],["Filter & noise"]);
  p.modulation={version:1,routes:[{id:"route",target:"filter.cutoff"}]};
  assert.ok(activeSoundPanels(p).has("movement routes"));
 });
