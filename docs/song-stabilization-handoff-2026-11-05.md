@@ -1,3 +1,5 @@
+> Workflow update (2026-11-07): this is historical stabilization evidence. The lean prototype policy in `AGENTS.md` and the README supersedes its broad routine-check requirements.
+
 # Song/freeform stabilization and handoff — 2026-11-05
 
 **Purpose:** One actionable handoff for the remaining desktop Song/freeform and native Windows rollout. Read alongside [song-rollout.md](song-rollout.md), [native-onset-paging.md](native-onset-paging.md), [terminology.json](terminology.json), and [synthesis-roadmap.json](synthesis-roadmap.json). This note records verified distinctions; it does **not** supersede the approved architecture.
@@ -79,7 +81,7 @@ node scripts/prepare-pages.mjs
 node tests/song.browser.mjs
 ```
 
-Because C ABI #192 is now on `main`, also run `node scripts/native-stream-device-check.mjs`. The full `.github/workflows/verify.yml` checks browser Song, Sound, stage, controls, native DSP/PCM and long-song budget; `.github/workflows/desktop-release.yml` is the required portable build/relocation/recovery gate. Do not call CI a physical-listening gate.
+Because C ABI #192 is now on `main`, also run `node scripts/native-stream-device-check.mjs`. The optional `.github/workflows/qualify.yml` checks browser Song, Sound, stage, controls, native DSP/PCM and long-song budget; run it only when full qualification is requested. `.github/workflows/desktop-release.yml` runs only for a requested Windows build/release or version tag. Do not call CI a physical-listening gate.
 
 ## Closing unrelated, deferred feature PRs
 

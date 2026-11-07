@@ -1,11 +1,11 @@
 # pre-midi phone studio — canonical architecture, rebuild and parity gates
 
-Status: **Phase 0 retired, Phase 1 source inventory gated, Phase 2 Notes editing partially Safari-qualified, Phases 3–5 feature slices in browser qualification; Phase 6 real-device parity still open** (2026-11-02).
+Status: **Phase 0 retired, Phase 1 shared commands in progress, Phase 2 Notes editing partially Safari-qualified, Phases 3–5 feature slices in browser qualification; Phase 6 real-device parity still open** (2026-11-02).
 Owner document: **this file**. Do not create a second phone/mobile roadmap or parity matrix. Synthesizer/DSP work remains in `docs/synthesis-roadmap.json`; Song/game-engine integration remains in `docs/song-rollout.md`; naming follows `docs/terminology.json`.
 
 ## Desktop gesture parity update (2026-11-06)
 
-Desktop Song now supports captured ruler/cursor dragging, a delayed Beat hold cue, attached-lane highlighting, exact-position drop previews, and Escape/pointer interruption cancellation. Ordinary lateral moves and resizing retain their own behavior. The phone equivalents remain open: provide accessible Song seek actions and explicit move-to-freeform/confirmation alternatives, and qualify any drag/hold feedback on real Safari. The shared gesture lifecycle is indexed in `docs/phone-capabilities.json`; desktop Pointer Events coverage does not qualify phone Freeform.
+Desktop Song now supports captured ruler/cursor dragging, a delayed Beat hold cue, attached-lane highlighting, exact-position drop previews, and Escape/pointer interruption cancellation. Ordinary lateral moves and resizing retain their own behavior. The phone equivalents remain open: provide accessible Song seek actions and explicit move-to-freeform/confirmation alternatives, and qualify any drag/hold feedback on real Safari. Desktop Pointer Events coverage does not qualify phone Freeform.
 
 ## Approved Song/freeform parity boundary (2026-11-04)
 
@@ -38,7 +38,7 @@ Do not restore scattered phone CSS into `style.css` or `studioAlignment.css`. Al
 The user approved the full phone studio plan, with these three refinements taking precedence over older sections in this document:
 
 1. **Three primary workspaces, not four:** **Notes**, **Sound**, and **Song**. The currently selected Instrument and Chunk remain directly available in Notes. Tapping Instrument opens an intentional contextual picker/sheet with current Instruments, a unified Add/Browse catalog, factory and user presets, and Rack presets. Changing Instruments never requires a detour to a separate workspace. There is no fourth Instruments tab.
-2. **Exhaustive, source-backed action inventory is a Phase 1 deliverable.** The existing feature parity ledger below is a subsystem outline, **not yet an exhaustive inventory**. Build a single machine-readable capability registry from the real entry-point controls, dynamically rendered synth/sampler fields, gestures, keyboard bindings, Track/Clip actions, import/export operations and desktop/native host capabilities. For each action specify a stable identifier, shared command or justified host-specific equivalent, desktop route, phone route, state/output contract, tests and verified status. Use deterministic extraction and a CI coverage gate so new desktop controls cannot silently lack a phone mapping. Registry data is implementation evidence, not a second human roadmap: **this document remains the single source of truth for acceptance**. An unimplemented phone mapping is a tracked gap, never evidence of parity.
+2. **Prototype policy update (2026-11-07):** the generated phone action inventory and mandatory regeneration checks were removed at the user’s request. Phone work is deferred while desktop features iterate. Keep this architecture plan and shared musical commands; do not impose ledger updates or phone qualification on unrelated desktop edits.
 3. **Qualify the iOS host early.** Alongside the first functioning Notes editor, establish prototype Home Screen standalone launch, Web Audio activation, local draft persistence and basic offline-shell tests. Do not postpone discovery of iOS-specific failures until all Sounds and Songs are implemented. Full offline caching, update recovery, file flows and storage hardening remain later release gates.
 
 Additional approved interaction rules: tapping an existing note **selects** it rather than deleting it; delete is an explicit contextual action; long press is optional, not required to find controls. Scroll/paint/pinch must have distinct gesture hit zones and accessible alternatives. Phone owns touch mapping; the new shared note commands and session modules begin the shared, DOM-free note editing seam, but **Phase 1 and the complete phone UI are not yet finished**.
@@ -46,7 +46,7 @@ Additional approved interaction rules: tapping an existing note **selects** it r
 ### Approved milestone order
 
 - **Phase 0 — completed:** retire broken phone CSS and establish the dedicated shell without altering desktop sound or project files.
-- **Phase 1 — in progress:** shared commands, identical desktop/headless-phone state fixtures, exhaustive generated action registry and CI coverage gate.
+- **Phase 1 — in progress:** shared commands and focused cross-host behavior checks when phone work resumes.
 - **Phase 2:** usable Notes interface, Instrument sheet, Chunk/scale controls, playback, touch note operations, save/restore; initial Home Screen and offline/host feasibility; real iPhone tap-to-place gate.
 - **Phase 3:** all synth/sampler controls and visualizations, sound/rack library and recording, isolated note effects.
 - **Phase 4:** Song arrangement, linked Beat Clips, vocal Tracks, automation, external Asset references.
@@ -55,11 +55,9 @@ Additional approved interaction rules: tapping an existing note **selects** it r
 
 The detailed legacy delivery gates below remain relevant; the approved milestone sequence above controls scheduling. An early web-based prototype is not equivalent to an iOS-qualified installable offline application.
 
-### Phase 1 source inventory (initial baseline; not complete semantic parity)
+### Prototype workflow update (2026-11-07)
 
-The checked-in **generated evidence index** is `docs/phone-capabilities.json`, produced by `scripts/phone-capabilities.mjs`. Current scan: **422 entries** covering desktop HTML controls, registered and assigned event listeners, synthesizer patch descriptors, sampler parameter families and the generated harmonic-partial editor. Every entry identifies the source control/handler, an intended phone route and `phoneStatus: "todo"`. The source index does **not** mark any interaction as implemented merely because the shared engine supports the parameter. It has not yet proven all dynamically generated event families, transport outcomes and host-specific permissions, nor does a listener equal one user intention.
-
-Run `npm run check:phone-capabilities` to compare the deterministic scan against the committed index. It runs in CI before the full test suite. A newly added or removed desktop listener, HTML control or supported descriptor changes the index and fails CI until a developer regenerates it and reviews its phone destination/status. Future slices must refine per-entry semantic identity and add exception/equivalence evidence rather than treating an automatic source listing as a completed UX audit. The canonical acceptance criteria and feature ledger remain **this document**.
+The generated phone index, generator and inventory gate were removed to reduce maintenance. Existing phone behavior and optional tests remain. Real Safari/Home Screen acceptance remains necessary before claiming those platforms work; it is not a routine desktop deployment gate. The small default checks and opt-in qualification commands are documented in the repository README.
 
 ### Phase 2 gesture reliability slice (source and Chrome-qualified only)
 

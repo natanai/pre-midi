@@ -1,11 +1,7 @@
 name: Windows portable release
 on:
-  pull_request:
-    branches: [main]
-    paths: ['desktop/**', 'native/**', 'src/hosts/native/**', 'src/dsp/**', 'audio.js', 'song*.js', 'freeform*.js', 'sound*.js', 'vocal*.js', 'recording*.js', 'sample*.js', 'synth.js', 'schema.js', 'desktopUI.js', 'scripts/*desktop*', 'scripts/native*check.mjs', 'scripts/test-windows-portable.ps1', '.github/workflows/desktop-release.yml', 'package*.json', 'tests/song-check.html', 'tests/native*.test.js', 'tests/song*.test.js']
   push:
-    branches: [main]
-    paths: ['package.json', '.github/workflows/desktop-release.yml', 'desktop/**', 'native/**', 'src/hosts/native/**', 'src/dsp/**', 'audio.js', 'song*.js', 'freeform*.js', 'sound*.js', 'vocal*.js', 'recording*.js', 'sample*.js', 'synth.js', 'schema.js']
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       publish_preview:
@@ -14,6 +10,10 @@ on:
         default: false
       publish_stable:
         description: Explicitly qualify and publish a signed stable Windows portable release
+        type: boolean
+        default: false
+      qualify_audio:
+        description: Run the optional full browser and native audio suite
         type: boolean
         default: false
 permissions:
@@ -31,6 +31,7 @@ jobs:
       tag: ${{ steps.resolve.outputs.tag }}
       publish: ${{ steps.resolve.outputs.publish }}
       build: ${{ steps.resolve.outputs.build }}
+      qualify: ${{ steps.resolve.outputs.qualify }}
     steps:
       - uses: actions/checkout@v4
       - id: resolve
@@ -45,38 +46,26 @@ jobs:
             const tagged = context.ref.startsWith('refs/tags/');
             if (tagged && context.ref !== 'refs/tags/' + tag) throw Error('Tag/package version mismatch');
             const inputs = context.payload.inputs || {};
-            const requested = context.eventName !== 'pull_request' &&
-              (tagged || context.eventName === 'push' || inputs.publish_preview === 'true' || inputs.publish_stable === 'true');
+            const requested = tagged || inputs.publish_preview === 'true' || inputs.publish_stable === 'true';
             if (requested && !preview && inputs.publish_stable !== 'true') {
               throw Error('Stable publication requires an explicit qualified workflow_dispatch publish_stable=true');
             }
             if (requested && preview && inputs.publish_stable === 'true') throw Error('Stable publication requires a stable version');
             const commit = require('child_process').execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
-            let publish = requested;
-            let build = context.eventName === 'pull_request' || context.eventName === 'workflow_dispatch';
-            try {
+            const publish = requested;
+            if (publish) try {
               const ref = await github.rest.git.getRef({...context.repo,ref:'tags/'+tag});
               if(ref.data.object.sha !== commit) {
-                if(context.eventName === 'pull_request' || (context.eventName === 'push' && !tagged)) {
-                  // Normal merges can change the studio without bumping its
-                  // public desktop version. Do not reuse an immutable tag.
-                  if(context.eventName === 'push') core.notice('Skipping desktop publication: '+tag+' already refers to another commit. Bump package.json for the next release.');
-                  publish = false;
-                } else throw Error('Version tag already points to another commit; bump package.json');
-              } else if(context.eventName === 'push' && !tagged) {
-                // An already published source commit does not need rebuilding.
-                publish = false;
+                throw Error('Version tag already points to another commit; bump package.json');
               }
             } catch(error) {
               if(error.status !== 404) throw error;
             }
-            // Every affected main commit gets an exact-source Windows test build even
-            // when its published version tag correctly blocks re-publication.
-            build = build || publish || context.eventName === 'push';
             core.setOutput('commit',commit);
             core.setOutput('tag',tag);
             core.setOutput('publish',String(publish));
-            core.setOutput('build',String(build));
+            core.setOutput('build','true');
+            core.setOutput('qualify',String(inputs.qualify_audio === 'true' || inputs.publish_stable === 'true'));
   build:
     needs: source
     if: needs.source.outputs.build == 'true'
@@ -156,13 +145,13 @@ jobs:
   audio-qualification:
     name: Exact-commit source, browser and native audio verification
     needs: source
-    if: needs.source.outputs.publish == 'true'
-    uses: ./.github/workflows/verify.yml
+    if: needs.source.outputs.qualify == 'true'
+    uses: ./.github/workflows/qualify.yml
     permissions:
       contents: read
   publish:
     needs: [source, build, audio-qualification]
-    if: needs.source.outputs.publish == 'true'
+    if: always() && needs.source.outputs.publish == 'true' && needs.build.result == 'success' && (needs.source.outputs.qualify != 'true' || needs.audio-qualification.result == 'success')
     runs-on: ubuntu-22.04
     permissions:
       contents: write

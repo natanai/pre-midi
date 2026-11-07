@@ -48,13 +48,18 @@ The goal is **one native music format** for the studio and pre-programmed, inclu
 
 The web editor runs directly in modern browsers via GitHub Pages, with no application runtime dependencies and no backend. The Windows portable desktop host uses Tauri and the shared musical core; native macOS/Linux packaging is deferred during rapid prototyping.
 
-- `npm run check` — JavaScript syntax checks and Node regression tests.
-- `node tests/song.browser.mjs` — desktop and narrow-desktop Song browser interaction, playback, and recording checks (requires Chrome).
-- `node tests/layout.browser.mjs` — desktop and narrow-desktop layout, examples, racks, conversion and sound tests (requires Chrome).
+- `npm run check` — the routine prototype check: syntax for edited JavaScript plus a small save/load and data-editing smoke suite. No browser, downloads or native build.
+- `npm test` — just that small smoke suite, with concise output.
+- `npm run check:all` — optional full JavaScript/Node checks. Run only when the change warrants them or full qualification is requested.
+- `node tests/song.browser.mjs` / `node tests/layout.browser.mjs` / `node tests/phone.browser.mjs` — optional browser suites for the affected workspace, not routine prerequisites (require Chrome).
 - `node scripts/fetch-samples.mjs` — fetch exact pinned CC0 samples and verify their hashes into the ignored `samples/` directory.
 - `node scripts/prepare-pages.mjs` — stage **only** the runtime dependency graph, styles, notices and required verified samples in ignored `dist/` for publishing. GitHub Pages does not publish tests, plans or scripts.
 
 The source files have no generated bundles committed to Git. Browser audio is built on the Web Audio API and microphone recording on browser MediaRecorder.
+
+**Rapid prototype policy:** pull requests get one small check. Merging does not repeat it; Pages only prepares and publishes runtime assets. Documentation/test-only edits do not redeploy the studio. The full Chrome/native/audio benchmark workflow is manual. Windows builds run only for an explicit manual build or version tag; preview releases do not require the full audio matrix unless requested, while stable publication still does. Signing, package hashes and folder-local user-data handling remain part of actual Windows packaging. Prefer a targeted check and a quick user-testable change over release-level qualification for every iteration.
+
+Brittle copy/layout/roadmap audits and the generated phone action inventory were removed. Keep behavioral tests that help diagnose real problems available on demand; do not replace the deleted bookkeeping with another mandatory ledger or checklist. See `AGENTS.md` for the default workflow future agents must follow.
 
 ## Contracts and credits
 
