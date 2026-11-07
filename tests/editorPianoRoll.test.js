@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {pianoRollRows,noteWindow,notesForPianoRow,noteAtPianoStep} from "../editorPianoRoll.js";
+import {pianoRollRows,noteWindow,notesForPianoRow,noteAtPianoStep,noteStartingAtPianoStep} from "../editorPianoRoll.js";
 const source=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 
 test("the actual Beat and freeform note surfaces share one renderer",()=>{
@@ -78,4 +78,21 @@ test("Beat and Song-time editors share note membership while keeping their timin
  assert.match(song,/notesForPianoRow\(inst\.notes,rowData\)/);
  assert.match(song,/noteWindow\(\{\.\.\.note,duration:value\.duration\}/);
  assert.match(song,/noteWindow\(\{start:step,duration:length\}/);
+});
+
+test("Rack render shares row surfaces but triggers only on the onset cell",()=>{
+ const rack={pitch:null,soundId:"snare"},notes=[
+  {id:"s",soundId:"snare",start:7,duration:4},
+  {id:"k",soundId:"kick",start:7,duration:1}
+ ];
+ assert.equal(noteAtPianoStep(notes,rack,9)?.id,"s",
+  "Sustained Sound continues to occupy Song-time visual space");
+ assert.equal(noteStartingAtPianoStep(notes,rack,7)?.id,"s");
+ assert.equal(noteStartingAtPianoStep(notes,rack,8),null,
+  "Rack grid must not display a second sample trigger on a sustain tail");
+ const sourceText=source("studio.js");
+ assert.match(sourceText,/for\(const rowData of pianoRollRows\(inst\)\)/);
+ assert.match(sourceText,/noteStartingAtPianoStep\(chunk\.notes,rowData,step\)/);
+ assert.match(sourceText,/createPianoNoteSurface\(\{className:"note rack-step"/);
+ assert.match(sourceText,/applyPianoNoteState\(cell,\{/);
 });
