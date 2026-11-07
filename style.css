@@ -146,9 +146,9 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
  padding:0;line-height:1;border:0;color:var(--muted)
 }
 .history-actions button::before,.history-actions button::after {content:none}
-.history-actions :is(#undo,#redo) {font-size:21px}
-.history-actions :is(#undo,#redo):disabled {opacity:.32}
-.history-actions :is(#undo,#redo):hover:not(:disabled) {
+.history-actions :is(.history-undo,.history-redo) {font-size:21px}
+.history-actions :is(.history-undo,.history-redo):disabled {opacity:.32}
+.history-actions :is(.history-undo,.history-redo):hover:not(:disabled) {
  color:var(--bright);background:var(--stripe);text-decoration:none
 }
 .notes-toolbar {
@@ -206,8 +206,8 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
 }
 .scale-controls > label {min-width:0}
 .scale-controls select {height:34px;min-height:34px;min-width:0}
-#scale-root {width:85px}
-#scale-mode {width:166px;max-width:100%}
+.scale-root {width:85px}
+.scale-mode {width:166px;max-width:100%}
 .scale-controls .scale-lock-control {
  display:inline-flex;flex-direction:row;align-items:center;gap:6px;
  height:34px;min-height:34px;white-space:nowrap;cursor:pointer;
@@ -336,7 +336,9 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
   height:4px;
   background:#fff;
 }
-.piano-row {display:grid;grid-template-columns:var(--piano-gutter,63px) repeat(16,minmax(40px,1fr));height:23px}
+.piano-row {display:grid;grid-template-columns:var(--piano-gutter,63px) minmax(0,1fr);height:var(--piano-row-height,23px)}
+.piano-row-notes {position:relative;display:grid;grid-template-columns:repeat(var(--piano-steps,16),minmax(40px,1fr));min-width:0}
+.piano-rack-row {height:42px}
 .note-name {
   padding:4px 6px;border-right:1px solid var(--line);border-bottom:1px solid #222;
   background:#181818;color:var(--text);font-size:11px;
@@ -353,7 +355,7 @@ aside {min-width:0;border-right:1px solid var(--line);background:var(--void)}
    Flat monochrome keys match the studio's controls; saturated color only
    indicates selected scale, anticipated pitch, and played-note feedback. */
 #piano.piano-keyboard {--piano-gutter:82px}
-#piano.piano-keyboard .note-name {
+:is(#piano,.freeform-roll-content).piano-keyboard .note-name {
  background:transparent;border:0;padding:0;color:transparent;
 }
 :is(#piano,.freeform-roll-content) .piano-keys-overlay {
@@ -484,12 +486,12 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 @media (min-width:601px) and (max-width:860px) {
   .work {grid-template-columns:1fr}
   aside {border-right:0;border-bottom:1px solid var(--line)}
-  #instrument-list {display:flex;overflow-x:auto;scroll-snap-type:x proximity}
+  .instrument-list {display:flex;overflow-x:auto;scroll-snap-type:x proximity}
   .instrument-card {flex:0 0 165px;min-height:75px;border-right:1px dotted var(--line);scroll-snap-align:start}
   .add-instrument-action {width:auto;margin:10px 12px}
   .instrument-pane {display:grid;grid-template-columns:auto minmax(0,1fr)}
   .instrument-pane .heading {grid-column:1 / -1}
-  .instrument-pane #instrument-list {min-width:0}
+  .instrument-pane .instrument-list {min-width:0}
   .heading small {max-width:55ch}
 }
 
@@ -742,15 +744,15 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .sample-shaping .synth-fields {padding-bottom:11px}
 .sample-shaping>.synth-fields {display:flex}
 .sound-section .controls {align-items:center}
-#note-mode {
+.note-mode-toggle {
  display:grid;place-items:center;flex:none;width:30px;height:30px;min-height:30px;
  border:1px solid var(--line);padding:0;font-size:18px;line-height:1;color:var(--text)
 }
 /* Generic .heading buttons receive [ ] pseudo-elements. A grid button
    would stack those characters above and below its actual pencil glyph. */
-#note-mode::before,#note-mode::after {content:none}
-#note-mode:hover:not(:disabled) {background:var(--stripe);text-decoration:none}
-#note-mode[aria-pressed="true"] {
+.notes-heading .note-mode-toggle::before,.notes-heading .note-mode-toggle::after {content:none}
+.note-mode-toggle:hover:not(:disabled) {background:var(--stripe);text-decoration:none}
+.note-mode-toggle[aria-pressed="true"] {
  color:var(--bright);border-color:var(--signal-mauve);
  background:color-mix(in srgb,var(--signal-mauve) 17%,#000)
 }
@@ -771,7 +773,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .note-effects-section {display:none;min-width:0;background:var(--void)}
 .work.editing-note-effects .note-effects-section {display:block}
 .work.editing-note-effects .sound-section,
-.work.editing-note-effects #sound-toggle {display:none}
+.work.editing-note-effects .sound-toggle {display:none}
 .note-effects-heading {min-height:45px}
 .note-effects-heading button {padding:5px 9px;border:1px solid var(--line);min-height:30px}
 .note-effects-empty {margin:14px;color:var(--muted);font-size:11px}
@@ -795,7 +797,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 }
 
 .dial-field[hidden] {display:none}
-.editing-note-effects .notes-heading #note-mode:focus-visible {outline-color:var(--signal-mauve)}
+.editing-note-effects .notes-heading .note-mode-toggle:focus-visible {outline-color:var(--signal-mauve)}
 
 
 /* COMPOSER-FIRST WORKSPACE
@@ -884,7 +886,9 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
  .work.inspector-closed .mainwork {grid-template-areas:"timeline" "notes";grid-template-columns:minmax(0,1fr)}
  .work.inspector-closed .sound-section {display:none}
  .sound-section .synth-grid {grid-template-columns:1fr}
- .notes-section .piano-scroll {max-height:clamp(440px,calc(100dvh - 335px),800px)}
+ .notes-section {display:flex;flex-direction:column;overflow:hidden}
+ .notes-section>.heading,.notes-section>.notes-toolbar,.notes-section>.piano-tools {flex:0 0 auto}
+ .notes-section .piano-scroll {flex:1 1 0;min-height:0;max-height:none}
  .sound-section .heading{position:sticky;top:0;z-index:2}
  .notes-section .notes-toolbar {gap:10px 14px}
  .chunk-fields #chunk-name {width:155px}
@@ -946,7 +950,7 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 
 /* Rack rows share the sequencer's clock, chunks, and playhead. */
 #piano.sound-rack {min-width:640px}
-.rack-row {display:grid;grid-template-columns:128px repeat(16,minmax(32px,1fr));min-height:42px}
+.rack-row {display:grid;grid-template-columns:128px minmax(0,1fr);min-height:42px}
 .rack-name {position:sticky;left:0;z-index:6;min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere;font-size:11px;background:#111;border:1px solid #333;padding:6px 8px}
 .selected-sound .rack-name {border:2px solid #eee;padding:5px 7px;font-weight:bold;background:#242424}
 .rack-step {font-size:13px;min-height:42px;position:relative}
@@ -1490,8 +1494,8 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
 
 /* QWERTY piano: visible playing surface, subdued editing controls. */
 .piano-tools {position:relative}
-#qwerty-piano {font-size:16px}
-#qwerty-piano[aria-pressed="true"] {color:var(--signal-cyan);border-color:var(--signal-cyan)}
+.qwerty-piano-toggle {font-size:16px}
+.qwerty-piano-toggle[aria-pressed="true"] {color:var(--signal-cyan);border-color:var(--signal-cyan)}
 .keyboard-piano-status {font-size:11px;color:var(--signal-cyan);white-space:nowrap}
 .keyboard-piano-guide {
  position:absolute;left:47px;top:100%;z-index:25;
@@ -1500,8 +1504,8 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
  box-shadow:0 8px 24px #0009;box-sizing:border-box;
  visibility:hidden;opacity:0;pointer-events:none;transition:opacity .09s linear;
 }
-.piano-tools:has(#qwerty-piano:hover) .keyboard-piano-guide,
-.piano-tools:has(#qwerty-piano:focus-visible) .keyboard-piano-guide,
+.piano-tools:has(.qwerty-piano-toggle:hover) .keyboard-piano-guide,
+.piano-tools:has(.qwerty-piano-toggle:focus-visible) .keyboard-piano-guide,
 .keyboard-piano-guide:hover,.keyboard-piano-guide:focus-within {
  visibility:visible;opacity:1;pointer-events:auto;
 }
@@ -1509,7 +1513,7 @@ body.sound-visual-zoom .sound-section:has(.visual-sound-panel.zoomed) {z-index:2
 .keyboard-piano-guide p {font-size:10px;color:var(--muted);margin:5px 0 9px;white-space:normal}
 .keyboard-piano-configure {font-size:11px;min-height:26px;padding:3px 8px}
 body.keyboard-piano-active .app :is(input,select,textarea) {opacity:.4;filter:grayscale(1)}
-body.keyboard-piano-active .app button:not(#qwerty-piano):not(.piano-key):not(.note-name):not(.keyboard-piano-configure) {opacity:.38}
+body.keyboard-piano-active .app button:not(.qwerty-piano-toggle):not(.piano-key):not(.note-name):not(.keyboard-piano-configure) {opacity:.38}
 body.keyboard-piano-active .piano-scroll {pointer-events:none}
 :is(#piano,.freeform-roll-content) .piano-key.keyboard-held.white {background:#72bbc1;box-shadow:inset 4px 0 0 var(--signal-cyan),inset -3px 0 0 #4e969a}
 :is(#piano,.freeform-roll-content) .piano-key.keyboard-held.black {background:#14747c;box-shadow:inset 3px 0 0 var(--signal-cyan)}
@@ -1639,3 +1643,37 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .audio-waveform-tools label{display:flex;align-items:center;gap:6px}
 .audio-waveform-tools select{background:var(--panel);color:var(--bright);border:1px solid var(--line);padding:4px 7px;min-height:29px}
 .audio-trim-readout{min-width:75px;text-align:right;color:var(--bright)}
+
+/* A Song-time note spans the same step grid used by Beat cells. */
+.piano-event {
+ position:absolute;top:0;bottom:0;height:100%;padding:0;box-sizing:border-box;
+ border:0;border-right:1px solid #292929;border-bottom:1px solid #1b1b1b;
+ background:linear-gradient(90deg,var(--track-accent) var(--note-head-width,40px),
+  color-mix(in srgb,var(--track-accent) 47%,#000) var(--note-head-width,40px))!important;
+ box-shadow:inset 1px 1px 0 #eee6;z-index:2;cursor:grab;touch-action:none;
+}
+.piano-event.selected {outline:2px solid var(--bright);outline-offset:-2px}
+.piano-event.layer-overflow {border-top:1px dotted var(--bright)}
+.piano-event:focus-visible {outline:2px solid var(--bright);outline-offset:-2px}
+/* Both timing modes share the workspace; Song-time needs no Beat timeline row. */
+@media(min-width:1100px){
+ .work.song-time-editor .mainwork,
+ .work.song-time-editor.inspector-closed.editing-note-effects .mainwork {
+  grid-template-areas:"notes sound";grid-template-rows:minmax(0,1fr);
+ }
+ .work.song-time-editor.inspector-closed:not(.editing-note-effects) .mainwork {
+  grid-template-areas:"notes";
+ }
+}
+/* Contextual Song operations do not occupy the Instrument sidebar. */
+.editor-tool-menu {position:relative;align-self:flex-end;min-height:34px}
+.editor-tool-menu>summary {cursor:pointer;list-style:none;padding:8px 5px;font-size:11px;color:var(--text)}
+.editor-tool-menu>summary::before {content:"[";color:var(--muted)}
+.editor-tool-menu>summary::after {content:"]";color:var(--muted)}
+.editor-tool-menu>div {
+ position:fixed;z-index:25;overflow-y:auto;
+ width:min(380px,calc(100vw - 32px));padding:12px;
+ border:1px solid var(--line);background:var(--void);box-shadow:0 10px 32px #000d;
+}
+
+.piano-row .piano-event.end {position:absolute;cursor:grab}

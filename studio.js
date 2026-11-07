@@ -7,11 +7,12 @@ import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validat
 import { play, audition, auditionChord, auditionHeld, wav, primeSamples, nativeEnabled, cancelNativeTransport } from "./audio.js";
 import { installKeyboardPiano } from "./keyboardPiano.js";
 import { applyNoteCommand } from "./studioCommands.js";
-import { SCALE_ROOTS,SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
+import { SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
 import { chunkIsPlaying, pianoScrubberX } from "./pianoPlayhead.js";
-import {mountPianoKeyOverlay,populateScaleSelectors} from "./editorPianoView.js";
-import {renderPianoRollRows,pianoRollRows,createPianoNoteSurface,applyPianoNoteState,noteAtPianoStep,noteStartingAtPianoStep} from "./editorPianoRoll.js";
-import {createInstrumentCard,createInstrumentActionMenu} from "./editorInstrumentCard.js";
+import {mountPianoKeyOverlay,populateScaleSelectors,paintPianoScale} from "./editorPianoView.js";
+import {renderPianoRollRows,createPianoNoteSurface,applyPianoNoteState,noteAtPianoStep,noteStartingAtPianoStep} from "./editorPianoRoll.js";
+import {mountEditorWorkspace,syncEditorInspector} from "./editorWorkspace.js";
+import {createInstrumentCard,createInstrumentActionMenu,instrumentAccent} from "./editorInstrumentCard.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
@@ -46,6 +47,8 @@ import {applyFreeformPreset} from "./freeformPresets.js";
 import {installDesktopUI} from "./desktopUI.js";
 
 const $ = key => document.getElementById(key);
+const beatEditor=mountEditorWorkspace($("beat-workspace"));
+const beatWorkspace=beatEditor.root;
 // Install the common Sound frame before any of the existing Beat controls bind.
 mountSoundInspectorChrome($("sound-section"));
 let assetsReady=Promise.resolve();
@@ -79,7 +82,6 @@ let vocalTake=null,vocalRequest=false,vocalFinalizing=false,vocalStartStep=0,voc
 let voiceCountAbort=null,voiceToken=0;
 let soundPreviewTimer=null;
 let playBar = -1, playStep = -1, pianoProgress = null, picker = null, pickerTrigger = null;
-const SIGNALS = ["#08e4ec", "#ff416d", "#ba82eb", "#ffc266"];
 const DEFAULT_NOTE_LEVEL=.9;
 
 // Scale controls are non-destructive editor preferences scoped to each Beat.
@@ -129,7 +131,7 @@ function initializeScaleControls() {
 function renderScaleControls(inst) {
  const rack=inst.layout==="rack";
  // The Beat scale remains visible even while editing its drum racks.
- document.querySelector(".piano-tools").hidden=rack;
+ beatWorkspace.querySelector(".piano-tools").hidden=rack;
  const guide=scaleGuideFor();
  $("scale-root").value=String(guide.root);
  $("scale-mode").value=guide.mode;
@@ -165,7 +167,7 @@ function selectBeat(beatId){
 const instrument = () => beat.instruments.find(entry => entry.id === selectedInstrumentId) || beat.instruments[0];
 const sound = (inst=instrument()) => inst.sounds.find(entry=>entry.id===selectedSounds.get(inst.id))||inst.sounds[0];
 const chunkFor = (inst) => inst.chunks.find(entry => entry.id === selectedChunks.get(inst.id)) || inst.chunks[0];
-const signal = inst => SIGNALS[Math.max(0, beat.instruments.findIndex(entry => entry.id === inst.id)) % SIGNALS.length];
+const signal = inst => instrumentAccent(beat.instruments.findIndex(entry => entry.id === inst.id));
 
 function element(tag, label, cls) {
  const el = document.createElement(tag);
@@ -678,17 +680,17 @@ function renderRack(root,inst,chunk){
  const scroll=root.parentElement,top=scroll.scrollTop,left=scroll.scrollLeft;
  root.replaceChildren();root.style.setProperty("--track-accent",signal(inst));
  root.setAttribute("aria-label","Sound rack · "+inst.name);
- for(const rowData of pianoRollRows(inst)){
+ for(const {rowData,row,label:name,surface,head} of renderPianoRollRows(inst)){
   const entry=inst.sounds.find(sound=>sound.id===rowData.soundId);
   if(!entry)continue;
-  const row=element("div",undefined,"rack-row"+(sound(inst).id===entry.id?" selected-sound":""));
+  row.classList.toggle("selected-sound",sound(inst).id===entry.id);
   row.dataset.soundId=entry.id;
-  const name=button((sound(inst).id===entry.id?"✓ ":"")+entry.name,()=>selectSound(entry),"rack-name");
+  name.textContent=(sound(inst).id===entry.id?"✓ ":"")+entry.name;
+  name.addEventListener("click",()=>selectSound(entry));
   name.setAttribute("aria-pressed",String(sound(inst).id===entry.id));
   name.setAttribute("aria-label","Edit sound "+entry.name);name.title=entry.name;
-  const head=element("div",undefined,"rack-row-head");
   const position=inst.sounds.indexOf(entry);
-  head.append(name,actionMenu("Actions for "+entry.name,[
+  head.append(actionMenu("Actions for "+entry.name,[
    {label:"Rename",run:()=>renameRackSound(inst,entry)},
    {label:"Replace sound",run:()=>{focus(inst);selectSound(entry);openLibrary("replace-row");}},
    {label:"Move to piano roll",disabled:!canMoveRackSoundToPianoRoll(beat,inst.id,entry.id),
@@ -698,7 +700,6 @@ function renderRack(root,inst,chunk){
    {label:"Move down",disabled:position===inst.sounds.length-1,run:()=>moveRackSound(inst.id,entry.id,1)},
    {label:soundDeleteLabel(inst),danger:true,run:()=>removeRackSound(inst.id,entry.id)}
   ],"rack-actions"));
-  row.append(head);
   for(let step=0;step<16;step++){
    const existing=noteStartingAtPianoStep(chunk.notes,rowData,step);
    const cell=createPianoNoteSurface({className:"note rack-step"+(step%4===0?" beat":""),onClick:event=>{
@@ -731,7 +732,7 @@ function renderRack(root,inst,chunk){
      event.preventDefault();modify(()=>applyNoteCommand(chunk,{type:"note.delete",noteId:existing.id}));
     }
    });
-   row.append(cell);
+   surface.append(cell);
   }
   root.append(row);
  }
@@ -773,7 +774,6 @@ function renderNotes() {
  const scaleGuide=scaleGuideFor();
  const scaleActive=scaleGuide.mode!=="chromatic";
  const scaleMode=SCALE_MODES.find(mode=>mode.id===scaleGuide.mode);
- const scaleName=scaleMode?.name||"chromatic";
  const directionalScale=!!scaleMode?.descendingSteps;
  const keys=[];
  const keyByPitch=new Map();
@@ -812,20 +812,7 @@ function renderNotes() {
   if(!root.contains(event.relatedTarget))hoverPianoPitch(null);
  };
  function paintKeys(step){
-  if(!scaleActive)return;
-  for(const {pitch,row,label} of keys){
-   const valid=isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step);
-   row.classList.toggle("in-scale",valid);
-   row.classList.toggle("out-of-scale",!valid);
-   const key=keyByPitch.get(pitch);
-   if(key){
-    key.classList.toggle("in-scale",valid);
-    key.classList.toggle("out-of-scale",!valid);
-   }
-   const direction=directionalScale?scaleDirectionAtStep(pitch,chunk.notes,step):"";
-   label.title=noteLabel(pitch)+" · "+(valid?"in ":"outside ")+SCALE_ROOTS[scaleGuide.root]+" "+scaleName+
-    (direction?" · "+(direction==="either"?"either direction":direction):"");
-  }
+  paintPianoScale(keys,keyByPitch,scaleGuide,chunk.notes,step,noteLabel);
  }
  function focusScaleStep(step){
   if(scaleFocusStep===step)return;
@@ -833,8 +820,8 @@ function renderNotes() {
   paintKeys(step);
  }
 
- for (const {rowData,row,label} of renderPianoRollRows(inst,{
-  mode:"beat",keyboard:showPianoKeys,low:36,high:83,noteLabel,
+ for (const {rowData,row,label,surface} of renderPianoRollRows(inst,{
+  keyboard:showPianoKeys,low:36,high:83,noteLabel,
   onPlay:(pitch,key)=>{
    key.classList.add("pressed");
    setTimeout(()=>key.classList.remove("pressed"),220);
@@ -843,7 +830,7 @@ function renderNotes() {
   }
  })) {
   const pitch=rowData.pitch;
-  keys.push({pitch,row,label});
+  keys.push({rowData,pitch,row,label});
   const cells = [];
   function previewRow() {
    for (let pos = 0; pos < 16; pos++) {
@@ -994,7 +981,7 @@ function renderNotes() {
     const delta = event.key === "ArrowRight" ? 1 : -1;
     modify(() => applyNoteCommand(chunk,{type:"note.resize",noteId:target.id,duration:target.duration+delta},{allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(beat.version)}));
    });
-   row.append(cell);
+   surface.append(cell);
   }
   root.append(row);
   previewRow();
@@ -1288,8 +1275,8 @@ function render() {
  $("note-mode").textContent="✎";
  $("note-mode").setAttribute("aria-label",editingNoteEffects?"finish editing note effects":"edit note effects");
  $("note-mode").title=editingNoteEffects?"finish editing note effects":"edit note effects";
- document.querySelector(".work")?.classList.toggle("editing-note-effects",editingNoteEffects);
- document.querySelector(".notes-section")?.classList.toggle("editing-note-effects",editingNoteEffects);
+ beatWorkspace?.classList.toggle("editing-note-effects",editingNoteEffects);
+ beatWorkspace.querySelector(".notes-section")?.classList.toggle("editing-note-effects",editingNoteEffects);
  $("title").value = beat.title;
  $("bpm").value = String(song&&songExpanded?song.bpm:beat.bpm);
  $("bars").value = String(beat.bars);
@@ -1309,36 +1296,19 @@ function render() {
 }
 
 
-function positionNoteEffectsInspector(){
- // One real note editor, moved only between wide and narrow desktop layouts.
- const panel=$("note-effects-section");
- const notes=document.querySelector(".notes-section");
- const main=document.querySelector(".mainwork");
- if(inspectorViewport.matches){
-  if(panel.parentElement!==main)main.append(panel);
- }else if(panel.parentElement!==notes){
-  notes.insertBefore(panel,notes.querySelector(".piano-scroll"));
- }
-}
 function syncNoteEffectsInspector(){
  const panel=$("note-effects-section");
  panel.setAttribute("aria-hidden",String(!editingNoteEffects));
  $("note-effects-empty").hidden=!editingNoteEffects||!$("note-expression").hidden;
 }
 function syncInspector(){
- positionNoteEffectsInspector();
- const work=document.querySelector(".work");
- for(const name of ["closed","expanded"])work.classList.toggle("inspector-"+name,inspectorState===name);
- const opened=inspectorState!=="closed"&&!editingNoteEffects;
- $("sound-section").setAttribute("aria-hidden",String(!opened));
- $("sound-toggle").setAttribute("aria-expanded",String(opened));
- $("sound-toggle").textContent="♫";
- $("sound-toggle").setAttribute("aria-label",opened?"close sound editor":"open sound editor");
- $("sound-toggle").title=opened?"close sound editor":"open sound editor";
+ syncEditorInspector(beatEditor,{open:inspectorState!=="closed",
+  noteEffects:editingNoteEffects,wide:inspectorViewport.matches});
 }
 function setInspector(state){
  inspectorState=state;
  syncInspector();
+ songUI?.syncInspector();
 }
 inspectorViewport.addEventListener("change",event=>{
  // Wide and narrow desktop layouts use the same Sound element and editor.
@@ -2150,6 +2120,9 @@ songUI=installSongUI({
  onFreeformBeatCreated:created=>message("Created \""+created.title+"\". Select + on a Beat Track to place it; your freeform notes are unchanged."),
  getFreeformScaleGuide:track=>scaleGuideFor({id:track.id,instruments:track.freeform?.instruments??[]}),
  setFreeformScaleGuide:(track,guide)=>setBeatScaleGuide({id:track.id,instruments:track.freeform?.instruments??[]},guide),
+ onUndo:undo,onRedo:redo,getHistoryState:()=>({undo:history.length>0,redo:future.length>0}),
+ getInspectorOpen:()=>inspectorState!=="closed",
+ setInspectorOpen:open=>setInspector(open?"expanded":"closed"),
  getShowPianoKeys:()=>showPianoKeys,
  setShowPianoKeys:next=>{
   showPianoKeys=!!next;
@@ -2174,8 +2147,8 @@ songUI=installSongUI({
 });
 initializeScaleControls();
 keyboardPiano=installKeyboardPiano({
- toggle:$("qwerty-piano"),toolbar:document.querySelector(".piano-tools"),
- scroll:document.querySelector(".piano-scroll"),getInstrument:instrument,getBeat:()=>beat,
+ toggle:$("qwerty-piano"),toolbar:beatWorkspace.querySelector(".piano-tools"),
+ scroll:beatWorkspace.querySelector(".piano-scroll"),getInstrument:instrument,getBeat:()=>beat,
  playNote:auditionHeld
 });
 render();

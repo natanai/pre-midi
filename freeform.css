@@ -32,152 +32,93 @@
 
 .song-freeform-passage{position:absolute;inset-block:3px;border:1px solid #547e71;background:rgba(60,109,92,.12);cursor:ew-resize;min-width:9px;padding:0;touch-action:none}
 .song-freeform-preview-note{position:absolute;height:5px;min-width:2px;border-radius:1px;background:#83c6a9;pointer-events:none}
+
 .song-freeform-editor[hidden]{display:none!important}
-.song-freeform-editor{padding:11px 0 8px;background:#070909;border-top:1px solid #34574a;margin-top:10px}
-.freeform-editor-header{display:flex;gap:12px;justify-content:space-between;align-items:start;flex-wrap:wrap}
-.freeform-editor-title{font-size:12px;color:var(--bright);padding:8px 0;font-weight:600}
-.freeform-close{min-width:30px;min-height:30px;margin-left:auto}
-.freeform-editor-tools,.freeform-chunk-tools{display:flex;gap:7px;align-items:end;flex-wrap:wrap}
-.freeform-editor-tools{flex:1}
-.freeform-editor-tools>select{max-width:170px}
-.freeform-editor-tools>input[type=text]{max-width:140px}
-/* Instrument action chrome is shared with Beat in style.css. */
-
-.freeform-field{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--muted)}
-.freeform-field input[type=number]{width:77px}
-.freeform-editor-tools button,.freeform-chunk-tools button{font-size:11px;min-height:29px}
-.freeform-chunk-tools{margin:9px 0 7px;justify-content:flex-start}
-.freeform-placement-editor{display:flex;gap:7px;align-items:end;flex-wrap:wrap;
- padding:7px 0;margin-bottom:7px;border-top:1px solid var(--faint);
- border-bottom:1px solid var(--faint)}
-.freeform-placement-editor select{max-width:165px}
-.freeform-placement-editor input[type=number]{width:72px}
-.freeform-placement-editor .freeform-placement-remove{min-height:29px;font-size:11px;
- color:var(--bright);border:1px solid var(--line);padding:4px 8px}
-
-.freeform-chunk-tools select{max-width:160px}
-.freeform-empty{font-size:11px;color:var(--muted)}
-.freeform-roll-scroll{max-height:360px;overflow:auto;border:1px solid var(--line);background:#060808;scrollbar-width:thin}
-.freeform-roll-grid{width:max-content;min-width:100%}
-.freeform-roll-ruler{display:flex;height:21px;position:sticky;top:0;z-index:5;background:#111}
-.freeform-chunk-strip{display:flex;min-height:23px;background:#0b1511;border-bottom:1px solid #30473b}
-.freeform-chunk-strip-label{position:sticky;left:0;z-index:5;display:flex;align-items:center;
- width:53px;min-width:53px;padding:0 4px;border-right:1px solid #46594f;
- background:#101515;font-size:10px;color:var(--muted)}
-.freeform-chunk-strip-plot{position:relative;min-height:23px;overflow:hidden}
-.freeform-chunk-block{position:absolute;top:3px;height:17px;z-index:1;padding:0 3px;
- box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
- font-size:9px;text-align:left;border:1px solid #456b58;background:#254738;
- color:#d5f0e2;cursor:grab;touch-action:none}
-.freeform-chunk-block.selected{z-index:2;border-color:#b3efcd;background:#35674d;
- outline:1px solid #b3efcd}
-.freeform-chunk-block:focus-visible{outline:2px solid white;z-index:3}
-
-.freeform-key-space{width:53px;min-width:53px;padding:3px 7px;border-right:1px solid #444;font-size:10px;color:var(--muted)}
-.freeform-ruler-ticks{position:relative;font-size:10px;color:var(--muted)}
+.song-freeform-editor{display:flex;flex:1 1 0;min-height:0;min-width:0;overflow:hidden;background:var(--void)}
+.song-freeform-editor>.work{flex:1 1 0;min-width:0}
+main.editing-freeform > #beat-workspace{display:none}
+main.editing-freeform .beat-identity > label{display:none}
+.freeform-close{min-width:28px}
+.freeform-field{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+.freeform-field input[type=number]{width:76px}
+.freeform-editor-tools{display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;min-width:0}
+.freeform-editor-tools>.freeform-field input{width:65px}
+.freeform-nav{min-height:34px}
+.freeform-selection-title{flex:1 1 100%;font-size:11px;color:var(--muted)}
+.freeform-selection-tools,.freeform-chunk-tools,.freeform-placement-editor{
+ display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;
+}
+.freeform-selection-tools button,.freeform-chunk-tools button,.freeform-placement-editor button{
+ min-height:34px;border:1px solid var(--line);font-size:11px;
+}
+.freeform-placement-editor{flex:1 1 100%;border-top:1px solid var(--line);padding-top:8px}
+.freeform-placement-editor select{max-width:100%}
+.freeform-empty{padding:18px 14px;font-size:12px;color:var(--muted)}
+.freeform-roll-grid{width:max-content;min-width:100%;--piano-gutter:63px}
+.freeform-roll-grid.piano-keyboard{--piano-gutter:82px}
+.freeform-roll-grid.sound-rack{--piano-gutter:128px}
+.freeform-roll-ruler{display:flex;height:23px;position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
+.freeform-key-space,.freeform-chunk-strip-label{
+ position:sticky;left:0;z-index:5;flex:none;box-sizing:border-box;
+ width:var(--piano-gutter);min-width:var(--piano-gutter);padding:3px 6px;
+ border-right:1px solid var(--line);background:var(--panel);font-size:11px;color:var(--muted);
+}
+.freeform-ruler-ticks{position:relative;font-size:11px;color:var(--muted)}
 .freeform-ruler-ticks span{position:absolute;top:3px}
-.freeform-roll-content{display:flex;align-items:start}
-.freeform-key-column{position:sticky;left:0;z-index:4;width:53px;min-width:53px;background:#101515}
-.freeform-key{height:20px;line-height:19px;overflow:hidden;text-overflow:ellipsis;padding:0 4px;border-right:1px solid #555;border-bottom:1px solid #333;font-size:10px;color:#cbd4d0}
-.freeform-key.sounding{background:#82c5a1;color:#14281e}
-.freeform-plot{position:relative;background:#050b09}
-.freeform-note-row{height:20px;position:relative;box-sizing:border-box;cursor:crosshair;border-bottom:1px solid #1b2420;background-image:linear-gradient(90deg,transparent calc(100% - 1px),#344039 calc(100% - 1px)),linear-gradient(90deg,transparent calc(100% - 1px),#16231b calc(100% - 1px));background-size:128px 100%,8px 100%}
-.freeform-note-row:focus-visible{outline:1px dotted #8dd0af;outline-offset:-2px}
-.freeform-roll-note{position:absolute;top:3px;height:13px;border-radius:2px;border:1px solid #2a7760;background:#7fc59f;padding:0;z-index:2;cursor:grab;touch-action:none}
-.freeform-roll-note.selected{background:#c7f0da;outline:1px solid white}
-.freeform-roll-note.layered{border-color:#397a64;box-sizing:border-box}
-.freeform-roll-note.layer-overflow{border-style:dotted}
-.freeform-roll-note.layered.selected{border-color:#e4f7ec}
+.freeform-chunk-strip{display:flex;min-height:30px;background:var(--void);border-bottom:1px solid var(--line)}
+.freeform-chunk-strip-plot{position:relative;min-height:30px;overflow:hidden}
+.freeform-chunk-block{position:absolute;top:3px;height:24px;z-index:1;padding:0 4px;box-sizing:border-box;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;text-align:left;
+ border:1px solid var(--track-accent);background:color-mix(in srgb,var(--track-accent) 15%,#000);
+ color:var(--track-accent);cursor:grab;touch-action:none}
+.freeform-chunk-block.selected{z-index:2;outline:1px solid var(--bright);outline-offset:-2px}
+.freeform-chunk-block:focus-visible{outline:2px solid var(--bright);z-index:3}
+.freeform-roll-content{position:relative;z-index:0;--piano-steps:128}
+.freeform-roll-content .note-name{position:sticky;left:0;z-index:4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.freeform-roll-content .piano-keys-overlay{width:var(--piano-gutter);z-index:6}
+.freeform-roll-content.piano-keyboard .note-name{pointer-events:none}
 
-/* The Song note editor uses the same draw, move and end-resize affordances
-   as the Beat editor, including a selected/effects state independent of color. */
-.freeform-roll-note{overflow:visible}
-.freeform-roll-note::after{
- content:"";position:absolute;top:2px;bottom:2px;right:1px;width:3px;
- border-left:1px solid #12221b;background:#e3f6ec;pointer-events:none;
+.freeform-roll-content .freeform-note-row{
+ height:100%;position:relative;display:block;box-sizing:border-box;cursor:crosshair;
+ border-bottom:1px solid #1b1b1b;background-color:#101010;
+ background-image:linear-gradient(90deg,#555 1px,transparent 1px),linear-gradient(90deg,#292929 1px,transparent 1px);
+ background-size:calc(var(--piano-step-width) * 4) 100%,var(--piano-step-width) 100%;
 }
-.freeform-roll-note:hover::after,.freeform-roll-note:focus-visible::after{
- width:4px;background:#fff;
-}
-.freeform-roll-note:focus-visible{outline:2px solid #fff;outline-offset:1px}
-.freeform-paint-preview{
- position:absolute;top:3px;height:13px;min-width:3px;
- border:1px dashed #b4e6cf;background:rgba(126,197,159,.45);
- box-sizing:border-box;pointer-events:none;z-index:3;
-}
-.freeform-note-mode[aria-pressed="true"]{
- outline:1px solid var(--bright);outline-offset:-1px;
- color:var(--bright);
-}
-
+.freeform-roll-content .sharp .freeform-note-row{background-color:#080808}
+.freeform-roll-content .out-of-scale .freeform-note-row{background-color:#050505}
+.freeform-note-row:focus-visible{outline:1px dotted var(--bright);outline-offset:-2px}
+.freeform-roll-note.layered{border-top:1px solid color-mix(in srgb,var(--track-accent) 70%,#fff)}
+.freeform-paint-preview{position:absolute;top:0;height:100%;min-width:3px;
+ border:1px dashed var(--bright);background:color-mix(in srgb,var(--track-accent) 47%,#000);
+ box-sizing:border-box;pointer-events:none;z-index:3}
+.freeform-playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--bright);z-index:5;pointer-events:none}
+.freeform-playhead[hidden]{display:none!important}
+.freeform-key.sounding{box-shadow:inset 3px 0 0 var(--track-accent);color:var(--bright)}
+.freeform-note-details{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;min-width:0;padding:10px 14px 18px}
+.freeform-detail-title{flex:1 1 100%;font-size:11px;color:var(--muted)}
+.freeform-note-expression{flex:1 1 100%;max-width:100%;min-width:0}
+.freeform-note-expression .expression-controls{min-width:0;flex:1 1 100%}
+.freeform-note-expression .expression-visual{max-width:100%;width:100%}
 .freeform-layer-choice{max-width:190px}
 .freeform-layer-choice select{max-width:185px}
 .freeform-layer-help{font-size:10px;color:var(--muted);align-self:center;max-width:240px}
-.freeform-duplicate-note{min-height:30px;border:1px solid var(--line);color:var(--bright)}
-/* Note-level cutoff authoring shares the canonical two-handle filter automation
-   illustration. Both handles and numeric fields remain available simultaneously. */
-.freeform-note-cutoff{flex:1 1 100%;min-width:min(100%,320px);
- border:1px solid var(--line);background:#0b1311;padding:6px 10px;
- display:flex;align-items:end;gap:9px;flex-wrap:wrap}
-.freeform-note-cutoff>summary{cursor:pointer;flex:1 1 100%;font-size:11px;
- color:var(--bright);list-style:revert}
+.freeform-duplicate-note,.freeform-add-cutoff,.freeform-remove-cutoff{min-height:30px;border:1px solid var(--line);color:var(--bright)}
+.freeform-note-cutoff{flex:1 1 100%;min-width:min(100%,320px);border:1px solid var(--line);background:var(--panel);
+ padding:6px 10px;display:flex;align-items:end;gap:9px;flex-wrap:wrap}
+.freeform-note-cutoff>summary{cursor:pointer;flex:1 1 100%;font-size:11px;color:var(--bright);list-style:revert}
 .freeform-note-cutoff:not([open]){display:block}
 .freeform-note-cutoff>.visual-sound-panel{flex:1 1 100%;min-width:0}
 .freeform-note-cutoff>.freeform-field{min-width:90px}
 .freeform-note-cutoff>.freeform-field input[type=number]{width:90px}
 .freeform-note-cutoff .freeform-layer-help{flex:1 1 100%}
-.freeform-add-cutoff,.freeform-remove-cutoff{min-height:30px;border:1px solid var(--line)}
-
-
-.freeform-playhead{position:absolute;top:0;bottom:0;left:0;border-left:2px solid #e5846e;z-index:3;pointer-events:none}
-.freeform-playhead[hidden]{display:none!important}
-.freeform-note-details{display:flex;flex-wrap:wrap;align-items:end;gap:7px;margin-top:8px;padding-top:8px;border-top:1px solid var(--faint)}
-.freeform-detail-title{font-size:10px;color:var(--muted);align-self:center;margin-right:7px}
-.freeform-delete{min-height:30px}
-main.editing-freeform > .work{display:none}
-main.editing-freeform .beat-identity > label{display:none}
-
-/* Freeform → reusable Beat: one explicit selection, no duplicate playback. */
-.freeform-selection-tools{display:flex;align-items:end;gap:7px;flex-wrap:wrap;
- margin:9px 0 7px;padding:7px 0;border-top:1px solid var(--faint);border-bottom:1px solid var(--faint)}
-.freeform-selection-title{font-size:10px;color:var(--muted);padding:0 9px 7px 0}
-.freeform-selection-tools .freeform-field input{width:76px}
-.freeform-selection-tools button{min-height:29px;font-size:11px;color:var(--bright)}
-.freeform-create-beat{border:1px solid var(--line);padding:4px 9px}
-.freeform-create-beat:hover,.freeform-create-beat:focus-visible{border-color:var(--bright)}
-
-/* Song-coordinate feedback for the exact excerpt being made reusable. */
+.freeform-sound-field{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+.freeform-sound-scope{width:100%;min-height:120px}
 .song-freeform-selected-range{position:absolute;top:1px;bottom:1px;pointer-events:none;
  border:1px solid #b5d9c3;background:rgba(135,193,165,.1);z-index:2;box-sizing:border-box}
-
-/* The physical key briefly presses while its freeform note is held. */
-.freeform-key.sounding{background:#94c7a8;color:#0c2117;
- box-shadow:inset 3px 0 0 #d1e9d9;transform:translateX(1px)}
-.freeform-follow{padding:4px 7px;border:1px solid transparent;color:var(--muted)}
-.freeform-follow[aria-pressed="true"]{border-color:#48745f;color:#b6dfc6}
-
-/* Desktop freeform Sounds reuse the Beat's existing synth/sampler/visualizer modules. */
-.freeform-sound-host{margin:9px 0 11px}
-.freeform-sound-details{border:1px solid var(--line);background:#0b100f;padding:0 9px 8px}
-.freeform-sound-summary{display:block;width:100%;cursor:pointer;min-height:28px;
- padding:6px 0;text-align:left;border:0;background:transparent;
- font-size:11px;color:var(--bright)}
-.freeform-sound-summary::before{content:"›";display:inline-block;width:14px;color:var(--muted)}
-.freeform-sound-summary[aria-expanded="true"]::before{content:"⌄"}
-.freeform-sound-summary:focus-visible{outline:1px solid var(--bright)}
-.freeform-sound-tools,.freeform-sound-levels,.freeform-sound-actions{
- display:flex;align-items:end;flex-wrap:wrap;gap:9px;margin:8px 0}
-.freeform-sound-tools button,.freeform-sound-actions button{min-height:28px;font-size:11px;padding:3px 7px}
-.freeform-sound-field{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--muted)}
-.freeform-sound-field input[type=text]{width:145px;max-width:100%}
-.freeform-sound-field input[type=number]{width:76px}
-.freeform-sound-field select{max-width:160px}
-.freeform-sound-levels .dial-field{min-width:86px}
-.freeform-sound-scope{width:100%;min-height:120px;margin:7px 0}
-.freeform-sound-modules{width:100%}
-.freeform-sound-modules .synth-grid{width:100%}
-.freeform-sound-modules .sample-replace-action{min-height:30px}
-
+@media(max-width:1099px){
+ .song-freeform-editor{display:block;overflow:visible}
+ .freeform-roll-scroll{height:52dvh}
+}
 /* Intentional overlap stays movable. Neutral indicators explain simultaneous
    playback rather than treating musical layering as a destructive collision. */
 .song-freeform-passage.song-freeform-layered{border-style:dashed;border-color:#a9b697}
@@ -187,118 +128,3 @@ main.editing-freeform .beat-identity > label{display:none}
  display:block;max-width:calc(100% - 3px);overflow:hidden;white-space:nowrap;
  color:#d9d6c4;font-size:9px;line-height:12px;pointer-events:none}
 .song-freeform-passage.song-freeform-scan-incomplete{outline:1px dotted #bba57e}
-
-
-/* The Song arranger remains above the editor; Beat and freeform occupy the same
-   lower desktop workspace. No panel-within-panel height cap or page-sized void. */
-.song-freeform-editor{
- margin:0;padding:0;min-height:0;min-width:0;flex:1 1 0;
- display:flex;flex-direction:column;overflow:hidden;
- background:var(--void);
-}
-.freeform-editor-header{
- flex:0 0 auto;min-height:45px;padding:5px 14px;
- align-items:center;border-bottom:1px solid var(--line);
-}
-.freeform-editor-title{padding:5px 0;font-weight:normal;font-size:13px}
-.freeform-work{
- flex:1 1 0;min-height:0;min-width:0;display:grid;
- grid-template-columns:clamp(210px,19vw,280px) minmax(0,1fr);
- overflow:hidden;
-}
-.freeform-instrument-pane{
- display:block;min-height:0;min-width:0;
- overflow-y:auto;overscroll-behavior:contain;
- border-right:1px solid var(--line);padding:10px 12px;
-}
-.freeform-editor-tools{display:flex;flex-direction:column;align-items:stretch;gap:8px}
-.freeform-editor-tools>select,.freeform-editor-tools>input[type=text]{
- width:100%;max-width:100%;
-}
-.freeform-editor-tools>.freeform-field{width:100%}
-.freeform-editor-tools>.freeform-field input{width:100%;max-width:100%}
-.freeform-editor-tools>button{text-align:left}
-.freeform-mainwork{
- display:grid;grid-template-columns:minmax(0,1fr) clamp(320px,27vw,510px);
- min-height:0;min-width:0;overflow:hidden;
-}
-.freeform-note-work{
- display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;
-}
-.freeform-sound-pane{
- min-height:0;min-width:0;overflow-y:auto;overscroll-behavior:contain;
- border-left:1px solid var(--line);padding:10px 12px;
-}
-.freeform-sound-host{margin:0}
-.freeform-roll-scroll{
- max-height:none;min-height:0;flex:1 1 0;overscroll-behavior:contain;
-}
-/* Selecting a freeform note replaces the right Sound Inspector, exactly
-   where the Beat note controls live. No second nested 160px scroll viewport. */
-.freeform-sound-pane>.freeform-note-details{
- display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;
- min-width:0;max-width:100%;max-height:none;overflow:visible;
- padding:10px 0 18px;margin:0;border-top:0
-}
-.freeform-note-close{display:block;margin:0 0 8px auto;min-height:30px}
-.freeform-note-expression{flex:1 1 100%;max-width:100%;min-width:0}
-.freeform-note-expression .expression-controls{min-width:0;flex:1 1 100%}
-.freeform-note-expression .expression-visual{max-width:100%;width:100%}
-.freeform-scale-controls{
- display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;
- border-bottom:1px solid var(--faint);padding:9px 12px;
-}
-.freeform-scale-controls .freeform-field{display:flex;flex-direction:column}
-.freeform-scale-controls select{width:clamp(120px,12vw,180px)}
-.freeform-scale-controls .scale-lock-control{display:flex;align-items:center;min-height:34px;gap:5px}
-.freeform-piano-tools{flex:0 0 auto;padding:5px 12px}
-.freeform-selection-tools,.freeform-chunk-tools,.freeform-placement-editor{
- margin:10px 0;padding:9px 0;
-}
-.freeform-selection-title{width:100%;padding:0;font-size:11px}
-.freeform-selection-tools .freeform-field input{max-width:80px}
-.freeform-empty{padding:18px 14px;font-size:12px}
-.freeform-roll-grid{--freeform-gutter:67px}
-.freeform-roll-grid:has(.piano-keyboard){--freeform-gutter:82px}
-.freeform-key-space,.freeform-key-column{
- width:var(--freeform-gutter);min-width:var(--freeform-gutter);
-}
-.freeform-roll-content{position:relative}
-.freeform-roll-content.piano-keyboard .freeform-key{color:transparent}
-.freeform-roll-content .piano-keys-overlay{
- height:100%;width:var(--freeform-gutter);overflow:hidden;top:0;
-}
-.freeform-note-row.in-scale{background-color:#0b1915}
-.freeform-note-row.out-of-scale{background-color:#070a09}
-.freeform-key.in-scale{color:#c8e5da}
-.freeform-key.out-of-scale{color:#78827e}
-.freeform-roll-note{z-index:2}
-@media(max-width:1099px){
- .song-freeform-editor{min-height:540px;overflow:visible}
- .freeform-work{display:block;overflow:visible}
- .freeform-instrument-pane{overflow:visible;border-right:0;border-bottom:1px solid var(--line)}
- .freeform-editor-tools{flex-direction:row;flex-wrap:wrap;align-items:flex-end}
- .freeform-editor-tools>select{max-width:180px}
- .freeform-editor-tools>input[type=text]{max-width:160px}
- .freeform-mainwork{display:block;overflow:visible}
- .freeform-note-work{min-height:450px}
- .freeform-roll-scroll{height:52dvh;flex:initial}
- .freeform-sound-pane{border-left:0;border-top:1px solid var(--line);overflow:visible}
-}
-
-
-/* Beat and Song-time freeform share the Instrument card. Context actions live
-   on the selected card rather than beneath a competing Instrument picker. */
-.freeform-instrument-list{display:grid;gap:4px;min-width:0;margin:0 0 12px}
-.freeform-instrument-list .instrument-entry{min-width:0}
-.freeform-instrument-list .instrument-card{
- width:100%;min-height:70px;text-align:left;white-space:normal;
- padding-right:53px;
-}
-.freeform-instrument-list .freeform-instrument-menu{
- position:absolute;top:8px;right:8px;left:auto;z-index:25;
-}
-.freeform-instrument-list .freeform-instrument-menu-actions{
- left:auto;right:0;top:calc(100% + 4px);
-}
-.freeform-instrument-list .freeform-instrument-menu[open]{z-index:30}

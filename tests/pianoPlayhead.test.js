@@ -76,7 +76,7 @@ test("note editing auditions only when transport is not playing",() => {
 });
 
 test("piano keys audition the active sound without creating notes",()=>{
- const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ const html=readFileSync(new URL("../editorWorkspace.js",import.meta.url),"utf8");
  const source=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  const keyboard=readFileSync(new URL("../editorPianoView.js",import.meta.url),"utf8");
@@ -86,7 +86,7 @@ test("piano keys audition the active sound without creating notes",()=>{
  assert.match(keyboard,/key\.addEventListener\("click",\(\)=>onPlay\(pitch,key\)\)/);
  assert.match(source,/onPlay:pitch=>\{\s*tapPianoKey\(pitch\);/);
  assert.match(source,/void audition\(inst,pitch,beat\)/);
- assert.match(source,/document\.querySelector\("\.piano-tools"\)\.hidden=rack/);
+ assert.match(source,/beatWorkspace\.querySelector\("\.piano-tools"\)\.hidden=rack/);
  assert.match(css,/:is\(#piano,\.freeform-roll-content\) \.piano-keys-overlay \{[^}]*pointer-events:auto/);
  assert.match(css,/:is\(#piano,\.freeform-roll-content\) \.piano-key:focus-visible/);
  assert.match(source,/onAddBeat:.*inheritScale:true/);

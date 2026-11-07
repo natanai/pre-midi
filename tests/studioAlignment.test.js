@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
 const source=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-const html=source("index.html")+"\n"+source("soundInspector.js");
+const html=source("editorWorkspace.js")+"\n"+source("index.html")+"\n"+source("soundInspector.js");
 const css=source("studioAlignment.css");
 const studio=source("studio.js");
 

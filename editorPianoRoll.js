@@ -1,6 +1,9 @@
 // Canonical note-row and note-surface renderer for Beat and Song-time freeform.
 // Adapters determine which musical notes to render and how edits are committed;
 // the DOM surfaces, row descriptors and time projection live here.
+export const PIANO_ROW_HEIGHT=23;
+export const PIANO_STEP_WIDTH=40;
+
 const el=(tag,className,text)=>{
  const node=document.createElement(tag);
  if(className)node.className=className;
@@ -45,33 +48,30 @@ export function noteStartingAtPianoStep(notes,rowData,step){
  return notes.find(note=>pianoRowMatchesNote(note,rowData)&&note.start===step)??null;
 }
 
-export function createPianoRollRow(rowData,{mode="song",keyboard=false,onPlay}={}){
- if(mode!=="beat"&&mode!=="song")throw Error("Unknown piano roll mode");
- if(mode==="beat"){
-  const row=el("div","piano-row"+(rowData.sharp?" sharp":""));
-  row.dataset.pitch=String(rowData.pitch);
-  const label=el(keyboard?"span":"button","note-name",keyboard?"":rowData.label);
-  label.setAttribute("aria-label",keyboard?rowData.label:"Play "+rowData.label);
-  label.title=keyboard?rowData.label:"play "+rowData.label;
-  if(!keyboard){
-   label.type="button";
-   if(onPlay)label.addEventListener("click",()=>onPlay(rowData.pitch,label));
-  }
-  row.append(label);
-  return {row,label,surface:row};
+export function createPianoRollRow(rowData,{keyboard=false,onPlay}={}){
+ const rack=rowData.soundId!==null;
+ const row=el("div","piano-row"+(rowData.sharp?" sharp":"")+(rack?" piano-rack-row rack-row":""));
+ if(rack)row.dataset.soundId=rowData.soundId;
+ else row.dataset.pitch=String(rowData.pitch);
+ const label=el(keyboard?"span":"button",rack?"rack-name":"note-name",keyboard?"":rowData.label);
+ label.setAttribute("aria-label",keyboard?rowData.label:"Play "+rowData.label);
+ label.title=keyboard?rowData.label:"play "+rowData.label;
+ if(!keyboard){
+  label.type="button";
+  if(onPlay)label.addEventListener("click",()=>onPlay(rowData.pitch,label,rowData.soundId));
  }
- const label=el("div","freeform-key",rowData.label);
- if(rowData.pitch!==null)label.dataset.freeformPitch=String(rowData.pitch);
- const row=el("div","freeform-note-row");
- return {row,label,surface:row};
+ const surface=el("div","piano-row-notes"),head=rack?el("div","rack-row-head"):label;
+ if(rack)head.append(label);
+ row.append(head,surface);
+ return {row,label,surface,head};
 }
 
-// One ordered row constructor for both editors. The returned row views
-// belong to the caller's Beat-local or Song-time input/undo adapter.
-export function renderPianoRollRows(instrument,{mode="beat",keyboard=false,onPlay,
+// Timing adapters populate the same row surface: Beat-local step cells or
+// absolute Song-time notes. Keyboard, scale, rows and dimensions have one owner.
+export function renderPianoRollRows(instrument,{keyboard=false,onPlay,
  low=36,high=83,noteLabel=pitch=>String(pitch)}={}){
  return pianoRollRows(instrument,{low,high,noteLabel}).map(rowData=>({
-  rowData,...createPianoRollRow(rowData,{mode,keyboard,onPlay})
+  rowData,...createPianoRollRow(rowData,{keyboard,onPlay})
  }));
 }
 

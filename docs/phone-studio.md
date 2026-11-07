@@ -7,7 +7,9 @@ Owner document: **this file**. Do not create a second phone/mobile roadmap or pa
 
 The Song design in docs/song-rollout.md includes an attached freeform lane under each Beat Track. Phone must support empty freeform authoring, full/partial move-and-unpack, Instruments, direct Song-position notes, linked Chunks, passage movement, create Beat from selection, and a shared musical playhead. A labeled action must exist wherever desktop uses dragging or double-clicking. The phone host reuses the same .premidi schema and music commands, never a phone-only freeform implementation. The desktop implementation in PR #120 is not a phone equivalent. Every freeform action remains unqualified on iOS until the phone host implements and tests it. The desktop-only freeform key illumination and playback-follow controls from PR #126 are separate phone-parity items, not phone implementations.
 
-Desktop Beat/freeform now share Instrument cards (PR #199). The approved phone interaction remains a contextual Instrument sheet, not a miniature desktop card column. This visual parity change does not qualify freeform Instrument selection, duplication or removal on iOS.
+Desktop Beat/freeform now share the desktop workspace/Inspector layout, actual pitched/Rack row surfaces, scale/key painting and Instrument cards. Desktop freeform history controls, contextual selection/Chunk menus and playback-follow scrolling remain open phone equivalents. The generated index reads `editorWorkspace.js` and `soundInspector.js`, preserving stable control IDs after removing the duplicate static workspace from `index.html`.
+
+Desktop Beat/freeform originally shared Instrument cards in PR #199. The approved phone interaction remains a contextual Instrument sheet, not a miniature desktop card column. This visual parity change does not qualify freeform Instrument selection, duplication or removal on iOS.
 
 ## Intended result
 
@@ -161,7 +163,7 @@ The **same feature** means phone reachability + same underlying command/output +
 | Subsystem | Required phone coverage | Status |
 | --- | --- | --- |
 | Transport | Beat/Song play/stop, loop, tempo, bars/meter, seek and live playhead | todo |
-| Piano roll | Tap/place, paint duration, move, resize, delete, audition, selection, zoom, undo/redo | todo |
+| Piano roll | Tap/place, paint duration, move, resize, delete, audition, selection, zoom, undo/redo; Song-time Freeform rows, shared scale/key feedback and playback-follow navigation | todo; desktop workspace consolidation does not qualify phone Freeform |
 | Scale | Root/mode, lock, visual hints, melodic/directional scale behavior where supported | todo |
 | Instruments | Catalog, examples, factory/user presets, add/browse/replace, rename/delete, conversion | todo |
 | Chunks and timeline | Create/duplicate/select, offsets, repeats, overlap/polymeter where supported | todo |

@@ -12,8 +12,8 @@ test("the actual Beat and freeform note surfaces share one renderer",()=>{
   assert.match(host,/createPianoNoteSurface\(\{/);
   assert.match(host,/applyPianoNoteState\(/);
  }
- assert.match(beat,/mode:"beat",keyboard:showPianoKeys,low:36,high:83,noteLabel/);
- assert.match(song,/mode:"song",low:PITCH_MIN,high:PITCH_MAX,noteLabel:pitchName/);
+ assert.match(beat,/keyboard:showPianoKeys,low:36,high:83,noteLabel/);
+ assert.match(song,/low:PITCH_MIN,high:PITCH_MAX,noteLabel:pitchName/);
  assert.match(song,/noteWindow\(note,viewStep\(\),VIEW_BARS\*BAR_STEPS,STEP_WIDTH\)/);
 });
 
@@ -91,7 +91,7 @@ test("Rack render shares row surfaces but triggers only on the onset cell",()=>{
  assert.equal(noteStartingAtPianoStep(notes,rack,8),null,
   "Rack grid must not display a second sample trigger on a sustain tail");
  const sourceText=source("studio.js");
- assert.match(sourceText,/for\(const rowData of pianoRollRows\(inst\)\)/);
+ assert.match(sourceText,/renderPianoRollRows\(inst\)/);
  assert.match(sourceText,/noteStartingAtPianoStep\(chunk\.notes,rowData,step\)/);
  assert.match(sourceText,/createPianoNoteSurface\(\{className:"note rack-step"/);
  assert.match(sourceText,/applyPianoNoteState\(cell,\{/);

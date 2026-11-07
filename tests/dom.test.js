@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-const studioHtml=()=>readFileSync(new URL("../index.html",import.meta.url),"utf8")+"\n"+readFileSync(new URL("../soundInspector.js",import.meta.url),"utf8");
+const workspace=()=>readFileSync(new URL("../editorWorkspace.js",import.meta.url),"utf8");
+const studioHtml=()=>workspace()+"\n"+readFileSync(new URL("../index.html",import.meta.url),"utf8")+"\n"+readFileSync(new URL("../soundInspector.js",import.meta.url),"utf8");
 
 test("all studio controls exist in the real HTML page", () => {
  const html=studioHtml();
@@ -102,7 +103,7 @@ test("guitar dynamics and reachable low-string notes are exposed in the original
  assert.match(studio,/duplicateChunk\(chunk.id\)/);
  assert.match(studio,/createChunk\(\)/);
  assert.match(studio,/renderPianoRollRows\(inst,\{/);
- assert.match(studio,/mode:"beat",keyboard:showPianoKeys,low:36,high:83,noteLabel/);
+ assert.match(studio,/keyboard:showPianoKeys,low:36,high:83,noteLabel/);
  assert.match(readFileSync(new URL("../editorPianoRoll.js",import.meta.url),"utf8"),
   /high-i/);
 });
@@ -160,7 +161,7 @@ test("compact note and Sound header keeps history accessible and Sound rightmost
  }
  assert.ok(studio.includes('$("undo").addEventListener("click", undo)'));
  assert.ok(studio.includes('$("redo").addEventListener("click", redo)'));
- assert.ok(studio.includes('$("sound-toggle").textContent="♫"'));
+ assert.ok(workspace().includes('toggle.textContent="♫"'));
  assert.ok(studio.includes('$("note-mode").textContent="✎"'));
  assert.match(css,/\.history-actions button::before,\.history-actions button::after \{content:none\}/);
 });
@@ -207,7 +208,7 @@ test("Notes pencil suppresses generic heading brackets rather than stacking them
  const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
  assert.match(html,/id="note-mode"[^>]*>✎<\/button>/);
  assert.match(css,/\.heading button::before \{content:"\["/);
- assert.match(css,/#note-mode::before,#note-mode::after \{content:none\}/);
+ assert.match(css,/\.notes-heading \.note-mode-toggle::before,\.notes-heading \.note-mode-toggle::after \{content:none\}/);
 });
 
 test("sound layout conversion actions live only in the contextual ellipsis menu",()=>{

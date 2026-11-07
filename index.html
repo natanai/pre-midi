@@ -84,61 +84,7 @@ if (!window.__TAURI_INTERNALS__ && matchMedia("(max-width: 600px), (max-height: 
   </div>
  </section>
  <section id="vocal-editor" class="vocal-editor" aria-label="Selected vocal recording editor" hidden></section>
- <div class="work">
-  <aside class="instrument-pane" aria-label="Instruments">
-   <div class="heading"><h2>Instruments</h2></div>
-   <button id="add-instrument" class="add-instrument-action" type="button">+ Add instrument</button>
-   <div id="instrument-list" aria-label="Instruments"></div>
-  </aside>
-  <div class="mainwork">
-   <section class="timeline-section" aria-label="Beat timeline">
-    <div class="heading"><h2>Timeline</h2><span class="timeline-tick-label">BARS</span></div>
-    <div class="scroll"><div id="arrangement"></div></div>
-   </section>
-   <section class="notes-section" aria-label="Chunk note editor">
-    <div class="heading notes-heading">
-     <div class="chunk-heading"><h2>notes</h2><button id="note-mode" type="button" aria-label="edit note effects" title="edit note effects" aria-pressed="false" aria-controls="note-effects-section">✎</button><span id="editing-identity" class="editing-identity"></span></div>
-     <div class="history-actions" role="group" aria-label="edit history and sound">
-      <button id="undo" type="button" aria-label="undo last change" title="undo last change (ctrl+z)">↶</button>
-      <button id="redo" type="button" aria-label="redo last change" title="redo last change (ctrl+shift+z)">↷</button>
-      <button id="sound-toggle" type="button" aria-label="show sound editor" title="show sound editor" aria-expanded="false" aria-controls="sound-section">♫</button>
-     </div>
-    </div>
-    <div class="notes-toolbar">
-     <div class="chunk-tools">
-      <div class="chunk-fields">
-       <label class="chunk-name-field">chunk <input id="chunk-name" aria-label="Chunk name" maxlength="60"></label>
-       <div class="chunk-switcher">
-        <button id="chunk" type="button" aria-label="choose chunk" aria-haspopup="true" aria-controls="chunk-menu" aria-expanded="false" title="choose chunk">▾</button>
-        <div id="chunk-menu" class="chunk-menu" role="group" aria-label="chunks" hidden></div>
-       </div>
-      </div>
-      <div class="chunk-actions" aria-label="Chunk actions">
-       <button id="delete-chunk" type="button">delete</button>
-      </div>
-     </div>
-     <div class="scale-controls" role="group" aria-label="Beat scale guide">
-      <label>key <select id="scale-root" aria-label="Scale root note"></select></label>
-      <label>scale <select id="scale-mode" aria-label="Scale type"></select></label>
-      <label class="scale-lock-control" title="only add notes from this scale"><input id="scale-lock" type="checkbox">limit notes</label>
-     </div>
-    </div>
-    <div class="piano-tools">
-     <button id="piano-keys" class="piano-keys-toggle" type="button" aria-label="show piano keys" aria-pressed="true" title="show note names">▥</button>
-     <button id="qwerty-piano" class="piano-keys-toggle" type="button" aria-label="play with QWERTY keyboard" aria-pressed="false" title="play with QWERTY keyboard">⌨</button>
-    </div>
-    <div class="piano-scroll"><div id="piano"></div></div>
-   </section>
-   <section id="sound-section" class="sound-section" aria-label="Instrument sound">
-     <!-- Shared Sound Inspector chrome mounted by studio.js -->
-    </section>
-   <section id="note-effects-section" class="note-effects-section" aria-labelledby="note-effects-title" aria-hidden="true">
-    <div class="heading note-effects-heading"><h2 id="note-effects-title">note effects</h2><button id="note-effects-done" type="button">done</button></div>
-    <p id="note-effects-empty" class="note-effects-empty">select a note to edit</p>
-    <div id="note-expression" class="note-expression" aria-label="Selected note pitch expression" hidden></div>
-   </section>
-  </div>
- </div>
+ <div id="beat-workspace" class="work"></div>
 </main>
 <footer><span id="status" role="status">Saved locally</span><span><a href="https://github.com/natanai/pre-midi">source</a></span></footer>
 </div>
