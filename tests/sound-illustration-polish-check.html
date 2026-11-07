@@ -34,13 +34,23 @@ frame.addEventListener("load",async()=>{
   pass("crossing a graph causes no linked trace highlight",!doc.querySelector(".visual-linked"));
   pass("graph traces have no glow",win.getComputedStyle(filter.querySelector(".visual-graph-line")).filter==="none");
   pass("distortion belongs to the filter module beside its related controls",!!filter.querySelector('[data-sound-path="effects.drive"]')&&!panel("distortion"));
-  const next=filter.querySelector('button[aria-label="next filter page"]');
-  while(!next.disabled)next.click();
-  pass("waveform view is named and directly edits two axes",filter.querySelector(".visual-panel-range").textContent.includes("waveform")&&
-   filter.querySelector('.visual-graph-point[data-sound-links="filter.cutoff|effects.drive"]'));
+  // Start on the normal response view. The user's ordinary distortion
+  // dial must reveal and modify its teaching waveform without page hunting.
+  dial("effects.drive").focus({preventScroll:true});
+  pass("focusing the actual distortion dial reveals its paired waveform",filter.dataset.visualPage==="2");
+  const driveTrace=()=>panel("filter").querySelector(
+   '.visual-graph-line[data-sound-links*="effects.drive"]').getAttribute("d");
+  const originalDrive=driveTrace();
+  dragDial("effects.drive",18,()=>pass("distortion dial changes the processed waveform before release",
+   driveTrace()!==originalDrive));
+  pass("distortion waveform survives the committed knob edit",driveTrace()!==originalDrive);
+  get("undo").click();
+  const currentFilter=panel("filter");
+  pass("waveform view is named and directly edits two axes",currentFilter.querySelector(".visual-panel-range").textContent.includes("waveform")&&
+   currentFilter.querySelector('.visual-graph-point[data-sound-links="filter.cutoff|effects.drive"]'));
   const cutoffBefore=value("filter.cutoff"),driveBefore=value("effects.drive");
-  const point=filter.querySelector(".visual-graph-point"),area=filter.querySelector(".visual-panel-area");
-  const bounds=filter.querySelector(".visual-panel-graph").getBoundingClientRect();
+  const point=currentFilter.querySelector(".visual-graph-point"),area=currentFilter.querySelector(".visual-panel-area");
+  const bounds=currentFilter.querySelector(".visual-panel-graph").getBoundingClientRect();
   const x=bounds.left+parseFloat(point.style.left)*bounds.width/100;
   const y=bounds.top+parseFloat(point.style.top)*bounds.height/100;
   mockCapture(area);

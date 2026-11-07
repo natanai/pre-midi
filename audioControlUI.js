@@ -35,9 +35,9 @@ export const AUDIO_DELAY_CONTROLS=Object.freeze([
  ["delayFeedback","Feedback",0,.8,.01,"percent"]
 ].map(Object.freeze));
 
-function slider(root,config,value,path,change,preview=()=>{},{disabled=false,disabledReason,format}={}){
+function slider(root,config,value,path,change,preview=()=>{},{disabled=false,disabledReason,inactiveReason,inactiveLabel,format}={}){
  const [key,label,min,max,step,display]=config;
- const knob=createDial({label,min,max,step,display,disabled,disabledReason,format},
+ const knob=createDial({label,min,max,step,display,disabled,disabledReason,inactiveReason,inactiveLabel,format},
   value,next=>change(path,next),next=>preview(path,next));
  knob.dataset.soundPath=path.join(".");
  root.append(knob);
@@ -84,7 +84,8 @@ export function renderAudioMovementControls(root,patch,onChange,onPreview=()=>{}
   slider(root,item,m[key],["movement",key],
    (path,value)=>onChange(["movement"],{...m,[key]:value}),
    (path,value)=>onPreview(["movement",key],value),
-   {disabled:inactive,disabledReason:inactive?"Adjust "+parent+" first.":undefined});
+   {inactiveReason:inactive?"Change "+parent+" from zero to hear this setting; the dashed curve is a reference guide":undefined,
+    inactiveLabel:inactive?"inactive · "+parent.toLowerCase()+" is 0":undefined});
  }
  const bend=patch.bend??{shape:"straight",amount:2,rate:4};
  const {label,select}=selectorLabel("bend shape","Recorded sound bend shape");
@@ -99,7 +100,13 @@ export function renderAudioMovementControls(root,patch,onChange,onPreview=()=>{}
   slider(root,item,bend[key],["bend",key],
    (path,value)=>onChange(["bend"],{...bend,[key]:value}),
    (path,value)=>onPreview(["bend",key],value),
-   {disabled:bend.shape==="straight",disabledReason:"Choose a bend shape other than Straight first."});
+   {inactiveReason:bend.shape==="straight"||key==="rate"&&(bend.shape!=="wave"||bend.amount===0)?
+     (key==="rate"?(bend.amount===0?"Bend amount is zero; the dashed curve shows a speed reference":
+      "Wave speed only affects the wave bend shape; the dashed curve shows a wave reference"):
+      "The straight shape has no pitch bend; the dashed curve is a wave reference"):undefined,
+    inactiveLabel:bend.shape==="straight"?"inactive · straight bend":
+     key==="rate"&&bend.shape!=="wave"?"inactive · select wave":
+      key==="rate"&&bend.amount===0?"inactive · bend amount is 0":undefined});
  }
 }
 export function renderAudioArticulationControls(root,patch,onChange,onPreview=()=>{},

@@ -26,7 +26,7 @@ function assertGeometry(patch,kind){
     assert.ok(Number.isFinite(value),kind+" has a nonnumeric handle "+axis.path.join("."));
     const expected=coordinateFor(axis,value);
     const actual=axis.mode.endsWith("X")?point.x:point.y;
-    assert.ok(Math.abs(expected-actual)<=1.5,
+    assert.ok(Math.abs(expected-actual)<=1e-6,
      kind+" page "+page+" mismaps "+axis.path.join(".")+
      ": handle "+actual.toFixed(2)+"px instead of "+expected.toFixed(2)+"px");
     axesChecked++;
@@ -75,7 +75,7 @@ test("every Sound teaching handle is physically aligned with the numeric axis it
   version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
   points:[{id:"first",step:5,value:3800},{id:"last",step:42,value:500}]};
  const cases=[
-  [patch,["oscillators","oscillator1","oscillator2","harmonics0","harmonics1",
+  [patch,["oscillators","harmonics0","harmonics1",
    "envelope","filter","movement","delay","modulation"]],
   [recording,["filter","sample","movement","mapping"]],
   [voice,["filter","sample","movement"]],

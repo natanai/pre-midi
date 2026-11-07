@@ -112,12 +112,23 @@ function renderField(field,patch,onChange,onPreview){
  const sweepInactive=field.path[0]==="filter"&&field.path[1]==="sweepTime"&&
   !patch.filter?.sweep;
  const noiseInactive=field.path[0]==="noiseDecay"&&!patch.noise;
+ const parent=field.path[0]==="movement"?({glideTime:"glide",rate:"depth",delay:"depth",
+  tremoloRate:"tremolo",toneRate:"tone"})[field.path[1]]:null;
+ const movementInactive=parent&&(patch.movement?.[parent]??0)===0;
+ const bendShape=patch.bend?.shape??"straight",bendSilent=(patch.bend?.amount??2)===0;
+ const bendInactive=field.path[0]==="bend"&&field.path[1]!=="shape"&&
+  (bendShape==="straight"||field.path[1]==="rate"&&(bendShape!=="wave"||bendSilent));
+ const parentName=({glide:"glide",depth:"vibrato",tremolo:"pulse",tone:"tone movement"})[parent];
  const inactiveReason=sweepInactive?
   "Filter sweep is 0, so Sweep time cannot change the sound yet. Change Filter sweep above or below 0 to hear its timing.":
   noiseInactive?
-  "Noise is 0%, so Noise decay cannot change the sound yet. Increase Noise to hear its decay.":null;
+  "Noise is 0%, so Noise decay cannot change the sound yet. Increase Noise to hear its decay.":
+  movementInactive?parentName+" is zero, so this setting cannot change the sound yet; the dashed curve is a reference guide":
+  bendInactive?(bendSilent&&bendShape==="wave"?"Bend amount is zero; the dashed wave is a speed reference":
+   "This setting does not affect the selected bend shape; the dashed wave is a reference guide"):null;
  const inactiveLabel=sweepInactive?"inactive · sweep is 0":
-  noiseInactive?"inactive · noise is 0%":null;
+  noiseInactive?"inactive · noise is 0%":movementInactive?"inactive · "+parentName+" is 0":
+  bendInactive?"inactive · "+(bendShape==="straight"?"straight bend":bendSilent?"bend amount is 0":"select wave"):null;
  const cutoffHint=field.path[0]==="filter"&&field.path[1]==="cutoff"?
   patch.filter.type==="lowpass"?"turn it down to muffle the high stuff":
   patch.filter.type==="highpass"?"turn it up to shave off the bass":

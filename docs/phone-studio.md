@@ -17,6 +17,8 @@ Desktop Beat/freeform originally shared Instrument cards in PR #199. The approve
 
 ## Intended result
 
+The 2026-11-07 semantic audit adds deliberate control-to-page navigation, exact knob/node ranges and steps, distinct patch/stage gain domains, native-rule reference recording envelopes, explicit inactive traces and an editable straight-bend amount node. Sampler knobs now preview shared illustrations in standalone and phone mounts. These shared improvements do not qualify phone touch navigation, scrolling/focus, VoiceOver or Home Screen behavior; those still require real Safari acceptance.
+
 The 2026-11-06 shared illustration pass groups filter/distortion with a two-axis reference-waveform page, renders correctly smoothed movement traces, quiets incidental graph hover, and preserves Sound dial focus/scroll on commit. Phone caption styles follow the new unscaled overlay structure in `phone/phone.css`; the generated action inventory reflects removed hover handlers. Expanded overlays, spectral painting and all new graph gestures still require Safari/Home Screen touch qualification. Desktop browser regressions do not advance this phone acceptance ledger.
 
 An iPhone user opens the published website in Safari, chooses **Add to Home Screen → Open as Web App**, and launches a local-first, fully functional music studio. Without a computer, they can create Beats and Songs, place and edit notes, design synthesizers, use sample racks, record sounds and vocals, hear playback, save and restore sessions, import/export `.premidi` and asset ZIPs, and render WAVs. Audio and project semantics match desktop, even though navigation and layout are purpose-built for touch.

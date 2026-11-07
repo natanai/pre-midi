@@ -441,13 +441,16 @@ try{
   oscillatorPanel.querySelector(".visual-panel-graph").getAttribute("role")==="group");
  const filterPanel=document.querySelector(
   '#synth .visual-sound-panel[data-visual-kind="filter"]');
+ filterPanel.querySelector("details").open=true;
+ filterPanel.querySelector('[data-sound-path="filter.resonance"] [role="slider"]').focus();
  const filterReadout=filterPanel.querySelector(".visual-point-readout");
  pass("filter illustration names frequency units on its draggable handle",
   filterReadout?.textContent.includes("Hz"));
- const sampleReadout=document.querySelector(
-  '#sample .visual-sound-panel[data-visual-kind="sample"] .visual-point-readout');
+ const articulation=document.querySelector('#sample .visual-sound-panel[data-visual-kind="sample"]');
+ articulation.querySelector('button[aria-label="previous sample page"]').click();
+ const sampleReadout=articulation.querySelector('[data-sound-links="attack"] .visual-point-readout');
  pass("sample illustration exposes time units for attack",
-  sampleReadout?.textContent.includes("s"));
+  sampleReadout?.textContent.includes(" s"));
  // Inventory is derived from the mounted controls, not only a handwritten
  // list of expected synth parameters. Every dynamic page must be traversed.
  for(const [name,selector] of [
@@ -459,6 +462,8 @@ try{
   pass(name+" has rendered sound-shaping controls",audit.summary.controls>0);
   pass(name+" has zero controls without direct visual editing: "+
     JSON.stringify(audit.missing),audit.missing.length===0);
+  pass(name+" nodes preserve complete knob ranges and precision: "+
+    JSON.stringify(audit.inexact),audit.inexact.length===0);
  }
  // Vocal delay knobs must use the same nested effects paths and values as
  // their real shared illustration, not legacy root-level references.
@@ -494,6 +499,7 @@ try{
  for(const [path,value] of [["volume",.6],["gain",.7]]){
   const dial=createDial({label:path,min:0,max:1,step:.01,display:"percent"},value,()=>{});
   dial.dataset.soundPath=path;stageRoot.append(dial);
+  dial.dataset.soundDomain="stage";
  }
  const stageDetail=document.createElement("details");
  stageDetail.append(document.createElement("summary"));stageRoot.append(stageDetail);
@@ -514,6 +520,7 @@ try{
  for(const [name,value] of [["volume",.64],["gain",.75]]){
   const dial=createDial({label:name,min:0,max:1,step:.01,display:"percent"},value,()=>{});
   dial.dataset.soundPath=name;pitchedRoot.append(dial);
+  dial.dataset.soundDomain="stage";
  }
  const pitchedDetails=document.createElement("details");pitchedDetails.open=true;
  pitchedDetails.append(document.createElement("summary"));pitchedRoot.append(pitchedDetails);

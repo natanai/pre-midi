@@ -5,8 +5,10 @@ import {harmonicWave,harmonicRecipe} from "./harmonics.js";
 import {DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
 import {modeledFilterMagnitude,modeledFilterY} from "./filterIllustrationResponse.js";
 import {modeledDelayTaps} from "./delayIllustrationResponse.js";
-import {modeledToneWaveform,modeledDrive} from "./toneIllustrationResponse.js";
+import {modeledToneWaveform} from "./toneIllustrationResponse.js";
 import {modeledModulationTrace} from "./modulationIllustrationResponse.js";
+import {modeledVibrato,modeledPitch,MOVEMENT_ILLUSTRATION_SECONDS} from "./movementIllustrationResponse.js";
+import {modeledSampleEnvelope,modeledRecordingLevels,SAMPLE_REFERENCE_VIEW} from "./sampleIllustrationResponse.js";
 import {envelopeLevelAt,planAmplitudeEnvelope} from "./src/dsp/amplitude-envelope.js";
 import {MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {assignSoundEdit} from "./soundEditPath.js";
@@ -65,6 +67,39 @@ function waveAt(type,phase,harmonics){
 }
 const pathFrom=points=>points.map(([x,y],i)=>(i?"L":"M")+x.toFixed(2)+" "+y.toFixed(2)).join(" ");
 const pathRange=(count,fn)=>pathFrom(Array.from({length:count},(_,i)=>fn(i/(count-1))));
+// The envelope lesson must include the complete 3 s attack + 3 s decay
+// range, a held stage, and up to 4 s release. Short-note timing can conceal
+// entire editable stages even though their nodes and numbers still move.
+const modulationTrace=route=>modeledModulationTrace(route,
+ route.source.kind==="envelope"?{duration:10.5,gate:6.25}:{});
+const pathMatches=(a,b)=>a===b||a.startsWith(b+".")||b.startsWith(a+".");
+export const soundControlDomain=(kind,path)=>kind==="stage"&&
+ ["volume","gain"].includes(path.split(".")[0])?"stage":"patch";
+export const illustrationSignal=(graph,path)=>JSON.stringify(graph.paths
+ .filter(line=>line.role!=="guide"&&line.links.some(link=>pathMatches(link,path)))
+ .map(line=>line.d));
+// A control is covered only by an actual editing node/action on the selected
+// view. Prefer a view whose teaching trace responds, not a moving dot/readout.
+export function diagramPageForControl(patch,kind,path,current=0){
+ const pages=[current,...Array.from({length:diagramPageCount(patch,kind)},(_,i)=>i)
+  .filter(i=>i!==current)];
+ let fallback=null;
+ for(const page of pages){
+  const graph=diagram(patch,kind,page);
+  const axis=graph.handles.flatMap(point=>point.axes).find(axis=>axis.path.join(".")===path);
+  const action=graph.actions.find(action=>action.path.join(".")===path||
+   path==="filter.type"&&action.path[0]==="audioFilterBypassed");
+  if(!axis&&!action)continue;
+  fallback??=page;
+  if(action)return page;
+  const value=axisValue(patch,axis.path);
+  const min=axis.hardMin??axis.min,max=axis.hardMax??axis.max;
+  const other=Math.abs(value-min)>Math.abs(value-max)?min:max;
+  const changed=cloneEdit(patch,axis.path,other);
+  if(illustrationSignal(graph,path)!==illustrationSignal(diagram(changed,kind,page),path))return page;
+ }
+ return fallback;
+}
 // Each page has one legible concept. Detail pages expose every existing knob
 // without reducing, moving, or duplicating the underlying controls.
 export function diagramPageCount(patch,type){
@@ -88,9 +123,11 @@ export function diagramPageCount(patch,type){
 // Diagrams respond to canonical parameters; the measured scope is separate.
 export const diagram=(patch,type,page=0)=>{
  const color=type==="movement"?"var(--signal-mauve)":"var(--track-accent,#08e4ec)";
- const paths=[],handles=[],labels=[],actions=[];
+ const paths=[],handles=[],labels=[],actions=[],inactive=[];
+ const dormant=(path,reason)=>inactive.push({path,reason});
  const action=(x,y,path,choices,label)=>actions.push({x,y,path,choices,label});
- const line=(d,secondary=false,links=[])=>paths.push({d,secondary,links});
+ const line=(d,secondary=false,links=[],role=secondary?"guide":"signal")=>
+  paths.push({d,secondary,links,role});
  const tag=(x,y,value)=>labels.push({x,y,value});
  const handle=(x,y,axes,label)=>handles.push({x,y,axes,label});
  const axis=(path,min,max,mode,options={})=>({path,min,max,mode,...options});
@@ -109,6 +146,21 @@ export const diagram=(patch,type,page=0)=>{
   line("M24 100 H336 M24 27 H336 M180 22 V100",true);
   line("M"+x.toFixed(2)+" 25 V100 M24 "+y.toFixed(2)+" H336",
    true,levels?["volume","gain"]:["pan","volume"]);
+  // A mono reference passing through the real equal-power stereo gains.
+  // The two level stages multiply; a crosshair alone cannot teach that.
+  const links=levels?["volume","gain"]:["pan","volume","gain"];
+  const angle=(pan+1)*Math.PI/4;
+  line(pathRange(180,t=>[24+312*t,50-16*volume*gain*Math.cos(angle)*Math.sin(t*8*Math.PI)]),false,links);
+  line(pathRange(180,t=>[24+312*t,80-16*volume*gain*Math.sin(angle)*Math.sin(t*8*Math.PI)]),true,links,"signal");
+  if(volume===0||gain===0){
+   line(pathRange(180,t=>[24+312*t,50-16*volume*Math.cos(angle)*Math.sin(t*8*Math.PI)]),true,["volume","pan"],"reference");
+   line(pathRange(180,t=>[24+312*t,80-16*gain*Math.sin(angle)*Math.sin(t*8*Math.PI)]),true,["gain","pan"],"reference");
+   if(volume===0&&gain===0)
+    line(pathRange(180,t=>[24+312*t,65-10*Math.cos(angle)*Math.sin(t*8*Math.PI)]),true,["pan"],"reference");
+   tag(169,14,"muted · guides");
+   if(gain===0)dormant("volume","sound level is zero; the dashed reference isolates instrument volume");
+   if(volume===0)dormant("gain","instrument volume is zero; the dashed reference isolates sound level");
+  }
   handle(x,y,levels?[
    axis(["volume"],0,1,"linearX",{from:24,to:336,step:.01,unit:"percent"}),
    axis(["gain"],0,1,"linearY",{from:100,to:30,step:.01,unit:"percent"})
@@ -117,7 +169,7 @@ export const diagram=(patch,type,page=0)=>{
    axis(["volume"],0,1,"linearY",{from:100,to:30,step:.01,unit:"percent"})
   ],levels?(rack?"rack level / selected sound level":"instrument level / sound level"):
    "stereo position / instrument level");
-  tag(18,14,levels?"sound level ↑":"instrument level ↑");
+  tag(18,14,"l/r reference");
   tag(18,112,rack?"quiet rack":levels?"quiet instrument":"left");
   tag(290,112,rack?"loud rack":levels?"loud instrument":"right");
   if(levels)tag(265,15,"total "+Math.round(100*volume*gain)+"%");
@@ -173,7 +225,13 @@ export const diagram=(patch,type,page=0)=>{
    const o=slots[index],center=second?(index===0?62:95):79,amplitude=11;
    line("M18 "+center+" H342",true);
    line(pathRange(280,t=>[18+324*t,center-amplitude*voice(index,t)]),
-    index===1,sourceKeys(index));
+    index===1,sourceKeys(index),"signal");
+   if(o.level===0){
+    line(pathRange(280,t=>[18+324*t,center-8*waveAt(o.wave,
+     t*10*Math.PI*2**o.octave*2**(o.detune/1200),o.harmonics)]),true,sourceKeys(index),"reference");
+    dormant("oscillators."+index+".detune","oscillator level is zero; the dashed waveform isolates its source");
+    tag(190,center-14,"level off · guide");
+   }
    const bottom=center+amplitude,top=center-amplitude;
    handle(38+clamp((o.detune+100)/200)*278,bottom-(bottom-top)*clamp(o.level),[
     axis(["oscillators",index,"detune"],-100,100,"linearX",{from:38,to:316,step:1}),
@@ -193,23 +251,6 @@ export const diagram=(patch,type,page=0)=>{
    action(60,second?(index===0?57:90):80,["oscillators",index,"wave"],WAVES,"wave "+(index+1));
    action(252,second?(index===0?57:90):80,["oscillators",index,"octave"],[-2,-1,0,1,2],"octave "+(index+1));
   }
- }else if(type.startsWith("oscillator")){
-  const index=Number(type.slice(-1))-1,o=p.oscillators[index];
-  const cutoff=clamp(Math.log(Math.max(50,p.filter.cutoff)/50)/Math.log(280));
-  const drive=p.effects.drive||0;
-  line("M12 60 H348",true);
-  line(pathRange(320,t=>{
-   const phase=t*10*Math.PI*2**(o.octave*.35)*2**(o.detune/1200);
-   const wave=waveAt(o.wave,phase,o.harmonics);
-   const softened=cutoff*.9+.1;
-   const shaped=wave*softened+Math.sin(phase)*(1-softened);
-   return [12+t*336,60-39*o.level*Math.tanh(shaped*(1+drive*4))];
-  }));
-  handle(35+(o.detune+100)/200*289,60-38*o.level,[
-   axis(["oscillators",index,"detune"],-100,100,"linearX",{from:35,to:324,step:1}),
-   axis(["oscillators",index,"level"],0,1,"linearY",{from:60,to:22,step:.01})
-  ],"detune / level");
-  tag(14,14,"detune →");tag(294,14,"level ↑");
  }else if(type==="filter"&&page===(p.type==="synth"?2:1)){
   const synth=p.type==="synth",drive=synth?p.effects.drive:p.drive??0;
   const f=p.filter??DEFAULT_SAMPLE_FILTER;
@@ -240,22 +281,37 @@ export const diagram=(patch,type,page=0)=>{
    // On this diagram time really is horizontal and the starting cutoff
    // deviation really is vertical, just as the two-axis handle suggests.
    const finish=26+138*clamp((time-.01)/2.99),startY=68-6*sweep;
-   line("M26 "+startY.toFixed(2)+" L"+finish.toFixed(2)+" 68 H164",
+   const actualSweep=Math.log2(clamp(f.cutoff*2**sweep,50,14000)/f.cutoff);
+   line("M26 "+(68-6*actualSweep).toFixed(2)+" L"+finish.toFixed(2)+" 68 H164",
     false,["filter.sweep","filter.sweepTime"]);
    line("M26 "+startY.toFixed(2)+" H"+finish.toFixed(2)+" V68",
     true,["filter.sweep","filter.sweepTime"]);
+   if(sweep===0){
+    line("M26 44 L"+finish.toFixed(2)+" 68 H164",true,["filter.sweepTime"],"reference");
+    dormant("filter.sweepTime","filter sweep is zero; the dashed curve is a timing reference");
+   }else if(Math.abs(actualSweep-sweep)>1e-9){
+    line("M26 "+startY.toFixed(2)+" L"+finish.toFixed(2)+" 68 H164",true,
+     ["filter.sweep","filter.sweepTime"],"reference");
+    dormant("filter.sweep","cutoff range limits this sweep; the dashed curve shows the requested change");
+    dormant("filter.sweepTime","cutoff range limits this sweep; the dashed curve shows the requested timing");
+   }
    handle(finish,startY,[
     axis(["filter","sweepTime"],.01,3,"linearX",{from:26,to:164,step:.01,unit:"s"}),
     axis(["filter","sweep"],-5,5,"linearY",{from:98,to:38,step:.1,unit:"oct"})
    ],"filter sweep duration / starting brightness");
-   line(pathRange(160,t=>[193+148*t,100-
-    34*noise*Math.exp(-t*3.5/(.12+decay))*
-    Math.sin(t*83)*Math.cos(t*9)]),false,["noise","noiseDecay"]);
+   const noisePath=level=>pathRange(240,t=>[193+148*t,82-
+    17*level*(decay>0?Math.exp(-t*4*5/decay):1)*Math.cos(t*83)*Math.cos(t*9)]);
+   line(noisePath(noise),false,["noise","noiseDecay"]);
+   if(noise===0){
+    line(noisePath(.7),true,["noiseDecay"],"reference");
+    dormant("noiseDecay","noise level is zero; the dashed curve is a noise decay reference");
+   }
    handle(197+clamp(decay/4)*137,100-noise*39,[
     axis(["noiseDecay"],0,4,"linearX",{from:197,to:334,step:.01,unit:"s"}),
     axis(["noise"],0,1,"linearY",{from:100,to:61,step:.01,unit:"percent"})
    ],"noise duration / level");
-   tag(24,17,"filter sweep");tag(195,17,"noise");
+   tag(24,17,sweep===0?"sweep off · guide":Math.abs(actualSweep-sweep)>1e-9?"sweep limited · guide":"filter sweep");
+   tag(195,17,noise===0?"noise off · guide":"noise");
    tag(22,111,"time →");tag(281,111,"decay →");
  }else if(type==="filter"){
   if(p.type==="vocal"&&p.audioFilterBypassed){
@@ -288,29 +344,24 @@ export const diagram=(patch,type,page=0)=>{
   action(90,103,["filter","type"],FILTERS,"filter shape");
   if(p.type==="vocal")
    action(189,103,["audioFilterBypassed"],[false,true],"turn filter off");
-  if(p.type==="sample"||p.type==="vocal"){
-   line(pathRange(121,t=>[205+t*123,99-13*modeledDrive(2*t-1,p.drive??0)]),true,["drive"]);
-   tag(217,110,"drive");
-  }else{
-   const sweep=f.sweep??0,sweepTime=f.sweepTime??.2;
-   const startCutoff=clamp(f.cutoff*2**sweep,50,14000);
-   const startX=18+clamp(Math.log(startCutoff/50)/Math.log(280))*324;
-   const stopX=18+clamp(Math.log(f.cutoff/50)/Math.log(280))*324;
-   const timeY=26+clamp(sweepTime/3)*54;
-   // The line represents the cutoff's actual start/end and sweep duration.
-   if(sweep!==0){
-    line(pathFrom([[startX,26],[startX+(stopX-startX)*.5,timeY*.65+14],[stopX,timeY]]),true,["filter.sweep","filter.sweepTime"]);
-    tag(clamp(startX+5,24,295),23,"sweep");
-   }
-   // Noise is unpitched, so show a decaying irregular signal.
-   const noise=clamp(p.noise??0),decay=clamp((p.noiseDecay??0)/4);
-   if(noise>0){
-    line(pathRange(110,t=>[18+140*t,99-14*noise*
-     (1-t)**(1.5+6*(1-decay))*Math.sin(t*67)*Math.cos(t*17)]),true,["noise","noiseDecay"]);
-    tag(18,111,"noise");
-   }
   }
-  }
+ }else if(type==="sample"&&page===0){
+  const e=modeledSampleEnvelope(p),vocal=p.type==="vocal";
+  const px=time=>18+324*time/SAMPLE_REFERENCE_VIEW;
+  line("M18 90 H344 M"+px(e.fadeStart).toFixed(2)+" 18 V96",true);
+  line(pathFrom([[18,90],[px(e.attackEnd),23],[px(e.fadeStart),23],
+   [px(e.life),90],[344,90]]),false,vocal?["attack","release"]:["attack","release","oneShot","followPitch"]);
+  handle(px(e.attackEnd),23,[axis(["attack"],0,2,"linearX",
+   {from:px(vocal?0:.001),to:px(2+(vocal?0:.001)),step:.005,unit:"s"})],"attack");
+  const release=p.release??.17;
+  const releaseAt=value=>px(e.releaseMovesStart?8-value:4+value);
+  handle(releaseAt(release),e.releaseMovesStart?23:90,[axis(["release"],e.releaseMin,3,"linearX",
+   {from:releaseAt(e.releaseMin),to:releaseAt(3),step:e.releaseStep,unit:"s"})],"release");
+  tag(18,14,"on");tag(115,14,"time guide");
+  tag(px(e.fadeStart),14,vocal?"fade":p.oneShot?"tail":p.followPitch===false?"end":"off");
+  tag(340,111,"8s reference take");
+  if(!vocal)action(190,106,["oneShot"],[false,true],"play entire recording");
+  tag(18,111,vocal?"voice":(p.followPitch===false?"root ":"pitch ")+(p.zones?.[0]?.root??60));
  }else if(type==="envelope"&&page===1){
   const e=p.envelope,off=.25;
   // This short, fixed-duration note reveals an important distinction hidden
@@ -343,56 +394,24 @@ export const diagram=(patch,type,page=0)=>{
   // Keep the actual note-off level discoverable without claiming the
   // deliberately separated pre- and post-off time scales are uniform.
   tag(223,68,Math.round(plan.releaseLevel*100)+"%");
- }else if(type==="envelope"||(type==="sample"&&page===0)){
-  const sample=type==="sample",e=sample?
-   {attack:p.attack??0,decay:0,sustain:1,release:p.release??.2}:p.envelope;
-  const attackMax=sample?2:3,releaseMax=sample?3:4;
+ }else if(type==="envelope"){
+  const e=p.envelope,attackMax=3,releaseMax=4,releaseMin=.01;
   const attackX=25+clamp(e.attack/attackMax)*78;
   const decayX=attackX+18+clamp(e.decay/3)*80;
   const sustainY=88-65*clamp(e.sustain);
   const releaseX=248+clamp(e.release/releaseMax)*95;
   line("M18 90 H348 M248 18 V96",true);
-  // Without pitch-follow, sampler.js and the native sample planner don't
-  // release at key-up: the source plays toward its capped end and fades in
-  // the final ~10 ms. Show a short end taper rather than a long ADSR fade.
-  // This remains a timing guide, not a measured waveform or duration claim.
-  const naturalEnd=sample&&!p.oneShot&&p.followPitch===false;
-  const points=naturalEnd?[
-   [18,90],[attackX,23],[248,23],[Math.max(248,releaseX-6),23],
-   [releaseX,90],[348,90]
-  ]:[[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]];
-  line(pathFrom(points),false,sample?["attack","release"]:["envelope.attack","envelope.decay","envelope.sustain","envelope.release"]);
-  const prefix=sample?[]:["envelope"];
-  handle(attackX,23,[axis([...prefix,"attack"],0,attackMax,"linearX",{from:25,to:103,step:.01,unit:"s"})],"attack");
-  if(!sample){
+  const points=[[18,90],[attackX,23],[decayX,sustainY],[248,sustainY],[releaseX,90],[348,90]];
+  line(pathFrom(points),false,["envelope.attack","envelope.decay","envelope.sustain","envelope.release"]);
+  handle(attackX,23,[axis(["envelope","attack"],0,attackMax,"linearX",{from:25,to:103,step:.01,unit:"s"})],"attack");
    handle(decayX,sustainY,[
     axis(["envelope","decay"],0,3,"linearX",{from:attackX+18,to:attackX+98,step:.01,unit:"s"}),
     axis(["envelope","sustain"],0,1,"linearY",{from:88,to:23,step:.01,unit:"percent"})
    ],"decay / sustain");
-  }
-  handle(releaseX,90,[axis([...prefix,"release"],.01,releaseMax,"linearX",
-   {from:248,to:343,step:.01,unit:"s"})],"release");
+  handle(releaseX,90,[axis(["envelope","release"],releaseMin,releaseMax,"linearX",
+   {from:248+95*releaseMin/releaseMax,to:343,step:.01,unit:"s"})],"release");
   tag(18,14,"on");
-  tag(115,14,sample?"time guide":"held note model");
-  // Only pitch-following keyed Samples release at key-up. One-shots release
-  // near the source tail; pitch-follow-off Samples fade at their capped end.
-  tag(248,14,sample?(p.oneShot?"tail":naturalEnd?"end":"off"):"off");
-  if(sample){
-   const gain=clamp(p.gain??.9,0,2),transpose=p.transpose??0,pan=p.pan??0;
-   const vocal=p.type==="vocal",strum=p.strumMs??0,root=p.zones?.[0]?.root??60;
-   const pitchFollow=p.followPitch!==false,oneShot=!!p.oneShot,dynamics=!!p.preserveDynamics;
-   line("M20 "+(112-9*gain).toFixed(2)+" H150",true,["gain"]);
-   line("M173 "+(105-6*transpose/12).toFixed(2)+" H252",true,
-    vocal?["transpose"]:["transpose","followPitch"]);
-   line("M274 104 H340 M"+(307+30*pan).toFixed(2)+" 98 V110",true,["pan"]);
-   tag(19,110,"level");tag(171,110,vocal?"voice":(pitchFollow?"pitch ":"root ")+root);
-   tag(290,95,"pan");
-   if(!vocal){
-    line("M"+(18+(strum+25)/50*52).toFixed(2)+" 94 V102",true,["strumMs"]);
-    if(oneShot)line("M344 40 V91",true,["oneShot"]);
-    if(dynamics)line("M331 41 L338 35 L345 41",true,["preserveDynamics"]);
-   }
-  }
+  tag(115,14,"held note model");tag(248,14,"off");
  }else if(type==="sample"&&page===1){
   const gain=clamp(p.gain??.9,0,2),transpose=p.transpose??0,pan=p.pan??0,strum=p.strumMs??0;
   if(p.type==="vocal"){
@@ -406,18 +425,21 @@ export const diagram=(patch,type,page=0)=>{
    line("M18 100 H169 M193 82 H342 M93 43 V100",true);
    line("M93 "+voiceY.toFixed(2)+" H"+voiceX.toFixed(2)+
     " M"+voiceX.toFixed(2)+" 100 V"+voiceY.toFixed(2),
-    false,["transpose","gain"]);
+    true,["transpose","gain"]);
    handle(19+148*clamp((transpose+24)/48),99-50*gain/2,[
     axis(["transpose"],-24,24,"linearX",{from:19,to:167,step:1,unit:"st"}),
     axis(["gain"],0,2,"linearY",{from:99,to:49,step:.01,unit:"percent"})
    ],"voice pitch / level");
    const x=202+130*clamp((pan+1)/2);
-   line("M"+x.toFixed(2)+" 64 V100",false,["pan"]);
+   line("M"+x.toFixed(2)+" 64 V100",true,["pan"]);
    handle(x,82,[
     axis(["pan"],-1,1,"linearX",{from:202,to:332,step:.01,unit:"pan"})
    ],"voice left / right");
    tag(19,15,"pitch → / level ↑");tag(204,15,"left ← stereo → right");
    tag(19,112,"control model");
+  line(pathRange(400,t=>[19+148*t,75-10*gain/2*Math.sin(t*.1*55*2**(transpose/12)*2*Math.PI)]),
+   false,["transpose","gain"]);
+  tag(19,32,"55 hz reference");
   }else{
   // Strum displaces the onset in time; transpose shifts played pitch.
   // Do not fabricate a sine waveform for an arbitrary imported Recording:
@@ -426,7 +448,7 @@ export const diagram=(patch,type,page=0)=>{
   const pitchY=60-35*clamp(transpose/24,-1,1);
   line("M18 60 H171 M192 104 H342 M93 24 V96",true);
   line("M93 60 H"+onsetX.toFixed(2)+" V"+pitchY.toFixed(2),
-   false,["transpose","strumMs"]);
+   true,["transpose","strumMs"]);
   // X is the recording's onset displacement; Y is its pitch shift.
   handle(19+clamp((strum+25)/50)*148,60-35*clamp(transpose/24,-1,1),[
    axis(["strumMs"],-25,25,"linearX",{from:19,to:167,step:1,unit:"ms"}),
@@ -434,36 +456,91 @@ export const diagram=(patch,type,page=0)=>{
   ],"sample onset / pitch");
   line("M202 83 H332",true);
   line("M"+(202+130*(pan+1)/2).toFixed(2)+" 83 V"+(103-35*gain/2).toFixed(2),
-   false,["pan","gain"]);
+   true,["pan","gain"]);
   handle(202+130*(pan+1)/2,103-35*gain/2,[
    axis(["pan"],-1,1,"linearX",{from:202,to:332,step:.01,unit:"pan"}),
    axis(["gain"],0,2,"linearY",{from:103,to:68,step:.01,unit:"percent"})
   ],"stereo position / recording level");
-  tag(19,15,"onset / pitch");tag(205,15,"stereo / level");
+  tag(19,15,"onset / pitch");
   tag(19,112,"control model");
   action(65,107,["followPitch"],[true,false],"follow played note");
-  action(190,40,["oneShot"],[false,true],"play entire recording");
-  action(299,40,["preserveDynamics"],[false,true],"preserve recorded dynamics");
+  action(299,107,["preserveDynamics"],[false,true],"preserve recorded dynamics");
+  // The same octave-up test note teaches pitch-follow versus root playback.
+  const rate=2**(transpose/12)*(p.followPitch===false?1:2);
+  const start=.025+strum/1000;
+  line(pathRange(640,t=>{
+   const elapsed=t*.1-start;
+   return [19+148*t,60-(elapsed>=0?10*Math.sin(elapsed*55*rate*2*Math.PI):0)];
+  }),false,["transpose","strumMs","followPitch"]);
+  tag(19,32,"55 hz reference");
+  const levels=modeledRecordingLevels(p);
+  for(const [i,level] of levels.entries())
+   line(pathRange(100,t=>[196+i*74+66*t,31-70*level*Math.sin(t*6*Math.PI)]),
+    false,["preserveDynamics","gain"]);
+  tag(205,15,"reference levels");
+  }
+  const angle=(pan+1)*Math.PI/4;
+  for(const [i,level] of [Math.cos(angle),Math.sin(angle)].entries())
+   line(pathRange(160,t=>[196+146*t,57+i*16-6*level*gain/2*Math.sin(t*8*Math.PI)]),
+    false,["pan","gain"]);
+  if(gain===0){
+   for(const [i,level] of [Math.cos(angle),Math.sin(angle)].entries())
+    line(pathRange(160,t=>[196+146*t,57+i*16-4*level*Math.sin(t*8*Math.PI)]),
+     true,["pan"],"reference");
+   dormant("pan","recording level is zero; dashed left/right signals are a stereo reference");
+   if(p.type==="vocal"){
+    line(pathRange(400,t=>[19+148*t,75-8*Math.sin(t*.1*55*2**(transpose/12)*2*Math.PI)]),
+     true,["transpose"],"reference");
+    dormant("transpose","recording level is zero; the dashed tone isolates pitch");
+   }else{
+    const levels=modeledRecordingLevels({...p,gain:1});
+    for(const [i,level] of levels.entries())
+     line(pathRange(100,t=>[196+i*74+66*t,31-70*level*Math.sin(t*6*Math.PI)]),
+      true,["preserveDynamics"],"reference");
+   }
+   tag(240,89,"level off · guide");
   }
  }else if(type==="movement"&&page===1){
   const m=movement(p),bend=p.bend??{shape:"straight",amount:2,rate:4};
   line("M18 61 H344",true);
   line(pathRange(250,t=>[18+326*t,61-5*pitchCents({bend},m,t*1.25,1.25)/100]),
    false,["bend.shape","bend.amount","bend.rate","movement.glide","movement.glideTime"]);
+  if(bend.shape!=="wave"||bend.amount===0){
+   line(pathRange(320,t=>[18+326*t,61-5*pitchCents({bend:{...bend,shape:"wave"}},
+    {...m,glide:0},t*1.25,1.25)/100]),true,["bend.amount","bend.rate"],"reference");
+   if(bend.amount===0){
+    line(pathRange(320,t=>[18+326*t,61-5*pitchCents({bend:{...bend,shape:"wave",amount:3}},
+     {...m,glide:0},t*1.25,1.25)/100]),true,["bend.rate"],"reference");
+    dormant("bend.rate","bend amount is zero; the dashed wave is a rate reference");
+   }else dormant("bend.rate","wave speed only affects the wave bend shape; the dashed wave is a reference");
+   if(bend.shape==="straight")dormant("bend.amount","straight has no bend; the dashed wave is a reference");
+   tag(166,14,"wave guide");
+  }
   handle(42+clamp((bend.rate-.1)/11.9)*275,61-34*clamp(bend.amount/12),[
    axis(["bend","rate"],.1,12,"linearX",{from:42,to:317,step:.1}),
    axis(["bend","amount"],0,12,"linearY",{from:61,to:27,step:.25})
   ],"bend speed / amount");
-  handle(42+clamp(m.delay/3)*275,103,[
-   axis(["movement","delay"],0,3,"linearX",{from:42,to:317,step:.05})
+  const waitingPatch=m.depth>0?p:{...p,movement:{...m,depth:50}};
+  if(m.depth===0)dormant("movement.delay","vibrato depth is zero; the dashed curve is a waiting-time reference");
+  line(pathRange(360,t=>[18+326*t,100-12*modeledVibrato(waitingPatch,t*MOVEMENT_ILLUSTRATION_SECONDS)/100]),
+   m.depth===0,["movement.delay","movement.depth","movement.rate"],m.depth>0?"signal":"reference");
+  const waitX=18+326*m.delay/MOVEMENT_ILLUSTRATION_SECONDS;
+  line("M"+waitX.toFixed(2)+" 85 V110",true);
+  handle(waitX,103,[
+   axis(["movement","delay"],0,3,"linearX",{from:18,to:18+326*3/MOVEMENT_ILLUSTRATION_SECONDS,step:.05,unit:"s"})
   ],"vibrato waiting time");
   action(87,108,["bend","shape"],BEND_SHAPES.map(([value])=>value),"bend shape");
-  tag(18,14,"pitch bend");tag(245,90,"vibrato waits →");
+  tag(18,14,"pitch bend");tag(245,82,m.depth>0?"vibrato waits":"vibrato off · guide");
  }else if(type==="movement"&&page===2){
   const m=movement(p),pulse=clamp(m.tremolo??0),tone=clamp(m.tone??0),pan=clamp(p.pan??0,-1,1);
   line("M18 47 H170 M190 47 H342 M83 103 H277",true);
   line(pathRange(145,t=>[18+152*t,47-15*pulse*Math.sin(2*Math.PI*t*1.3*(m.tremoloRate??5))]),
    false,["movement.tremolo","movement.tremoloRate"]);
+  if(pulse===0){
+   line(pathRange(240,t=>[18+152*t,47-10*Math.sin(2*Math.PI*t*1.3*(m.tremoloRate??5))]),
+    true,["movement.tremoloRate"],"reference");
+   dormant("movement.tremoloRate","pulse amount is zero; the dashed curve is a rate reference");
+  }
   handle(22+clamp(((m.tremoloRate??5)-.1)/19.9)*143,47-22*pulse,[
    axis(["movement","tremoloRate"],.1,20,"linearX",{from:22,to:165,step:.1}),
    axis(["movement","tremolo"],0,1,"linearY",{from:47,to:25,step:.01})
@@ -473,6 +550,11 @@ export const diagram=(patch,type,page=0)=>{
   if(p.type==="synth"){
    line(pathRange(145,t=>[190+152*t,47-15*tone*Math.sin(2*Math.PI*t*1.3*(m.toneRate??2))]),
     false,["movement.tone","movement.toneRate"]);
+   if(tone===0){
+    line(pathRange(240,t=>[190+152*t,47-10*Math.sin(2*Math.PI*t*1.3*(m.toneRate??2))]),
+     true,["movement.toneRate"],"reference");
+    dormant("movement.toneRate","tone movement is zero; the dashed curve is a rate reference");
+   }
    handle(194+clamp(((m.toneRate??2)-.1)/19.9)*143,47-22*tone,[
     axis(["movement","toneRate"],.1,20,"linearX",{from:194,to:337,step:.1}),
     axis(["movement","tone"],0,1,"linearY",{from:47,to:25,step:.01})
@@ -481,18 +563,28 @@ export const diagram=(patch,type,page=0)=>{
   handle(83+(pan+1)*97,103,[
    axis(["pan"],-1,1,"linearX",{from:83,to:277,step:.01})
   ],"stereo pan");
-  tag(20,16,"volume pulse");if(p.type==="synth")tag(196,16,"tone movement");tag(107,89,"left ←  stereo  → right");
+  const panAngle=(pan+1)*Math.PI/4;
+  line(pathRange(100,t=>[18+152*t,103-7*Math.cos(panAngle)*Math.sin(t*6*Math.PI)]),false,["pan"]);
+  line(pathRange(100,t=>[190+152*t,103-7*Math.sin(panAngle)*Math.sin(t*6*Math.PI)]),false,["pan"]);
+  tag(20,16,pulse===0?"pulse off · guide":"volume pulse");
+  if(p.type==="synth")tag(196,16,tone===0?"tone off · guide":"tone movement");
+  tag(107,89,"left ←  stereo  → right");
  }else if(type==="movement"){
   const m=movement(p);
   line("M15 62 H345",true);
-  line(pathRange(320,t=>{
-   const time=t*1.5;
-   const cents=pitchCents({bend:p.bend},m,Math.min(time,1.25),1.25)/100;
-   const vibrato=time>=m.delay?m.depth/100*Math.sin(time*2*Math.PI*m.rate):0;
-   return [15+t*330,62-clamp((cents+vibrato)*5,-43,43)];
+  line(pathRange(640,t=>{
+   const time=t*MOVEMENT_ILLUSTRATION_SECONDS;
+   return [15+t*330,62-clamp(modeledPitch(p,time)/100*3.5,-43,43)];
   }),false,["bend.shape","bend.amount","bend.rate","movement.glide","movement.glideTime","movement.depth","movement.rate","movement.delay"]);
-  handle(20+clamp(((m.glideTime??.3)-.01)/2.99)*80,62-clamp(m.glide*3.5,-42,42),[
-   axis(["movement","glideTime"],.01,3,"linearX",{from:20,to:100,step:.01}),
+  if(m.glide===0){
+   line(pathRange(320,t=>[15+330*t,62-3.5*pitchCents(null,{...m,glide:6},
+    t*MOVEMENT_ILLUSTRATION_SECONDS,MOVEMENT_ILLUSTRATION_SECONDS)/100]),
+    true,["movement.glideTime"],"reference");
+   dormant("movement.glideTime","glide is zero; the dashed curve is a glide-time reference");
+   tag(120,14,"glide off · guide");
+  }
+  handle(15+330*m.glideTime/MOVEMENT_ILLUSTRATION_SECONDS,62-clamp(m.glide*3.5,-42,42),[
+   axis(["movement","glideTime"],.01,3,"linearX",{from:15+330*.01/MOVEMENT_ILLUSTRATION_SECONDS,to:15+330*3/MOVEMENT_ILLUSTRATION_SECONDS,step:.01,unit:"s"}),
    axis(["movement","glide"],-12,12,"linearY",{from:104,to:20,step:.1})
   ],"glide duration / starting pitch");
   handle(48+clamp((m.rate-.1)/19.9)*260,62-35*m.depth/100,[
@@ -500,19 +592,11 @@ export const diagram=(patch,type,page=0)=>{
    axis(["movement","depth"],0,100,"linearY",{from:62,to:27,step:1})
   ],"vibrato rate / depth");
   tag(15,14,"pitch");tag(287,14,"rate →");
-  // Separate amplitude and timbre motion cannot be seen on a pitch plot.
-  const pulse=m.tremolo??0,pulseRate=m.tremoloRate??5;
-  const tone=m.tone??0,toneRate=m.toneRate??2;
-  line(pathRange(150,t=>[18+t*324,86-8*pulse*Math.sin(2*Math.PI*t*1.5*pulseRate)]),true,["movement.tremolo","movement.tremoloRate"]);
-  if(p.type==="synth")
-   line(pathRange(150,t=>[18+t*324,100-7*tone*Math.sin(2*Math.PI*t*1.5*toneRate)]),
-    true,["movement.tone","movement.toneRate"]);
-  const pan=clamp(p.pan??0,-1,1);
-  line("M22 109 H"+(22+22*(1-pan)).toFixed(2),true,["pan"]);
-  line("M294 109 H"+(294+22*(1+pan)).toFixed(2),true,["pan"]);
-  tag(20,79,"level");
-  if(p.type==="synth")tag(20,96,"tone");
-  tag(260,110,"l / r");
+  const vibratoPatch=m.depth>0?p:{...p,movement:{...m,depth:50}};
+  line(pathRange(640,t=>[18+324*t,98-12*modeledVibrato(vibratoPatch,t*MOVEMENT_ILLUSTRATION_SECONDS)/100]),
+   m.depth===0,["movement.rate","movement.depth","movement.delay"],m.depth>0?"signal":"reference");
+  if(m.depth===0)dormant("movement.rate","vibrato depth is zero; the dashed curve is a rate reference");
+  tag(20,80,m.depth>0?"vibrato":"vibrato off · guide");tag(338,110,"4.5 s");
  }else if(type==="delay"){
   const e=p.effects,mix=e.delayMix||0,feedback=e.delayFeedback||0;
   const space=24+clamp((e.delayTime-.05)/.95)*66,origin=52;
@@ -528,9 +612,19 @@ export const diagram=(patch,type,page=0)=>{
    line("M"+x.toFixed(2)+" 100 V"+(100-72*tap.level).toFixed(2),
     tap.index>0,tap.index?
      ["effects.delayTime","effects.delayMix","effects.delayFeedback"]:
-     ["effects.delayMix"]);
+     ["effects.delayMix"],"signal");
    if(tap.index>0&&tap.level>0)
     tag(x+4,Math.max(18,94-72*tap.level),String(tap.index));
+  }
+  if(mix===0){
+   for(const tap of modeledDelayTaps({...e,delayMix:.5}).slice(1)){
+    const x=origin+space*(tap.time/e.delayTime);
+    line("M"+x.toFixed(2)+" 100 V"+(100-72*tap.level).toFixed(2),true,
+     ["effects.delayTime","effects.delayFeedback"],"reference");
+   }
+   tag(172,15,"wet off · guide");
+   dormant("effects.delayTime","delay mix is zero; dashed returns isolate echo spacing");
+   dormant("effects.delayFeedback","delay mix is zero; dashed returns isolate feedback");
   }
   handle(origin+space,100-72*mix,[
    axis(["effects","delayTime"],.05,1,"linearX",
@@ -580,12 +674,17 @@ export const diagram=(patch,type,page=0)=>{
     const i=start+j,center=centers[j];
     const target=MOD_TARGETS.find(t=>t.id===route.target),limit=target?.limit||1;
     line("M67 "+center+" H290",true);
-    const trace=modeledModulationTrace(route);
+    const trace=modulationTrace(route);
     const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
     const tracePath=values=>pathFrom(values.map((value,n)=>
      [67+223*n/(values.length-1),center-9*Math.tanh(value/visualScale)]));
     line(tracePath(trace.raw),true);
     line(tracePath(trace.smoothed),false,["modulation.routes."+i]);
+    if(route.depth===0){
+     line(tracePath(modulationTrace({...route,depth:limit*.5}).smoothed),true,
+      ["modulation.routes."+i],"reference");
+     dormant("modulation.routes."+i+".smoothing","movement depth is zero; the dashed trace isolates its source and smoothing");
+    }
     // Depth is always editable; a time-based source adds a genuine second axis.
     const depth=clamp(route.depth/limit,-1,1);
     const rate=route.source.kind==="lfo"?route.source.rate:null;
@@ -609,11 +708,19 @@ export const diagram=(patch,type,page=0)=>{
     const limit=target?.limit??1,depth=clamp(route.depth/limit,-1,1);
     const prefix=["modulation","routes",i],source=route.source;
     line("M24 61 H336",true);
-    const trace=modeledModulationTrace(route);
+    const trace=modulationTrace(route);
     const tracePath=values=>pathFrom(values.map((value,n)=>
      [24+312*n/(values.length-1),61-32*clamp(value/Math.max(.001,limit),-1,1)]));
     line(tracePath(trace.raw),true);
     line(tracePath(trace.smoothed),false,["modulation.routes."+i]);
+    if(route.depth===0){
+     line(tracePath(modulationTrace({...route,depth:limit*.5}).smoothed),true,
+      ["modulation.routes."+i],"reference");
+     for(const path of ["smoothing","source.rate","source.root","source.span",
+      "source.envelope.attack","source.envelope.decay","source.envelope.sustain","source.envelope.release"])
+      dormant("modulation.routes."+i+"."+path,"movement depth is zero; the dashed trace isolates its source and smoothing");
+     tag(192,43,"depth off · guide");
+    }
     const primary=source.kind==="lfo"?
      [axis([...prefix,"source","rate"],.05,20,"linearX",{from:35,to:317,step:.05})]:
      [axis([...prefix,"smoothing"],0,.1,"linearX",{from:35,to:317,step:.001})];
@@ -633,6 +740,7 @@ export const diagram=(patch,type,page=0)=>{
      tag(254,112,"smooth →");
     }
     if(source.kind==="envelope"){
+     if(route.depth!==0)tag(248,43,"6.25 s note");
      const e=source.envelope;
      handle(39+110*clamp(e.attack/3),99-31*clamp(e.sustain),[
       axis([...prefix,"source","envelope","attack"],0,3,"linearX",
@@ -659,7 +767,7 @@ export const diagram=(patch,type,page=0)=>{
    }
   }
  }
- return {paths,handles,labels,actions,color};
+ return {paths,handles,labels,actions,color,inactive};
 };
 const pageState=new Map();
 let zoomId=null;
@@ -775,7 +883,10 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
      ["response","sweep / noise","waveform"]:["response","waveform"])[page]+" · ":"")+
     (page+1)+" / "+count;
   }else pages.hidden=true;
-  const {paths,handles,labels,actions,color}=diagram(current,kind,page);
+  const {paths,handles,labels,actions,color,inactive}=diagram(current,kind,page);
+  graphic.setAttribute("aria-description",[...labels.map(label=>label.value),
+   ...inactive.map(item=>item.reason)].join("; "));
+  wrapper.dataset.visualPage=String(page);
   visibleHandles=handles;visibleActions=actions;
   // Rebuilding the diagram for live previews must not steal keyboard focus.
   const focusedHandle=handlesRoot.contains(document.activeElement)?
@@ -785,6 +896,7 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   for(const path of paths){
    const visible=svgNode("path",{d:path.d,
     class:path.secondary?"visual-graph-secondary":"visual-graph-line",fill:"none"});
+   visible.dataset.soundRole=path.role;
    if(path.links?.length){
     visible.dataset.soundLinks=path.links.join("|");
     const hit=svgNode("path",{d:path.d,class:"visual-graph-hit",fill:"none",
@@ -808,13 +920,18 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    button.style.top=(point.y/112*100)+"%";
    button.dataset.handle=String(i);
    button.dataset.soundLinks=point.axes.map(axis=>axis.path.join(".")).join("|");
+   button.dataset.soundKeys=point.axes.map(axis=>{
+    const path=axis.path.join(".");return soundControlDomain(kind,path)+":"+path;
+   }).join("|");
+   button.dataset.soundAxes=JSON.stringify(point.axes);
    button.setAttribute("aria-label",point.label);
    const values=point.axes.map(axis=>axisReadout(axis,axisValue(current,axis.path)));
    // The visible output is inside a labelled button. Its text is otherwise
    // hidden by aria-label, so announce current X/Y values in the accessible
    // description as well as directions. Live previews rebuild both together.
    button.setAttribute("aria-description",[
-    ...point.axes.map(axisDirection),...values
+    ...point.axes.map(axisDirection),...values,...inactive.filter(item=>
+     point.axes.some(axis=>axis.path.join(".")===item.path)).map(item=>item.reason)
    ].join("; "));
    const readout=document.createElement("output");
    readout.className="visual-point-readout";
@@ -851,6 +968,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    // separately stored bypass knob. The filter selector links to this action.
    button.dataset.soundLinks=entry.path[0]==="audioFilterBypassed"?
     "filter.type|audioFilterBypassed":entry.path.join(".");
+   button.dataset.soundKeys=button.dataset.soundLinks.split("|")
+    .map(path=>soundControlDomain(kind,path)+":"+path).join("|");
    button.addEventListener("click",()=>{
     const live=at(latestPatch,entry.path)??entry.choices[0];
     const index=entry.choices.findIndex(choice=>choice===live);
@@ -890,6 +1009,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   for(const dial of controlOwner().querySelectorAll(".dial-field")){
    const key=dial.dataset.soundPath||
     dial.parentElement?.closest("[data-sound-path]")?.dataset.soundPath;
+   if((dial.closest("[data-sound-domain]")?.dataset.soundDomain??"patch")!==
+    soundControlDomain(kind,key??""))continue;
    if(!editedAxes.has(key)||dial.classList.contains("adjusting"))continue;
    const value=at(current,key.split("."));
    if(typeof value==="number"&&Number.isFinite(value))
@@ -901,6 +1022,8 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   const fields=[...controlOwner().querySelectorAll("[data-sound-path]")];
   return fields.filter(field=>keys.some(key=>{
    const path=field.dataset.soundPath;
+   if((field.closest("[data-sound-domain]")?.dataset.soundDomain??"patch")!==
+    soundControlDomain(kind,key))return false;
    return path===key||path.startsWith(key+".")||key.startsWith(path+".");
   }));
  }
@@ -963,7 +1086,9 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
   event.preventDefault();focusFeature(hit.dataset.soundLinks.split("|"));
  });
  const ownerListeners={
+  "sound-control-input":event=>revealControl(event.target),
   focusin:event=>{
+   revealControl(event.target);
    const control=event.target.closest?.("[data-sound-path],[data-sound-links]");
    if(control)highlight(control.dataset.soundLinks?.split("|")??[control.dataset.soundPath]);
   },
@@ -971,6 +1096,19 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    if(!event.relatedTarget?.closest?.("[data-sound-path],[data-sound-links]"))highlight(null);
   }
  };
+ function revealControl(target){
+  const control=target.closest?.("[data-sound-path]");
+  if(!control||control.closest(".visual-panel-area"))return;
+  const path=control.dataset.soundPath;
+  const domain=control.closest("[data-sound-domain]")?.dataset.soundDomain??"patch";
+  if(domain!==soundControlDomain(kind,path))return;
+  const owner=control.closest(".visual-sound-panel");
+  if(owner!==wrapper&&!(kind==="stage"&&["volume","gain","pan"].includes(path)))return;
+  const selected=diagramPageForControl(latestPatch,kind,path,page);
+  if(selected!==null&&selected!==page){
+   page=selected;pageState.set(id,page);draw(latestPatch);
+  }
+ }
  const listen=(root,operation)=>Object.entries(ownerListeners).forEach(([name,handler])=>
   root[operation](name,handler));
  let listenerOwner=controlOwner(),linksDisposed=false;
@@ -1159,12 +1297,12 @@ export function illustrateSoundPanel(details,kind,patch,onChange,onPreview,index
    return;
   }
   if(!selected)return;event.preventDefault();
-  const dir=event.key==="ArrowUp"||event.key==="ArrowRight"?1:-1;
+  const coordinateDirection=event.key==="ArrowUp"||event.key==="ArrowLeft"?-1:1;
+  const dir=coordinateDirection*Math.sign(selected.to-selected.from);
   const current=axisValue(latestPatch,selected.path);
   // Arrows are precise knob-scale edits, with Shift for coarse movements.
-  // Logarithmic frequency axes use perceptually meaningful relative steps.
-  const step=selected.mode.startsWith("log")?Math.max(selected.step,current*(event.shiftKey?.2:.07)):
-   selected.step*(event.shiftKey?10:1);
+  // The smallest edit matches the paired knob, including frequency axes.
+  const step=selected.step*(event.shiftKey?10:1);
   // Keyboard and pointer edits must respect the same discrete grid.
   // Automation positions and recorded pitches are integers; fractional
   // steps would invalidate the existing project format.

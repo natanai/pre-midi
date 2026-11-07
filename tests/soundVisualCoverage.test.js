@@ -4,7 +4,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {makePatch} from "../synth.js";
-import {diagram,diagramPageCount} from "../soundIllustrations.js";
+import {diagram,diagramPageForControl,illustrationSignal} from "../soundIllustrations.js";
 import {defaultSource} from "../src/dsp/modulation.js";
 
 const copy=value=>structuredClone(value);
@@ -98,7 +98,7 @@ cases.push(...[
  ["sample","followPitch",false],
  ["sample","oneShot",true],
  ["sample","preserveDynamics",true],
- ["sample","zones.0.root",74],
+ ["mapping","zones.0.root",74],
  ["movement","bend.shape","fall"],
  ["movement","bend.amount",7],
  ["movement","bend.rate",8],
@@ -131,11 +131,13 @@ test("every mapped sound control visibly changes its corresponding illustration"
   await t.test(item.create().type+" "+item.path,()=>{
    const before=item.create(),after=copy(before),path=item.path.split(".").map(p=>/^\\d+$/.test(p)?Number(p):p);
    set(after,path,item.value);
-   const allPages=patch=>Array.from({length:diagramPageCount(patch,item.kind)},
-    (_,page)=>diagram(patch,item.kind,page));
-   const a=allPages(before),b=allPages(after);
-   const visual=o=>JSON.stringify({paths:o.paths,labels:o.labels,handles:o.handles});
-   assert.notEqual(JSON.stringify(a.map(visual)),JSON.stringify(b.map(visual)),
+   // Harmonics have their own editable detail view. The mixed oscillator
+   // signal alone does not qualify an unreachable partial editing task.
+   const kind=item.path.includes(".harmonics.")?"harmonics"+path[1]:item.kind;
+   const page=diagramPageForControl(before,kind,item.path);
+   assert.notEqual(page,null,"no direct editing node for "+item.path);
+   assert.notEqual(illustrationSignal(diagram(before,kind,page),item.path),
+    illustrationSignal(diagram(after,kind,page),item.path),
     item.path+" does not affect "+item.kind);
   });
  }
