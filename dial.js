@@ -363,5 +363,6 @@ export function createDial(field,value,onCommit,onPreview=()=>{}){
   control.append(note);
  }
 
+ control.cloneSoundControl=()=>createDial(field,current,onCommit,onPreview);
  return control;
 }

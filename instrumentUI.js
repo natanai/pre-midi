@@ -1,5 +1,6 @@
 import {renderModulationEditor} from "./modulationUI.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
+import {collectSoundFields} from "./soundPanelLayout.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 // Controls are generated from the same patch keys validated by synth.js.
 // All edits go through the caller's one canonical beat mutation pathway.
@@ -7,8 +8,7 @@ import { WAVES, FILTERS, makePatch } from "./synth.js";
 import { BEND_SHAPES } from "./expression.js";
 import { createDial,explainLabel,helpForLabel } from "./dial.js";
 import {HARMONIC_COUNT,harmonicRecipe} from "./harmonics.js";
-// These canonical descriptors render in the top Sound row, not a second
-// accordion. They remain ordinary patch fields for native/browser parity.
+// Quick controls and their module copies edit the same canonical fields.
 export const PRIMARY_SYNTH_FIELDS=Object.freeze([
  {path:["filter","cutoff"],label:"brightness",min:50,max:14000,step:1,display:"hz",log:true},
  {path:["envelope","attack"],label:"attack",min:0,max:3,step:.01,display:"seconds"},
@@ -17,10 +17,13 @@ export const PRIMARY_SYNTH_FIELDS=Object.freeze([
 const groups=[
  {name:"Oscillators",fields:[]},
  {name:"Envelope",open:false,fields:[
+  PRIMARY_SYNTH_FIELDS[1],
   {path:["envelope","decay"],label:"Decay",min:0,max:3,step:.01,display:"seconds"},
-  {path:["envelope","sustain"],label:"Sustain",min:0,max:1,step:.01,display:"percent"}
+  {path:["envelope","sustain"],label:"Sustain",min:0,max:1,step:.01,display:"percent"},
+  PRIMARY_SYNTH_FIELDS[2]
  ]},
  {name:"Filter & noise",open:false,fields:[
+  PRIMARY_SYNTH_FIELDS[0],
   {path:["filter","type"],label:"Filter",options:FILTERS},
   {path:["filter","resonance"],label:"Resonance",min:.1,max:16,step:.1,display:"number"},
   {path:["effects","drive"],label:"Distortion",min:0,max:1,step:.01,display:"percent"},
@@ -177,8 +180,7 @@ function harmonicControls(patch,index,onChange,preview,expanded,panels,soundId){
   recipes.append(button);
  }
  section.append(recipes);
- // All 32 existing knobs remain; their pages now offer a direct-edit
- // spectral drawing using exactly the same persisted harmonic values.
+ // All 32 partials and their controls share one unpaged spectral drawing.
  const details=document.createElement("details");details.className="synth-group";
  details.open=true;
  const heading=document.createElement("summary");heading.textContent="harmonic spectrum";
@@ -187,11 +189,6 @@ function harmonicControls(patch,index,onChange,preview,expanded,panels,soundId){
  panels.push(illustration);
  section.prepend(illustration.element);
  const first=document.createElement("div");first.className="synth-fields harmonic-fields";
- const more=document.createElement("details");more.className="harmonic-more";
- const key="Harmonics "+index;more.open=expanded.has(key);
- more.addEventListener("toggle",()=>more.open?expanded.add(key):expanded.delete(key));
- const extraHeading=document.createElement("summary");extraHeading.textContent="harmonics 9–32";
- const rest=document.createElement("div");rest.className="synth-fields harmonic-fields";
  for(let n=0;n<HARMONIC_COUNT;n++){
   const field={label:n===0?"H1 · Root":"H"+(n+1),min:0,max:1,step:.01,display:"percent",defaultValue:n===0?1:0};
   const dial=createDial(field,patch.oscillators[index].harmonics[n],
@@ -199,19 +196,19 @@ function harmonicControls(patch,index,onChange,preview,expanded,panels,soundId){
    value=>preview(["oscillators",index,"harmonics",n],value));
   dial.querySelector('[role="slider"]').setAttribute("aria-label","Oscillator "+(index+1)+" harmonic "+(n+1));
   dial.dataset.soundPath=["oscillators",index,"harmonics",n].join(".");
-  (n<8?first:rest).append(dial);
+  first.append(dial);
  }
- more.append(extraHeading,rest);
+
  // Controls belong to their own diagram disclosure, so focusing a spectrum
  // bar can reveal and focus its original dial (including H9–H32).
- details.append(recipes,first,more);
+ details.append(recipes,first);
  return section;
 }
 export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=null) {
  root.replaceChildren();
  const grid=document.createElement("div");
  grid.className="synth-grid";
- const panels=[];
+ const panels=[],sections=[];
  const stateKey=soundId??patch;
  let expanded=editorStates.get(stateKey);
  if(!expanded){expanded=activeSoundPanels(patch);editorStates.set(stateKey,expanded);}
@@ -267,11 +264,16 @@ export function renderPatchEditor(root,patch,onChange,onPreview=()=>{},soundId=n
   const kind=group.name==="Oscillators"?"oscillators":
    group.name==="Envelope"?"envelope":group.name==="Filter & noise"?"filter":
    group.name==="Pitch & movement"?"movement":"delay";
-  const panel=illustrateSoundPanel(details,kind,patch,onChange,preview,soundId??0);
-  panels.push(panel);grid.append(panel.element);
+  sections.push([details,kind]);grid.append(details);
  }
- const modulation=illustrateSoundPanel(renderModulationEditor(patch,onChange,soundId,preview),
-  "modulation",patch,onChange,preview,soundId);
- panels.push(modulation);grid.append(modulation.element);
+ const modulation=renderModulationEditor(patch,onChange,soundId,preview);
+ grid.append(modulation);sections.push([modulation,"modulation"]);
+ const fields=collectSoundFields(grid);
+ for(const [details,kind] of sections){
+  const anchor=document.createComment("sound module");details.before(anchor);
+  details.soundFields=fields;
+  const panel=illustrateSoundPanel(details,kind,patch,onChange,preview,soundId??0);
+  panels.push(panel);anchor.replaceWith(panel.element);
+ }
  root.append(grid);
 }

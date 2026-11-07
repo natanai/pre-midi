@@ -43,6 +43,8 @@ Professional capability and newcomer comprehension are both release requirements
 
 ## Visual system
 
+Each educational illustration has its own visible module/panel. Do not put different graphs behind previous/next arrows or auto-switch diagrams when a knob receives focus. Repeat relevant knobs in multiple panels when needed: every copy uses the same parameter and canonical edit/history path, previews stay synchronized, and focus stays in the panel being edited. Panels may be independently folded or expanded. A useful single-control illustration is acceptable; scope a meaningful companion feature in `docs/synthesis-roadmap.json` instead of inventing a parameter just to fill a second axis.
+
 The single implementation/handoff log for educational and interactive Sound illustrations is [docs/sound-illustrations.md](docs/sound-illustrations.md). The separate Song/freeform agent owns the canonical Sound Inspector architecture and [docs/song-rollout.md](docs/song-rollout.md); do not create a competing illustration plan or duplicate either editor.
 
 Black or near-black surfaces, grayscale chrome, thin rules, monospace typography and square controls. Use saturated color for data (selected musical signals, recording state), not decoration. Selected notes and instruments require an outline as well as color; focus and accessibility remain visible. Desktop and mobile share the same editing behaviors.

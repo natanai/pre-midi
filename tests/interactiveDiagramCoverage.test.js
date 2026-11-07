@@ -45,7 +45,7 @@ test("every synth knob has a direct path in an educational illustration",()=>{
   "oscillators.1.wave","oscillators.1.octave"],"oscillators");
  for(const index of [0,1]){
   const spectrum="harmonics"+index;
-  assert.equal(diagramPageCount(p,spectrum),4);
+  assert.equal(diagramPageCount(p,spectrum),1);
   requirePaths(axes(p,spectrum),
    Array.from({length:32},(_,i)=>"oscillators."+index+".harmonics."+i),spectrum);
  }

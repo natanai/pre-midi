@@ -117,7 +117,7 @@ export function installFreeformSoundUI({getSong,getLayer,getInstrument,mutate,on
   // Its old graph does not: detach listeners and rebuild the direct editor
   // for the currently selected Sound.
   if(stagePanel){
-   stageOpen=scope.querySelector(
+   stageOpen=stagePanel.element.querySelector(
     '.visual-sound-panel[data-visual-kind="stage"] details')?.open??stageOpen;
    stagePanel.element.disposeSoundIllustration?.();
    stagePanel.element.remove();

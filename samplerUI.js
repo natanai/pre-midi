@@ -1,5 +1,6 @@
 import {movement,movementDefaults} from "./expression.js";
 import {illustrateSoundPanel} from "./soundIllustrations.js";
+import {collectSoundFields} from "./soundPanelLayout.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {renderAudioToneControls,renderAudioMovementControls,renderAudioArticulationControls} from "./audioControlUI.js";
 import {sampleTone,DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
@@ -44,7 +45,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  toneGroup.addEventListener("toggle",()=>toneGroup.open?expanded.add("tone"):expanded.delete("tone"));
  const toneTitle=document.createElement("summary");toneTitle.textContent="Tone · filter & distortion";
  const toneFields=document.createElement("div");toneFields.className="synth-fields dial-grid";
- renderAudioToneControls(toneFields,patch,onChange,preview);
+ renderAudioToneControls(toneFields,patch,onChange,preview,{showCutoff:true});
  toneGroup.append(toneTitle,toneFields);root.append(toneGroup);
  const movementGroup=document.createElement("details");movementGroup.className="synth-group";movementGroup.open=expanded.has("movement");
  movementGroup.addEventListener("toggle",()=>movementGroup.open?expanded.add("movement"):expanded.delete("movement"));
@@ -98,14 +99,16 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
  mapDetails.append(mapHeading,mapping);
  // Defer thousands of option nodes for large multisamples until opened.
  mapDetails.populateMapping=()=>{if(!mapping.childElementCount)populateMapping();};
- if(mapDetails.open||patch.zones.length<=8)mapDetails.populateMapping();
+ mapDetails.populateMapping();
  root.append(mapDetails);
+ const soundFields=collectSoundFields(root);
  // Keep the same diagrams and direct manipulation for recorded instruments.
  // These wrappers leave the actual sampler dials and mapping controls intact.
  for(const [section,kind] of [[toneGroup,"filter"],[movementGroup,"movement"],[details,"sample"],[mapDetails,"mapping"]]){
   // illustrateSoundPanel moves section inside its new wrapper. Anchor the
   // original position *before* wrapping; replacing section afterward would
   // attempt to insert the wrapper into its own child.
+  section.soundFields=soundFields;
   const anchor=document.createComment("sound visual position");
   section.before(anchor);
   const visual=illustrateSoundPanel(section,kind,patch,onChange,preview,soundId);

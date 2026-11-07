@@ -2,7 +2,7 @@
   "schema_version": 1,
   "program_id": "pre-midi-professional-synthesis",
   "title": "Professional native-first synthesis and DSP",
-  "updated_on": "2026-11-05",
+  "updated_on": "2026-11-07",
   "status": "active",
   "scope": "Synthesizer sound generation, DSP fidelity, quality qualification and cross-host rendering; complements docs/song-rollout.md instead of replacing its Song-specific stages.",
   "mission": "Deliver professionally viable editable instruments that sound correct in native desktop/mobile production and natively in pre-programmed, while retaining a compatible web studio wherever technically feasible.",
@@ -297,7 +297,7 @@
         "report": "benchmarks/web-audio-reference.json",
         "contract": "docs/dsp-contract.schema.json",
         "method": "18 constant-input rendered ADSR cases against an independent analytical oracle; overlapping and retriggered production voices at three sample rates",
-        "max_sample_error_gate": 0.00003,
+        "max_sample_error_gate": 3e-05,
         "shared_runtime": "live transport, audition, conversion preview and WAV export all use scheduleNote -> scheduleAmplitudeEnvelope -> planAmplitudeEnvelope",
         "compatibility": "preserves 2 ms attack floor, zero-decay sustain step and 0.000001 release floor; unchanged stored patch v1 and Beat v7/Song v8",
         "scope": "current ADSR scheduling contract; physical live-device loopback and native DSP equivalence are later host qualification"
@@ -746,7 +746,7 @@
           ],
           "pcm_limits": {
             "max_absolute": 0.0001,
-            "rms": 0.00002
+            "rms": 2e-05
           },
           "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
           "raw_reports": "benchmarks/automation-reference.json"
@@ -1346,5 +1346,62 @@
         "failure_policy": "Stop with visible native error; never fall back to Web Audio"
       }
     }
+  },
+  "sound_panel_expansions": {
+    "status": "scoped; not implemented",
+    "principle": "Each illustration owns a visible panel. Duplicate access to shared parameters is intentional; no graph paging and no dummy controls to fill axes.",
+    "candidates": [
+      {
+        "panel": "distortion",
+        "next_controls": [
+          "input gain (dB)",
+          "dry / wet mix",
+          "soft clip / hard clip / wavefold"
+        ],
+        "scope": "Shared browser/native/game-host transfer functions, level compensation and oversampling; store only compact parameters in .premidi."
+      },
+      {
+        "panel": "noise",
+        "next_controls": [
+          "white / pink / brown color",
+          "source bandwidth"
+        ],
+        "scope": "Procedural noise with repeatable reference illustrations; retain existing source level and decay."
+      },
+      {
+        "panel": "stereo",
+        "next_controls": [
+          "stereo width",
+          "mid / side balance"
+        ],
+        "scope": "Define behavior for real stereo sources and explain mono-source limits; preserve equal-power pan."
+      },
+      {
+        "panel": "recording pitch",
+        "next_controls": [
+          "time stretch independent of pitch",
+          "formant preservation"
+        ],
+        "scope": "Shared sample/vocal processing with explicit latency and CPU limits, using external audio assets."
+      },
+      {
+        "panel": "glide / vibrato / pulse / tone movement",
+        "next_controls": [
+          "curve or LFO shape",
+          "phase / retrigger",
+          "tempo sync"
+        ],
+        "scope": "One modulation contract across synths, recordings, native audio and pre-programmed; every new control gets a direct graph edit."
+      },
+      {
+        "panel": "delay",
+        "next_controls": [
+          "feedback tone",
+          "ping-pong stereo",
+          "tempo sync"
+        ],
+        "scope": "Extend the existing feedback bus without rendering effects into project assets."
+      }
+    ]
   }
 }
