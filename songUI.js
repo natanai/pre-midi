@@ -3,6 +3,7 @@ import {songDurationSteps,removeSongClip,removeEmptyVocalTrack,moveVocalClip} fr
 import {id} from "./schema.js";
 import {unpackBeatClip} from "./freeformModel.js";
 import {installFreeformUI} from "./freeformUI.js";
+import {timelineStepAtX,trackTimelinePointer} from "./timelinePointer.js";
 // All Song lanes and the bar ruler use the same scale; only the viewport
 // determines how much empty timeline is visible. There is no fixed song end.
 const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
@@ -10,8 +11,8 @@ const integer=(value,fallback)=>Number.isFinite(value)?Math.max(0,Math.round(val
 export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onChange,onAddBeat,onImportBeat,onSeek=()=>{},onSelectionChange=()=>{},onError=()=>{},onFreeformActiveChange=()=>{},onFreeformBeatCreated=()=>{},onBrowseFreeform=()=>{},onSaveFreeform=()=>{},getFreeformScaleGuide=()=>null,setFreeformScaleGuide=()=>{},getShowPianoKeys=()=>true,setShowPianoKeys=()=>{},onUndo=()=>{},onRedo=()=>{},getHistoryState=()=>({}),getInspectorOpen,setInspectorOpen}={}){
  const $=id=>root.querySelector("#"+id);
  const viewport=$("song-scroll"),tracks=$("song-tracks"),ruler=$("song-ruler"),footer=$("song-timeline-footer");
- let selectedClipId=null,dragging=false,ignoreClick=false,playPosition=-1,seekStep=0;
- let timelinePages=1;
+ let selectedClipId=null,ignoreClick=false,playPosition=-1,seekStep=0;
+ let timelinePages=1,timelineBars=PAGE_BARS,activePointerCancel=null,scrubbing=false,ignoreRulerClick=false;
  const beatMenu=$("song-beat-choice"),beatMenuToggle=$("song-add-beat");
  function closeBeatMenu(){
   beatMenu.hidden=true;
@@ -62,28 +63,51 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
  function updateCursor(){
   const cursor=$("song-cursor");
   if(!cursor)return;
-  const position=playPosition>=0?playPosition:seekStep/BAR_STEPS;
+  const position=!scrubbing&&playPosition>=0?playPosition:seekStep/BAR_STEPS;
   cursor.hidden=false;
   cursor.style.left=(LABEL_PX+position*BAR_PX)+"px";
-  cursor.title="Song starts at bar "+(Math.floor(seekStep/BAR_STEPS)+1);
+  cursor.title="drag Song start · bar "+(Math.floor(seekStep/BAR_STEPS)+1);
  }
  function setStartStep(step){
-  const length=Math.max(songDurationSteps(getSong()),timelinePages*PAGE_BARS*BAR_STEPS);
+  const length=Math.max(songDurationSteps(getSong()),timelineBars*BAR_STEPS);
   seekStep=Math.min(Math.max(0,Math.floor(step/BAR_STEPS)*BAR_STEPS),
    Math.max(0,Math.floor(Math.max(0,length-1)/BAR_STEPS)*BAR_STEPS));
   freeformUI.seekToStep(seekStep);
-  if(playPosition<0)updateCursor();
+  if(scrubbing||playPosition<0)updateCursor();
   ruler.setAttribute("aria-valuenow",String(Math.floor(seekStep/BAR_STEPS)+1));
   onSeek(seekStep);
   return seekStep;
  }
- ruler.setAttribute("title","Click a bar to set the Song playback and recording start.");
+ const stepAtPointer=event=>timelineStepAtX(event.clientX-ruler.getBoundingClientRect().left,
+  {gutter:LABEL_PX,barPixels:BAR_PX,bars:timelineBars});
+ ruler.setAttribute("title","click or drag to set the Song playback and recording start");
  ruler.setAttribute("tabindex","0");
  ruler.setAttribute("role","slider");
  ruler.setAttribute("aria-label","Song start bar");
+ ruler.addEventListener("pointerdown",event=>{
+  if(event.button!==0||event.isPrimary===false||event.target.closest(".song-ruler-axis"))return;
+  activePointerCancel?.();
+  const original=seekStep;
+  scrubbing=true;ruler.classList.add("scrubbing");
+  ruler.focus({preventScroll:true});event.preventDefault();
+  const seek=point=>{
+   const next=stepAtPointer(point);
+   if(next!==seekStep)setStartStep(next);else updateCursor();
+  };
+  setStartStep(stepAtPointer(event));
+  activePointerCancel=trackTimelinePointer(ruler,event,{
+   onMove:seek,holdMs:null,
+   onEnd:()=>{activePointerCancel=null;},
+   onFinish:({cancelled})=>{
+    if(cancelled)setStartStep(original);
+    scrubbing=false;ruler.classList.remove("scrubbing");updateCursor();
+    ignoreRulerClick=true;setTimeout(()=>{ignoreRulerClick=false;},0);
+   }
+  });
+ });
  ruler.addEventListener("click",event=>{
-  const x=event.clientX-ruler.getBoundingClientRect().left-LABEL_PX;
-  setStartStep(Math.floor(Math.max(0,x)/BAR_PX)*BAR_STEPS);
+  if(ignoreRulerClick||event.target.closest(".song-ruler-axis"))return;
+  setStartStep(stepAtPointer(event));
  });
  ruler.addEventListener("keydown",event=>{
   if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;
@@ -185,6 +209,53 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   if(found?.clip.beatId)onSelectBeat(found.clip.beatId);
   render();onSelectionChange();
  }
+ // All feedback is transient. The model changes once, on a valid release.
+ function beatDropFeedback(block,track,clip){
+  const row=[...tracks.querySelectorAll(".song-freeform-row")]
+   .find(row=>row.dataset.parentTrackId===track.id);
+  const lane=row?.querySelector(".song-freeform-lane");
+  const ghost=document.createElement("span");ghost.className="song-freeform-drop-preview";
+  ghost.setAttribute("aria-hidden","true");ghost.hidden=true;
+  ghost.style.width=clip.lengthSteps/BAR_STEPS*BAR_PX+"px";
+  lane?.append(ghost);
+  const hint=document.createElement("div");hint.className="song-drop-hint";
+  hint.setAttribute("role","status");hint.setAttribute("aria-live","polite");hint.hidden=true;
+  document.body.append(hint);
+  let rejected=null;
+  const hold=()=>{
+   block.classList.add("pointer-held");row?.classList.add("drop-available");
+  };
+  function move(point,steps){
+   if(point.moved||point.held)hold();
+   block.classList.toggle("pointer-dragging",point.moved);
+   if(point.moved)block.style.transform="translateY("+point.dy+"px)";
+   const under=document.elementFromPoint(point.clientX,point.clientY);
+   const target=point.moved?under?.closest(".song-freeform-row"):null;
+   const valid=!!target&&target.dataset.parentTrackId===track.id;
+   rejected?.classList.remove("drop-rejected");
+   rejected=target&&!valid?target:null;rejected?.classList.add("drop-rejected");
+   row?.classList.toggle("drop-active",valid);
+   block.classList.toggle("dropping-freeform",valid);
+   ghost.hidden=!valid;
+   if(valid){ghost.style.left=steps/BAR_STEPS*BAR_PX+"px";ghost.dataset.startStep=String(steps);}
+   hint.hidden=!target;
+   if(target){
+    const text=valid?"release to make freeform · bar "+(steps/BAR_STEPS+1):
+     "use this beat's attached freeform lane";
+    if(hint.textContent!==text)hint.textContent=text;
+    const box=hint.getBoundingClientRect();
+    hint.style.left=Math.max(8,Math.min(point.clientX+12,window.innerWidth-box.width-8))+"px";
+    hint.style.top=Math.max(8,Math.min(point.clientY+14,window.innerHeight-box.height-8))+"px";
+   }
+   return {freeform:valid,invalid:!!rejected,trackId:under?.closest(".song-track-row")?.dataset.trackId};
+  }
+  return {hold,move,clear(){
+   row?.classList.remove("drop-available","drop-active");
+   rejected?.classList.remove("drop-rejected");
+   block.classList.remove("pointer-held","pointer-dragging","dropping-freeform");
+   block.style.transform="";ghost.remove();hint.remove();
+  }};
+ }
  function clipButton(track,clip){
   const beat=localBeat(clip.beatId);
   const block=document.createElement("button");
@@ -192,9 +263,10 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   block.style.left=(clip.startStep/BAR_STEPS*BAR_PX)+"px";
   block.style.width=(clip.lengthSteps/BAR_STEPS*BAR_PX)+"px";
   block.title=(beat?.title||"Missing Beat")+" · bar "+(Math.floor(clip.startStep/BAR_STEPS)+1);
-  block.setAttribute("aria-label",block.title+"; left/right move, up/down change Track, shift+left/right resize");
+  block.setAttribute("aria-label",block.title+"; left/right move, up/down change Track, shift+left/right resize; hold and drag down into attached freeform");
   block.setAttribute("aria-pressed",String(clip.id===selectedClipId));
   block.tabIndex=0;
+  block.title+=" · hold to drag · drag down to make freeform";
   const label=document.createElement("span");label.className="song-clip-label";
   label.textContent=beat?.title||"Missing Beat";
   const grip=document.createElement("span");grip.className="song-clip-grip";
@@ -221,62 +293,52 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   });
   block.dataset.clipId=clip.id;
   block.addEventListener("pointerdown",event=>{
-   if(event.button!==0&&event.pointerType==="mouse")return;
+   if(event.button!==0||event.isPrimary===false)return;
+   activePointerCancel?.();
    const resizing=event.target===grip;
    const original=resizing?clip.lengthSteps:clip.startStep;
-   const startX=event.clientX,startY=event.clientY;
-   dragging=false;
-   block.setPointerCapture(event.pointerId);
-   let steps=original;
-   const move=e=>{
-    if(e.pointerId!==event.pointerId)return;
-    if(Math.abs(e.clientX-startX)>5||(!resizing&&Math.abs(e.clientY-startY)>8))dragging=true;
-    if(!dragging)return;
-    const shift=Math.round((e.clientX-startX)/BAR_PX)*BAR_STEPS;
+   const feedback=resizing?null:beatDropFeedback(block,track,clip);
+   let steps=original,destination=null;
+   const preview=point=>{
+    if(!point.moved)return;
+    const shift=Math.round(point.dx/BAR_PX)*BAR_STEPS;
     steps=resizing?Math.max(BAR_STEPS,original+shift):Math.max(0,original+shift);
-    if(resizing)block.style.width=(steps/BAR_STEPS*BAR_PX)+"px";
-    else block.style.left=(steps/BAR_STEPS*BAR_PX)+"px";
-   };
-   const finish=e=>{
-    if(e.pointerId!==event.pointerId)return;
-    block.removeEventListener("pointermove",move);
-    block.removeEventListener("pointerup",finish);
-    block.removeEventListener("pointercancel",cancel);
-    if(dragging){
-     ignoreClick=true;setTimeout(()=>{ignoreClick=false;},0);
-     const under=document.elementFromPoint(e.clientX,e.clientY);
-     const target=!resizing?under?.closest(".song-freeform-row"):null;
-     if(target?.dataset.parentTrackId===track.id){
-      const unpacked=apply(()=>unpackBeatClip(getSong(),clip.id));
-      if(unpacked){selectedClipId=null;freeformUI.open(track.id);}
-      dragging=false;return;
-     }
-     const destination=resizing?null:under?.closest(".song-track-row")?.dataset.trackId;
-     const dest=getSong().tracks.find(item=>item.id===destination&&item.kind==="beat");
-     const moved=dest&&dest.id!==track.id;
-     const changes=resizing?{lengthSteps:steps}:{startStep:steps};
-     if(steps!==original||moved)apply(()=>{
-      Object.assign(clip,changes);
-      if(moved){track.clips=track.clips.filter(item=>item.id!==clip.id);dest.clips.push(clip);}
-     });
-     else render();
+    if(resizing)block.style.width=steps/BAR_STEPS*BAR_PX+"px";
+    else{
+     block.style.left=steps/BAR_STEPS*BAR_PX+"px";
+     destination=feedback.move(point,steps);
     }
-    dragging=false;
    };
-   const cancel=e=>{
-    if(e.pointerId!==event.pointerId)return;
-    block.removeEventListener("pointermove",move);
-    block.removeEventListener("pointerup",finish);
-    block.removeEventListener("pointercancel",cancel);
-    dragging=false;render();
-   };
-   block.addEventListener("pointermove",move);
-   block.addEventListener("pointerup",finish);
-   block.addEventListener("pointercancel",cancel);
+   activePointerCancel=trackTimelinePointer(block,event,{
+    onHold:feedback?.hold,onMove:preview,
+    onEnd:()=>{activePointerCancel=null;},
+    onFinish:({cancelled,moved})=>{
+     feedback?.clear();
+     block.style.left=clip.startStep/BAR_STEPS*BAR_PX+"px";
+     block.style.width=clip.lengthSteps/BAR_STEPS*BAR_PX+"px";
+     if(moved||cancelled){ignoreClick=true;setTimeout(()=>{ignoreClick=false;},0);}
+     if(cancelled||!moved||destination?.invalid)return;
+     if(destination?.freeform){
+      const unpacked=apply(()=>{
+       clip.startStep=steps;
+       unpackBeatClip(getSong(),clip.id);
+      });
+      if(unpacked){selectedClipId=null;freeformUI.open(track.id,null,steps);}
+      return;
+     }
+     const dest=!resizing&&getSong().tracks.find(item=>item.id===destination?.trackId&&item.kind==="beat");
+     const movedTrack=dest&&dest.id!==track.id;
+     if(steps!==original||movedTrack)apply(()=>{
+      Object.assign(clip,resizing?{lengthSteps:steps}:{startStep:steps});
+      if(movedTrack){track.clips=track.clips.filter(item=>item.id!==clip.id);dest.clips.push(clip);}
+     });
+    }
+   });
   });
   return block;
  }
  function render(){
+  activePointerCancel?.();
   const song=getSong();
   root.hidden=!song;
   if(!song){freeformUI.close();return;}
@@ -284,6 +346,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const viewportBars=Math.ceil(Math.max(0,viewport.clientWidth-LABEL_PX)/BAR_PX);
   const songBars=Math.ceil(songDurationSteps(song)/BAR_STEPS);
   const bars=Math.max(PAGE_BARS*timelinePages,viewportBars,songBars+8);
+  timelineBars=bars;
   const width=bars*BAR_PX;
   const totalWidth=width+LABEL_PX;
   ruler.replaceChildren();
@@ -303,7 +366,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   ruler.append(cursor);
   updateCursor();
   ruler.setAttribute("aria-valuemin","1");
-  ruler.setAttribute("aria-valuemax",String(Math.max(1,Math.ceil(songDurationSteps(song)/BAR_STEPS))));
+  ruler.setAttribute("aria-valuemax",String(bars));
   ruler.setAttribute("aria-valuenow",String(Math.floor(seekStep/BAR_STEPS)+1));
   tracks.replaceChildren();
   for(const track of song.tracks){
@@ -412,6 +475,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
  viewport.addEventListener("scroll",()=>{
   if(!getSong())return;
   updateVisibleBars();
+  if(activePointerCancel)return;
   const remaining=viewport.scrollWidth-viewport.clientWidth-viewport.scrollLeft;
   if(viewport.scrollWidth>viewport.clientWidth&&remaining<BAR_PX*3){
    timelinePages++;

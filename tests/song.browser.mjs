@@ -4,6 +4,7 @@ import {readFile} from "node:fs/promises";
 import {resolve,extname} from "node:path";
 import {spawn} from "node:child_process";
 import {strict as assert} from "node:assert";
+import {runSongPointerChecks} from "./song-pointer.browser.mjs";
 const root=resolve(new URL("..",import.meta.url).pathname);
 let receive=null;
 const server=createServer(async(request,response)=>{
@@ -26,6 +27,7 @@ const server=createServer(async(request,response)=>{
 });
 await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
 try{
+ await runSongPointerChecks({origin:"http://127.0.0.1:"+server.address().port,chrome:process.env.CHROME_BIN||"google-chrome"});
  for(const [suite,width,height] of [
  ...["song-check","freeform-check"].flatMap(suite=>
   [[1440,900],[780,900]].map(([width,height])=>[suite,width,height])),
