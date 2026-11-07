@@ -1,3 +1,4 @@
+import {vocalClipDisplay} from "./vocalAudioView.js";
 // Song arrangement UI. Beat editor remains the existing studio underneath.
 import {songDurationSteps,removeSongClip,removeEmptyVocalTrack,moveVocalClip} from "./songModel.js";
 import {id} from "./schema.js";
@@ -162,11 +163,13 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   block.className="song-vocal-clip"+(clip.id===selectedClipId?" selected":"");
   block.dataset.clipId=clip.id;
   block.style.left=(clip.startStep/BAR_STEPS*BAR_PX)+"px";
-  block.style.width=(clip.lengthSteps/BAR_STEPS*BAR_PX)+"px";
+  const display=recording?vocalClipDisplay(recording,clip,getSong().bpm):null;
+  block.style.width=((display?.steps??clip.lengthSteps)/BAR_STEPS*BAR_PX)+"px";
   block.title="move "+(recording?.name||track.name)+" · bar "+(Math.floor(clip.startStep/BAR_STEPS)+1);
   block.setAttribute("aria-label","vocal recording "+(recording?.name||track.name)+"; drag or use left/right arrows to move by bar");
   block.setAttribute("aria-pressed",String(clip.id===selectedClipId));
-  const peaks=recording?.waveform||[];
+  if(display)block.title+=" · "+display.duration.toFixed(3)+"s · trimmed "+(clip.trimStartSeconds??0).toFixed(3)+"s";
+  const peaks=display?.peaks||[];
   if(peaks.length){
    const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
    svg.setAttribute("viewBox","0 0 120 32");

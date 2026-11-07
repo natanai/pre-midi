@@ -1518,7 +1518,8 @@
       ],
       "transaction_rule": "One gesture -> ephemeral preview -> one undoable commit in the selected document; cancel leaves the authored patch and immutable source bytes unchanged.",
       "physical_instance": "soundInspector.js owns one sound-inspector-frame and one control-node map. Beat, Freeform and vocal adapters move that same node; mount never clones a second desktop Inspector. Beat listeners are owner-guarded and adapter handlers clear on ownership change.",
-      "processor_owner": "recordedAudio.js: common sampled/vocal filter, drive, tone/tremolo, delay, modulation, cutoff automation and clip-envelope definitions; C++ reads a shared current sample-processing packet."
+      "processor_owner": "recordedAudio.js: common sampled/vocal filter, drive, tone/tremolo, delay, modulation, cutoff automation and clip-envelope definitions; C++ reads a shared current sample-processing packet.",
+      "editor_buttons": "editorWorkspace.js uses one uiIcons.js SVG factory and class-based history/Sound control dimensions for every context; prefixed element IDs cannot change sizing or icon fonts."
     },
     "references": [
       {
@@ -2985,6 +2986,25 @@
           "focused_models": "tests/audioWaveform.test.js and tests/vocalTiming.test.js: 6 passed",
           "visual_browser": "Blocked by automatic approval review: exposing the local development origin to the cloud browser was not approved. No browser screenshot/interaction pass claimed."
         }
+      },
+      {
+        "date": "2026-11-07",
+        "id": "VOCAL-TRIM-FEEDBACK-04",
+        "status": "implemented_pending_visual_observation",
+        "summary": "Make trims visible on the Song tile; simplify source editing to contextual icons; enforce shared editor button presentation.",
+        "changes": [
+          "Song vocal tile waveform is cropped to the playback source offset/end, including capture alignment, clip trim and transpose. Tile width uses audible duration rather than rounded step allocation; Song placement remains authored.",
+          "Removed the separate set-start action. Number edits apply on Enter/blur; marker drag commits on release. Onset detection and restore-original-start are adjacent icon buttons with title and aria explanations.",
+          "Move keyboard focus to the waveform slider rather than its invisible SVG drag rectangle. Keep the hit area transparent and unoutlined; keyboard focus is indicated outside the waveform, removing the unexplained black handle borders.",
+          "uiIcons.js now supplies the exact undo, redo and Sound SVGs in the canonical editorWorkspace template. Replaced Beat-only #sound-toggle styling with the shared class, including size, hover and expanded state.",
+          "Vocal duplicate, reuse, return and recording actions use contextual icon buttons; keep numerical timing readouts and hover explanations."
+        ],
+        "verification": {
+          "routine_check": "npm run check: passed",
+          "focused_regression": "tests/vocalClipDisplay.test.js: 2 passed, including cropped waveform content, stable Song position and exact audible tile length",
+          "existing_waveform_timing": "6 existing waveform/timing cases passed",
+          "visual_browser": "not run; prior local-preview browser access remains unapproved"
+        }
       }
     ],
     "vocal_parity_milestone": {
@@ -3034,7 +3054,7 @@
         "Full physical browser/Windows release qualification"
       ],
       "workspace_layout": "editorWorkspace.js recording context: takes/recordings sidebar, center waveform/trim tools and the same right-hand Sound Inspector slot/width. Uses syncEditorInspector for open/close and responsive placement.",
-      "trim_interaction": "Drag the visibly labeled start handle, or enter a start time and choose set start/Enter. Find sound start previews a suggestion; restore start resets leading trim. No destructive source editing."
+      "trim_interaction": "Drag the crop-marked start boundary, or edit the start time and press Enter/leave the field. Adjacent onset and restore icons apply those actions directly, with hover/accessible explanations. Song tile waveform and width reflect the resulting audible region."
     }
   }
 }

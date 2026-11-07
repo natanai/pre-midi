@@ -1,7 +1,8 @@
+import {waveformPeaksFromOverview} from "./audioWaveform.js";
 // Map the Song Clip's canonical audio processing to the existing sample
 // illustration contract. No Recording bytes, note-zone mapping, or Song clock
 // state is copied into these temporary display patches.
-import {vocalEffects} from "./vocalEffects.js";
+import {vocalEffects,vocalSourceRange} from "./vocalEffects.js";
 import {DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 
@@ -49,4 +50,11 @@ export function vocalEventFromPatch(patch,context,level=1){
   effects:{...vocalChangesFromControl(patch,[["filter"],["drive"],["movement"],["bend"],["transpose"],["pan"],["attack"],["release"]],
    [patch.filter,patch.drive,patch.movement,patch.bend,patch.transpose,patch.pan,patch.attack,patch.release]),
    ...patch.effects,...(patch.automation?{automation:patch.automation}:{}),...(patch.modulation?{modulation:patch.modulation}:{})}}};
+}
+
+// Song thumbnail and tile width use the same source window as playback.
+export function vocalClipDisplay(recording,clip,bpm,bins=120){
+ const unit=60/bpm/4,{offset,duration,rate}=vocalSourceRange(recording,clip,unit);
+ return {duration,steps:duration/unit,sourceStart:offset,sourceEnd:offset+duration*rate,
+  peaks:recording.waveform?.length?waveformPeaksFromOverview(recording.waveform,recording.durationSeconds,offset,offset+duration*rate,bins):[]};
 }

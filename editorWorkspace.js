@@ -1,3 +1,4 @@
+import {setIconButton} from "./uiIcons.js";
 // One desktop workspace for Beat-local and Song-time editing.
 // Hosts supply musical controls and transactions; this module owns the chrome.
 const EDITOR_WORKSPACE_CHROME=`
@@ -96,6 +97,9 @@ export function mountEditorWorkspace(root,{idPrefix="",songTime=false,recording=
   fragment.querySelector(".piano-scroll").classList.add("recording-scroll");
   nodes.get("piano").classList.add("recording-source");
  }
+ for(const [key,icon,label] of [["undo","undo","undo last change"],["redo","redo","redo last change"],["sound-toggle","sound","open sound editor"]])
+  setIconButton(nodes.get(key),icon,label,20);
+ nodes.get("undo").title="undo last change (ctrl+z)";nodes.get("redo").title="redo last change (ctrl+shift+z)";
  root.replaceChildren(fragment);
  return {root,get:key=>nodes.get(key)??null};
 }
@@ -115,7 +119,6 @@ export function syncEditorInspector(editor,{open,noteEffects=false,wide=true}={}
  effects.setAttribute("aria-hidden",String(!noteEffects));
  const toggle=editor.get("sound-toggle");
  toggle.setAttribute("aria-expanded",String(opened));
- toggle.textContent="♫";
  toggle.setAttribute("aria-label",opened?"close sound editor":"open sound editor");
  toggle.title=opened?"close sound editor":"open sound editor";
 }

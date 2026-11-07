@@ -1,3 +1,4 @@
+import {setIconButton} from "./uiIcons.js";
 import {mountEditorWorkspace,syncEditorInspector} from "./editorWorkspace.js";
 import {vocalSourceRange} from "./vocalEffects.js";
 import {mountSoundInspectorChrome,renderSoundInspectorCore} from "./soundInspector.js";
@@ -7,7 +8,7 @@ import {recordingBytes} from "./recordingAssets.js";
 import {nativeEnabled} from "./src/hosts/native/session.js";
 import {decodeNativeAudio} from "./src/hosts/native/capture.js";
 import {suggestVocalOnset} from "./songRecorder.js";
-import {renderAudioWaveform,decodedWaveformAsset,maxTrimSeconds,normalizeTrimSeconds} from "./audioWaveform.js";
+import {renderAudioWaveform,decodedWaveformAsset} from "./audioWaveform.js";
 
 const el=(tag,name,className)=>{
  const node=document.createElement(tag);if(name!==undefined)node.textContent=name;
@@ -55,7 +56,10 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
  getWorkspace("undo").onclick=onUndo;getWorkspace("redo").onclick=onRedo;
  getWorkspace("undo").disabled=!canUndo;getWorkspace("redo").disabled=!canRedo;
  getWorkspace("editing-identity").textContent=recording.name;
- getWorkspace("add-instrument").onclick=onRecord;
+ const record=getWorkspace("add-instrument");record.onclick=onRecord;
+ record.className="vocal-icon-button vocal-record-button";
+ setIconButton(record,"record","record a new vocal take");
+ root.querySelector(".instrument-pane .heading").append(record);
  const takes=getWorkspace("instrument-list");
  const recordings=new Map((song?.recordings??[recording]).map(item=>[item.id,item]));
  for(const lane of song?.tracks??[track]){
@@ -82,49 +86,19 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
  const duration=vocalSourceRange(recording,clip,60/bpm/4).duration;
  position.append(el("output",duration.toFixed(3)+"s playback","vocal-kept-duration"));
  const actions=el("div",undefined,"vocal-editor-actions");
- actions.append(button("duplicate",()=>onDuplicate(clipId)),button("use in beat",()=>onUseInBeat(clipId)),button("back to beat",onBack));
+ const duplicate=button("",()=>onDuplicate(clipId));duplicate.className="vocal-icon-button";
+ setIconButton(duplicate,"duplicate","duplicate this vocal clip");
+ const use=button("",()=>onUseInBeat(clipId));use.className="vocal-icon-button";
+ setIconButton(use,"toBeat","use this vocal phrase as a Beat instrument");
+ const back=button("",onBack);back.className="vocal-icon-button";
+ setIconButton(back,"back","return to the Beat editor");
+ root.querySelector(".notes-heading .chunk-heading").prepend(back);
+ actions.append(duplicate,use);
  placement.append(position,actions);
  const sourceRoot=getWorkspace("piano");
- let trimInput=null,applyTrim=null;
- const durationBeforeTrim=recording.durationSeconds-recording.trimSeconds;
- const savedTrim=clip.trimStartSeconds??0;
- const preview=value=>{
-  if(trimInput&&document.activeElement!==trimInput)trimInput.value=value.toFixed(3);
-  if(applyTrim)applyTrim.disabled=Math.abs(value-savedTrim)<.0005;
- };
- const waveform=renderAudioWaveform({recording,trimStart:savedTrim,
-  onTrim:value=>onTrim(clipId,value),onPreview:preview,
-  loadDecoded:()=>decodeVocalRecording(recording)});
- const timing=el("div",undefined,"vocal-timing");
- const label=el("label",undefined,"vocal-number");label.append(el("span","start (seconds)"));
- trimInput=el("input");trimInput.type="number";trimInput.min="0";
- trimInput.max=String(maxTrimSeconds(durationBeforeTrim));trimInput.step=".001";trimInput.value=String(savedTrim);
- trimInput.setAttribute("aria-label","Trim start in seconds");
- trimInput.setAttribute("aria-description","Type a time then choose set start, or drag the start handle in the waveform");
- label.append(trimInput);timing.append(label);
- const setStart=()=>{
-  if(!trimInput.reportValidity()||!Number.isFinite(trimInput.valueAsNumber))return;
-  onTrim(clipId,normalizeTrimSeconds(trimInput.valueAsNumber,durationBeforeTrim));
- };
- applyTrim=button("set start",setStart);applyTrim.disabled=true;
- trimInput.addEventListener("input",()=>{
-  if(trimInput.validity.valid&&Number.isFinite(trimInput.valueAsNumber))waveform.setTrimPreview(trimInput.valueAsNumber);
-  else applyTrim.disabled=true;
- });
- trimInput.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();setStart();}});
- const suggest=button("find sound start",async()=>{
-  suggest.disabled=true;
-  try{const at=await autoTrim(recording);if(at===null)throw Error("No clear onset detected");
-   waveform.setTrimPreview(at);applyTrim.focus();}
-  catch(error){window.alert("Could not suggest a trim: "+error.message);}
-  finally{suggest.disabled=false;}
- });
- suggest.title="Suggest a start without trimming until you choose set start";
- const restore=button("restore start",()=>onTrim(clipId,0));restore.disabled=savedTrim===0;
- timing.append(applyTrim,suggest,restore);
- const legend=el("div",undefined,"audio-trim-legend");
- legend.append(el("span","shaded = trimmed"),el("span","drag start to trim"));
- sourceRoot.append(timing,legend,waveform);
+ sourceRoot.append(renderAudioWaveform({recording,trimStart:clip.trimStartSeconds??0,
+  onTrim:value=>onTrim(clipId,value),onFindStart:()=>autoTrim(recording),
+  loadDecoded:()=>decodeVocalRecording(recording)}));
  const patch=vocalDisplayPatch(clip,recording);
  const apply=(path,value)=>onApply(clipId,vocalChangesFromControl(patch,path,value));
  const frame=mountSoundInspectorChrome(getWorkspace("sound-section"),{owner:"vocal"}),get=frame.get;

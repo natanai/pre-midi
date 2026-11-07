@@ -266,7 +266,7 @@
   assert(!!wave,"Vocal editor has a reusable waveform editing surface");
   const handle=wave.querySelector('[role="slider"][aria-label="trim start"]');
   assert(!!handle,"Waveform trim marker is accessible by keyboard and pointer");
-  const painted=handle.getBoundingClientRect(),viewport=wave.querySelector("svg").getBoundingClientRect();
+  const painted=handle.getBoundingClientRect(),viewport=wave.querySelector(".vocal-waveform").getBoundingClientRect();
   assert(painted.left-viewport.left<viewport.width*.05,
    "A near-zero trim handle is painted at the left edge, without SVG letterboxing");
   assert(Math.abs(Number(handle.getAttribute("aria-valuenow"))-.02)<.0005,"Waveform marker reflects saved clip trim");
@@ -279,7 +279,7 @@
   assert(Math.abs(Number(frame.contentDocument.querySelector("#vocal-editor .vocal-timing input").value)-.021)<.0005,
    "Keyboard trimming commits a one-millisecond edit");
   const dragEditor=frame.contentDocument.querySelector("#vocal-editor .audio-waveform-editor");
-  const dragSvg=dragEditor.querySelector("svg"),dragHandle=dragEditor.querySelector(".audio-trim-handle");
+  const dragSvg=dragEditor.querySelector(".vocal-waveform"),dragHandle=dragEditor.querySelector(".audio-trim-handle");
   const dragBox=dragSvg.getBoundingClientRect();
   const handleX=Number(dragSvg.querySelector('line[stroke="#ddd"]').getAttribute("x1"));
   const pointerStart=dragBox.left+handleX/480*dragBox.width;

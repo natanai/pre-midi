@@ -1,3 +1,4 @@
+import {createUIIcon,setIconButton} from "./uiIcons.js";
 // Shared PCM waveform viewport for recorded audio assets.
 // Musical placement stays on the Clip; trim is a reversible source-time offset.
 const NS="http://www.w3.org/2000/svg";
@@ -74,47 +75,60 @@ const element=(name,text)=>{
  if(text!==undefined)node.textContent=text;
  return node;
 };
-export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>{},loadDecoded}){
+export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>{},loadDecoded,onFindStart=null}){
  const duration=recording.durationSeconds-recording.trimSeconds;
  const max=maxTrimSeconds(duration);
- let value=normalizeTrimSeconds(trimStart,duration),zoom=zoomByAsset.get(recording.id)||1;
+ let applied=normalizeTrimSeconds(trimStart,duration),value=applied,zoom=zoomByAsset.get(recording.id)||1;
  let buffer=null,drag=null;
  const wrapper=element("div");wrapper.className="audio-waveform-editor";
- const svg=svgElement("svg",{viewBox:"0 0 480 100",preserveAspectRatio:"none",role:"group","aria-label":"recording waveform and trim start"});
+ const svg=svgElement("svg",{viewBox:"0 0 480 100",preserveAspectRatio:"none",role:"slider",tabindex:0,"aria-label":"trim start","aria-valuemin":0,"aria-valuemax":max,"aria-valuenow":value,"aria-description":"drag the start marker or use arrow keys to trim the recording start"});
  svg.classList.add("vocal-waveform");
  const center=svgElement("line",{x1:0,x2:480,y1:50,y2:50,stroke:"#777","stroke-opacity":".6"});
  const path=svgElement("path",{fill:"none",stroke:"#9bc3b8","stroke-width":1.5});
  const shade=svgElement("rect",{x:0,y:0,width:0,height:100,fill:"#777","fill-opacity":".26"});
  const marker=svgElement("line",{x1:0,x2:0,y1:0,y2:100,stroke:"#ddd","stroke-width":2});
- const hit=svgElement("rect",{x:0,y:0,width:24,height:100,fill:"transparent",role:"slider",tabindex:0,
-  "aria-label":"trim start","aria-valuemin":0,"aria-valuemax":max,"aria-valuenow":value,
-  "aria-description":"drag to trim, arrows adjust one millisecond, shift arrows ten milliseconds, home resets"});
+ const hit=svgElement("rect",{x:0,y:0,width:24,height:100,fill:"transparent",stroke:"none","aria-hidden":"true"});
  hit.classList.add("audio-trim-handle");
  svg.append(center,path,shade,marker,hit);
  const plot=element("div");plot.className="audio-waveform-plot";
- const flag=element("span","start");flag.className="audio-trim-label";flag.setAttribute("aria-hidden","true");
+ const flag=element("span");flag.append(createUIIcon("trim",14));flag.className="audio-trim-label";flag.setAttribute("aria-hidden","true");
  plot.append(svg,flag);
  const toolbar=element("div");toolbar.className="audio-waveform-tools";
  const startLabel=element("span"),endLabel=element("span");
- const zoomLabel=element("label","zoom ");
+ const zoomLabel=element("label");zoomLabel.append(createUIIcon("zoom",14));zoomLabel.title="waveform zoom";
  const select=element("select");select.setAttribute("aria-label","waveform zoom");
  for(const z of WAVEFORM_ZOOMS){const option=element("option",z+"×");option.value=String(z);select.append(option);}
  select.value=String(zoom);zoomLabel.append(select);
  const time=element("output");time.className="audio-trim-readout";
  time.setAttribute("aria-label","trim start time");
  toolbar.append(startLabel,zoomLabel,endLabel,time);
- wrapper.append(plot,toolbar);
+ const controls=element("div");controls.className="audio-trim-controls";
+ const timing=element("div");timing.className="vocal-timing";
+ const field=element("label");field.className="vocal-number";
+ const label=element("span");label.append(createUIIcon("trim",16),element("span","start"));
+ const input=element("input");input.type="number";input.min="0";input.max=String(max);input.step=".001";input.value=String(value);
+ input.setAttribute("aria-label","Trim start in seconds");input.title="start of kept audio in seconds; enter or leave this field to apply";
+ field.append(label,input);timing.append(field);
+ const actions=element("div");actions.className="trim-actions";
+ const detect=element("button");detect.type="button";detect.className="vocal-icon-button";
+ setIconButton(detect,"onset","trim the silent lead-in to the first detected sound");detect.hidden=!onFindStart;
+ const restore=element("button");restore.type="button";restore.className="vocal-icon-button";
+ setIconButton(restore,"restore","restore the original recording start");
+ actions.append(detect,restore);controls.append(timing,actions);
+ wrapper.append(controls,plot,toolbar);
  const show=()=>{
   // Keep the visible source-time window fixed while dragging the trim handle.
   const w=drag?.window??waveformWindow(duration,value,zoom);
   startLabel.textContent=w.start.toFixed(3)+"s";
   endLabel.textContent=w.end.toFixed(3)+"s";
-  time.textContent=(Math.abs(value-trimStart)<.0005?"start ":"preview start ")+value.toFixed(3)+"s · keep "+(duration-value).toFixed(3)+"s";
+  time.textContent=(Math.abs(value-applied)<.0005?"start ":"preview start ")+value.toFixed(3)+"s · keep "+(duration-value).toFixed(3)+"s";
   const x=waveformXAtTime(value,w);
   flag.style.left=Math.min(92,x/480*100)+"%";
   shade.setAttribute("width",String(x));marker.setAttribute("x1",String(x));marker.setAttribute("x2",String(x));
   hit.setAttribute("x",String(clamp(x-12,0,456)));
-  hit.setAttribute("aria-valuenow",String(value));hit.setAttribute("aria-valuetext",value.toFixed(3)+" seconds");
+  svg.setAttribute("aria-valuenow",String(value));svg.setAttribute("aria-valuetext",value.toFixed(3)+" seconds");
+  if(document.activeElement!==input)input.value=value.toFixed(3);
+  restore.disabled=value===0&&applied===0;
   const first=w.start+recording.trimSeconds,last=w.end+recording.trimSeconds;
   const levels=buffer?
    waveformPeaksFromBuffer(buffer,first,last):
@@ -130,9 +144,22 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
  };
  wrapper.setTrimPreview=preview;
  const commit=next=>{
-  const valueToSave=normalizeTrimSeconds(next,duration);
-  if(valueToSave!==normalizeTrimSeconds(trimStart,duration))onTrim(valueToSave);
+  const valueToSave=normalizeTrimSeconds(next,duration),changed=valueToSave!==applied;
+  value=applied=valueToSave;show();
+  if(changed)onTrim(valueToSave);
  };
+ const typed=()=>{if(input.reportValidity()&&Number.isFinite(input.valueAsNumber))commit(input.valueAsNumber);};
+ input.addEventListener("input",()=>{if(input.validity.valid&&Number.isFinite(input.valueAsNumber))preview(input.valueAsNumber);});
+ input.addEventListener("change",typed);
+ input.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();typed();}});
+ restore.addEventListener("click",()=>commit(0));
+ detect.addEventListener("click",async()=>{
+  detect.disabled=true;
+  try{const at=await onFindStart();if(!wrapper.isConnected)return;
+   if(at===null)throw Error("No clear onset detected");commit(at);
+  }catch(error){if(wrapper.isConnected)window.alert("Could not find the sound start: "+error.message);}
+  finally{detect.disabled=false;}
+ });
  select.addEventListener("change",()=>{
   zoom=Number(select.value);zoomByAsset.set(recording.id,zoom);show();
  });
@@ -144,7 +171,7 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
   const pointerX=(e.clientX-rect.left)/rect.width*480;
   drag={pointerId:e.pointerId,initial:value,window,left:rect.left,width:rect.width,
    grabOffset:e.target===hit?pointerX-waveformXAtTime(value,window):0};
-  hit.focus();
+  svg.focus({preventScroll:true});
   svg.setPointerCapture(e.pointerId);
   if(e.target!==hit)preview(waveformTimeAtX(pointerX,window));
  });
@@ -162,7 +189,7 @@ export function renderAudioWaveform({recording,trimStart=0,onTrim,onPreview=()=>
  };
  svg.addEventListener("pointerup",finish);svg.addEventListener("pointercancel",finish);
  svg.addEventListener("lostpointercapture",finish);
- hit.addEventListener("keydown",e=>{
+ svg.addEventListener("keydown",e=>{
   let target;
   const delta=e.shiftKey?.01:.001;
   if(e.key==="ArrowLeft"||e.key==="ArrowDown")target=value-delta;
