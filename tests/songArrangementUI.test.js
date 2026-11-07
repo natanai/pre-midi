@@ -268,3 +268,19 @@ test("Instrument action menu preserves Beat-linked ownership and explicit empty-
  assert.match(shared,/menu\.className=/);
  assert.match(freeform,/danger:true/);
 });
+
+test("freeform and Beat edit the same note expression surface without an inset scroll trap",()=>{
+ const beat=read("studio.js"),freeform=read("freeformUI.js"),
+  styles=read("freeform.css"),shared=read("expressionUI.js");
+ assert.match(beat,/renderNoteExpression\(/);
+ assert.match(freeform,/renderNoteExpression\(expression,note,/);
+ assert.match(freeform,/note\.duration\*60\/\(getSong\(\)\?\.bpm\?\?120\)\/4/);
+ assert.match(freeform,/bend=>changeNote\(note\.id,\{bend\}\)/);
+ assert.match(freeform,/velocity=>changeNote\(note\.id,\{velocity\}\)/);
+ assert.match(freeform,/renderNoteFields\(inspector,selected\)/);
+ assert.match(freeform,/keysToggle\.hidden=inst\.layout==="rack"/);
+ assert.match(freeform,/qwertyToggle\.hidden=inst\.layout==="rack"/);
+ assert.match(shared,/onLevelChange\?\.\(noteLevel\)/);
+ assert.match(styles,/\.freeform-sound-pane>\.freeform-note-details/);
+ assert.doesNotMatch(styles,/max-height:160px;overflow-y:auto/);
+});
