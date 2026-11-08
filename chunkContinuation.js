@@ -113,3 +113,26 @@ export function incomingChunkSustains(beat,instrumentId,bar){
  }
  return [...byPitch.values()].map(({on,...note})=>note);
 }
+
+// Resize a held note from its visible tail in a later Chunk. Only the right
+// edge is a resize handle; the left boundary remains a whole-note move action.
+export function resizeIncomingSustain(beat,{instrumentId,sourceBar,sourceNoteId,duration}){
+ const inst=beat?.instruments?.find(entry=>entry.id===instrumentId);
+ if(!inst||inst.layout!=="pitched"||!Number.isInteger(sourceBar)||
+  sourceBar<0||sourceBar>=beat.bars||!simple(inst,sourceBar))
+  return {changed:false,reason:"Choose a held note from a regular placed Chunk."};
+ const chunk=inst.chunks.find(entry=>entry.id===inst.timeline[sourceBar]);
+ const index=chunk?.notes.findIndex(note=>note.id===sourceNoteId)??-1;
+ if(index<0)return {changed:false,reason:"The originating held note has moved."};
+ const note=chunk.notes[index];
+ if(!Number.isInteger(duration)||duration<1||duration>MAX_BEAT_BARS*STEPS_PER_BAR)
+  return {changed:false,reason:"Invalid held-note duration."};
+ if(note.duration===duration)return {changed:false};
+ const shared=inst.timeline.filter(entry=>entry===chunk.id).length>1;
+ if(shared&&inst.chunks.length>=32)
+  return {changed:false,reason:"No room to make an independent Chunk placement."};
+ const owned=shared?detach(inst,sourceBar):chunk;
+ owned.notes[index].duration=duration;
+ upgradeBeatFeatures(beat);
+ return {changed:true,sourceBar,sourceChunkId:owned.id,sourceNoteId:owned.notes[index].id};
+}

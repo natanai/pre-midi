@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {create,makeChunk,id,validate,SUSTAIN_BEAT_VERSION} from "../schema.js";
 import {eventsAtStep} from "../arrangement.js";
-import {continueNoteFromEarlierChunk,continuationProposal,incomingChunkSustains} from "../chunkContinuation.js";
+import {continueNoteFromEarlierChunk,continuationProposal,incomingChunkSustains,resizeIncomingSustain} from "../chunkContinuation.js";
 
 const setup=()=>{
  const beat=create(),inst=beat.instruments[0],left=inst.chunks[0];
@@ -81,4 +81,33 @@ test("a same-pitch new attack inside the tail is not deleted or folded",()=>{
  assert.equal(continuationProposal(beat,{instrumentId:inst.id,bar:1,noteId:"retrigger",steps:-1}).ok,false);
  assert.equal(right.notes.length,2);
  assert.deepEqual(validate(beat),[]); // The original two notes do not overlap.
+});
+
+test("right-edge resize can extend the held source through another Chunk without retrigger",()=>{
+ const {beat,inst}=setup();
+ const src=inst.chunks[0].notes[0];
+ const grown=resizeIncomingSustain(beat,{instrumentId:inst.id,sourceBar:0,sourceNoteId:src.id,duration:37});
+ assert.equal(grown.changed,true);
+ assert.equal(beat.version,SUSTAIN_BEAT_VERSION);
+ assert.equal(src.duration,37);
+ assert.equal(incomingChunkSustains(beat,inst.id,1)[0].duration,37);
+ assert.equal(eventsAtStep(beat,0).length,1);
+ assert.deepEqual(validate(beat),[]);
+});
+test("tail resizing a reused origin preserves the other occurrence",()=>{
+ const {beat,inst,left}=setup();
+ inst.timeline[2]=left.id;
+ const changed=resizeIncomingSustain(beat,{instrumentId:inst.id,sourceBar:0,sourceNoteId:"origin",duration:28});
+ assert.equal(changed.changed,true);
+ assert.notEqual(inst.timeline[0],inst.timeline[2]);
+ assert.equal(eventsAtStep(beat,32)[0].note.duration,16);
+ assert.equal(eventsAtStep(beat,0)[0].note.duration,28);
+ assert.deepEqual(validate(beat),[]);
+});
+test("desktop Beat source permits native v25 sustain via a right edge without a left resize handle",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const source=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
+ assert.match(source,/duration:\(original\?\.duration\?\?1\)\+steps\},\s*\{allowSustain:true\}/);
+ assert.match(source,/upgradeBeatFeatures\(beat\)/);
+ assert.match(source,/resizeIncomingSustain\(beat/);
 });

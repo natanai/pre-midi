@@ -15,7 +15,7 @@ import {renderPianoRollRows,createPianoNoteSurface,applyPianoNoteState,noteAtPia
 import {mountEditorWorkspace,syncEditorInspector} from "./editorWorkspace.js";
 import {createInstrumentCard,createInstrumentActionMenu,instrumentAccent} from "./editorInstrumentCard.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
-import {incomingChunkSustains,continuationProposal,continueNoteFromEarlierChunk} from "./chunkContinuation.js";
+import {incomingChunkSustains,continuationProposal,continueNoteFromEarlierChunk,resizeIncomingSustain} from "./chunkContinuation.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
@@ -788,15 +788,20 @@ function renderNotes() {
  // The keyboard is a viewport boundary, not a separate note-on lane.
  const activeBar=selectedSlot.instrumentId===inst.id&&
   inst.timeline[selectedSlot.bar]===chunk.id?selectedSlot.bar:null;
- const incoming=activeBar===null?[]:incomingChunkSustains(beat,inst.id,activeBar);
  let continuationPreview=null;
+ let incomingResizePreview=null;
  const visibleNotes=()=>{
   const notes=continuationPreview?chunk.notes.map(note=>
    note.id===continuationPreview.noteId?{...note,start:0,
     pitch:continuationPreview.pitch,
     duration:Math.max(0,continuationPreview.relativeEnd),
     continuation:true,preview:true}:note).filter(note=>note.duration>0):chunk.notes;
-  return [...notes,...incoming];
+  const incoming=activeBar===null?[]:incomingChunkSustains(beat,inst.id,activeBar);
+  const tails=incomingResizePreview?incoming.map(entry=>
+   entry.sourceBar===incomingResizePreview.sourceBar&&
+   entry.sourceNoteId===incomingResizePreview.sourceNoteId?
+   {...entry,duration:incomingResizePreview.duration}:entry):incoming;
+  return [...notes,...tails];
  };
  function openIncomingContinuation(note,effects=false){
   selectedSlot={instrumentId:inst.id,bar:note.sourceBar};
@@ -882,7 +887,7 @@ function renderNotes() {
      + (direction?", "+(direction==="either"?"either direction":direction):"")
      + (present ? (present.continuation?", held from earlier Chunk; click to view the original":", note length " + present.duration + " steps; " + (editingNoteEffects?"click to edit note effects":"click to remove") + "; hold and drag to move") :
       cell.disabled?", adding notes restricted":", click to add note"));
-    cell.title = present?.continuation?"Held from previous Chunk · click to edit original":present ? (editingNoteEffects?"Click to shape note":"Click to remove") + " · hold and drag to move · drag end to resize · right-click effects" : "Add " + noteLabel(pitch) + " · drag to extend";
+    cell.title = present?.continuation?"Held from previous Chunk · drag the right end to extend or click to edit original":present ? (editingNoteEffects?"Click to shape note":"Click to remove") + " · hold and drag to move · drag end to resize · right-click effects" : "Add " + noteLabel(pitch) + " · drag to extend";
    }
   }
 
@@ -934,7 +939,48 @@ function renderNotes() {
     rowHeight:()=>cell.getBoundingClientRect().height,
     begin:event=>{
      const existing=noteAtPianoStep(visibleNotes(),rowData,step);
-     if(existing?.continuation)return null;
+     if(existing?.continuation){
+      const bounds=cell.getBoundingClientRect();
+      const atTailEnd=step===existing.start+existing.duration-1&&
+       event.clientX>=bounds.right-noteEndGrabWidth(bounds.width,event.pointerType);
+      if(!atTailEnd)return null;
+      const previous=inst.chunks.find(entry=>entry.id===existing.sourceChunkId)
+       ?.notes.find(entry=>entry.id===existing.sourceNoteId);
+      if(!previous)return null;
+      const originalDuration=previous.duration,before=snapshot(currentDocument());
+      let nextDuration=originalDuration;
+      return {
+       mode:"resize",
+       grab:()=>{ignoreClick=true;draggedNoteId=existing.id;},
+       preview:({steps})=>{
+        nextDuration=Math.max(1,Math.min(MAX_BEAT_BARS*16,originalDuration+steps));
+        incomingResizePreview={sourceBar:existing.sourceBar,
+         sourceNoteId:existing.sourceNoteId,duration:nextDuration};
+        rowPreviews.get(pitch)?.();
+       },
+       finish:({cancelled})=>{
+        incomingResizePreview=null;
+        draggedNoteId=null;
+        let changed=false;
+        if(!cancelled&&nextDuration!==originalDuration){
+         const result=resizeIncomingSustain(beat,{
+          instrumentId:inst.id,sourceBar:existing.sourceBar,
+          sourceNoteId:existing.sourceNoteId,duration:nextDuration
+         });
+         if(result.changed){
+          if(song){synchronizeLinkedFreeform(song);upgradeSongFeatures(song);}
+          const problems=[...validate(beat),...(song?validateSong(song):[])];
+          if(problems.length){restoreDocument(before);message(problems[0],true);render();}
+          else changed=true;
+         }else message(result.reason,true);
+        }
+        rowPreviews.get(pitch)?.();
+        ignoreClick=true;
+        if(changed)setTimeout(()=>commitChange(before),0);
+        else setTimeout(()=>{ignoreClick=false;},0);
+       }
+      };
+     }
      if(!existing && (cell.disabled ||
       (scaleGuide.lock && !isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step))))return null;
      const bounds=cell.getBoundingClientRect();
@@ -972,7 +1018,7 @@ function renderNotes() {
        }else
         applyNoteCommand(chunk,{type:"note.resize",noteId:note.id,
          duration:(original?.duration??1)+steps},
-         {allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(beat.version)});
+         {allowSustain:true});
        rowPreviews.get(oldPitch)?.();
        if(note.pitch!==oldPitch)rowPreviews.get(note.pitch)?.();
       },
@@ -1003,8 +1049,19 @@ function renderNotes() {
         }else Object.assign(note,original);
         ignoreClick=true;
        }
-       const changed=!cancelled&&(continued||mode==="paint"||
+       let changed=!cancelled&&(continued||mode==="paint"||
         note.start!==original.start||note.pitch!==original.pitch||note.duration!==original.duration);
+       if(changed){
+        upgradeBeatFeatures(beat);
+        if(song){synchronizeLinkedFreeform(song);upgradeSongFeatures(song);}
+        const problems=[...validate(beat),...(song?validateSong(song):[])];
+        if(problems.length){
+         restoreDocument(before);
+         message(problems[0],true);
+         render();
+         changed=false;
+        }
+       }
        draggedNoteId=null;
        rowPreviews.get(oldPitch)?.();
        if(note.pitch!==oldPitch)rowPreviews.get(note.pitch)?.();
@@ -1032,7 +1089,7 @@ function renderNotes() {
     if (!target) return;
     event.preventDefault();
     const delta = event.key === "ArrowRight" ? 1 : -1;
-    modify(() => applyNoteCommand(chunk,{type:"note.resize",noteId:target.id,duration:target.duration+delta},{allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(beat.version)}));
+    modify(() => applyNoteCommand(chunk,{type:"note.resize",noteId:target.id,duration:target.duration+delta},{allowSustain:true}));
    });
    surface.append(cell);
   }
