@@ -77,3 +77,7 @@ The design remains Beat-first, uncluttered and lowercase in the UI. Preserve ext
 ### Project-original audio sources
 
 Five original sample WAVs are committed under [factory-samples](factory-samples/README.md) and included in the normal sound catalog and staging pipeline. These do not contain any part of the Blindside recording. Their canonical Git blob IDs and source paths are listed in the factory-samples README. The existing ZIP importer still requires companion audio bytes when an authored Song references a sample; synthesis-only .premidi Songs do not have that dependency.
+
+### Sustained notes across Chunks
+
+Pitched notes use one onset and one duration even when they cross a Chunk boundary. In a placed Chunk, drag an entire note **left past the keyboard** to remove its new attack and fold the audible remainder into an already-held note at the same pitch from an earlier Chunk. The right edge remains the only note-duration resize handle. The subsequent Chunk displays the held continuation, and clicking it opens the originating Chunk. The editor does not create a silent note when there is no previous held voice; keep or lengthen the earlier note first. The conversion copies a shared Chunk before editing a single placement, so repetitions elsewhere remain unchanged. Advanced offset/repeating placements are not automatically rewritten by this gesture. These notes use the existing v25+ multi-bar sustain representation and playback schedulers.
