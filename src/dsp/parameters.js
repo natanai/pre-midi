@@ -58,6 +58,10 @@ export const SOUND_PARAMETERS=freeze([
  parameter("pan","pan",-1,1,0,.01,"pan",{modulation:{index:5,name:"pan",unit:"pan",limit:2}}),
  parameter("amplitude","linear_gain",0,2,1,.01,"percent",{routeOnly:true,modulation:{index:7,name:"amplitude",unit:"linear_gain",limit:1}}),
  parameter("effects.drive","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
+ parameter("stereoWidth","ratio",0,2,1,.01,"percent"),
+ parameter("msBalance","balance",-1,1,0,.01,"number"),
+ parameter("delayTone","hz",20,20000,20000,1,"hz",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
+ {id:"delayPingPong",unit:"boolean",default:false,interpolation:"step",contexts:all,scope:"processing",bypass:{mode:"none"}},
  parameter("effects.delayMix","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
  parameter("effects.delayTime","seconds",.05,2,.24,.01,"seconds",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
  parameter("effects.delayFeedback","linear_gain",0,.8,.26,.01,"percent",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
@@ -122,7 +126,7 @@ export function parameterCapability(id,context,read=()=>undefined){
  if(!p)return {state:"unsupported",supported:false,reason:"this source does not implement "+id};
  const value=key=>read(key)??parameterFor(key,context)?.default;
  const bypass=read("chain.bypass")??[];
- const stage=id.startsWith("filter.")||["movement.tone","movement.toneRate"].includes(id)?"filter":id==="effects.drive"?"drive":id.startsWith("effects.delay")?"delay":null;
+ const stage=id.startsWith("filter.")||["movement.tone","movement.toneRate"].includes(id)?"filter":id==="effects.drive"?"drive":(id.startsWith("effects.delay")||["delayTone","delayPingPong"].includes(id))?"delay":null;
  const order=read("chain.order");
  if(stage&&stage!=="delay"&&Array.isArray(order)&&!order.includes(stage))return {state:"inactive",supported:true,reason:stage+" is outside the processing chain"};
  if(stage&&bypass.includes(stage))return {state:"inactive",supported:true,reason:stage+" is bypassed"};

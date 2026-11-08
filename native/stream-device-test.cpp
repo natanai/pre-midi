@@ -61,7 +61,7 @@ int main(int argc,char** argv){
    check(premidi_audio_stream_begin(host,owner,revision));
    for(const auto& note:reference.notes)if(note.plan.delayMix>0)
     check(premidi_audio_stream_delay(host,owner,revision,note.plan.delayMix,
-     note.plan.delayTime,note.plan.delayFeedback));
+     note.plan.delayTime,note.plan.delayFeedback,note.plan.delayTone,note.plan.delayPingPong));
    std::size_t published=0;unsigned backpressure=0;
    const auto feed=[&]{
     while(published<pages.size()){

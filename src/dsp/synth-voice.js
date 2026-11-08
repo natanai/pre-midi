@@ -11,7 +11,8 @@ export const noteFrequency=pitch=>440*2**((pitch-69)/12);
 // values are copied so an edit cannot mutate a previously scheduled voice.
 export function planSynthVoice(instrument,event,start,duration,{automation,timeline,unit=timeline?.unit??.125}={}){
  const patch=JSON.parse(JSON.stringify(instrument.patch));
- patch.effects=effectiveDelayEffects(patch,patch.effects,unit);delete patch.delaySync;
+ const {delayTone,delayPingPong,...effects}=effectiveDelayEffects(patch,patch.effects,unit);
+ patch.effects=effects;delete patch.delaySync;
  if(!Number.isFinite(event.pitch)||event.pitch<0||event.pitch>127||!Number.isFinite(event.velocity)||event.velocity<0||event.velocity>1||
   !Number.isFinite(instrument.volume)||instrument.volume<0||patch.type!=="synth"||!Number.isFinite(start)||start<0||!Number.isFinite(duration)||duration<=0)
   throw Error("Invalid synth voice request");

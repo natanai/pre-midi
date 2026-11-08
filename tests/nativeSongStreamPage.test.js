@@ -30,7 +30,9 @@ const emptyAssets=async ids=>{
 };
 
 test("late native Song packets are frame-relative and never change the authored source",async()=>{
- const song=fixture(9000),source=JSON.stringify(song),rate=44100;
+ const song=fixture(9000),rate=44100;
+ Object.assign(song.beats[0].instruments[0].sounds[0].patch,{delayTone:400,delayPingPong:true});song.beats[0].instruments[0].sounds[0].patch.effects.delayMix=.3;
+ const source=JSON.stringify(song);
  const startStep=6144,revision=7;
  const cursor=nativePageDescriptorCursor(song,{
   owner:23,revision,sampleRate:rate,startStep,maxSteps:128,maxOnsets:128,
@@ -60,8 +62,8 @@ test("native shared Song delay catalog preserves the exact synth and vocal packe
  }}]});
  const actual=nativeSongDelayRecipes(song);
  assert.deepEqual(actual,[
-  {mix:.35,time:Math.fround(.073137),feedback:Math.fround(.31)},
-  {mix:.55,time:.127137,feedback:.41}
+  {mix:.35,time:Math.fround(.073137),feedback:Math.fround(.31),tone:20000,ping:false},
+  {mix:.55,time:.127137,feedback:.41,tone:20000,ping:false}
  ]);
  assert.notEqual(actual[0].time,actual[1].time);
  const original=JSON.stringify(song);

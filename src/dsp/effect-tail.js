@@ -6,7 +6,7 @@ export function delayTailSeconds(effects,floor=TAIL_FLOOR){
  if(!(mix>0)||effects.chain?.bypass.includes("delay"))return 0;
  const level=mix*.55*.8;
  const repeats=feedback>0?Math.max(0,Math.ceil(Math.log(floor/level)/Math.log(feedback))):0;
- // A feedback cycle adds a 128-frame render quantum in the browser reference.
- // Bound it at the minimum supported 8 kHz rate so callers need no host clock.
- return (1+repeats)*time+repeats*.016+.02;
+ // Reserve a render quantum per repeat at the minimum supported 8 kHz rate
+ // and conservative low-pass decay headroom, independent of the host clock.
+ return (1+repeats)*(time+((effects.delayTone??20000)<20000?.12:0))+repeats*.016+.02;
 }

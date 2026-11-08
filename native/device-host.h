@@ -15,7 +15,7 @@ typedef struct {
  uint32_t state,fault,sample_rate,active;
 } premidi_stream_status;
 int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision);
-int premidi_audio_stream_delay(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback);
+int premidi_audio_stream_delay(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback,double tone,int ping);
 int premidi_audio_stream_page(void* host,uint64_t owner,uint64_t revision,uint64_t sequence,uint64_t first_frame,uint64_t end_frame,uint32_t onsets,int last,const uint8_t* packet,size_t length);
 int premidi_audio_stream_start(void* host,uint64_t owner,uint64_t revision);
 int premidi_audio_stream_stop(void* host,uint64_t owner,uint64_t revision);

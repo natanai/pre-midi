@@ -64,7 +64,7 @@ test("recording graph endpoints and modulation choices cannot author unsupported
  assert.deepEqual(validateVocalEffects(vocalChangesFromControl(patch,release.path,release.min)),[]);
  patch.modulation={version:1,routes:[{id:"route",source:{kind:"lfo",shape:"sine",rate:.5},target:"pan",unit:"pan",depth:.5,polarity:"bipolar",smoothing:.005}]};
  const graph=diagram(patch,"modulation",1),target=graph.actions.find(a=>a.path.at(-1)==="target"),source=graph.actions.find(a=>a.path.at(-1)==="kind");
- assert.deepEqual(target.choices,["filter.cutoff","pan"]);
+ assert.deepEqual(target.choices,["filter.cutoff","pan","filter.resonance","amplitude"]);
  assert.deepEqual(source.choices,["lfo","envelope"]);
  for(const h of graph.handles)for(const axis of h.axes)assert.ok(Number.isFinite(axis.min)&&Number.isFinite(axis.max));
  patch.modulation=before.modulation;assert.deepEqual(patch,before);

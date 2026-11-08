@@ -1,3 +1,4 @@
+import {renderStereoImage,renderDelayStereo} from './stereoProcessingUI.js';
 import {renderEqualizer} from './equalizerUI.js';
 import {renderPerformanceMacros} from './modulationUI.js';
 import {renderProcessingChain} from "./processingChainUI.js";
@@ -193,7 +194,7 @@ export function renderSoundInspectorCore({
  }
  if(recorded)renderCutoffAutomation(modulesRoot,{id:sound.id,layout:"pitched",sounds:[sound],automation:patch.automation},
   {bars:context.bars??Math.max(1,Math.ceil((context.vocal?.clip.lengthSteps??16)/16))},block=>onPatchChange(["automation"],block??undefined));
- modulesRoot.append(renderEqualizer(patch,onPatchChange,preview,sound.id));
+ modulesRoot.append(renderEqualizer(patch,onPatchChange,preview,sound.id),renderStereoImage(patch,onPatchChange,preview,sound.id),renderDelayStereo(patch,onPatchChange,preview,sound.id));
  modulesRoot.prepend(renderPerformanceMacros(patch,onPatchChange,preview),renderProcessingChain(patch,onPatchChange,sound.id,preview));
  const paths=["filter.cutoff",recorded?"attack":"envelope.attack",
   recorded?"release":"envelope.release"];

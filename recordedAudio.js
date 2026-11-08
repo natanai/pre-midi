@@ -1,3 +1,4 @@
+import {connectStereoImage,createStereoDelay} from './src/hosts/web/stereo.js';
 import {createEq,cascadeFilter,cutoffDestination} from './src/hosts/web/equalizer.js';
 import {connectProcessorMix} from './src/hosts/web/processor-mix.js';
 import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
@@ -68,22 +69,20 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  const pulse=add(context.createGain());pulse.gain.setValueAtTime(1,start);
  scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});
  const movementGain=add(context.createGain());movementGain.gain.value=1;
- amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);gate.connect(pan);pan.pan.value=fx.pan;
+ amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);connectStereoImage(context,gate,patch,owner,source.buffer?.numberOfChannels??1).connect(pan);pan.pan.value=fx.pan;
  const targets=new Map([['pan',pan.pan],['amplitude',movementGain.gain]]);if(filter){targets.set('filter.cutoff',cutoffDestination(context,filterStage.filters,start,start+duration,owner));targets.set('filter.resonance',filter.Q);}
  attachModulation(context,{modulation:resolveModulation(fx.modulation,unit),start,off:start+duration,graphEnd:start+duration,expression,elapsed,resonance:fx.filter?.resonance},targets,owner);
  const dry=add(context.createGain());dry.gain.value=1-fx.delayMix*.4;pan.connect(dry);dry.connect(out);
  return {fx,tail:delayTailSeconds(fx),connectDelay(session,voice){
   if(!(fx.delayMix>0)||!voice.admitted&&session)return;
   if(session){pan.connect(session.delay(fx,voice));return;}
-  const send=add(context.createGain()),delay=add(context.createDelay(2)),feedback=add(context.createGain()),wet=add(context.createGain());
-  send.gain.value=fx.delayMix*.55;delay.delayTime.value=fx.delayTime;feedback.gain.value=fx.delayFeedback;wet.gain.value=.8;
-  pan.connect(send);send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(out);
+  const graph=createStereoDelay(context,fx,out);owner.nodes.push(...graph.nodes);pan.connect(graph.input);
  }};
 }
 // Transfer only shared processing, never oscillators, asset mapping or timing.
 export function processingFromPatch(patch){
  const synth=patch.type==='synth',fx=recordedEffects({...patch,...(synth?{drive:patch.effects.drive,attack:patch.envelope.attack,release:patch.envelope.release}:{}),...(patch.effects??{})});
- const keys=['eq','filterStages','delaySync','chain','pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
+ const keys=['stereoWidth','msBalance','delayTone','delayPingPong','eq','filterStages','delaySync','chain','pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
  const result=Object.fromEntries(keys.filter(key=>fx[key]!==undefined).map(key=>[key,structuredClone(fx[key])]));
  result.chain=structuredClone(processingChain(patch));
  if(result.filter===null&&!result.chain.bypass.includes('filter'))result.chain.bypass.push('filter');
@@ -95,7 +94,7 @@ export function processingFromPatch(patch){
 export function applyProcessingToPatch(patch,processing){
  const fx=structuredClone(processing);
  if(patch.type==='synth'){
-  for(const key of ['eq','filterStages','delaySync','chain','pan','movement','bend','filter'])if(fx[key]!==undefined&&fx[key]!==null)patch[key]=fx[key];
+  for(const key of ['stereoWidth','msBalance','delayTone','delayPingPong','eq','filterStages','delaySync','chain','pan','movement','bend','filter'])if(fx[key]!==undefined&&fx[key]!==null)patch[key]=fx[key];
   if(fx.filter===null){const chain=processingChain(patch);patch.chain={...chain,order:[...chain.order],bypass:[...new Set([...chain.bypass,'filter'])]};}
   patch.envelope.attack=clampParameterValue('envelope.attack',fx.attack??patch.envelope.attack);
   patch.envelope.release=clampParameterValue('envelope.release',fx.release??patch.envelope.release);

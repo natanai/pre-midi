@@ -1,13 +1,18 @@
-# pre-midi 0.14.1-preview.26 — Windows portable preview
+# pre-midi 0.14.1-preview.27 — Windows portable preview
 
 Windows 11 x64, portable ZIP, manual installation. No installer or registry changes are required. This preview is intended for testing on your PC, rather than a claim of production audio stability.
 
 ## Included changes
 
+- Delay ping-pong alternates echoes left/right; echo tone darkens each repeat while preserving the first echo. Corrected native repeat timing to match browser playback.
+- Stereo width and mid/side balance use the same interactive graph/dials across Sound contexts. Width leaves mono recordings unchanged; side-only balance removes shared mono content.
+- EQ can add/remove bands up to eight without replacing surviving bands.
+- Unused attached freeform lanes are a closed three-pixel pull-tab; deliberate downward pulling reveals the lane, while horizontal dragging stays quiet and locked to its parent row.
+
 - Vocal end trimming mirrors start trimming, including handle, precise time, keyboard editing and restore; both edges update the Song clip and playback source bounds.
 - Vocal sound controls preserve the focused knob, open module and scroll position after a committed edit.
 - Beat dragging stays on its own Track; a 650 ms downward pull into its own child lane deliberately converts to freeform, with a fill cue. Parent and child rows share a full-width frame.
-- Shared four-band parametric EQ with interactive graph, ordinary controls, per-band enable and common chain order/bypass/mix; steeper 24/48 db/oct filter stages.
+- Shared expandable parametric EQ with interactive graph, ordinary controls, per-band enable and common chain order/bypass/mix; steeper 24/48 db/oct filter stages.
 
 - Four shared performance macros with multiple route assignments, reset/save reset and preset/project recall.
 - Filter/distortion wet/dry with interactive blend graphs and aligned distortion dry paths.
@@ -28,12 +33,12 @@ Extract the complete ZIP into a separate writable folder and open pre-midi.exe. 
 
 For an in-place manual update, close all app instances and back up the folder first. Replace application files only; preserve data/, projects/ and exports/. Export a music ZIP when you want a portable copy that includes its recording/sample assets; plain .premidi instructions do not contain those audio bytes.
 
-Try both vocal trim handles, repeated knob edits while scrolled/expanded, horizontal Beat drags and deliberate own-lane conversion, EQ/filter slopes, macro mapping/reset, processor mixes, synced echoes at slow/fast tempos, and a short Beat and Song, vocal recording/trim/playback, shared Sound controls, processor reorder/remove/restore and undo/redo. Save a processing preset, export/reopen a project ZIP, and confirm its audio/settings remain. Use headphones while testing microphone recording.
+Try ping-pong echoes, bright/dark feedback tone, width on stereo and mono recordings, adding/removing EQ bands and undo. Try both vocal trim handles, repeated knob edits while scrolled/expanded, horizontal Beat drags and deliberate own-lane conversion, EQ/filter slopes, macro mapping/reset, processor mixes, synced echoes at slow/fast tempos, and a short Beat and Song, vocal recording/trim/playback, shared Sound controls, processor reorder/remove/restore and undo/redo. Save a processing preset, export/reopen a project ZIP, and confirm its audio/settings remain. Use headphones while testing microphone recording.
 
 ## Remaining limits
 
 The normal native transport retains its 600-second and 4,096-onset session limits. Experimental long-Song streaming remains opt-in and has separate seek/loop/live-edit/count-in/recording limitations; use the normal transport for this preview's editing and microphone checks.
 
-The broader M2 roadmap is not complete: general wet/dry/parallel routing, sidechains, multiple processor instances, macros and broader modulation/automation remain open. EQ, dynamics, reverb and advanced independent pitch/time editing remain later work.
+The broader M2 roadmap is not complete: general routing, sidechains, multiple processor instances and broader modulation/automation remain open. Parallel EQ routing, dynamics, reverb and independent pitch/time editing remain later work.
 
 Automated Windows build, dependency, native and portable-folder checks do not prove real Windows 11 device sound, microphone alignment or dropout-free listening. Please test those on your chosen audio device. This preview is unsigned and uses manual ZIP updates.

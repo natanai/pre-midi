@@ -21,7 +21,7 @@ export function planNativeSample(instrument,note,start,duration,assets,{unit=.12
  const motion=movement(patch),fx=effectiveDelayEffects(patch,recordedEffects(patch),unit),peak=patch.audioMode==="clip"?Math.min(2,instrument.volume*patch.gain*note.velocity):Math.min(2,instrument.volume*patch.gain*note.velocity*.7*(patch.preserveDynamics?3.5:asset.normalization));
  const at=start+Math.min(patch.attack,life*.5)+.001;
  const releaseStart=patch.oneShot?start+Math.max(0,life-patch.release):patch.followPitch?Math.min(start+duration,start+life-.01):start+life-.01;
- return {contract:'pre-midi-sample-voice',version:1,kind:1,eq:patch.eq,filterStages:patch.filterStages,chain:patch.chain,asset:asset.id,start,duration:Math.max(.02,life),off:patch.audioMode==="clip"?start+life:Math.max(start,releaseStart),end:start+life+.01,graphEnd:start+life+.01,
+ return {contract:'pre-midi-sample-voice',version:1,kind:1,stereoWidth:patch.stereoWidth,msBalance:patch.msBalance,delayTone:fx.delayTone,delayPingPong:fx.delayPingPong,eq:patch.eq,filterStages:patch.filterStages,chain:patch.chain,asset:asset.id,start,duration:Math.max(.02,life),off:patch.audioMode==="clip"?start+life:Math.max(start,releaseStart),end:start+life+.01,graphEnd:start+life+.01,
   automation:patch.automation?planCutoffAutomation(patch.automation,{start,end:start+life+.01,step:0,unit,limitStep:life/unit}):undefined,
   delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,tail:delayTailSeconds(fx),modulation:resolveModulation(patch.modulation,unit),pitchValue:note.pitch,velocity:note.velocity,
   sweep:planFilterSweep(fx.filter,start,life,"sample"),
@@ -43,7 +43,7 @@ export function planNativeVocal(event,start,unit,assets){
  if(clip.effects===undefined)events.splice(0,events.length,
   {kind:0,time:start,value:gain},{kind:0,time:end,value:0});
  const tail=delayTailSeconds(fx);
- return {contract:'pre-midi-sample-voice',version:1,kind:2,eq:fx.eq,filterStages:fx.filterStages,chain:clip.effects?.chain,asset:asset.id,start,duration,
+ return {contract:'pre-midi-sample-voice',version:1,kind:2,stereoWidth:fx.stereoWidth,msBalance:fx.msBalance,delayTone:fx.delayTone,delayPingPong:fx.delayPingPong,eq:fx.eq,filterStages:fx.filterStages,chain:clip.effects?.chain,asset:asset.id,start,duration,
   off:end,end,graphEnd:end,playbackRate:range.rate,offset,sourceLimit:range.sourceEnd,pan:fx.pan,
   filter:fx.filter,drive:fx.drive,movement:movement(fx),sweep:planFilterSweep(fx.filter,start,duration,"vocal"),
   pitch:{...range.pitch,start,duration},
@@ -54,7 +54,7 @@ export function planNativeVocal(event,start,unit,assets){
 export function encodeNativeSample(plan,rate){
  if(plan.contract!=='pre-midi-sample-voice'||plan.version!==1)throw Error('Unknown native sample voice contract');
  const parts=[],u32=n=>{if(!Number.isInteger(n)||n<0||n>0xffffffff)throw Error('Invalid native sample integer');const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n,true);parts.push(b);},f64=n=>{if(!Number.isFinite(n))throw Error('Invalid native sample number');const b=new Uint8Array(8);new DataView(b.buffer).setFloat64(0,n,true);parts.push(b);};
- u32(0x38564d50);u32(rate);u32(1);u32(16);u32(plan.kind);u32(plan.asset);
+ u32(0x38564d50);u32(rate);u32(1);u32(17);u32(plan.kind);u32(plan.asset);
  for(const n of [plan.start,plan.duration,plan.end,plan.graphEnd,plan.off,plan.pan,plan.playbackRate,plan.offset,plan.sourceLimit,plan.filter?.cutoff??14000,plan.filter?.resonance??.7,plan.drive,plan.movement.rate,plan.movement.depth,plan.movement.delay,plan.movement.tremolo,plan.movement.tremoloRate])f64(n);
  for(const value of [plan.delayMix??0,plan.delayTime??.24,plan.delayFeedback??.26,plan.movement.tone,plan.movement.toneRate,plan.sweep.startCutoff,plan.sweep.sweepEnd])f64(value);
  u32(['lowpass','highpass','bandpass','notch'].indexOf(plan.filter?.type??'lowpass'));u32(plan.filter?0:1);

@@ -53,7 +53,7 @@ class PreparedPageLease final {
    for(const auto& note:backing->notes){
     const auto& plan=note.plan;
     const auto endSeconds=plan.graphEnd+Delay::tail(
-     plan.delayMix,plan.delayTime,plan.delayFeedback);
+     plan.delayMix,plan.delayTime,plan.delayFeedback,plan.delayTone);
     require(std::isfinite(endSeconds)&&endSeconds>=plan.start,
      "Native prepared page has a nonfinite or reversed Voice/effect tail");
     const auto relativeEnd=std::ceil(endSeconds*rate-1e-9);

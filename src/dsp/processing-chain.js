@@ -33,6 +33,7 @@ export const processingFlags=patch=>(processingChain(patch).order.filter(id=>id!
 export const DELAY_DIVISIONS=Object.freeze([.25,.5,.75,1]);
 export const validateDelaySync=value=>value===undefined||DELAY_DIVISIONS.includes(value)?[]:['Invalid delay tempo division.'];
 export const effectiveDelayEffects=(patch,effects,unit=.125)=>{
+ effects={...effects,delayTone:patch.delayTone??20000,delayPingPong:patch.delayPingPong??false};
  const fx=patch.delaySync?{...effects,delayTime:patch.delaySync*4*unit}:effects;
  return processorBypassed(patch,'delay')?{...fx,delayMix:0}:fx;
 };

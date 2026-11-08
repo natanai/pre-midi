@@ -17,3 +17,7 @@ Concrete companion controls are scoped in `docs/synthesis-roadmap.json` under `s
 ## Prototype workflow
 
 Follow `AGENTS.md`: use the focused panel interaction check for this layout, not a full browser/native qualification cycle. Preserve the canonical musical commands and compact .premidi format.
+
+## Stereo and EQ expansion (2026-11-08)
+
+The shared Inspector adds stereo image and echo stereo/tone modules. Each has two-axis graph editing and ordinary controls; combined view follows width, mid/side balance, echo tone, feedback and ping-pong. Stereo reference traces apply the actual mid/side matrix, with mono limitations explained on labels. Echo reference depicts a 2 kHz signal through feedback tone, with left/right alternation. EQ now adds/removes bands up to eight while retaining surviving graph identities. Focused DOM checks cover vocal edits, undo and combined illustration follow; native/offline audio checks cover the underlying parameters. These stereo/delay companions are implemented; distortion shapers, noise color/bandwidth, recording time stretch and phase/free-run policies remain scoped work.

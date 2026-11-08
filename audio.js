@@ -1,3 +1,4 @@
+import {connectStereoImage,createStereoDelay} from './src/hosts/web/stereo.js';
 import {createEq,cascadeFilter,cutoffDestination} from './src/hosts/web/equalizer.js';
 import {connectProcessorMix,prepareProcessorMix} from './src/hosts/web/processor-mix.js';
 import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
@@ -168,16 +169,14 @@ const pulse=add(ctx.createGain());
   motion.tremoloRate,motion.tremolo*.45,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const gate=add(ctx.createGain());
  const movementGain=add(ctx.createGain());movementGain.gain.value=1;destinations.set("amplitude",movementGain.gain);
- amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);gate.connect(pan);
+ amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);connectStereoImage(ctx,gate,patch,owner,1).connect(pan);
  const fx=effectiveDelayEffects(patch,patch.effects),mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
  dry.gain.value=1-mixAmount*.4;
  pan.connect(dry);dry.connect(destination);
  if(mixAmount>0){
   if(!session){
-   const send=add(ctx.createGain()),delay=add(ctx.createDelay(2)),feedback=add(ctx.createGain()),wet=add(ctx.createGain());
-   send.gain.value=mixAmount*.55;delay.delayTime.value=fx.delayTime;feedback.gain.value=fx.delayFeedback;wet.gain.value=.8;
-   pan.connect(send);send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination);
+   const graph=createStereoDelay(ctx,fx,destination);nodes.push(...graph.nodes);pan.connect(graph.input);
   }
  }
  attachModulation(ctx,plan,destinations,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});

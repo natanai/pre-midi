@@ -47,8 +47,10 @@
   "effects": {
     "drive": "Existing 1024-point quantized tanh curve, 4x oversampling, compensation 1/(1+drive*1.1)",
     "delay": "linear per-voice dry path 1-delayMix*0.4; shared send delayMix*0.55; feedback; wet=0.8",
-    "sharing": "Only identical delayMix/time/feedback tuples share a bus in the same session. Patch edits create a different bus; old tails retain their original settings.",
-    "tail": "Conservative feedback recurrence bound at 1e-5 (-100 dBFS) for a full-scale input. Native release qualification still needs true-peak/headroom and device tests."
+    "sharing": "Only identical delayMix/time/feedback/tone/ping-pong recipes share a bus in the same session. New edits retain old tails on their original bus.",
+    "tail": "Conservative feedback recurrence bound at 1e-5 (-100 dBFS) for a full-scale input. Native release qualification still needs true-peak/headroom and device tests.",
+    "stereo": "After source downmix and articulation, before pan: mid=(L+R)/2, side=(L-R)/2. Width 0..2 scales side; balance -1..1 attenuates mid when positive or side when negative. Width does not create side content for mono.",
+    "delayStereo": "Ping-pong folds send (L+R)/sqrt(2) to left then alternates feedback channels. Tone 20..20000 Hz filters feedback with one-pole alpha=1-exp(-2*pi*f/rate); 20000 bypasses the filter. First echo is unchanged. Delay time is the complete echo interval."
   },
   "voicePolicy": {
     "implementation": "src/dsp/voice-allocator.js",

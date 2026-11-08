@@ -19,7 +19,7 @@ const fx={filter:{type:'lowpass',cutoff:2000,resonance:.7,sweep:-3,sweepTime:.6}
 const patch={type:'sample',presetId:'custom',zones:[{assetId:'voice',root:60}],followPitch:false,oneShot:true,audioMode:'clip',transpose:0,gain:.8,pan:0,...fx};
 const sample=planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets);
 const vocal=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects:fx}},0,.125,assets);
-const render=(plan,inputPcm=pcm)=>{const data=encodeNativeSession([plan],rate,[{rate,frames,channels:1,pcm:inputPcm}]);const r=spawnSync(binary,[String(rate),'2','0','0',String(rate*2),'128','0'],{input:data,maxBuffer:4e6});if(r.status)throw Error(r.stderr.toString());return new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset,r.stdout.byteOffset+r.stdout.byteLength));};
+const render=(plan,inputPcm=pcm,channels=1)=>{const data=encodeNativeSession([plan],rate,[{rate,frames,channels,pcm:inputPcm}]);const r=spawnSync(binary,[String(rate),'2','0','0',String(rate*2),'128','0'],{input:data,maxBuffer:4e6});if(r.status)throw Error(r.stderr.toString());return new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset,r.stdout.byteOffset+r.stdout.byteLength));};
 // EQ, cascaded filters and end-cropped vocal source bounds.
 const equalizer={version:1,bands:[220,500,2500,8000].map((frequency,i)=>({id:'b'+i,type:'bell',enabled:i===0,frequency,gain:i===0?6:0,q:.707}))};
 const chainEQ={version:1,order:['filter','eq','drive'],bypass:[]};
@@ -35,6 +35,18 @@ for(const filterStages of [1,2,4]){
 const trimmed=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:1,trimEndSeconds:.25,lengthSteps:8,effects:{transpose:12,attack:0,release:0}}},0,.125,assets);
 const tailOnly=Float32Array.from(pcm,(v,i)=>i/rate>.752?v:0);if(render(trimmed,tailOnly).some(v=>Math.abs(v)>1e-7))throw Error('End-trim vocal leaked removed source');
 console.log('PASS native EQ/filter slopes, bypass and source-accurate vocal end trim');
+// The eighth EQ stage and stereo source imaging use the actual packet renderer.
+const eightEq={version:1,bands:Array.from({length:8},(_,i)=>({id:'eq-'+i,enabled:i===7,type:'bell',frequency:220,gain:6,q:.707}))};
+const plainPlan=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects:{attack:0,release:0}}},0,.125,assets);
+const eight=render({...plainPlan,eq:eightEq,chain:{version:1,order:['eq'],bypass:[]}}),flat=render({...plainPlan,chain:{version:1,order:[],bypass:[]}});
+if(eight.every((v,i)=>Math.abs(v-flat[i])<.01)||!eight.every(Number.isFinite))throw Error('Native eighth EQ band has no effect');
+const stereoPcm=Float32Array.from({length:frames*2},(_,i)=>i%2?-.5*pcm[i>>1]:pcm[i>>1]);const neutral=render(plainPlan,stereoPcm,2);
+for(const [width,balance]of [[0,0],[2,0],[1,-1],[1,1]]){
+ const imaged=render({...plainPlan,stereoWidth:width,msBalance:balance},stereoPcm,2);
+ for(let i=0;i<frames;i++){const mid=(neutral[2*i]+neutral[2*i+1])*.5*(balance>0?1-balance:1),side=(neutral[2*i]-neutral[2*i+1])*.5*width*(balance<0?1+balance:1);if(Math.abs(imaged[2*i]-mid-side)>1e-6||Math.abs(imaged[2*i+1]-mid+side)>1e-6)throw Error('Native stereo image mismatch');}
+}
+const renderedMono=render(plainPlan);if(render({...plainPlan,stereoWidth:2}).some((v,i)=>v!==renderedMono[i]))throw Error('Width changed a mono source');
+console.log('PASS native eighth EQ band and stereo image endpoints');
 // Batch capability checks use the real current packet/renderer.
 const peakDifference=(a,b)=>a.reduce((m,v,i)=>Math.max(m,Math.abs(v-b[i])),0);
 for(const value of [0,.3,1]){

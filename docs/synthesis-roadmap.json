@@ -2,7 +2,7 @@
   "schema_version": 1,
   "program_id": "pre-midi-professional-synthesis",
   "title": "Professional native-first synthesis and DSP",
-  "updated_on": "2026-11-07",
+  "updated_on": "2026-11-08",
   "status": "active",
   "scope": "Synthesizer sound generation, DSP fidelity, quality qualification and cross-host rendering; complements docs/song-rollout.md instead of replacing its Song-specific stages.",
   "mission": "Deliver professionally viable editable instruments that sound correct in native desktop/mobile production and natively in pre-programmed, while retaining a compatible web studio wherever technically feasible.",
@@ -1349,17 +1349,19 @@
     }
   },
   "sound_panel_expansions": {
-    "status": "scoped; not implemented",
+    "status": "partially implemented; tracked by sound_editing tasks",
     "principle": "Modules give each illustration its own visible panel; optional combined view follows the edited control. Repeated access edits shared parameters. No dummy controls to fill axes.",
     "candidates": [
       {
         "panel": "distortion",
         "next_controls": [
           "input gain (dB)",
-          "dry / wet mix",
           "soft clip / hard clip / wavefold"
         ],
-        "scope": "Shared browser/native/game-host transfer functions, level compensation and oversampling; store only compact parameters in .premidi."
+        "scope": "Shared browser/native/game-host transfer functions, level compensation and oversampling; store only compact parameters in .premidi.",
+        "implemented_controls": [
+          "dry / wet mix"
+        ]
       },
       {
         "panel": "noise",
@@ -1371,11 +1373,12 @@
       },
       {
         "panel": "stereo",
-        "next_controls": [
+        "scope": "Define behavior for real stereo sources and explain mono-source limits; preserve equal-power pan.",
+        "implemented_controls": [
           "stereo width",
           "mid / side balance"
         ],
-        "scope": "Define behavior for real stereo sources and explain mono-source limits; preserve equal-power pan."
+        "status": "implemented; physical listening unverified"
       },
       {
         "panel": "recording pitch",
@@ -1396,12 +1399,13 @@
       },
       {
         "panel": "delay",
-        "next_controls": [
+        "scope": "Extend the existing feedback bus without rendering effects into project assets.",
+        "implemented_controls": [
           "feedback tone",
           "ping-pong stereo",
           "tempo sync"
         ],
-        "scope": "Extend the existing feedback bus without rendering effects into project assets."
+        "status": "implemented; shared reverb remains under SE-11"
       }
     ],
     "implementation_tracking": "/sound_editing/tasks"
@@ -1410,7 +1414,7 @@
     "schema_version": 1,
     "program_id": "pre-midi-sound-editing-feature-complete",
     "title": "Roadmap to feature-complete sound editing",
-    "updated_on": "2026-11-07",
+    "updated_on": "2026-11-08",
     "status": "in_progress",
     "audit_commit": "bf28bf53de08f5eb514f8e4f778df711edc7aa8c",
     "audit_scope": "Baseline source audit at audit_commit; subsequent changes and verification limits are recorded in implementation_updates.",
@@ -2747,7 +2751,7 @@
           "Frequency-response and stability fixtures at documented rates; contextual EQ edits on synth/sample/vocal."
         ],
         "completion_evidence": [],
-        "progress_note": "Four bounded independently editable EQ bands now share bell/low shelf/high shelf/high-pass/low-pass types, frequency/gain/Q, enable, chain order/bypass/mix, preset transfer and native/browser coefficient semantics. One interactive log-frequency response graph and ordinary dials serve all Sound contexts. Additional filter stages expose 12/24/48 db/oct asymptotic low/high-pass slopes while resonance remains on the first stage. Expansion beyond four bands and parallel routing remain open."
+        "progress_note": "Four initial bands can now add/remove up to eight independent bands without changing surviving identities. Bell/shelf/pass types, frequency/gain/Q, enable, common chain order/bypass/mix and native/Web coefficients remain shared. The eighth stage is verified in both renderers. Filter slopes remain 12/24/48 db/oct. Parallel routing and measured-spectrum overlay remain open."
       },
       {
         "id": "SE-10",
@@ -2805,7 +2809,7 @@
           "Impulse/echo timing, decay and tail-boundary cases; same effectful source in every context."
         ],
         "completion_evidence": [],
-        "progress_note": "Shared free seconds or 1/16, 1/8, dotted 1/8 and quarter-note delay divisions at 40\u2013240 BPM. Authored seconds remain stored; host capacity extends to two seconds. Playback/export tails, native streaming catalogs, vocal reuse and presets retain timing. Feedback tone, ping-pong and reverb remain open."
+        "progress_note": "Shared free seconds and 1/16, 1/8, dotted 1/8 and quarter-note sync through two seconds now include feedback low-pass tone and stereo ping-pong. First echo is unfiltered; ping-pong folds the send by (L+R)/sqrt(2) into left, then swaps feedback channels. Shared buses include tone/stereo mode in their identity; tails, streaming page lifetime, presets and vocal reuse retain them. Native echo timing now matches the complete authored interval without an extra callback quantum. Reverb and physical seek/loop/listening qualification remain open."
       },
       {
         "id": "SE-12",
@@ -2838,7 +2842,7 @@
       {
         "id": "SE-13",
         "title": "Finish scoped distortion, noise and stereo controls",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-08"
@@ -2863,7 +2867,8 @@
         "verification": [
           "Transfer/spectrum and stereo correlation/mono fixtures; direct controls match interactive illustrations."
         ],
-        "completion_evidence": []
+        "completion_evidence": [],
+        "progress_note": "Shared stereo width (0..2) and mid/side balance (-1..1) implemented before pan after source downmix, with graph and ordinary controls. M=(L+R)/2, S=(L-R)/2; positive balance attenuates M, negative attenuates S, width scales S. Neutral is transparent; width preserves mono, side-only intentionally silences mono. Per-channel bound <=2 times bounded input peak at width=2; no automatic limiter. Mono sum cancels S. Shaper alternatives, noise colors and matched listening/headroom qualification remain open."
       },
       {
         "id": "SE-14",
@@ -3552,6 +3557,54 @@
           "Variable EQ band count, general parallel routing, production dynamics or stereo delay",
           "Physical desktop listening/microphone or browser visual acceptance"
         ]
+      },
+      {
+        "id": "SOUND-BATCH-PREVIEW27",
+        "date": "2026-11-08",
+        "status": "implemented",
+        "task_ids": [
+          "SE-09",
+          "SE-11",
+          "SE-13",
+          "SE-18"
+        ],
+        "summary": "Combined three shared Sound capabilities before a single merge: stereo feedback-tone delay, stereo imaging and expandable eight-band EQ; package the closed freeform pull-tab refinements since preview.26.",
+        "milestones": [
+          {
+            "id": "B27-DELAY",
+            "status": "implemented",
+            "contract": "Top-level delayTone 20..20000 Hz (20000 bypasses tone), delayPingPong boolean; existing delay send/mix/time/feedback remain. Feedback one-pole alpha=1-exp(-2*pi*f/rate), then channel swap for ping-pong. Wet output remains separately owned for stop/live-vocal crossfade. Complete echo intervals match native/Web instead of adding 128 native frames per repeat."
+          },
+          {
+            "id": "B27-IMAGE",
+            "status": "implemented",
+            "contract": "Shared stereo width (0..2) and mid/side balance (-1..1) implemented before pan after source downmix, with graph and ordinary controls. M=(L+R)/2, S=(L-R)/2; positive balance attenuates M, negative attenuates S, width scales S. Neutral is transparent; width preserves mono, side-only intentionally silences mono. Per-channel bound <=2 times bounded input peak at width=2; no automatic limiter. Mono sum cancels S. Shaper alternatives, noise colors and matched listening/headroom qualification remain open."
+          },
+          {
+            "id": "B27-EQ",
+            "status": "implemented",
+            "contract": "EQ supports 0..8 bands with stable IDs, independent add/remove, shared graph/dials and chain lifecycle. Four default disabled bands remain the starting point; fixed eight native states pad unused bands with unity coefficients. The single Sound Inspector mounts these editors for synth, sampled Sound and vocal; combined view follows the new control links."
+          }
+        ],
+        "native_contract": "Current sample execution packet 17 and 380-byte processing trailer; eight EQ biquads, stereo width/balance, feedback tone/stereo. Rust packet fixture and C ABI streaming recipe carry the same current fields. No legacy packet reader or Web Audio fallback.",
+        "verification": {
+          "routine": "npm run check: edited syntax plus 44 smoke cases",
+          "model": "Focused EQ identity/count, stereo parameter bounds, processing preset/project and synth-plan round trips, sampled/vocal parity and native streaming catalog/control tests pass",
+          "native": "Current C++ renderer passes eighth EQ stage, stereo/mono image endpoints, exact sampled/vocal processing parity, trim source bounds and existing modulation/chain cases",
+          "web_audio": "Offline rendering passes eighth EQ stage, mono/stereo matrix endpoints, isolated bus recipes and impulse echo parity. Native/Web maximum difference <=2.504e-6 across plain/ping-pong and 20000/400 Hz feedback tone cases at 24 kHz; first echo unchanged, later echoes alternate/darken",
+          "dom_integration": "Vocal focused control/module/scroll and trim retained; width edits, ping-pong/EQ undo and combined illustration follow pass. Existing locked-row/intentional-own-lane Song drag passes. These are DOM checks, not observed browser visual acceptance.",
+          "windows": "Pending requested Windows build and portable checks"
+        },
+        "windows_preview": {
+          "version": "0.14.1-preview.27",
+          "status": "build_requested",
+          "optional_full_audio_qualification": false
+        },
+        "not_claimed": [
+          "Full M2 or M3 completion",
+          "General parallel routing, production dynamics, reverb or independent time stretch",
+          "Physical Windows 11 audio/microphone acceptance or real-browser visual acceptance"
+        ]
       }
     ],
     "vocal_parity_milestone": {
@@ -3573,7 +3626,8 @@
         "Vocal-to-Beat reuse retains processors, clip gain/envelope, source trim and stereo channels",
         "Editable recording identity through shared header, Song history and linked external-asset metadata",
         "Effectful browser seek continuations retain original filter/drive/echo history, including completed-Clip echoes; live edits crossfade only vocal voices",
-        "Ordered filter/distortion chain and non-destructive stage bypass, including explicit delay-send bypass; presets and vocal-to-Beat reuse retain the chain"
+        "Ordered filter/distortion chain and non-destructive stage bypass, including explicit delay-send bypass; presets and vocal-to-Beat reuse retain the chain",
+        "Expandable eight-band EQ, stereo width/mid-side balance and ping-pong/feedback-tone delay through the same Inspector, presets and native/browser processing"
       ],
       "source_only_exceptions": [
         "Oscillators, harmonic partials and generated noise require a synth source",
@@ -3624,7 +3678,7 @@
       },
       "remaining_qualification": [
         "Real-browser vocal trim, undo/redo, context alignment/button sizing, presets/reuse and live-edit observation; synthetic fixture import was blocked by the cloud browser filesystem",
-        "Physical Windows 11 playback, recording, editing and listening observation using preview.24; automated Windows Server tests are not physical acceptance"
+        "Physical Windows 11 playback, recording, editing and listening observation using the latest published preview; automated Windows Server tests are not physical acceptance"
       ],
       "not_claimed": [
         "Commercial DAW feature equivalence",

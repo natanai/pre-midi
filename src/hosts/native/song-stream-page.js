@@ -22,13 +22,13 @@ const validRevision=(read,revision)=>{
 export function nativeSongDelayRecipes(song){
  if(song?.kind!=="song")throw Error("Native delay catalog requires a Song.");
  const recipes=new Map();
- const add=(mix,time,feedback,round=false)=>{
+ const add=(mix,time,feedback,round=false,tone=20000,ping=false)=>{
   if(!(mix>0))return;
   const recipe={mix,time:round?Math.fround(time):time,
-   feedback:round?Math.fround(feedback):feedback};
-  if(!Object.values(recipe).every(Number.isFinite))
+   feedback:round?Math.fround(feedback):feedback,tone,ping};
+  if(![recipe.mix,recipe.time,recipe.feedback,recipe.tone].every(Number.isFinite))
    throw Error("Nonfinite native Song delay parameters.");
-  const key=JSON.stringify([recipe.mix,recipe.time,recipe.feedback]);
+  const key=JSON.stringify([recipe.mix,recipe.time,recipe.feedback,recipe.tone,recipe.ping]);
   if(!recipes.has(key))recipes.set(key,recipe);
   if(recipes.size>STREAM_DELAY_LIMIT)
    throw Error("Native Song exceeds 32 shared delay-bus recipes.");
@@ -43,14 +43,14 @@ export function nativeSongDelayRecipes(song){
   const patches=instrument.sounds?.length?
    instrument.sounds.map(sound=>sound.patch):instrument.patch?[instrument.patch]:[];
   for(const patch of patches){
-   if(patch?.type==="synth"&&patch.effects){const fx=effectiveDelayEffects(patch,patch.effects,60/song.bpm/4);add(fx.delayMix,fx.delayTime,fx.delayFeedback,true);}
-   else if(patch?.type==="sample"){const fx=effectiveDelayEffects(patch,patch,60/song.bpm/4);add(fx.delayMix??0,fx.delayTime??.24,fx.delayFeedback??.26);}
+   if(patch?.type==="synth"&&patch.effects){const fx=effectiveDelayEffects(patch,patch.effects,60/song.bpm/4);add(fx.delayMix,fx.delayTime,fx.delayFeedback,true,fx.delayTone,fx.delayPingPong);}
+   else if(patch?.type==="sample"){const fx=effectiveDelayEffects(patch,patch,60/song.bpm/4);add(fx.delayMix??0,fx.delayTime??.24,fx.delayFeedback??.26,false,fx.delayTone,fx.delayPingPong);}
   }
  }
  for(const track of song.tracks??[])if(track.kind==="vocal")
   for(const clip of track.clips??[]){
    const fx=effectiveDelayEffects(clip.effects??{},vocalEffects(clip,60/song.bpm/4),60/song.bpm/4);
-   add(fx.delayMix,fx.delayTime,fx.delayFeedback);
+   add(fx.delayMix,fx.delayTime,fx.delayFeedback,false,fx.delayTone,fx.delayPingPong);
   }
  return [...recipes.values()];
 }
@@ -83,7 +83,7 @@ export async function prepareNativeSongStreamPage(song,page,{
   if(!(fx?.delayMix>0))continue;
   const time=plan.contract==="pre-midi-synth-voice"?Math.fround(fx.delayTime):fx.delayTime;
   const feedback=plan.contract==="pre-midi-synth-voice"?Math.fround(fx.delayFeedback):fx.delayFeedback;
-  if(!catalog.some(recipe=>recipe.mix===fx.delayMix&&recipe.time===time&&recipe.feedback===feedback))
+  if(!catalog.some(recipe=>recipe.mix===fx.delayMix&&recipe.time===time&&recipe.feedback===feedback&&recipe.tone===(fx.delayTone??20000)&&recipe.ping===(fx.delayPingPong??false)))
    throw Error("Native Song delay recipe was not registered before playback.");
  }
  const packet=encodeNativeSession(rebased,sampleRate);

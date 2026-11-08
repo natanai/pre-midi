@@ -302,8 +302,8 @@ public:
   require(!lost.load(),"Native output disconnected during Song streaming");
  }
  int streamDelay(std::uint64_t owner,std::uint64_t revision,
-  double mix,double time,double feedback){
-  requireStream(owner,revision);return streamOwned->registerDelay(mix,time,feedback);
+  double mix,double time,double feedback,double tone,bool ping){
+  requireStream(owner,revision);return streamOwned->registerDelay(mix,time,feedback,tone,ping);
  }
  bool streamPage(std::uint64_t owner,std::uint64_t revision,
   std::uint64_t sequence,std::uint64_t first,std::uint64_t end,
@@ -416,7 +416,7 @@ int premidi_audio_configure(void* host,uint32_t device,uint32_t rate,uint32_t fr
 int premidi_audio_play(void* host,const uint8_t* data,size_t length,double cycle,double seek,int loop,int preview){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.play(data,length,cycle,seek,loop!=0,preview!=0);});}
 
 int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.beginStream(owner,revision);});}
-int premidi_audio_stream_delay(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.streamDelay(owner,revision,mix,time,feedback);});}
+int premidi_audio_stream_delay(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback,double tone,int ping){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.streamDelay(owner,revision,mix,time,feedback,tone,ping!=0);});}
 int premidi_audio_stream_page(void* host,uint64_t owner,uint64_t revision,uint64_t sequence,uint64_t first,uint64_t end,uint32_t onsets,int last,const uint8_t* packet,size_t length){
  auto& h=*static_cast<premidi::DeviceHost*>(host);bool published=false;
  const auto status=h.checked([&]{published=h.streamPage(owner,revision,sequence,first,end,onsets,last!=0,packet,length);});

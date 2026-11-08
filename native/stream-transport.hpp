@@ -68,10 +68,10 @@ class StreamTransport final {
  }
  bool ready()const noexcept{return nextSequence>1;}
  // Control-only preparation, before page one is submitted.
- int registerDelay(double mix,double time,double feedback){
+ int registerDelay(double mix,double time,double feedback,double tone=20000,bool ping=false){
   require(!armed.load(std::memory_order_acquire)&&nextSequence==1,
    "Native shared effects must be prepared before the first Song page");
-  return player->registerStreamingDelay(mix,time,feedback);
+  return player->registerStreamingDelay(mix,time,feedback,tone,ping);
  }
  // Control-only: page packet can be PMS1 or PMS2 with bound registered audio.
  // Backpressure returns false without publishing/incrementing sequence or

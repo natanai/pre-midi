@@ -4,7 +4,7 @@ export const EQ_TYPES=Object.freeze(['bell','lowshelf','highshelf','highpass','l
 export const defaultEq=()=>({version:1,bands:[100,500,2500,8000].map((frequency,i)=>({id:'band-'+(i+1),enabled:false,type:i===0?'lowshelf':i===3?'highshelf':'bell',frequency,gain:0,q:.707}))});
 export function validateEq(eq){
  if(eq===undefined)return [];
- if(!eq||eq.version!==1||!Array.isArray(eq.bands)||eq.bands.length!==4||Object.keys(eq).some(k=>!['version','bands'].includes(k)))return ['Invalid equalizer.'];
+ if(!eq||eq.version!==1||!Array.isArray(eq.bands)||eq.bands.length>8||Object.keys(eq).some(k=>!['version','bands'].includes(k)))return ['Invalid equalizer.'];
  const ids=new Set();for(const b of eq.bands){
   if(!b||typeof b.id!=='string'||!b.id||ids.has(b.id)||typeof b.enabled!=='boolean'||!EQ_TYPES.includes(b.type)||!Number.isFinite(b.frequency)||b.frequency<20||b.frequency>20000||!Number.isFinite(b.gain)||Math.abs(b.gain)>24||!Number.isFinite(b.q)||b.q<.1||b.q>18||Object.keys(b).some(k=>!['id','enabled','type','frequency','gain','q'].includes(k)))return ['Invalid EQ band.'];ids.add(b.id);
  }return [];
@@ -24,3 +24,8 @@ export function eqMagnitude(eq,frequency,rate=48000){
  return (eq?.bands??[]).reduce((gain,b)=>{const [b0,b1,b2,a1,a2]=eqCoefficients(b,rate);return gain*Math.hypot(b0+b1*c+b2*c2,-b1*s-b2*s2)/Math.max(1e-15,Math.hypot(1+a1*c+a2*c2,-a1*s-a2*s2));},1);
 }
 export const validateFilterStages=value=>value===undefined||[1,2,4].includes(value)?[]:['Invalid filter slope.'];
+
+export function addEqBand(eq=defaultEq()){
+ if(eq.bands.length>=8)return eq;const ids=new Set(eq.bands.map(b=>b.id));let n=1;while(ids.has('band-'+n))n++;return {...eq,bands:[...eq.bands,{id:'band-'+n,enabled:true,type:'bell',frequency:1000,gain:0,q:.707}]};
+}
+export const removeEqBand=(eq,id)=>({...eq,bands:eq.bands.filter(b=>b.id!==id)});
