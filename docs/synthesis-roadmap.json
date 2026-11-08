@@ -3330,19 +3330,22 @@
       {
         "id": "RACK-CHUNKS-PREVIEW24",
         "date": "2026-11-08",
-        "status": "implemented_pending_windows_build",
+        "status": "implemented",
         "summary": "Fix sampled Sound delay illustration crashing rack selection before the Beat chunk picker opens",
         "cause": "The common delay illustration dereferenced synth/vocal effects on sampled Sounds, whose canonical delay parameters are top-level and may use defaults",
         "contract": "Read delay values/defaults and edit/link paths through the shared parameter adapter. Preserve nested synth/vocal effects and flat sampled Sound fields. No duplicate Inspector or data migration",
         "verification": {
           "focused": "Six delay-model/diagram cases, covering every sampled factory rack row, canonical edit paths and nested vocal effects",
           "dom_integration": "Night Drive Kit: existing/new chunk placement, hit editing, undo/redo and selection of all 10 rows without uncaught errors in DOM integration; no physical browser/hardware acceptance claimed",
-          "routine": "npm run check"
+          "routine": "npm run check passed: edited syntax and 44 smoke cases"
         },
         "windows_preview": {
           "version": "0.14.1-preview.24",
-          "status": "build_requested",
-          "optional_full_audio_qualification": false
+          "status": "published",
+          "optional_full_audio_qualification": false,
+          "source_commit": "622ad9c45ba63fd2615808000b5b13737e927db0",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42442272683",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.24/pre-midi-0.14.1-preview.24-windows-x86_64-portable.zip"
         },
         "not_claimed": [
           "Full M2 completion",
@@ -3406,26 +3409,21 @@
           "url": "https://github.com/natanai/pre-midi/actions/runs/42425325275"
         },
         "windows_package": {
-          "version": "0.14.1-preview.23",
+          "version": "0.14.1-preview.24",
           "status": "published",
-          "scope": "Windows x64 portable ZIP including current vocal parity; no optional full audio qualification requested",
-          "source_commit": "59fdb48ba0bb62f64b14821c1b77ae0a6933d863",
-          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42441469336",
-          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.23/pre-midi-0.14.1-preview.23-windows-x86_64-portable.zip",
-          "bytes": 16202715,
-          "sha256": "55586dd549dff1feaec4f237d16a751cd2a77949c4e0fb3d6c3d19e81d2322bf",
+          "scope": "Windows x64 portable ZIP including shared vocal/Inspector parity, M2 serial processor lifecycle and sampled rack chunk picker fix; optional full audio qualification skipped",
+          "source_commit": "622ad9c45ba63fd2615808000b5b13737e927db0",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42442272683",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.24/pre-midi-0.14.1-preview.24-windows-x86_64-portable.zip",
+          "bytes": 16202815,
+          "sha256": "d4ed902baa554b72fb16964f3029c2572f24f6a52f6c58b5240fe2aa5e995ead",
           "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection, portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
-          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files",
-          "pending_build": {
-            "version": "0.14.1-preview.24",
-            "status": "build_requested",
-            "includes": "Preview 23 milestone plus sampled rack chunk-picker / delay diagram crash fix"
-          }
+          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files"
         }
       },
       "remaining_qualification": [
         "Real-browser vocal trim, undo/redo, context alignment/button sizing, presets/reuse and live-edit observation; synthetic fixture import was blocked by the cloud browser filesystem",
-        "Physical Windows 11 playback, recording, editing and listening observation using preview.22; automated Windows Server tests are not physical acceptance"
+        "Physical Windows 11 playback, recording, editing and listening observation using preview.24; automated Windows Server tests are not physical acceptance"
       ],
       "not_claimed": [
         "Commercial DAW feature equivalence",
