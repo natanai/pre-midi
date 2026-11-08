@@ -19,7 +19,7 @@ inline void readRoutes(PacketReader& in,Plan& p){
  for(unsigned i=0;i<p.routeCount;i++){
   auto& r=p.routes[i];r.target=in.u32();r.kind=in.u32();r.bipolar=in.u32();r.depth=in.f64();r.smoothing=in.f64();r.rate=in.f64();r.root=in.f64();r.span=in.f64();for(auto& v:r.envelope)v=in.f64();
   const double limit=r.target==4?8:r.target==5?2:r.target==6?15.9:r.target==7?1:r.target%2?1:2400;
-  require(r.target<8&&r.kind<7&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.01&&r.rate<=20&&r.root>=0&&r.root<=127&&r.span>=1&&r.span<=127&&r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4,"Invalid native modulation route");
+  require(r.target<8&&r.kind<9&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.01&&r.rate<=20&&r.root>=0&&r.root<=127&&(r.kind<7||(r.root>=1&&r.root==std::floor(r.root)))&&r.span>=1&&r.span<=127&&r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4,"Invalid native modulation route");
  }
 }
 inline void readProcessing(PacketReader& in,Plan& p){

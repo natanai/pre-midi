@@ -1,6 +1,6 @@
 import {processorBypassed} from "./src/dsp/processing-chain.js";
 import {modulationTargetsFor,modulationSourcesFor,MODULATION_CONTROLS,parameterField} from "./src/dsp/parameters.js";
-import {MOD_TARGETS,MOD_SOURCES,defaultSource,LFO_SHAPES,LFO_DIVISIONS} from "./src/dsp/modulation.js";
+import {MOD_TARGETS,MOD_SOURCES,defaultSource,LFO_SHAPES,LFO_DIVISIONS,randomLfoShape} from "./src/dsp/modulation.js";
 import {createDial,explainLabel} from "./dial.js";
 const openBySound=new Map();
 export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=>{}){
@@ -30,6 +30,11 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
   if(route.source.kind==="lfo"&&!route.source.sync){
    const speed=createDial({label:"Movement speed",...MODULATION_CONTROLS.rate},route.source.rate,value=>update(index,{source:{...route.source,rate:value}}),value=>preview(index,{source:{...route.source,rate:value}}));
    speed.dataset.soundPath="modulation.routes."+index+".source.rate";row.append(speed);
+  }
+  if(route.source.kind==="lfo"&&randomLfoShape(route.source.shape)){
+   const seed=createDial({label:"Random seed",help:"choose a repeatable movement sequence",...MODULATION_CONTROLS.seed},route.source.seed??1,
+    value=>update(index,{source:{...route.source,seed:value}}),value=>preview(index,{source:{...route.source,seed:value}}));
+   seed.dataset.soundPath="modulation.routes."+index+".source.seed";row.append(seed);
   }
   const smoothing=createDial({label:"Smoothing",...MODULATION_CONTROLS.smoothing},
    route.smoothing,value=>update(index,{smoothing:value}),value=>preview(index,{smoothing:value}));

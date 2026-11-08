@@ -1,6 +1,6 @@
 import {parameterFor} from "../../dsp/parameters.js";
 import {prepareControlLfo,startControlLfo} from "./oscillator.js";
-import {validateModulation,smoothingAlpha,modulationStateBefore,modulationWave} from "../../dsp/modulation.js";
+import {validateModulation,smoothingAlpha,modulationStateBefore,modulationWave,randomLfoShape} from "../../dsp/modulation.js";
 import {planAmplitudeEnvelope} from "../../dsp/amplitude-envelope.js";
 import {windowEnvelope} from "../../dsp/envelope-window.js";
 import {scheduleAmplitudeEnvelope} from "../../../envelope.js";
@@ -16,7 +16,22 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
  for(const route of [...definition.routes].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
   let input,normal;
   if(route.source.kind==="lfo"){
-   if(route.source.shape!=="sine"){
+   if(randomLfoShape(route.source.shape)){
+    const rate=route.source.rate,cycles=elapsed*rate;
+    const count=Math.ceil((plan.graphEnd-plan.start)*rate)+1;
+    if(count>12001)throw Error("Random movement exceeds the 600-second scheduling budget");
+    const control=context.createConstantSource();owner.sources.push(control);
+    control.offset.setValueAtTime(modulationWave(route.source.shape,cycles,route.source.seed??1),plan.start);
+    const first=Math.floor(cycles)+1;
+    for(let n=first;n<first+count;n++){
+     const time=plan.start+(n-cycles)/rate;
+     // Retain the first knot past note-off to interpolate the final interval.
+     if(route.source.shape==="smooth-random")control.offset.linearRampToValueAtTime(modulationWave(route.source.shape,n,route.source.seed??1),time);
+     // Hold changes start on the first sample at/after the source knot.
+     else if(time<plan.graphEnd)control.offset.setValueAtTime(modulationWave(route.source.shape,n,route.source.seed??1),Math.ceil(time*context.sampleRate)/context.sampleRate);
+    }
+    control.start(plan.start);control.stop(plan.graphEnd);input=control;
+   }else if(route.source.shape!=="sine"){
     const wave=context.createBuffer(1,4096,context.sampleRate),data=wave.getChannelData(0);
     for(let i=0;i<data.length;i++)data[i]=modulationWave(route.source.shape,i/data.length);
     const oscillator=context.createBufferSource();oscillator.buffer=wave;oscillator.loop=true;oscillator.playbackRate.value=route.source.rate*4096/context.sampleRate;

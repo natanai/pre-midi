@@ -2343,6 +2343,17 @@
               "SE-07",
               "SE-08"
             ]
+          },
+          {
+            "id": "M2c",
+            "title": "Repeatable random movement",
+            "implementation_status": "complete",
+            "scope": [
+              "Sample-and-hold and linearly interpolated random LFO shapes with seeds 1\u2013127",
+              "One shared route editor and interactive sequence-seed handle in all Sound contexts",
+              "Stateless original-source-age sequence; authored Hz/divisions, polarity and smoothing retain existing semantics"
+            ],
+            "qualification": "Focused model, native rendering and offline Web Audio checks; physical Windows and browser gestures unobserved. Published preview.24 predates this source milestone."
           }
         ],
         "completed_slices": [
@@ -2350,7 +2361,8 @@
           "Tempo-synced LFO divisions in every sound context",
           "Shared 32-point cutoff curves with native/browser execution and Freeform phase preservation",
           "Shared filter/distortion order and non-destructive stage bypass, with an explicit bypassable delay send",
-          "Add/remove/restore the built-in serial processors, including empty chains, without erasing settings"
+          "Add/remove/restore the built-in serial processors, including empty chains, without erasing settings",
+          "Deterministic seeded sample-and-hold and interpolated random movement with tempo sync, common seed controls and seek-stable source-age evaluation"
         ],
         "remaining": [
           "Remaining SE-05 destinations and SE-06 sources/macros/clock policies",
@@ -2626,7 +2638,7 @@
           "Source equations/phase fixtures and focused route/macro editing, save/load and undo scenarios."
         ],
         "completion_evidence": [],
-        "progress_note": "Shared sine/triangle/ramp/square LFOs now offer free Hz or tempo divisions from 1/16 note through four bars. Triggered voices resolve the current context tempo at onset without rewriting authored Hz/division settings. Vocal seek reconstruction retains original Clip age. Diagrams use the owning context tempo. Selectable free-run/phase policy, envelope follower/sidechain, seeded random, step sources and macros remain planned; SE-06 is not complete."
+        "progress_note": "Shared sine/triangle/ramp/square LFOs now offer free Hz or tempo divisions from 1/16 note through four bars. Triggered voices resolve the current context tempo at onset without rewriting authored Hz/division settings. Vocal seek reconstruction retains original Clip age. Diagrams use the owning context tempo. Selectable free-run/phase policy, envelope follower/sidechain, seeded random, step sources and macros remain planned; SE-06 is not complete. Seeded sample-and-hold and smooth-random sources are implemented in the shared LFO route with seeds 1\u2013127, tempo divisions, smoothing, polarity and source-age seek semantics. Envelope follower/audio sidechains, editable step sequences, macros, phase and free-run clock policy remain open."
       },
       {
         "id": "SE-07",
@@ -3350,6 +3362,36 @@
         "not_claimed": [
           "Full M2 completion",
           "Physical Windows listening/microphone qualification"
+        ]
+      },
+      {
+        "id": "M2C-SEEDED-RANDOM",
+        "date": "2026-11-08",
+        "status": "implemented",
+        "task_ids": [
+          "SE-06",
+          "SE-16"
+        ],
+        "summary": "Deliver deterministic random movement in the common Inspector and browser/native DSP",
+        "contract": {
+          "sequence": "uint32 stateless hash of seed and floor(original source-age * effective Hz); sample-hold retains the knot, smooth-random linearly interpolates adjacent knots",
+          "seed": "Integer 1\u2013127; default 1. Source shape/seed survive presets and current project JSON",
+          "clock": "Note/Clip retrigger at original source onset; seek uses original elapsed age; tempo divisions resolve at voice onset. No global RNG or shared mutable sequence",
+          "native": "Current route kinds 7/8 use the existing source root slot as seed; packet layout is unchanged; decoding validates the bounded integer seed. Hash/arithmetic remain allocation-free",
+          "web": "One ConstantSource per random route, bounded to 12001 scheduled knots; holds start at the first sample at/after the knot; smooth ramps retain the following knot through voice end",
+          "interface": "Same source-shape selector, seed dial and draggable sequence-seed handle in synth/sample/vocal modules and combined view"
+        },
+        "verification": {
+          "routine": "npm run check",
+          "model": "Two focused cases: knot/interpolation/seed bounds, tempo/source-age determinism, project/processing round trips and diagram edit axis",
+          "native": "Native source-value oracle matches JS within 1e-7 including direct seeks; full sampled/vocal renders have zero PCM difference for both random shapes and nonzero audio change",
+          "web": "OfflineAudioContext at 16 kHz: held sequence maximum error 3.89e-8, smooth maximum error 9.96e-5; onset and resumed .37-second source-age cases, excluding ConstantSource startup sample"
+        },
+        "windows_preview": "Preview.24 remains the last immutable Windows artifact and does not include this later source change; no build requested this turn",
+        "not_claimed": [
+          "Full M2 completion",
+          "Physical Windows or browser interaction acceptance",
+          "Envelope follower, sidechain, macros, editable step sequences or free-running clock"
         ]
       }
     ],

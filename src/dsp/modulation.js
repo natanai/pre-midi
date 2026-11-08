@@ -2,7 +2,7 @@ import {MODULATION_CONTROLS,MODULATION_SOURCE_CONTEXTS,modulationTargetsFor,vali
 import {envelopeLevelAt} from "./amplitude-envelope.js";
 export const MODULATION_VERSION=1;
 export const MOD_SOURCES=Object.keys(MODULATION_SOURCE_CONTEXTS);
-export const LFO_SHAPES=Object.freeze(["sine","triangle","ramp","square"]);
+export const LFO_SHAPES=Object.freeze(["sine","triangle","ramp","square","sample-hold","smooth-random"]);
 export const LFO_DIVISIONS=Object.freeze([.25,.5,1,2,4,8,16]);
 export const modulationRate=(source,unit=.125)=>source.sync?1/(source.sync*4*unit):source.rate;
 // Resolve musical divisions at the host boundary. Authored free-Hz values and
@@ -21,8 +21,22 @@ export const nativeModulationSource=source=>{
  if(source.kind==="lfo"&&!LFO_SHAPES.includes(source.shape))throw Error("Unsupported modulation waveform");
  return source.kind==="lfo"&&source.shape!=="sine"?3+LFO_SHAPES.indexOf(source.shape):MOD_SOURCES.indexOf(source.kind);
 };
-export function modulationWave(shape,cycles){
+export const randomLfoShape=shape=>shape==="sample-hold"||shape==="smooth-random";
+// Stateless uint32 hash: seed and cycle index define every value, including
+// seeks. No global RNG, callback allocation or dependence on other voices.
+export function randomLfoValue(seed,index){
+ let x=((index>>>0)^Math.imul(seed,0x9e3779b9))>>>0;
+ x=Math.imul(x^(x>>>16),0x7feb352d)>>>0;
+ x=Math.imul(x^(x>>>15),0x846ca68b)>>>0;
+ x=(x^(x>>>16))>>>0;
+ return x/4294967295*2-1;
+}
+export function modulationWave(shape,cycles,seed=1){
  const phase=((cycles%1)+1)%1;
+ if(randomLfoShape(shape)){
+  const index=Math.floor(cycles),a=randomLfoValue(seed,index);
+  return shape==="sample-hold"?a:a+(randomLfoValue(seed,index+1)-a)*phase;
+ }
  if(shape==="triangle")return 1-4*Math.abs(phase-.5);
  if(shape==="ramp")return 2*phase-1;
  if(shape==="square")return phase<.5?1:-1;
@@ -42,9 +56,10 @@ export function validateModulation(modulation){
   if(!target||route.unit!==target.unit||!finite(route.depth,-(target?.limit??0),target?.limit??0)||
    !["unipolar","bipolar"].includes(route.polarity)||!finite(route.smoothing,MODULATION_CONTROLS.smoothing.min,MODULATION_CONTROLS.smoothing.max))errors.push("Invalid modulation target, depth, range or units.");
   if(!source||!MOD_SOURCES.includes(source.kind)){errors.push("Invalid modulation source.");continue;}
-  const keys={lfo:["kind","rate","shape","sync"],velocity:["kind"],keytrack:["kind","root","span"],envelope:["kind","envelope"]}[source.kind];
+  const keys={lfo:["kind","rate","shape","sync","seed"],velocity:["kind"],keytrack:["kind","root","span"],envelope:["kind","envelope"]}[source.kind];
   if(Object.keys(source).some(key=>!keys.includes(key)))errors.push("Unknown modulation source field.");
   if(source.kind==="lfo"&&(!finite(source.rate,MODULATION_CONTROLS.rate.min,MODULATION_CONTROLS.rate.max)||!LFO_SHAPES.includes(source.shape)))errors.push("Invalid modulation LFO.");
+  if(source.seed!==undefined&&(source.kind!=="lfo"||!Number.isInteger(source.seed)||!finite(source.seed,1,127)))errors.push("Invalid random movement seed.");
   if(source.kind==="lfo"&&source.sync!==undefined&&!LFO_DIVISIONS.includes(source.sync))errors.push("Invalid modulation tempo division.");
   if(source.kind==="keytrack"&&(!finite(source.root,MODULATION_CONTROLS.root.min,MODULATION_CONTROLS.root.max)||!finite(source.span,MODULATION_CONTROLS.span.min,MODULATION_CONTROLS.span.max)))errors.push("Invalid key tracking.");
   if(source.kind==="envelope"){
@@ -61,7 +76,7 @@ export function defaultSource(kind){
 }
 export function sourceValueAt(source,{elapsed,gate,velocity,pitch,unit=.125}){
  let value,signed=false;
- if(source.kind==="lfo"){value=modulationWave(source.shape,modulationRate(source,unit)*Math.max(0,elapsed));signed=true;}
+ if(source.kind==="lfo"){value=modulationWave(source.shape,modulationRate(source,unit)*Math.max(0,elapsed),source.seed??1);signed=true;}
  else if(source.kind==="velocity")value=velocity;
  else if(source.kind==="keytrack"){value=Math.max(-1,Math.min(1,(pitch-source.root)/source.span));signed=true;}
  else{

@@ -136,6 +136,7 @@ export function parameterCapability(id,context,read=()=>undefined){
 // Route envelopes reuse ordinary synth ADSR. Route-only controls live here too.
 export const MODULATION_CONTROLS=freeze({
  rate:{id:"modulation.lfo.rate",unit:"hz",min:.01,max:20,default:.5,step:.01,display:"hz"},
+ seed:{id:"modulation.lfo.seed",unit:"number",min:1,max:127,default:1,step:1,display:"number"},
  smoothing:{id:"modulation.smoothing",unit:"seconds",min:0,max:.1,default:.005,step:.001,display:"seconds"},
  root:{id:"modulation.keytrack.root",unit:"midi_note",min:0,max:127,default:60,step:1,display:"number"},
  span:{id:"modulation.keytrack.span",unit:"semitones",min:1,max:127,default:24,step:1,display:"number"}

@@ -1,5 +1,5 @@
 import {processorBypassed,withProcessorBypass} from "./src/dsp/processing-chain.js";
-import {LFO_SHAPES} from "./src/dsp/modulation.js";
+import {LFO_SHAPES,randomLfoShape} from "./src/dsp/modulation.js";
 import {soundAxis,readSoundParameter,soundParameterPath} from "./soundParameterAdapter.js";
 import {modulationTargetsFor,modulationSourcesFor,parameterFor} from "./src/dsp/parameters.js";
 import {captureSoundGraphView} from "./soundControlView.js";
@@ -756,6 +756,11 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
        {from:108,to:72,step:target?.unit==="cents"?1:.01})
      ],"movement smoothing / depth");
      tag(254,112,"smooth →");
+    }
+    if(source.kind==="lfo"&&randomLfoShape(source.shape)){
+     handle(35+282*((source.seed??1)-1)/126,25,[
+      axis([...prefix,"source","seed"],"linearX",{from:35,to:317,step:1})
+     ],"random sequence seed");
     }
     if(source.kind==="envelope"){
      if(route.depth!==0)tag(248,43,"6.25 s note");
