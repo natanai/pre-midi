@@ -1410,7 +1410,7 @@
     "schema_version": 1,
     "program_id": "pre-midi-sound-editing-feature-complete",
     "title": "Roadmap to feature-complete sound editing",
-    "updated_on": "2026-11-08",
+    "updated_on": "2026-11-07",
     "status": "in_progress",
     "audit_commit": "bf28bf53de08f5eb514f8e4f778df711edc7aa8c",
     "audit_scope": "Baseline source audit at audit_commit; subsequent changes and verification limits are recorded in implementation_updates.",
@@ -2354,6 +2354,17 @@
               "Stateless original-source-age sequence; authored Hz/divisions, polarity and smoothing retain existing semantics"
             ],
             "qualification": "Focused model, native rendering and offline Web Audio checks; physical Windows and browser gestures unobserved. Published preview.24 predates this source milestone."
+          },
+          {
+            "id": "M2d",
+            "title": "Editable rhythmic step movement",
+            "implementation_status": "complete",
+            "scope": [
+              "Four bipolar step values per repeating LFO cycle",
+              "Shared ordinary step controls and direct graph edits, Hz/tempo sync, smoothing and range/depth",
+              "Current project/preset persistence and browser/native source-age timing"
+            ],
+            "qualification": "Focused model, native PCM/source oracle and offline browser-audio checks; physical desktop interaction remains unobserved"
           }
         ],
         "completed_slices": [
@@ -2362,7 +2373,8 @@
           "Shared 32-point cutoff curves with native/browser execution and Freeform phase preservation",
           "Shared filter/distortion order and non-destructive stage bypass, with an explicit bypassable delay send",
           "Add/remove/restore the built-in serial processors, including empty chains, without erasing settings",
-          "Deterministic seeded sample-and-hold and interpolated random movement with tempo sync, common seed controls and seek-stable source-age evaluation"
+          "Deterministic seeded sample-and-hold and interpolated random movement with tempo sync, common seed controls and seek-stable source-age evaluation",
+          "Editable four-step LFO patterns with shared dials/graph handles, tempo sync, source-age seek and browser/native execution"
         ],
         "remaining": [
           "Remaining SE-05 destinations and SE-06 sources/macros/clock policies",
@@ -2638,7 +2650,7 @@
           "Source equations/phase fixtures and focused route/macro editing, save/load and undo scenarios."
         ],
         "completion_evidence": [],
-        "progress_note": "Shared sine/triangle/ramp/square LFOs now offer free Hz or tempo divisions from 1/16 note through four bars. Triggered voices resolve the current context tempo at onset without rewriting authored Hz/division settings. Vocal seek reconstruction retains original Clip age. Diagrams use the owning context tempo. Selectable free-run/phase policy, envelope follower/sidechain, seeded random, step sources and macros remain planned; SE-06 is not complete. Seeded sample-and-hold and smooth-random sources are implemented in the shared LFO route with seeds 1\u2013127, tempo divisions, smoothing, polarity and source-age seek semantics. Envelope follower/audio sidechains, editable step sequences, macros, phase and free-run clock policy remain open."
+        "progress_note": "Implemented common sine/triangle/ramp/square, seeded sample-hold/smooth-random and editable four-step LFO shapes, Hz or tempo divisions, range/depth and smoothing. The full four-step pattern repeats once per LFO cycle; steps are normalized source values before polarity/depth. All sources use original note/Clip age through seek. Shared numeric/dial and interactive graph edits retain project/preset state. Envelope followers/sidechains, macros, phase offset/free-run policy and larger variable-length sequences remain open; SE-06 is not complete."
       },
       {
         "id": "SE-07",
@@ -3392,6 +3404,36 @@
           "Full M2 completion",
           "Physical Windows or browser interaction acceptance",
           "Envelope follower, sidechain, macros, editable step sequences or free-running clock"
+        ]
+      },
+      {
+        "id": "M2D-STEP-MOVEMENT",
+        "date": "2026-11-07",
+        "status": "implemented",
+        "task_ids": [
+          "SE-06",
+          "SE-16"
+        ],
+        "summary": "Shared editable four-step modulation in synth, sampled Sound and vocal contexts",
+        "contract": {
+          "source": "LFO steps shape: four finite bipolar values in [-1,1], default [1,0,-1,0]. One full pattern per Hz cycle or authored tempo division; no invented note input on vocals",
+          "composition": "Existing polarity, depth, smoothing and destination clamping apply after step selection; values remain non-destructive to base patch parameters",
+          "clock": "Select floor(fract(original source age * effective Hz)*4). Native evaluates bounded stack/array data; browser schedules held ConstantSource offsets, at most 48001 knots per route for the 600-second host budget",
+          "codec": "Native route kind 9 reuses the four source envelope slots for the four steps, with source-specific bounds. No packet-layout change or compatibility layer",
+          "interface": "Four shared step dials and four vertical diagram handles; editing a default pattern materializes the entire default array, preserving untouched steps",
+          "persistence": "Current project/preset JSON retains exact source steps and route identity; no source asset changes"
+        },
+        "verification": {
+          "routine": "npm run check passed: edited syntax plus 44 smoke cases",
+          "model": "Three focused modulation cases passed including new custom/default steps, validation, source-age pattern cycles, current Beat round trip, processing transfer and default graph edit semantics",
+          "native": "Custom step values match JS oracle within 1e-7; sampled/vocal full processing PCM difference zero, audible difference 0.28547 from unmodulated rendering",
+          "web": "OfflineAudioContext 16 kHz custom step pattern maximum amplitude error 4.77e-8 at onset and resumed .37-second age, excluding ConstantSource startup sample; integer-frame roundoff no longer postpones a step boundary"
+        },
+        "windows_preview": "Preview.24 remains unchanged and predates this source update; no Windows build requested this turn",
+        "not_claimed": [
+          "Full M2/SE-06 completion",
+          "Physical Windows listening/microphone or browser interaction acceptance",
+          "Variable-length sequencer, envelope follower, sidechain or macros"
         ]
       }
     ],

@@ -14,7 +14,7 @@ const labelHelp=Object.freeze({
  "movement target":"choose which part of the sound moves",
  "movement range":"move in one direction or swing both ways",
  "movement timing":"keep this movement in time with the beat or set its speed in hertz",
- "movement shape":"choose a smooth sway an even ramp or an abrupt switch",
+ "movement shape":"choose a repeating wave random movement or an editable four-step pattern",
  "smoothing":"soften sudden movement changes and make fast changes gentler",
  "move attack":"how slowly the movement rises",
  "move decay":"how quickly the movement settles after rising",

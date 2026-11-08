@@ -1,3 +1,4 @@
+import {DEFAULT_LFO_STEPS} from "./src/dsp/modulation.js";
 import {parameterFor,parameterField,parameterCapability,MODULATION_CONTROLS} from "./src/dsp/parameters.js";
 // Context storage is outside the DSP authority. Temporary vocal display patches
 // and sampled Sounds retain their current shapes without changing source data.
@@ -23,7 +24,7 @@ export function soundParameter(patch,path){
  if(patch.type==="automation"&&path[0]==="points"&&path.at(-1)==="value")return parameterFor("filter.cutoff");
  if(path[0]==="zones"&&path.at(-1)==="root")return parameterFor("zones.root",patch.type);
  if(path[0]==="modulation"&&path[1]==="routes"){
-  const key=path.at(-1);
+  const key=path.includes("steps")?"step":path.at(-1);
   if(path.includes("envelope"))return parameterFor("envelope."+key);
   if(key==="depth"){
    const route=patch.modulation?.routes[path[2]],target=parameterFor(route?.target,patch.type)?.modulation;
@@ -41,6 +42,8 @@ export function soundAxis(patch,path,mode,geometry={}){
 }
 
 export function readSoundParameter(patch,id){
+ const step=/^modulation\.routes\.(\d+)\.source\.steps\.([0-3])$/.exec(id);
+ if(step)return patch.modulation?.routes[Number(step[1])]?.source.steps?.[Number(step[2])]??DEFAULT_LFO_STEPS[Number(step[2])];
  if(id==="filter")return patch.filter??null;
  id=soundParameterId(id,patch.type);
  const path=soundParameterPath(id,patch.type),value=path.reduce((owner,key)=>owner?.[key],patch);

@@ -45,7 +45,8 @@ public:
     }
    }else if(route.kind>=4){
     const double cycles=(time-start)*route.rate,position=cycles-std::floor(cycles);
-    if(route.kind>=7){
+    if(route.kind==9)value=static_cast<float>(route.envelope[std::min(3u,static_cast<unsigned>(position*4))]);
+    else if(route.kind>=7){
      const auto index=static_cast<uint32_t>(std::floor(cycles));
      const double a=randomValue(static_cast<uint32_t>(route.root),index);
      value=static_cast<float>(route.kind==7?a:a+(randomValue(static_cast<uint32_t>(route.root),index+1)-a)*position);

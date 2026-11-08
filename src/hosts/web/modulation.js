@@ -1,6 +1,6 @@
 import {parameterFor} from "../../dsp/parameters.js";
 import {prepareControlLfo,startControlLfo} from "./oscillator.js";
-import {validateModulation,smoothingAlpha,modulationStateBefore,modulationWave,randomLfoShape} from "../../dsp/modulation.js";
+import {validateModulation,smoothingAlpha,modulationStateBefore,modulationWave,randomLfoShape,DEFAULT_LFO_STEPS} from "../../dsp/modulation.js";
 import {planAmplitudeEnvelope} from "../../dsp/amplitude-envelope.js";
 import {windowEnvelope} from "../../dsp/envelope-window.js";
 import {scheduleAmplitudeEnvelope} from "../../../envelope.js";
@@ -16,19 +16,26 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
  for(const route of [...definition.routes].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
   let input,normal;
   if(route.source.kind==="lfo"){
-   if(randomLfoShape(route.source.shape)){
+   if(randomLfoShape(route.source.shape)||route.source.shape==="steps"){
+    const steps=route.source.shape==="steps",subdivision=steps?4:1;
     const rate=route.source.rate,cycles=elapsed*rate;
-    const count=Math.ceil((plan.graphEnd-plan.start)*rate)+1;
-    if(count>12001)throw Error("Random movement exceeds the 600-second scheduling budget");
+    const count=Math.ceil((plan.graphEnd-plan.start)*rate*subdivision)+1;
+    if(count>12000*subdivision+1)throw Error("Movement exceeds the 600-second scheduling budget");
+    const wave=cycle=>modulationWave(route.source.shape,cycle,route.source.seed??1,route.source.steps??DEFAULT_LFO_STEPS);
     const control=context.createConstantSource();owner.sources.push(control);
-    control.offset.setValueAtTime(modulationWave(route.source.shape,cycles,route.source.seed??1),plan.start);
-    const first=Math.floor(cycles)+1;
+    control.offset.setValueAtTime(wave(cycles),plan.start);
+    const first=Math.floor(cycles*subdivision)+1;
     for(let n=first;n<first+count;n++){
-     const time=plan.start+(n-cycles)/rate;
+     const cycle=n/subdivision,time=plan.start+(cycle-cycles)/rate;
      // Retain the first knot past note-off to interpolate the final interval.
-     if(route.source.shape==="smooth-random")control.offset.linearRampToValueAtTime(modulationWave(route.source.shape,n,route.source.seed??1),time);
-     // Hold changes start on the first sample at/after the source knot.
-     else if(time<plan.graphEnd)control.offset.setValueAtTime(modulationWave(route.source.shape,n,route.source.seed??1),Math.ceil(time*context.sampleRate)/context.sampleRate);
+     if(route.source.shape==="smooth-random")control.offset.linearRampToValueAtTime(wave(cycle),time);
+     // Holds change on the first sample at/after the source knot.
+     else if(time<plan.graphEnd){
+      const frame=time*context.sampleRate;
+      // Arithmetic around an integer frame must not postpone its knot.
+      const aligned=Math.ceil(frame-8*Number.EPSILON*Math.max(1,Math.abs(frame)));
+      control.offset.setValueAtTime(wave(cycle),aligned/context.sampleRate);
+     }
     }
     control.start(plan.start);control.stop(plan.graphEnd);input=control;
    }else if(route.source.shape!=="sine"){

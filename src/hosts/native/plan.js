@@ -2,7 +2,7 @@ import {effectiveDelayEffects,processingFlags} from "../../dsp/processing-chain.
 import {extendedSynthExecution} from '../../dsp/synth-voice.js';
 // Shared canonical plan encoder. Preparation only; never called on the audio thread.
 import {validateAutomationPlan} from "../../dsp/automation.js";
-import {validateModulation,MOD_TARGETS,MOD_SOURCES,nativeModulationSource} from "../../dsp/modulation.js";
+import {validateModulation,MOD_TARGETS,MOD_SOURCES,nativeModulationSource,DEFAULT_LFO_STEPS} from "../../dsp/modulation.js";
 import {validatePatch} from "../../../synth.js";
 export function encodeNativePlan(plan,sampleRate,frames){
  if(plan?.contract!=="pre-midi-synth-voice"||![1,2,3].includes(plan.version))throw Error("Native prototype supports synth voice contract v1/v2/v3 only");
@@ -28,7 +28,7 @@ export function encodeNativePlan(plan,sampleRate,frames){
  const routes=[...(plan.modulation?.routes??[])].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);u32(routes.length);
  const targets=MOD_TARGETS.map(target=>target.id);
  for(const route of routes){u32(targets.indexOf(route.target));u32(nativeModulationSource(route.source));u32(route.polarity==="bipolar"?1:0);
-  for(const value of [route.depth,route.smoothing,route.source.rate??.5,route.source.kind==="lfo"?(route.source.seed??1):(route.source.root??60),route.source.span??24,...["attack","decay","sustain","release"].map((key,index)=>route.source.envelope?.[key]??[.8,.5,.5,.5][index])])f64(value);}
+  for(const value of [route.depth,route.smoothing,route.source.rate??.5,route.source.kind==="lfo"?(route.source.seed??1):(route.source.root??60),route.source.span??24,...(route.source.shape==="steps"?(route.source.steps??DEFAULT_LFO_STEPS):["attack","decay","sustain","release"].map((key,index)=>route.source.envelope?.[key]??[.8,.5,.5,.5][index]))])f64(value);}
  const points=plan.automation?.points??[];u32(points.length);for(const point of points){f64(point.time);f64(Math.fround(point.value));}
  u32(plan.amplitude.events.length);for(const event of plan.amplitude.events){if(!["set","linear"].includes(event.kind))throw Error("Unknown envelope event");u32(event.kind==="set"?0:1);f64(event.time);f64(Math.fround(event.value));}
  u32(processingFlags(p));

@@ -1,6 +1,6 @@
 import {processorBypassed} from "./src/dsp/processing-chain.js";
 import {modulationTargetsFor,modulationSourcesFor,MODULATION_CONTROLS,parameterField} from "./src/dsp/parameters.js";
-import {MOD_TARGETS,MOD_SOURCES,defaultSource,LFO_SHAPES,LFO_DIVISIONS,randomLfoShape} from "./src/dsp/modulation.js";
+import {MOD_TARGETS,MOD_SOURCES,defaultSource,LFO_SHAPES,LFO_DIVISIONS,randomLfoShape,DEFAULT_LFO_STEPS} from "./src/dsp/modulation.js";
 import {createDial,explainLabel} from "./dial.js";
 const openBySound=new Map();
 export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=>{}){
@@ -35,6 +35,15 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
    const seed=createDial({label:"Random seed",help:"choose a repeatable movement sequence",...MODULATION_CONTROLS.seed},route.source.seed??1,
     value=>update(index,{source:{...route.source,seed:value}}),value=>preview(index,{source:{...route.source,seed:value}}));
    seed.dataset.soundPath="modulation.routes."+index+".source.seed";row.append(seed);
+  }
+  if(route.source.kind==="lfo"&&route.source.shape==="steps"){
+   for(let step=0;step<4;step++){
+    const values=route.source.steps??DEFAULT_LFO_STEPS;
+    const replace=value=>values.map((old,i)=>i===step?value:old);
+    const dial=createDial({label:"Movement step "+(step+1),help:"the movement level during this part of the repeating pattern",...MODULATION_CONTROLS.step},values[step],
+     value=>update(index,{source:{...route.source,steps:replace(value)}}),value=>preview(index,{source:{...route.source,steps:replace(value)}}));
+    dial.dataset.soundPath="modulation.routes."+index+".source.steps."+step;row.append(dial);
+   }
   }
   const smoothing=createDial({label:"Smoothing",...MODULATION_CONTROLS.smoothing},
    route.smoothing,value=>update(index,{smoothing:value}),value=>preview(index,{smoothing:value}));

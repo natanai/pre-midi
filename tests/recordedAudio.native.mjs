@@ -20,8 +20,8 @@ const patch={type:'sample',presetId:'custom',zones:[{assetId:'voice',root:60}],f
 const sample=planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets);
 const vocal=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects:fx}},0,.125,assets);
 const render=plan=>{const data=encodeNativeSession([plan],rate,[{rate,frames,channels:1,pcm}]);const r=spawnSync(binary,[String(rate),'2','0','0',String(rate*2),'128','0'],{input:data,maxBuffer:4e6});if(r.status)throw Error(r.stderr.toString());return new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset,r.stdout.byteOffset+r.stdout.byteLength));};
-for(const shape of ['sine','triangle','ramp','square','sample-hold','smooth-random']){
- const changed=structuredClone(vocal);changed.modulation={version:1,routes:[{id:'level',source:{kind:'lfo',shape,rate:2,seed:17},target:'amplitude',unit:'linear_gain',depth:.5,polarity:'bipolar',smoothing:.005},{id:'q',source:{kind:'lfo',shape,rate:3,seed:127},target:'filter.resonance',unit:'filter_resonance',depth:2,polarity:'unipolar',smoothing:.005}]};
+for(const shape of ['sine','triangle','ramp','square','sample-hold','smooth-random','steps']){
+ const changed=structuredClone(vocal);changed.modulation={version:1,routes:[{id:'level',source:{kind:'lfo',shape,rate:2,seed:17,...(shape==='steps'?{steps:[.8,-.2,-.6,.1]}:{})},target:'amplitude',unit:'linear_gain',depth:.5,polarity:'bipolar',smoothing:.005},{id:'q',source:{kind:'lfo',shape,rate:3,seed:127},target:'filter.resonance',unit:'filter_resonance',depth:2,polarity:'unipolar',smoothing:.005}]};
  const sound={...sample,modulation:changed.modulation},a=render(sound),b=render(changed);
  let difference=0;for(let i=0;i<a.length;i++)difference=Math.max(difference,Math.abs(a[i]-b[i]));
  if(difference>1e-5)throw Error('Shared modulation parity failed '+shape);
