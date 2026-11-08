@@ -1,6 +1,6 @@
 import {processorBypassed,withProcessorBypass} from "./src/dsp/processing-chain.js";
 import {LFO_SHAPES} from "./src/dsp/modulation.js";
-import {soundAxis,readSoundParameter} from "./soundParameterAdapter.js";
+import {soundAxis,readSoundParameter,soundParameterPath} from "./soundParameterAdapter.js";
 import {modulationTargetsFor,modulationSourcesFor,parameterFor} from "./src/dsp/parameters.js";
 import {captureSoundGraphView} from "./soundControlView.js";
 // Reusable illustrations for the existing sound controls. These are teaching
@@ -615,7 +615,11 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
   if(m.depth===0)dormant("movement.rate","vibrato depth is zero; the dashed curve is a rate reference");
   tag(20,80,m.depth>0?"vibrato":"vibrato off · guide");tag(338,110,"4.5 s");
  }else if(type==="delay"){
-  const e=p.effects,mix=e.delayMix||0,feedback=e.delayFeedback||0;
+  const delayPath=key=>soundParameterPath("effects."+key,p.type);
+  const delayLink=key=>delayPath(key).join(".");
+  const e=Object.fromEntries(["delayMix","delayTime","delayFeedback"].map(key=>
+   [key,readSoundParameter(p,"effects."+key)]));
+  const mix=e.delayMix,feedback=e.delayFeedback;
   const space=24+clamp((e.delayTime-.05)/.95)*66,origin=52;
   line("M16 100 H348",true);
   // A unit impulse exposes the host's real dry attenuation and three wet
@@ -628,8 +632,8 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
    const x=origin+space*(tap.time/e.delayTime);
    line("M"+x.toFixed(2)+" 100 V"+(100-72*tap.level).toFixed(2),
     tap.index>0,tap.index?
-     ["effects.delayTime","effects.delayMix","effects.delayFeedback"]:
-     ["effects.delayMix"],"signal");
+     [delayLink("delayTime"),delayLink("delayMix"),delayLink("delayFeedback")]:
+     [delayLink("delayMix")],"signal");
    if(tap.index>0&&tap.level>0)
     tag(x+4,Math.max(18,94-72*tap.level),String(tap.index));
   }
@@ -637,26 +641,26 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
    for(const tap of modeledDelayTaps({...e,delayMix:.5}).slice(1)){
     const x=origin+space*(tap.time/e.delayTime);
     line("M"+x.toFixed(2)+" 100 V"+(100-72*tap.level).toFixed(2),true,
-     ["effects.delayTime","effects.delayFeedback"],"reference");
+     [delayLink("delayTime"),delayLink("delayFeedback")],"reference");
    }
    tag(172,15,"wet off · guide");
-   dormant("effects.delayTime","delay mix is zero; dashed returns isolate echo spacing");
-   dormant("effects.delayFeedback","delay mix is zero; dashed returns isolate feedback");
+   dormant(delayLink("delayTime"),"delay mix is zero; dashed returns isolate echo spacing");
+   dormant(delayLink("delayFeedback"),"delay mix is zero; dashed returns isolate feedback");
   }
   handle(origin+space,100-72*mix,[
-   axis(["effects","delayTime"],"linearX",
+   axis(delayPath("delayTime"),"linearX",
     {from:origin+24,to:origin+90,step:.01,unit:"s"}),
-   axis(["effects","delayMix"],"linearY",{from:100,to:28,unit:"percent"})
+   axis(delayPath("delayMix"),"linearY",{from:100,to:28,unit:"percent"})
   ],"delay time / mix");
   // Feedback is independently editable even with the wet mix at zero.
   // A faint guide communicates potential repeat persistence without falsely
   // depicting an audible echo until delay mix is raised.
   const feedbackX=origin+2*space,feedbackY=100-64*feedback/.8;
   line("M"+feedbackX.toFixed(2)+" 100 V"+feedbackY.toFixed(2),
-   true,["effects.delayFeedback"]);
+   true,[delayLink("delayFeedback")]);
   handle(feedbackX,feedbackY,[
-   axis(["effects","delayTime"],"linearX",{from:origin+48,to:origin+180,unit:"s"}),
-   axis(["effects","delayFeedback"],"linearY",
+   axis(delayPath("delayTime"),"linearX",{from:origin+48,to:origin+180,unit:"s"}),
+   axis(delayPath("delayFeedback"),"linearY",
     {from:100,to:36,step:.01,unit:"percent"})
   ],"echo spacing / feedback");
   tag(250,107,"feedback");

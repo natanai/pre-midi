@@ -68,3 +68,27 @@ test("invalid illustrative values cannot silently create plausible fake audio",(
   effects(.5,.2,Number.NaN)
  ])assert.throws(()=>modeledDelayTaps(invalid),RangeError);
 });
+
+
+test("sampled rack delay diagrams use default values and the sample edit paths",async()=>{
+ const {DRUM_RACKS}=await import("../drumRacks.js");
+ const {assignSoundEdit}=await import("../soundEditPath.js");
+ for(const rack of DRUM_RACKS)for(const sound of rack.sounds){
+  if(sound.patch.type!=="sample")continue;
+  const patch=structuredClone(sound.patch),picture=diagram(patch,"delay");
+  assert.ok(picture.paths.every(path=>!/[Nn]aN|undefined/.test(path.d)),sound.name);
+  assert.deepEqual([...new Set(picture.handles.flatMap(point=>point.axes.map(axis=>axis.path.join("."))))].sort(),
+   ["delayFeedback","delayMix","delayTime"]);
+  const axis=picture.handles[0].axes.find(axis=>axis.path.join(".")==="delayMix");
+  assignSoundEdit(patch,axis.path,.6);
+  assert.equal(patch.delayMix,.6);
+  assert.equal(patch.effects,undefined,"sample diagram edits must retain the canonical sample shape");
+  assert.ok(diagram(patch,"delay").labels.some(label=>label.value==="1"));
+ }
+});
+test("vocal delay diagrams retain nested effects edits",()=>{
+ const patch={type:"vocal",effects:effects(.5,.2,.5)};
+ const picture=diagram(patch,"delay");
+ assert.deepEqual([...new Set(picture.handles.flatMap(point=>point.axes.map(axis=>axis.path.join("."))))].sort(),
+  ["effects.delayFeedback","effects.delayMix","effects.delayTime"]);
+});

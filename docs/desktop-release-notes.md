@@ -1,8 +1,10 @@
-# pre-midi 0.14.1-preview.23 — Windows portable preview
+# pre-midi 0.14.1-preview.24 — Windows portable preview
 
 Windows 11 x64, portable ZIP, manual installation. No installer or registry changes are required. This preview is intended for testing on your PC, rather than a claim of production audio stability.
 
 ## Included changes
+
+- Fixed sampled rack selection and Beat chunk placement: the shared delay illustration now reads sampled Sound defaults and uses their actual edit paths. This includes Night Drive Kit.
 
 - One physical Sound Inspector and shared desktop workspace for Beat, Freeform and Song vocals, with shared history/Sound buttons and processing controls.
 - Vocal start trimming updates the Song clip region; original recordings remain external and unchanged. Shared processing presets, vocal reuse, effectful seek continuations and live vocal edits retain their settings.

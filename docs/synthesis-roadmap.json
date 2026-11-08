@@ -3301,12 +3301,12 @@
       {
         "id": "SERIAL-LIFECYCLE-PREVIEW23",
         "date": "2026-11-08",
-        "status": "implemented_pending_windows_build",
+        "status": "implemented",
         "task_ids": [
           "SE-08",
           "SE-18"
         ],
-        "summary": "Finish the built-in serial processor lifecycle and request a matching portable Windows preview.",
+        "summary": "Finish the built-in serial processor lifecycle and publish the matching Windows portable preview.",
         "contract": "A chain contains zero, one or both stable filter/drive IDs. Removing a stage excludes it from audio while retaining its parameter and bypass settings; re-adding restores those values. Explicit enable can reinsert the stage atomically. Delay remains a separate send.",
         "verification": {
           "routine": "npm run check passed: edited syntax plus 44 smoke cases",
@@ -3316,6 +3316,31 @@
         },
         "windows_preview": {
           "version": "0.14.1-preview.23",
+          "status": "published",
+          "optional_full_audio_qualification": false,
+          "source_commit": "59fdb48ba0bb62f64b14821c1b77ae0a6933d863",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42441469336",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.23/pre-midi-0.14.1-preview.23-windows-x86_64-portable.zip"
+        },
+        "not_claimed": [
+          "Full M2 completion",
+          "Physical Windows listening/microphone qualification"
+        ]
+      },
+      {
+        "id": "RACK-CHUNKS-PREVIEW24",
+        "date": "2026-11-08",
+        "status": "implemented_pending_windows_build",
+        "summary": "Fix sampled Sound delay illustration crashing rack selection before the Beat chunk picker opens",
+        "cause": "The common delay illustration dereferenced synth/vocal effects on sampled Sounds, whose canonical delay parameters are top-level and may use defaults",
+        "contract": "Read delay values/defaults and edit/link paths through the shared parameter adapter. Preserve nested synth/vocal effects and flat sampled Sound fields. No duplicate Inspector or data migration",
+        "verification": {
+          "focused": "Six delay-model/diagram cases, covering every sampled factory rack row, canonical edit paths and nested vocal effects",
+          "dom_integration": "Night Drive Kit: existing/new chunk placement, hit editing, undo/redo and selection of all 10 rows without uncaught errors in DOM integration; no physical browser/hardware acceptance claimed",
+          "routine": "npm run check"
+        },
+        "windows_preview": {
+          "version": "0.14.1-preview.24",
           "status": "build_requested",
           "optional_full_audio_qualification": false
         },
@@ -3381,21 +3406,20 @@
           "url": "https://github.com/natanai/pre-midi/actions/runs/42425325275"
         },
         "windows_package": {
-          "version": "0.14.1-preview.22",
+          "version": "0.14.1-preview.23",
           "status": "published",
           "scope": "Windows x64 portable ZIP including current vocal parity; no optional full audio qualification requested",
-          "prior_build": "Preview 21 compiled successfully; Rust codec fixture still used sample packet 8. Updated fixture to current packet 13 including source bounds, movement/delay/sweep and routing/automation trailer before rebuilding.",
-          "source_commit": "4e791a965d4d14518188e4f4d3d197c216ea14a4",
-          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42436058613",
-          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.22/pre-midi-0.14.1-preview.22-windows-x86_64-portable.zip",
-          "bytes": 16198617,
-          "sha256": "a30dec5d4d6fb51bbdd4142ac8593733a57ac345b21bc7ff573a8c34090c308e",
+          "source_commit": "59fdb48ba0bb62f64b14821c1b77ae0a6933d863",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42441469336",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.23/pre-midi-0.14.1-preview.23-windows-x86_64-portable.zip",
+          "bytes": 16202715,
+          "sha256": "55586dd549dff1feaec4f237d16a751cd2a77949c4e0fb3d6c3d19e81d2322bf",
           "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection, portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
           "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files",
           "pending_build": {
-            "version": "0.14.1-preview.23",
+            "version": "0.14.1-preview.24",
             "status": "build_requested",
-            "includes": "All shared Inspector/vocal parity and M2 movement, tempo sync, multipoint cutoff and serial processor lifecycle changes"
+            "includes": "Preview 23 milestone plus sampled rack chunk-picker / delay diagram crash fix"
           }
         }
       },
