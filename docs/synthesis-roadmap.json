@@ -3593,11 +3593,19 @@
           "native": "Current C++ renderer passes eighth EQ stage, stereo/mono image endpoints, exact sampled/vocal processing parity, trim source bounds and existing modulation/chain cases",
           "web_audio": "Offline rendering passes eighth EQ stage, mono/stereo matrix endpoints, isolated bus recipes and impulse echo parity. Native/Web maximum difference <=2.504e-6 across plain/ping-pong and 20000/400 Hz feedback tone cases at 24 kHz; first echo unchanged, later echoes alternate/darken",
           "dom_integration": "Vocal focused control/module/scroll and trim retained; width edits, ping-pong/EQ undo and combined illustration follow pass. Existing locked-row/intentional-own-lane Song drag passes. These are DOM checks, not observed browser visual acceptance.",
-          "windows": "Pending requested Windows build and portable checks"
+          "windows": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection and portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped"
         },
         "windows_preview": {
           "version": "0.14.1-preview.27",
-          "status": "build_requested",
+          "status": "published",
+          "scope": "Windows x64 portable: stereo delay/tone, width/mid-side, expandable eight-band EQ and closed attached freeform pull-tabs",
+          "source_commit": "a431b5dab69a7e4056a7f9d5568b1a91bb3534af",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42459693879",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.27/pre-midi-0.14.1-preview.27-windows-x86_64-portable.zip",
+          "bytes": 16226205,
+          "sha256": "d7bc36047ede069abd52facc66034647000c3e9f24dd3b33d80d9043b624490d",
+          "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection and portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
+          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files",
           "optional_full_audio_qualification": false
         },
         "not_claimed": [
@@ -3664,15 +3672,15 @@
           "url": "https://github.com/natanai/pre-midi/actions/runs/42425325275"
         },
         "windows_package": {
-          "version": "0.14.1-preview.26",
+          "version": "0.14.1-preview.27",
           "status": "published",
-          "scope": "Windows x64 portable: vocal end trim, retained Inspector position, shared EQ/filter slopes and deliberate row-locked Song editing",
-          "source_commit": "dd79e0f3699e2fe1bb64013f9ace68119d1a2905",
-          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42449369386",
-          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.26/pre-midi-0.14.1-preview.26-windows-x86_64-portable.zip",
-          "bytes": 16219280,
-          "sha256": "48f9b5feb20df59874d9d43241a536aa6f794eeb42b41704e451ecc4c3e30df4",
-          "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection, portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
+          "scope": "Windows x64 portable: stereo delay/tone, width/mid-side, expandable eight-band EQ and closed attached freeform pull-tabs",
+          "source_commit": "a431b5dab69a7e4056a7f9d5568b1a91bb3534af",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42459693879",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.27/pre-midi-0.14.1-preview.27-windows-x86_64-portable.zip",
+          "bytes": 16226205,
+          "sha256": "d7bc36047ede069abd52facc66034647000c3e9f24dd3b33d80d9043b624490d",
+          "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection and portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
           "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files"
         }
       },
