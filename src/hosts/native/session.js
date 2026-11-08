@@ -58,15 +58,31 @@ export function nativeRequiredAssets(events){
  }
  return ids;
 }
-export async function prepareNativeAssets(ids,info){
+export async function prepareNativeAssets(ids,info,{isCurrent=()=>true}={}){
+ const check=()=>{if(!isCurrent())throw Error('Native playback request cancelled');};
  const generation=info.generation+':'+info.sampleRate;if(assetGeneration!==generation){assetCache.clear();assetGeneration=generation;}
  const result=new Map();for(const id of ids){
+  check();
   const bytes=getAsset(id);if(!bytes)throw Error('Missing audio asset '+id+'. Open the music ZIP containing its audio.');
   const digest=await crypto.subtle.digest('SHA-256',bytes),key=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+  check();
   if(!assetCache.has(key))assetCache.set(key,nativeRequest({action:'asset',data:Array.from(bytes),rate:info.sampleRate}).then(asset=>({...asset,duration:asset.frames/asset.rate})).catch(error=>{assetCache.delete(key);throw error;}));
   result.set(id,await assetCache.get(key));
+  check();
  }
  return result;
+}
+// Yield between bounded note-plan batches so Stop can cancel a long Song
+// without monopolizing the WebView2 UI thread until all notes are prepared.
+async function preparePlaybackPlans(events,assets,unit,isCurrent){
+ const plans=[];
+ for(let i=0;i<events.length;i+=96){
+  if(!isCurrent())throw Error('Native playback request cancelled');
+  plans.push(...nativePlans(events.slice(i,i+96),assets,unit));
+  if(i+96<events.length)await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ if(!isCurrent())throw Error('Native playback request cancelled');
+ return plans;
 }
 export async function ensureNativeOutput(){
  let status=await nativeRequest({action:'status'});
@@ -104,8 +120,13 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
  let cycle=steps*unit;
  if(!steps)throw Error('Add a Beat clip before playing this Song');
  if(!Number.isFinite(cycle)||cycle>600)throw Error('Native preview supports music up to 10 minutes');
- const info=await ensureNativeOutput(),assets=await prepareNativeAssets(ids,info),plans=nativePlans(events,assets,unit);let data=Array.from(encodeNativeSession(plans,info.sampleRate));
- if(epoch!==transportEpoch)throw Error('Native playback request cancelled');
+ const isCurrent=()=>epoch===transportEpoch;
+ const info=await ensureNativeOutput();
+ if(!isCurrent())throw Error('Native playback request cancelled');
+ const assets=await prepareNativeAssets(ids,info,{isCurrent});
+ const plans=await preparePlaybackPlans(events,assets,unit,isCurrent);
+ let data=Array.from(encodeNativeSession(plans,info.sampleRate));
+ if(!isCurrent())throw Error('Native playback request cancelled');
  let {owner}=await nativeRequest({action:'begin'});
  if(epoch!==transportEpoch)throw Error('Native playback request cancelled');
  const loops=()=>typeof loop==='function'?loop():loop;
