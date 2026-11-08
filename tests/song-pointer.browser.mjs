@@ -106,11 +106,11 @@ export async function runSongPointerChecks({origin,chrome}){
    assert.equal(await songBar(),expected,"Scrub geometry includes horizontal scrolling");
    await client.send("Input.dispatchMouseEvent",{type:"mouseWheel",x:scroll.cx,y:ruler.cy,deltaX:-2000,deltaY:0});
    await until(()=>value("d.querySelector('#song-scroll').scrollLeft===0"),"restore scroll");
-   // Hold is discoverable without a popup, vertical reflow or an edit.
+   // A stationary hold stays quiet; only a downward pull reveals conversion.
    let box=await rect(clip),lane=await rect(own);
    await mouse("mousePressed",box.x+30,box.cy);await pause(230);
-   assert.equal(await value("d.querySelector("+JSON.stringify(clip)+").classList.contains('pointer-held')"),true);
-   assert.equal(await value("d.querySelector("+JSON.stringify(own)+").classList.contains('drop-available')"),true);
+   assert.equal(await value("d.querySelector("+JSON.stringify(clip)+").classList.contains('pointer-held')"),false);
+   assert.equal(await value("d.querySelector("+JSON.stringify(own)+").classList.contains('drop-available')"),false);
    assert.equal((await rect(own)).height,lane.height,"Hold never expands the dormant drop tab");
    assert.equal(await noHint(),true,"A hold alone never shows the drop popup");
    await mouse("mouseReleased",box.x+30,box.cy);
@@ -141,7 +141,7 @@ export async function runSongPointerChecks({origin,chrome}){
    // A foreign attached lane is never a valid conversion destination.
    box=await rect(clip);const foreign=await rect(other);
    await mouse("mousePressed",box.x+30,box.cy);await mouse("mouseMoved",box.x+30,foreign.cy);
-   assert.match(await value("d.querySelector('.song-drop-hint').textContent"),/attached freeform lane/);
+   assert.equal(await noHint(),true,"Foreign lanes remain unacknowledged");
    await mouse("mouseReleased",box.x+30,foreign.cy);
    assert.equal(source(await read()).clips[0].startStep,32,"Wrong-lane drop cancels cleanly");
    // Move + unpack is one transaction and agrees with its pre-release ghost.

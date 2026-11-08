@@ -1678,7 +1678,6 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 
 /* A held Beat advertises its own attached lane without interrupting lateral moves. */
 .song-beat-clip.pointer-held{outline:1px solid var(--bright);outline-offset:-2px}
-.song-beat-clip.pointer-held::after{content:"↓";position:absolute;right:16px;bottom:0;font-size:11px;color:var(--bright)}
 .song-beat-clip.pointer-dragging{z-index:20;pointer-events:none;cursor:grabbing;box-shadow:0 2px 0 #000}
 .song-beat-clip.dropping-freeform{opacity:.35}
 .song-drop-hint{position:fixed;z-index:250;pointer-events:none;padding:6px 8px;
@@ -1746,3 +1745,6 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 .vocal-icon-button[hidden]{display:none}
 
 .audio-waveform-plot:has(.audio-trim-handle:focus-visible){outline:1px dotted var(--bright);outline-offset:2px}
+
+/* Moving a Beat has one visible axis even when the pointer leaves its row. */
+html.song-horizontal-drag,html.song-horizontal-drag *{cursor:ew-resize!important}

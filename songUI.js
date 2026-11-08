@@ -224,36 +224,35 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const hint=document.createElement("div");hint.className="song-drop-hint";
   hint.setAttribute("role","status");hint.setAttribute("aria-live","polite");hint.hidden=true;
   document.body.append(hint);
-  let rejected=null,point=null,steps=0,frame=null;
-  const gate=attachedLanePull(),result={freeform:false,invalid:false};
+  let point=null,steps=0,frame=null;
+  const gate=attachedLanePull(),result={freeform:false};
   const meter=document.createElement('span');meter.className='song-pull-progress';meter.hidden=true;meter.setAttribute('role','progressbar');meter.setAttribute('aria-label','pull into attached freeform');meter.setAttribute('aria-valuemin','0');meter.setAttribute('aria-valuemax','100');meter.append(document.createElement('i'));block.append(meter);
-  const hold=()=>{block.classList.add('pointer-held');row?.classList.add('drop-available');};
   function paint(){
    if(!point)return;
    block.classList.toggle('pointer-dragging',point.moved);
+   if(point.moved)document.documentElement.classList.add('song-horizontal-drag');
    // Horizontal editing never lifts a Beat out of its source row.
    const under=document.elementFromPoint(point.clientX,point.clientY),target=point.moved?under?.closest('.song-freeform-row'):null;
    const own=!!target&&target.dataset.parentTrackId===track.id;
    const pull=gate.update({inOwnLane:own,dy:point.dy},performance.now());
-   rejected?.classList.remove('drop-rejected');rejected=target&&!own?target:null;rejected?.classList.add('drop-rejected');
-   result.freeform=pull.ready;result.invalid=!!rejected;
-   const pulling=own&&point.dy>=14;if(pulling)hold();
+   result.freeform=pull.ready;
+   const pulling=own&&point.dy>=14;block.classList.toggle('pointer-held',pulling);row?.classList.toggle('drop-available',pulling);
    meter.hidden=!pulling;meter.style.setProperty('--pull',String(pull.progress));meter.setAttribute('aria-valuenow',String(Math.round(pull.progress*100)));
    row?.classList.toggle('drop-active',pull.ready);block.classList.toggle('dropping-freeform',pull.ready);
    ghost.hidden=!pull.ready;
    if(pull.ready){ghost.style.left=steps/BAR_STEPS*BAR_PX+'px';ghost.dataset.startStep=String(steps);}
-   hint.hidden=!target;
-   if(target){
-    const text=pull.ready?'release to make freeform · bar '+(steps/BAR_STEPS+1):own?'keep pulling down to make freeform':"only this beat's attached freeform lane";
+   hint.hidden=!(own&&pulling);
+   if(own&&pulling){
+    const text=pull.ready?'release to make freeform · bar '+(steps/BAR_STEPS+1):'keep pulling down to make freeform';
     if(hint.textContent!==text)hint.textContent=text;
     const box=hint.getBoundingClientRect();hint.style.left=Math.max(8,Math.min(point.clientX+12,window.innerWidth-box.width-8))+'px';hint.style.top=Math.max(8,Math.min(point.clientY+14,window.innerHeight-box.height-8))+'px';
    }
    if(pulling&&!pull.ready&&frame===null)frame=requestAnimationFrame(()=>{frame=null;paint();});
   }
   function move(next,nextSteps){point=next;steps=nextSteps;paint();return result;}
-  return {hold,move,clear(){
+  return {move,clear(){
    row?.classList.remove("drop-available","drop-active");
-   rejected?.classList.remove("drop-rejected");
+   document.documentElement.classList.remove('song-horizontal-drag');
    block.classList.remove("pointer-held","pointer-dragging","dropping-freeform");
    if(frame!==null)cancelAnimationFrame(frame);gate.reset();meter.remove();ghost.remove();hint.remove();
   }};
@@ -312,7 +311,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
     }
    };
    activePointerCancel=trackTimelinePointer(block,event,{
-    onHold:feedback?.hold,onMove:preview,
+    onMove:preview,
     onEnd:()=>{activePointerCancel=null;},
     onFinish:({cancelled,moved})=>{
      feedback?.clear();

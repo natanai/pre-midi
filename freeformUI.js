@@ -931,7 +931,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
   const row=el("div","song-freeform-row");
   row.dataset.parentTrackId=track.id;row.setAttribute("aria-label","attached freeform for "+track.name);
   const label=el("div","song-freeform-label");
-  const tab=action("↳ freeform",()=>open(track.id),"song-freeform-toggle");
+  const tab=action("freeform",()=>open(track.id),"song-freeform-toggle");
   tab.setAttribute("aria-label","open attached freeform editor for "+track.name);
   tab.title="open this track’s attached freeform; pull its Beat Clip down and hold here to convert";
   label.append(tab);
