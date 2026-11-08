@@ -121,6 +121,9 @@ export function parameterCapability(id,context,read=()=>undefined){
  const p=parameterFor(id,context);
  if(!p)return {state:"unsupported",supported:false,reason:"this source does not implement "+id};
  const value=key=>read(key)??parameterFor(key,context)?.default;
+ const bypass=read("chain.bypass")??[];
+ const stage=id.startsWith("filter.")||["movement.tone","movement.toneRate"].includes(id)?"filter":id==="effects.drive"?"drive":id.startsWith("effects.delay")?"delay":null;
+ if(stage&&bypass.includes(stage))return {state:"inactive",supported:true,reason:stage+" is bypassed"};
  const filterOff=context!=="synth"&&read("filter")===null;
  if(filterOff&&(id.startsWith("filter.")||["movement.tone","movement.toneRate"].includes(id)))
   return {state:"inactive",supported:true,reason:"the filter is off"};

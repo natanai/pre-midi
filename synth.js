@@ -1,3 +1,4 @@
+import {validateProcessingChain} from "./src/dsp/processing-chain.js";
 import {parameterFor,parameterDefaults,validParameterValue,validateParameterBlock} from "./src/dsp/parameters.js";
 import {validateModulation} from "./src/dsp/modulation.js";
 import { validateSamplerPatch } from "./sampler.js";
@@ -118,7 +119,8 @@ export function validatePatch(patch) {
   errors.push("Invalid vibrato.");
  errors.push(...validateMovement(patch.movement),...validateBend(patch.bend));
  errors.push(...validateParameterBlock(patch.effects,"effects"));
- const allowed=new Set(["type","presetId","version","oscillators","noise","noiseDecay","pan","filter","envelope","movement","effects","bend","modulation"]);
+ errors.push(...validateProcessingChain(patch.chain));
+ const allowed=new Set(["chain","type","presetId","version","oscillators","noise","noiseDecay","pan","filter","envelope","movement","effects","bend","modulation"]);
  for(const key of Object.keys(patch))if(!allowed.has(key))errors.push("Unsupported sound parameter: "+key+".");
  return errors;
 }

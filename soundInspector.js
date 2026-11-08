@@ -1,5 +1,6 @@
+import {renderProcessingChain} from "./processingChainUI.js";
 import {setSoundIllustrationTempo} from "./soundIllustrations.js";
-import {soundField} from "./soundParameterAdapter.js";
+import {soundField,soundCapability} from "./soundParameterAdapter.js";
 import {mountSoundPanelView} from "./soundPanelView.js";
 import {renderCutoffAutomation} from "./automationUI.js";
 // One canonical Sound Inspector renderer for both the Beat and the attached
@@ -176,7 +177,8 @@ export function renderSoundInspectorCore({
   const filterType=recorded?sampleTone(patch).filter.type:patch.filter.type;
   const help=index===0?(filterType==="lowpass"?
    "turn it down to muffle the high stuff":"move the filter to reshape the sound"):undefined;
-  root.append(createDial({...field,help},current,
+  const capability=soundCapability(patch,field.path);
+  root.append(createDial({...field,help,inactiveReason:capability.state==="inactive"?capability.reason:undefined},current,
    value=>update(value,onPatchChange),value=>update(value,preview)));
  });
  if(vocal)renderRecordedAudioEditor(modulesRoot,patch,onPatchChange,{onPreview:preview,soundId:sound.id,deferView:true,bpm:context.bpm??120});
@@ -189,6 +191,7 @@ export function renderSoundInspectorCore({
  }
  if(recorded)renderCutoffAutomation(modulesRoot,{id:sound.id,layout:"pitched",sounds:[sound],automation:patch.automation},
   {bars:context.bars??Math.max(1,Math.ceil((context.vocal?.clip.lengthSteps??16)/16))},block=>onPatchChange(["automation"],block??undefined));
+ modulesRoot.prepend(renderProcessingChain(patch,onPatchChange,sound.id));
  const paths=["filter.cutoff",recorded?"attack":"envelope.attack",
   recorded?"release":"envelope.release"];
  primaryRoots.forEach((root,index)=>{

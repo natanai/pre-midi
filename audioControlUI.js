@@ -1,3 +1,4 @@
+import {processorBypassed,withProcessorBypass} from "./src/dsp/processing-chain.js";
 import {soundField,soundParameter,soundCapability} from "./soundParameterAdapter.js";
 // Shared sampled-audio controls for Beat Sounds and Song vocal Clips.
 // Parameters have one definition; source-specific options are explicit.
@@ -55,8 +56,11 @@ export function renderAudioToneControls(root,patch,onChange,onPreview=()=>{},
   const option=document.createElement("option");option.value=type;option.textContent=type;select.append(option);
  }
  select.value=off?"off":tone.filter.type;
- select.addEventListener("change",()=>onChange(["filter"],
-  select.value==="off"?null:{...tone.filter,type:select.value}));
+ select.addEventListener("change",()=>{
+  const chain=withProcessorBypass(patch,"filter",select.value==="off");
+  if(select.value==="off")onChange(["chain"],chain);
+  else onChange([["chain"],["filter"]],[chain,{...tone.filter,type:select.value}]);
+ });
  label.dataset.soundPath="filter.type";root.append(label);
  if(!off){
   if(showCutoff)slider(root,config("filter.cutoff","Brightness"),tone.filter.cutoff,
@@ -73,7 +77,7 @@ export function renderAudioToneControls(root,patch,onChange,onPreview=()=>{},
     {inactiveReason:capability.state==="inactive"?capability.reason:undefined});
   }
  }
- slider(root,config("effects.drive","Distortion"),tone.drive,["drive"],onChange,onPreview);
+ slider(root,config("effects.drive","Distortion"),tone.drive,["drive"],onChange,onPreview,{inactiveReason:processorBypassed(patch,"drive")?"distortion is bypassed":undefined});
 }
 export function renderAudioMovementControls(root,patch,onChange,onPreview=()=>{}){
  const m=movement(patch);

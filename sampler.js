@@ -1,3 +1,4 @@
+import {validateProcessingChain} from "./src/dsp/processing-chain.js";
 import {validParameterValue} from "./src/dsp/parameters.js";
 import {connectRecordedAudio,recordingEnvelope,validateRecordedModulation,validateRecordingAutomation} from "./recordedAudio.js";
 import {ownVoice} from "./src/hosts/web/voice-session.js";
@@ -99,7 +100,8 @@ export function validateSamplerPatch(patch){
   const id=field==="attack"||field==="release"?"envelope."+field:field;
   if(!validParameterValue(id,patch[field],"sample"))errors.push("Invalid sample "+field+".");
  }
- const allowed=new Set(["type","presetId","zones","followPitch","oneShot","preserveDynamics","audioMode","strumMs","transpose","gain","attack","release","pan","filter","drive","movement","bend","modulation","automation","delayMix","delayTime","delayFeedback"]);
+ errors.push(...validateProcessingChain(patch.chain));
+ const allowed=new Set(["chain","type","presetId","zones","followPitch","oneShot","preserveDynamics","audioMode","strumMs","transpose","gain","attack","release","pan","filter","drive","movement","bend","modulation","automation","delayMix","delayTime","delayFeedback"]);
  for(const key of Object.keys(patch))if(!allowed.has(key))errors.push("Unsupported sample parameter: "+key+".");
  return errors;
 }

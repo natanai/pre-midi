@@ -1,3 +1,4 @@
+import {effectiveDelayEffects} from "../../dsp/processing-chain.js";
 // JavaScript control-thread source for native Song pages.
 // This is deliberately NOT the shipping Song transport. Callers must supply
 // the existing audio.js renderEventsInWindow function and native owner/revision.
@@ -42,13 +43,13 @@ export function nativeSongDelayRecipes(song){
   const patches=instrument.sounds?.length?
    instrument.sounds.map(sound=>sound.patch):instrument.patch?[instrument.patch]:[];
   for(const patch of patches){
-   if(patch?.type==="synth"&&patch.effects)add(patch.effects.delayMix,patch.effects.delayTime,patch.effects.delayFeedback,true);
-   else if(patch?.type==="sample")add(patch.delayMix??0,patch.delayTime??.24,patch.delayFeedback??.26);
+   if(patch?.type==="synth"&&patch.effects){const fx=effectiveDelayEffects(patch,patch.effects);add(fx.delayMix,fx.delayTime,fx.delayFeedback,true);}
+   else if(patch?.type==="sample"){const fx=effectiveDelayEffects(patch,patch);add(fx.delayMix??0,fx.delayTime??.24,fx.delayFeedback??.26);}
   }
  }
  for(const track of song.tracks??[])if(track.kind==="vocal")
   for(const clip of track.clips??[]){
-   const fx=vocalEffects(clip);
+   const fx=effectiveDelayEffects(clip.effects??{},vocalEffects(clip));
    add(fx.delayMix,fx.delayTime,fx.delayFeedback);
   }
  return [...recipes.values()];
@@ -78,7 +79,7 @@ export async function prepareNativeSongStreamPage(song,page,{
  const rebased=rebaseNativePlansToPage(plans,descriptor.startFrame,sampleRate);
  const catalog=nativeSongDelayRecipes(song);
  for(const plan of rebased){
-  const fx=plan.contract==="pre-midi-synth-voice"?plan.patch.effects:plan;
+  const fx=plan.contract==="pre-midi-synth-voice"?effectiveDelayEffects(plan.patch,plan.patch.effects):plan;
   if(!(fx?.delayMix>0))continue;
   const time=plan.contract==="pre-midi-synth-voice"?Math.fround(fx.delayTime):fx.delayTime;
   const feedback=plan.contract==="pre-midi-synth-voice"?Math.fround(fx.delayFeedback):fx.delayFeedback;

@@ -3,7 +3,7 @@
 import {captureSoundControlView} from "./soundControlView.js";
 
 const labelHelp=Object.freeze({
- "cutoff timeline":"move brightness between two spots in this beat; presets keep the base sound",
+ "cutoff timeline":"move brightness through points in this beat; presets keep the base sound",
  "automation bar":"the bar where this value belongs",
  "automation beat":"the beat inside that bar; quarters pick the smaller grid steps",
  "begin cutoff":"how bright it is at the first spot",

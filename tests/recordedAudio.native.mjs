@@ -1,3 +1,5 @@
+import {makePatch} from '../synth.js';
+import {planSynthVoice} from '../src/dsp/synth-voice.js';
 // Optional focused native processor check; not part of the routine prototype suite.
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -29,6 +31,29 @@ for(const shape of ['sine','triangle','ramp','square']){
  if(audible<.01)throw Error('Modulation route had no audible effect '+shape);
  console.log('PASS shared native modulation',JSON.stringify({shape,difference,audible}));
 }
+const chainPlans=chain=>({
+ sample:planNativeSample({patch:{...patch,chain},volume:1},{pitch:60,velocity:1},0,1,assets),
+ vocal:planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects:{...fx,chain}}},0,.125,assets)
+});
+const difference=(a,b)=>a.reduce((max,value,i)=>Math.max(max,Math.abs(value-b[i])),0);
+const reversed=chainPlans({version:1,order:['drive','filter'],bypass:[]});
+const reverseA=render(reversed.sample),reverseB=render(reversed.vocal),defaultAudio=render(vocal);
+const chainEffect=difference(reverseB,defaultAudio);if(chainEffect<.001||difference(reverseA,reverseB)>1e-5)throw Error('Native chain order/parity failed');
+for(const stage of ['filter','drive','delay']){
+ const plans=chainPlans({version:1,order:['filter','drive'],bypass:[stage]}),actual=render(plans.vocal);
+ const reference=render(stage==='filter'?{...vocal,filter:null}:stage==='drive'?{...vocal,drive:0}:{...vocal,delayMix:0});
+ if(difference(actual,reference)>1e-6||difference(actual,render(plans.sample))>1e-5)throw Error('Native processor bypass/parity failed '+stage);
+}
+console.log('PASS native processing order/bypass',JSON.stringify({chainEffect,maxSampleVocalDifference:difference(reverseA,reverseB)}));
+const synthPatch=makePatch();synthPatch.effects={drive:.5,delayMix:.2,delayTime:.12,delayFeedback:.3};synthPatch.filter={type:'lowpass',cutoff:700,resonance:.7,sweep:0,sweepTime:.2};
+const synthPlan=patch=>planSynthVoice({patch,volume:1},{pitch:60,velocity:1},0,1);
+const synthDefault=render(synthPlan(synthPatch)),synthReverse=render(synthPlan({...synthPatch,chain:{version:1,order:['drive','filter'],bypass:[]}}));
+const synthEffect=difference(synthDefault,synthReverse);if(synthEffect<.001)throw Error('Native synth chain order had no effect');
+const synthBypass=render(synthPlan({...synthPatch,chain:{version:1,order:['filter','drive'],bypass:['drive']}}));
+const synthClean=render(synthPlan({...synthPatch,effects:{...synthPatch.effects,drive:0}}));
+if(difference(synthBypass,synthClean)>1e-5)throw Error('Native synth drive bypass differs');
+console.log('PASS native synth processing chain',JSON.stringify({synthEffect,bypassDifference:difference(synthBypass,synthClean)}));
+
 const a=render(sample),b=render(vocal);let peak=0,diff=0;for(let i=0;i<a.length;i++){peak=Math.max(peak,Math.abs(a[i]));diff=Math.max(diff,Math.abs(a[i]-b[i]));}if(!(peak>.01)||diff>1e-5)throw Error(JSON.stringify({peak,diff}));console.log('PASS native sampled/vocal processing PCM parity',JSON.stringify({peak,maxDifference:diff}));
 const tempoRoute={version:1,routes:[{id:'tempo',source:{kind:'lfo',shape:'triangle',rate:7,sync:4},target:'amplitude',unit:'linear_gain',depth:.5,polarity:'bipolar',smoothing:.005}]};
 for(const bpm of [40,120,240]){

@@ -1,3 +1,4 @@
+import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
 import {parameterFor,parameterDefaults,clampParameterValue,modulationTargetsFor,modulationSourcesFor} from "./src/dsp/parameters.js";
 import {windowEnvelope} from "./src/dsp/envelope-window.js";
 import {planFilterSweep,filterSweepRatioAt} from "./src/dsp/filter-sweep.js";
@@ -36,9 +37,9 @@ export function recordingEnvelope(start,duration,gain,attack,release,{elapsed=0,
 }
 export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,start,duration,owner,expression={pitch:60,velocity:1},unit=.125,elapsedSteps=0}){
  const elapsed=Math.max(0,elapsedSteps)*unit;
- const fx=recordedEffects(patch),motion=fx.movement,add=node=>{owner.nodes.push(node);return node;};
- let signal=source,filter=null;
- if(fx.filter){
+ const fx=effectiveDelayEffects(patch,recordedEffects(patch)),motion=fx.movement,add=node=>{owner.nodes.push(node);return node;};
+ let signal=source,filter=null;const stages=new Map();
+ if(fx.filter&&!processorBypassed(patch,"filter")){
   filter=add(context.createBiquadFilter());filter.type=fx.filter.type;
   filter.frequency.value=0;
   const base=context.createConstantSource(),sweep=add(context.createGain());
@@ -52,13 +53,14 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
   }
   filter.Q.setValueAtTime(fx.filter.resonance,start);
   if(motion.tone>0)scheduleMovementLfo(context,filter.frequency,start,duration,motion.toneRate,fx.filter.cutoff*motion.tone*.8,owner,{elapsed});
-  signal.connect(filter);signal=filter;
+  stages.set("filter",{input:filter,output:filter});
  }
- if(fx.drive>0){
+ if(fx.drive>0&&!processorBypassed(patch,"drive")){
   const shaper=add(context.createWaveShaper()),comp=add(context.createGain());
   configureDriveShaper(shaper,fx.drive);comp.gain.value=1/(1+fx.drive*1.1);
-  signal.connect(shaper);shaper.connect(comp);signal=comp;
+  shaper.connect(comp);stages.set("drive",{input:shaper,output:comp});
  }
+ for(const id of processingChain(patch).order){const stage=stages.get(id);if(stage){signal.connect(stage.input);signal=stage.output;}}
  signal.connect(amp);
  const pulse=add(context.createGain());pulse.gain.setValueAtTime(1,start);
  scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});
@@ -78,8 +80,10 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
 // Transfer only shared processing, never oscillators, asset mapping or timing.
 export function processingFromPatch(patch){
  const synth=patch.type==='synth',fx=recordedEffects({...patch,...(synth?{drive:patch.effects.drive,attack:patch.envelope.attack,release:patch.envelope.release}:{}),...(patch.effects??{})});
- const keys=['pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
+ const keys=['chain','pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
  const result=Object.fromEntries(keys.filter(key=>fx[key]!==undefined).map(key=>[key,structuredClone(fx[key])]));
+ result.chain=structuredClone(processingChain(patch));
+ if(result.filter===null&&!result.chain.bypass.includes('filter'))result.chain.bypass.push('filter');
  if(result.modulation)result.modulation.routes=result.modulation.routes.filter(route=>modulationTargetsFor('vocal').some(target=>target.id===route.target)&&modulationSourcesFor('vocal').includes(route.source.kind));
  if(result.filter)result.filter={...sampleTone({filter:result.filter}).filter};
  result.attack=clampParameterValue('envelope.attack',result.attack,'vocal');result.release=clampParameterValue('envelope.release',result.release,'vocal');
@@ -88,7 +92,8 @@ export function processingFromPatch(patch){
 export function applyProcessingToPatch(patch,processing){
  const fx=structuredClone(processing);
  if(patch.type==='synth'){
-  for(const key of ['pan','movement','bend','filter'])if(fx[key]!==undefined&&fx[key]!==null)patch[key]=fx[key];
+  for(const key of ['chain','pan','movement','bend','filter'])if(fx[key]!==undefined&&fx[key]!==null)patch[key]=fx[key];
+  if(fx.filter===null){const chain=processingChain(patch);patch.chain={...chain,order:[...chain.order],bypass:[...new Set([...chain.bypass,'filter'])]};}
   patch.envelope.attack=clampParameterValue('envelope.attack',fx.attack??patch.envelope.attack);
   patch.envelope.release=clampParameterValue('envelope.release',fx.release??patch.envelope.release);
   for(const key of ['delayMix','delayTime','delayFeedback'])if(fx[key]!==undefined)patch.effects[key]=fx[key];

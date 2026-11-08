@@ -1518,9 +1518,10 @@
       ],
       "transaction_rule": "One gesture -> ephemeral preview -> one undoable commit in the selected document; cancel leaves the authored patch and immutable source bytes unchanged.",
       "physical_instance": "soundInspector.js owns one sound-inspector-frame and one control-node map. Beat, Freeform and vocal adapters move that same node; mount never clones a second desktop Inspector. Beat listeners are owner-guarded and adapter handlers clear on ownership change.",
-      "processor_owner": "recordedAudio.js: common sampled/vocal filter, drive, tone/tremolo, delay, modulation, cutoff automation and clip-envelope definitions; C++ reads a shared current sample-processing packet.",
+      "processor_owner": "recordedAudio.js shares sampled/vocal processing; synth and recorded hosts consume the same order/bypass contract. C++ executes the corresponding per-channel order, preserving source articulation/pan and explicit delay-send ownership.",
       "editor_buttons": "editorWorkspace.js uses one uiIcons.js SVG factory and class-based history/Sound control dimensions for every context; prefixed element IDs cannot change sizing or icon fonts.",
-      "parameter_owner": "src/dsp/parameters.js: frozen source-aware parameter authority; soundParameterAdapter.js maps stable musical IDs to context storage paths. Controls, validation, modulation/automation and illustration axes consume derived projections."
+      "parameter_owner": "src/dsp/parameters.js: frozen source-aware parameter authority; soundParameterAdapter.js maps stable musical IDs to context storage paths. Controls, validation, modulation/automation and illustration axes consume derived projections.",
+      "chain_owner": "src/dsp/processing-chain.js defines the bounded current chain, stable IDs and effective bypass; processingChainUI.js is mounted once by the canonical soundInspector.js for all source contexts. UI edits use context-owned history, never copied waveform assets."
     },
     "references": [
       {
@@ -2347,12 +2348,13 @@
         "completed_slices": [
           "Shared amplitude/resonance routing and four LFO shapes",
           "Tempo-synced LFO divisions in every sound context",
-          "Shared 32-point cutoff curves with native/browser execution and Freeform phase preservation"
+          "Shared 32-point cutoff curves with native/browser execution and Freeform phase preservation",
+          "Shared filter/distortion order and non-destructive stage bypass, with an explicit bypassable delay send"
         ],
         "remaining": [
           "Remaining SE-05 destinations and SE-06 sources/macros/clock policies",
           "General parameter automation, curve modes and gesture recording under SE-07",
-          "Editable serial/parallel processor chain, sidechains and latency/tail ownership under SE-08"
+          "Add/remove and multiple processor instances, per-stage wet/dry, serial/parallel sends, sidechains and latency compensation under SE-08"
         ]
       },
       {
@@ -2535,7 +2537,7 @@
           "source_position": "Accumulate playbackRate * 2^(detune/1200) over 128-frame host control quanta; use the original Clip gate to evaluate progress. Source seconds and Song/wall seconds remain separate.",
           "web_transport": "src/hosts/web/timeline-clock.js aligns virtual Song time zero to a render-quantum boundary on initial playback and seeks. Initial overlapping source windows are prepared before choosing the audible start time, outside the lookahead scheduler.",
           "bounds": "Eight cached control clocks with sparse checkpoints every 256 control quanta; no asset copies, audio callback allocations or sample-sized control arrays. Existing source/host limits remain.",
-          "current_native_sample_packet": 13,
+          "current_native_sample_packet": 14,
           "qualification": "Focused model and C++ regressions; no physical browser/Windows listening or complete seek PCM equivalence claim."
         }
       },
@@ -2657,7 +2659,7 @@
       {
         "id": "SE-08",
         "title": "Create one editable effects chain and routing model",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-03"
@@ -2671,7 +2673,12 @@
           "songAudio.js",
           "src/dsp/",
           "src/hosts/native/",
-          "soundInspector.js"
+          "soundInspector.js",
+          "src/dsp/processing-chain.js",
+          "processingChainUI.js",
+          "recordedAudio.js",
+          "native/voice.hpp",
+          "native/plan-packet.hpp"
         ],
         "acceptance": [
           "Define one portable ordered processor graph with stable node IDs, add/remove/reorder, per-processor bypass, wet/dry and preset recall.",
@@ -2682,7 +2689,8 @@
         "verification": [
           "Graph-order, bypass, parallel/send isolation, impulse/tail and undo/serialization fixtures."
         ],
-        "completion_evidence": []
+        "completion_evidence": [],
+        "progress_note": "Shared serial tone-chain foundation is implemented: stable filter/drive IDs, reorder in either direction, non-destructive filter/drive bypass and explicit delay-send bypass; the same chain UI is mounted in the canonical Inspector for synth, sample and vocal contexts. Current native sample packet 14 and the synth execution packet carry a bounded order/bypass word. Presets, vocal reuse/preview, seek-state preparation, current project round trips and streaming delay catalogs retain effective processing. General add/remove/multiple instances, per-stage wet/dry, parallel sends/sidechains and latency compensation remain open; full SE-08 is not complete."
       },
       {
         "id": "SE-09",
@@ -3254,6 +3262,40 @@
           "qualification": "Focused model and rendered DSP evidence only; no browser interaction or physical Windows acceptance claim. Preview.22 remains the earlier immutable Windows build."
         },
         "remaining_reference": "/sound_editing/milestones/1/remaining"
+      },
+      {
+        "id": "SERIAL-CHAIN-M2",
+        "date": "2026-11-08",
+        "status": "implemented",
+        "task_ids": [
+          "SE-08"
+        ],
+        "summary": "Introduce the common serial processing order/bypass foundation without claiming full general routing completion.",
+        "contract": {
+          "field": "chain",
+          "version": 1,
+          "tone_order": [
+            "filter",
+            "drive"
+          ],
+          "allowed_bypass_ids": [
+            "filter",
+            "drive",
+            "delay"
+          ],
+          "ownership": "Tone stages are per voice before articulation and pan. Delay remains a separate send after articulation/pan; it cannot be reordered as a feedback edge.",
+          "latency_policy": "Reuse the existing filter and 4x drive kernels with no new lookahead. Bypass excludes a stage without adding automatic latency compensation. General parallel/wet-dry routing remains unavailable pending explicit latency policy and qualification.",
+          "tail_policy": "Bypassed delay has unity dry output, no echo bus and no allocated echo tail; authored mix/time/feedback settings remain stored.",
+          "native_transport": "Current sample packet 14 and synth packets append one validated 3-bit order/filter-bypass/drive-bypass word. Delay bypass is resolved into effective mix before planning. Current reader/writer and Rust codec fixture advance together; no legacy reader is added."
+        },
+        "verification": {
+          "routine": "npm run check: edited syntax and 44 smoke cases passed",
+          "focused": "Processing-chain, processing/reuse, Song vocal and tone-model checks passed (26 cases); chain/streaming/tone subset passed (11 cases); final chain/seek/streaming subset passed (13 cases).",
+          "web_dsp": "tests/processingChain.audio.mjs: real OfflineAudioContext synth/sample/vocal graphs respond to reordering; each filter/drive/delay bypass matches its direct reference within 1e-5.",
+          "native_dsp": "tests/recordedAudio.native.mjs: reordered sampled/vocal PCM difference 0; every bypass matches its direct reference and sampled/vocal output. Synth reordering changes PCM; drive bypass reference difference 0. Existing tempo/multipoint/source-bound fixtures pass.",
+          "qualification": "Rendered DSP/model evidence, not browser interaction or physical Windows listening. No new Windows build was requested; preview.22 is immutable."
+        },
+        "remaining": "SE-08 general node lifecycle, wet/dry, parallel routing, sidechains and latency compensation remain planned; M2 is still in progress."
       }
     ],
     "vocal_parity_milestone": {
@@ -3274,7 +3316,8 @@
         "Processing-only presets through the common preset dialog/catalog",
         "Vocal-to-Beat reuse retains processors, clip gain/envelope, source trim and stereo channels",
         "Editable recording identity through shared header, Song history and linked external-asset metadata",
-        "Effectful browser seek continuations retain original filter/drive/echo history, including completed-Clip echoes; live edits crossfade only vocal voices"
+        "Effectful browser seek continuations retain original filter/drive/echo history, including completed-Clip echoes; live edits crossfade only vocal voices",
+        "Ordered filter/distortion chain and non-destructive stage bypass, including explicit delay-send bypass; presets and vocal-to-Beat reuse retain the chain"
       ],
       "source_only_exceptions": [
         "Oscillators, harmonic partials and generated noise require a synth source",

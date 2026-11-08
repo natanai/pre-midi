@@ -1,3 +1,4 @@
+import {processorBypassed} from "./src/dsp/processing-chain.js";
 import {modulationTargetsFor,modulationSourcesFor,MODULATION_CONTROLS,parameterField} from "./src/dsp/parameters.js";
 import {MOD_TARGETS,MOD_SOURCES,defaultSource,LFO_SHAPES,LFO_DIVISIONS} from "./src/dsp/modulation.js";
 import {createDial,explainLabel} from "./dial.js";
@@ -19,7 +20,7 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
   const row=document.createElement("div");row.className="synth-fields modulation-route";
    row.dataset.soundPath="modulation.routes."+index;
   const target=MOD_TARGETS.find(item=>item.id===route.target);
-  const inactive=route.target.startsWith("filter.")&&(patch.filter==null||patch.audioFilterBypassed===true)?"the filter is off":undefined;
+  const inactive=route.target.startsWith("filter.")&&(patch.filter==null||patch.audioFilterBypassed===true||processorBypassed(patch,"filter"))?"the filter is off":undefined;
   const name=document.createElement("span");name.textContent=route.source.kind==="velocity"?"touch → "+target.name:route.source.kind==="keytrack"?"keys → "+target.name:target.name+" over time";
   row.append(name);
   if(inactive){name.textContent+=" · filter off";name.title=inactive;}

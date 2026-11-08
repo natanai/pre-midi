@@ -142,7 +142,7 @@ test("vocal effects and trims use a versioned Clip contract without changing sou
  assert.deepEqual(validateSong(song),[]);
  const packet=encodeNativeSample(planNativeVocal({clip,recording},.25,60/song.bpm/4,
   new Map([[recording.id,{id:1,duration:3}]])),44100);
- assert.equal(new DataView(packet.buffer).getUint32(12,true),13,"Native recordings share the current processing packet");
+ assert.equal(new DataView(packet.buffer).getUint32(12,true),14,"Native recordings share the current processing packet");
  assert.equal(new DataView(packet.buffer).getUint32(16,true),2,"Vocal remains a native sample voice");
  const packed=exportSongProject(song);assert.match(packed.name,/zip/);
  const entries=await readZip(packed.blob);assert.deepEqual(entries.get(recording.path),bytes);

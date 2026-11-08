@@ -1,3 +1,4 @@
+import {validateProcessingChain} from "./src/dsp/processing-chain.js";
 import {validParameterValue,parameterDefaults} from "./src/dsp/parameters.js";
 import {planPitch} from "./src/dsp/expression.js";
 import {recordedSourceTravel} from "./src/dsp/recorded-source-clock.js";
@@ -23,7 +24,8 @@ export function validateVocalEffects(fx){
  errors.push(...validateMovement(fx.movement),...validateBend(fx.bend));
  const tone=validateSampleTone({...fx,filter:fx.filter??undefined});if(tone)errors.push(tone);
  errors.push(...validateRecordedModulation(fx.modulation,{vocal:true}),...validateRecordingAutomation(fx.automation));
- const allowed=new Set(["automation","modulation","pan","transpose","attack","release","drive","delayMix","delayTime","delayFeedback","filter","movement","bend"]);
+ errors.push(...validateProcessingChain(fx.chain));
+ const allowed=new Set(["chain","automation","modulation","pan","transpose","attack","release","drive","delayMix","delayTime","delayFeedback","filter","movement","bend"]);
  for(const key of Object.keys(fx))if(!allowed.has(key))errors.push("Unknown vocal effect "+key+".");
  return errors;
 }

@@ -16,6 +16,8 @@ export function mountSoundPanelView(root){
   button.addEventListener("click",()=>setView(value));buttons.set(value,button);toolbar.append(button);
  }
  toolbar.prepend(label);root.prepend(toolbar);
+ // Keep topology controls reachable above the combined controls as well.
+ const chain=root.querySelector(':scope > .processing-chain');if(chain)root.prepend(chain);
  const combined=document.createElement("section");combined.className="sound-combined-panel";
  const illustrations=document.createElement("div");illustrations.className="sound-combined-illustrations";
  illustrations.setAttribute("aria-label","illustrations for the selected sound control");

@@ -1,3 +1,4 @@
+import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
 import {validateAutomationPlan,noteCutoffAutomation} from "./src/dsp/automation.js";
 import {prepareOscillator} from "./src/hosts/web/oscillator.js";
 import {validateModulation} from "./src/dsp/modulation.js";
@@ -127,7 +128,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  }
  const filter=add(ctx.createBiquadFilter());
  filter.type=patch.filter.type;
- destinations.set("filter.cutoff",filter.detune);destinations.set("filter.resonance",filter.Q);
+ if(!processorBypassed(patch,"filter")){destinations.set("filter.cutoff",filter.detune);destinations.set("filter.resonance",filter.Q);}
  const sweep=patch.filter.sweep??0;
  if(plan.automation){
   const points=plan.automation.points;filter.frequency.value=points[0].value;filter.frequency.setValueAtTime(points[0].value,points[0].time);
@@ -138,17 +139,18 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
   if(sweep!==0)filter.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,plan.filter.sweepEnd);
  }
  filter.Q.setValueAtTime(patch.filter.resonance,start);
- mix.connect(filter);
- if(motion.tone>0)scheduleMovementLfo(ctx,filter.frequency,start,duration,
+ const stages=new Map();if(!processorBypassed(patch,"filter"))stages.set("filter",{input:filter,output:filter});
+ if(motion.tone>0&&!processorBypassed(patch,"filter"))scheduleMovementLfo(ctx,filter.frequency,start,duration,
   motion.toneRate,patch.filter.cutoff*motion.tone*.8,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
- let signal=filter;
- if(patch.effects.drive>0){
+ let signal=mix;
+ if(patch.effects.drive>0&&!processorBypassed(patch,"drive")){
   const shaper=add(ctx.createWaveShaper());
   configureDriveShaper(shaper,patch.effects.drive);
   const compensation=add(ctx.createGain());
   compensation.gain.value=1/(1+patch.effects.drive*1.1);
-  signal.connect(shaper);shaper.connect(compensation);signal=compensation;
+  shaper.connect(compensation);stages.set("drive",{input:shaper,output:compensation});
  }
+ for(const id of processingChain(patch).order){const stage=stages.get(id);if(stage){signal.connect(stage.input);signal=stage.output;}}
  const amp=add(ctx.createGain());
  applyAmplitudePlan(amp.gain,plan.amplitude);
  signal.connect(amp);
@@ -161,7 +163,7 @@ const pulse=add(ctx.createGain());
  const gate=add(ctx.createGain());
  const movementGain=add(ctx.createGain());movementGain.gain.value=1;destinations.set("amplitude",movementGain.gain);
  amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);gate.connect(pan);
- const fx=patch.effects,mixAmount=fx.delayMix;
+ const fx=effectiveDelayEffects(patch,patch.effects),mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
  dry.gain.value=1-mixAmount*.4;
  pan.connect(dry);dry.connect(destination);

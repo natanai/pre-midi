@@ -1,3 +1,4 @@
+import {effectiveDelayEffects} from "./processing-chain.js";
 import {resolveModulation} from "./modulation.js";
 import {planCutoffAutomation} from "./automation.js";
 import {movement,planPitch} from "./expression.js";
@@ -25,7 +26,7 @@ export function planSynthVoice(instrument,event,start,duration,{automation,timel
  const filter={...patch.filter,...planFilterSweep(patch.filter,start,duration)};
  const result={contract:"pre-midi-synth-voice",version:SYNTH_VOICE_CONTRACT_VERSION,
   patch,presetId:patch.presetId,start,duration,off,end,graphEnd:end+.15,
-  audibleEnd:end+.15+delayTailSeconds(patch.effects),peak,amplitude,filter,movement:motion,
+  audibleEnd:end+.15+delayTailSeconds(effectiveDelayEffects(patch,patch.effects)),peak,amplitude,filter,movement:motion,
   oscillators:patch.oscillators.map(slot=>({...slot,frequency:Math.min(18000,noteFrequency(event.pitch)*2**slot.octave),
    pitch:planPitch(note,motion,start,duration,slot.detune)})),
   routing:["oscillators_and_noise","filter","drive","amplitude","tremolo","pan","dry_and_delay_send"],

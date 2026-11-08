@@ -1,3 +1,4 @@
+import {processorBypassed,withProcessorBypass} from "./src/dsp/processing-chain.js";
 import {LFO_SHAPES} from "./src/dsp/modulation.js";
 import {soundAxis,readSoundParameter} from "./soundParameterAdapter.js";
 import {modulationTargetsFor,modulationSourcesFor,parameterFor} from "./src/dsp/parameters.js";
@@ -127,6 +128,8 @@ export function diagramPageCount(patch,type){
 }
 // Diagrams respond to canonical parameters; the measured scope is separate.
 export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
+ const disabled=type==="distortion"?processorBypassed(patch,"drive"):type==="delay"?processorBypassed(patch,"delay"):["filter-sweep","tone-movement"].includes(type)?processorBypassed(patch,"filter"):false;
+ if(disabled)return {paths:[{d:"M18 60 H342",links:["chain"],role:"reference",secondary:true}],handles:[],labels:[{x:18,y:14,value:"bypassed"}],actions:[],color:"var(--muted)",inactive:[]};
  if(ISOLATED_SOUND_PANELS.has(type))return isolatedSoundDiagram(patch,type);
  if(type==="distortion")return diagram(patch,"filter",patch.type==="synth"?2:1);
  const color=type==="movement"?"var(--signal-mauve)":"var(--track-accent,#08e4ec)";
@@ -139,7 +142,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
  const handle=(x,y,axes,label)=>handles.push({x,y,axes,label});
  const referenceAxis=(path,min,max,mode,options={})=>({path,min,max,mode,...options});
  const axis=(path,mode,options={})=>soundAxis(patch,path,mode,options);
- const p=patch;
+ const p={...patch,audioFilterBypassed:patch.audioFilterBypassed===true||processorBypassed(patch,"filter")};
  if(type==="stage"){
   // The overview's measured waveform remains factual PCM. This separate
   // explanatory field makes the level knobs directly editable.
@@ -262,7 +265,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
   const synth=p.type==="synth",drive=synth?p.effects.drive:p.drive??0;
   const f=p.filter??DEFAULT_SAMPLE_FILTER;
   const drivePath=synth?["effects","drive"]:["drive"];
-  const links=["filter.cutoff","filter.resonance","filter.type",drivePath.join(".")];
+  const links=["chain","filter.cutoff","filter.resonance","filter.type",drivePath.join(".")];
   const tone=modeledToneWaveform(p);
   const scale=Math.max(1,...tone.input.map(Math.abs),...tone.output.map(Math.abs));
   const wavePath=values=>pathFrom(values.map((value,i)=>
@@ -325,10 +328,10 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
    tag(195,17,noise===0?"noise off · guide":"noise");
    tag(22,111,"time →");tag(281,111,"decay →");
  }else if(type==="filter"){
-  if(p.type!=="synth"&&p.audioFilterBypassed){
+  if(p.audioFilterBypassed){
    // Preserve the vocal editor's existing neutral bypass representation.
    line("M18 95 H344 M18 22 V95",true);
-   line("M18 35 H342",false,["filter.type"]);
+   line("M18 35 H342",false,["filter.type","chain"]);
    tag(18,14,"off");tag(304,110,"dry");
    action(122,61,["audioFilterBypassed"],[true,false],"turn filter on");
   }else{
@@ -965,8 +968,9 @@ function createSoundPanel(details,kind,patch,onChange,onPreview,index,options){
     if(entry.path[0]==="audioFilterBypassed"){
      // The vocal display patch uses this read-only bypass flag to render the
      // neutral curve, but the canonical edit is the actual filter object.
-     onChange(["filter"],latestPatch.audioFilterBypassed?
-      {...DEFAULT_SAMPLE_FILTER}:null);
+     const bypass=!(latestPatch.filter==null||processorBypassed(latestPatch,"filter")),chain=withProcessorBypass(latestPatch,"filter",bypass);
+     if(!bypass&&latestPatch.filter==null)onChange([["chain"],["filter"]],[chain,{...DEFAULT_SAMPLE_FILTER}]);
+     else onChange(["chain"],chain);
     }else if(entry.path[0]==="oscillators"&&entry.path[2]==="wave"&&next==="harmonic"){
      const slot=latestPatch.oscillators[entry.path[1]];
      onChange(["oscillators",entry.path[1]],{

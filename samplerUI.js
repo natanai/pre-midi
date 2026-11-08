@@ -1,3 +1,4 @@
+import {processorBypassed} from "./src/dsp/processing-chain.js";
 import {setSoundIllustrationTempo} from "./soundIllustrations.js";
 import {parameterFor,parameterDefaults} from "./src/dsp/parameters.js";
 import {renderModulationEditor} from "./modulationUI.js";
@@ -38,7 +39,7 @@ export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPr
 // Adapters own source selection, storage and undo; controls and diagrams live here.
 export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openUpload=null,onPreview=()=>{},soundId=null,deferView=false,bpm=120}={}){
  const vocal=patch.type==="vocal";
- patch={...patch,filter:patch.filter?sampleTone(patch).filter:null,audioFilterBypassed:patch.filter==null};
+ patch={...patch,filter:patch.filter?sampleTone(patch).filter:null,audioFilterBypassed:patch.filter==null||processorBypassed(patch,"filter")};
  setSoundIllustrationTempo(patch,bpm);
  const stateKey=soundId??patch;
  let expanded=sampleOpenStates.get(stateKey);

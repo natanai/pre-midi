@@ -3,7 +3,7 @@
 export const TAIL_FLOOR=.00001;
 export function delayTailSeconds(effects,floor=TAIL_FLOOR){
  const {delayMix:mix,delayTime:time,delayFeedback:feedback}=effects;
- if(!(mix>0))return 0;
+ if(!(mix>0)||effects.chain?.bypass.includes("delay"))return 0;
  const level=mix*.55*.8;
  const repeats=feedback>0?Math.max(0,Math.ceil(Math.log(floor/level)/Math.log(feedback))):0;
  // A feedback cycle adds a 128-frame render quantum in the browser reference.
