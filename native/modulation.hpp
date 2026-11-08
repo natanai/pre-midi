@@ -43,7 +43,8 @@ public:
     phase[i]+=static_cast<float>(static_cast<float>(route.rate)*(size/static_cast<float>(sampleRate)))*2*3.14159265358979323846/size;
     phase[i]=std::fmod(phase[i],2*3.14159265358979323846);
     }
-   }else if(route.kind>=4){
+   }else if(route.kind==10)value=static_cast<float>(route.root);
+   else if(route.kind>=4){
     const double cycles=(time-start)*route.rate,position=cycles-std::floor(cycles);
     if(route.kind==9)value=static_cast<float>(route.envelope[std::min(3u,static_cast<unsigned>(position*4))]);
     else if(route.kind>=7){
@@ -55,7 +56,7 @@ public:
     const double elapsed=time-start,gate=off-start;const auto& e=route.envelope;
     value=static_cast<float>(elapsed<=gate?held(route,elapsed):elapsed<gate+e[3]?held(route,gate)+(1e-6-held(route,gate))*(elapsed-gate)/e[3]:1e-6);
    }else value=static_cast<float>(route.kind==2?velocity:std::clamp((pitch-route.root)/route.span,-1.,1.));
-   const bool signedSource=route.kind==0||route.kind==3||route.kind>=4;
+   const bool signedSource=route.kind==0||route.kind==3||(route.kind>=4&&route.kind<=9);
    if(signedSource&&!route.bipolar)value=value*.5f+.5f;
    if(!signedSource&&route.bipolar)value=value*2-1;
    state[i]=alpha[i]*value+(1-alpha[i])*state[i];

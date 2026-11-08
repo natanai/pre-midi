@@ -1,5 +1,5 @@
 import {processorBypassed,withProcessorBypass} from "./src/dsp/processing-chain.js";
-import {LFO_SHAPES,randomLfoShape,DEFAULT_LFO_STEPS} from "./src/dsp/modulation.js";
+import {LFO_SHAPES,randomLfoShape,DEFAULT_LFO_STEPS,resolveModulation} from "./src/dsp/modulation.js";
 import {soundAxis,readSoundParameter,soundParameterPath} from "./soundParameterAdapter.js";
 import {modulationTargetsFor,modulationSourcesFor,parameterFor} from "./src/dsp/parameters.js";
 import {captureSoundGraphView} from "./soundControlView.js";
@@ -619,8 +619,9 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
   const delayLink=key=>delayPath(key).join(".");
   const e=Object.fromEntries(["delayMix","delayTime","delayFeedback"].map(key=>
    [key,readSoundParameter(p,"effects."+key)]));
+  if(p.delaySync)e.delayTime=p.delaySync*4*unit;
   const mix=e.delayMix,feedback=e.delayFeedback;
-  const space=24+clamp((e.delayTime-.05)/.95)*66,origin=52;
+  const space=24+clamp((e.delayTime-.05)/1.95)*66,origin=52;
   line("M16 100 H348",true);
   // A unit impulse exposes the host's real dry attenuation and three wet
   // returns: send=mix*.55, wet=.8, then feedback^n with an additional
@@ -684,7 +685,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
    tag(23,y-8,String(index+1));
   }
  }else if(type==="modulation"){
-  const routes=p.modulation?.routes??[];
+  const routes=p.modulation?resolveModulation(p.modulation,unit).routes:[];
   const routePages=Math.max(1,Math.ceil(routes.length/4));
   if(page<routePages){
    tag(17,13,"source");tag(161,13,"smoothed");tag(338,13,"target");
@@ -715,7 +716,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
       axis(["modulation","routes",i,"source","rate"],"linearX",{from:75,to:290,unit:"Hz"}),
      axis(["modulation","routes",i,"depth"],"linearY",{from:center+8,to:center-8})
     ],"movement "+(i+1)+" "+(rate===null?"smoothing / depth":"speed / depth"));
-    const source=route.source.kind==="lfo"?"lfo":route.source.kind==="keytrack"?"keys":
+    const source=route.source.kind==="macro"?"macro":route.source.kind==="lfo"?"lfo":route.source.kind==="keytrack"?"keys":
      route.source.kind==="velocity"?"touch":"env";
     tag(18,center+3,source);
     tag(294,center+3,target?.name.replace("oscillator ","osc ")||"target");
@@ -789,7 +790,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
       axis([...prefix,"source","span"],"linearY",{from:99,to:67})
      ],"key tracking center / spread");
     }
-    action(73,14,[...prefix,"source","kind"],modulationSourcesFor(p.type),"movement source");
+    action(73,14,[...prefix,"source","kind"],modulationSourcesFor(p.type).filter(kind=>kind!=="macro"||p.modulation?.macros?.length),"movement source");
     action(185,14,[...prefix,"polarity"],["unipolar","bipolar"],"movement range");
     action(286,14,[...prefix,"target"],modulationTargetsFor(p.type).map(item=>item.id),"movement target");
     tag(22,111,"route "+(i+1)+" · "+(target?.name||route.target));
@@ -998,7 +999,7 @@ function createSoundPanel(details,kind,patch,onChange,onPreview,index,options){
       onChange(["modulation","routes",i],{...route,target:next,unit:selected.unit,
        depth:clamp(route.depth,-selected.limit,selected.limit)});
      }else if(entry.path.at(-1)==="kind")
-      onChange(["modulation","routes",i,"source"],defaultSource(next));
+      onChange(["modulation","routes",i,"source"],next==="macro"?{kind:next,id:latestPatch.modulation.macros[0].id}:defaultSource(next));
      else onChange(entry.path,next);
     }else onChange(entry.path,next);
    });

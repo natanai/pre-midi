@@ -58,7 +58,7 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
    }else scheduleAmplitudeEnvelope(amp.gain,{start:plan.start,off:plan.off,peak:1,envelope:route.source.envelope});
    input=amp;normal={signed:false};
   }else{
-   const value=route.source.kind==="velocity"?plan.expression.velocity:Math.max(-1,Math.min(1,(plan.expression.pitch-route.source.root)/route.source.span));
+   const value=route.source.kind==="macro"?route.source.value:route.source.kind==="velocity"?plan.expression.velocity:Math.max(-1,Math.min(1,(plan.expression.pitch-route.source.root)/route.source.span));
    input=constant(value);normal={signed:route.source.kind==="keytrack"};
   }
   const range=add(context.createGain());

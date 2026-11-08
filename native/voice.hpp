@@ -16,7 +16,7 @@ struct Oscillator {double frequency=440,level=0,detune=0;std::uint32_t wave=0,co
 struct Plan {
  double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0,delayMix=0,delayTime=.24,delayFeedback=.26;
  double drive=0,vibratoRate=5,vibratoDepth=0,vibratoDelay=0,tone=0,toneRate=2,tremolo=0,tremoloRate=5;
- unsigned kind=0,asset=0;double playbackRate=1,sampleOffset=0,sampleLimit=301;bool bypassFilter=false,bypassDrive=false,driveFirst=false;const SampleData* sample=nullptr;
+ unsigned kind=0,asset=0;double playbackRate=1,sampleOffset=0,sampleLimit=301;double filterMix=1,driveMix=1;bool bypassFilter=false,bypassDrive=false,driveFirst=false;const SampleData* sample=nullptr;
  std::uint32_t version=1,routeCount=0,automationCount=0;std::array<Event,36> automation{};double off=1,pitch=60,velocity=1;std::array<Route,16> routes{};
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
  std::uint32_t eventCount=0;std::array<Event,6> events{};
@@ -153,8 +153,8 @@ public:
    if(movingCutoff){const double cutoff=(std::min(rate/2,cutoffAt(t))+tone)*std::pow(2.,std::clamp(offsets[4],-8.f,8.f));const double resonance=std::clamp(plan.q+std::clamp(static_cast<double>(offsets[6]),-15.9,15.9),.1,16.);filter.configure(plan.filterType,cutoff,resonance,rate);filterRight.configure(plan.filterType,cutoff,resonance,rate);if(extraChannels)for(unsigned ch=0;ch<extraCount();ch++)extraChannels[ch].filter.configure(plan.filterType,cutoff,resonance,rate);}
    if(plan.routeCount){const double pan=std::clamp(static_cast<float>(plan.pan)+std::clamp(offsets[5],-2.f,2.f),-1.f,1.f);left=std::cos((pan+1)*pi/4);right=std::sin((pan+1)*pi/4);}
    const auto toneStage=[&](float input,Biquad& toneFilter,Drive& shaper){
-    const auto filtered=[&](float v){return plan.bypassFilter?v:toneFilter.process(v);};
-    const auto shaped=[&](float v){return plan.bypassDrive?v:shaper.process(v);};
+    const auto filtered=[&](float v){return plan.bypassFilter?v:static_cast<float>((1-plan.filterMix)*v+plan.filterMix*toneFilter.process(v));};
+    const auto shaped=[&](float v){return plan.bypassDrive?v:shaper.mixed(v,plan.driveMix);};
     return plan.driveFirst?filtered(shaped(input)):shaped(filtered(input));
    };
    const float filtered=toneStage(mix,filter,drive);

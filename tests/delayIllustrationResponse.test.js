@@ -64,7 +64,7 @@ test("delay diagram's dry and echo stems show the model, while all knobs stay ed
 test("invalid illustrative values cannot silently create plausible fake audio",()=>{
  for(const invalid of [
   effects(-1,.2,.5),effects(1.1,.2,.5),effects(.5,0,.5),
-  effects(.5,1.2,.5),effects(.5,.2,-.1),effects(.5,.2,1),
+  effects(.5,2.2,.5),effects(.5,.2,-.1),effects(.5,.2,1),
   effects(.5,.2,Number.NaN)
  ])assert.throws(()=>modeledDelayTaps(invalid),RangeError);
 });

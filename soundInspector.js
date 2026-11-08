@@ -1,3 +1,4 @@
+import {renderPerformanceMacros} from './modulationUI.js';
 import {renderProcessingChain} from "./processingChainUI.js";
 import {setSoundIllustrationTempo} from "./soundIllustrations.js";
 import {soundField,soundCapability} from "./soundParameterAdapter.js";
@@ -191,7 +192,7 @@ export function renderSoundInspectorCore({
  }
  if(recorded)renderCutoffAutomation(modulesRoot,{id:sound.id,layout:"pitched",sounds:[sound],automation:patch.automation},
   {bars:context.bars??Math.max(1,Math.ceil((context.vocal?.clip.lengthSteps??16)/16))},block=>onPatchChange(["automation"],block??undefined));
- modulesRoot.prepend(renderProcessingChain(patch,onPatchChange,sound.id));
+ modulesRoot.prepend(renderPerformanceMacros(patch,onPatchChange,preview),renderProcessingChain(patch,onPatchChange,sound.id,preview));
  const paths=["filter.cutoff",recorded?"attack":"envelope.attack",
   recorded?"release":"envelope.release"];
  primaryRoots.forEach((root,index)=>{

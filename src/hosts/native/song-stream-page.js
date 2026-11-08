@@ -43,13 +43,13 @@ export function nativeSongDelayRecipes(song){
   const patches=instrument.sounds?.length?
    instrument.sounds.map(sound=>sound.patch):instrument.patch?[instrument.patch]:[];
   for(const patch of patches){
-   if(patch?.type==="synth"&&patch.effects){const fx=effectiveDelayEffects(patch,patch.effects);add(fx.delayMix,fx.delayTime,fx.delayFeedback,true);}
-   else if(patch?.type==="sample"){const fx=effectiveDelayEffects(patch,patch);add(fx.delayMix??0,fx.delayTime??.24,fx.delayFeedback??.26);}
+   if(patch?.type==="synth"&&patch.effects){const fx=effectiveDelayEffects(patch,patch.effects,60/song.bpm/4);add(fx.delayMix,fx.delayTime,fx.delayFeedback,true);}
+   else if(patch?.type==="sample"){const fx=effectiveDelayEffects(patch,patch,60/song.bpm/4);add(fx.delayMix??0,fx.delayTime??.24,fx.delayFeedback??.26);}
   }
  }
  for(const track of song.tracks??[])if(track.kind==="vocal")
   for(const clip of track.clips??[]){
-   const fx=effectiveDelayEffects(clip.effects??{},vocalEffects(clip));
+   const fx=effectiveDelayEffects(clip.effects??{},vocalEffects(clip,60/song.bpm/4),60/song.bpm/4);
    add(fx.delayMix,fx.delayTime,fx.delayFeedback);
   }
  return [...recipes.values()];

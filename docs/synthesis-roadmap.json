@@ -2374,12 +2374,15 @@
           "Shared filter/distortion order and non-destructive stage bypass, with an explicit bypassable delay send",
           "Add/remove/restore the built-in serial processors, including empty chains, without erasing settings",
           "Deterministic seeded sample-and-hold and interpolated random movement with tempo sync, common seed controls and seek-stable source-age evaluation",
-          "Editable four-step LFO patterns with shared dials/graph handles, tempo sync, source-age seek and browser/native execution"
+          "Editable four-step LFO patterns with shared dials/graph handles, tempo sync, source-age seek and browser/native execution",
+          "Four shared route-based performance macros with reset and preset recall",
+          "Filter/distortion wet/dry with aligned distortion dry paths",
+          "Tempo-synced delay through quarter notes with shared tails and reuse"
         ],
         "remaining": [
-          "Remaining SE-05 destinations and SE-06 sources/macros/clock policies",
-          "General parameter automation, curve modes and gesture recording under SE-07",
-          "Multiple processor instances, per-stage wet/dry, serial/parallel sends, sidechains and latency compensation under SE-08"
+          "Remaining effect destinations, followers/sidechains and phase/free-run clock policies",
+          "General parameter automation, curve modes and gesture recording",
+          "Multiple processor instances, parallel sends/sidechains and graph-wide latency compensation"
         ]
       },
       {
@@ -2562,7 +2565,7 @@
           "source_position": "Accumulate playbackRate * 2^(detune/1200) over 128-frame host control quanta; use the original Clip gate to evaluate progress. Source seconds and Song/wall seconds remain separate.",
           "web_transport": "src/hosts/web/timeline-clock.js aligns virtual Song time zero to a render-quantum boundary on initial playback and seeks. Initial overlapping source windows are prepared before choosing the audible start time, outside the lookahead scheduler.",
           "bounds": "Eight cached control clocks with sparse checkpoints every 256 control quanta; no asset copies, audio callback allocations or sample-sized control arrays. Existing source/host limits remain.",
-          "current_native_sample_packet": 14,
+          "current_native_sample_packet": 15,
           "qualification": "Focused model and C++ regressions; no physical browser/Windows listening or complete seek PCM equivalence claim."
         }
       },
@@ -2650,7 +2653,7 @@
           "Source equations/phase fixtures and focused route/macro editing, save/load and undo scenarios."
         ],
         "completion_evidence": [],
-        "progress_note": "Implemented common sine/triangle/ramp/square, seeded sample-hold/smooth-random and editable four-step LFO shapes, Hz or tempo divisions, range/depth and smoothing. The full four-step pattern repeats once per LFO cycle; steps are normalized source values before polarity/depth. All sources use original note/Clip age through seek. Shared numeric/dial and interactive graph edits retain project/preset state. Envelope followers/sidechains, macros, phase offset/free-run policy and larger variable-length sequences remain open; SE-06 is not complete."
+        "progress_note": "Shared periodic, seeded random and four-step sources plus four named route-based performance macros are implemented. Each macro drives multiple available targets under the common 16-route bound through range, signed depth and smoothing, with reset/save reset and preset/project recall. Followers/sidechains, phase/free-run clock policies and variable-length steps remain open."
       },
       {
         "id": "SE-07",
@@ -2715,7 +2718,7 @@
           "Graph-order, bypass, parallel/send isolation, impulse/tail and undo/serialization fixtures."
         ],
         "completion_evidence": [],
-        "progress_note": "The bounded built-in serial lifecycle is implemented: add/remove/restore filter and distortion, retain their authored settings and bypass state, reorder or bypass them, and separately bypass the delay send. Empty and single-stage chains use the same browser/native contract and shared Inspector. General multiple processor instances, wet/dry, parallel sends/sidechains and latency compensation remain open; full SE-08 is not complete."
+        "progress_note": "Built-in lifecycle/order/bypass and precise filter/drive wet/dry are implemented. Filter blends directly; distortion dry aligns to measured browser latency and native 192-frame FIR latency. Zero mix returns unshifted dry input. Shared blend graph/range controls use one commit. Multiple instances, parallel sends/sidechains and graph-wide latency compensation remain open."
       },
       {
         "id": "SE-09",
@@ -2777,7 +2780,7 @@
       {
         "id": "SE-11",
         "title": "Upgrade delay and add shared reverb",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-08"
@@ -2800,7 +2803,8 @@
         "verification": [
           "Impulse/echo timing, decay and tail-boundary cases; same effectful source in every context."
         ],
-        "completion_evidence": []
+        "completion_evidence": [],
+        "progress_note": "Shared free seconds or 1/16, 1/8, dotted 1/8 and quarter-note delay divisions at 40\u2013240 BPM. Authored seconds remain stored; host capacity extends to two seconds. Playback/export tails, native streaming catalogs, vocal reuse and presets retain timing. Feedback tone, ping-pong and reverb remain open."
       },
       {
         "id": "SE-12",
@@ -3435,6 +3439,53 @@
           "Physical Windows listening/microphone or browser interaction acceptance",
           "Variable-length sequencer, envelope follower, sidechain or macros"
         ]
+      },
+      {
+        "id": "SOUND-BATCH-PREVIEW25",
+        "date": "2026-11-07",
+        "status": "implemented_pending_windows_build",
+        "task_ids": [
+          "SE-06",
+          "SE-08",
+          "SE-11",
+          "SE-18"
+        ],
+        "summary": "One batch of three capability milestones: performance macros, processor wet/dry and tempo-synced delay",
+        "milestones": [
+          {
+            "id": "B25-MACROS",
+            "status": "implemented",
+            "contract": "Four named 0\u20131 macros, multiple route destinations within 16 routes, signed depth/range/smoothing, reset/save reset and current preset/project recall. One shared Inspector surface. Native kind 10 consumes the prepared scalar."
+          },
+          {
+            "id": "B25-MIX",
+            "status": "implemented",
+            "contract": "chain.mix filter/drive values 0\u20131 default to fully processed. Zero mix is unshifted input. Partial drive mix aligns dry to measured per-runtime browser oversampler latency or native 192 frames. Browser calibration is asynchronous preparation. Shared interactive blend graph and ordinary precise controls commit once."
+          },
+          {
+            "id": "B25-SYNC",
+            "status": "implemented",
+            "contract": "delaySync quarter-note beat multiples .25/.5/.75/1 resolve using owning tempo at onset, retaining stored free seconds. Two-second host bound, matching tails, seeks, scopes, reuse and streaming catalog."
+          }
+        ],
+        "native_contract": "Sample packet 15 and synth packets append filter/drive mix doubles to the common order/bypass trailer. Current Rust fixture advances with the codec; no legacy reader.",
+        "verification": {
+          "routine": "npm run check: edited syntax and 44 smoke cases passed",
+          "model": "Focused macro mapping/preset/project, mix/chain identity, tempo resolution and existing random/step cases passed",
+          "native": "Full-graph macro scaling, mixed-chain sample/vocal PCM identity, dry endpoints and delay plans at 40/120/240 BPM passed; native FIR impulse peak measured 192 frames",
+          "web_audio": "Offline audio measured 128-frame oversampler latency in test backend; aligned half-mix error 6.34e-7, macro level .8 and actual synced echoes at 40/120/240 BPM passed",
+          "dom_integration": "Shared Inspector macro create/map/edit, processor mix/timing, combined visibility and undo/redo passed in DOM integration"
+        },
+        "windows_preview": {
+          "version": "0.14.1-preview.25",
+          "status": "build_requested",
+          "optional_full_audio_qualification": false
+        },
+        "not_claimed": [
+          "Full M2 completion",
+          "General routing, sidechains or graph-wide latency compensation",
+          "Physical browser/Windows listening and microphone qualification"
+        ]
       }
     ],
     "vocal_parity_milestone": {
@@ -3502,7 +3553,12 @@
           "bytes": 16202815,
           "sha256": "d4ed902baa554b72fb16964f3029c2572f24f6a52f6c58b5240fe2aa5e995ead",
           "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection, portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
-          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files"
+          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files",
+          "pending_build": {
+            "version": "0.14.1-preview.25",
+            "status": "build_requested",
+            "includes": "Random/step movement, performance macros, processor wet/dry and tempo delay since preview.24"
+          }
         }
       },
       "remaining_qualification": [

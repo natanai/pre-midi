@@ -91,7 +91,7 @@ export class VoiceSession{
   const key=JSON.stringify([domain,effects.delayMix,effects.delayTime,effects.delayFeedback]);
   let bus=this.buses.get(key);
   if(!bus){
-   const context=this.context,send=context.createGain(),delay=context.createDelay(1.2),feedback=context.createGain(),wet=context.createGain();
+   const context=this.context,send=context.createGain(),delay=context.createDelay(2),feedback=context.createGain(),wet=context.createGain();
    send.gain.value=effects.delayMix*.55;delay.delayTime.value=effects.delayTime;
    feedback.gain.value=effects.delayFeedback;wet.gain.value=.8;
    send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(this.destination);

@@ -55,9 +55,16 @@ struct Downsample2 {
  float next(float a,float b,const DriveRecipe& recipe)noexcept{odd.push(previous);even.push(a);previous=b;return odd.convolve(recipe.down)+.5f*even.at(64);}
 };
 class Drive {
+ std::array<float,192> dryHistory{};unsigned dryCursor=0;
  const DriveRecipe* recipe;Upsample2 first,second;Downsample2 third,fourth;
 public:
  explicit Drive(const DriveRecipe* input=nullptr)noexcept:recipe(input){}
+ float mixed(float input,double wet)noexcept{
+  if(!recipe)return input;
+  const float delayed=dryHistory[dryCursor];dryHistory[dryCursor]=input;dryCursor=(dryCursor+1)%192;
+  const float processed=process(input);
+  return wet==0?input:static_cast<float>((1-wet)*delayed+wet*processed);
+ }
  float process(float input)noexcept{
   if(!recipe)return input;
   const auto up=first.next(input,*recipe),a=second.next(up[0],*recipe),b=second.next(up[1],*recipe);

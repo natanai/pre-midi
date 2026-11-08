@@ -20,6 +20,31 @@ const patch={type:'sample',presetId:'custom',zones:[{assetId:'voice',root:60}],f
 const sample=planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets);
 const vocal=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects:fx}},0,.125,assets);
 const render=plan=>{const data=encodeNativeSession([plan],rate,[{rate,frames,channels:1,pcm}]);const r=spawnSync(binary,[String(rate),'2','0','0',String(rate*2),'128','0'],{input:data,maxBuffer:4e6});if(r.status)throw Error(r.stderr.toString());return new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset,r.stdout.byteOffset+r.stdout.byteLength));};
+// Batch capability checks use the real current packet/renderer.
+const peakDifference=(a,b)=>a.reduce((m,v,i)=>Math.max(m,Math.abs(v-b[i])),0);
+for(const value of [0,.3,1]){
+ const modulation={version:1,macros:[{id:'m',name:'level',value,default:.5}],routes:[{id:'m-route',source:{kind:'macro',id:'m'},target:'amplitude',unit:'linear_gain',depth:.5,polarity:'bipolar',smoothing:0}]};
+ const effects={...fx,modulation};
+ const a=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects}},0,.125,assets);
+ const b=planNativeSample({patch:{...patch,modulation},volume:1},{pitch:60,velocity:1},0,1,assets);
+ const reference=render({...a,modulation:undefined}),actual=render(a),factor=1+.5*(2*value-1);
+ if(peakDifference(actual,reference.map(v=>v*factor))>2e-6||peakDifference(actual,render(b))>1e-6)throw Error('Native macro scaling/parity failed');
+}
+const mixedChain={version:1,order:['drive','filter'],bypass:[],mix:{drive:.37,filter:.61}};
+const mixedSample=planNativeSample({patch:{...patch,chain:mixedChain},volume:1},{pitch:60,velocity:1},0,1,assets);
+const mixedVocal=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects:{...fx,chain:mixedChain}}},0,.125,assets);
+if(peakDifference(render(mixedSample),render(mixedVocal))>1e-6)throw Error('Native processor mix parity failed');
+for(const stage of ['filter','drive']){
+ const zero={...mixedVocal,chain:{...mixedChain,mix:{[stage]:0}}};
+ const bypass={...zero,chain:{...zero.chain,bypass:[stage]}};
+ if(peakDifference(render(zero),render(bypass))>1e-6)throw Error('Native zero mix is not dry');
+}
+for(const bpm of [40,120,240]){
+ const unit=60/bpm/4,effects={...fx,delaySync:1};
+ const synced=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:16,effects}},0,unit,assets);
+ if(synced.delayTime!==60/bpm||peakDifference(render(synced),render({...synced,delayTime:60/bpm}))!==0)throw Error('Native synced delay failed');
+}
+console.log('PASS native batch: macro scaling, mixed-chain sample/vocal identity, dry mix endpoints and delay sync at 40/120/240 BPM');
 for(const shape of ['sine','triangle','ramp','square','sample-hold','smooth-random','steps']){
  const changed=structuredClone(vocal);changed.modulation={version:1,routes:[{id:'level',source:{kind:'lfo',shape,rate:2,seed:17,...(shape==='steps'?{steps:[.8,-.2,-.6,.1]}:{})},target:'amplitude',unit:'linear_gain',depth:.5,polarity:'bipolar',smoothing:.005},{id:'q',source:{kind:'lfo',shape,rate:3,seed:127},target:'filter.resonance',unit:'filter_resonance',depth:2,polarity:'unipolar',smoothing:.005}]};
  const sound={...sample,modulation:changed.modulation},a=render(sound),b=render(changed);

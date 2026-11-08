@@ -1,3 +1,4 @@
+import {prepareProcessorMix} from './src/hosts/web/processor-mix.js';
 import {effectiveDelayEffects} from "./src/dsp/processing-chain.js";
 import {sampleSourceRegion} from "./sampleSlice.js";
 import {vocalEventFromPatch} from "./vocalAudioView.js";
@@ -138,6 +139,7 @@ async function vocalScope(patch,context,level){
  }
  const offline=new OfflineAudioContext(2,Math.ceil(seconds*RATE),RATE),bytes=getAsset(event.recording.id);
  if(!bytes)throw Error("Recording audio is missing");
+ await prepareProcessorMix(offline);
  const buffer=await offline.decodeAudioData(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
  scheduleVocal(offline,offline.destination,event,0,unit,new Map([[event.recording.id,buffer]]));
  return {buffer:await offline.startRendering(),seconds,clipped:seconds<life};
@@ -156,6 +158,7 @@ async function webAudio(patch,beat,level,pitch,automation){
  const original=buffer?sampleSourceRegion(zone,buffer.duration,rate).length:0;
  const life=buffer?(patch.oneShot?original:Math.min(original,HOLD+patch.release)):0;
  const seconds=scopeWindowSeconds(patch,life),context=new OfflineAudioContext(2,Math.ceil(seconds*RATE),RATE);
+ await prepareProcessorMix(context);
  const voice={patch,volume:level},note={pitch,velocity:1};
  if(buffer)scheduleSample(context,context.destination,voice,note,0,HOLD,beat,new Map([[zone.assetId,buffer]]));
  else scheduleSynthPlan(context,context.destination,planSynthVoice(voice,note,0,HOLD,

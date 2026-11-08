@@ -59,7 +59,7 @@ export const SOUND_PARAMETERS=freeze([
  parameter("amplitude","linear_gain",0,2,1,.01,"percent",{routeOnly:true,modulation:{index:7,name:"amplitude",unit:"linear_gain",limit:1}}),
  parameter("effects.drive","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
  parameter("effects.delayMix","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
- parameter("effects.delayTime","seconds",.05,1,.24,.01,"seconds",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
+ parameter("effects.delayTime","seconds",.05,2,.24,.01,"seconds",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
  parameter("effects.delayFeedback","linear_gain",0,.8,.26,.01,"percent",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
  ...[
   ["rate","hz",.1,20,5,.1,"hz","depth"],
@@ -142,7 +142,7 @@ export const MODULATION_CONTROLS=freeze({
  root:{id:"modulation.keytrack.root",unit:"midi_note",min:0,max:127,default:60,step:1,display:"number"},
  span:{id:"modulation.keytrack.span",unit:"semitones",min:1,max:127,default:24,step:1,display:"number"}
 });
-export const MODULATION_SOURCE_CONTEXTS=freeze({lfo:all,envelope:all,velocity:["synth","sample"],keytrack:["synth","sample"]});
+export const MODULATION_SOURCE_CONTEXTS=freeze({macro:all,lfo:all,envelope:all,velocity:["synth","sample"],keytrack:["synth","sample"]});
 export const modulationSourcesFor=context=>Object.keys(MODULATION_SOURCE_CONTEXTS).filter(id=>MODULATION_SOURCE_CONTEXTS[id].includes(context));
 export const modulationTargetsFor=context=>parametersFor(context).filter(p=>p.modulation)
  .sort((a,b)=>a.modulation.index-b.modulation.index)

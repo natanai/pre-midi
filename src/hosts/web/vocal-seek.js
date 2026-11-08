@@ -1,3 +1,4 @@
+import {prepareProcessorMix} from './processor-mix.js';
 import {vocalSourceRange} from "../../../vocalEffects.js";
 import {delayTailSeconds} from "../../dsp/effect-tail.js";
 import {scheduleVocal} from "../../../songAudio.js";
@@ -63,7 +64,7 @@ export async function renderVocalSeek(request){
  const {event,buffer,sampleRate,phase,unit,range,tail}=request;
  if(typeof OfflineAudioContext!=="function")throw Error("This browser cannot prepare effectful vocal seeks");
  const seconds=phase+range.duration+tail+.02;
- const context=new OfflineAudioContext(2,Math.max(1,Math.ceil(seconds*sampleRate)),sampleRate);
+ const context=new OfflineAudioContext(2,Math.max(1,Math.ceil(seconds*sampleRate)),sampleRate);await prepareProcessorMix(context);
  scheduleVocal(context,context.destination,event,phase,unit,new Map([[event.recording.id,buffer]]),
   {sourceRange:range,controlStart:phase});
  return {buffer:await context.startRendering(),phase,duration:range.duration,tail};

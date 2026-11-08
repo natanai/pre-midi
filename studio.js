@@ -1262,7 +1262,7 @@ function renderVocalWorkspace(){
     const fx=vocalEffects(clip);
     const patch={type:"sample",presetId:"custom",zones:[zone],
      followPitch:false,oneShot:true,transpose:fx.transpose,gain:clip.gain,
-     audioMode:"clip",chain:fx.chain,attack:fx.attack,release:fx.release,pan:fx.pan,drive:fx.drive,
+     audioMode:"clip",delaySync:clip.effects?.delaySync,chain:fx.chain,attack:fx.attack,release:fx.release,pan:fx.pan,drive:fx.drive,
      delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,modulation:fx.modulation,automation:fx.automation,
      movement:fx.movement,bend:fx.bend};
     if(fx.filter)patch.filter=fx.filter;

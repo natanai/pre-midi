@@ -234,7 +234,7 @@ public:
   require(streamed&&!streamSequence&&cursor==0,
    "Native shared delay recipes must be installed before the stream starts");
   require(std::isfinite(mix)&&std::isfinite(time)&&std::isfinite(feedback)&&
-   mix>0&&mix<=1&&time>=.04999999&&time<=1&&feedback>=0&&feedback<=.80000002,
+   mix>0&&mix<=1&&time>=.04999999&&time<=2&&feedback>=0&&feedback<=.80000002,
    "Invalid native streaming delay recipe");
   for(unsigned i=0;i<buses.size();i++)
    if(buses[i].mix==mix&&buses[i].time==time&&buses[i].feedback==feedback)

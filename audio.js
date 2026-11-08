@@ -1,3 +1,4 @@
+import {connectProcessorMix,prepareProcessorMix} from './src/hosts/web/processor-mix.js';
 import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
 import {validateAutomationPlan,noteCutoffAutomation} from "./src/dsp/automation.js";
 import {prepareOscillator} from "./src/hosts/web/oscillator.js";
@@ -150,7 +151,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
   compensation.gain.value=1/(1+patch.effects.drive*1.1);
   shaper.connect(compensation);stages.set("drive",{input:shaper,output:compensation});
  }
- for(const id of processingChain(patch).order){const stage=stages.get(id);if(stage){signal.connect(stage.input);signal=stage.output;}}
+ for(const id of processingChain(patch).order){const stage=stages.get(id);if(stage)signal=connectProcessorMix(ctx,signal,stage,patch,id,owner);}
  const amp=add(ctx.createGain());
  applyAmplitudePlan(amp.gain,plan.amplitude);
  signal.connect(amp);
@@ -169,7 +170,7 @@ const pulse=add(ctx.createGain());
  pan.connect(dry);dry.connect(destination);
  if(mixAmount>0){
   if(!session){
-   const send=add(ctx.createGain()),delay=add(ctx.createDelay(1.2)),feedback=add(ctx.createGain()),wet=add(ctx.createGain());
+   const send=add(ctx.createGain()),delay=add(ctx.createDelay(2)),feedback=add(ctx.createGain()),wet=add(ctx.createGain());
    send.gain.value=mixAmount*.55;delay.delayTime.value=fx.delayTime;feedback.gain.value=fx.delayFeedback;wet.gain.value=.8;
    pan.connect(send);send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(destination);
   }
@@ -203,7 +204,7 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
   instrument={patch:sound.patch,volume:instrument.volume*sound.gain};
  }
  if(nativeEnabled())return auditionNative(instrument,[{pitch,velocity:expression?.velocity??.8,bend:expression?.bend}],{duration:hitDuration??expression?.duration??.24,bpm:beat?.bpm??120});
- context||=new AudioContext();
+ context||=new AudioContext();await prepareProcessorMix(context);
  if(context.state!=="running")await context.resume();
  if(beat){
   const zone=instrument.patch?.type==="sample"?sampleForNote(instrument.patch,pitch,expression?.velocity??.8):null;
@@ -223,7 +224,7 @@ export async function auditionVocal(event,bpm=120){
   const {owner}=await nativeRequest({action:"begin"});
   return nativeRequest({action:"play",data:Array.from((await import('./src/hosts/native/session.js')).encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true,owner});
  }
- context||=new AudioContext();if(context.state!=="running")await context.resume();
+ context||=new AudioContext();await prepareProcessorMix(context);if(context.state!=="running")await context.resume();
  const song={kind:"song",recordings:[event.recording]};
  const decoded=await decodeSongRecordings(context,song);
  return scheduleVocal(context,context.destination,event,context.currentTime+.01,unit,decoded,{session:previews()});
@@ -241,7 +242,7 @@ export async function auditionHeld(instrument,pitch,beat=null){
   await auditionNative(selected,[{pitch,velocity:.82}],{duration:1.5});
   return ()=>{};
  }
- context||=new AudioContext();
+ context||=new AudioContext();await prepareProcessorMix(context);
  if(context.state!=="running")await context.resume();
  if(beat&&patch.type==="sample"){
   const zone=sampleForNote(patch,pitch,.82);
@@ -260,7 +261,7 @@ export async function auditionChord(instrument,pitches,beat,velocity=.85) {
   const notes=pitches.map((pitch,index)=>({id:'preview-'+index,pitch,start:0,duration:8,velocity}));
   return auditionNative(instrument,notes.map(note=>({...note,at:strumOffset(instrument,note,notes),duration:.8})));
  }
- context||=new AudioContext();
+ context||=new AudioContext();await prepareProcessorMix(context);
  if(context.state!=="running")await context.resume();
  const notes=pitches.map((pitch,index)=>({
   id:"preview-"+index,pitch,start:0,duration:8,velocity
@@ -296,7 +297,7 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
    return handle.update(prepare(next),renderEvents(next,{maxEvents:4096}));};return handle;
  }
  const epoch=++webTransportEpoch,isCurrent=()=>epoch===webTransportEpoch;
- context||=new AudioContext();
+ context||=new AudioContext();await prepareProcessorMix(context);
  if(context.state!=="running")await context.resume();
  if(!isCurrent())throw Error("Playback request cancelled");
  const ctx=context,out=ctx.createGain(),read=typeof beat==="function"?beat:()=>beat;
@@ -419,7 +420,7 @@ export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,s
   const bytes=await renderNative([plan],{rate:sampleRate,frames,cycle:Math.max(.05,seconds),gain:1}),stereo=new Float32Array(bytes),mono=Float32Array.from({length:frames},(_,i)=>(stereo[2*i]+stereo[2*i+1])*.5);
   return {sampleRate,length:frames,duration:frames/sampleRate,numberOfChannels:1,getChannelData:()=>mono};
  }
- const ctx=new OfflineAudioContext(1,Math.ceil(seconds*sampleRate),sampleRate);
+ const ctx=new OfflineAudioContext(1,Math.ceil(seconds*sampleRate),sampleRate);await prepareProcessorMix(ctx);
  scheduleNote(ctx,ctx.destination,{patch,volume:1},{pitch,velocity:1},0,duration,null);
  return ctx.startRendering();
 }
@@ -479,10 +480,10 @@ export function renderEndSeconds(document,events,decoded){
    const rate=zone?(patch.followPitch?2**((resolved.note.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12)):1;
    const length=buffer?buffer.duration/rate:0;
    const life=patch.oneShot?length:Math.min(length,Math.max(.015,event.duration+patch.release));
-   end=Math.max(end,event.at+life+delayTailSeconds(patch)+.03);
+   end=Math.max(end,event.at+life+delayTailSeconds(effectiveDelayEffects(patch,patch,secondsPerStep(document)))+.03);
   }else{
    const duration=event.instrument.layout==="rack"?Math.max(.015,patch.envelope.attack+patch.envelope.decay):event.duration;
-   end=Math.max(end,planSynthVoice(resolved.voice,resolved.note,event.at,duration).audibleEnd+.02);
+   end=Math.max(end,planSynthVoice(resolved.voice,resolved.note,event.at,duration,{unit:secondsPerStep(document)}).audibleEnd+.02);
   }
  }
  return end;
@@ -501,7 +502,7 @@ export async function wav(document){
  for(const beat of beats)await decodeSamples(decoder,beat,decoded);
  const events=renderEvents(document),seconds=renderEndSeconds(document,events,decoded);
  if(seconds>600)throw Error("WAV including effect tails exceeds the current 10-minute render limit.");
- const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);
+ const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);await prepareProcessorMix(ctx);
  sampleCaches.set(ctx,decoded);
  const vocals=await decodeSongRecordings(ctx,document),out=ctx.createGain();
  out.gain.value=.85;out.connect(ctx.destination);

@@ -10,7 +10,7 @@ export const DELAY_FEEDBACK_QUANTUM=128;
 export function modeledDelayTaps(effects,{sampleRate=DELAY_MODEL_SAMPLE_RATE,wetCount=3}={}){
  const {delayMix,delayTime,delayFeedback}=effects??{};
  if(!Number.isFinite(delayMix)||delayMix<0||delayMix>1||
-  !Number.isFinite(delayTime)||delayTime<.05||delayTime>1||
+  !Number.isFinite(delayTime)||delayTime<.05||delayTime>2||
   !Number.isFinite(delayFeedback)||delayFeedback<0||delayFeedback>.8||
   !Number.isFinite(sampleRate)||sampleRate<=0||
   !Number.isInteger(wetCount)||wetCount<0||wetCount>32)

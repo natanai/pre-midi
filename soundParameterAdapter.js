@@ -49,4 +49,4 @@ export function readSoundParameter(patch,id){
  const path=soundParameterPath(id,patch.type),value=path.reduce((owner,key)=>owner?.[key],patch);
  return value??parameterFor(id,patch.type)?.default;
 }
-export const soundCapability=(patch,path)=>parameterCapability(soundParameterId(path,patch.type),patch.type,id=>readSoundParameter(patch,id));
+export const soundCapability=(patch,path)=>soundParameterId(path,patch.type)==="effects.delayTime"&&patch.delaySync?{state:"inactive",reason:"delay follows tempo; choose seconds in processing order to edit its time"}:parameterCapability(soundParameterId(path,patch.type),patch.type,id=>readSoundParameter(patch,id));

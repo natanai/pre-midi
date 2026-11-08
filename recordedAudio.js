@@ -1,3 +1,4 @@
+import {connectProcessorMix} from './src/hosts/web/processor-mix.js';
 import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
 import {parameterFor,parameterDefaults,clampParameterValue,modulationTargetsFor,modulationSourcesFor} from "./src/dsp/parameters.js";
 import {windowEnvelope} from "./src/dsp/envelope-window.js";
@@ -37,7 +38,7 @@ export function recordingEnvelope(start,duration,gain,attack,release,{elapsed=0,
 }
 export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,start,duration,owner,expression={pitch:60,velocity:1},unit=.125,elapsedSteps=0}){
  const elapsed=Math.max(0,elapsedSteps)*unit;
- const fx=effectiveDelayEffects(patch,recordedEffects(patch)),motion=fx.movement,add=node=>{owner.nodes.push(node);return node;};
+ const fx=effectiveDelayEffects(patch,recordedEffects(patch),unit),motion=fx.movement,add=node=>{owner.nodes.push(node);return node;};
  let signal=source,filter=null;const stages=new Map();
  if(fx.filter&&!processorBypassed(patch,"filter")){
   filter=add(context.createBiquadFilter());filter.type=fx.filter.type;
@@ -60,7 +61,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
   configureDriveShaper(shaper,fx.drive);comp.gain.value=1/(1+fx.drive*1.1);
   shaper.connect(comp);stages.set("drive",{input:shaper,output:comp});
  }
- for(const id of processingChain(patch).order){const stage=stages.get(id);if(stage){signal.connect(stage.input);signal=stage.output;}}
+ for(const id of processingChain(patch).order){const stage=stages.get(id);if(stage)signal=connectProcessorMix(context,signal,stage,patch,id,owner);}
  signal.connect(amp);
  const pulse=add(context.createGain());pulse.gain.setValueAtTime(1,start);
  scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});
@@ -72,7 +73,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  return {fx,tail:delayTailSeconds(fx),connectDelay(session,voice){
   if(!(fx.delayMix>0)||!voice.admitted&&session)return;
   if(session){pan.connect(session.delay(fx,voice));return;}
-  const send=add(context.createGain()),delay=add(context.createDelay(1.2)),feedback=add(context.createGain()),wet=add(context.createGain());
+  const send=add(context.createGain()),delay=add(context.createDelay(2)),feedback=add(context.createGain()),wet=add(context.createGain());
   send.gain.value=fx.delayMix*.55;delay.delayTime.value=fx.delayTime;feedback.gain.value=fx.delayFeedback;wet.gain.value=.8;
   pan.connect(send);send.connect(delay);delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(out);
  }};
@@ -80,7 +81,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
 // Transfer only shared processing, never oscillators, asset mapping or timing.
 export function processingFromPatch(patch){
  const synth=patch.type==='synth',fx=recordedEffects({...patch,...(synth?{drive:patch.effects.drive,attack:patch.envelope.attack,release:patch.envelope.release}:{}),...(patch.effects??{})});
- const keys=['chain','pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
+ const keys=['delaySync','chain','pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
  const result=Object.fromEntries(keys.filter(key=>fx[key]!==undefined).map(key=>[key,structuredClone(fx[key])]));
  result.chain=structuredClone(processingChain(patch));
  if(result.filter===null&&!result.chain.bypass.includes('filter'))result.chain.bypass.push('filter');
@@ -92,7 +93,7 @@ export function processingFromPatch(patch){
 export function applyProcessingToPatch(patch,processing){
  const fx=structuredClone(processing);
  if(patch.type==='synth'){
-  for(const key of ['chain','pan','movement','bend','filter'])if(fx[key]!==undefined&&fx[key]!==null)patch[key]=fx[key];
+  for(const key of ['delaySync','chain','pan','movement','bend','filter'])if(fx[key]!==undefined&&fx[key]!==null)patch[key]=fx[key];
   if(fx.filter===null){const chain=processingChain(patch);patch.chain={...chain,order:[...chain.order],bypass:[...new Set([...chain.bypass,'filter'])]};}
   patch.envelope.attack=clampParameterValue('envelope.attack',fx.attack??patch.envelope.attack);
   patch.envelope.release=clampParameterValue('envelope.release',fx.release??patch.envelope.release);

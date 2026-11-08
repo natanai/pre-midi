@@ -7,12 +7,12 @@ import {DEFAULT_SAMPLE_FILTER} from "./audioEffects.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 
 const ALLOWED=new Set(["chain","filter","drive","movement","bend","gain",
- "automation","modulation","transpose","pan","attack","release","delayMix","delayTime","delayFeedback"]);
+ "delaySync","automation","modulation","transpose","pan","attack","release","delayMix","delayTime","delayFeedback"]);
 export function vocalDisplayPatch(clip,recording){
  const fx=vocalEffects(clip);
  return {
   type:"vocal",audioFilterBypassed:fx.filter===null,
-  chain:fx.chain,filter:fx.filter,drive:fx.drive,
+  delaySync:clip.effects?.delaySync,chain:fx.chain,filter:fx.filter,drive:fx.drive,
   movement:fx.movement,bend:fx.bend,modulation:fx.modulation,automation:fx.automation,
   gain:clip.gain??1,transpose:fx.transpose,pan:fx.pan,
   attack:fx.attack,release:fx.release,
@@ -47,7 +47,7 @@ export function vocalChangesFromControl(display,path,value){
 export function vocalEventFromPatch(patch,context,level=1){
  const {clip,recording}=context.vocal;
  return {recording,track:{kind:"vocal"},clip:{...structuredClone(clip),gain:level,
-  effects:{chain:patch.chain,...vocalChangesFromControl(patch,[["filter"],["drive"],["movement"],["bend"],["transpose"],["pan"],["attack"],["release"]],
+  effects:{delaySync:patch.delaySync,chain:patch.chain,...vocalChangesFromControl(patch,[["filter"],["drive"],["movement"],["bend"],["transpose"],["pan"],["attack"],["release"]],
    [patch.filter,patch.drive,patch.movement,patch.bend,patch.transpose,patch.pan,patch.attack,patch.release]),
    ...patch.effects,...(patch.automation?{automation:patch.automation}:{}),...(patch.modulation?{modulation:patch.modulation}:{})}}};
 }

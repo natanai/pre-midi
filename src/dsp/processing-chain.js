@@ -4,9 +4,10 @@
 export const DEFAULT_PROCESSING_CHAIN=Object.freeze({version:1,order:Object.freeze(['filter','drive']),bypass:Object.freeze([])});
 export function validateProcessingChain(chain){
  if(chain===undefined)return [];
- if(!chain||typeof chain!=='object'||Array.isArray(chain)||Object.keys(chain).some(k=>!['version','order','bypass'].includes(k))||chain.version!==1||
+ if(!chain||typeof chain!=='object'||Array.isArray(chain)||Object.keys(chain).some(k=>!['version','order','bypass','mix'].includes(k))||chain.version!==1||
   !Array.isArray(chain.order)||chain.order.length>2||new Set(chain.order).size!==chain.order.length||chain.order.some(id=>!['filter','drive'].includes(id))||
   !Array.isArray(chain.bypass)||new Set(chain.bypass).size!==chain.bypass.length||chain.bypass.some(id=>!['filter','drive','delay'].includes(id)))return ['Invalid processing chain.'];
+ if(chain.mix!==undefined&&(!chain.mix||typeof chain.mix!=='object'||Array.isArray(chain.mix)||Object.entries(chain.mix).some(([id,value])=>!['filter','drive'].includes(id)||!Number.isFinite(value)||value<0||value>1)))return ['Invalid processor mix.'];
  return [];
 }
 export const processingChain=patch=>patch.chain??DEFAULT_PROCESSING_CHAIN;
@@ -29,4 +30,11 @@ export function withProcessorBypass(patch,id,bypassed){
  return {...chain,order,bypass};
 }
 export const processingFlags=patch=>(processingChain(patch).order[0]==='drive'?1:0)|(processorBypassed(patch,'filter')?2:0)|(processorBypassed(patch,'drive')?4:0);
-export const effectiveDelayEffects=(patch,effects)=>processorBypassed(patch,'delay')?{...effects,delayMix:0}:effects;
+export const DELAY_DIVISIONS=Object.freeze([.25,.5,.75,1]);
+export const validateDelaySync=value=>value===undefined||DELAY_DIVISIONS.includes(value)?[]:['Invalid delay tempo division.'];
+export const effectiveDelayEffects=(patch,effects,unit=.125)=>{
+ const fx=patch.delaySync?{...effects,delayTime:patch.delaySync*4*unit}:effects;
+ return processorBypassed(patch,'delay')?{...fx,delayMix:0}:fx;
+};
+
+export const processorMix=(patch,id)=>processingChain(patch).mix?.[id]??1;
