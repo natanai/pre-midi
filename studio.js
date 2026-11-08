@@ -15,6 +15,7 @@ import {renderPianoRollRows,createPianoNoteSurface,applyPianoNoteState,noteAtPia
 import {mountEditorWorkspace,syncEditorInspector} from "./editorWorkspace.js";
 import {createInstrumentCard,createInstrumentActionMenu,instrumentAccent} from "./editorInstrumentCard.js";
 import {bindPianoNoteGesture,noteEndGrabWidth} from "./pianoNoteGesture.js";
+import {incomingChunkSustains,continuationProposal,continueNoteFromEarlierChunk} from "./chunkContinuation.js";
 import {placementFor,phraseInstances,chunkProgress} from "./arrangement.js";
 import {attachNumberScrub} from "./dragNumber.js";
 import { PRESETS, getPreset, makePatch, patchCopy, validatePatch } from "./synth.js";
@@ -784,6 +785,26 @@ function renderNotes() {
  const keyByPitch=new Map();
  const rowPreviews=new Map();
  let draggedNoteId=null;
+ // The keyboard is a viewport boundary, not a separate note-on lane.
+ const activeBar=selectedSlot.instrumentId===inst.id&&
+  inst.timeline[selectedSlot.bar]===chunk.id?selectedSlot.bar:null;
+ const incoming=activeBar===null?[]:incomingChunkSustains(beat,inst.id,activeBar);
+ let continuationPreview=null;
+ const visibleNotes=()=>{
+  const notes=continuationPreview?chunk.notes.map(note=>
+   note.id===continuationPreview.noteId?{...note,start:0,
+    pitch:continuationPreview.pitch,
+    duration:Math.max(0,continuationPreview.relativeEnd),
+    continuation:true,preview:true}:note).filter(note=>note.duration>0):chunk.notes;
+  return [...notes,...incoming];
+ };
+ function openIncomingContinuation(note,effects=false){
+  selectedSlot={instrumentId:inst.id,bar:note.sourceBar};
+  selectedChunks.set(inst.id,note.sourceChunkId);
+  selectedNoteId=effects?note.sourceNoteId:null;
+  editingNoteEffects=effects;
+  render();
+ }
  let hoveredPitch=null;
  function hoverPianoPitch(pitch){
   if(pitch===hoveredPitch)return;
@@ -839,11 +860,11 @@ function renderNotes() {
   const cells = [];
   function previewRow() {
    for (let pos = 0; pos < 16; pos++) {
-    const present = noteAtPianoStep(chunk.notes,rowData,pos);
+    const present = noteAtPianoStep(visibleNotes(),rowData,pos);
     const cell = cells[pos];
     applyPianoNoteState(cell,{
-     head:!!present&&present.start===pos,
-     tail:!!present&&present.start!==pos,
+     head:!!present&&!present.continuation&&present.start===pos,
+     tail:!!present&&(!!present.continuation||present.start!==pos),
      end:!!present&&present.start+present.duration-1===pos,
      selected:editingNoteEffects&&!!present&&present.id===selectedNoteId,
      bent:!!present&&!!present.bend?.shape&&present.bend.shape!=="straight",
@@ -859,9 +880,9 @@ function renderNotes() {
     cell.setAttribute("aria-label", noteLabel(pitch) + ", step " + (pos + 1)
      + (scaleActive?(inScale?", in scale":", outside scale"):"")
      + (direction?", "+(direction==="either"?"either direction":direction):"")
-     + (present ? ", note length " + present.duration + " steps; " + (editingNoteEffects?"click to edit note effects":"click to remove") + "; hold and drag to move" :
+     + (present ? (present.continuation?", held from earlier Chunk; click to view the original":", note length " + present.duration + " steps; " + (editingNoteEffects?"click to edit note effects":"click to remove") + "; hold and drag to move") :
       cell.disabled?", adding notes restricted":", click to add note"));
-    cell.title = present ? (editingNoteEffects?"Click to shape note":"Click to remove") + " · hold and drag to move · drag end to resize · right-click effects" : "Add " + noteLabel(pitch) + " · drag to extend";
+    cell.title = present?.continuation?"Held from previous Chunk · click to edit original":present ? (editingNoteEffects?"Click to shape note":"Click to remove") + " · hold and drag to move · drag end to resize · right-click effects" : "Add " + noteLabel(pitch) + " · drag to extend";
    }
   }
 
@@ -872,7 +893,8 @@ function renderNotes() {
     if (ignoreClick) return;
     const targetInst = instrument();
     const editedChunk = chunkFor(targetInst);
-    const existing = noteAtPianoStep(editedChunk.notes,rowData,step);
+    const existing = noteAtPianoStep(visibleNotes(),rowData,step);
+    if(existing?.continuation){openIncomingContinuation(existing,editingNoteEffects);return;}
     if(existing && editingNoteEffects){
      selectedNoteId=existing.id;
      renderNotes();
@@ -896,9 +918,10 @@ function renderNotes() {
    cells.push(cell);
    cell.addEventListener("contextmenu",event=>{
     // A note tail is still the same note. Never add/remove on a right-click.
-    const note=noteAtPianoStep(chunk.notes,rowData,step);
+    const note=noteAtPianoStep(visibleNotes(),rowData,step);
     if(!note)return;
     event.preventDefault();
+    if(note.continuation){openIncomingContinuation(note,true);return;}
     setNoteEffectsMode(true,note.id,false);
    });
    cell.addEventListener("pointerenter",()=>focusScaleStep(step));
@@ -910,7 +933,8 @@ function renderNotes() {
     stepWidth:()=>cell.getBoundingClientRect().width,
     rowHeight:()=>cell.getBoundingClientRect().height,
     begin:event=>{
-     const existing=noteAtPianoStep(chunk.notes,rowData,step);
+     const existing=noteAtPianoStep(visibleNotes(),rowData,step);
+     if(existing?.continuation)return null;
      if(!existing && (cell.disabled ||
       (scaleGuide.lock && !isPitchInScaleAtStep(pitch,scaleGuide,chunk.notes,step))))return null;
      const bounds=cell.getBoundingClientRect();
@@ -935,19 +959,43 @@ function renderNotes() {
       },
       preview:({steps,pitches})=>{
        const oldPitch=note.pitch;
-       if(mode==="move")
-        applyNoteCommand(chunk,{type:"note.move",noteId:note.id,
+       if(mode==="move"){
+        // The WHOLE-note move, not a left-edge resize, can cross the keyboard.
+        Object.assign(note,original);
+        continuationPreview=activeBar!==null&&original.start+steps<0?
+         (()=>{const candidate=continuationProposal(beat,{
+          instrumentId:inst.id,bar:activeBar,noteId:note.id,steps,pitches
+         });return candidate.ok?{...candidate,noteId:note.id}:null;})():null;
+        if(!continuationPreview)applyNoteCommand(chunk,{type:"note.move",noteId:note.id,
          start:original.start+steps,pitch:original.pitch+pitches},
          {minPitch:36,maxPitch:83,allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(beat.version)});
-       else
+       }else
         applyNoteCommand(chunk,{type:"note.resize",noteId:note.id,
          duration:(original?.duration??1)+steps},
          {allowSustain:[SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION].includes(beat.version)});
        rowPreviews.get(oldPitch)?.();
        if(note.pitch!==oldPitch)rowPreviews.get(note.pitch)?.();
       },
-      finish:({cancelled})=>{
+      finish:({cancelled,steps,pitches})=>{
        const oldPitch=note.pitch;
+       let continued=false;
+       if(!cancelled&&mode==="move"&&continuationPreview){
+        Object.assign(note,original);
+        const result=continueNoteFromEarlierChunk(beat,{
+         instrumentId:inst.id,bar:activeBar,noteId:note.id,steps,pitches
+        });
+        if(result.changed){
+         selectedChunks.set(inst.id,result.currentChunkId);
+         selectedNoteId=null;
+         if(song){synchronizeLinkedFreeform(song);upgradeSongFeatures(song);}
+         const problems=[...validate(beat),...(song?validateSong(song):[])];
+         if(problems.length){
+          restoreDocument(before);
+          message(problems[0],true);
+        }else continued=true;
+        }else message(result.reason,true);
+       }
+       continuationPreview=null;
        if(cancelled){
         if(mode==="paint"){
          chunk.notes=chunk.notes.filter(item=>item.id!==note.id);
@@ -955,7 +1003,7 @@ function renderNotes() {
         }else Object.assign(note,original);
         ignoreClick=true;
        }
-       const changed=!cancelled&&(mode==="paint"||
+       const changed=!cancelled&&(continued||mode==="paint"||
         note.start!==original.start||note.pitch!==original.pitch||note.duration!==original.duration);
        draggedNoteId=null;
        rowPreviews.get(oldPitch)?.();
