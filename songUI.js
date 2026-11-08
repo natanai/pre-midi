@@ -4,7 +4,7 @@ import {songDurationSteps,removeSongClip,removeEmptyVocalTrack,moveVocalClip} fr
 import {id} from "./schema.js";
 import {unpackBeatClip} from "./freeformModel.js";
 import {installFreeformUI} from "./freeformUI.js";
-import {timelineStepAtX,trackTimelinePointer,attachedLanePull} from "./timelinePointer.js";
+import {timelineStepAtX,trackTimelinePointer,attachedLanePull,inAttachedPullZone} from "./timelinePointer.js";
 // All Song lanes and the bar ruler use the same scale; only the viewport
 // determines how much empty timeline is visible. There is no fixed song end.
 const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
@@ -233,10 +233,11 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
    if(point.moved)document.documentElement.classList.add('song-horizontal-drag');
    // Horizontal editing never lifts a Beat out of its source row.
    const under=document.elementFromPoint(point.clientX,point.clientY),target=point.moved?under?.closest('.song-freeform-row'):null;
-   const own=!!target&&target.dataset.parentTrackId===track.id;
+   const foreign=!!target&&target.dataset.parentTrackId!==track.id;
+   const own=!foreign&&(!!target||row?.classList.contains('dormant')&&inAttachedPullZone(point,lane?.getBoundingClientRect()));
    const pull=gate.update({inOwnLane:own,dy:point.dy},performance.now());
    result.freeform=pull.ready;
-   const pulling=own&&point.dy>=14;block.classList.toggle('pointer-held',pulling);row?.classList.toggle('drop-available',pulling);
+   const pulling=own&&point.dy>=14;block.classList.toggle('pointer-held',pulling);row?.classList.toggle('drop-available',pulling);row?.style.setProperty('--pull-open',String(pulling?Math.max(.12,pull.progress):0));
    meter.hidden=!pulling;meter.style.setProperty('--pull',String(pull.progress));meter.setAttribute('aria-valuenow',String(Math.round(pull.progress*100)));
    row?.classList.toggle('drop-active',pull.ready);block.classList.toggle('dropping-freeform',pull.ready);
    ghost.hidden=!pull.ready;
@@ -251,7 +252,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   }
   function move(next,nextSteps){point=next;steps=nextSteps;paint();return result;}
   return {move,clear(){
-   row?.classList.remove("drop-available","drop-active");
+   row?.classList.remove("drop-available","drop-active");row?.style.removeProperty("--pull-open");
    document.documentElement.classList.remove('song-horizontal-drag');
    block.classList.remove("pointer-held","pointer-dragging","dropping-freeform");
    if(frame!==null)cancelAnimationFrame(frame);gate.reset();meter.remove();ghost.remove();hint.remove();

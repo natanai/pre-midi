@@ -87,3 +87,9 @@ export function attachedLanePull({durationMs=650,minDistance=14}={}){
   return {progress,ready:progress===1};
  },reset(){began=null;}};
 }
+
+// An unused child is only a seam. Its owning drag gets a small pull zone below
+// that seam, so conversion never requires aiming at a three-pixel target.
+export function inAttachedPullZone(point,rect){
+ return !!rect&&rect.width>0&&point.dy>=14&&point.clientX>=rect.left&&point.clientX<=rect.right&&point.clientY>=rect.top&&point.clientY<=rect.top+36;
+}

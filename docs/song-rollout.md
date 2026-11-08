@@ -304,3 +304,7 @@ One common four-band EQ graph/dial editor and one/two/four-stage filter slopes n
 ### Quiet horizontal Song dragging (2026-11-07)
 
 Removed the freeform tab arrow and stationary-hold arrow. Normal Beat dragging keeps a horizontal cursor across the page and stays on the original row; other lanes receive no highlight or rejection message. Only a deliberate pull over the owning freeform lane shows its progress/allowed-drop feedback, and leaving clears that cue. Native system-pointer position remains unconstrained by the browser. The existing 650 ms owning-lane conversion gate is unchanged. Focused Song drag DOM integration passes; preview.26 remains the preceding immutable Windows artifact.
+
+### Closed attached freeform pull-tab (2026-11-07)
+
+An unused attached lane now occupies only a three-pixel seam under its parent, with no persistent label, grid or hover highlight. A deliberate owning-Beat downward pull reveals the tab progressively in an overlay, preserving neighboring row geometry; a 36px owning pull zone avoids targeting the tiny seam. Foreign child lanes remain invalid and unacknowledged, and the 650ms conversion gate remains. Cancel/leave closes the tab. Keyboard focus still reveals the empty-editor action; lanes containing music stay expanded. Focused pull-zone/gate and Song drag DOM checks pass. Windows preview.26 remains unchanged.

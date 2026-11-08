@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {timelineStepAtX,attachedLanePull} from "../timelinePointer.js";
+import {timelineStepAtX,attachedLanePull,inAttachedPullZone} from "../timelinePointer.js";
 const geometry={gutter:105,barPixels:54,bars:24};
 test("Song pointer positions follow bar boundaries including the visible empty tail",()=>{
  assert.equal(timelineStepAtX(105,geometry),0);
@@ -26,4 +26,10 @@ test("downward conversion requires a sustained pull into only the owning lane",(
  assert.equal(gate.update({inOwnLane:true,dy:3},1600).progress,0);
  assert.equal(gate.update({inOwnLane:true,dy:30},1700).ready,false);
  gate.reset();assert.equal(gate.update({inOwnLane:true,dy:30},3000).ready,false);
+});
+
+test("a closed attached lane accepts an intentional pull without a tiny hit target",()=>{
+ const rect={left:105,right:800,top:40,width:695};
+ assert.equal(inAttachedPullZone({clientX:300,clientY:60,dy:30},rect),true);
+ for(const point of [{clientX:100,clientY:60,dy:30},{clientX:300,clientY:35,dy:30},{clientX:300,clientY:90,dy:60},{clientX:300,clientY:60,dy:3}])assert.equal(inAttachedPullZone(point,rect),false);
 });

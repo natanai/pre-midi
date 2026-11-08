@@ -9,26 +9,34 @@
 .song-freeform-row.active{background:#0c1715}
 .song-freeform-row.active .song-freeform-label{border-left-color:#83cfad}
 
-/* An unused attached lane is a restrained drop tab, not a second open Track.
-   The full-width hit strip remains available for Beat Clip drop targets. */
-.song-freeform-row.dormant{min-height:16px;max-height:16px;background:#050707}
+/* Unused freeform is a closed seam; pulling reveals a tab without reflow. */
+.song-freeform-row.dormant{height:3px;min-height:3px;max-height:3px;overflow:visible}
 .song-freeform-row.dormant .song-freeform-label{
- min-height:16px;padding:0 4px 0 10px;border-left-color:#34453f;
- background:#080b0a
+ height:3px;min-height:3px;padding:0;background:transparent;
 }
 .song-freeform-row.dormant .song-freeform-toggle{
- display:block;min-height:16px;line-height:14px;font-size:9px;
- color:#879c91;padding:0 3px;
+ height:3px;min-height:3px;line-height:18px;overflow:hidden;
+ font-size:10px;color:transparent;padding:0 4px;opacity:0;
 }
 .song-freeform-row.dormant .song-freeform-lane{
- min-height:16px;height:16px;background-color:#050707;
- background-image:linear-gradient(90deg,transparent calc(100% - 1px),#19231f calc(100% - 1px));
+ height:3px;min-height:3px;background:transparent;cursor:default;
 }
-.song-freeform-row.dormant:hover .song-freeform-lane,
-.song-freeform-row.dormant:focus-within .song-freeform-lane{
- background-color:#10201a;outline:1px dashed #678a7b;outline-offset:-2px;
+.song-freeform-row.dormant.drop-available{z-index:12}
+.song-freeform-row.dormant.drop-available .song-freeform-label,
+.song-freeform-row.dormant.drop-available .song-freeform-lane{
+ height:calc(3px + 23px * var(--pull-open,0));
+ background:#0c1511;transition:height 80ms linear;
 }
-.song-freeform-row.dormant.active{background:#08140e}
+.song-freeform-row.dormant.drop-available .song-freeform-toggle{
+ height:calc(3px + 23px * var(--pull-open,0));
+ opacity:var(--pull-open,0);color:#b6c9bf;
+}
+/* Keyboard access can reveal and open an empty editor as before. */
+.song-freeform-row.dormant:focus-within{z-index:12}
+.song-freeform-row.dormant:focus-within .song-freeform-label,
+.song-freeform-row.dormant:focus-within .song-freeform-toggle{
+ height:26px;min-height:26px;background:#0c1511;opacity:1;color:var(--bright);
+}
 
 .song-freeform-passage{position:absolute;inset-block:3px;border:1px solid #547e71;background:rgba(60,109,92,.12);cursor:ew-resize;min-width:9px;padding:0;touch-action:none}
 .song-freeform-preview-note{position:absolute;height:5px;min-width:2px;border-radius:1px;background:#83c6a9;pointer-events:none}
@@ -149,3 +157,7 @@ main.editing-freeform .beat-identity > label{display:none}
 .song-pull-progress[hidden]{display:none}
 
 .song-track-family>.song-track-row>.song-track-label{border-left:2px solid #526059;box-sizing:border-box}
+
+.song-track-family>.song-freeform-row.dormant{background:transparent;box-shadow:none}
+.song-track-family>.song-freeform-row.dormant .song-freeform-lane{box-shadow:none}
+.song-track-family>.song-freeform-row.dormant .song-freeform-label::before{display:none}
