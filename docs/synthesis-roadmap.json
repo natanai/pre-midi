@@ -3443,7 +3443,7 @@
       {
         "id": "SOUND-BATCH-PREVIEW25",
         "date": "2026-11-07",
-        "status": "implemented_pending_windows_build",
+        "status": "implemented",
         "task_ids": [
           "SE-06",
           "SE-08",
@@ -3474,12 +3474,16 @@
           "model": "Focused macro mapping/preset/project, mix/chain identity, tempo resolution and existing random/step cases passed",
           "native": "Full-graph macro scaling, mixed-chain sample/vocal PCM identity, dry endpoints and delay plans at 40/120/240 BPM passed; native FIR impulse peak measured 192 frames",
           "web_audio": "Offline audio measured 128-frame oversampler latency in test backend; aligned half-mix error 6.34e-7, macro level .8 and actual synced echoes at 40/120/240 BPM passed",
-          "dom_integration": "Shared Inspector macro create/map/edit, processor mix/timing, combined visibility and undo/redo passed in DOM integration"
+          "dom_integration": "Shared Inspector macro create/map/edit, processor mix/timing, combined visibility and undo/redo passed in DOM integration",
+          "windows": "Windows compilation, source checks, native tests, dependency inspection and portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio suite skipped"
         },
         "windows_preview": {
           "version": "0.14.1-preview.25",
-          "status": "build_requested",
-          "optional_full_audio_qualification": false
+          "status": "published",
+          "optional_full_audio_qualification": false,
+          "source_commit": "76dfceee4228c6f446124f54bbf8f112b1f6a4de",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42447205605",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.25/pre-midi-0.14.1-preview.25-windows-x86_64-portable.zip"
         },
         "not_claimed": [
           "Full M2 completion",
@@ -3544,21 +3548,16 @@
           "url": "https://github.com/natanai/pre-midi/actions/runs/42425325275"
         },
         "windows_package": {
-          "version": "0.14.1-preview.24",
+          "version": "0.14.1-preview.25",
           "status": "published",
-          "scope": "Windows x64 portable ZIP including shared vocal/Inspector parity, M2 serial processor lifecycle and sampled rack chunk picker fix; optional full audio qualification skipped",
-          "source_commit": "622ad9c45ba63fd2615808000b5b13737e927db0",
-          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42442272683",
-          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.24/pre-midi-0.14.1-preview.24-windows-x86_64-portable.zip",
-          "bytes": 16202815,
-          "sha256": "d4ed902baa554b72fb16964f3029c2572f24f6a52f6c58b5240fe2aa5e995ead",
+          "scope": "Windows x64 portable ZIP including random/step movement and the merged three-capability macro/mix/tempo-delay batch",
+          "source_commit": "76dfceee4228c6f446124f54bbf8f112b1f6a4de",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42447205605",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.25/pre-midi-0.14.1-preview.25-windows-x86_64-portable.zip",
+          "bytes": 16209181,
+          "sha256": "7957c9121e34036bea6a1791820d00fb930d8eec53079f218e0d8c77e60a4f32",
           "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection, portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
-          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files",
-          "pending_build": {
-            "version": "0.14.1-preview.25",
-            "status": "build_requested",
-            "includes": "Random/step movement, performance macros, processor wet/dry and tempo delay since preview.24"
-          }
+          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files"
         }
       },
       "remaining_qualification": [
