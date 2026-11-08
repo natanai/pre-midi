@@ -4,7 +4,7 @@ import {create} from '../schema.js';
 import {makePatch,PRESETS} from '../synth.js';
 import {renderEvents} from '../audio.js';
 import {planSynthVoice} from '../src/dsp/synth-voice.js';
-import {nativePlans,encodeNativeSession,unsupportedNativeFeatures,playNative} from '../src/hosts/native/session.js';
+import {nativePlans,encodeNativeSession,unsupportedNativeFeatures,playNative,cancelNativeTransport} from '../src/hosts/native/session.js';
 
 function beat(){const doc=create();doc.bars=1;const inst=doc.instruments[0];inst.timeline=[inst.chunks[0].id];inst.placements=[null];inst.sounds[0].patch=makePatch('touch-keys');inst.volume=.4;inst.sounds[0].gain=.7;inst.chunks[0].notes=[{id:'native-note',pitch:64,start:2,duration:3,velocity:.6}];return doc;}
 test('native transport consumes the shared canonical timing, sound gain and modulation plan',()=>{
@@ -48,6 +48,30 @@ test('native live edits serialize tempo changes, preserve pause and cancel stopp
   assert.equal(calls.filter(c=>c.action==='update').length,3);
   assert.equal(calls.at(-1).action,'control');assert.equal(calls.at(-1).command,1);
  }finally{await handle?.stop();delete globalThis.__TAURI__;}
+});
+test('a native Song stopped during preparation never starts late',async()=>{
+ const doc=beat(),events=renderEvents(doc),calls=[];
+ let releaseStatus,notifyStatus;
+ const waiting=new Promise(resolve=>{notifyStatus=resolve;});
+ const prior=globalThis.__TAURI__;
+ globalThis.__TAURI__={core:{invoke:async(_,{request})=>{
+  calls.push(request);
+  if(request.action==='status'){
+   notifyStatus();
+   await new Promise(resolve=>{releaseStatus=resolve;});
+   return {sampleRate:48000,generation:1};
+  }
+  if(request.action==='begin')return {owner:1};
+  return {sampleRate:48000,generation:1};
+ }}};
+ try{
+  const pending=playNative(doc,events);
+  await waiting;
+  await cancelNativeTransport();
+  releaseStatus();
+  await assert.rejects(pending,/cancelled/);
+  assert.equal(calls.filter(request=>request.action==='play').length,0);
+ }finally{if(prior===undefined)delete globalThis.__TAURI__;else globalThis.__TAURI__=prior;}
 });
 test('vocal and unresolved sound identities fail explicitly',()=>{
  assert.throws(()=>nativePlans([{kind:'vocal'}]),/missing its recording/);

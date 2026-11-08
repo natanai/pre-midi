@@ -1,4 +1,4 @@
-use std::{ffi::{c_char,c_void,CStr},sync::{mpsc::{sync_channel,SyncSender},Arc,atomic::{AtomicBool,Ordering}}};
+use std::{ffi::{c_char,c_void,CStr},sync::{mpsc::{sync_channel,SyncSender},Arc,Mutex,atomic::{AtomicBool,Ordering}}};
 use serde::{Deserialize,Serialize};
 use std::collections::HashMap;
 use serde_json::{json,Value};
@@ -41,6 +41,7 @@ unsafe extern "C" {
  fn premidi_audio_resample(input:*const f32,frames:u64,rate:u32,channels:u32,target_rate:u32,output:*mut f32,output_frames:u64,output_channels:u32)->i32;
  fn premidi_audio_update(host:*mut c_void,data:*const u8,length:usize,cycle:f64,looping:i32,tempo_ratio:f64)->i32;
  fn premidi_audio_render(host:*mut c_void,data:*const u8,length:usize,cycle:f64,rate:u32,frames:u64,output:*mut u8,output_bytes:usize,format:u32,gain:f64)->i32;
+ fn premidi_audio_request_transport_stop(host:*mut c_void);
  fn premidi_audio_control(host:*mut c_void,command:u32,looping:i32)->i32;
  fn premidi_audio_status_get(host:*mut c_void,status:*mut Status)->i32;
  fn premidi_audio_stream_begin(host:*mut c_void,owner:u64,revision:u64)->i32;
@@ -86,34 +87,56 @@ impl Host {
 type Reply=SyncSender<Result<Value,String>>;
 type BytesReply=SyncSender<Result<Vec<u8>,String>>;
 enum Work{Json(Request,Reply),Render(RenderRequest,BytesReply),FinishCapture(u64,BytesReply),Decode(DecodeRequest,BytesReply)}
-pub struct Audio{sender:SyncSender<Work>,closing:Arc<AtomicBool>}
+pub struct Audio{sender:SyncSender<Work>,closing:Arc<AtomicBool>,transport:Arc<Mutex<usize>>}
 impl Default for Audio{
  fn default()->Self{
   let (sender,receiver)=sync_channel::<Work>(8);
   let closing=Arc::new(AtomicBool::new(false));let worker_closing=closing.clone();
+  // Share only an atomic mute entrypoint, not the COM-affine DeviceHost worker.
+  let transport=Arc::new(Mutex::new(0usize));let worker_transport=transport.clone();
   std::thread::Builder::new().name("pre-midi audio control".into()).spawn(move||{
    let mut host=ControlState::default();
    while let Ok(work)=receiver.recv(){match work{
-    Work::Json(request,reply)=>{let result=if worker_closing.load(Ordering::SeqCst)&&!matches!(&request,Request::Shutdown){Err("pre-midi is closing".into())}else{handle(&mut host,request)};let _=reply.send(result);},
+    Work::Json(request,reply)=>{
+     let shutdown=matches!(&request,Request::Shutdown);
+     // Prevent a concurrent mute from borrowing Host during its destruction.
+     if shutdown{*worker_transport.lock().unwrap()=0;}
+     let result=if worker_closing.load(Ordering::SeqCst)&&!shutdown{Err("pre-midi is closing".into())}else{handle(&mut host,request)};
+     if !shutdown{if let Some(active)=host.host.as_ref(){*worker_transport.lock().unwrap()=active.0 as usize;}}
+     let _=reply.send(result);
+    },
     Work::Render(request,reply)=>{let result=if worker_closing.load(Ordering::SeqCst){Err("pre-midi is closing".into())}else{render(&mut host,request)};let _=reply.send(result);},
     Work::FinishCapture(owner,reply)=>{let _=reply.send(finish_capture(&mut host,owner));},
     Work::Decode(request,reply)=>{let result=if worker_closing.load(Ordering::SeqCst){Err("pre-midi is closing".into())}else{decode_audio(request)};let _=reply.send(result);},
    }
    }
   }).expect("Could not create audio control thread");
-  Self{sender,closing}
+  Self{sender,closing,transport}
  }
 }
 impl Audio{
+ fn mute_transport_now(&self){
+  if let Ok(pointer)=self.transport.lock(){
+   if *pointer!=0{unsafe{premidi_audio_request_transport_stop(*pointer as *mut c_void)};}
+  }
+ }
  pub(super) fn reopen(&self){self.closing.store(false,Ordering::SeqCst);}
  pub(super) fn call(&self,request:Request)->Result<Value,String>{
   if self.closing.load(Ordering::SeqCst){return Err("pre-midi is closing".into());}
+  let urgent=matches!(&request,Request::Control{command:1|4,owner:None,..});
+  if urgent{self.mute_transport_now();}
   let (reply,result)=sync_channel(1);
-  self.sender.try_send(Work::Json(request,reply)).map_err(|_|"Native audio control is busy; retry the operation".to_string())?;
+  // Never drop Stop on a full queue; the callback is already muted before waiting.
+  if urgent{
+   self.sender.send(Work::Json(request,reply)).map_err(|_|"Native audio control thread stopped".to_string())?;
+  }else{
+   self.sender.try_send(Work::Json(request,reply)).map_err(|_|"Native audio control is busy; retry the operation".to_string())?;
+  }
   result.recv().map_err(|_|"Native audio control thread stopped".to_string())?
  }
  pub(super) fn close(&self){
   self.closing.store(true,Ordering::SeqCst);
+  self.mute_transport_now();
   let (reply,result)=sync_channel(1);
   // Final shutdown must not be dropped when ordinary control messages fill the
   // queue. Queued work is rejected by the closing flag; callback state is freed

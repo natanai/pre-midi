@@ -245,9 +245,9 @@ function closePicker() {
  pickerTrigger = null;
 }
 function setPlaybackButton(isPlaying,playingSong=!!(song&&songExpanded)){
- const control=$("play");
- control.textContent=isPlaying?"■ stop":"▶ play";
- control.setAttribute("aria-label",(isPlaying?"stop ":"play ")+(playingSong?"song":"beat"));
+ const control=$("play"),active=isPlaying||pendingPlay;
+ control.textContent=active?"■ stop":"▶ play";
+ control.setAttribute("aria-label",(active?"stop ":"play ")+(playingSong?"song":"beat"));
  const pause=$("native-pause");if(pause){pause.disabled=!isPlaying;pause.textContent=playback?.paused?'resume':'pause';}
 }
 const voiceDialog=$("voice-dialog");
@@ -299,7 +299,7 @@ function stop() {
  playbackGeneration++;cancelWebTransport();
  if(window.__TAURI__)void cancelNativeTransport().catch(error=>console.warn('Native stop:',error));
  if(vocalTake&&!playback)void finalizeVocalTake();
- if (playback) playback.stop();
+ if (playback) void Promise.resolve(playback.stop()).catch(error=>console.warn('Native stop:',error));
  playback = null;
  pendingPlay = false;
  playBar = playStep = -1;
@@ -1564,9 +1564,10 @@ exportForm.addEventListener("submit",async event=>{
 });
 async function startTransport({onStart=null,recording=false,startStep=null,countIn=0,captureOwner=null,onCountIn=()=>{}}={}){
  if (playback) { stop(); return; }
- if (pendingPlay) return;
+ if (pendingPlay) { stop(); return; }
  pendingPlay = true;
  const playingSong=!!(song&&songExpanded),generation=++playbackGeneration;
+ setPlaybackButton(false,playingSong);
  try {
   const session = await play(() => playingSong?song:beat, {
    countIn,recording:captureOwner,onCountIn,getRevision:()=>songEditRevision,
@@ -1606,7 +1607,10 @@ async function startTransport({onStart=null,recording=false,startStep=null,count
   if(vocalTake)void finalizeVocalTake();
   if(generation===playbackGeneration)message("Playback error: " + error.message, true);
  }
- finally { pendingPlay = false; }
+ finally {
+  // A stale Play completion must not clear a newer Play's pending state.
+  if(generation===playbackGeneration){pendingPlay=false;if(!playback)setPlaybackButton(false,playingSong);}
+ }
 }
 $("play").addEventListener("click",()=>void startTransport());
 window.addEventListener('premidi-audio-mode',()=>stop());

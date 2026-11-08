@@ -21,3 +21,18 @@ jobs:
         with:
           node-version: '22'
       - run: npm run check
+
+  native-audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch pinned native audio device host
+        run: node scripts/fetch-miniaudio.mjs
+      - name: Exercise native Song emergency Stop and page cleanup
+        run: node scripts/native-stream-device-check.mjs
+      - name: Compile Rust/native control and run ownership tests
+        run: cargo test --manifest-path native/control-tests/Cargo.toml --locked

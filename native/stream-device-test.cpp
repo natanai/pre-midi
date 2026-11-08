@@ -99,6 +99,23 @@ int main(int argc,char** argv){
     "Stopping a stream did not release its native owner");
    const int stale=premidi_audio_stream_start(host,owner,revision);
    premidi::require(stale<0,"Stale Song owner restarted a cancelled stream");
+   // A request arriving from another thread must stop the Song clock without
+   // waiting for the host control thread to retire its pages.
+   check(premidi_audio_stream_begin(host,owner+1,revision+1));
+   for(const auto& note:reference.notes)if(note.plan.delayMix>0)
+    check(premidi_audio_stream_delay(host,owner+1,revision+1,note.plan.delayMix,
+     note.plan.delayTime,note.plan.delayFeedback,note.plan.delayTone,note.plan.delayPingPong));
+   check(premidi_audio_stream_page(host,owner+1,revision+1,1,
+    pages[0].first,pages[0].end,pages[0].onsets,pages[0].last?1:0,
+    pages[0].bytes.data(),pages[0].bytes.size()));
+   check(premidi_audio_stream_start(host,owner+1,revision+1));
+   std::thread urgent([&]{premidi_audio_request_transport_stop(host);});urgent.join();
+   premidi_stream_status silenced{};check(premidi_audio_stream_status_get(host,&silenced));
+   std::this_thread::sleep_for(std::chrono::milliseconds(30));
+   check(premidi_audio_stream_status_get(host,&status));
+   premidi::require(status.position==silenced.position,
+    "Urgent Song Stop did not halt the audio callback clock");
+   check(premidi_audio_stream_stop(host,owner+1,revision+1));
    std::cout<<"{\"qualified\":true,\"rate\":"<<rate
     <<",\"pages\":"<<pages.size()<<",\"published\":"<<published
     <<",\"backpressure\":"<<backpressure<<",\"acknowledged\":"<<overall.position

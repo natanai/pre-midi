@@ -89,6 +89,8 @@ class DeviceHost {
  std::vector<ma_device_info> devices;
  std::string error;
  std::atomic<unsigned> intentionalStop{0},lost{0};
+  // Independent lock-free Stop latch, also set while the Rust worker prepares audio.
+  std::atomic<bool> transportStopRequested{false};
  std::atomic<std::uint64_t> callbacks{0},frames{0},totalNs{0},maxNs{0},misses{0},oversized{0},clipped{0},peak{0};
  static void notify(const ma_device_notification* event)noexcept{
   auto& host=*static_cast<DeviceHost*>(event->pDevice->pUserData);
@@ -114,7 +116,13 @@ class DeviceHost {
   unsigned transportBudget=maxOnsets,previewBudget=maxOnsets;std::uint64_t clipping=0,peakValue=0;
   for(unsigned offset=0;offset<count;){
    const auto n=std::min(renderBlock,count-offset);std::array<float,2*renderBlock> a{},b{};
-   if(stream){
+   if(host.transportStopRequested.load(std::memory_order_acquire)){
+    // Stop the Song on this callback while keeping previews and device running.
+    // Owned DSP resources are retired later by the queued control command.
+    host.transport.command(1);
+    host.transport.process(a.data(),n,transportBudget);
+    a.fill(0.f);
+   }else if(stream){
     if(!stream->process(a.data(),n,transportBudget))
      std::fill(a.begin(),a.end(),0.f);
    }else host.transport.process(a.data(),n,transportBudget);
@@ -227,6 +235,7 @@ public:
  void copyCapture(float* output,std::uint64_t count){require(!duplex&&output&&count==capture.size(),"Native capture has not stopped safely");std::copy(capture.data(),capture.data()+count,output);}
  void previewControl(unsigned command){require(command>=1&&command<=3,"Invalid native preview command");preview.command(command);}
  void play(const std::uint8_t* data,std::size_t length,double cycle,double seek,bool loop,bool audition,double bpm=120,unsigned bars=0,bool recording=false){
+  if(!audition)transportStopRequested.store(false,std::memory_order_release);
   ensure();
   if(!audition&&streamOwned)stopStream(streamOwner,streamRevision);
   auto session=std::make_unique<Session>(data,length,device.sampleRate,cycle,seek,samples);
@@ -287,6 +296,7 @@ public:
  // Control thread only. These operations NEVER mutate the callback's
  // existing Session, parse packets on the callback, or fall back to Web Audio.
  void beginStream(std::uint64_t owner,std::uint64_t revision){
+  transportStopRequested.store(false,std::memory_order_release);
   require(owner>0&&revision>0,"Native Song stream owner/revision must be positive");
   ensure();require(!duplex,"Native streaming microphone handoff is not yet qualified");
   if(streamOwned)stopStream(streamOwner,streamRevision);
@@ -368,6 +378,7 @@ public:
    }at+=n;
   }
  }
+ void requestTransportStop()noexcept{transportStopRequested.store(true,std::memory_order_release);}
  void control(unsigned command,bool loop){
   require(command<=4,"Unknown native transport command");
   if(streamOwned){
@@ -426,6 +437,7 @@ int premidi_audio_stream_start(void* host,uint64_t owner,uint64_t revision){auto
 int premidi_audio_stream_stop(void* host,uint64_t owner,uint64_t revision){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.stopStream(owner,revision);});}
 int premidi_audio_stream_status_get(void* host,premidi_stream_status* value){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{premidi::require(value,"Missing native stream status output");h.streamStatus(*value);});}
 
+void premidi_audio_request_transport_stop(void* host){if(host)static_cast<premidi::DeviceHost*>(host)->requestTransportStop();}
 int premidi_audio_control(void* host,uint32_t command,int loop){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.control(command,loop!=0);});}
 int premidi_audio_status_get(void* host,premidi_audio_status* status){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.status(*status);});}
 int premidi_audio_add_sample(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.addSample(pcm,frames,rate,channels,*info);});}
