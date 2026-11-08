@@ -1,5 +1,7 @@
 > Workflow update (2026-11-07): this is historical stabilization evidence. The lean prototype policy in `AGENTS.md` and the README supersedes its broad routine-check requirements.
 
+> **Source reconciliation, 2026-11-08:** This handoff records earlier milestones. At `d87799e`, preview.29 is published; the JS Song feeder in step 3 below already exists in `src/hosts/native/song-stream-control.js` and is wired from `audio.js`. Do not implement another feeder. Remaining streaming work is seek/loop/live-edit/count-in/capture lifecycle and physical Windows acceptance. Native Stop/pending-Play cancellation is implemented in `5de5617`. Use the current checkpoint in [song-rollout.md](song-rollout.md) and [synthesis-roadmap.json](synthesis-roadmap.json); historical percentages are not current measurements.
+
 # Song/freeform stabilization and handoff — 2026-11-05
 
 **Purpose:** One actionable handoff for the remaining desktop Song/freeform and native Windows rollout. Read alongside [song-rollout.md](song-rollout.md), [native-onset-paging.md](native-onset-paging.md), [terminology.json](terminology.json), and [synthesis-roadmap.json](synthesis-roadmap.json). This note records verified distinctions; it does **not** supersede the approved architecture.

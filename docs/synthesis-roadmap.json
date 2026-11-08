@@ -54,7 +54,7 @@
       "id": "ARCH-001",
       "decision": "Separate platform-neutral synth graph and parameter/event semantics from the current Web Audio voice implementation.",
       "status": "accepted",
-      "implemented_scope": "versioned amplitude-envelope event plan and Web Audio adapter; remaining graph contracts unimplemented"
+      "implemented_scope": "Host-neutral synth and recorded-audio plans, parameter authority, processing/modulation/automation contracts, browser execution and C++ native execution exist; general routing and remaining professional processors are unfinished."
     },
     {
       "id": "ARCH-002",
@@ -121,7 +121,7 @@
       "expression.js",
       "tests/audio-check.html"
     ],
-    "audit_note": "Historical capability snapshot; see native_extended_execution and SYN-018 for current shipping scope."
+    "audit_note": "Historical starting capability snapshot, not the current feature inventory. Use repository_checkpoint, current_native_scope and sound_editing/capability_audit for current scope."
   },
   "verification_policy": {
     "must_pass": [
@@ -333,13 +333,12 @@
         ],
         "performance": "offline setup-plus-render medians recorded after warm-up, not a real-time CPU guarantee",
         "remaining": [
-          "native oversampling parity depends on SYN-007",
-          "absolute alias floor across more signals and filter implementations",
-          "real-time device CPU and latency qualification"
+          "Broader absolute alias-floor measurements across signals and filter implementations",
+          "Physical real-time device CPU and latency qualification"
         ],
         "native_progress": {
           "policy": "native/fidelity-policy.json",
-          "scope": "Band-limited waveform bank compared spectrally and in PCM at 44.1/48/96 kHz; broader alias sweeps/oversampling remain pending"
+          "scope": "native/drive.hpp implements 4x FIR oversampling for native synth and recorded-audio drive; browser audioEffects.js requests 4x oversampling. Focused parity and dry-path latency evidence appears in sound_editing/implementation_updates. Broader quality and physical CPU qualification remain open."
         }
       }
     },
@@ -545,7 +544,7 @@
         "native_scope": "Original C++ sine/triangle/square/sawtooth/harmonic, prepared pitch, ADSR, four static biquads and pan; no Web Audio synthesis in native process",
         "missing": [
           "Physical Windows 11 WASAPI output/input latency, dropout, disconnect and recovery qualification",
-          "Shipping JavaScript Song page feeder, revisions, seek/edit/loop and portable end-user testing",
+          "Complete experimental JS Song feeder seek/edit/loop/count-in/recording lifecycle and portable end-user acceptance",
           "Cross-platform physical device qualification remains deferred"
         ],
         "no_completion_claim": "Offline synthesis and block allocation assertions do not establish device performance",
@@ -592,14 +591,14 @@
           "process_selftest": "400 waveform/filter/rate/extreme profiles, three maximum-route v2 and three v3 profiles at five block sizes, allocation assertions and finite bounded PCM"
         },
         "historical_native_scope_note": "native_scope and original prototype/modulation/automation profiles below preserve earlier qualification, not current unsupported-feature lists.",
-        "current_native_scope": "C++17/miniaudio realtime host implements factory synth/sample/vocal playback, noise/drive/delay/movement, native microphone and bounded-session live edits. Native C++/Rust page transport merged through #192; experimental JavaScript stream feeder is developer-gated and not production-qualified."
+        "current_native_scope": "Tauri Rust shell embeds C++17/miniaudio playback, sample racks, vocals, noise/4x drive/delay/movement, native capture, WAV rendering and bounded-session live edits. Shared EQ/stereo/upgraded delay are implemented. Experimental JS Song streaming is wired end to end but remains opt-in with lifecycle restrictions. Preview.29 includes urgent native Stop and cancellable batched pending-Play preparation."
       }
     },
     {
       "id": "SYN-008",
       "phase": "architecture",
       "priority": "P1",
-      "status": "planned",
+      "status": "in_progress",
       "title": "Web host compatibility adapter",
       "depends_on": [
         "SYN-006"
@@ -612,7 +611,8 @@
         "Web support may fall back only through declared and user-visible compatibility modes.",
         "Web limitations cannot reduce native synthesis capability or corrupt native patches.",
         "Unsupported capabilities do not silently render as a different instrument."
-      ]
+      ],
+      "progress_note": "Browser adapters already execute the common synth/recorded-audio plans and current effects; src/hosts/web contains oscillator, modulation, EQ, stereo, processor-mix, seek and live-edit adapters. Full capability negotiation/degraded-mode policy for future native-only features remains unfinished."
     },
     {
       "id": "SYN-009",
@@ -782,7 +782,7 @@
       "id": "SYN-012",
       "phase": "synthesis",
       "priority": "P1",
-      "status": "planned",
+      "status": "in_progress",
       "title": "Expanded filters and routing",
       "depends_on": [
         "SYN-006",
@@ -800,7 +800,8 @@
       "usability_acceptance": [
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
-      ]
+      ],
+      "progress_note": "Partial implementation: shared resonant filters now support one/two/four cascaded stages (12/24/48 db/oct) and shared EQ. General serial/parallel filter topology, ladder/comb/formant models and their benchmarks remain open."
     },
     {
       "id": "SYN-013",
@@ -830,7 +831,7 @@
       "id": "SYN-014",
       "phase": "synthesis",
       "priority": "P1",
-      "status": "planned",
+      "status": "in_progress",
       "title": "Production-ready multisampling and time stretch",
       "depends_on": [
         "SYN-006",
@@ -848,13 +849,14 @@
       "usability_acceptance": [
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
-      ]
+      ],
+      "progress_note": "Partial implementation: external assets, root/velocity sample zones, rate-based transpose and vocal start/end source trims exist. Sampler sustain loops/crossfades and independent pitch/time processing remain open."
     },
     {
       "id": "SYN-015",
       "phase": "effects",
       "priority": "P1",
-      "status": "planned",
+      "status": "in_progress",
       "title": "Routable professional effects",
       "depends_on": [
         "SYN-006",
@@ -872,13 +874,14 @@
       "usability_acceptance": [
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
-      ]
+      ],
+      "progress_note": "Partial implementation: shared filter/EQ/drive serial order, add/remove, bypass/mix, up to eight parametric EQ bands, tempo delay, feedback tone and ping-pong, stereo width/mid-side and presets/reuse exist in browser/native paths. Reverb, production dynamics, chorus/flanger/phaser, multiple processor instances and general parallel routing remain open."
     },
     {
       "id": "SYN-016",
       "phase": "professional",
       "priority": "P1",
-      "status": "planned",
+      "status": "in_progress",
       "title": "MIDI, MPE and expressive performance",
       "depends_on": [
         "SYN-009",
@@ -896,7 +899,8 @@
       "usability_acceptance": [
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
-      ]
+      ],
+      "progress_note": "Partial expressive performance exists: velocity/key tracking, note expressions and rebindable QWERTY input. audio.js auditionHeld still uses a fixed 1.5-second native preview and returns a no-op release callback. True native note-on/off, hardware MIDI, sustain and MPE remain open."
     },
     {
       "id": "SYN-017",
@@ -962,18 +966,19 @@
         "framework": "tauri",
         "audio": "Default desktop playback/capture/render uses C++17/miniaudio for supported plans, explicit Web Audio alternative. An experimental opt-in Song page feeder now sends JS source pages to existing Rust/C++ stream commands; it is not the default, and editing/seek/loop/recording lifecycle and physical Windows 11 audio remain unqualified.",
         "version_source": "package.json",
-        "preview_version": "0.14.1-preview.20",
-        "qualification": "Preview.20 is a Windows portable field-test candidate with gated experimental JS-to-native Song paging. Exact-tag source/native and Windows portable CI must pass before publishing; physical Windows 11 WASAPI output/microphone and streamed Song editing/seek/loop remain unqualified. Historical preview.19 qualification remains independently valid.",
+        "preview_version": "0.14.1-preview.29",
+        "qualification": "Published unsigned Windows portable preview.29 verified through GitHub release metadata; source includes native Stop/pending-Play fix 5de5617. Automated evidence is commit-specific; physical Windows WASAPI/microphone and full streamed lifecycle acceptance remain open.",
         "evidence": {
           "platform_ci": "https://github.com/natanai/pre-midi/actions/runs/40580528484",
           "browser_and_dsp_ci": "https://github.com/natanai/pre-midi/actions/runs/40572635994",
           "release_workflow": "https://github.com/natanai/pre-midi/actions/workflows/desktop-release.yml",
           "published_preview_2": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.2",
           "published_preview_19": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.19",
-          "latest_exact_tag_windows": "https://github.com/natanai/pre-midi/actions/runs/42087985416",
-          "current_source_native_streaming_ci": "https://github.com/natanai/pre-midi/actions/runs/42096053203",
-          "current_source_windows_build_ci": "https://github.com/natanai/pre-midi/actions/runs/42096053213",
-          "preview_20_release_target": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.20"
+          "preview_20_release_target": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.20",
+          "current_published_preview": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.29",
+          "historical_latest_exact_tag_windows": "https://github.com/natanai/pre-midi/actions/runs/42087985416",
+          "historical_current_source_native_streaming_ci": "https://github.com/natanai/pre-midi/actions/runs/42096053203",
+          "historical_current_source_windows_build_ci": "https://github.com/natanai/pre-midi/actions/runs/42096053213"
         },
         "subtasks": [
           {
@@ -993,9 +998,9 @@
           },
           {
             "id": "update-infrastructure",
-            "status": "blocked",
-            "result": "Preview/stable discovery, Minisign verification and rollback infrastructure exist. Published preview.19 is unsigned/manual-install only. Paired signed update and signing-key provisioning remain blocked; no registry/installer needed for manual upgrades.",
-            "blocked_by": [
+            "status": "deferred",
+            "result": "Preview/stable discovery, signed verification and rollback code exist. The user currently chooses unsigned manual portable ZIP updates; automatic signed installation is deferred. Key provisioning and paired signed-install qualification are required only if that feature resumes.",
+            "resume_requirements": [
               "Persistent updater keypair must be provisioned through repository-secret access",
               "Paired signed release installation test remains unqualified"
             ]
@@ -1003,14 +1008,13 @@
           {
             "id": "release-qualification",
             "status": "in_progress",
-            "result": "Preview.19 tagged source passed Windows Server 2022 portable packaging, native audio and folder-local upgrade/relocation/recovery tests. Main has newer native C ABI/Rust page transport not in that ZIP. Real Windows 11 output/capture and streamed Song user interaction remain pending.",
+            "result": "Windows portable preview.29 is published. Native host, streaming bridge and subsequent shared Sound features are present; physical Windows 11 audio/microphone and full streamed lifecycle acceptance remain open. Older CI URLs are historical evidence.",
             "remaining": [
               "Real microphone permissions/capture and listening on each supported OS",
               "Physical Windows 11 offline/install/upgrade checks",
-              "Signed update completion and manual reopening",
-              "OS code signing/notarization credentials and distribution qualification",
               "Restore full Windows/macOS/Linux release matrix and qualify each platform before full release"
-            ]
+            ],
+            "deferred": "Signed automatic installation and non-Windows distributions are separate future qualification work."
           },
           {
             "id": "embedded-native-proof",
@@ -1020,7 +1024,7 @@
           {
             "id": "native-device-host",
             "status": "in_progress",
-            "result": "Miniaudio callbacks support bounded synth/rack/vocal Sessions and opt-in C++ page transport through Rust actions (#191/#192). Shipping JavaScript still uses whole-Session 600-second/4,096-onset limit. Physical Windows and streaming integration remain open.",
+            "result": "Miniaudio bounded synth/rack/vocal Sessions, capture/render and opt-in JS/Rust/C++ page streaming are implemented. Normal transport retains 600-second/4096-onset guards; experimental streaming lacks full seek/loop/live-edit/count-in/recording lifecycle. Preview.29 adds urgent callback Stop and cancellable preparation. Physical Windows device acceptance remains open.",
             "remaining": [
               "Physical Windows 11 output/input and listening",
               "Sustained CPU/driver-underrun/latency, device switch and sleep/resume qualification",
@@ -1211,7 +1215,7 @@
         "Seek, loop, edit, pause and microphone/device changes invalidate old revisions safely",
         "Remove shipping limits only after exact-commit CI and physical Windows qualification"
       ],
-      "progress": "C++/Rust actions merged through #192; shipping Song playback still calls bounded playNative()"
+      "progress": "Opt-in JS feeder already exists in song-stream-control.js and audio.js, including three-page preload, ACK/refill, retry and pause/resume/stop. Remaining work is seek/loop/live edit/count-in/capture lifecycle and qualification; the normal player still uses bounded playNative(). Preview.29 also implements urgent Stop and pending-Play cancellation."
     },
     {
       "order": 1,
@@ -1319,14 +1323,14 @@
       "stable deep LFO modulation",
       "low-rate tone movement"
     ],
-    "qualification": "620-case independent acoustic/library matrix, 201 functional tests, 113 PCM mixer comparisons and 12 null-device profiles pass; full CI is a merge gate",
+    "qualification": "Historical extended-execution software qualification: 620 acoustic/library cases, 201 functional tests, 113 PCM mixer comparisons and 12 null-device profiles. Later features have focused evidence under sound_editing/implementation_updates. AGENTS.md defines current lean checks; full qualification is not a routine merge gate.",
     "physical_windows": "unqualified; no Windows WASAPI hardware available in this environment",
     "song_streaming": {
       "stage": "Experimental JavaScript Song feeder now implements opt-in source-window preparation, owner/revision protocol, native ACK lookahead, delay registration, bounded backpressure retries and visible cancellation; default native player still uses 600s/4096-onset Sessions. Full seek/loop/live edit/capture and physical Windows hardware remain open.",
       "shipping_limit_seconds": 600,
       "shipping_limit_onsets": 4096,
-      "preview_release": "v0.14.1-preview.20",
-      "release_qualifier": "Preview.20 packages the developer-gated JS-to-native Song feeder for Windows 11 listening tests; normal production player still enforces 600s/4096 and the experimental path is not physically qualified.",
+      "preview_release": "v0.14.1-preview.29",
+      "release_qualifier": "Published preview.29 contains the opt-in feeder and urgent Stop/pending-Play fixes; normal transport keeps its limits. Full streamed lifecycle and physical Windows qualification remain open.",
       "manual_windows_qualification": "not observed",
       "next_reference": "docs/song-stabilization-handoff-2026-11-05.md",
       "staged_js_bridge": {
@@ -1346,7 +1350,8 @@
         ],
         "failure_policy": "Stop with visible native error; never fall back to Web Audio"
       }
-    }
+    },
+    "execution_packet_note": "execution_packet=9 and the aggregate counts above describe the historical extended-synthesis checkpoint, not the current recorded-audio codec; current source sample packet is 17 and the processing trailer is 380 bytes."
   },
   "sound_panel_expansions": {
     "status": "partially implemented; tracked by sound_editing tasks",
@@ -1774,8 +1779,8 @@
         "id": "CAP-01",
         "title": "One Sound Inspector for all audio contexts",
         "status": "partial",
-        "current": "Beat and Freeform mount soundInspector.js; vocals separately assemble controls in vocalEditor.js. All reuse some audio controls, illustrations and the modules/combined view.",
-        "gap": "Shared widgets are not identical editor ownership. Mount one canonical Inspector for synth Sounds, sample Sounds and timeline vocal Clips.",
+        "current": "One physical soundInspector.js frame is moved between Beat, Freeform and Song vocals; shared recorded-audio controls, scope/audition, presets and modules/combined layout are implemented.",
+        "gap": "Implementation complete for current shared-Inspector scope; real-browser vocal gestures/context changes and physical Windows acceptance remain open.",
         "evidence_ids": [
           "E01",
           "E02",
@@ -1787,6 +1792,11 @@
         "task_ids": [
           "SE-01",
           "SE-02"
+        ],
+        "implementation_paths": [
+          "soundInspector.js",
+          "vocalEditor.js",
+          "editorWorkspace.js"
         ]
       },
       {
@@ -1810,8 +1820,8 @@
         "id": "CAP-03",
         "title": "Articulation, levels and sample identity",
         "status": "partial",
-        "current": "Synth ADSR; sampled audio attack/release, transpose/gain/pan; note follow, one-shot, strum and dynamics preservation; sample roots and velocity selection.",
-        "gap": "Vocal fades use different names/ranges/defaults; sample normalization and voice gain differ from clip gain. Document source-specific triggers while sharing processor definitions and level semantics.",
+        "current": "One parameter authority defines source-specific synth/sample/vocal articulation, levels and trigger semantics; shared recorded-audio graph and reuse retain applicable gain/fades.",
+        "gap": "Source-region/sample-zone expansion and observed listening/editor acceptance remain; source-specific triggers are intentional.",
         "evidence_ids": [
           "E04",
           "E05",
@@ -1829,14 +1839,19 @@
           "SE-01",
           "SE-03",
           "SE-14"
+        ],
+        "implementation_paths": [
+          "src/dsp/parameters.js",
+          "recordedAudio.js",
+          "vocalBeatReuse.js"
         ]
       },
       {
         "id": "CAP-04",
         "title": "Filter and parametric EQ",
         "status": "partial",
-        "current": "One four-type resonant filter; synth cutoff sweep and tone LFO. Sample/vocal filter bypass behavior differs in UI.",
-        "gap": "No production parametric EQ found; need editable bands, shelves, slopes and consistent bypass. Extra filter topologies remain linked to SYN-012.",
+        "current": "Shared four-type resonant filter with one/two/four cascaded stages; up to eight independently editable EQ bands with bell/shelf/pass types, order/bypass/mix and common native/browser coefficients.",
+        "gap": "Parallel routing, measured-spectrum overlay and additional filter topologies remain open.",
         "evidence_ids": [
           "E01",
           "E04",
@@ -1850,14 +1865,19 @@
         "task_ids": [
           "SE-03",
           "SE-09"
+        ],
+        "implementation_paths": [
+          "src/dsp/equalizer.js",
+          "native/equalizer.hpp",
+          "src/dsp/processing-chain.js"
         ]
       },
       {
         "id": "CAP-05",
         "title": "Distortion and source noise",
         "status": "partial",
-        "current": "Shared tanh drive curve with 4x Web Audio oversampling; synth noise amount/decay. Tone/drive panels and illustrations exist.",
-        "gap": "Missing input trim, dry/wet, selectable shapers, output compensation policy, noise color and bandwidth. Oversampling configuration alone is not listening or aliasing qualification.",
+        "current": "Shared tanh drive, browser/native 4x oversampling and aligned dry/wet; synth noise level/decay.",
+        "gap": "Selectable shapers, input/output control policy, noise colors/bandwidth and broader quality/listening qualification remain.",
         "evidence_ids": [
           "E05",
           "E10",
@@ -1870,14 +1890,19 @@
         "task_ids": [
           "SE-13",
           "SE-17"
+        ],
+        "implementation_paths": [
+          "audioEffects.js",
+          "native/drive.hpp",
+          "src/dsp/processing-chain.js"
         ]
       },
       {
         "id": "CAP-06",
         "title": "Pitch motion, tremolo and tone motion",
         "status": "partial",
-        "current": "Bend shapes, glide, delayed vibrato and tremolo on synth/sample/vocal paths; tone motion exposed and executed on synths.",
-        "gap": "Shared audio movement UI omits tone/toneRate. Sample/vocal render paths do not schedule a tone LFO, although the movement object can carry its fields. A field accepted in JSON is not a working feature.",
+        "current": "Shared bend/glide/vibrato/pulse/tone movement implemented for synth, sampled Sounds and vocals through recordedAudio.js and native plans.",
+        "gap": "Current applicable movement parity is implemented; broader modulation destinations, clock policies and physical listening remain.",
         "evidence_ids": [
           "E04",
           "E05",
@@ -1894,14 +1919,19 @@
           "SE-03",
           "SE-05",
           "SE-06"
+        ],
+        "implementation_paths": [
+          "recordedAudio.js",
+          "src/dsp/recorded-source-clock.js",
+          "src/hosts/native/sample-plan.js"
         ]
       },
       {
         "id": "CAP-07",
         "title": "Assignable modulation matrix",
         "status": "partial",
-        "current": "Synth-only maximum 16 routes; sine LFO, independent ADSR, velocity and key tracking; six destinations: oscillator pitch/level pairs, cutoff and pan; signed depth/polarity/smoothing.",
-        "gap": "Samples explicitly reject general routes; vocals lack route storage/editor. Broaden audio-relevant destinations and define per-note versus per-clip timing without artificial vocal velocity/key tracking.",
+        "current": "Up to 16 assignable routes with LFO/envelope/macros across all sources, velocity/key tracking for triggered Sounds, and shared cutoff/pan/resonance/amplitude destinations; synth oscillator pitch/level targets remain source-specific.",
+        "gap": "More effect/stereo destinations and followers/sidechains remain; vocals intentionally have no note velocity/key tracking.",
         "evidence_ids": [
           "E07",
           "E09",
@@ -1912,14 +1942,19 @@
         ],
         "task_ids": [
           "SE-05"
+        ],
+        "implementation_paths": [
+          "src/dsp/parameters.js",
+          "src/dsp/modulation.js",
+          "recordedAudio.js"
         ]
       },
       {
         "id": "CAP-08",
         "title": "LFO shapes, sync, followers, randomness and macros",
         "status": "partial",
-        "current": "Fixed-rate sine movement and modulation; per-note LFO onset and route smoothing exist.",
-        "gap": "Missing selectable shapes, beat sync, phase/retrigger modes, envelope followers/sidechains, deterministic random/steps and user macros.",
+        "current": "Sine/triangle/ramp/square, seeded sample-hold/smooth-random, four-step LFOs, tempo divisions and four named performance macros are implemented with shared controls/graphs and native/browser execution.",
+        "gap": "Followers/sidechains, phase/free-run policies and variable-length step sequences remain.",
         "evidence_ids": [
           "E04",
           "E05",
@@ -1931,14 +1966,19 @@
         ],
         "task_ids": [
           "SE-06"
+        ],
+        "implementation_paths": [
+          "src/dsp/modulation.js",
+          "modulationUI.js",
+          "native/modulation.hpp"
         ]
       },
       {
         "id": "CAP-09",
         "title": "Automation and parameter gestures",
         "status": "partial",
-        "current": "Two-point exponential synth cutoff automation plus captured note/source phase; Beat and Freeform editing paths exist.",
-        "gap": "Not general multipoint automation; no equivalent sample/vocal automation. Need common targets, curve editing, gesture recording, override state and phase-correct seek/loop/live edits.",
+        "current": "Cutoff automation supports 2\u201332 points and captured Freeform note/source phase; shared recorded-audio cutoff editing also exists.",
+        "gap": "General parameter targets, additional interpolation modes, gesture recording and override/rejoin policies remain.",
         "evidence_ids": [
           "E08",
           "E21"
@@ -1948,14 +1988,18 @@
         ],
         "task_ids": [
           "SE-07"
+        ],
+        "implementation_paths": [
+          "src/dsp/automation.js",
+          "recordedAudio.js"
         ]
       },
       {
         "id": "CAP-10",
         "title": "Delay and reverberation",
         "status": "partial",
-        "current": "Synths and vocals have mix/time/feedback delay; sampler UI/browser/native sample plan have no delay. Use in Beat explicitly leaves delay behind.",
-        "gap": "Close sample delay parity first; then tempo sync, feedback tone, ping-pong and shared algorithmic reverb with bounded tails.",
+        "current": "Synth/sample/vocal delay and reuse retain time/mix/feedback, tempo sync, feedback tone, ping-pong and shared tail ownership in browser/native playback.",
+        "gap": "Algorithmic reverb and physical seek/loop/listening qualification remain.",
         "evidence_ids": [
           "E05",
           "E06",
@@ -1972,6 +2016,11 @@
           "SE-03",
           "SE-04",
           "SE-11"
+        ],
+        "implementation_paths": [
+          "src/dsp/processing-chain.js",
+          "native/delay.hpp",
+          "recordedAudio.js"
         ]
       },
       {
@@ -2018,8 +2067,8 @@
         "id": "CAP-13",
         "title": "Effect order, bypass, sends and parallel routing",
         "status": "partial",
-        "current": "Synth and recorded-audio paths use fixed processing order; synth/vocal delay may use session-owned shared buses.",
-        "gap": "No user-editable ordered effect chain, general sends, parallel chains or per-processor bypass/recall found. Distinguish clip, Sound, Instrument and bus ownership.",
+        "current": "Filter/EQ/drive serial stages have editable order, add/remove, non-destructive bypass and wet/dry; delay is a separately owned bypassable send.",
+        "gap": "Multiple instances, general parallel sends/sidechains and graph-wide latency compensation remain.",
         "evidence_ids": [
           "E01",
           "E10",
@@ -2032,6 +2081,9 @@
         ],
         "task_ids": [
           "SE-08"
+        ],
+        "implementation_paths": [
+          "src/dsp/processing-chain.js"
         ]
       },
       {
@@ -2058,8 +2110,8 @@
         "id": "CAP-15",
         "title": "Waveform, sampling and source regions",
         "status": "partial",
-        "current": "Vocal waveform with source-time lead trim/onset suggestion; sample source excerpts, pitch roots and velocity selection; short compatible WAV vocals can reuse one external asset.",
-        "gap": "Need unified source-region editing, end trim/fade handles, reverse and sampler sustain loops/crossfades; complete velocity-zone editing. Keep current four-second excerpt and asset limits until explicitly replaced.",
+        "current": "Shared vocal waveform supports independent non-destructive start/end trims, onset suggestion, numeric/keyboard access, source bounds, thumbnails and retained effects on Beat reuse.",
+        "gap": "Unified sampler source viewport, fade handles, reverse, sustain loops/crossfades and fuller zone editing remain.",
         "evidence_ids": [
           "E03",
           "E19",
@@ -2071,14 +2123,20 @@
         ],
         "task_ids": [
           "SE-14"
+        ],
+        "implementation_paths": [
+          "audioWaveform.js",
+          "vocalEditor.js",
+          "samplerUI.js",
+          "vocalBeatReuse.js"
         ]
       },
       {
         "id": "CAP-16",
         "title": "Stereo and gain staging",
         "status": "partial",
-        "current": "Pan, recording gain, Sound gain and Instrument volume; Beat/Freeform gain-stage illustration; measured scope.",
-        "gap": "Vocal editor lacks the canonical overview/stage UI. Add stereo width/mid-side with real stereo inputs, mono-safe behavior and explicit gain ownership.",
+        "current": "Shared vocal overview/gain stages, pan, stereo width and mid/side balance are implemented with graph/dials and browser/native matrix behavior.",
+        "gap": "Matched listening/headroom and physical acceptance remain; master true-peak monitoring/export policy remains SYN-005.",
         "evidence_ids": [
           "E01",
           "E03",
@@ -2093,14 +2151,19 @@
           "SE-02",
           "SE-13",
           "SE-17"
+        ],
+        "implementation_paths": [
+          "src/dsp/stereo.js",
+          "soundInspector.js",
+          "recordedAudio.js"
         ]
       },
       {
         "id": "CAP-17",
         "title": "Presets, reuse and undo",
         "status": "partial",
-        "current": "Beat/Freeform share Sound catalog/save helpers and canonical patch edit callbacks. Vocal edits have Song undo and immutable external recording assets.",
-        "gap": "Vocal editor has no identical sound preset/audition surface. Conversion currently changes gain/envelope interpretation and omits delay; add portable shared processing presets and preserve all applicable edits.",
+        "current": "Shared preset save/browse/audition and Song history support vocals; processing-only presets and vocal reuse preserve applicable delay, movement, automation, gain/fades and stereo with external assets.",
+        "gap": "Real-browser vocal interactions, physical portable-folder acceptance and future processor portability remain to qualify.",
         "evidence_ids": [
           "E01",
           "E03",
@@ -2113,6 +2176,11 @@
         ],
         "task_ids": [
           "SE-04"
+        ],
+        "implementation_paths": [
+          "soundInspector.js",
+          "vocalBeatReuse.js",
+          "vocalEditor.js"
         ]
       },
       {
@@ -2137,8 +2205,8 @@
         "id": "CAP-19",
         "title": "Host quality and portable playback",
         "status": "partial",
-        "current": "Web and native sample/vocal planners implement existing filters, drive, pitch motion, envelopes and vocal delay; current tests cover selected behavior.",
-        "gap": "This audit did not measure audio quality or physical Windows behavior. Qualify each new processor in live playback, audition, WAV and current-format projects; game reader parity remains SYN-020.",
+        "current": "Native C++/miniaudio and browser paths implement current shared processing, EQ/stereo/delay, live edits, capture/render and current-format project paths; preview.29 adds urgent Stop and pending-Play cancellation.",
+        "gap": "Full processor matrix, observed editing/listening and physical Windows device/microphone acceptance remain; game integration and phone delivery are separate.",
         "evidence_ids": [
           "E10",
           "E11",
@@ -2149,6 +2217,11 @@
         "task_ids": [
           "SE-17",
           "SE-18"
+        ],
+        "implementation_paths": [
+          "src/hosts/native/session.js",
+          "desktop/src/audio/control.rs",
+          "native/device-host.cpp"
         ]
       }
     ],
@@ -2561,7 +2634,7 @@
             "result": "Browser-compatible OfflineAudioContext: ongoing effectful seek maximum difference 1.66893e-5; ended-Clip echo 6.46791e-7 at 24000 Hz. Native sampled/vocal PCM difference 0 at 22050 Hz with nonzero filter sweep; sweep changes PCM by 0.813198 peak. Native page rebase preserves sample/vocal sweep and cutoff automation clocks. Cache invalidation/bounds/cancellation and vocal-only voice/echo retirement pass."
           }
         ],
-        "progress_note": "Current vocal processing parity is implemented: shared filter sweep, tone/drive/movement/delay, original-age source/pitch/envelope/modulation, stateful browser seek continuations and echo tails, live-edit replacement/cancellation, and native current packet 13. Routine and focused data/DSP checks pass. Pages deployment succeeded. The public desktop loads with one Inspector DOM frame; real vocal UI observation is blocked by cloud-browser fixture file access. Physical Windows listening remains unqualified.",
+        "progress_note": "Current vocal processing parity is implemented: shared filter sweep, tone/drive/movement/delay, original-age source/pitch/envelope/modulation, stateful browser seek continuations and echo tails, live-edit replacement/cancellation, and native recorded-audio packet 17 with the current shared processing trailer. Routine and focused data/DSP checks pass. Pages deployment succeeded. The public desktop loads with one Inspector DOM frame; real vocal UI observation is blocked by cloud-browser fixture file access. Physical Windows listening remains unqualified.",
         "remaining_implementation": [],
         "source_clock_contract": {
           "owner": "src/dsp/recorded-source-clock.js",
@@ -3698,6 +3771,28 @@
       "implementation_complete": true,
       "qualification_complete": false,
       "remaining_implementation": []
-    }
+    },
+    "capability_audit_updated_on": "2026-11-08",
+    "capability_audit_note": "Current/gap text reconciled against d87799e. Original E/REF IDs describe the initial comparison; current implementation paths are listed per capability. Status partial can mean unfinished feature scope or unverified observation; do not interpret every gap as missing code."
+  },
+  "repository_checkpoint": {
+    "audited_on": "2026-11-08",
+    "source_commit": "d87799e",
+    "preview_version": "0.14.1-preview.29",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.29",
+    "method": "Compared task and capability claims with current parameter validators, Inspector ownership, browser/native execution, transport guards, tests and published release metadata. Source presence does not establish physical hardware acceptance. Historical evidence below remains scoped to its original commit.",
+    "architecture": {
+      "shell": "Tauri / Rust",
+      "interface": "HTML/CSS/JavaScript in WebView2 on Windows",
+      "audio": "C++17 / miniaudio; native playback, capture and WAV rendering"
+    },
+    "remaining_focus": [
+      "Complete experimental Song streaming seek/loop/live-edit/count-in/recording lifecycle; default limits remain 600 seconds / 4096 onsets",
+      "General modulation destinations, followers, parameter automation and multi-instance/parallel processing",
+      "Remaining production processors and source editing described by SE-09 through SE-15",
+      "Physical Windows audio, microphone, device recovery and observed editor/listening qualification"
+    ],
+    "completion_percentage": null,
+    "scope_note": "Native desktop implementation exists. Native mobile, game-host parity and cross-platform distributions are separate tasks. No current cross-repository game-reader audit was performed. Automatic signed installation is deferred while the user uses manual portable ZIP updates."
   }
 }

@@ -12,7 +12,7 @@ Brightness is intentionally repeated beside filtering, sweep, distortion and ton
 
 ## Next sound-design features
 
-Concrete companion controls are scoped in `docs/synthesis-roadmap.json` under `sound_panel_expansions`: distortion input/mix/shaper, noise color/bandwidth, stereo width/mid-side balance, recording time stretch/formants, modulation shape/phase/sync and delay feedback tone/ping-pong. These are planned DSP work, not placeholder knobs in the interface. A useful one-control panel can remain one-control until its companion feature is implemented.
+Concrete companion controls are scoped in `docs/synthesis-roadmap.json` under `sound_panel_expansions`: distortion input/mix/shaper, noise color/bandwidth, stereo width/mid-side balance, recording time stretch/formants, modulation shape/phase/sync and delay feedback tone/ping-pong. Stereo width/mid-side, delay feedback tone/ping-pong, processor wet/dry and selectable/synced/random/step modulation are already implemented. The remaining candidates are future DSP work, not placeholder knobs in the interface. A useful one-control panel can remain one-control until its companion feature is implemented.
 
 ## Prototype workflow
 

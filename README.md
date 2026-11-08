@@ -10,7 +10,7 @@ The previous phone-width desktop layout was retired. A dedicated `phone/` host n
 
 ## Windows portable preview
 
-**Preview.20 field test:** In the Windows portable app, Settings → audio → audio performance now includes an explicitly opt-in **test long Song streaming (experimental)** checkbox. With native C++ audio selected, turn Song loop off and play from the beginning. The experimental path exercises the real JS → Rust → C++ Song page feeder; it does not yet support seeking, live edits/undo, loop wraps or recording during streaming. Switch it off to use normal playback. See [preview.20 test instructions](docs/desktop-release-notes.md) and the [live acceptance issue](https://github.com/natanai/pre-midi/issues/49). The ZIP must actually be published before testing; GitHub Actions success alone does not establish a downloadable preview.
+**Current Windows preview: [0.14.1-preview.29](https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.29).** Native Stop and pending-Play cancellation are implemented. Settings → audio → audio performance includes an opt-in **test long Song streaming (experimental)** checkbox. This already uses the JS → Rust → C++ page feeder, but currently requires playback from the beginning without loop, count-in or recording; seek and live edits/undo are unsupported. Leave it off for normal editing and recording. Normal native playback retains 600-second/4,096-onset limits. See [release notes](docs/desktop-release-notes.md) and the [source-checked roadmap](docs/synthesis-roadmap.json).
 
 During rapid prototyping, **Windows 11 x64 portable ZIP is the only preview distribution**. Extract the entire ZIP to a writable folder and run `pre-midi.exe`. Keep `data/`, `projects/` and `exports/` with that folder; close the app before moving or backing it up. To upgrade, back up the folder and replace only the executable and release files, **not** your data folders. See [desktop host and upgrade details](docs/desktop-host.md). macOS and Linux native architecture is maintained for the eventual full release, but their preview packages are deferred.
 
@@ -66,7 +66,7 @@ Brittle copy/layout/roadmap audits and the generated phone action inventory were
 - [Canonical terminology](docs/terminology.json) — Sound, Rack, Instrument, Chunk, Beat, Song, Track, Clip, Recording, Asset.
 - [Song rollout and integration gates](docs/song-rollout.md), including the [current stabilization handoff](docs/song-stabilization-handoff-2026-11-05.md).
 - [Machine-readable native-first synthesis roadmap](docs/synthesis-roadmap.json).
-- [Sound editing feature-completion audit and roadmap](docs/synthesis-roadmap.json): `sound_editing` contains the professional-tool comparison, current vocal parity gaps, shared Inspector contract and ordered acceptance tasks.
+- [Sound editing feature-completion audit and roadmap](docs/synthesis-roadmap.json): `sound_editing` contains the current capability comparison, implemented vocal parity with remaining observation gates, shared Inspector contract and ordered acceptance tasks.
 - [Sound-conversion method](docs/synth-conversion.md).
 - [Sample provenance and checksums](docs/sample-sources.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 - [Studio interface rules for contributors and agents](AGENTS.md).

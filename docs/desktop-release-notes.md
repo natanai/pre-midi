@@ -1,8 +1,10 @@
-# pre-midi 0.14.1-preview.28 — Windows portable preview
+# pre-midi 0.14.1-preview.29 — Windows portable preview
 
 Windows 11 x64, portable ZIP, manual installation. No installer or registry changes are required. This preview is intended for testing on your PC, rather than a claim of production audio stability.
 
 ## Included changes
+
+- Native Stop immediately mutes the transport through an atomic callback latch while queued control work drains. Pending Play can be cancelled during asset preparation and between batches of 96 note plans, preventing a stopped Song from starting late. Physical Windows responsiveness remains to be confirmed.
 
 - Held notes across Chunks: drag a pitched note's body left behind the keyboard to merge its new attack into a note already held at that pitch from an earlier Chunk. Reused Chunks remain isolated to their specific placement.
 - Right-edge note resizing now extends across Chunk boundaries automatically using the existing long-note format. Incoming note tails remain visible and their right edges can be lengthened.
