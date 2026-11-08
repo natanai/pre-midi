@@ -1,7 +1,7 @@
 import {nativeSongDelayRecipes} from '../src/hosts/native/song-stream-page.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateProcessingChain,processingFlags,processingChain,withProcessorBypass} from '../src/dsp/processing-chain.js';
+import {validateProcessingChain,processingFlags,processingChain,withProcessorBypass,withProcessorAdded,withProcessorRemoved} from '../src/dsp/processing-chain.js';
 import {makePatch,validatePatch} from '../synth.js';
 import {validateVocalEffects} from '../vocalEffects.js';
 import {processingFromPatch,applyProcessingToPatch} from '../recordedAudio.js';
@@ -43,4 +43,18 @@ test('current projects and native plans retain chain identity without phantom de
  const patch={type:'sample',presetId:'custom',zones:[{assetId:'r',root:60}],followPitch:false,oneShot:true,transpose:0,gain:1,attack:0,release:0,pan:0,...effects};
  const plans=[planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets),planNativeVocal({recording:{id:'r',durationSeconds:1,trimSeconds:0},clip:{lengthSteps:8,gain:1,effects}},0,.125,assets)];
  for(const plan of plans){assert.equal(plan.delayMix,0);assert.equal(plan.tail,0);assert.equal(plan.drive,.5);assert.deepEqual(plan.chain,chain);const bytes=encodeNativeSample(plan,48000),view=new DataView(bytes.buffer);assert.equal(view.getUint32(12,true),14);assert.equal(view.getUint32(bytes.length-4,true),3);}
+});
+
+test('removing and restoring serial stages preserves settings and bounded identity',()=>{
+ const patch=makePatch();patch.chain={version:1,order:['drive','filter'],bypass:['filter']};patch.effects.drive=.6;patch.filter.cutoff=713;
+ const snapshot=JSON.stringify(patch),withoutFilter={...patch,chain:withProcessorRemoved(patch,'filter')};
+ assert.deepEqual(withoutFilter.chain.order,['drive']);assert.equal(processingFlags(withoutFilter),3);assert.equal(withoutFilter.filter.cutoff,713);
+ const empty={...withoutFilter,chain:withProcessorRemoved(withoutFilter,'drive')};
+ assert.deepEqual(validatePatch(empty),[]);assert.equal(processingFlags(empty),6);assert.deepEqual(empty.chain.order,[]);
+ const restored={...empty,chain:withProcessorAdded(empty,'filter')};assert.deepEqual(restored.chain.bypass,['filter']);
+ restored.chain=withProcessorBypass(restored,'filter',false);assert.deepEqual(restored.chain.order,['filter']);assert.equal(processingFlags(restored),4);
+ restored.chain=withProcessorAdded(restored,'drive');assert.equal(restored.effects.drive,.6);assert.equal(restored.filter.cutoff,713);
+ assert.equal(withProcessorAdded(restored,'drive').order.length,2);assert.equal(JSON.stringify(patch),snapshot);
+ const program=processingFromPatch(empty),target=makePatch();applyProcessingToPatch(target,program);assert.deepEqual(target.chain.order,[]);
+ const beat=create();beat.instruments[0].sounds[0].patch=empty;upgradeBeatFeatures(beat);assert.deepEqual(parse(JSON.stringify(beat)),beat);
 });

@@ -44,6 +44,12 @@ for(const stage of ['filter','drive','delay']){
  const reference=render(stage==='filter'?{...vocal,filter:null}:stage==='drive'?{...vocal,drive:0}:{...vocal,delayMix:0});
  if(difference(actual,reference)>1e-6||difference(actual,render(plans.sample))>1e-5)throw Error('Native processor bypass/parity failed '+stage);
 }
+for(const order of [[],['filter'],['drive']]){
+ const plans=chainPlans({version:1,order,bypass:[]}),actual=render(plans.vocal);
+ const reference=render({...vocal,...(!order.includes('filter')?{filter:null}:{}),...(!order.includes('drive')?{drive:0}:{})});
+ if(difference(actual,reference)>1e-6||difference(actual,render(plans.sample))>1e-5)throw Error('Native stage removal failed '+order);
+}
+console.log('PASS native serial processor lifecycle');
 console.log('PASS native processing order/bypass',JSON.stringify({chainEffect,maxSampleVocalDifference:difference(reverseA,reverseB)}));
 const synthPatch=makePatch();synthPatch.effects={drive:.5,delayMix:.2,delayTime:.12,delayFeedback:.3};synthPatch.filter={type:'lowpass',cutoff:700,resonance:.7,sweep:0,sweepTime:.2};
 const synthPlan=patch=>planSynthVoice({patch,volume:1},{pitch:60,velocity:1},0,1);

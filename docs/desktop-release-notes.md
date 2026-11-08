@@ -1,30 +1,27 @@
-# pre-midi 0.14.1-preview.20 — Windows portable test build
+# pre-midi 0.14.1-preview.23 — Windows portable preview
 
-**Windows 11 x64, portable ZIP, manual installation.** This is a preview for real-hardware feedback, not a stable or certified audio release. No registry changes or installer are required. The previous preview.19 remains available unchanged.
+Windows 11 x64, portable ZIP, manual installation. No installer or registry changes are required. This preview is intended for testing on your PC, rather than a claim of production audio stability.
 
-## What's new
+## Included changes
 
-- The merged native Song source-window transport now connects JavaScript to the existing Rust/C++17/miniaudio streaming host behind an **explicit experimental switch**. Source-linked note, sample and vocal packets retain native frame timing beyond 600 seconds; bounded ACK/backpressure handling, shared delay catalog and native errors are tested.
-- **Try it:** Settings → audio → **audio performance** → check **test long Song streaming (experimental)**. Native C++ audio must be selected. For this initial field test, turn Song loop **off**, place the playhead at the beginning, and press Play on Song. This is suitable for checking a simple Song longer than 10 minutes or more than 4,096 notes. Uncheck the switch to return to the existing bounded native player.
-- The experimental mode supports start-from-beginning, stop and pause/resume, and reports native stream faults. **It intentionally blocks seeking, looping, live edits/undo during playback, count-in and synchronized microphone recording.** These are not lost features: switch off experimental streaming to use the existing short-Song/Beat engine. It never silently falls back to Web Audio.
-- The source includes regression tests for precise source-linked page timing, native owner/revision cancellation, page ACKs and retry identity, long sparse Songs, the zero frame clock and the normal playback guard.
-- Existing Beat/Freeform editor, canonical Sound Inspector and illustrations, Song Clip arrangement, native sample racks, vocal edits and native WAV export remain available in the normal transport. No `.premidi` document format is changed.
+- One physical Sound Inspector and shared desktop workspace for Beat, Freeform and Song vocals, with shared history/Sound buttons and processing controls.
+- Vocal start trimming updates the Song clip region; original recordings remain external and unchanged. Shared processing presets, vocal reuse, effectful seek continuations and live vocal edits retain their settings.
+- Common amplitude/resonance movement routes, sine/triangle/ramp/square LFOs and tempo-synced divisions.
+- Up to 32 cutoff automation points, with shared graph/numeric add/remove editing and captured Freeform source timing.
+- Shared serial processing controls: add/remove/restore filter and distortion, reorder them, bypass without erasing values, and bypass the separate delay send. Empty and single-stage chains are supported in browser and native rendering.
 
-## Focused Windows 11 test checklist
+## Install and test
 
-1. **Protect existing data first.** Extract preview.20 into a *separate* writable folder to test cleanly. Do not overwrite preview.19 or delete any `data/`, `projects/` or `exports/` folder. If upgrading in place, close all instances, back up the complete folder, and replace **application files only**.
-2. Confirm a normal short Beat and Song work with the experimental switch **off**, including Play, Stop, pause/resume, loop, Sound edits and microphone take. These should continue using the existing native engine.
-3. With native C++ selected, toggle the experimental switch on. Disable loop, set the Song playhead at the beginning, then play a simple Song. Verify correct sound from start, no surprise silence on page boundaries, and no audio after Stop. Try pause/resume.
-4. Try a Song lasting more than 10 minutes. Listen across the 10-minute mark, compare timing after several minutes, check a saved project with sample/Vocal assets if available, and capture any warning or native error text.
-5. Switch back **off** and confirm the normal player still rejects over-limit Songs explicitly rather than producing silent audio. Normal short-Song exports should still work.
-6. Report Windows 11 version, chosen device, sample rate/buffer, whether speakers or headphones were used, audible dropouts, and the exact error text or timestamp of any stop. Physical-driver and microphone latency are **not** proven by GitHub's Windows Server 2022 tests.
+Extract the complete ZIP into a separate writable folder and open pre-midi.exe. Keep portable.txt beside it. Each portable folder keeps its own data.
 
-## Known limitations and release policy
+For an in-place manual update, close all app instances and back up the folder first. Replace application files only; preserve data/, projects/ and exports/. Export a music ZIP when you want a portable copy that includes its recording/sample assets; plain .premidi instructions do not contain those audio bytes.
 
-The **default** native Song engine still has a 600-second playback/render bound and 4,096 onsets per session. Long-Song WAV rendering, live-edit/seek reconstruction, loop wraps, audio-device replacement during streaming and synchronized vocal recording in experimental streaming are **not** finished. Use the normal native transport for microphone recording and editable short Songs. Real Windows 11 WASAPI listening, device recovery and timing remain to be qualified by human testing.
+Try a short Beat and Song, vocal recording/trim/playback, shared Sound controls, processor reorder/remove/restore and undo/redo. Save a processing preset, export/reopen a project ZIP, and confirm its audio/settings remain. Use headphones while testing microphone recording.
 
-The exact release must pass Node/Chrome/audio-quality and native C++/Rust verification plus Windows Server 2022 portable packaging, dependency and upgrade/relocation/recovery checks. CI null-output and mocked JavaScript host checks **do not** certify real hardware sound.
+## Remaining limits
 
-The ZIP is **unsigned** unless a distinct verified signature is explicitly published alongside it. Unsigned previews support manual folder-preserving updates only, not signed automatic installation. Preserve `data/`, `projects/` and `exports/` when updating.
+The normal native transport retains its 600-second and 4,096-onset session limits. Experimental long-Song streaming remains opt-in and has separate seek/loop/live-edit/count-in/recording limitations; use the normal transport for this preview's editing and microphone checks.
 
-The canonical follow-up architecture and remaining release blockers are in [Song stabilization](song-stabilization-handoff-2026-11-05.md) and [native onset paging](native-onset-paging.md). Track the real-device acceptance criteria in [issue #49](https://github.com/natanai/pre-midi/issues/49).
+The broader M2 roadmap is not complete: general wet/dry/parallel routing, sidechains, multiple processor instances, macros and broader modulation/automation remain open. EQ, dynamics, reverb and advanced independent pitch/time editing remain later work.
+
+Automated Windows build, dependency, native and portable-folder checks do not prove real Windows 11 device sound, microphone alignment or dropout-free listening. Please test those on your chosen audio device. This preview is unsigned and uses manual ZIP updates.

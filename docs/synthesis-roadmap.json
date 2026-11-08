@@ -2349,12 +2349,13 @@
           "Shared amplitude/resonance routing and four LFO shapes",
           "Tempo-synced LFO divisions in every sound context",
           "Shared 32-point cutoff curves with native/browser execution and Freeform phase preservation",
-          "Shared filter/distortion order and non-destructive stage bypass, with an explicit bypassable delay send"
+          "Shared filter/distortion order and non-destructive stage bypass, with an explicit bypassable delay send",
+          "Add/remove/restore the built-in serial processors, including empty chains, without erasing settings"
         ],
         "remaining": [
           "Remaining SE-05 destinations and SE-06 sources/macros/clock policies",
           "General parameter automation, curve modes and gesture recording under SE-07",
-          "Add/remove and multiple processor instances, per-stage wet/dry, serial/parallel sends, sidechains and latency compensation under SE-08"
+          "Multiple processor instances, per-stage wet/dry, serial/parallel sends, sidechains and latency compensation under SE-08"
         ]
       },
       {
@@ -2690,7 +2691,7 @@
           "Graph-order, bypass, parallel/send isolation, impulse/tail and undo/serialization fixtures."
         ],
         "completion_evidence": [],
-        "progress_note": "Shared serial tone-chain foundation is implemented: stable filter/drive IDs, reorder in either direction, non-destructive filter/drive bypass and explicit delay-send bypass; the same chain UI is mounted in the canonical Inspector for synth, sample and vocal contexts. Current native sample packet 14 and the synth execution packet carry a bounded order/bypass word. Presets, vocal reuse/preview, seek-state preparation, current project round trips and streaming delay catalogs retain effective processing. General add/remove/multiple instances, per-stage wet/dry, parallel sends/sidechains and latency compensation remain open; full SE-08 is not complete."
+        "progress_note": "The bounded built-in serial lifecycle is implemented: add/remove/restore filter and distortion, retain their authored settings and bypass state, reorder or bypass them, and separately bypass the delay send. Empty and single-stage chains use the same browser/native contract and shared Inspector. General multiple processor instances, wet/dry, parallel sends/sidechains and latency compensation remain open; full SE-08 is not complete."
       },
       {
         "id": "SE-09",
@@ -3296,6 +3297,32 @@
           "qualification": "Rendered DSP/model evidence, not browser interaction or physical Windows listening. No new Windows build was requested; preview.22 is immutable."
         },
         "remaining": "SE-08 general node lifecycle, wet/dry, parallel routing, sidechains and latency compensation remain planned; M2 is still in progress."
+      },
+      {
+        "id": "SERIAL-LIFECYCLE-PREVIEW23",
+        "date": "2026-11-08",
+        "status": "implemented_pending_windows_build",
+        "task_ids": [
+          "SE-08",
+          "SE-18"
+        ],
+        "summary": "Finish the built-in serial processor lifecycle and request a matching portable Windows preview.",
+        "contract": "A chain contains zero, one or both stable filter/drive IDs. Removing a stage excludes it from audio while retaining its parameter and bypass settings; re-adding restores those values. Explicit enable can reinsert the stage atomically. Delay remains a separate send.",
+        "verification": {
+          "routine": "npm run check passed: edited syntax plus 44 smoke cases",
+          "focused": "Four processing-chain/data cases passed, including remove/restore identity, preset transfer and current project round trip",
+          "native": "Focused C++ renderer: empty/filter-only/drive-only chains match their direct references; sampled/vocal PCM remains identical; synth order/bypass and prior tempo/multipoint fixtures pass",
+          "web_dsp": "OfflineAudioContext: empty/filter-only/drive-only chains match direct references in synth, sampled and vocal graphs within 1e-5"
+        },
+        "windows_preview": {
+          "version": "0.14.1-preview.23",
+          "status": "build_requested",
+          "optional_full_audio_qualification": false
+        },
+        "not_claimed": [
+          "Full M2 completion",
+          "Physical Windows listening/microphone qualification"
+        ]
       }
     ],
     "vocal_parity_milestone": {
@@ -3364,7 +3391,12 @@
           "bytes": 16198617,
           "sha256": "a30dec5d4d6fb51bbdd4142ac8593733a57ac345b21bc7ff573a8c34090c308e",
           "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection, portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
-          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files"
+          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files",
+          "pending_build": {
+            "version": "0.14.1-preview.23",
+            "status": "build_requested",
+            "includes": "All shared Inspector/vocal parity and M2 movement, tempo sync, multipoint cutoff and serial processor lifecycle changes"
+          }
         }
       },
       "remaining_qualification": [

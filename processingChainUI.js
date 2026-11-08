@@ -1,4 +1,4 @@
-import {processingChain,withProcessorBypass} from './src/dsp/processing-chain.js';
+import {processingChain,withProcessorBypass,withProcessorAdded,withProcessorRemoved} from './src/dsp/processing-chain.js';
 import {DEFAULT_SAMPLE_FILTER} from './audioEffects.js';
 const openBySound=new Map();
 export function renderProcessingChain(patch,onChange,soundId=null){
@@ -36,7 +36,23 @@ export function renderProcessingChain(patch,onChange,soundId=null){
    move.disabled=index+direction<0||index+direction>=chain.order.length;
    move.addEventListener('click',()=>{const order=[...chain.order];[order[index],order[index+direction]]=[order[index+direction],order[index]];commit(['chain'],{...chain,order,bypass:[...chain.bypass]},move,id);});item.append(move);
   }
+  if(id!=='delay'){
+   const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove '+name+' from chain');remove.title='remove from chain and retain its settings';remove.dataset.processingControl=id+'-remove';
+   remove.addEventListener('click',()=>commit(['chain'],withProcessorRemoved(patch,id),remove,'add'));item.append(remove);
+  }
   if(id==='delay')root.append(item);else list.append(item);
  };
- chain.order.forEach(row);row('delay');return root;
+ chain.order.forEach(row);
+ const available=['filter','drive'].filter(id=>!chain.order.includes(id));
+ if(available.length){
+  const choice=document.createElement('select');choice.setAttribute('aria-label','Processor to add');choice.dataset.processingControl='add-toggle';
+  for(const id of available){const option=document.createElement('option');option.value=id;option.textContent=id==='drive'?'distortion':'filter';choice.append(option);}
+  const add=document.createElement('button');add.type='button';add.textContent='+ add processor';add.title='restore a processor with its stored settings';add.dataset.processingControl='add-processor';
+  add.addEventListener('click',()=>{
+   const id=choice.value,next=withProcessorAdded(patch,id);
+   if(id==='filter'&&patch.filter==null)commit([['chain'],['filter']],[next,{...DEFAULT_SAMPLE_FILTER}],add,id);
+   else commit(['chain'],next,add,id);
+  });root.append(choice,add);
+ }
+ row('delay');return root;
 }

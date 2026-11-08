@@ -123,6 +123,8 @@ export function parameterCapability(id,context,read=()=>undefined){
  const value=key=>read(key)??parameterFor(key,context)?.default;
  const bypass=read("chain.bypass")??[];
  const stage=id.startsWith("filter.")||["movement.tone","movement.toneRate"].includes(id)?"filter":id==="effects.drive"?"drive":id.startsWith("effects.delay")?"delay":null;
+ const order=read("chain.order");
+ if(stage&&stage!=="delay"&&Array.isArray(order)&&!order.includes(stage))return {state:"inactive",supported:true,reason:stage+" is outside the processing chain"};
  if(stage&&bypass.includes(stage))return {state:"inactive",supported:true,reason:stage+" is bypassed"};
  const filterOff=context!=="synth"&&read("filter")===null;
  if(filterOff&&(id.startsWith("filter.")||["movement.tone","movement.toneRate"].includes(id)))

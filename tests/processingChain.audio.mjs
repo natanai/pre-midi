@@ -30,5 +30,9 @@ for(const kind of ['synth','sample','vocal']){
   const bypass=await render(kind,{chain:{version:1,order:['filter','drive'],bypass:[stage]}}),plain=await render(kind,reference);
   const difference=diff(bypass,plain);assert.ok(difference<1e-5,kind+' '+stage+' bypass differs '+difference);
  }
- console.log('PASS Web Audio processing chain',JSON.stringify({kind,orderEffect}));
+ for(const [order,reference] of [[['drive'],{filterOff:true}],[['filter'],{drive:0}],[[],{filterOff:true,drive:0}]]){
+  const removed=await render(kind,{chain:{version:1,order,bypass:[]}}),plain=await render(kind,reference);
+  assert.ok(diff(removed,plain)<1e-5,kind+' removal did not exclude its stage');
+ }
+ console.log('PASS Web Audio processing chain' ,JSON.stringify({kind,orderEffect}));
 }
