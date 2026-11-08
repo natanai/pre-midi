@@ -65,3 +65,15 @@ The numbered descriptions retain their original design contract. #187 implemente
 - Windows CI qualification, then actual Windows 11 device output, recording latency/listening, portable folder relocation and `.premidi`/WAV export acceptance. A tested portable ZIP must be built from the exact qualified commit.
 
 **Stop condition:** If any page has unresolvable dependencies, a missing handle, a non-finite transport duration, an impossible callback budget, or a failed acknowledgment, native playback must stop with a diagnostic without losing the authored Song or changing its music.
+
+## Prepared stream revisions (newer source, 2026-11-08)
+
+The experimental native Song path now implements seeks, continuous loop pages, live edits, pause-preserving replacement, count-in and synchronized recording. `song-stream-control.js` prepares immutable revisions while the old revision continues refilling. `stream_advance` reconstructs the existing native Session/voice/filter/sample/delay state on the control thread. `stream_start` adopts the prepared state at a chosen old-stream frame with a short crossfade; no allocation, parsing, asset destruction or ownership changes occur in the callback. Explicit seeks crossfade to the requested source position. Tempo edits map musical steps to the replacement clock.
+
+Loop pages retain voices and shared feedback across cycle boundaries. Page boundaries use floor-frame clocks and note onsets use ceil-frame clocks, retaining fractional onset age. An aligned first sample clamps floating-point addition error before advancing modulation; page leases retire only after their absolute voice/effect horizon plus a one-frame rounding guard.
+
+Native capture uses the stream's actual count-in/music/pause frames, including a nonzero starting position. Take duration and measured recording-offset limits remain. Newer edits invalidate only the prepared candidate; global Stop cancels the active and staged revisions. Stale owners/revisions cannot publish or stop a newer stream.
+
+Software checks cover source immutability, page retry identity, old-revision refill during a coalesced edit, fractional loop clocks, seek/loop PCM comparisons below 1e-7 at 44.1/48/96 kHz, paused native handoff, count-in/capture and callback allocation guards, plus compiled Rust control tests. These are software/null-device checks. Physical Windows 11 playback/microphone, observed UI interaction and representative hours-long/dense preparation time remain unqualified. History reconstruction can be expensive; no low-latency claim is made.
+
+This source remains behind the existing streaming opt-in and is **not in the published preview.29 ZIP**. Default native playback and WAV export retain their existing bounds. This milestone does not implement general automation/routing, production dynamics, reverb, modulation effects or independent pitch/time processing; those remain in `synthesis-roadmap.json`.

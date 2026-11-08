@@ -289,8 +289,8 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
   if(document.kind==="song"&&
      localStorage.getItem("premidi-native-song-streaming")==="experimental"){
    const handle=await playNativeSongStreamExperimental(document,{
-    renderWindow:renderEventsInWindow,getRevision,loop,onPosition,onProgress,
-    onStop,onStart,startStep,countIn,recording
+    renderWindow:renderEventsInWindow,getRevision,getDocument:read,loop,onPosition,onProgress,
+    onStop,onStart,startStep,countIn,recording,onCountIn
    });
    handle.refresh=()=>handle.update(read());
    return handle;

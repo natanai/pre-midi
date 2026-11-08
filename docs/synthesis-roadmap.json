@@ -1215,7 +1215,7 @@
         "Seek, loop, edit, pause and microphone/device changes invalidate old revisions safely",
         "Remove shipping limits only after exact-commit CI and physical Windows qualification"
       ],
-      "progress": "Opt-in JS feeder already exists in song-stream-control.js and audio.js, including three-page preload, ACK/refill, retry and pause/resume/stop. Remaining work is seek/loop/live edit/count-in/capture lifecycle and qualification; the normal player still uses bounded playNative(). Preview.29 also implements urgent Stop and pending-Play cancellation."
+      "progress": "Newer source implements prepared Song revision seeks, continuous loop pages, live edits with audio-clock handoff, paused revision replacement, native count-in and synchronized capture. Source remains opt-in pending physical Windows and broad long-session acceptance. Released preview.29 predates this milestone; default bounded playback limits remain unchanged."
     },
     {
       "order": 1,
@@ -1326,7 +1326,7 @@
     "qualification": "Historical extended-execution software qualification: 620 acoustic/library cases, 201 functional tests, 113 PCM mixer comparisons and 12 null-device profiles. Later features have focused evidence under sound_editing/implementation_updates. AGENTS.md defines current lean checks; full qualification is not a routine merge gate.",
     "physical_windows": "unqualified; no Windows WASAPI hardware available in this environment",
     "song_streaming": {
-      "stage": "Experimental JavaScript Song feeder now implements opt-in source-window preparation, owner/revision protocol, native ACK lookahead, delay registration, bounded backpressure retries and visible cancellation; default native player still uses 600s/4096-onset Sessions. Full seek/loop/live edit/capture and physical Windows hardware remain open.",
+      "stage": "Newer source implements prepared Song revision seeks, continuous loop pages, live edits with audio-clock handoff, paused revision replacement, native count-in and synchronized capture. Source remains opt-in pending physical Windows and broad long-session acceptance. Released preview.29 predates this milestone; default bounded playback limits remain unchanged.",
       "shipping_limit_seconds": 600,
       "shipping_limit_onsets": 4096,
       "preview_release": "v0.14.1-preview.29",
@@ -1341,14 +1341,31 @@
         ],
         "opt_in": "localStorage premidi-native-song-streaming=experimental in a Tauri host",
         "default_enabled": false,
-        "qualified": "Node mocked Rust actions, source-linked plan/frame tests and existing independent miniaudio device-host null-backend qualifications; no physical end-to-end WebView+WASAPI acceptance",
-        "prohibited_operations": [
-          "seek",
-          "live edit",
-          "loop",
-          "microphone synchronized capture"
-        ],
+        "qualified": "Source-level Node ownership/refill/coalescing tests, independent native seek/loop PCM comparisons, actual miniaudio null-device count-in/capture/paused handoff and compiled Rust control tests. Physical WebView/WASAPI interaction remains unverified.",
+        "prohibited_operations": [],
         "failure_policy": "Stop with visible native error; never fall back to Web Audio"
+      },
+      "source_milestone": {
+        "date": "2026-11-08",
+        "implementation_status": "implemented; software qualification",
+        "packaged": false,
+        "transport": "Control-prepared replacement revisions reconstruct the canonical Session voice/filter/sample/echo state. Callback handoff/crossfade never parses, allocates or destroys resources. Old pages refill during preparation; newer edits cancel only the pending replacement.",
+        "loop_clock": "Repeated source pages use continuous absolute frames and persistent shared delays; page boundaries floor musical time while onsets ceil it, preserving sub-frame source phase.",
+        "recording": "Native stream and Capture share callback music/count-in/pause frames. Existing 300-second take and measured-offset limits remain.",
+        "evidence": [
+          "npm run check",
+          "Focused native Song/page/session Node tests",
+          "node scripts/native-stream-device-check.mjs: seek/loop PCM error below 1e-7 at 44.1/48/96 kHz; paused handoff/count-in/synchronized capture; zero callback allocations",
+          "cargo test --manifest-path native/control-tests/Cargo.toml --locked: 6 tests including streamed revision ownership/pause/capture",
+          "node tests/recordedAudio.native.mjs: current effects/sample-vocal/automation parity",
+          "PREMIDI_NATIVE_SANITIZE=1 ASAN_OPTIONS=detect_leaks=0 node scripts/native-stream-device-check.mjs: AddressSanitizer passes; widened instrumented page lookahead is not a performance claim"
+        ],
+        "remaining": [
+          "Physical Windows 11 audio/microphone, device loss/sleep and observed editing acceptance",
+          "Representative dense and hours-long Song start/seek/edit preparation time and memory qualification",
+          "A requested Windows package containing this source; preview.29 is unchanged"
+        ],
+        "limits": "Song seeks and edits reconstruct preceding DSP history on the control thread. Large arrangements can take preparation time; this is not a low-latency or hardware-qualified claim."
       }
     },
     "execution_packet_note": "execution_packet=9 and the aggregate counts above describe the historical extended-synthesis checkpoint, not the current recorded-audio codec; current source sample packet is 17 and the processing trailer is 380 bytes."
@@ -3794,5 +3811,29 @@
     ],
     "completion_percentage": null,
     "scope_note": "Native desktop implementation exists. Native mobile, game-host parity and cross-platform distributions are separate tasks. No current cross-repository game-reader audit was performed. Automatic signed installation is deferred while the user uses manual portable ZIP updates."
+  },
+  "requested_rollout": {
+    "requested_on": "2026-11-08",
+    "status": "in_progress",
+    "scope": [
+      "Complete streaming seek, loop, editing and recording support",
+      "General automation, multiple processor instances and parallel routing",
+      "Dynamics, reverb, modulation effects and independent pitch/time processing"
+    ],
+    "streaming": "Source milestone implemented; see native_extended_execution/song_streaming/source_milestone. Hardware/large-session acceptance and packaging remain.",
+    "remaining_implementation_task_ids": [
+      "SE-05",
+      "SE-06",
+      "SE-07",
+      "SE-08",
+      "SE-09",
+      "SE-10",
+      "SE-11",
+      "SE-12",
+      "SE-13",
+      "SE-14",
+      "SE-15"
+    ],
+    "delivery_policy": "Continue the existing canonical parameter/Inspector/native contracts. No placeholder controls, silent Web Audio fallback, speculative legacy readers or completion claims from interface wiring alone."
   }
 }

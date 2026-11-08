@@ -50,7 +50,7 @@ test("late native Song packets are frame-relative and never change the authored 
  assert.equal(actual.descriptor.resources,0);
  assert.equal(actual.packet[0],0x50);
  assert.equal(new DataView(actual.packet.buffer).getUint32(4,true),page.onsetCount);
- assert.equal(nativeFrameAt(startStep*60/song.bpm/4,rate),page.descriptor.startFrame);
+ assert.equal(Math.floor(startStep*60/song.bpm/4*rate+1e-9),page.descriptor.startFrame);
  assert.equal(JSON.stringify(song),source);
 });
 
@@ -149,4 +149,21 @@ test("stale revisions after asynchronous asset preparation cannot publish a pack
  });
  await assert.rejects(publisher.publishNext(),/changed during page preparation/);
  assert.equal(requests,0);
+});
+
+test('loop pages stay contiguous across fractional-frame cycle boundaries without resetting source time',async()=>{
+ const song=fixture(24);song.bpm=127;const requests=[];
+ const publisher=createNativeSongPagePublisher(song,{
+  owner:17,revision:6,sampleRate:44100,info:{sampleRate:44100,generation:1},
+  renderWindow,loadAssets:emptyAssets,maxSteps:8,maxOnsets:128,loop:true,
+  request:async request=>{requests.push(request);return {accepted:true};}
+ });
+ for(let i=0;i<30;i++)await publisher.publishNext();
+ assert.equal(publisher.finished,false);
+ let last=0;
+ for(const [i,page] of requests.entries()){
+  assert.equal(page.sequence,i+1);assert.equal(page.start_frame,last);assert.equal(page.last,false);
+  assert.ok(page.end_frame>page.start_frame);last=page.end_frame;
+ }
+ assert.equal(last,Math.floor(10*24*60/127/4*44100+1e-9));
 });

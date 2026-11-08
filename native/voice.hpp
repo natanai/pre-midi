@@ -100,7 +100,12 @@ public:
 #ifdef PREMIDI_PROBE
    probe={};
 #endif
-   const double t=static_cast<double>(frame)/rate,elapsed=t-plan.start;float mix=0,mixRight=0;std::array<float,4> additional{};const auto offsets=modulation.next(t);
+   const double clock=static_cast<double>(frame)/rate;
+   // frameAt uses a 1e-9-frame rounding tolerance. Adding a page origin can
+   // move an exactly aligned onset by one floating-point ulp; keep its first
+   // sample on the same modulation/envelope tick as the unpaged voice.
+   const double t=frame==firstFrame?std::max(clock,plan.start):clock,elapsed=t-plan.start;
+   float mix=0,mixRight=0;std::array<float,4> additional{};const auto offsets=modulation.next(t);
    std::array<float,3> lfo{};
    if(t>=plan.start&&(plan.vibratoDepth>0||plan.tone>0||plan.tremolo>0)){
     const std::array<double,3> speeds{plan.vibratoRate,plan.toneRate,plan.tremoloRate};

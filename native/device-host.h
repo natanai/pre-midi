@@ -18,6 +18,8 @@ int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision);
 int premidi_audio_stream_delay(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback,double tone,int ping);
 int premidi_audio_stream_page(void* host,uint64_t owner,uint64_t revision,uint64_t sequence,uint64_t first_frame,uint64_t end_frame,uint32_t onsets,int last,const uint8_t* packet,size_t length);
 int premidi_audio_stream_start(void* host,uint64_t owner,uint64_t revision);
+int premidi_audio_stream_advance(void* host,uint64_t owner,uint64_t revision,uint64_t frame);
+int premidi_audio_stream_start_take(void* host,uint64_t owner,uint64_t revision,double bpm,uint32_t bars,int recording,double seconds,uint64_t due,int hold);
 int premidi_audio_stream_stop(void* host,uint64_t owner,uint64_t revision);
 int premidi_audio_stream_status_get(void* host,premidi_stream_status* status);
 

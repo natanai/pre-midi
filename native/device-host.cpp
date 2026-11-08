@@ -78,7 +78,13 @@ public:
 
 class DeviceHost {
  ma_context context{};ma_device device{};bool contextReady=false,deviceReady=false;
- std::unique_ptr<StreamTransport> streamOwned;
+ std::unique_ptr<StreamTransport> streamOwned,streamStaged,streamOld;
+ std::uint64_t stagedOwner=0,stagedRevision=0;
+ std::atomic<StreamTransport*> streamPending{nullptr},streamRetiring{nullptr};
+ std::atomic<unsigned> streamHandoff{0};
+ std::uint64_t streamDue=0;StreamTransport* streamSource=nullptr;
+ unsigned streamFadeLeft=0;
+ std::atomic<StreamTransport*> captureStreamTarget{nullptr};
  std::atomic<StreamTransport*> streamActive{nullptr};
  // Odd while the callback could hold streamActive, even when quiescent.
  // Control clears the pointer and waits for an even epoch before destruction.
@@ -122,12 +128,20 @@ class DeviceHost {
     host.transport.command(1);
     host.transport.process(a.data(),n,transportBudget);
     a.fill(0.f);
-   }else if(stream){
-    if(!stream->process(a.data(),n,transportBudget))
-     std::fill(a.begin(),a.end(),0.f);
+   }else if(stream||host.streamPending.load(std::memory_order_acquire)){
+    host.processStream(a.data(),n,transportBudget);
+    stream=host.streamActive.load(std::memory_order_acquire);
    }else host.transport.process(a.data(),n,transportBudget);
    host.preview.process(b.data(),n,previewBudget);
-   if(host.duplex){auto* active=host.transport.current();host.capture.process(input?static_cast<const float*>(input)+offset:nullptr,n,host.frames.load()+offset,active&&active==host.captureTarget.load(),active?active->lastLeadFrames:0,active?active->lastMusicFrames:0,active&&active->stateView.load()==paused);}
+   if(host.duplex){
+    auto* active=host.transport.current();
+    if(stream)host.capture.process(input?static_cast<const float*>(input)+offset:nullptr,n,
+     host.frames.load()+offset,stream==host.captureStreamTarget.load(),
+     stream->lastLeadFrames,stream->lastMusicFrames,stream->state()==paused);
+    else host.capture.process(input?static_cast<const float*>(input)+offset:nullptr,n,
+     host.frames.load()+offset,active&&active==host.captureTarget.load(),
+     active?active->lastLeadFrames:0,active?active->lastMusicFrames:0,active&&active->stateView.load()==paused);
+   }
    for(unsigned i=0;i<2*n;i++){
     float value=a[i]+b[i];if(!std::isfinite(value))value=0;
     const float amplitude=std::abs(value);clipping+=amplitude>1;peakValue=std::max(peakValue,static_cast<std::uint64_t>(std::min(amplitude,1000.f)*1000000.f));
@@ -161,7 +175,7 @@ public:
  ~DeviceHost(){close();if(contextReady)ma_context_uninit(&context);}
  void close(){
   intentionalStop.store(1);
-  streamActive.store(nullptr,std::memory_order_release);
+  streamActive.store(nullptr,std::memory_order_release);streamPending.store(nullptr,std::memory_order_release);
   if(deviceReady&&!lost.load()){
    transport.command(1);preview.command(1);
    for(unsigned attempt=0;attempt<100;attempt++){
@@ -173,8 +187,8 @@ public:
   if(deviceReady){ma_device_uninit(&device);deviceReady=false;}
   // ma_device_uninit has joined every callback; no callback can borrow
   // streamOwned or a pinned page after this point.
-  streamOwned.reset();streamOwner=streamRevision=0;
-  transport.clear();preview.clear();samples.clear();sampleBytes=0;captureTarget.store(nullptr);capture.discard();duplex=false;captureRate=0;intentionalStop.store(0);
+  streamPending.store(nullptr);streamRetiring.store(nullptr);streamStaged.reset();streamOld.reset();streamOwned.reset();streamOwner=streamRevision=stagedOwner=stagedRevision=0;
+  transport.clear();preview.clear();samples.clear();sampleBytes=0;captureTarget.store(nullptr);captureStreamTarget.store(nullptr);capture.discard();duplex=false;captureRate=0;intentionalStop.store(0);
  }
  int enumerate(){
   ma_device_info* list=nullptr;ma_uint32 count=0;
@@ -201,9 +215,10 @@ public:
  }
  void ensure(){require(!lost.load(),"Native output disconnected or changed. Refresh outputs in Settings and select the device again.");if(!deviceReady)open(UINT32_MAX,0,0);}
  void switchDuplex(bool enabled){
-  ensure();require(!streamActive.load(std::memory_order_acquire),
-   "Stop native Song streaming before switching microphone mode");
+  ensure();
   if(duplex==enabled)return;
+  auto* activeStream=streamActive.load();const bool resumeStream=activeStream&&activeStream->state()!=paused;
+  if(resumeStream)activeStream->setPaused(true);
   const auto sampleRate=device.sampleRate,period=device.playback.internalPeriodSizeInFrames;const auto outputId=device.playback.id;
   auto* a=transport.current();auto* b=preview.current();const bool resumeA=a&&a->stateView.load()==playing,resumeB=b&&b->stateView.load()==playing;
   if(resumeA)transport.command(2);
@@ -219,17 +234,17 @@ public:
    if(device.sampleRate!=sampleRate||ma_device_start(&device)!=MA_SUCCESS){ma_device_uninit(&device);deviceReady=false;return false;}return true;
   };
   const bool success=initialize(enabled);if(!success){if(!initialize(false))lost.store(1);}
-  intentionalStop.store(0);if(resumeA)transport.command(3);if(resumeB)preview.command(3);
+  intentionalStop.store(0);if(resumeStream)activeStream->setPaused(false);if(resumeA)transport.command(3);if(resumeB)preview.command(3);
   require(success,enabled?"Could not open the native microphone. Check Windows microphone privacy settings and the default input device.":"Could not restore the native playback device");
  }
  void prepareCapture(double seconds,double offset,bool sync){
-  ensure();capture.prepare(device.sampleRate,seconds,offset,sync);captureRate=device.sampleRate;captureTarget.store(nullptr);switchDuplex(true);capture.arm();
+  ensure();capture.prepare(device.sampleRate,seconds,offset,sync);captureRate=device.sampleRate;captureTarget.store(nullptr);captureStreamTarget.store(nullptr);switchDuplex(true);capture.arm();
  }
  void startCapture(double lead){ensure();require(duplex,"Prepare the native microphone first");capture.start(device.sampleRate,lead);}
  void finishCapture(bool cancel){
   capture.stop();if(deviceReady&&!lost.load())for(unsigned i=0;i<400&&capture.phase.load()!=3;i++)std::this_thread::sleep_for(std::chrono::milliseconds(2));
   if(deviceReady){try{switchDuplex(false);}catch(...){intentionalStop.store(1);if(deviceReady){ma_device_uninit(&device);deviceReady=false;}duplex=false;intentionalStop.store(0);lost.store(1);}}
-  capture.joined();if(cancel)capture.discard();captureTarget.store(nullptr);
+  capture.joined();if(cancel)capture.discard();captureTarget.store(nullptr);captureStreamTarget.store(nullptr);
  }
  std::uint64_t captureSize()const noexcept{return capture.size();}
  void copyCapture(float* output,std::uint64_t count){require(!duplex&&output&&count==capture.size(),"Native capture has not stopped safely");std::copy(capture.data(),capture.data()+count,output);}
@@ -296,71 +311,149 @@ public:
  // Control thread only. These operations NEVER mutate the callback's
  // existing Session, parse packets on the callback, or fall back to Web Audio.
  void beginStream(std::uint64_t owner,std::uint64_t revision){
-  transportStopRequested.store(false,std::memory_order_release);
   require(owner>0&&revision>0,"Native Song stream owner/revision must be positive");
-  ensure();require(!duplex,"Native streaming microphone handoff is not yet qualified");
-  if(streamOwned)stopStream(streamOwner,streamRevision);
+  require((owner!=streamOwner||revision>streamRevision)&&(owner!=stagedOwner||revision>stagedRevision),"Native Song revisions must advance monotonically");
+  ensure();
+  if(streamOwned&&owner!=streamOwner)stopStream(streamOwner,streamRevision);
+  if(!streamOwned)transportStopRequested.store(false,std::memory_order_release);
+  require(!streamPending.load(),"A native Song handoff is already pending");
+  for(unsigned i=0;i<100&&streamRetiring.load();i++)std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  require(!streamRetiring.load(),"Native Song crossfade is still completing");
   if(auto* prior=transport.current())
    require(prior->stateView.load()!=playing&&prior->stateView.load()!=paused,
-    "Stop the previous native Song before beginning a streamed Song");
-  streamOwned=std::make_unique<StreamTransport>(owner,revision,device.sampleRate);
-  streamOwner=owner;streamRevision=revision;
+    "Stop the previous bounded native Session before streaming");
+  streamOld.reset();
+  streamStaged=std::make_unique<StreamTransport>(owner,revision,device.sampleRate);
+  stagedOwner=owner;stagedRevision=revision;
  }
- void requireStream(std::uint64_t owner,std::uint64_t revision)const{
+ StreamTransport& requireStream(std::uint64_t owner,std::uint64_t revision){
+  require(!lost.load(),"Native output disconnected during Song streaming");
+  if(streamStaged&&owner==stagedOwner&&revision==stagedRevision)return *streamStaged;
   require(streamOwned&&owner==streamOwner&&revision==streamRevision,
    "Native Song page belongs to a cancelled or stale transport revision");
-  require(!lost.load(),"Native output disconnected during Song streaming");
+  return *streamOwned;
  }
  int streamDelay(std::uint64_t owner,std::uint64_t revision,
   double mix,double time,double feedback,double tone,bool ping){
-  requireStream(owner,revision);return streamOwned->registerDelay(mix,time,feedback,tone,ping);
+  return requireStream(owner,revision).registerDelay(mix,time,feedback,tone,ping);
  }
  bool streamPage(std::uint64_t owner,std::uint64_t revision,
   std::uint64_t sequence,std::uint64_t first,std::uint64_t end,
   unsigned onsets,bool terminal,const std::uint8_t* packet,std::size_t length){
-  requireStream(owner,revision);
-  require(packet&&length>=8&&length<=16*1024*1024,
-   "Native Song page packet exceeds 16 MiB or is missing");
-  const PageDescriptor descriptor{owner,revision,sequence,first,end,onsets,0,false,terminal};
-  return streamOwned->publish(descriptor,packet,length,samples);
+  auto& target=requireStream(owner,revision);
+  require(packet&&length>=8&&length<=16*1024*1024,"Native Song page packet exceeds 16 MiB or is missing");
+  return target.publish({owner,revision,sequence,first,end,onsets,0,false,terminal},packet,length,samples);
  }
- void startStream(std::uint64_t owner,std::uint64_t revision){
-  requireStream(owner,revision);
-  require(streamOwned->ready(),"Native Song cannot start before its first validated page");
-  require(!streamActive.load(std::memory_order_acquire),
-   "Native Song stream has already started");
-  streamActive.store(streamOwned.get(),std::memory_order_release);
+ void advanceStream(std::uint64_t owner,std::uint64_t revision,std::uint64_t frame){
+  auto& target=requireStream(owner,revision);
+  require(&target==streamStaged.get(),"Only a prepared stream may be reconstructed");
+  require(target.advanceTo(frame),"Native Song reconstruction needs more contiguous pages");
  }
- void stopStream(std::uint64_t owner,std::uint64_t revision){
-  if(!streamOwned)return;
-  require(owner==streamOwner&&revision==streamRevision,
-   "An obsolete Song owner cannot stop the active native stream");
-  const auto before=streamCallbackEpoch.load(std::memory_order_acquire);
-  streamActive.store(nullptr,std::memory_order_release);
-  bool quiescent=false;
-  for(unsigned i=0;i<150;i++){
-   const auto now=streamCallbackEpoch.load(std::memory_order_acquire);
-   if(!(now&1)&&(!(before&1)||now>before)){quiescent=true;break;}
+ // Audio callback only: adopt already prepared state and fade its predecessor.
+ // Ownership/destruction stays on the control thread after fade retirement.
+ void processStream(float* output,unsigned count,unsigned& budget)noexcept{
+  auto* active=streamActive.load(std::memory_order_acquire);
+  if(auto* next=streamPending.load(std::memory_order_acquire)){
+   const auto now=active?active->position():0;
+   if(streamSource&&active!=streamSource){streamPending.store(nullptr);streamHandoff.store(2);}
+   else if(streamSource&&now<streamDue){
+    const auto width=static_cast<unsigned>(std::min<std::uint64_t>(count,streamDue-now));
+    active->process(output,width,budget);
+    if(width<count){
+     const auto lead=active->lastLeadFrames,music=active->lastMusicFrames;
+     processStream(output+2*width,count-width,budget);
+     if(auto* adopted=streamActive.load()){adopted->lastLeadFrames+=lead;adopted->lastMusicFrames+=music;}
+    }
+    return;
+   }else if(streamSource&&now>streamDue){streamPending.store(nullptr);streamHandoff.store(2);}
+   else{
+    streamFadeLeft=std::max(1u,device.sampleRate/200);
+    streamRetiring.store(active,std::memory_order_release);
+    streamActive.store(next,std::memory_order_release);streamPending.store(nullptr,std::memory_order_release);
+    if(captureStreamTarget.load()==active)captureStreamTarget.store(next);
+    active=next;streamHandoff.store(1,std::memory_order_release);
+   }
+  }
+  if(active){if(!active->process(output,count,budget))std::fill(output,output+2*count,0.f);}
+  else std::fill(output,output+2*count,0.f);
+  if(auto* old=streamRetiring.load(std::memory_order_acquire)){
+   std::array<float,2*renderBlock> prior{};
+   // Paused edits remain silent, with no transport-clock advancement.
+   old->process(prior.data(),count,budget);
+   const auto fade=std::max(1u,device.sampleRate/200);
+   for(unsigned i=0;i<count;i++){
+    const float weight=static_cast<float>(streamFadeLeft)/fade;
+    for(unsigned ch=0;ch<2;ch++)output[2*i+ch]=output[2*i+ch]*(1-weight)+prior[2*i+ch]*weight;
+    if(streamFadeLeft)--streamFadeLeft;
+   }
+   if(!streamFadeLeft)streamRetiring.store(nullptr,std::memory_order_release);
+  }
+ }
+ void startStream(std::uint64_t owner,std::uint64_t revision,double bpm=120,unsigned bars=0,bool recording=false,double seconds=300,std::uint64_t due=UINT64_MAX,bool hold=false){
+  auto& target=requireStream(owner,revision);
+  require(&target==streamStaged.get()&&target.ready(),"Native Song needs a prepared revision before handoff");
+  target.countIn(bpm,bars);target.setPaused(hold);
+  if(recording){require(duplex&&capture.phase.load()==1,"Prepare the native microphone before Song playback");capture.duration(device.sampleRate,seconds);captureStreamTarget.store(&target);}
+  streamSource=due==UINT64_MAX?nullptr:streamActive.load();streamDue=due;
+  require(!transportStopRequested.load(std::memory_order_acquire),"Native Song preparation was stopped");
+  streamHandoff.store(0);
+  streamPending.store(&target,std::memory_order_release);
+  for(unsigned attempt=0;attempt<300;attempt++){
+   if(transportStopRequested.load(std::memory_order_acquire)){streamPending.store(nullptr,std::memory_order_release);waitStreamQuiescent();throw std::runtime_error("Native Song preparation was stopped");}
+   const auto result=streamHandoff.load(std::memory_order_acquire);
+   if(result==2)throw std::runtime_error("Native Song handoff missed its prepared clock; retry at a later frame");
+   if(result==1){
+    streamOld=std::move(streamOwned);streamOwned=std::move(streamStaged);
+    streamOwner=owner;streamRevision=revision;stagedOwner=stagedRevision=0;return;
+   }
+   require(!lost.load(),"Native output disconnected during Song handoff");
    std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
-  require(quiescent,"Native callback did not release its Song stream owner");
-  streamOwned.reset();streamOwner=streamRevision=0;
+  // A callback may have borrowed the pending pointer just before timeout.
+  // Resolve that race before returning or allowing candidate destruction.
+  streamPending.store(nullptr,std::memory_order_release);waitStreamQuiescent();
+  if(streamActive.load()==&target){
+   streamOld=std::move(streamOwned);streamOwned=std::move(streamStaged);
+   streamOwner=owner;streamRevision=revision;stagedOwner=stagedRevision=0;return;
+  }
+  throw std::runtime_error("Native Song handoff timed out");
  }
- void streamPause(std::uint64_t owner,std::uint64_t revision,bool pause){
-  requireStream(owner,revision);streamOwned->setPaused(pause);
+ void waitStreamQuiescent(){
+  const auto before=streamCallbackEpoch.load(std::memory_order_acquire);
+  for(unsigned i=0;i<150;i++){
+   const auto now=streamCallbackEpoch.load(std::memory_order_acquire);
+   if(!(now&1)&&(!(before&1)||now>before))return;
+   std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  }
+  throw std::runtime_error("Native callback did not release its Song stream owner");
+ }
+ void stopStream(std::uint64_t owner,std::uint64_t revision){
+  const bool active=streamOwned&&owner==streamOwner&&revision==streamRevision;
+  const bool staged=streamStaged&&owner==stagedOwner&&revision==stagedRevision;
+  if(!streamOwned&&!streamStaged)return;
+  require(active||staged,"An obsolete Song owner cannot stop the active native stream");
+  // First drain any borrowed pending pointer; then detach and drain once more.
+  // A timed-out candidate cannot be freed while a late callback adopts it.
+  streamPending.store(nullptr,std::memory_order_release);waitStreamQuiescent();
+  if(active){streamActive.store(nullptr,std::memory_order_release);streamRetiring.store(nullptr,std::memory_order_release);if(captureStreamTarget.load()){capture.stop();captureStreamTarget.store(nullptr);}}
+  else if(streamActive.load()==streamStaged.get()){
+   streamActive.store(streamOwned.get(),std::memory_order_release);
+   streamRetiring.store(nullptr,std::memory_order_release);
+   if(captureStreamTarget.load()==streamStaged.get())captureStreamTarget.store(streamOwned.get());
+  }
+  waitStreamQuiescent();
+  if(active){streamOwned.reset();streamOld.reset();streamOwner=streamRevision=0;}
+  if(staged||active){streamStaged.reset();stagedOwner=stagedRevision=0;}
  }
  void streamStatus(premidi_stream_status& output){
-  output={};
-  if(deviceReady)output.sample_rate=device.sampleRate;
-  if(!streamOwned)return;
-  output.position=streamOwned->position();
-  output.ack_sequence=streamOwned->acknowledgment();
-  output.ack_end_frame=streamOwned->acknowledgmentEnd();
-  output.released_through=streamOwned->releasedThrough();
-  output.fault=streamOwned->fault();
-  output.state=streamActive.load(std::memory_order_acquire)?
-   streamOwned->state():stopped;
-  output.active=static_cast<std::uint32_t>(streamOwned->active());
+  output={};if(deviceReady)output.sample_rate=device.sampleRate;
+  auto* target=streamActive.load(std::memory_order_acquire);
+  if(!target)target=streamStaged.get();
+  if(!target)return;
+  target->reclaim();output.position=target->position();output.ack_sequence=target->acknowledgment();
+  output.ack_end_frame=target->acknowledgmentEnd();output.released_through=target->releasedThrough();
+  output.fault=target->fault();output.state=target==streamActive.load()?target->state():stopped;
+  output.active=static_cast<std::uint32_t>(target->active());
  }
  void render(const std::uint8_t* data,std::size_t length,double cycle,unsigned rate,std::uint64_t count,std::uint8_t* output,std::size_t bytes,unsigned format,double gain){
   require(rate>=8000&&rate<=192000&&count>0&&count<=std::uint64_t(rate)*600&&format<=1&&std::isfinite(gain)&&gain>=0&&gain<=2,"Invalid native offline render dimensions");
@@ -381,15 +474,15 @@ public:
  void requestTransportStop()noexcept{transportStopRequested.store(true,std::memory_order_release);}
  void control(unsigned command,bool loop){
   require(command<=4,"Unknown native transport command");
-  if(streamOwned){
-   if(command==1||command==4)stopStream(streamOwner,streamRevision);
+  if(streamOwned||streamStaged){
+   if(command==1||command==4){if(streamOwned)stopStream(streamOwner,streamRevision);else stopStream(stagedOwner,stagedRevision);}
    else if(command==2||command==3)
-    streamOwned->setPaused(command==2);
+    {if(streamOwned)streamOwned->setPaused(command==2);}
   }
   transport.looping.store(loop?1:0);
   if(command)transport.command(command==4?1:command);
   if(command==4)preview.command(1);
-  if((command==1||command==4)&&captureTarget.load())capture.stop();
+  if((command==1||command==4)&&(captureTarget.load()||captureStreamTarget.load()))capture.stop();
   if(command&&deviceReady&&!lost.load())for(unsigned attempt=0;attempt<100;attempt++){
    const auto a=transport.current(),b=preview.current();const auto wanted=command==2?paused:command==3?playing:stopped;
    const bool mainDone=!a||a->stateView.load()==wanted||a->stateView.load()==finished||a->stateView.load()==failed;
@@ -405,9 +498,9 @@ public:
   if(auto* active=transport.current()){s.position=active->position.load();s.active=active->active.load();s.state=active->stateView.load();s.fault=active->fault.load();}
   if(auto* active=streamActive.load(std::memory_order_acquire)){
    s.position=active->position();s.active=active->active();
-   s.state=active->state();s.fault=active->fault();
+   s.state=active->state();s.fault=active->fault();s.lead_remaining=active->leadRemaining();
   }
-  if(auto* active=transport.current())s.lead_remaining=active->leadRemaining.load();
+  if(!streamActive.load())if(auto* active=transport.current())s.lead_remaining=active->leadRemaining.load();
   if(auto* active=preview.current()){s.preview_position=active->position.load();s.preview_state=active->stateView.load();}
   s.capture_phase=capture.phase.load();s.capture_frames=capture.frames.load();s.capture_missing=capture.missing.load();s.capture_clipped=capture.clipped.load();s.capture_peak_million=capture.peakMillion.load();s.capture_lead=capture.leadRemaining.load();s.capture_start=capture.startFrame.load();
  }
@@ -434,6 +527,8 @@ int premidi_audio_stream_page(void* host,uint64_t owner,uint64_t revision,uint64
  return status<0?-1:published?0:1;
 }
 int premidi_audio_stream_start(void* host,uint64_t owner,uint64_t revision){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.startStream(owner,revision);});}
+int premidi_audio_stream_advance(void* host,uint64_t owner,uint64_t revision,uint64_t frame){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.advanceStream(owner,revision,frame);});}
+int premidi_audio_stream_start_take(void* host,uint64_t owner,uint64_t revision,double bpm,uint32_t bars,int recording,double seconds,uint64_t due,int hold){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.startStream(owner,revision,bpm,bars,recording!=0,seconds,due,hold!=0);});}
 int premidi_audio_stream_stop(void* host,uint64_t owner,uint64_t revision){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.stopStream(owner,revision);});}
 int premidi_audio_stream_status_get(void* host,premidi_stream_status* value){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{premidi::require(value,"Missing native stream status output");h.streamStatus(*value);});}
 

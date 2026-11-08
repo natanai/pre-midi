@@ -4,12 +4,16 @@ import {effectiveDelayEffects} from "../../dsp/processing-chain.js";
 // the existing audio.js renderEventsInWindow function and native owner/revision.
 // The C++ DeviceHost, not JavaScript, validates and pins every page resource.
 import {nativePageDescriptorCursor} from "./onset-pages.js";
+import {songDurationSteps} from "../../../songModel.js";
 import {rebaseNativePlansToPage} from "./page-plan.js";
 import {
  encodeNativeSession,nativePlans,nativeRequiredAssets,prepareNativeAssets,nativeRequest
 } from "./session.js";
 import {vocalEffects} from "../../../vocalEffects.js";
 
+// Page boundaries use floor; note onsets use ceil. A fractional source onset
+// then retains its sub-frame age instead of being clamped to page-local zero.
+const pageFrameAt=(seconds,rate)=>Math.floor(seconds*rate+1e-9);
 const MAX_PACKET_BYTES=16*1024*1024;
 const STREAM_DELAY_LIMIT=32;
 const validRevision=(read,revision)=>{
@@ -76,7 +80,7 @@ export async function prepareNativeSongStreamPage(song,page,{
  const plans=nativePlans(events,assets,60/song.bpm/4);
  if(plans.length!==events.length)
   throw Error("Native Song page contains an inaudible or invalid recorded Clip. Correct its trim before streaming.");
- const rebased=rebaseNativePlansToPage(plans,descriptor.startFrame,sampleRate);
+ const rebased=rebaseNativePlansToPage(plans,descriptor.startFrame,sampleRate,page.timeOffset??0);
  const catalog=nativeSongDelayRecipes(song);
  for(const plan of rebased){
   const fx=plan.contract==="pre-midi-synth-voice"?effectiveDelayEffects(plan.patch,plan.patch.effects):plan;
@@ -99,17 +103,19 @@ export async function prepareNativeSongStreamPage(song,page,{
 // Source edits, owner replacement or asset errors fail closed; no page drops.
 export function createNativeSongPagePublisher(song,{
  owner,revision,sampleRate,info,renderWindow,
- getRevision=()=>revision,maxSteps=64,maxOnsets=512,
+ getRevision=()=>revision,maxSteps=64,maxOnsets=512,loop=false,repeatCycles=loop?Infinity:1,
  request=nativeRequest,loadAssets=prepareNativeAssets
 }={}){
  if(!info||typeof request!=="function"||typeof renderWindow!=="function")
   throw Error("Native Song stream needs an output, renderer and request bridge.");
- const cursor=nativePageDescriptorCursor(song,{
-  owner,revision,sampleRate,maxSteps,maxOnsets,getRevision
- });
- let pending=null,finished=false,poisoned=null,active=false,acceptedSequence=0;
+ if(repeatCycles!==Infinity&&(!Number.isSafeInteger(repeatCycles)||repeatCycles<1))throw Error("Invalid native Song repeat count.");
+ const makeCursor=()=>nativePageDescriptorCursor(song,{owner,revision,sampleRate,maxSteps,maxOnsets,getRevision});
+ let cursor=makeCursor(),cycle=0,sequence=0;
+ const duration=songDurationSteps(song)*60/song.bpm/4;
+ let pending=null,finished=false,poisoned=null,active=false,acceptedSequence=0,acceptedEndFrame=0;
  return {
   get acceptedSequence(){return acceptedSequence;},
+  get acceptedEndFrame(){return acceptedEndFrame;},
   get finished(){return finished;},
   get pendingSequence(){return pending?.descriptor.sequence??null;},
   async publishNext(){
@@ -120,8 +126,14 @@ export function createNativeSongPagePublisher(song,{
    try{
     validRevision(getRevision,revision);
     if(!pending){
-     const next=cursor.next();
+     let next=cursor.next();
+     if(!next&&cycle+1<repeatCycles){cycle++;cursor=makeCursor();next=cursor.next();}
      if(!next){finished=true;return {accepted:false,finished:true};}
+     const timeOffset=cycle*duration;
+     next={...next,timeOffset,descriptor:{...next.descriptor,sequence:++sequence,
+      startFrame:pageFrameAt(timeOffset+next.startStep*60/song.bpm/4,sampleRate),
+      endFrame:pageFrameAt(timeOffset+next.endStep*60/song.bpm/4,sampleRate),
+      last:next.descriptor.last&&cycle+1===repeatCycles}};
      // Keep this page identity through transient native backpressure.
      pending={descriptor:next.descriptor,source:next,prepared:null};
     }
@@ -139,13 +151,13 @@ export function createNativeSongPagePublisher(song,{
     if(typeof result?.accepted!=="boolean")
      throw Error("Native Song page transport gave no publication acknowledgment.");
     if(result.accepted){
-     acceptedSequence=descriptor.sequence;
+     acceptedSequence=descriptor.sequence;acceptedEndFrame=descriptor.endFrame;
      finished=descriptor.last;
      pending=null;
     }
     return {accepted:result.accepted,finished,sequence:descriptor.sequence,
      last:descriptor.last,backpressure:!result.accepted,
-     stream:result.stream};
+     endFrame:descriptor.endFrame,stream:result.stream};
    }catch(error){
     poisoned=error instanceof Error?error:Error(String(error));
     throw poisoned;

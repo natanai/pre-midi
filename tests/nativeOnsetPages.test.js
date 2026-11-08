@@ -98,8 +98,8 @@ test("native page descriptors have exact contiguous frame clocks, owner/revision
   assert.equal(d.resources,0);
   assert.equal(d.prepared,false,"unvalidated resources must never be marked ready for callback");
   assert.equal(d.last,!page.hasMore);
-  assert.equal(d.startFrame,Math.ceil(page.startStep*unit*sr-1e-9));
-  assert.equal(d.endFrame,Math.ceil(page.endStep*unit*sr-1e-9));
+  assert.equal(d.startFrame,Math.floor(page.startStep*unit*sr+1e-9));
+  assert.equal(d.endFrame,Math.floor(page.endStep*unit*sr+1e-9));
   assert.ok(d.endFrame>d.startFrame);
   if(previous)assert.equal(d.startFrame,previous.endFrame,"audio frame clock has a page gap");
   previous=d;seen+=d.onsets;

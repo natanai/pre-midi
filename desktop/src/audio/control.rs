@@ -47,7 +47,8 @@ unsafe extern "C" {
  fn premidi_audio_stream_begin(host:*mut c_void,owner:u64,revision:u64)->i32;
  fn premidi_audio_stream_delay(host:*mut c_void,owner:u64,revision:u64,mix:f64,time:f64,feedback:f64,tone:f64,ping:i32)->i32;
  fn premidi_audio_stream_page(host:*mut c_void,owner:u64,revision:u64,sequence:u64,first_frame:u64,end_frame:u64,onsets:u32,last:i32,packet:*const u8,length:usize)->i32;
- fn premidi_audio_stream_start(host:*mut c_void,owner:u64,revision:u64)->i32;
+ fn premidi_audio_stream_advance(host:*mut c_void,owner:u64,revision:u64,frame:u64)->i32;
+ fn premidi_audio_stream_start_take(host:*mut c_void,owner:u64,revision:u64,bpm:f64,bars:u32,recording:i32,seconds:f64,due:u64,hold:i32)->i32;
  fn premidi_audio_stream_stop(host:*mut c_void,owner:u64,revision:u64)->i32;
  fn premidi_audio_stream_status_get(host:*mut c_void,status:*mut StreamStatus)->i32;
 }
@@ -202,7 +203,8 @@ pub enum Request {
  StreamBegin{owner:u64,revision:u64},
  StreamDelay{owner:u64,revision:u64,mix:f64,time:f64,feedback:f64,tone:f64,ping:bool},
  StreamPage{owner:u64,revision:u64,sequence:u64,start_frame:u64,end_frame:u64,onsets:u32,last:bool,data:Vec<u8>},
- StreamStart{owner:u64,revision:u64},
+ StreamAdvance{owner:u64,revision:u64,frame:u64},
+ StreamStart{owner:u64,revision:u64,#[serde(default="default_bpm")] bpm:f64,#[serde(default)] count_in:u32,#[serde(default)] recording:Option<u64>,#[serde(default="default_take_seconds")] seconds:f64,#[serde(default)] due:Option<u64>,#[serde(default)] hold:bool},
  StreamStop{owner:u64,revision:u64},
  StreamStatus{owner:u64,revision:u64},
  Control{command:u32,looping:bool,#[serde(default)] owner:Option<u64>},
@@ -211,9 +213,10 @@ pub enum Request {
  CaptureStart{owner:u64,lead_seconds:f64},CaptureCancel{owner:u64},
  Shutdown,
 }
+fn default_take_seconds()->f64{300.0}
 fn default_bpm()->f64{120.0}
 #[derive(Default)]
-struct ControlState{host:Option<Host>,issued:u64,cancelled:u64,current:u64,stream_revision:u64,preview_current:u64,capture_issued:u64,capture_current:u64,generation:u64,assets:HashMap<(u32,Vec<u8>),SampleInfo>}
+struct ControlState{host:Option<Host>,issued:u64,cancelled:u64,current:u64,stream_revision:u64,stream_previous_revision:u64,preview_current:u64,capture_issued:u64,capture_current:u64,generation:u64,assets:HashMap<(u32,Vec<u8>),SampleInfo>}
 impl ControlState{
  fn begin(&mut self)->Result<Value,String>{self.issued=self.issued.checked_add(1).ok_or("Audio session ID exhausted")?;Ok(json!({"owner":self.issued}))}
  fn valid(&self,owner:u64)->bool{owner>self.cancelled&&owner<=self.issued&&owner>=self.current}
@@ -237,9 +240,9 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
  }
  match &request{
   Request::StreamDelay{owner,revision,..}|Request::StreamPage{owner,revision,..}|
-  Request::StreamStart{owner,revision}|Request::StreamStop{owner,revision}|
+  Request::StreamStart{owner,revision,..}|Request::StreamAdvance{owner,revision,..}|Request::StreamStop{owner,revision}|
   Request::StreamStatus{owner,revision}
-   if *owner!=state.current||*revision==0||*revision!=state.stream_revision=>
+   if *owner!=state.current||*revision==0||(*revision!=state.stream_revision&&*revision!=state.stream_previous_revision)=>
     return Err("Native Song page owner or revision is stale".into()),
   _=>{}
  }
@@ -272,7 +275,7 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
   Request::StreamBegin{owner,revision}=>{
    let host=state.host.as_ref().unwrap();
    host.check(unsafe{premidi_audio_stream_begin(host.0,owner,revision)})?;
-   state.current=owner;state.stream_revision=revision;state.status()
+   state.current=owner;state.stream_previous_revision=state.stream_revision;state.stream_revision=revision;state.status()
   },
   Request::StreamDelay{owner,revision,mix,time,feedback,tone,ping}=>{
    let host=state.host.as_ref().unwrap();
@@ -286,21 +289,26 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    host.check(value)?;
    Ok(json!({"accepted":value==0,"stream":host.stream_status()?}))
   },
-  Request::StreamStart{owner,revision}=>{
+  Request::StreamAdvance{owner,revision,frame}=>{
+   let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_stream_advance(host.0,owner,revision,frame)})?;state.status()
+  },
+  Request::StreamStart{owner,revision,bpm,count_in,recording,seconds,due,hold}=>{
+   if !bpm.is_finite()||!(40.0..=240.0).contains(&bpm)||count_in>2||!seconds.is_finite()||seconds<=0.0{return Err("Invalid streamed Song take timing".into());}
+   if recording.is_some_and(|value|value==0||value!=state.capture_current){return Err("Native microphone take was cancelled".into());}
    let host=state.host.as_ref().unwrap();
-   host.check(unsafe{premidi_audio_stream_start(host.0,owner,revision)})?;
-   state.status()
+   host.check(unsafe{premidi_audio_stream_start_take(host.0,owner,revision,bpm,count_in,i32::from(recording.is_some()),seconds,due.unwrap_or(u64::MAX),i32::from(hold))})?;
+   state.stream_previous_revision=0;state.status()
   },
   Request::StreamStop{owner,revision}=>{
    let host=state.host.as_ref().unwrap();
    host.check(unsafe{premidi_audio_stream_stop(host.0,owner,revision)})?;
-   state.stream_revision=0;state.status()
+   state.stream_revision=if revision==state.stream_previous_revision{0}else{state.stream_previous_revision};state.stream_previous_revision=0;state.status()
   },
   Request::StreamStatus{..}=>state.status(),
   Request::Control{command,looping,owner}=>{
    if owner.is_some_and(|value|value!=state.current){return state.status();}
    let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_control(host.0,command,i32::from(looping))})?;
-   if command==1||command==4{state.stream_revision=0;}
+   if command==1||command==4{state.stream_revision=0;state.stream_previous_revision=0;}
    state.status()
   },
   Request::Update{data,cycle,looping,tempo_ratio,..}=>{
@@ -373,6 +381,35 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
   last_session[16..20].copy_from_slice(&44100u32.to_le_bytes());
   let pcm=render(&mut state,RenderRequest{data:last_session,cycle:0.5,rate:44100,frames:11025,wav:false,gain:0.85}).unwrap();
   assert_eq!(pcm.len(),88200);assert!(pcm.iter().any(|v|*v!=0));
+ }
+ #[test]fn streamed_revisions_preserve_ownership_pause_and_synchronized_capture(){
+  let pointer=unsafe{premidi_audio_create(1)};assert!(!pointer.is_null());let host=Host(pointer);
+  host.check(unsafe{premidi_audio_configure(host.0,u32::MAX,48000,128)}).unwrap();
+  let mut state=ControlState{host:Some(host),..Default::default()};
+  let owner=handle(&mut state,Request::Begin).unwrap()["owner"].as_u64().unwrap();
+  let empty=[0x31534d50u32.to_le_bytes(),0u32.to_le_bytes()].concat();
+  let request=|state:&mut ControlState,value:Value|handle(state,serde_json::from_value(value).unwrap()).unwrap();
+  request(&mut state,json!({"action":"stream_begin","owner":owner,"revision":1}));
+  request(&mut state,json!({"action":"stream_page","owner":owner,"revision":1,"sequence":1,"start_frame":0,"end_frame":48000,"onsets":0,"last":false,"data":empty}));
+  request(&mut state,json!({"action":"stream_start","owner":owner,"revision":1,"hold":true}));
+  request(&mut state,json!({"action":"stream_begin","owner":owner,"revision":2}));
+  // The old revision may refill until the prepared edit is handed off.
+  request(&mut state,json!({"action":"stream_page","owner":owner,"revision":1,"sequence":2,"start_frame":48000,"end_frame":96000,"onsets":0,"last":true,"data":empty}));
+  request(&mut state,json!({"action":"stream_page","owner":owner,"revision":2,"sequence":1,"start_frame":0,"end_frame":48000,"onsets":0,"last":true,"data":empty}));
+  request(&mut state,json!({"action":"stream_advance","owner":owner,"revision":2,"frame":4800}));
+  request(&mut state,json!({"action":"stream_start","owner":owner,"revision":2,"hold":true,"due":0}));
+  let status=state.status().unwrap();assert_eq!(status["stream"]["positionFrame"],4800);assert_eq!(status["stream"]["state"],2);
+  assert!(handle(&mut state,Request::StreamStop{owner,revision:1}).is_err());
+  let capture=handle(&mut state,Request::CapturePrepare{seconds:0.05,offset_ms:3.,synchronized:true}).unwrap()["captureOwner"].as_u64().unwrap();
+  request(&mut state,json!({"action":"stream_begin","owner":owner,"revision":3}));
+  request(&mut state,json!({"action":"stream_page","owner":owner,"revision":3,"sequence":1,"start_frame":0,"end_frame":48000,"onsets":0,"last":true,"data":empty}));
+  request(&mut state,json!({"action":"stream_advance","owner":owner,"revision":3,"frame":2400}));
+  request(&mut state,json!({"action":"stream_start","owner":owner,"revision":3,"bpm":240.,"count_in":1,"recording":capture,"seconds":0.05}));
+  assert!(state.status().unwrap()["countInFrames"].as_u64().unwrap()>0);
+  for _ in 0..400{if state.status().unwrap()["capture"]["phase"]==3{break;}std::thread::sleep(std::time::Duration::from_millis(5));}
+  let take=finish_capture(&mut state,capture).unwrap();assert_eq!(take.len(),44+2400*2);
+  request(&mut state,json!({"action":"control","command":1,"looping":false,"owner":owner}));
+  assert!(handle(&mut state,Request::StreamStop{owner,revision:3}).is_err());
  }
  #[test]fn cancelled_or_old_audio_handles_cannot_start_or_stop_new_sessions(){
   let mut state=ControlState::default();state.begin().unwrap();state.begin().unwrap();state.current=2;

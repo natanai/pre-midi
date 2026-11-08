@@ -247,9 +247,8 @@ public:
 
  // CALLBACK thread only, after a matching PageMailbox ACK and before
  // rendering that page. Input is an immutable view into a pinned C++ lease.
- // The current first slice intentionally refuses delayed strums whose audible
- // onset is in another page, and page-local delay buses; those are separate
- // required gates and must not silently sound at an incorrect time.
+ // Delayed strums enter the same fixed priority queue across pages, and delay
+ // sends resolve against the persistent stream catalog rather than page buses.
  bool activateStreamPage(const PageDescriptor& descriptor,
    const std::vector<PreparedNote>& prepared)noexcept{
   const auto fail=[&]()noexcept{error=4;state=failed;fault.store(error);stateView.store(state);return false;};

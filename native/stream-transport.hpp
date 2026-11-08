@@ -36,6 +36,10 @@ class StreamTransport final {
  bool terminalPublished=false;
  std::atomic<unsigned> renderFault{0};
  std::atomic<bool> paused{false};
+ bool controlStarted=false;
+public:
+ unsigned lastLeadFrames=0,lastMusicFrames=0;
+private:
 
  const PreparedPageLease* find(std::uint64_t sequence)const noexcept{
   const auto& slot=published[(sequence-1)%published.size()];
@@ -69,7 +73,7 @@ class StreamTransport final {
  bool ready()const noexcept{return nextSequence>1;}
  // Control-only preparation, before page one is submitted.
  int registerDelay(double mix,double time,double feedback,double tone=20000,bool ping=false){
-  require(!armed.load(std::memory_order_acquire)&&nextSequence==1,
+  require(!controlStarted&&nextSequence==1,
    "Native shared effects must be prepared before the first Song page");
   return player->registerStreamingDelay(mix,time,feedback,tone,ping);
  }
@@ -127,6 +131,22 @@ class StreamTransport final {
   }
   return discarded+resources;
  }
+ // Control-only reconstruction, before publication to the callback. Every
+ // sample uses the same Session/voice/effect state as audible streaming.
+ bool advanceTo(std::uint64_t target){
+  require(!armed.load(std::memory_order_acquire),"Cannot preroll a published Song stream");
+  require(target>=position(),"Native stream reconstruction cannot rewind");
+  controlStarted=true;
+  std::array<float,2*renderBlock> scratch{};
+  while(position()<target){
+   const auto width=static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,target-position()));
+   unsigned budget=maxOnsets;
+   if(!render(scratch.data(),width,budget)||state()==finished)return position()==target;
+  }
+  return true;
+ }
+ void countIn(double bpm,unsigned bars){player->countIn(bpm,bars);}
+ std::uint64_t leadRemaining()const noexcept{return player->leadRemaining.load(std::memory_order_acquire);}
  // Control-only: invalidate before stopping/rebuilding on edit, seek, loop,
  // owner change, device loss or application shutdown.
  void invalidate(std::uint64_t owner,std::uint64_t revision)noexcept{
@@ -134,16 +154,20 @@ class StreamTransport final {
  }
  // Audio callback only, <=128 frames per call and one shared onset budget.
  // All notes/pages and delay recipes are already parsed/pinned by control.
- bool process(float* output,unsigned frames,unsigned& budget)noexcept{
-  if(!output||frames>renderBlock||renderFault.load(std::memory_order_relaxed))
-   return false;
-  armed.store(true,std::memory_order_release);
+ bool render(float* output,unsigned frames,unsigned& budget)noexcept{
+  lastLeadFrames=lastMusicFrames=0;
+  if(!output||frames>renderBlock||renderFault.load(std::memory_order_relaxed))return false;
   if(paused.load(std::memory_order_acquire)){
    std::fill(output,output+2*frames,0.f);
    return true;
   }
   unsigned done=0;
   while(done<frames){
+   if(leadRemaining()){
+    const auto width=static_cast<unsigned>(std::min<std::uint64_t>(frames-done,leadRemaining()));
+    player->process(output+2*done,width,false,budget);
+    lastMusicFrames+=player->lastMusicFrames;done+=width;lastLeadFrames=done;continue;
+   }
    const auto at=player->position.load(std::memory_order_relaxed);
    const auto status=mailbox.advance(at);
    if(status==PageResult::fault){renderFault.store(1,std::memory_order_release);break;}
@@ -152,7 +176,7 @@ class StreamTransport final {
     if(player->fault.load(std::memory_order_relaxed)){
      renderFault.store(2,std::memory_order_release);break;
     }
-    done=frames;break;
+    lastMusicFrames+=player->lastMusicFrames;done=frames;break;
    }
    const auto sequence=mailbox.ackSequence();
    if(sequence!=activatedSequence){
@@ -170,13 +194,16 @@ class StreamTransport final {
       player->position.load(std::memory_order_relaxed)!=at+width){
     renderFault.store(5,std::memory_order_release);break;
    }
-   done+=width;
+   lastMusicFrames+=player->lastMusicFrames;done+=width;
   }
   if(done!=frames){
    std::fill(output,output+2*frames,0.f);
    return false;
   }
   return true;
+ }
+ bool process(float* output,unsigned frames,unsigned& budget)noexcept{
+  armed.store(true,std::memory_order_release);return render(output,frames,budget);
  }
 };
 } // namespace premidi

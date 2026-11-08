@@ -5,8 +5,8 @@
 // Session remains the *existing* native parser/preparer: no duplicate synth
 // parameters, alternate DSP engine or callback-side packet decoding.
 //
-// No playable page transport is enabled here. A future persistent mixer will
-// borrow the prepared notes while the control thread owns this entire lease
+// StreamTransport borrows these prepared notes while the control thread owns
+// this entire lease
 // until ALL active voices, delayed starts and shared effect tails have ended.
 // Retirement of PageMailbox metadata alone cannot release this object.
 #include "session.hpp"
@@ -56,12 +56,16 @@ class PreparedPageLease final {
      plan.delayMix,plan.delayTime,plan.delayFeedback,plan.delayTone);
     require(std::isfinite(endSeconds)&&endSeconds>=plan.start,
      "Native prepared page has a nonfinite or reversed Voice/effect tail");
-    const auto relativeEnd=std::ceil(endSeconds*rate-1e-9);
-    require(std::isfinite(relativeEnd)&&relativeEnd>=0&&
-     relativeEnd<=static_cast<double>(std::numeric_limits<std::uint64_t>::max()-metadata.startFrame),
+    // Match Session::spawn's arithmetic order on the absolute clock. A
+    // page-local ceil followed by integer addition can otherwise retire a
+    // fractional-boundary resource one frame before its final Voice sample.
+    const double shift=static_cast<double>(metadata.startFrame)/rate;
+    const auto absoluteEnd=std::ceil(((plan.graphEnd+shift)+Delay::tail(
+     plan.delayMix,plan.delayTime,plan.delayFeedback,plan.delayTone))*rate-1e-9);
+    require(std::isfinite(absoluteEnd)&&absoluteEnd>=0&&
+     absoluteEnd<static_cast<double>(std::numeric_limits<std::uint64_t>::max()-1),
      "Native prepared page resource lifetime is out of range");
-    keepThroughFrame_=std::max(keepThroughFrame_,
-     metadata.startFrame+static_cast<std::uint64_t>(relativeEnd));
+    keepThroughFrame_=std::max(keepThroughFrame_,static_cast<std::uint64_t>(absoluteEnd)+1);
     if(plan.kind){
      require(plan.sample,"Native page sample/vocal plan lacks a pinned decoded asset");
      samples.insert(plan.sample);

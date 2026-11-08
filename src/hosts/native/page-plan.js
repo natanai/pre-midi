@@ -1,8 +1,6 @@
-// Control-thread preparation for the future stateful C++ Song page host.
-// Native voice packets currently encode session-local seconds (readPlan bounds
-// start <=601); these transforms preserve the absolute sample frame while
-// keeping every encoder-visible time relative to the page's absolute first
-// frame. They are NOT called by current playNative(), and do not relax limits.
+// Control-thread page-relative clock transforms for native Song streaming.
+// Packets retain canonical source phase within a bounded local clock; absolute
+// frame origins belong to the persistent native stream, not the saved music.
 export const nativeFrameAt=(seconds,sampleRate)=>{
  if(!Number.isFinite(seconds)||seconds<0||
     !Number.isInteger(sampleRate)||sampleRate<8000||sampleRate>192000)
@@ -13,7 +11,7 @@ export const nativeFrameAt=(seconds,sampleRate)=>{
  return at;
 };
 
-export function rebaseNativePlanToPage(plan,pageStartFrame,sampleRate){
+export function rebaseNativePlanToPage(plan,pageStartFrame,sampleRate,timeOffset=0){
  if(!Number.isSafeInteger(pageStartFrame)||pageStartFrame<0)
   throw Error("Native page frame origin must be a nonnegative safe integer");
  if(!Number.isInteger(sampleRate)||sampleRate<8000||sampleRate>192000)
@@ -24,6 +22,7 @@ export function rebaseNativePlanToPage(plan,pageStartFrame,sampleRate){
  // Subtracting large whole-second Song times can create an avoidable one-frame
  // error on odd sample rates, particularly at non-bar page boundaries.
  const localTime=seconds=>{
+  seconds+=timeOffset;
   const originalFrame=nativeFrameAt(seconds,sampleRate);
   if(originalFrame<pageStartFrame)
    throw Error("Native page includes an event preceding its source frame");
@@ -60,8 +59,8 @@ export function rebaseNativePlanToPage(plan,pageStartFrame,sampleRate){
   throw Error("Native page voice starts beyond the bounded session-local clock");
  return rebased;
 }
-export function rebaseNativePlansToPage(plans,pageStartFrame,sampleRate){
+export function rebaseNativePlansToPage(plans,pageStartFrame,sampleRate,timeOffset=0){
  if(!Array.isArray(plans)||plans.length>4096)
   throw Error("Native Song page exceeds 4096 prepared voices");
- return plans.map(plan=>rebaseNativePlanToPage(plan,pageStartFrame,sampleRate));
+ return plans.map(plan=>rebaseNativePlanToPage(plan,pageStartFrame,sampleRate,timeOffset));
 }

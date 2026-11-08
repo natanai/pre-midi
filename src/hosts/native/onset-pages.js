@@ -1,7 +1,5 @@
-// Control-thread-only preparation of one bounded Song onset page.
-// This module never publishes a page to the real-time C++ callback. Native
-// playback still refuses >4096 total onsets and cycles longer than 10 minutes
-// until the host supports persistent voices, effects, acknowledgment and seek.
+// Control-thread-only bounded Song onset windows used by the native stream.
+// The default whole-Session player retains its separate 600s/4096-onset guards.
 import {songDurationSteps} from "../../../songModel.js";
 import {scheduledSongOnsetsInWindow} from "../../../songSchedule.js";
 
@@ -64,7 +62,7 @@ export function nativePageDescriptorCursor(song,{
  if(getRevision()!==revision)
   throw Error("Song changed during native page preparation; invalidate the transport revision.");
  const sourceBpm=song.bpm,unit=60/sourceBpm/4,frameAt=step=>{
-  const frames=Math.max(0,Math.ceil(step*unit*sampleRate-1e-9));
+  const frames=Math.max(0,Math.floor(step*unit*sampleRate+1e-9));
   if(!Number.isSafeInteger(frames)||frames<0)
    throw Error("Native Song page frame is outside the safe transport range.");
   return frames;

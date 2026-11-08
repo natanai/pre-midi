@@ -8,27 +8,31 @@ import {makePatch} from "../synth.js";
 import {planSynthVoice} from "../src/dsp/synth-voice.js";
 import {planNativeSample} from "../src/hosts/native/sample-plan.js";
 import {encodeNativeSession} from "../src/hosts/native/session.js";
-import {nativeFrameAt,rebaseNativePlansToPage} from "../src/hosts/native/page-plan.js";
+import {rebaseNativePlansToPage} from "../src/hosts/native/page-plan.js";
 const root=fileURLToPath(new URL("../",import.meta.url));
 const temp=await mkdtemp(join(tmpdir(),"premidi-device-stream-"));
 const bin=join(temp,"device-stream-check");
 try{
  execFileSync(process.env.CXX||"g++",[
   "-std=c++17","-O2","-ffp-contract=off","-Wall","-Wextra","-Werror",
-  "-pedantic","-DPREMIDI_AUDIO_TEST",
+  "-pedantic","-DPREMIDI_AUDIO_TEST",...(process.env.PREMIDI_NATIVE_SANITIZE?["-fsanitize=address","-fno-omit-frame-pointer","-g"]:[]),
   join(root,"native/stream-device-test.cpp"),
   join(root,"native/device-host.cpp"),"-pthread","-ldl","-lm","-o",bin
  ],{stdio:"pipe",timeout:90000,maxBuffer:1024*1024});
- const rows=[];
+ const revisionBin=join(temp,"revision-check");
+ execFileSync(process.env.CXX||"g++",["-std=c++17","-O2","-ffp-contract=off","-Wall","-Wextra","-Werror","-pedantic",join(root,"native/stream-revision-test.cpp"),"-o",revisionBin],{stdio:"pipe",timeout:90000,maxBuffer:1024*1024});
+ // Sanitizer overhead is not a real-time performance measurement. Give its
+ // physical-time null callbacks a larger lookahead while checking ownership.
+ const rows=[],scale=process.env.PREMIDI_NATIVE_SANITIZE?4:1;
  for(const rate of [44100,48000,96000]){
-  const frames=Math.round(rate*.55),mark=[0,.09,.18,.27,.36,.55]
-   .map(s=>nativeFrameAt(s,rate));
+  const frames=Math.round(rate*.55*scale),mark=[0,.090137,.180137,.270137,.360137,.55]
+   .map(s=>Math.floor(s*rate*scale+1e-9));
   const patch=makePatch("touch-keys");
   patch.effects={...patch.effects,drive:.2,delayMix:.45,
    delayTime:.073137,delayFeedback:.6};
   patch.envelope={...patch.envelope,release:.20};
   const tone=(pitch,start,duration)=>planSynthVoice({patch,volume:.12},
-   {pitch,velocity:.8},start,duration);
+   {pitch,velocity:.8},start*scale,duration*scale);
   const duration=Math.round(rate*.14),pcm=new Float32Array(duration*2);
   for(let i=0;i<duration;i++){
    pcm[2*i]=.22*Math.sin(2*Math.PI*345*i/rate);
@@ -39,10 +43,10 @@ try{
   const samplePatch={type:"sample",presetId:"stream-device",zones:[{assetId:"recorded",root:60}],
    followPitch:true,oneShot:true,transpose:0,gain:.8,attack:0,release:.025,pan:0};
   const sampleAt=start=>planNativeSample({patch:samplePatch,volume:.16},
-   {pitch:60,velocity:.9},start,.05,handles);
+   {pitch:60,velocity:.9},start*scale,.05*scale,handles);
   const parts=[
    [tone(62,.018,.34),tone(67,.102,.11)], // delayed strum: authored in page one
-   [sampleAt(.131)],
+   [tone(73,.090137,.12),sampleAt(.131)],
    [tone(70,.212,.12)],
    [sampleAt(.303)],
    [tone(57,.402,.06)]
@@ -56,6 +60,8 @@ try{
     rebaseNativePlansToPage(parts[i],mark[i],rate),rate,[asset]));
    args.push(mark[i],mark[i+1],parts[i].length,segment);
   }
+  const revisionReport=JSON.parse(execFileSync(revisionBin,args.map(String),{encoding:"utf8",timeout:90000}));
+  assert.ok(revisionReport.seekMaximumError<1e-7);
   const output=execFileSync(bin,args.map(String),{
    encoding:"utf8",timeout:90000,maxBuffer:65536
   });
@@ -68,7 +74,7 @@ try{
   assert.ok(report.callbacks>0&&report.peak>0);
   assert.ok(report.backpressure>=1,
    "The fourteenth native Song event must not overflow the three-slot page mailbox");
-  rows.push(report);
+  rows.push({...report,revisionMaximumError:revisionReport.seekMaximumError,seekLoopCountInCapture:true});
  }
  console.log("PASS miniaudio null-device dynamic Song streaming: "+JSON.stringify(rows));
 }finally{
