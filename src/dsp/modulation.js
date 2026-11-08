@@ -3,6 +3,20 @@ import {envelopeLevelAt} from "./amplitude-envelope.js";
 export const MODULATION_VERSION=1;
 export const MOD_SOURCES=Object.keys(MODULATION_SOURCE_CONTEXTS);
 export const LFO_SHAPES=Object.freeze(["sine","triangle","ramp","square"]);
+export const LFO_DIVISIONS=Object.freeze([.25,.5,1,2,4,8,16]);
+export const modulationRate=(source,unit=.125)=>source.sync?1/(source.sync*4*unit):source.rate;
+// Resolve musical divisions at the host boundary. Authored free-Hz values and
+// divisions stay untouched; DSP consumes one portable effective Hz value.
+export function resolveModulation(block,unit=.125){
+ if(!block)return block;
+ const errors=validateModulation(block);if(errors.length)throw Error(errors.join(" "));
+ if(!Number.isFinite(unit)||unit<=0)throw Error("Invalid modulation tempo");
+ return {...block,routes:block.routes.map(route=>{
+  if(route.source.kind!=="lfo"||!route.source.sync)return route;
+  const {sync,...source}=route.source;
+  return {...route,source:{...source,rate:modulationRate(route.source,unit)}};
+ })};
+}
 export const nativeModulationSource=source=>{
  if(source.kind==="lfo"&&!LFO_SHAPES.includes(source.shape))throw Error("Unsupported modulation waveform");
  return source.kind==="lfo"&&source.shape!=="sine"?3+LFO_SHAPES.indexOf(source.shape):MOD_SOURCES.indexOf(source.kind);
@@ -28,9 +42,10 @@ export function validateModulation(modulation){
   if(!target||route.unit!==target.unit||!finite(route.depth,-(target?.limit??0),target?.limit??0)||
    !["unipolar","bipolar"].includes(route.polarity)||!finite(route.smoothing,MODULATION_CONTROLS.smoothing.min,MODULATION_CONTROLS.smoothing.max))errors.push("Invalid modulation target, depth, range or units.");
   if(!source||!MOD_SOURCES.includes(source.kind)){errors.push("Invalid modulation source.");continue;}
-  const keys={lfo:["kind","rate","shape"],velocity:["kind"],keytrack:["kind","root","span"],envelope:["kind","envelope"]}[source.kind];
+  const keys={lfo:["kind","rate","shape","sync"],velocity:["kind"],keytrack:["kind","root","span"],envelope:["kind","envelope"]}[source.kind];
   if(Object.keys(source).some(key=>!keys.includes(key)))errors.push("Unknown modulation source field.");
   if(source.kind==="lfo"&&(!finite(source.rate,MODULATION_CONTROLS.rate.min,MODULATION_CONTROLS.rate.max)||!LFO_SHAPES.includes(source.shape)))errors.push("Invalid modulation LFO.");
+  if(source.kind==="lfo"&&source.sync!==undefined&&!LFO_DIVISIONS.includes(source.sync))errors.push("Invalid modulation tempo division.");
   if(source.kind==="keytrack"&&(!finite(source.root,MODULATION_CONTROLS.root.min,MODULATION_CONTROLS.root.max)||!finite(source.span,MODULATION_CONTROLS.span.min,MODULATION_CONTROLS.span.max)))errors.push("Invalid key tracking.");
   if(source.kind==="envelope"){
    errors.push(...validateParameterBlock(source.envelope,"envelope"));
@@ -44,9 +59,9 @@ export function defaultSource(kind){
  if(kind==="keytrack")return {kind,root:MODULATION_CONTROLS.root.default,span:MODULATION_CONTROLS.span.default};
  return {kind:"velocity"};
 }
-export function sourceValueAt(source,{elapsed,gate,velocity,pitch}){
+export function sourceValueAt(source,{elapsed,gate,velocity,pitch,unit=.125}){
  let value,signed=false;
- if(source.kind==="lfo"){value=modulationWave(source.shape,source.rate*Math.max(0,elapsed));signed=true;}
+ if(source.kind==="lfo"){value=modulationWave(source.shape,modulationRate(source,unit)*Math.max(0,elapsed));signed=true;}
  else if(source.kind==="velocity")value=velocity;
  else if(source.kind==="keytrack"){value=Math.max(-1,Math.min(1,(pitch-source.root)/source.span));signed=true;}
  else{

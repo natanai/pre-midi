@@ -72,8 +72,11 @@ const pathRange=(count,fn)=>pathFrom(Array.from({length:count},(_,i)=>fn(i/(coun
 // The envelope lesson must include the complete 3 s attack + 3 s decay
 // range, a held stage, and up to 4 s release. Short-note timing can conceal
 // entire editable stages even though their nodes and numbers still move.
-const modulationTrace=route=>modeledModulationTrace(route,
- route.source.kind==="envelope"?{duration:10.5,gate:6.25}:{});
+const illustrationUnits=new WeakMap();
+export const setSoundIllustrationTempo=(patch,bpm=120)=>illustrationUnits.set(patch,60/bpm/4);
+export const soundIllustrationUnit=patch=>illustrationUnits.get(patch)??.125;
+const modulationTrace=(route,unit)=>modeledModulationTrace(route,
+ route.source.kind==="envelope"?{duration:10.5,gate:6.25,unit}:{unit});
 const pathMatches=(a,b)=>a===b||a.startsWith(b+".")||b.startsWith(a+".");
 export const soundControlDomain=(kind,path)=>kind==="stage"&&
  ["volume","gain"].includes(path.split(".")[0])?"stage":"patch";
@@ -123,7 +126,7 @@ export function diagramPageCount(patch,type){
  return 1;
 }
 // Diagrams respond to canonical parameters; the measured scope is separate.
-export const diagram=(patch,type,page=0)=>{
+export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
  if(ISOLATED_SOUND_PANELS.has(type))return isolatedSoundDiagram(patch,type);
  if(type==="distortion")return diagram(patch,"filter",patch.type==="synth"?2:1);
  const color=type==="movement"?"var(--signal-mauve)":"var(--track-accent,#08e4ec)";
@@ -183,17 +186,17 @@ export const diagram=(patch,type,page=0)=>{
   const frequencyY=value=>98-72*clamp(Math.log(Math.max(50,value)/50)/Math.log(280));
   line("M18 103 H342 M18 20 V103",true);
   line(pathRange(240,t=>[18+324*t,frequencyY(cutoffAt(p,t*total,p.points[0].value))]),
-   false,["points.0.step","points.0.value","points.1.step","points.1.value"]);
+   false,p.points.flatMap((_,i)=>["points."+i+".step","points."+i+".value"]));
   for(const [index,point] of p.points.entries()){
    const x=18+324*clamp(point.step/total),y=frequencyY(point.value);
    line("M"+x.toFixed(2)+" 102 V"+y.toFixed(2),true,
     ["points."+index+".step","points."+index+".value"]);
    handle(x,y,[
     referenceAxis(["points",index,"step"],0,total,"linearX",{from:18,to:342,step:1,unit:"step",
-     ...(index===0?{hardMax:p.points[1].step-1}:{hardMin:p.points[0].step+1})}),
+     hardMin:index?p.points[index-1].step+1:0,hardMax:index<p.points.length-1?p.points[index+1].step-1:total}),
     axis(["points",index,"value"],"logY",{from:98,to:26,unit:"Hz"})
-   ],(index===0?"start":"end")+" position / brightness");
-   tag(x+4,Math.max(16,y-8),index===0?"start":"end");
+   ],(index===0?"start":index===p.points.length-1?"end":"point "+(index+1))+" position / brightness");
+   tag(x+4,Math.max(16,y-8),index===0?"start":index===p.points.length-1?"end":String(index+1));
   }
   tag(18,14,"high");tag(18,111,"low");tag(278,112,"bar →");
  }else if(type.startsWith("harmonics")){
@@ -685,22 +688,22 @@ export const diagram=(patch,type,page=0)=>{
     const i=start+j,center=centers[j];
     const target=MOD_TARGETS.find(t=>t.id===route.target),limit=target?.limit||1;
     line("M67 "+center+" H290",true);
-    const trace=modulationTrace(route);
+    const trace=modulationTrace(route,unit);
     const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
     const tracePath=values=>pathFrom(values.map((value,n)=>
      [67+223*n/(values.length-1),center-9*Math.tanh(value/visualScale)]));
     line(tracePath(trace.raw),true);
     line(tracePath(trace.smoothed),false,["modulation.routes."+i]);
     if(route.depth===0){
-     line(tracePath(modulationTrace({...route,depth:limit*.5}).smoothed),true,
+     line(tracePath(modulationTrace({...route,depth:limit*.5},unit).smoothed),true,
       ["modulation.routes."+i],"reference");
      dormant("modulation.routes."+i+".smoothing","movement depth is zero; the dashed trace isolates its source and smoothing");
     }
     // Depth is always editable; a time-based source adds a genuine second axis.
     const depth=clamp(route.depth/limit,-1,1);
-    const rate=route.source.kind==="lfo"?route.source.rate:null;
+    const rate=route.source.kind==="lfo"&&!route.source.sync?route.source.rate:null;
     handle(rate===null?75+215*clamp((route.smoothing??0)/.1):
-     75+215*clamp((rate-.05)/19.95),center-8*depth,[
+     75+215*clamp((rate-.01)/19.99),center-8*depth,[
      rate===null?axis(["modulation","routes",i,"smoothing"],"linearX",{from:75,to:290,unit:"s"}):
       axis(["modulation","routes",i,"source","rate"],"linearX",{from:75,to:290,unit:"Hz"}),
      axis(["modulation","routes",i,"depth"],"linearY",{from:center+8,to:center-8})
@@ -716,27 +719,27 @@ export const diagram=(patch,type,page=0)=>{
     const limit=target?.limit??1,depth=clamp(route.depth/limit,-1,1);
     const prefix=["modulation","routes",i],source=route.source;
     line("M24 61 H336",true);
-    const trace=modulationTrace(route);
+    const trace=modulationTrace(route,unit);
     const tracePath=values=>pathFrom(values.map((value,n)=>
      [24+312*n/(values.length-1),61-32*clamp(value/Math.max(.001,limit),-1,1)]));
     line(tracePath(trace.raw),true);
     line(tracePath(trace.smoothed),false,["modulation.routes."+i]);
     if(route.depth===0){
-     line(tracePath(modulationTrace({...route,depth:limit*.5}).smoothed),true,
+     line(tracePath(modulationTrace({...route,depth:limit*.5},unit).smoothed),true,
       ["modulation.routes."+i],"reference");
      for(const path of ["smoothing","source.rate","source.root","source.span",
       "source.envelope.attack","source.envelope.decay","source.envelope.sustain","source.envelope.release"])
       dormant("modulation.routes."+i+"."+path,"movement depth is zero; the dashed trace isolates its source and smoothing");
      tag(192,43,"depth off · guide");
     }
-    const primary=source.kind==="lfo"?
+    const primary=source.kind==="lfo"&&!source.sync?
      [axis([...prefix,"source","rate"],"linearX",{from:35,to:317})]:
      [axis([...prefix,"smoothing"],"linearX",{from:35,to:317})];
-    handle(35+282*clamp(source.kind==="lfo"?(source.rate-.05)/19.95:
+    handle(35+282*clamp(source.kind==="lfo"&&!source.sync?(source.rate-.01)/19.99:
      (route.smoothing??0)/.1),61-35*depth,[
      ...primary,axis([...prefix,"depth"],"linearY",
       {from:96,to:26,step:target?.unit==="cents"?1:.01})
-    ],source.kind==="lfo"?"route speed / depth":"route smoothing / depth");
+    ],source.kind==="lfo"&&!source.sync?"route speed / depth":"route smoothing / depth");
     if(source.kind==="lfo"){
      // Smoothing is independent of the oscillator speed and movement depth.
      line("M35 90 H317",true,["modulation.routes."+i+".smoothing"]);
@@ -868,7 +871,7 @@ function createSoundPanel(details,kind,patch,onChange,onPreview,index,options){
  };
  function draw(current=latestPatch){
   latestPatch=current;
-  const {paths,handles,labels,actions,color,inactive}=diagram(current,kind,page);
+  const {paths,handles,labels,actions,color,inactive}=diagram(current,kind,page,soundIllustrationUnit(patch));
   graphic.setAttribute("aria-description",[...labels.map(label=>label.value),
    ...inactive.map(item=>item.reason)].join("; "));
   wrapper.dataset.visualPage=String(page);

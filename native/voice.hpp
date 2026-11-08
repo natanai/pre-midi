@@ -17,7 +17,7 @@ struct Plan {
  double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0,delayMix=0,delayTime=.24,delayFeedback=.26;
  double drive=0,vibratoRate=5,vibratoDepth=0,vibratoDelay=0,tone=0,toneRate=2,tremolo=0,tremoloRate=5;
  unsigned kind=0,asset=0;double playbackRate=1,sampleOffset=0,sampleLimit=301;bool bypassFilter=false;const SampleData* sample=nullptr;
- std::uint32_t version=1,routeCount=0,automationCount=0;std::array<Event,6> automation{};double off=1,pitch=60,velocity=1;std::array<Route,16> routes{};
+ std::uint32_t version=1,routeCount=0,automationCount=0;std::array<Event,36> automation{};double off=1,pitch=60,velocity=1;std::array<Route,16> routes{};
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
  std::uint32_t eventCount=0;std::array<Event,6> events{};
 };

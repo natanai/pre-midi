@@ -1,7 +1,7 @@
 import {planFilterSweep} from "../../dsp/filter-sweep.js";
 import {planCutoffAutomation} from "../../dsp/automation.js";
 import {recordedEffects,recordingEnvelope} from "../../../recordedAudio.js";
-import {MOD_TARGETS,MOD_SOURCES,nativeModulationSource} from "../../dsp/modulation.js";
+import {MOD_TARGETS,MOD_SOURCES,nativeModulationSource,resolveModulation} from "../../dsp/modulation.js";
 import {sampleForNote} from '../../../sampler.js';
 import {validatePatch} from '../../../synth.js';
 import {movement,planPitch} from '../../dsp/expression.js';
@@ -21,7 +21,7 @@ export function planNativeSample(instrument,note,start,duration,assets,{unit=.12
  const releaseStart=patch.oneShot?start+Math.max(0,life-patch.release):patch.followPitch?Math.min(start+duration,start+life-.01):start+life-.01;
  return {contract:'pre-midi-sample-voice',version:1,kind:1,asset:asset.id,start,duration:Math.max(.02,life),off:patch.audioMode==="clip"?start+life:Math.max(start,releaseStart),end:start+life+.01,graphEnd:start+life+.01,
   automation:patch.automation?planCutoffAutomation(patch.automation,{start,end:start+life+.01,step:0,unit,limitStep:life/unit}):undefined,
-  delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,tail:delayTailSeconds(fx),modulation:patch.modulation,pitchValue:note.pitch,velocity:note.velocity,
+  delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,tail:delayTailSeconds(fx),modulation:resolveModulation(patch.modulation,unit),pitchValue:note.pitch,velocity:note.velocity,
   sweep:planFilterSweep(fx.filter,start,life,"sample"),
   playbackRate:rate,offset:region.offset,sourceLimit:region.offset+region.sourceLength,pan:patch.pan,filter:fx.filter,drive:patch.drive??0,movement:motion,
   pitch:planPitch({...note,bend:note.bend??patch.bend},motion,start,Math.max(.02,life)),
@@ -47,7 +47,7 @@ export function planNativeVocal(event,start,unit,assets){
   pitch:{...range.pitch,start,duration},
   delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,tail,
   automation:fx.automation?planCutoffAutomation(fx.automation,{start,end,step:0,unit,limitStep:duration/unit}):undefined,
-  modulation:fx.modulation,pitchValue:60,velocity:1,events};
+  modulation:resolveModulation(fx.modulation,unit),pitchValue:60,velocity:1,events};
 }
 export function encodeNativeSample(plan,rate){
  if(plan.contract!=='pre-midi-sample-voice'||plan.version!==1)throw Error('Unknown native sample voice contract');

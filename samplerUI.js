@@ -1,3 +1,4 @@
+import {setSoundIllustrationTempo} from "./soundIllustrations.js";
 import {parameterFor,parameterDefaults} from "./src/dsp/parameters.js";
 import {renderModulationEditor} from "./modulationUI.js";
 import {mountSoundPanelView} from "./soundPanelView.js";
@@ -30,14 +31,15 @@ export function disposeRecordedAudioEditor(root){
  for(const panel of root?.querySelectorAll(".visual-sound-panel")??[])
   panel.disposeSoundIllustration?.();
 }
-export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{},soundId=null,{deferView=false}={}){
- return renderRecordedAudioEditor(root,patch,onChange,{metadata,openUpload,onPreview,soundId,deferView});
+export function renderSamplerEditor(root,patch,onChange,metadata,openUpload,onPreview=()=>{},soundId=null,{deferView=false,bpm=120}={}){
+ return renderRecordedAudioEditor(root,patch,onChange,{metadata,openUpload,onPreview,soundId,deferView,bpm});
 }
 // One module renderer for triggered sampled Sounds and timeline vocal Clips.
 // Adapters own source selection, storage and undo; controls and diagrams live here.
-export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openUpload=null,onPreview=()=>{},soundId=null,deferView=false}={}){
+export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openUpload=null,onPreview=()=>{},soundId=null,deferView=false,bpm=120}={}){
  const vocal=patch.type==="vocal";
  patch={...patch,filter:patch.filter?sampleTone(patch).filter:null,audioFilterBypassed:patch.filter==null};
+ setSoundIllustrationTempo(patch,bpm);
  const stateKey=soundId??patch;
  let expanded=sampleOpenStates.get(stateKey);
  if(!expanded){expanded=activeSamplePanels(patch);sampleOpenStates.set(stateKey,expanded);}

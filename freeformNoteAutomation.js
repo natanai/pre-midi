@@ -23,7 +23,7 @@ export function createFreeformNoteCutoff(note,patch){
 }
 
 // The shared interactive cutoff illustration and the numeric fields both
-// write the exact same two endpoints. Keep strict increasing order and preserve
+// write the exact same curve points. Keep strict increasing order and preserve
 // source phase and endpoint IDs on every edit.
 export function editFreeformNoteCutoff(captured,path,value){
  const multiple=Array.isArray(path?.[0]);
@@ -31,17 +31,16 @@ export function editFreeformNoteCutoff(captured,path,value){
  if(!captured||!Array.isArray(paths)||!paths.length||
   !Array.isArray(values)||values.length!==paths.length||
   paths.some(keys=>!Array.isArray(keys)||keys.length!==3||
-   keys[0]!=="points"||![0,1].includes(keys[1])||
+   keys[0]!=="points"||!Number.isInteger(keys[1])||keys[1]<0||keys[1]>=captured.block.points.length||
    !["step","value"].includes(keys[2]))||
   values.some(number=>!Number.isFinite(number)))
   throw Error("Invalid cutoff movement edit.");
  const changed=clone(captured);
  assignSoundEdit(changed.block,path,value);
- const [a,b]=changed.block.points;
- if(paths.some(keys=>keys[1]===0&&keys[2]==="step"))
-  a.step=clamp(Math.round(a.step),0,b.step-1);
- if(paths.some(keys=>keys[1]===1&&keys[2]==="step"))
-  b.step=clamp(Math.round(b.step),a.step+1,1024);
+ for(const keys of paths)if(keys[2]==="step"){
+  const i=keys[1],points=changed.block.points;
+  points[i].step=clamp(Math.round(points[i].step),i?points[i-1].step+1:0,i<points.length-1?points[i+1].step-1:1024);
+ }
  const issues=validateCapturedCutoffAutomation(changed);
  if(issues.length)throw Error(issues[0]);
  return changed;

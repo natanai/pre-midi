@@ -5,6 +5,8 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync,execFileSync} from 'node:child_process';
 import {planNativeSample,planNativeVocal} from '../src/hosts/native/sample-plan.js';
+import {resolveModulation} from '../src/dsp/modulation.js';
+import {planCutoffAutomation} from '../src/dsp/automation.js';
 import {encodeNativeSession} from '../src/hosts/native/session.js';
 const temp=await mkdtemp(join(tmpdir(),'premidi-vocal-parity-')),binary=join(temp,process.platform==='win32'?'render.exe':'render');
 try{
@@ -28,6 +30,22 @@ for(const shape of ['sine','triangle','ramp','square']){
  console.log('PASS shared native modulation',JSON.stringify({shape,difference,audible}));
 }
 const a=render(sample),b=render(vocal);let peak=0,diff=0;for(let i=0;i<a.length;i++){peak=Math.max(peak,Math.abs(a[i]));diff=Math.max(diff,Math.abs(a[i]-b[i]));}if(!(peak>.01)||diff>1e-5)throw Error(JSON.stringify({peak,diff}));console.log('PASS native sampled/vocal processing PCM parity',JSON.stringify({peak,maxDifference:diff}));
+const tempoRoute={version:1,routes:[{id:'tempo',source:{kind:'lfo',shape:'triangle',rate:7,sync:4},target:'amplitude',unit:'linear_gain',depth:.5,polarity:'bipolar',smoothing:.005}]};
+for(const bpm of [40,120,240]){
+ const effective=resolveModulation(tempoRoute,60/bpm/4),free=structuredClone(tempoRoute);delete free.routes[0].source.sync;free.routes[0].source.rate=bpm/240;
+ const a=render({...vocal,modulation:effective}),b=render({...vocal,modulation:free});
+ let difference=0;for(let i=0;i<a.length;i++)difference=Math.max(difference,Math.abs(a[i]-b[i]));
+ if(difference>1e-7)throw Error('Native tempo resolution differs '+bpm);
+ console.log('PASS native tempo sync',JSON.stringify({bpm,difference}));
+}
+const curve={version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:Array.from({length:32},(_,i)=>({id:'p'+i,step:i,value:i%2?6000:200}))};
+const automation=planCutoffAutomation(curve,{start:0,end:1,step:0,unit:1/31,limitStep:31});
+const automated=render({...vocal,automation}),automatedSample=render({...sample,automation});
+let curveDifference=0;for(let i=0;i<automated.length;i++)curveDifference=Math.max(curveDifference,Math.abs(automated[i]-automatedSample[i]));
+if(curveDifference>1e-5)throw Error('Multipoint sampled/vocal audio differs '+curveDifference);
+let curveEffect=0;for(let i=0;i<automated.length;i++)curveEffect=Math.max(curveEffect,Math.abs(automated[i]-b[i]));
+if(curveEffect<.01)throw Error('Multipoint curve did not affect native audio');
+console.log('PASS native multipoint automation',JSON.stringify({points:automation.points.length,curveDifference,curveEffect}));
 const withoutSweep=render({...vocal,sweep:{...vocal.sweep,startCutoff:vocal.filter.cutoff}});
 const sweepDifference=b.reduce((peak,value,i)=>Math.max(peak,Math.abs(value-withoutSweep[i])),0);
 if(sweepDifference<.01)throw Error('Native recording filter sweep was not audible');

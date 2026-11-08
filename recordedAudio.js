@@ -6,7 +6,7 @@ import {validateCutoffAutomation,planCutoffAutomation} from "./src/dsp/automatio
 import {configureDriveShaper,sampleTone} from './audioEffects.js';
 import {movement,scheduleMovementLfo} from './expression.js';
 import {attachModulation} from './src/hosts/web/modulation.js';
-import {validateModulation} from './src/dsp/modulation.js';
+import {validateModulation,resolveModulation} from './src/dsp/modulation.js';
 import {delayTailSeconds} from './src/dsp/effect-tail.js';
 export const RECORDING_DEFAULTS=Object.freeze({
  ...Object.fromEntries(["pan","transpose"].map(id=>[id,parameterFor(id,"vocal").default])),
@@ -65,7 +65,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  const movementGain=add(context.createGain());movementGain.gain.value=1;
  amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);gate.connect(pan);pan.pan.value=fx.pan;
  const targets=new Map([['pan',pan.pan],['amplitude',movementGain.gain]]);if(filter){targets.set('filter.cutoff',filter.detune);targets.set('filter.resonance',filter.Q);}
- attachModulation(context,{modulation:fx.modulation,start,off:start+duration,graphEnd:start+duration,expression,elapsed,resonance:fx.filter?.resonance},targets,owner);
+ attachModulation(context,{modulation:resolveModulation(fx.modulation,unit),start,off:start+duration,graphEnd:start+duration,expression,elapsed,resonance:fx.filter?.resonance},targets,owner);
  const dry=add(context.createGain());dry.gain.value=1-fx.delayMix*.4;pan.connect(dry);dry.connect(out);
  return {fx,tail:delayTailSeconds(fx),connectDelay(session,voice){
   if(!(fx.delayMix>0)||!voice.admitted&&session)return;

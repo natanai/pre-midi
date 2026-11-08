@@ -1,3 +1,4 @@
+import {insertCutoffPoint,removeCutoffPoint,MAX_AUTOMATION_POINTS} from "./src/dsp/automation.js";
 // Attached freeform Song lane and Song-position piano roll.
 // Every mutation passes through the studio's existing Song undo/history boundary.
 import {ensureFreeform,attachBeatInstruments,attachedBeatForTrack,resolveFreeformInstrument,sourceForFreeformInstrument,addFreeformNote,
@@ -314,7 +315,7 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
      change,()=>{},activeInstrumentId+":"+note.id);
     details.append(picture.element);
     for(const [index,point] of captured.block.points.entries()){
-     const name=index?"end":"begin";
+     const name=index===0?"begin":index===captured.block.points.length-1?"end":"point "+(index+1);
      const positionField=field(name+" step",input("number",point.step,0,1024,
       value=>change(["points",index,"step"],value)));
      positionField.dataset.soundPath="points."+index+".step";
@@ -323,9 +324,11 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
       value=>change(["points",index,"value"],value)));
      cutoffField.dataset.soundPath="points."+index+".value";
      details.append(cutoffField);
+     const erase=action('remove '+name,()=>mutate(()=>{const current=currentNote();if(current?.cutoffAutomation)current.cutoffAutomation.block=removeCutoffPoint(current.cutoffAutomation.block,point.id);}));
+     erase.disabled=captured.block.points.length<=2;details.append(erase);
     }
-    details.append(el("span","freeform-layer-help",
-     "Drag both handles to change when the filter moves and how bright the sound becomes."));
+    const add=action('add point',()=>mutate(()=>{const current=currentNote();if(current?.cutoffAutomation)current.cutoffAutomation.block=insertCutoffPoint(current.cutoffAutomation.block);}));
+    add.disabled=captured.block.points.length>=MAX_AUTOMATION_POINTS||!captured.block.points.some((p,i)=>i&&p.step-captured.block.points[i-1].step>1);details.append(add);
     details.append(action("remove cutoff movement",()=>mutate(()=>{
      const current=currentNote();if(current)delete current.cutoffAutomation;
     }),"freeform-remove-cutoff"));

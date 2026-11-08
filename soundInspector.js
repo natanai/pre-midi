@@ -1,3 +1,4 @@
+import {setSoundIllustrationTempo} from "./soundIllustrations.js";
 import {soundField} from "./soundParameterAdapter.js";
 import {mountSoundPanelView} from "./soundPanelView.js";
 import {renderCutoffAutomation} from "./automationUI.js";
@@ -126,6 +127,7 @@ export function renderSoundInspectorCore({
   for(const illustration of panel.querySelectorAll(".visual-sound-panel"))
    illustration.disposeSoundIllustration?.();
  const patch=sound.patch,recorded=patch.type!=="synth",vocal=patch.type==="vocal";
+ setSoundIllustrationTempo(patch,context.bpm??120);
  const oldStage=stageOpen??modulesRoot.querySelector(
   '.visual-sound-panel[data-visual-kind="stage"] details')?.open??false;
  const level=instrument.volume*sound.gain;
@@ -177,12 +179,12 @@ export function renderSoundInspectorCore({
   root.append(createDial({...field,help},current,
    value=>update(value,onPatchChange),value=>update(value,preview)));
  });
- if(vocal)renderRecordedAudioEditor(modulesRoot,patch,onPatchChange,{onPreview:preview,soundId:sound.id,deferView:true});
+ if(vocal)renderRecordedAudioEditor(modulesRoot,patch,onPatchChange,{onPreview:preview,soundId:sound.id,deferView:true,bpm:context.bpm??120});
  else if(patch.type==="sample")
   renderSamplerEditor(modulesRoot,patch,onPatchChange,sampleNames,
-   onReplaceSample,preview,sound.id,{deferView:true});
+   onReplaceSample,preview,sound.id,{deferView:true,bpm:context.bpm??120});
  else{
-  renderPatchEditor(modulesRoot,patch,onPatchChange,preview,sound.id,{deferView:true});
+  renderPatchEditor(modulesRoot,patch,onPatchChange,preview,sound.id,{deferView:true,bpm:context.bpm??120});
   onCutoffAutomation?.(modulesRoot,instrument,context);
  }
  if(recorded)renderCutoffAutomation(modulesRoot,{id:sound.id,layout:"pitched",sounds:[sound],automation:patch.automation},

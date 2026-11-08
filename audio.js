@@ -81,9 +81,9 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
   instrument=resolved.voice;event=resolved.note;
  }
  if(instrument.patch.type==="sample"){
-  return scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx),session);
+  return scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx),session,{unit:effectiveTimeline?.unit??60/(beat?.bpm??120)/4});
  }
- return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline:effectiveTimeline}),session);
+ return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline:effectiveTimeline,unit:effectiveTimeline?.unit??60/(beat?.bpm??120)/4}),session);
 }
 export function scheduleSynthPlan(ctx,destination,plan,session=null){
  if(plan.contract!=="pre-midi-synth-voice"||![1,2,3].includes(plan.version))throw Error("Unsupported synth voice plan");

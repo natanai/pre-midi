@@ -2234,10 +2234,10 @@
       },
       {
         "capability": "timeline_automation",
-        "synth": "two_point_cutoff",
-        "sample": "two_point_cutoff",
-        "song_vocal": "two_point_cutoff",
-        "gap": "general_multipoint_automation_still_planned",
+        "synth": "multipoint_cutoff_32",
+        "sample": "multipoint_cutoff_32",
+        "song_vocal": "multipoint_cutoff_32",
+        "gap": "broader_targets_curve_modes_recording_and_override_still_planned",
         "task_ids": [
           "SE-07"
         ]
@@ -2343,6 +2343,16 @@
               "SE-08"
             ]
           }
+        ],
+        "completed_slices": [
+          "Shared amplitude/resonance routing and four LFO shapes",
+          "Tempo-synced LFO divisions in every sound context",
+          "Shared 32-point cutoff curves with native/browser execution and Freeform phase preservation"
+        ],
+        "remaining": [
+          "Remaining SE-05 destinations and SE-06 sources/macros/clock policies",
+          "General parameter automation, curve modes and gesture recording under SE-07",
+          "Editable serial/parallel processor chain, sidechains and latency/tail ownership under SE-08"
         ]
       },
       {
@@ -2613,12 +2623,12 @@
           "Source equations/phase fixtures and focused route/macro editing, save/load and undo scenarios."
         ],
         "completion_evidence": [],
-        "progress_note": "M2a exposes sine/triangle/ramp/square LFO waveforms in the common routing selector and diagram. Existing source-age seek phase and smoothing remain. Tempo sync, selectable retrigger/free-run, envelope follower/sidechain, seeded random, steps and macros remain planned; full SE-06 is not complete."
+        "progress_note": "Shared sine/triangle/ramp/square LFOs now offer free Hz or tempo divisions from 1/16 note through four bars. Triggered voices resolve the current context tempo at onset without rewriting authored Hz/division settings. Vocal seek reconstruction retains original Clip age. Diagrams use the owning context tempo. Selectable free-run/phase policy, envelope follower/sidechain, seeded random, step sources and macros remain planned; SE-06 is not complete."
       },
       {
         "id": "SE-07",
         "title": "Generalize automation beyond two-point synth cutoff",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-05"
@@ -2641,7 +2651,8 @@
         "verification": [
           "Independent value/phase oracle plus edited Song seek/loop/export round trips for synth, sample and vocal."
         ],
-        "completion_evidence": []
+        "completion_evidence": [],
+        "progress_note": "Cutoff automation now supports 2\u201332 authored points, shared add/remove/numerical and two-axis editing, piecewise exponential interpolation, seek-boundary and tail-hold planning, captured Freeform source phase, and native/browser playback. Native execution storage is bounded to 36 events. Beat/Song serialization retains full curves and tempo-synced movement. Other parameter targets, interpolation/curve modes, gesture recording and override/rejoin policies remain planned; SE-07 is not complete."
       },
       {
         "id": "SE-08",
@@ -3219,6 +3230,30 @@
           "Editable processor chain/routing SE-08"
         ],
         "verification_reference": "/sound_editing/milestones/1/delivery_stages/0"
+      },
+      {
+        "id": "TEMPO-MULTIPOINT-M2",
+        "date": "2026-11-08",
+        "status": "implemented",
+        "task_ids": [
+          "SE-06",
+          "SE-07"
+        ],
+        "summary": "Add shared tempo-synced movement and bounded multipoint cutoff editing/execution. This advances M2 without claiming general automation or the effects chain is complete.",
+        "changes": [
+          "Resolve stored beat divisions into effective Hz at the host/voice boundary; preserve the original Sound definition",
+          "Pass actual Beat/Song tempo through synth, sampled/vocal playback, preview and native plans; use owner tempo in diagrams",
+          "Share add/remove/numeric/graph editing for 2\u201332 cutoff points; preserve increasing order, IDs and captured Freeform source-time metadata",
+          "Use piecewise exponential interpolation and bounded 36-event native storage, retaining seek boundaries and tail holds"
+        ],
+        "verification": {
+          "routine": "npm run check: edited JS syntax and 44 smoke cases passed",
+          "focused": "18 affected modulation, automation, Freeform and page-time cases passed; new Beat/Song multipoint + tempo round trip also passed",
+          "native": "tests/recordedAudio.native.mjs: tempo sync equals explicit Hz at 40/120/240 BPM; 32-point sample/vocal PCM difference 0; audible curve effect 1.123140275478363 peak",
+          "browser_dsp": "tests/sharedModulation.audio.mjs with externally installed node-web-audio-api 2.2.0: tempo sync equals explicit Hz at 40/120/240 BPM; full 32-point curve changes audio, output finite; bounded amplitude/resonance checks pass",
+          "qualification": "Focused model and rendered DSP evidence only; no browser interaction or physical Windows acceptance claim. Preview.22 remains the earlier immutable Windows build."
+        },
+        "remaining_reference": "/sound_editing/milestones/1/remaining"
       }
     ],
     "vocal_parity_milestone": {

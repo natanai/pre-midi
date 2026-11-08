@@ -42,7 +42,7 @@ export function nativePlans(events,assets=new Map(),unit=.125){
   if(voice.patch.type==='sample')return planNativeSample(voice,note,event.at,event.duration,assets,{unit:event.timeline?.unit??unit});
   const duration=event.instrument.layout==='rack'?Math.max(.015,voice.patch.envelope.attack+voice.patch.envelope.decay):event.duration;
   return planSynthVoice(voice,note,event.at,duration,
-    noteCutoffAutomation(event.instrument,event.note,event.timeline));
+    {...noteCutoffAutomation(event.instrument,event.note,event.timeline),unit:event.timeline?.unit??unit});
  }).filter(Boolean);
 }
 const assetCache=new Map();let assetGeneration;

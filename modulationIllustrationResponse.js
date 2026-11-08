@@ -4,8 +4,8 @@ import {routeValueAt,smoothingAlpha} from "./src/dsp/modulation.js";
 
 const cache=new Map();
 export function modeledModulationTrace(route,{duration=1.25,points=240,
- sampleRate=48000,gate=1,velocity=.7,pitch=65}={}){
- const key=JSON.stringify([route,duration,points,sampleRate,gate,velocity,pitch]);
+ sampleRate=48000,gate=1,velocity=.7,pitch=65,unit=.125}={}){
+ const key=JSON.stringify([route,duration,points,sampleRate,gate,velocity,pitch,unit]);
  if(cache.has(key))return cache.get(key);
  const raw=[],smoothed=[],times=[];
  const alpha=smoothingAlpha(route.smoothing??0,sampleRate);
@@ -13,7 +13,7 @@ export function modeledModulationTrace(route,{duration=1.25,points=240,
  let state=0,point=0;
  for(let frame=0;frame<=frames;frame++){
   const elapsed=frame/sampleRate;
-  const value=routeValueAt(route,{elapsed,gate,velocity,pitch});
+  const value=routeValueAt(route,{elapsed,gate,velocity,pitch,unit});
   // Depth is constant, so smoothing the scaled signal is equivalent to
   // playback's smoothing-before-depth, including negative/bipolar routes.
   state=alpha*value+(1-alpha)*state;

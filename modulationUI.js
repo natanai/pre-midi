@@ -1,5 +1,5 @@
 import {modulationTargetsFor,modulationSourcesFor,MODULATION_CONTROLS,parameterField} from "./src/dsp/parameters.js";
-import {MOD_TARGETS,MOD_SOURCES,defaultSource,LFO_SHAPES} from "./src/dsp/modulation.js";
+import {MOD_TARGETS,MOD_SOURCES,defaultSource,LFO_SHAPES,LFO_DIVISIONS} from "./src/dsp/modulation.js";
 import {createDial,explainLabel} from "./dial.js";
 const openBySound=new Map();
 export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=>{}){
@@ -26,7 +26,7 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
   const depth=createDial({label:"Movement amount",help:"how far this movement changes the sound",min:-target.limit,max:target.limit,step:target.unit==="cents"?1:.01,display:target.unit==="cents"?"cents":target.unit==="octaves"?"octaves":target.unit==="linear_gain"?"percent":"number"},route.depth,value=>update(index,{depth:value}),value=>preview(index,{depth:value}));
   depth.querySelector('[role="slider"]').setAttribute("aria-label","Movement amount "+(index+1));
   depth.dataset.soundPath="modulation.routes."+index+".depth";row.append(depth);
-  if(route.source.kind==="lfo"){
+  if(route.source.kind==="lfo"&&!route.source.sync){
    const speed=createDial({label:"Movement speed",...MODULATION_CONTROLS.rate},route.source.rate,value=>update(index,{source:{...route.source,rate:value}}),value=>preview(index,{source:{...route.source,rate:value}}));
    speed.dataset.soundPath="modulation.routes."+index+".source.rate";row.append(speed);
   }
@@ -37,13 +37,16 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
   const settings=document.createElement("details"),heading=document.createElement("summary");heading.textContent="routing";settings.className="modulation-routing";settings.append(heading);
   const select=(label,values,current,apply)=>{
    const field=document.createElement("label"),title=document.createElement("span"),input=document.createElement("select");title.textContent=label;explainLabel(title,label);field.className="synth-field";
-    field.dataset.soundPath="modulation.routes."+index+"."+(label==="movement source"?"source.kind":label==="movement target"?"target":label==="movement shape"?"source.shape":"polarity");
+    field.dataset.soundPath="modulation.routes."+index+"."+(label==="movement source"?"source.kind":label==="movement target"?"target":label==="movement shape"?"source.shape":label==="movement timing"?"source.sync":"polarity");
     input.setAttribute("aria-label",label+" "+(index+1));
    for(const [value,text] of values){const option=document.createElement("option");option.value=value;option.textContent=text;input.append(option);}
    input.value=current;input.addEventListener("change",()=>apply(input.value));field.append(title,input);settings.append(field);
   };
   select("movement source",sources.map(kind=>[kind,kind==="keytrack"?"key tracking":kind]),route.source.kind,kind=>update(index,{source:defaultSource(kind)}));
   if(route.source.kind==="lfo")select("movement shape",LFO_SHAPES.map(shape=>[shape,shape]),route.source.shape,shape=>update(index,{source:{...route.source,shape}}));
+  if(route.source.kind==="lfo")select("movement timing",[["hz","hz"],...LFO_DIVISIONS.map(beats=>[String(beats),beats===.25?"1/16 note":beats===.5?"1/8 note":beats===1?"1/4 note":beats===2?"1/2 note":beats===4?"1 bar":(beats/4)+" bars"])],String(route.source.sync??"hz"),timing=>{
+   const {sync,...source}=route.source;update(index,{source:timing==="hz"?source:{...source,sync:Number(timing)}});
+  });
   select("movement target",targets.map(target=>[target.id,target.name]),route.target,id=>{const next=MOD_TARGETS.find(t=>t.id===id);update(index,{target:id,unit:next.unit,depth:Math.max(-next.limit,Math.min(next.limit,route.depth))});});
   select("movement range",[["unipolar","one way"],["bipolar","both ways"]],route.polarity,polarity=>update(index,{polarity}));
   if(route.source.kind==="envelope")for(const field of ["attack","decay","sustain","release"]){

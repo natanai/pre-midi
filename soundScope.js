@@ -158,8 +158,8 @@ async function webAudio(patch,beat,level,pitch,automation){
  const voice={patch,volume:level},note={pitch,velocity:1};
  if(buffer)scheduleSample(context,context.destination,voice,note,0,HOLD,beat,new Map([[zone.assetId,buffer]]));
  else scheduleSynthPlan(context,context.destination,planSynthVoice(voice,note,0,HOLD,
-  automation?{automation,timeline:{step:0,unit:60/(beat?.bpm??120)/4,
-   limitStep:(beat?.bars??8)*16}}:{}));
+  automation?{unit:60/(beat?.bpm??120)/4,automation,timeline:{step:0,unit:60/(beat?.bpm??120)/4,
+   limitStep:(beat?.bars??8)*16}}:{unit:60/(beat?.bpm??120)/4}));
  const output=await context.startRendering();
  const full=patch.type==="sample"?life+delayTailSeconds(patch)+.08:HOLD+patch.envelope.release+delayTailSeconds(patch.effects)+.08;
  return {buffer:output,seconds,clipped:full>MAX_WINDOW};

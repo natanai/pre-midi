@@ -162,7 +162,7 @@ function sampleNormalization(buffer){
  peakLevels.set(buffer,scale);
  return scale;
 }
-export function scheduleSample(context,out,inst,event,start,duration,beat,cache,session=null) {
+export function scheduleSample(context,out,inst,event,start,duration,beat,cache,session=null,{unit=60/(beat?.bpm??120)/4}={}) {
  const patch=inst.patch,zone=sampleForNote(patch,event.pitch,event.velocity);
  const buffer=zone&&cache.get(zone.assetId);
  if(!buffer)return; // Can only happen while freshly imported samples decode during playback.
@@ -188,7 +188,7 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
   amp.gain.setValueAtTime(0,start);amp.gain.linearRampToValueAtTime(gain,at+.001);
   amp.gain.setValueAtTime(gain,Math.max(at+.001,releaseStart));amp.gain.linearRampToValueAtTime(0,start+life);
  }
- const graph=connectRecordedAudio(context,{source:src,amp,gate,pan,out,patch,start,duration:life,owner,expression:event,unit:60/(beat?.bpm??120)/4});
+ const graph=connectRecordedAudio(context,{source:src,amp,gate,pan,out,patch,start,duration:life,owner,expression:event,unit});
  src.start(start,region.offset,region.sourceLength);src.stop(start+life+.01);
  const voice=ownVoice(context,{...owner,gate,start,release:Math.max(start,Math.min(start+life,releaseStart)),end:start+life+.01+(session?0:graph.tail)});
  if(session)session.adopt(voice);graph.connectDelay(session,voice);return voice;
