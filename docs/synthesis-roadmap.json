@@ -1410,7 +1410,7 @@
     "schema_version": 1,
     "program_id": "pre-midi-sound-editing-feature-complete",
     "title": "Roadmap to feature-complete sound editing",
-    "updated_on": "2026-11-07",
+    "updated_on": "2026-11-08",
     "status": "in_progress",
     "audit_commit": "bf28bf53de08f5eb514f8e4f778df711edc7aa8c",
     "audit_scope": "Baseline source audit at audit_commit; subsequent changes and verification limits are recorded in implementation_updates.",
@@ -2298,7 +2298,10 @@
           "SE-03",
           "SE-04"
         ],
-        "exit": "Song vocals and sampled Sounds use one editing surface and retain existing applicable processing through reuse; not yet a professional suite completion claim."
+        "exit": "Song vocals and sampled Sounds use one editing surface and retain existing applicable processing through reuse; not yet a professional suite completion claim.",
+        "implementation_status": "complete",
+        "qualification_status": "partial",
+        "details_reference": "/sound_editing/vocal_parity_milestone"
       },
       {
         "id": "M2",
@@ -2417,7 +2420,7 @@
           "Focused context-switch interaction check and existing soundInspectorCore/songVocals behavior tests."
         ],
         "completion_evidence": [],
-        "progress_note": "All desktop contexts acquire the same physical Inspector frame, controls and core. Vocal chrome no longer assembles modules; its adapter supplies source waveform/trim, mutations and source-aware audition/presets. Focused node-identity test passes; live browser observation remains pending."
+        "progress_note": "All desktop contexts acquire the same physical Inspector frame, controls and core. Vocal chrome no longer assembles modules; its adapter supplies source waveform/trim, mutations and source-aware audition/presets. Focused node-identity test passes; live vocal observation remains pending because the cloud browser cannot read the synthetic import fixture."
       },
       {
         "id": "SE-03",
@@ -2483,7 +2486,7 @@
             "result": "Browser-compatible OfflineAudioContext: ongoing effectful seek maximum difference 1.66893e-5; ended-Clip echo 6.46791e-7 at 24000 Hz. Native sampled/vocal PCM difference 0 at 22050 Hz with nonzero filter sweep; sweep changes PCM by 0.813198 peak. Native page rebase preserves sample/vocal sweep and cutoff automation clocks. Cache invalidation/bounds/cancellation and vocal-only voice/echo retirement pass."
           }
         ],
-        "progress_note": "Current vocal processing parity is implemented: shared filter sweep, tone/drive/movement/delay, original-age source/pitch/envelope/modulation, stateful browser seek continuations and echo tails, live-edit replacement/cancellation, and native current packet 13. Focused data/DSP checks pass; public browser interaction observation is next. Physical Windows listening remains separate.",
+        "progress_note": "Current vocal processing parity is implemented: shared filter sweep, tone/drive/movement/delay, original-age source/pitch/envelope/modulation, stateful browser seek continuations and echo tails, live-edit replacement/cancellation, and native current packet 13. Routine and focused data/DSP checks pass. Pages deployment succeeded. The public desktop loads with one Inspector DOM frame; real vocal UI observation is blocked by cloud-browser fixture file access. Physical Windows listening remains unqualified.",
         "remaining_implementation": [],
         "source_clock_contract": {
           "owner": "src/dsp/recorded-source-clock.js",
@@ -2522,7 +2525,7 @@
           "Existing vocalBeatReuse and Song IO behavior plus an effectful vocal-to-Sound round trip."
         ],
         "completion_evidence": [],
-        "progress_note": "Vocal shared preset save/browse uses processing-only presets in the existing dialog/catalog, with no source audio in JSON. Reuse keeps delay, movement, routing, automation, gain/fades and stereo; compatible WAV assets remain linked once. Full live browser/portable relocation observation remains pending."
+        "progress_note": "Vocal shared preset save/browse uses processing-only presets in the existing dialog/catalog, with no source audio in JSON. Reuse keeps delay, movement, routing, automation, gain/fades and stereo; compatible WAV assets remain linked once. Focused current-format ZIP reuse/rename round trips pass. Real-browser vocal interactions remain unverified because the cloud browser cannot read the synthetic import fixture; physical Windows relocation remains unqualified."
       },
       {
         "id": "SE-05",
@@ -3141,12 +3144,13 @@
         "remaining": [
           "Browser filter/delay audio-buffer history restoration on seek remains SE-03 implementation work.",
           "End-trim/shared source editing and expanded modulation remain on the roadmap."
-        ]
+        ],
+        "superseded_by": "VOCAL-PARITY-CLOSURE-07"
       },
       {
         "date": "2026-11-07",
         "id": "VOCAL-PARITY-CLOSURE-07",
-        "status": "implemented_pending_browser_observation",
+        "status": "implemented",
         "summary": "Close stateful seek, live editing, filter sweep and shared recording identity gaps.",
         "task_ids": [
           "SE-02",
@@ -3154,13 +3158,23 @@
           "SE-04"
         ],
         "verification": {
-          "status": "Routine 44-case smoke passes; affected data/audio behavior passes; native same-source PCM difference 0; browser-compatible effectful seek/tail continuation within 2e-5 peak difference. Public desktop UI observation pending."
-        }
+          "status": "Routine 44-case smoke and 33 affected behavior checks passed, including reruns of corrected fixtures and sample/vocal page automation clocks. Native same-source PCM difference 0. Browser-compatible OfflineAudioContext seeks/echoes stay within 2e-5 peak PCM difference. Pages deployment succeeded; live default workspace contains one Inspector. Real vocal UI observation is blocked by cloud-browser fixture file access; Windows hardware unverified."
+        },
+        "remaining_implementation": [],
+        "changes": [
+          "Complete shared filter sweep controls, illustration, processing presets and browser/native DSP using current packet 13",
+          "Reconstruct processed seek history and completed-Clip echoes through the canonical graph with bounded ephemeral cache",
+          "Apply live vocal edits with cancellation and crossfades while preserving Beat voices and echo buses",
+          "Edit recording names through the shared header and Song history while retaining linked immutable asset identity",
+          "Rebase recorded-source sweep and automation clocks in native Song pages"
+        ],
+        "published_commit": "5993922133f146c550b46f4e55c49efe1f74afb1",
+        "qualification_reference": "/sound_editing/vocal_parity_milestone/verification"
       }
     ],
     "vocal_parity_milestone": {
       "id": "VOCAL-PARITY-SHARED-INSPECTOR",
-      "status": "implemented_pending_browser_observation",
+      "status": "implemented",
       "scope": "Existing applicable Sound editing on desktop browser and native Windows source; does not imply the future professional effects suite is shipped.",
       "single_dom_instance": true,
       "separate_vocal_sound_panel": false,
@@ -3193,13 +3207,29 @@
           "max_pcm_difference": 0,
           "peak": 0.5351325869560242
         },
-        "browser_interaction": "Public Pages is accessible; current implementation observation pending deployment",
+        "browser_interaction": {
+          "date": "2026-11-08",
+          "url": "https://natanai.github.io/pre-midi/",
+          "observed": [
+            "Published desktop workspace loads",
+            "Exactly one .sound-inspector-frame in the live DOM"
+          ],
+          "unverified": [
+            "Vocal trim/undo, context alignment/button sizes, presets/reuse and live edits in the real browser"
+          ],
+          "blocker": "Cloud browser file chooser could not read the synthetic project from its shared filesystem; studio reported A requested file or directory could not be found. No vocal project was imported. Do not treat this as observed vocal UI acceptance."
+        },
         "physical_windows": "unverified; no new Windows ZIP built",
-        "browser_dsp": "tests/vocalSeek.audio.mjs using externally installed node-web-audio-api 2.2.0; ongoing seek max difference 1.66893e-5; completed-Clip echo max difference 6.46791e-7 at 24000 Hz"
+        "browser_dsp": "tests/vocalSeek.audio.mjs using externally installed node-web-audio-api 2.2.0; ongoing seek max difference 1.66893e-5; completed-Clip echo max difference 6.46791e-7 at 24000 Hz",
+        "deployment": {
+          "commit": "5993922133f146c550b46f4e55c49efe1f74afb1",
+          "status": "success",
+          "url": "https://github.com/natanai/pre-midi/actions/runs/42425325275"
+        }
       },
       "remaining_qualification": [
-        "Observe current live-site trim, context switching, controls, presets/reuse and playback edits",
-        "Physical Windows playback/recording observation on a future requested portable build"
+        "Real-browser vocal trim, undo/redo, context alignment/button sizing, presets/reuse and live-edit observation; synthetic fixture import was blocked by the cloud browser filesystem",
+        "Physical Windows playback/recording observation when a portable build is requested; existing ZIPs were not rebuilt"
       ],
       "not_claimed": [
         "Commercial DAW feature equivalence",
@@ -3207,7 +3237,10 @@
         "Full physical browser/Windows release qualification"
       ],
       "workspace_layout": "editorWorkspace.js recording context: takes/recordings sidebar, center waveform/trim tools and the same right-hand Sound Inspector slot/width. Uses syncEditorInspector for open/close and responsive placement.",
-      "trim_interaction": "Drag the crop-marked start boundary, or edit the start time and press Enter/leave the field. Adjacent onset and restore icons apply those actions directly, with hover/accessible explanations. Song tile waveform and width reflect the resulting audible region."
+      "trim_interaction": "Drag the crop-marked start boundary, or edit the start time and press Enter/leave the field. Adjacent onset and restore icons apply those actions directly, with hover/accessible explanations. Song tile waveform and width reflect the resulting audible region.",
+      "implementation_complete": true,
+      "qualification_complete": false,
+      "remaining_implementation": []
     }
   }
 }
