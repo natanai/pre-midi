@@ -3219,7 +3219,7 @@
           ],
           "blocker": "Cloud browser file chooser could not read the synthetic project from its shared filesystem; studio reported A requested file or directory could not be found. No vocal project was imported. Do not treat this as observed vocal UI acceptance."
         },
-        "physical_windows": "unverified; no new Windows ZIP built",
+        "physical_windows": "Unverified on the user PC; the matching Windows portable ZIP is now published and automated Windows checks passed.",
         "browser_dsp": "tests/vocalSeek.audio.mjs using externally installed node-web-audio-api 2.2.0; ongoing seek max difference 1.66893e-5; completed-Clip echo max difference 6.46791e-7 at 24000 Hz",
         "deployment": {
           "commit": "5993922133f146c550b46f4e55c49efe1f74afb1",
@@ -3228,14 +3228,21 @@
         },
         "windows_package": {
           "version": "0.14.1-preview.22",
-          "status": "build_requested",
+          "status": "published",
           "scope": "Windows x64 portable ZIP including current vocal parity; no optional full audio qualification requested",
-          "prior_build": "Preview 21 compiled successfully; Rust codec fixture still used sample packet 8. Updated fixture to current packet 13 including source bounds, movement/delay/sweep and routing/automation trailer before rebuilding."
+          "prior_build": "Preview 21 compiled successfully; Rust codec fixture still used sample packet 8. Updated fixture to current packet 13 including source bounds, movement/delay/sweep and routing/automation trailer before rebuilding.",
+          "source_commit": "4e791a965d4d14518188e4f4d3d197c216ea14a4",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42436058613",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.22/pre-midi-0.14.1-preview.22-windows-x86_64-portable.zip",
+          "bytes": 16198617,
+          "sha256": "a30dec5d4d6fb51bbdd4142ac8593733a57ac345b21bc7ff573a8c34090c308e",
+          "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection, portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
+          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files"
         }
       },
       "remaining_qualification": [
         "Real-browser vocal trim, undo/redo, context alignment/button sizing, presets/reuse and live-edit observation; synthetic fixture import was blocked by the cloud browser filesystem",
-        "Physical Windows playback/recording observation when a portable build is requested; existing ZIPs were not rebuilt"
+        "Physical Windows 11 playback, recording, editing and listening observation using preview.22; automated Windows Server tests are not physical acceptance"
       ],
       "not_claimed": [
         "Commercial DAW feature equivalence",
