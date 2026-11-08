@@ -13,7 +13,7 @@ export const SAMPLE_REPOS={
  [META]:"251c0be57d5d1b3242b91f53e0cde62ab1cb42d9",
  [STARGATE]:"dbfd6ec52d4ed53b60bdbea5fc6adf295127c027",
  [VCSL]:"c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
- [PREMIDI]:"863443002e0b4dae24caac6e580e93ebf8a72f2a"
+ [PREMIDI]:"eccf78b46baee0f7d6d2ad790761de10ae9da79a"
 };
 const m=(id,repo,path,sha,root,mime="audio/wav",metadata={})=>({
  id,repo,path,sha,root,mime,license:"CC0-1.0",
@@ -21,6 +21,9 @@ const m=(id,repo,path,sha,root,mime="audio/wav",metadata={})=>({
  sourceUrl:"https://github.com/"+repo+"/blob/"+SAMPLE_REPOS[repo]+"/"+path.split("/").map(encodeURIComponent).join("/"),
  ...metadata
 });
+// All original factory WAVs are pinned by immutable Git commit and blob SHA.
+const original=(id,sha,root=60)=>m(id,PREMIDI,"factory-samples/"+id+".wav",sha,root,"audio/wav",
+ {license:"Project original",licenseUrl:"https://github.com/natanai/pre-midi/blob/"+SAMPLE_REPOS[PREMIDI]+"/factory-samples/README.md"});
 export const SAMPLE_ASSETS=[
  m("piano-c3",META,"systems/instruments/meta-piano/ogg/INSPiano_Vel01_C3_01.ogg","d2a176656f06c5a16a29f0b0c14fd99d8143e095",48,"audio/ogg"),
  m("piano-c4",META,"systems/instruments/meta-piano/ogg/INSPiano_Vel01_C4_01.ogg","c2fa9485671980ff892b11e2d82264f53adfeae5",60,"audio/ogg"),
@@ -55,6 +58,21 @@ export const SAMPLE_ASSETS=[
  m("room-kick-01",PREMIDI,"factory-samples/room-kick-01.wav","35c5f044d97d4c3e2365aa4f8e1830585af0abc8",60,"audio/wav",{license:"Project original",licenseUrl:"https://github.com/natanai/pre-midi/blob/863443002e0b4dae24caac6e580e93ebf8a72f2a/factory-samples/README.md"}),
  m("room-snare-01",PREMIDI,"factory-samples/room-snare-01.wav","5982edb42443b7728f3bef807428cd22f38c574f",60,"audio/wav",{license:"Project original",licenseUrl:"https://github.com/natanai/pre-midi/blob/863443002e0b4dae24caac6e580e93ebf8a72f2a/factory-samples/README.md"}),
  m("sharp-hat-01",PREMIDI,"factory-samples/sharp-hat-01.wav","5a57f4dfcf35030ae0cb3e31f717433bc84a9913",60,"audio/wav",{license:"Project original",licenseUrl:"https://github.com/natanai/pre-midi/blob/863443002e0b4dae24caac6e580e93ebf8a72f2a/factory-samples/README.md"}),
+ // Original independent lo-fi sources: one WAV for every catalog sound.
+ original("felt-upright-c4","92238b146fabd94e5d3b9af883360ecb26e25627",60),
+ original("worn-reed-c4","0ce642f2afb325a4edbf556223ef22ba04daff66",60),
+ original("thumb-tines-c4","6da84a1fffa0c3fd68aa4580cc3acbf6af532b62",60),
+ original("tape-celesta-c5","677441ef1ed6a9ffe655ffba461fb3976cc4901a",72),
+ original("dusty-vibes-c4","7fa11f185224e60843ebcd75d13a34dafc442970",60),
+ original("tape-kick-01","f0ff86feaf8f1c4dc19fd852defaaafc278124ed",60),
+ original("cardboard-snare-01","5f857aa6935bde759ea0ec4c3693f78c394b8210",60),
+ original("brushed-snare-01","eac77284f78fed6a437161709608ab1e056bb165",60),
+ original("soft-hat-01","3cacb3e0715945d50c185f6327e5f6edc5151bcb",60),
+ original("washed-hat-01","ec565f5628258196446895bdd97a5a7cde1c2bcd",60),
+ original("vinyl-rim-01","c30ebde571f8df4cdb10178e5e619ddc9d998c12",60),
+ original("dusty-clap-01","fff90a9b91cc5e95cd79f4964adde1695c113c1e",60),
+ original("loose-shaker-01","d64a9b2b5f33f20b2809ae8ea8ea5778cecba7ab",60),
+ original("wood-tom-01","47e4991ba787481f0224111ca86529fcea3bc97d",60),
  ...GUITAR_RECORDINGS.map(item=>m(item.id,META,item.path,item.sha,item.root,"audio/ogg",
   {velocity:item.velocity,string:item.string}))
 ];
@@ -62,9 +80,25 @@ const sampleLibrary=[
  // Original shared factory sources. These live in the repository, not in a demo project ZIP.
  {id:"picked-wire",name:"Picked Wire",category:"Guitars",description:"Short bright plucked-string recording with a picked transient.",assets:["picked-wire-a3"],followPitch:true,gain:.82,attack:.003,release:.14},
  {id:"muted-amp",name:"Muted Amp String",category:"Guitars",description:"Tightly damped amplified string transient with harmonic grit.",assets:["muted-amp-a2"],followPitch:true,gain:.8,attack:.003,release:.1},
+ // Distinct original lo-fi pitched recordings, one source per timbre.
+ {id:"felt-upright",name:"Felt Upright",category:"Keys",description:"Soft damped hammer strike with a warm, uneven decay.",assets:["felt-upright-c4"],followPitch:true,gain:0.78,attack:0.006,release:0.25},
+ {id:"worn-reed-keys",name:"Worn Reed Keys",category:"Keys",description:"Buzzy electric-reed tone with a lightly unstable sustain.",assets:["worn-reed-c4"],followPitch:true,gain:0.73,attack:0.004,release:0.18},
+ {id:"thumb-tines",name:"Thumb Tines",category:"Keys",description:"Short metallic thumb-pluck with a rounded wooden body.",assets:["thumb-tines-c4"],followPitch:true,gain:0.8,attack:0.002,release:0.2},
+ {id:"tape-celesta",name:"Tape Celesta",category:"Keys",description:"Light glassy bell with gentle tape-like pitch movement.",assets:["tape-celesta-c5"],followPitch:true,gain:0.76,attack:0.002,release:0.3},
+ {id:"dusty-vibraphone",name:"Dusty Vibraphone",category:"Keys",description:"Soft struck bar with a long pulsing tail.",assets:["dusty-vibes-c4"],followPitch:true,gain:0.71,attack:0.005,release:0.4},
  {id:"short-room-kick",name:"Short Room Kick",category:"Drums",description:"Rounded low impact with a fast downward pitch sweep.",assets:["room-kick-01"],followPitch:false},
  {id:"dry-noise-snare",name:"Dry Noise Snare",category:"Drums",description:"Short synthetic noise and low-tone snare.",assets:["room-snare-01"],followPitch:false},
  {id:"sharp-noise-hat",name:"Sharp Noise Hat",category:"Drums",description:"Short high-frequency synthetic hat.",assets:["sharp-hat-01"],followPitch:false},
+ // Distinct original lo-fi drum recordings, one source per hit.
+ {id:"tape-kick",name:"Tape Kick",category:"Drums",description:"Soft saturated low kick with a quick pitch drop.",assets:["tape-kick-01"],followPitch:false},
+ {id:"cardboard-snare",name:"Cardboard Snare",category:"Drums",description:"Boxy low snare with a compact noisy snap.",assets:["cardboard-snare-01"],followPitch:false},
+ {id:"brush-snare",name:"Brush Snare",category:"Drums",description:"Airy brushed snare with a loose, quiet tail.",assets:["brushed-snare-01"],followPitch:false},
+ {id:"soft-hat",name:"Soft Hat",category:"Drums",description:"Short dull metallic hi-hat tick.",assets:["soft-hat-01"],followPitch:false},
+ {id:"washed-open-hat",name:"Washed Open Hat",category:"Drums",description:"Low-brightness open hi-hat with a lingering wash.",assets:["washed-hat-01"],followPitch:false},
+ {id:"vinyl-rim",name:"Vinyl Rim",category:"Drums",description:"Dry click with a brief ringing rim tone.",assets:["vinyl-rim-01"],followPitch:false},
+ {id:"dusty-clap",name:"Dusty Clap",category:"Drums",description:"Loose clustered claps with soft high-frequency edges.",assets:["dusty-clap-01"],followPitch:false},
+ {id:"loose-shaker",name:"Loose Shaker",category:"Drums",description:"Short grainy rattles with irregular pulse accents.",assets:["loose-shaker-01"],followPitch:false},
+ {id:"wood-tom",name:"Wood Tom",category:"Drums",description:"Round falling-pitch tom with a woody initial knock.",assets:["wood-tom-01"],followPitch:false},
  {id:"real-piano",name:"Recorded Piano",category:"Keys",description:"Acoustic piano recordings to shape into a bright, soft or dark keyboard sound.",assets:["piano-c3","piano-c4"],followPitch:true},
  // Variations reuse the same two verified CC0 piano recordings; no new assets
  // are embedded in .premidi files or duplicated in portable releases.
