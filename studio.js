@@ -299,7 +299,7 @@ function stop() {
  playbackGeneration++;cancelWebTransport();
  if(window.__TAURI__)void cancelNativeTransport().catch(error=>console.warn('Native stop:',error));
  if(vocalTake&&!playback)void finalizeVocalTake();
- if (playback) playback.stop();
+ if (playback) void Promise.resolve(playback.stop()).catch(error=>console.warn('Native stop:',error));
  playback = null;
  pendingPlay = false;
  playBar = playStep = -1;
