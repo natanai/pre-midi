@@ -23,7 +23,7 @@ export function validateRecordedModulation(block,{vocal=false}={}){
  if(errors.length)return errors;
  const context=vocal?'vocal':'sample',targets=modulationTargetsFor(context).map(t=>t.id),sources=modulationSourcesFor(context);
  for(const route of block.routes){
-  if(!targets.includes(route.target))errors.push('Recording routes target brightness or pan; oscillator routes require a synthesizer.');
+  if(!targets.includes(route.target))errors.push('Recording routes target brightness, resonance, amplitude or pan; oscillator routes require a synthesizer.');
   if(!sources.includes(route.source.kind))errors.push('Timeline recordings use time-based movement sources.');
  }
  return errors;
@@ -62,9 +62,10 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  signal.connect(amp);
  const pulse=add(context.createGain());pulse.gain.setValueAtTime(1,start);
  scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});
- amp.connect(pulse);pulse.connect(gate);gate.connect(pan);pan.pan.value=fx.pan;
- const targets=new Map([['pan',pan.pan]]);if(filter)targets.set('filter.cutoff',filter.detune);
- attachModulation(context,{modulation:fx.modulation,start,off:start+duration,graphEnd:start+duration,expression,elapsed},targets,owner);
+ const movementGain=add(context.createGain());movementGain.gain.value=1;
+ amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);gate.connect(pan);pan.pan.value=fx.pan;
+ const targets=new Map([['pan',pan.pan],['amplitude',movementGain.gain]]);if(filter){targets.set('filter.cutoff',filter.detune);targets.set('filter.resonance',filter.Q);}
+ attachModulation(context,{modulation:fx.modulation,start,off:start+duration,graphEnd:start+duration,expression,elapsed,resonance:fx.filter?.resonance},targets,owner);
  const dry=add(context.createGain());dry.gain.value=1-fx.delayMix*.4;pan.connect(dry);dry.connect(out);
  return {fx,tail:delayTailSeconds(fx),connectDelay(session,voice){
   if(!(fx.delayMix>0)||!voice.admitted&&session)return;

@@ -48,6 +48,7 @@ export const SOUND_PARAMETERS=freeze([
   modulation:{index:4,name:"brightness",unit:"octaves",limit:8}
  }),
  parameter("filter.resonance","filter_resonance",.1,16,.7,.1,"number",{
+  modulation:{index:6,name:"resonance",unit:"filter_resonance",limit:15.9},
   bypass:filterBypass,interpretation:{lowpass:"db",highpass:"db",bandpass:"linear_q",notch:"linear_q"}
  }),
  parameter("filter.sweep","octaves",-5,5,0,.1,"number",{bypass:{mode:"zero"}}),
@@ -55,6 +56,7 @@ export const SOUND_PARAMETERS=freeze([
  parameter("noise","linear_gain",0,1,0,.01,"percent",{contexts:["synth"],scope:"source",bypass:{mode:"zero"}}),
  parameter("noiseDecay","seconds",0,4,0,.01,"seconds",{contexts:["synth"],scope:"source",bypass:{mode:"zero",meaning:"continuous noise"},inactiveWhen:[nonzero("noise","noise level is zero")]}),
  parameter("pan","pan",-1,1,0,.01,"pan",{modulation:{index:5,name:"pan",unit:"pan",limit:2}}),
+ parameter("amplitude","linear_gain",0,2,1,.01,"percent",{routeOnly:true,modulation:{index:7,name:"amplitude",unit:"linear_gain",limit:1}}),
  parameter("effects.drive","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
  parameter("effects.delayMix","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
  parameter("effects.delayTime","seconds",.05,1,.24,.01,"seconds",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
@@ -105,7 +107,7 @@ export function clampParameterValue(id,value,context="synth"){
 }
 export function parameterDefaults(prefix,context="synth"){
  const start=prefix?prefix+".":"";
- return Object.fromEntries(parametersFor(context).filter(p=>p.id.startsWith(start)&&!p.id.slice(start.length).includes("."))
+ return Object.fromEntries(parametersFor(context).filter(p=>!p.routeOnly&&p.id.startsWith(start)&&!p.id.slice(start.length).includes("."))
   .map(p=>[p.id.slice(start.length),p.default]));
 }
 export function parameterField(id,{context="synth",...presentation}={}){

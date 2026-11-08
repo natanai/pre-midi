@@ -18,8 +18,8 @@ public:
 inline void readRoutes(PacketReader& in,Plan& p){
  for(unsigned i=0;i<p.routeCount;i++){
   auto& r=p.routes[i];r.target=in.u32();r.kind=in.u32();r.bipolar=in.u32();r.depth=in.f64();r.smoothing=in.f64();r.rate=in.f64();r.root=in.f64();r.span=in.f64();for(auto& v:r.envelope)v=in.f64();
-  const double limit=r.target==4?8:r.target==5?2:r.target%2?1:2400;
-  require(r.target<6&&r.kind<4&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.05&&r.rate<=20&&r.root>=0&&r.root<=127&&r.span>=1&&r.span<=127&&r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4,"Invalid native modulation route");
+  const double limit=r.target==4?8:r.target==5?2:r.target==6?15.9:r.target==7?1:r.target%2?1:2400;
+  require(r.target<8&&r.kind<7&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.05&&r.rate<=20&&r.root>=0&&r.root<=127&&r.span>=1&&r.span<=127&&r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4,"Invalid native modulation route");
  }
 }
 inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
@@ -33,7 +33,7 @@ inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
   for(unsigned i=0;i<p.eventCount;i++){auto& e=p.events[i];e.kind=in.u32();e.time=in.f64();e.value=in.f64();require(e.kind<=1&&e.time>=previous&&e.time>=p.start&&e.time<=p.graphEnd&&e.value>=0&&e.value<=2,"Invalid native sample envelope");previous=e.time;}
   p.pitch=in.f64();p.velocity=in.f64();p.routeCount=in.u32();
   require(p.pitch>=0&&p.pitch<=127&&p.velocity>=0&&p.velocity<=1&&p.routeCount<=16,"Invalid recording routes");
-  readRoutes(in,p);for(unsigned i=0;i<p.routeCount;i++)require(p.routes[i].target==4||p.routes[i].target==5,"Recording route targets an oscillator");
+  readRoutes(in,p);for(unsigned i=0;i<p.routeCount;i++)require(p.routes[i].target>=4&&p.routes[i].target<8,"Recording route targets an oscillator");
   p.automationCount=in.u32();require(p.automationCount==0||(p.automationCount>=2&&p.automationCount<=6),"Invalid recording automation");
   previous=-1;for(unsigned i=0;i<p.automationCount;i++){auto& point=p.automation[i];point.time=in.f64();point.value=in.f64();require(point.time>previous&&point.time>=p.start&&point.time<=p.graphEnd&&point.value>=50&&point.value<=14000,"Invalid recording cutoff point");previous=point.time;}
   require(in.done(),"Trailing native sample packet");return p;

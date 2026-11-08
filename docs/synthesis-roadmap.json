@@ -2312,7 +2312,38 @@
           "SE-07",
           "SE-08"
         ],
-        "exit": "Common parameter/clock/routing semantics support all sources without divergent editors."
+        "exit": "Common parameter/clock/routing semantics support all sources without divergent editors.",
+        "status": "in_progress",
+        "delivery_stages": [
+          {
+            "id": "M2a",
+            "title": "Shared movement expansion",
+            "implementation_status": "complete",
+            "scope": [
+              "Assignable amplitude and resonance for synth, sampled Sound and vocal sources",
+              "Sine, triangle, ramp and square LFOs through shared route controls and illustrations",
+              "Bounded browser/native execution, preset transfer and retained original Clip-age smoothing"
+            ],
+            "evidence": [
+              "npm run check: 44 smoke cases",
+              "10 focused modulation/processing cases",
+              "tests/sharedModulation.audio.mjs: mute/double amplitude exact; delayed resonance clamp peak error 1.4901161193847656e-8",
+              "tests/recordedAudio.native.mjs: sample/vocal PCM difference zero for all four LFO shapes; each changes audio; amplitude mute is silent"
+            ],
+            "qualification": "Focused source/model and DSP checks; no browser interaction or physical Windows listening claim. Preview.22 is immutable and does not contain this later source update."
+          },
+          {
+            "id": "M2b",
+            "title": "Complete professional modulation, automation and processor routing",
+            "implementation_status": "planned",
+            "required_task_ids": [
+              "SE-05",
+              "SE-06",
+              "SE-07",
+              "SE-08"
+            ]
+          }
+        ]
       },
       {
         "id": "M3",
@@ -2530,7 +2561,7 @@
       {
         "id": "SE-05",
         "title": "Extend assignable modulation to all sound sources",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-03"
@@ -2553,12 +2584,13 @@
         "verification": [
           "Portable source/target oracle cases plus audible sample/vocal modulation across playback, preview and export."
         ],
-        "completion_evidence": []
+        "completion_evidence": [],
+        "progress_note": "M2a adds bounded common resonance and amplitude routes to synth, samples and vocals; native/browser execution, preset filtering and illustration source models share these targets. Effect mix/time and broader stereo destinations remain pending effects-chain ownership under SE-08. Full SE-05 is not complete."
       },
       {
         "id": "SE-06",
         "title": "Add professional modulation sources and performance macros",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-05"
@@ -2580,7 +2612,8 @@
         "verification": [
           "Source equations/phase fixtures and focused route/macro editing, save/load and undo scenarios."
         ],
-        "completion_evidence": []
+        "completion_evidence": [],
+        "progress_note": "M2a exposes sine/triangle/ramp/square LFO waveforms in the common routing selector and diagram. Existing source-age seek phase and smoothing remain. Tempo sync, selectable retrigger/free-run, envelope follower/sidechain, seeded random, steps and macros remain planned; full SE-06 is not complete."
       },
       {
         "id": "SE-07",
@@ -3170,6 +3203,22 @@
         ],
         "published_commit": "5993922133f146c550b46f4e55c49efe1f74afb1",
         "qualification_reference": "/sound_editing/vocal_parity_milestone/verification"
+      },
+      {
+        "id": "SHARED-MOVEMENT-M2A",
+        "date": "2026-11-08",
+        "status": "implemented",
+        "task_ids": [
+          "SE-05",
+          "SE-06"
+        ],
+        "summary": "First M2 delivery: common amplitude/resonance routing and four selectable LFO shapes, with shared UI/illustration, portable validation, bounded Web Audio and native DSP. M2 as a whole remains in progress.",
+        "remaining": [
+          "Complete SE-05/SE-06 scope",
+          "General multipoint automation SE-07",
+          "Editable processor chain/routing SE-08"
+        ],
+        "verification_reference": "/sound_editing/milestones/1/delivery_stages/0"
       }
     ],
     "vocal_parity_milestone": {

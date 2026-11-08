@@ -1,6 +1,6 @@
 import {parameterFor} from "../../dsp/parameters.js";
 import {prepareControlLfo,startControlLfo} from "./oscillator.js";
-import {validateModulation,smoothingAlpha,modulationStateBefore} from "../../dsp/modulation.js";
+import {validateModulation,smoothingAlpha,modulationStateBefore,modulationWave} from "../../dsp/modulation.js";
 import {planAmplitudeEnvelope} from "../../dsp/amplitude-envelope.js";
 import {windowEnvelope} from "../../dsp/envelope-window.js";
 import {scheduleAmplitudeEnvelope} from "../../../envelope.js";
@@ -16,7 +16,12 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
  for(const route of [...definition.routes].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
   let input,normal;
   if(route.source.kind==="lfo"){
-   if(precise||elapsed>0){
+   if(route.source.shape!=="sine"){
+    const wave=context.createBuffer(1,4096,context.sampleRate),data=wave.getChannelData(0);
+    for(let i=0;i<data.length;i++)data[i]=modulationWave(route.source.shape,i/data.length);
+    const oscillator=context.createBufferSource();oscillator.buffer=wave;oscillator.loop=true;oscillator.playbackRate.value=route.source.rate*4096/context.sampleRate;
+    owner.sources.push(oscillator);oscillator.start(plan.start,((elapsed*route.source.rate)%1)*wave.duration);oscillator.stop(plan.graphEnd);input=oscillator;
+   }else if(precise||elapsed>0){
     const prepared=prepareControlLfo(context,route.source.rate,plan.start,{precise,elapsed});
     const preciseSource=prepared.source;owner.sources.push(preciseSource);startControlLfo(prepared);preciseSource.stop(plan.graphEnd);
     const gate=add(context.createGain());gate.gain.value=0;gate.gain.setValueAtTime(1,plan.start);preciseSource.connect(gate);input=gate;
@@ -56,7 +61,14 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
  for(const [target,inputs] of targetInputs){
   const destination=destinations.get(target);if(!destination)continue; // inactive zero-level oscillator slot
   const sum=add(context.createGain());inputs.forEach(input=>input.connect(sum));
-  if(target.endsWith(".level")){
+  if(target==="filter.resonance"||target==="amplitude"){
+   const p=parameterFor(target),half=(p.max-p.min)/2,mid=(p.max+p.min)/2;
+   const base=target==="amplitude"?1:plan.patch?.filter?.resonance??plan.resonance??destination.value;
+   constant(base-mid).connect(sum);destination.cancelScheduledValues(plan.start);destination.value=0;destination.setValueAtTime(0,plan.start);
+   const normalize=add(context.createGain()),clamp=add(context.createWaveShaper()),scale=add(context.createGain());
+   normalize.gain.value=1/half;clamp.curve=new Float32Array([-1,0,1]);scale.gain.value=half;
+   sum.connect(normalize);normalize.connect(clamp);clamp.connect(scale);scale.connect(destination);constant(mid).connect(destination);
+  }else if(target.endsWith(".level")){
    constant(destination.value).connect(sum);destination.value=0;
    const clamp=add(context.createWaveShaper());clamp.curve=new Float32Array([0,0,1]);sum.connect(clamp);clamp.connect(destination);
   }else{

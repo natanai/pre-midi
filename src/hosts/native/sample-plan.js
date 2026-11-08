@@ -1,7 +1,7 @@
 import {planFilterSweep} from "../../dsp/filter-sweep.js";
 import {planCutoffAutomation} from "../../dsp/automation.js";
 import {recordedEffects,recordingEnvelope} from "../../../recordedAudio.js";
-import {MOD_TARGETS,MOD_SOURCES} from "../../dsp/modulation.js";
+import {MOD_TARGETS,MOD_SOURCES,nativeModulationSource} from "../../dsp/modulation.js";
 import {sampleForNote} from '../../../sampler.js';
 import {validatePatch} from '../../../synth.js';
 import {movement,planPitch} from '../../dsp/expression.js';
@@ -60,7 +60,7 @@ export function encodeNativeSample(plan,rate){
  u32(plan.events.length);for(const event of plan.events){u32(event.kind);f64(event.time);f64(Math.fround(event.value));}
  f64(plan.pitchValue??60);f64(plan.velocity??1);
  const routes=[...(plan.modulation?.routes??[])].sort((a,b)=>a.id.localeCompare(b.id));u32(routes.length);
- for(const route of routes){u32(MOD_TARGETS.findIndex(t=>t.id===route.target));u32(MOD_SOURCES.indexOf(route.source.kind));u32(route.polarity==="bipolar"?1:0);
+ for(const route of routes){u32(MOD_TARGETS.findIndex(t=>t.id===route.target));u32(nativeModulationSource(route.source));u32(route.polarity==="bipolar"?1:0);
   for(const value of [route.depth,route.smoothing,route.source.rate??.5,route.source.root??60,route.source.span??24,...["attack","decay","sustain","release"].map((k,i)=>route.source.envelope?.[k]??[.8,.5,.5,.5][i])])f64(value);
  }
  const points=plan.automation?.points??[];u32(points.length);for(const point of points){f64(point.time);f64(point.value);}

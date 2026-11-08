@@ -16,6 +16,17 @@ const patch={type:'sample',presetId:'custom',zones:[{assetId:'voice',root:60}],f
 const sample=planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets);
 const vocal=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects:fx}},0,.125,assets);
 const render=plan=>{const data=encodeNativeSession([plan],rate,[{rate,frames,channels:1,pcm}]);const r=spawnSync(binary,[String(rate),'2','0','0',String(rate*2),'128','0'],{input:data,maxBuffer:4e6});if(r.status)throw Error(r.stderr.toString());return new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset,r.stdout.byteOffset+r.stdout.byteLength));};
+for(const shape of ['sine','triangle','ramp','square']){
+ const changed=structuredClone(vocal);changed.modulation={version:1,routes:[{id:'level',source:{kind:'lfo',shape,rate:2},target:'amplitude',unit:'linear_gain',depth:.5,polarity:'bipolar',smoothing:.005},{id:'q',source:{kind:'lfo',shape,rate:3},target:'filter.resonance',unit:'filter_resonance',depth:2,polarity:'unipolar',smoothing:.005}]};
+ const sound={...sample,modulation:changed.modulation},a=render(sound),b=render(changed);
+ let difference=0;for(let i=0;i<a.length;i++)difference=Math.max(difference,Math.abs(a[i]-b[i]));
+ if(difference>1e-5)throw Error('Shared modulation parity failed '+shape);
+ const mute=structuredClone(changed);mute.modulation.routes=[{id:'mute',source:{kind:'lfo',shape:'square',rate:.05},target:'amplitude',unit:'linear_gain',depth:-1,polarity:'unipolar',smoothing:0}];
+ const silent=render(mute);if(silent.some(value=>Math.abs(value)>1e-7))throw Error('Amplitude route did not mute the real native graph');
+ const dry=render({...changed,modulation:undefined});let audible=0;for(let i=0;i<b.length;i++)audible=Math.max(audible,Math.abs(b[i]-dry[i]));
+ if(audible<.01)throw Error('Modulation route had no audible effect '+shape);
+ console.log('PASS shared native modulation',JSON.stringify({shape,difference,audible}));
+}
 const a=render(sample),b=render(vocal);let peak=0,diff=0;for(let i=0;i<a.length;i++){peak=Math.max(peak,Math.abs(a[i]));diff=Math.max(diff,Math.abs(a[i]-b[i]));}if(!(peak>.01)||diff>1e-5)throw Error(JSON.stringify({peak,diff}));console.log('PASS native sampled/vocal processing PCM parity',JSON.stringify({peak,maxDifference:diff}));
 const withoutSweep=render({...vocal,sweep:{...vocal.sweep,startCutoff:vocal.filter.cutoff}});
 const sweepDifference=b.reduce((peak,value,i)=>Math.max(peak,Math.abs(value-withoutSweep[i])),0);

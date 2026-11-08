@@ -2,6 +2,18 @@ import {MODULATION_CONTROLS,MODULATION_SOURCE_CONTEXTS,modulationTargetsFor,vali
 import {envelopeLevelAt} from "./amplitude-envelope.js";
 export const MODULATION_VERSION=1;
 export const MOD_SOURCES=Object.keys(MODULATION_SOURCE_CONTEXTS);
+export const LFO_SHAPES=Object.freeze(["sine","triangle","ramp","square"]);
+export const nativeModulationSource=source=>{
+ if(source.kind==="lfo"&&!LFO_SHAPES.includes(source.shape))throw Error("Unsupported modulation waveform");
+ return source.kind==="lfo"&&source.shape!=="sine"?3+LFO_SHAPES.indexOf(source.shape):MOD_SOURCES.indexOf(source.kind);
+};
+export function modulationWave(shape,cycles){
+ const phase=((cycles%1)+1)%1;
+ if(shape==="triangle")return 1-4*Math.abs(phase-.5);
+ if(shape==="ramp")return 2*phase-1;
+ if(shape==="square")return phase<.5?1:-1;
+ return Math.sin(2*Math.PI*cycles);
+}
 export const MOD_TARGETS=modulationTargetsFor("synth");
 const finite=(n,min,max)=>typeof n==="number"&&Number.isFinite(n)&&n>=min&&n<=max;
 export function validateModulation(modulation){
@@ -18,7 +30,7 @@ export function validateModulation(modulation){
   if(!source||!MOD_SOURCES.includes(source.kind)){errors.push("Invalid modulation source.");continue;}
   const keys={lfo:["kind","rate","shape"],velocity:["kind"],keytrack:["kind","root","span"],envelope:["kind","envelope"]}[source.kind];
   if(Object.keys(source).some(key=>!keys.includes(key)))errors.push("Unknown modulation source field.");
-  if(source.kind==="lfo"&&(!finite(source.rate,MODULATION_CONTROLS.rate.min,MODULATION_CONTROLS.rate.max)||source.shape!=="sine"))errors.push("Invalid modulation LFO.");
+  if(source.kind==="lfo"&&(!finite(source.rate,MODULATION_CONTROLS.rate.min,MODULATION_CONTROLS.rate.max)||!LFO_SHAPES.includes(source.shape)))errors.push("Invalid modulation LFO.");
   if(source.kind==="keytrack"&&(!finite(source.root,MODULATION_CONTROLS.root.min,MODULATION_CONTROLS.root.max)||!finite(source.span,MODULATION_CONTROLS.span.min,MODULATION_CONTROLS.span.max)))errors.push("Invalid key tracking.");
   if(source.kind==="envelope"){
    errors.push(...validateParameterBlock(source.envelope,"envelope"));
@@ -34,7 +46,7 @@ export function defaultSource(kind){
 }
 export function sourceValueAt(source,{elapsed,gate,velocity,pitch}){
  let value,signed=false;
- if(source.kind==="lfo"){value=Math.sin(2*Math.PI*source.rate*Math.max(0,elapsed));signed=true;}
+ if(source.kind==="lfo"){value=modulationWave(source.shape,source.rate*Math.max(0,elapsed));signed=true;}
  else if(source.kind==="velocity")value=velocity;
  else if(source.kind==="keytrack"){value=Math.max(-1,Math.min(1,(pitch-source.root)/source.span));signed=true;}
  else{

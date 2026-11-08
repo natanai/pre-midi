@@ -127,7 +127,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  }
  const filter=add(ctx.createBiquadFilter());
  filter.type=patch.filter.type;
- destinations.set("filter.cutoff",filter.detune);
+ destinations.set("filter.cutoff",filter.detune);destinations.set("filter.resonance",filter.Q);
  const sweep=patch.filter.sweep??0;
  if(plan.automation){
   const points=plan.automation.points;filter.frequency.value=points[0].value;filter.frequency.setValueAtTime(points[0].value,points[0].time);
@@ -159,7 +159,8 @@ const pulse=add(ctx.createGain());
  if(motion.tremolo>0)scheduleMovementLfo(ctx,pulse.gain,start,duration,
   motion.tremoloRate,motion.tremolo*.45,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const gate=add(ctx.createGain());
- amp.connect(pulse);pulse.connect(gate);gate.connect(pan);
+ const movementGain=add(ctx.createGain());movementGain.gain.value=1;destinations.set("amplitude",movementGain.gain);
+ amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);gate.connect(pan);
  const fx=patch.effects,mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
  dry.gain.value=1-mixAmount*.4;

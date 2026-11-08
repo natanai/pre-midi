@@ -1,3 +1,4 @@
+import {LFO_SHAPES} from "./src/dsp/modulation.js";
 import {soundAxis,readSoundParameter} from "./soundParameterAdapter.js";
 import {modulationTargetsFor,modulationSourcesFor,parameterFor} from "./src/dsp/parameters.js";
 import {captureSoundGraphView} from "./soundControlView.js";
@@ -770,7 +771,8 @@ export const diagram=(patch,type,page=0)=>{
     action(73,14,[...prefix,"source","kind"],modulationSourcesFor(p.type),"movement source");
     action(185,14,[...prefix,"polarity"],["unipolar","bipolar"],"movement range");
     action(286,14,[...prefix,"target"],modulationTargetsFor(p.type).map(item=>item.id),"movement target");
-    tag(22,111,"route "+(i+1)+" · "+source.kind+" → "+(target?.name||route.target));
+    tag(22,111,"route "+(i+1)+" · "+(target?.name||route.target));
+    if(source.kind==="lfo")action(286,111,[...prefix,"source","shape"],LFO_SHAPES,"movement shape");
    }
   }
  }
