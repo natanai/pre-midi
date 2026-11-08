@@ -3496,7 +3496,7 @@
       {
         "id": "SOUND-BATCH-PREVIEW26",
         "date": "2026-11-07",
-        "status": "implemented_pending_windows_build",
+        "status": "implemented",
         "task_ids": [
           "SE-09",
           "SE-14",
@@ -3536,12 +3536,16 @@
           "model": "Focused EQ analytical gain/pole stability, current presets/projects, end-trim tempo/reuse/serialization and intentional-pull gate cases pass",
           "native": "Full EQ/cascaded-filter sample-vocal PCM parity, EQ bypass and source-accurate vocal end-trim under transpose pass with the current C++ renderer",
           "web_audio": "Offline audio bell boost measured 6.000000011 dB for a requested 6 dB; four-stage versus one-stage stop-band ratio 5.473e-6; cropped vocal tail remains silent under upward rate transpose",
-          "dom_integration": "Vocal focused knob/module/scroll/disclosure retention and end trimming pass. Song drag retains original row, rejects foreign-lane conversion and short pulls, shows progress then converts only the owning child; shared grouping checked. These are DOM checks, not physical browser observations."
+          "dom_integration": "Vocal focused knob/module/scroll/disclosure retention and end trimming pass. Song drag retains original row, rejects foreign-lane conversion and short pulls, shows progress then converts only the owning child; shared grouping checked. These are DOM checks, not physical browser observations.",
+          "windows": "Windows compilation, routine source checks, native tests, runtime dependency inspection and portable launch/upgrade/isolation/relocation/copy/recovery passed; optional full audio suite skipped"
         },
         "windows_preview": {
           "version": "0.14.1-preview.26",
-          "status": "build_requested",
-          "optional_full_audio_qualification": false
+          "status": "published",
+          "optional_full_audio_qualification": false,
+          "source_commit": "dd79e0f3699e2fe1bb64013f9ace68119d1a2905",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42449369386",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.26/pre-midi-0.14.1-preview.26-windows-x86_64-portable.zip"
         },
         "not_claimed": [
           "Full M2 or M3 completion",
@@ -3606,21 +3610,16 @@
           "url": "https://github.com/natanai/pre-midi/actions/runs/42425325275"
         },
         "windows_package": {
-          "version": "0.14.1-preview.25",
+          "version": "0.14.1-preview.26",
           "status": "published",
-          "scope": "Windows x64 portable ZIP including random/step movement and the merged three-capability macro/mix/tempo-delay batch",
-          "source_commit": "76dfceee4228c6f446124f54bbf8f112b1f6a4de",
-          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42447205605",
-          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.25/pre-midi-0.14.1-preview.25-windows-x86_64-portable.zip",
-          "bytes": 16209181,
-          "sha256": "7957c9121e34036bea6a1791820d00fb930d8eec53079f218e0d8c77e60a4f32",
+          "scope": "Windows x64 portable: vocal end trim, retained Inspector position, shared EQ/filter slopes and deliberate row-locked Song editing",
+          "source_commit": "dd79e0f3699e2fe1bb64013f9ace68119d1a2905",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42449369386",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.26/pre-midi-0.14.1-preview.26-windows-x86_64-portable.zip",
+          "bytes": 16219280,
+          "sha256": "48f9b5feb20df59874d9d43241a536aa6f794eeb42b41704e451ecc4c3e30df4",
           "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection, portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
-          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files",
-          "pending_build": {
-            "version": "0.14.1-preview.26",
-            "status": "build_requested",
-            "includes": "Vocal end trimming, Inspector view retention, shared EQ/filter slopes and row-locked deliberate Beat/freeform pulling"
-          }
+          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files"
         }
       },
       "remaining_qualification": [
