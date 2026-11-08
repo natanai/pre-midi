@@ -20,7 +20,7 @@ export class VocalSeekCache{
   const {recording,clip}=request.event;
   return JSON.stringify([this.buffers.get(request.buffer),request.sampleRate,request.phase,
    request.unit,recording.trimSeconds,recording.durationSeconds,
-   clip.trimStartSeconds??0,clip.lengthSteps,clip.gain??1,clip.effects??null]);
+   clip.trimStartSeconds??0,clip.trimEndSeconds??0,clip.lengthSteps,clip.gain??1,clip.effects??null]);
  }
  get(request){
   const key=this.key(request),cached=this.entries.get(key);

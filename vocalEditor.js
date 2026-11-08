@@ -96,8 +96,8 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
  actions.append(duplicate,use);
  placement.append(position,actions);
  const sourceRoot=getWorkspace("piano");
- sourceRoot.append(renderAudioWaveform({recording,trimStart:clip.trimStartSeconds??0,
-  onTrim:value=>onTrim(clipId,value),onFindStart:()=>autoTrim(recording),
+ sourceRoot.append(renderAudioWaveform({recording,trimStart:clip.trimStartSeconds??0,trimEnd:clip.trimEndSeconds??0,
+  onTrim:value=>onTrim(clipId,value,"start"),onTrimEnd:value=>onTrim(clipId,value,"end"),onFindStart:()=>autoTrim(recording),
   loadDecoded:()=>decodeVocalRecording(recording)}));
  const patch=vocalDisplayPatch(clip,recording);
  const apply=(path,value)=>onApply(clipId,vocalChangesFromControl(patch,path,value));

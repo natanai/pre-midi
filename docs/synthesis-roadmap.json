@@ -2565,7 +2565,7 @@
           "source_position": "Accumulate playbackRate * 2^(detune/1200) over 128-frame host control quanta; use the original Clip gate to evaluate progress. Source seconds and Song/wall seconds remain separate.",
           "web_transport": "src/hosts/web/timeline-clock.js aligns virtual Song time zero to a render-quantum boundary on initial playback and seeks. Initial overlapping source windows are prepared before choosing the audible start time, outside the lookahead scheduler.",
           "bounds": "Eight cached control clocks with sparse checkpoints every 256 control quanta; no asset copies, audio callback allocations or sample-sized control arrays. Existing source/host limits remain.",
-          "current_native_sample_packet": 15,
+          "current_native_sample_packet": 16,
           "qualification": "Focused model and C++ regressions; no physical browser/Windows listening or complete seek PCM equivalence claim."
         }
       },
@@ -2723,7 +2723,7 @@
       {
         "id": "SE-09",
         "title": "Add parametric EQ and extend filter editing",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-08"
@@ -2746,7 +2746,8 @@
         "verification": [
           "Frequency-response and stability fixtures at documented rates; contextual EQ edits on synth/sample/vocal."
         ],
-        "completion_evidence": []
+        "completion_evidence": [],
+        "progress_note": "Four bounded independently editable EQ bands now share bell/low shelf/high shelf/high-pass/low-pass types, frequency/gain/Q, enable, chain order/bypass/mix, preset transfer and native/browser coefficient semantics. One interactive log-frequency response graph and ordinary dials serve all Sound contexts. Additional filter stages expose 12/24/48 db/oct asymptotic low/high-pass slopes while resonance remains on the first stage. Expansion beyond four bands and parallel routing remain open."
       },
       {
         "id": "SE-10",
@@ -2892,7 +2893,7 @@
           "Boundary/quiet-onset/end-trim/loop-crossfade cases, duplicate independence, immutable bytes and reuse round trips."
         ],
         "completion_evidence": [],
-        "progress_note": "Leading trim, source-time waveform gestures and accessible keyboard/numeric editing are implemented. Native current sample packet 12 now enforces source-time excerpt ends even under pitch movement, matching the browser source-window constraint. End-trim controls, a shared sampler source viewport, reverse and loop editing remain pending."
+        "progress_note": "Vocal start/end trims now use the same waveform surface, millisecond numeric/keyboard editing, mirrored handles/shading and independent restoration. Both ends update Song clip duration/thumbnail and source bounds in native/browser playback, seek caching and Beat reuse without rewriting recording bytes. Shared sampler source viewport, reverse and loop editing remain open."
       },
       {
         "id": "SE-15",
@@ -2927,7 +2928,7 @@
       {
         "id": "SE-16",
         "title": "Preserve one educational and accessible editing experience",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-02"
@@ -2951,7 +2952,8 @@
         "verification": [
           "Focused desktop control/illustration gestures, context switches and keyboard checks as each feature lands; observed review at completion."
         ],
-        "completion_evidence": []
+        "completion_evidence": [],
+        "progress_note": "Committed controls and graph edits resolve rebuilt Inspector scroll owners and focused controls in the same editor. Disclosure state, module identity and scroll survive vocal workspace reconstruction. EQ supplies graph/dial/keyboard access, explicit inactive gain/Q dependencies and dB unit help. Physical browser and newcomer review remain open."
       },
       {
         "id": "SE-17",
@@ -3490,6 +3492,62 @@
           "General routing, sidechains or graph-wide latency compensation",
           "Physical browser/Windows listening and microphone qualification"
         ]
+      },
+      {
+        "id": "SOUND-BATCH-PREVIEW26",
+        "date": "2026-11-07",
+        "status": "implemented_pending_windows_build",
+        "task_ids": [
+          "SE-09",
+          "SE-14",
+          "SE-16",
+          "SE-18"
+        ],
+        "summary": "Vocal end trim and Inspector continuity, shared four-band EQ/filter slopes, and intentional row-locked Beat-to-freeform pulling",
+        "scope_change": "Prioritize the user-reported vocal and Song gestures in this batch. Stereo delay/feedback tone remains queued under SE-11; no partial implementation exposed.",
+        "milestones": [
+          {
+            "id": "B26-VOCAL",
+            "status": "implemented",
+            "contract": "trimEndSeconds is an independent non-destructive tail crop. Shared waveform adds a mirrored right marker, shading, numeric/keyboard editing and restore. Combined trims leave more than 10 ms. Song duration, thumbnails, tempo/transpose resizing, native sourceLimit, browser source bounds, seek cache and Beat reuse use both edges."
+          },
+          {
+            "id": "B26-CONTINUITY",
+            "status": "implemented",
+            "contract": "Control/graph view capture resolves replaced scrollers by stable editor IDs and paths, restores disclosures and the same musical control/module, and uses preventScroll focus. One physical shared Inspector remains."
+          },
+          {
+            "id": "B26-EQ",
+            "status": "implemented",
+            "contract": "Four fixed EQ bands, bell/shelf/pass types, frequency 20\u201320000 Hz, +/-24 dB, Q .1\u201318, enable and serial order/bypass/mix. Shelves use a fixed monotonic slope. Shared normalized RBJ coefficients feed native fixed-state DF-I and Web IIR nodes; disabled/neutral bands are transparent. Filter slopes use one/two/four cascaded stages, resonance on the first and Q=.707 on subsequent stages. EQ is per voice before articulation, not a global mastering bus."
+          },
+          {
+            "id": "B26-SONG-PULL",
+            "status": "implemented",
+            "contract": "Beat pointer drags commit only horizontal placement on the original Track. Conversion requires a downward pull >=14 px held 650 ms inside only its own child lane, with a transient fill meter. Leaving the lane resets progress. Resize/cancel and click remain separate. Full-width Track-family grouping and connector borders identify the attached child across the Song panel."
+          }
+        ],
+        "references": [
+          "https://www.w3.org/TR/audio-eq-cookbook/"
+        ],
+        "native_contract": "Sample packet 16 and synth processing trailers carry EQ position/bypass, EQ mix, filter stage count and four stable normalized biquad recipes; current Rust fixture advances with the decoder. No legacy reader or Web Audio native fallback.",
+        "verification": {
+          "routine": "npm run check: edited syntax and 44 smoke cases",
+          "model": "Focused EQ analytical gain/pole stability, current presets/projects, end-trim tempo/reuse/serialization and intentional-pull gate cases pass",
+          "native": "Full EQ/cascaded-filter sample-vocal PCM parity, EQ bypass and source-accurate vocal end-trim under transpose pass with the current C++ renderer",
+          "web_audio": "Offline audio bell boost measured 6.000000011 dB for a requested 6 dB; four-stage versus one-stage stop-band ratio 5.473e-6; cropped vocal tail remains silent under upward rate transpose",
+          "dom_integration": "Vocal focused knob/module/scroll/disclosure retention and end trimming pass. Song drag retains original row, rejects foreign-lane conversion and short pulls, shows progress then converts only the owning child; shared grouping checked. These are DOM checks, not physical browser observations."
+        },
+        "windows_preview": {
+          "version": "0.14.1-preview.26",
+          "status": "build_requested",
+          "optional_full_audio_qualification": false
+        },
+        "not_claimed": [
+          "Full M2 or M3 completion",
+          "Variable EQ band count, general parallel routing, production dynamics or stereo delay",
+          "Physical desktop listening/microphone or browser visual acceptance"
+        ]
       }
     ],
     "vocal_parity_milestone": {
@@ -3557,7 +3615,12 @@
           "bytes": 16209181,
           "sha256": "7957c9121e34036bea6a1791820d00fb930d8eec53079f218e0d8c77e60a4f32",
           "automated_checks": "Windows compilation, routine source checks, 12 Rust tests, runtime dependency inspection, portable launch/upgrade/isolation/relocation/copy/recovery checks passed; optional full audio qualification skipped",
-          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files"
+          "distribution": "Unsigned manual-update portable ZIP; preserve data, projects and exports when replacing application files",
+          "pending_build": {
+            "version": "0.14.1-preview.26",
+            "status": "build_requested",
+            "includes": "Vocal end trimming, Inspector view retention, shared EQ/filter slopes and row-locked deliberate Beat/freeform pulling"
+          }
         }
       },
       "remaining_qualification": [

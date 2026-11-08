@@ -1,8 +1,13 @@
-# pre-midi 0.14.1-preview.25 — Windows portable preview
+# pre-midi 0.14.1-preview.26 — Windows portable preview
 
 Windows 11 x64, portable ZIP, manual installation. No installer or registry changes are required. This preview is intended for testing on your PC, rather than a claim of production audio stability.
 
 ## Included changes
+
+- Vocal end trimming mirrors start trimming, including handle, precise time, keyboard editing and restore; both edges update the Song clip and playback source bounds.
+- Vocal sound controls preserve the focused knob, open module and scroll position after a committed edit.
+- Beat dragging stays on its own Track; a 650 ms downward pull into its own child lane deliberately converts to freeform, with a fill cue. Parent and child rows share a full-width frame.
+- Shared four-band parametric EQ with interactive graph, ordinary controls, per-band enable and common chain order/bypass/mix; steeper 24/48 db/oct filter stages.
 
 - Four shared performance macros with multiple route assignments, reset/save reset and preset/project recall.
 - Filter/distortion wet/dry with interactive blend graphs and aligned distortion dry paths.
@@ -23,7 +28,7 @@ Extract the complete ZIP into a separate writable folder and open pre-midi.exe. 
 
 For an in-place manual update, close all app instances and back up the folder first. Replace application files only; preserve data/, projects/ and exports/. Export a music ZIP when you want a portable copy that includes its recording/sample assets; plain .premidi instructions do not contain those audio bytes.
 
-Try macro mapping/reset, processor mixes, synced echoes at slow/fast tempos, and a short Beat and Song, vocal recording/trim/playback, shared Sound controls, processor reorder/remove/restore and undo/redo. Save a processing preset, export/reopen a project ZIP, and confirm its audio/settings remain. Use headphones while testing microphone recording.
+Try both vocal trim handles, repeated knob edits while scrolled/expanded, horizontal Beat drags and deliberate own-lane conversion, EQ/filter slopes, macro mapping/reset, processor mixes, synced echoes at slow/fast tempos, and a short Beat and Song, vocal recording/trim/playback, shared Sound controls, processor reorder/remove/restore and undo/redo. Save a processing preset, export/reopen a project ZIP, and confirm its audio/settings remain. Use headphones while testing microphone recording.
 
 ## Remaining limits
 

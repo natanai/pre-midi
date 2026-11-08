@@ -19,7 +19,22 @@ const fx={filter:{type:'lowpass',cutoff:2000,resonance:.7,sweep:-3,sweepTime:.6}
 const patch={type:'sample',presetId:'custom',zones:[{assetId:'voice',root:60}],followPitch:false,oneShot:true,audioMode:'clip',transpose:0,gain:.8,pan:0,...fx};
 const sample=planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets);
 const vocal=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects:fx}},0,.125,assets);
-const render=plan=>{const data=encodeNativeSession([plan],rate,[{rate,frames,channels:1,pcm}]);const r=spawnSync(binary,[String(rate),'2','0','0',String(rate*2),'128','0'],{input:data,maxBuffer:4e6});if(r.status)throw Error(r.stderr.toString());return new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset,r.stdout.byteOffset+r.stdout.byteLength));};
+const render=(plan,inputPcm=pcm)=>{const data=encodeNativeSession([plan],rate,[{rate,frames,channels:1,pcm:inputPcm}]);const r=spawnSync(binary,[String(rate),'2','0','0',String(rate*2),'128','0'],{input:data,maxBuffer:4e6});if(r.status)throw Error(r.stderr.toString());return new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset,r.stdout.byteOffset+r.stdout.byteLength));};
+// EQ, cascaded filters and end-cropped vocal source bounds.
+const equalizer={version:1,bands:[220,500,2500,8000].map((frequency,i)=>({id:'b'+i,type:'bell',enabled:i===0,frequency,gain:i===0?6:0,q:.707}))};
+const chainEQ={version:1,order:['filter','eq','drive'],bypass:[]};
+for(const filterStages of [1,2,4]){
+ const eqFx={...fx,eq:equalizer,chain:chainEQ,filterStages};
+ const a=planNativeSample({patch:{...patch,...eqFx},volume:1},{pitch:60,velocity:1},0,1,assets);
+ const b=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.8,lengthSteps:8,effects:eqFx}},0,.125,assets);
+ const x=render(a),y=render(b);if(x.some((v,i)=>Math.abs(v-y[i])>1e-6)||!x.every(Number.isFinite))throw Error('Native EQ/slope sample/vocal mismatch');
+ const bypass=render({...b,chain:{...chainEQ,bypass:['eq']}}),neutral=render({...b,eq:undefined});
+ if(bypass.some((v,i)=>Math.abs(v-neutral[i])>1e-6))throw Error('Native EQ bypass is not transparent');
+ if(y.every((v,i)=>Math.abs(v-bypass[i])<.001))throw Error('Native EQ has no effect');
+}
+const trimmed=planNativeVocal({recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:1,trimEndSeconds:.25,lengthSteps:8,effects:{transpose:12,attack:0,release:0}}},0,.125,assets);
+const tailOnly=Float32Array.from(pcm,(v,i)=>i/rate>.752?v:0);if(render(trimmed,tailOnly).some(v=>Math.abs(v)>1e-7))throw Error('End-trim vocal leaked removed source');
+console.log('PASS native EQ/filter slopes, bypass and source-accurate vocal end trim');
 // Batch capability checks use the real current packet/renderer.
 const peakDifference=(a,b)=>a.reduce((m,v,i)=>Math.max(m,Math.abs(v-b[i])),0);
 for(const value of [0,.3,1]){

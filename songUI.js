@@ -4,7 +4,7 @@ import {songDurationSteps,removeSongClip,removeEmptyVocalTrack,moveVocalClip} fr
 import {id} from "./schema.js";
 import {unpackBeatClip} from "./freeformModel.js";
 import {installFreeformUI} from "./freeformUI.js";
-import {timelineStepAtX,trackTimelinePointer} from "./timelinePointer.js";
+import {timelineStepAtX,trackTimelinePointer,attachedLanePull} from "./timelinePointer.js";
 // All Song lanes and the bar ruler use the same scale; only the viewport
 // determines how much empty timeline is visible. There is no fixed song end.
 const BAR_STEPS=16,BAR_PX=54,LABEL_PX=105,PAGE_BARS=16;
@@ -224,39 +224,38 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   const hint=document.createElement("div");hint.className="song-drop-hint";
   hint.setAttribute("role","status");hint.setAttribute("aria-live","polite");hint.hidden=true;
   document.body.append(hint);
-  let rejected=null;
-  const hold=()=>{
-   block.classList.add("pointer-held");row?.classList.add("drop-available");
-  };
-  function move(point,steps){
-   if(point.moved||point.held)hold();
-   block.classList.toggle("pointer-dragging",point.moved);
-   if(point.moved)block.style.transform="translateY("+point.dy+"px)";
-   const under=document.elementFromPoint(point.clientX,point.clientY);
-   const target=point.moved?under?.closest(".song-freeform-row"):null;
-   const valid=!!target&&target.dataset.parentTrackId===track.id;
-   rejected?.classList.remove("drop-rejected");
-   rejected=target&&!valid?target:null;rejected?.classList.add("drop-rejected");
-   row?.classList.toggle("drop-active",valid);
-   block.classList.toggle("dropping-freeform",valid);
-   ghost.hidden=!valid;
-   if(valid){ghost.style.left=steps/BAR_STEPS*BAR_PX+"px";ghost.dataset.startStep=String(steps);}
+  let rejected=null,point=null,steps=0,frame=null;
+  const gate=attachedLanePull(),result={freeform:false,invalid:false};
+  const meter=document.createElement('span');meter.className='song-pull-progress';meter.hidden=true;meter.setAttribute('role','progressbar');meter.setAttribute('aria-label','pull into attached freeform');meter.setAttribute('aria-valuemin','0');meter.setAttribute('aria-valuemax','100');meter.append(document.createElement('i'));block.append(meter);
+  const hold=()=>{block.classList.add('pointer-held');row?.classList.add('drop-available');};
+  function paint(){
+   if(!point)return;
+   block.classList.toggle('pointer-dragging',point.moved);
+   // Horizontal editing never lifts a Beat out of its source row.
+   const under=document.elementFromPoint(point.clientX,point.clientY),target=point.moved?under?.closest('.song-freeform-row'):null;
+   const own=!!target&&target.dataset.parentTrackId===track.id;
+   const pull=gate.update({inOwnLane:own,dy:point.dy},performance.now());
+   rejected?.classList.remove('drop-rejected');rejected=target&&!own?target:null;rejected?.classList.add('drop-rejected');
+   result.freeform=pull.ready;result.invalid=!!rejected;
+   const pulling=own&&point.dy>=14;if(pulling)hold();
+   meter.hidden=!pulling;meter.style.setProperty('--pull',String(pull.progress));meter.setAttribute('aria-valuenow',String(Math.round(pull.progress*100)));
+   row?.classList.toggle('drop-active',pull.ready);block.classList.toggle('dropping-freeform',pull.ready);
+   ghost.hidden=!pull.ready;
+   if(pull.ready){ghost.style.left=steps/BAR_STEPS*BAR_PX+'px';ghost.dataset.startStep=String(steps);}
    hint.hidden=!target;
    if(target){
-    const text=valid?"release to make freeform · bar "+(steps/BAR_STEPS+1):
-     "use this beat's attached freeform lane";
+    const text=pull.ready?'release to make freeform · bar '+(steps/BAR_STEPS+1):own?'keep pulling down to make freeform':"only this beat's attached freeform lane";
     if(hint.textContent!==text)hint.textContent=text;
-    const box=hint.getBoundingClientRect();
-    hint.style.left=Math.max(8,Math.min(point.clientX+12,window.innerWidth-box.width-8))+"px";
-    hint.style.top=Math.max(8,Math.min(point.clientY+14,window.innerHeight-box.height-8))+"px";
+    const box=hint.getBoundingClientRect();hint.style.left=Math.max(8,Math.min(point.clientX+12,window.innerWidth-box.width-8))+'px';hint.style.top=Math.max(8,Math.min(point.clientY+14,window.innerHeight-box.height-8))+'px';
    }
-   return {freeform:valid,invalid:!!rejected,trackId:under?.closest(".song-track-row")?.dataset.trackId};
+   if(pulling&&!pull.ready&&frame===null)frame=requestAnimationFrame(()=>{frame=null;paint();});
   }
+  function move(next,nextSteps){point=next;steps=nextSteps;paint();return result;}
   return {hold,move,clear(){
    row?.classList.remove("drop-available","drop-active");
    rejected?.classList.remove("drop-rejected");
    block.classList.remove("pointer-held","pointer-dragging","dropping-freeform");
-   block.style.transform="";ghost.remove();hint.remove();
+   if(frame!==null)cancelAnimationFrame(frame);gate.reset();meter.remove();ghost.remove();hint.remove();
   }};
  }
  function clipButton(track,clip){
@@ -266,10 +265,10 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
   block.style.left=(clip.startStep/BAR_STEPS*BAR_PX)+"px";
   block.style.width=(clip.lengthSteps/BAR_STEPS*BAR_PX)+"px";
   block.title=(beat?.title||"Missing Beat")+" · bar "+(Math.floor(clip.startStep/BAR_STEPS)+1);
-  block.setAttribute("aria-label",block.title+"; left/right move, up/down change Track, shift+left/right resize; hold and drag down into attached freeform");
+  block.setAttribute("aria-label",block.title+"; left/right move, up/down change Track, shift+left/right resize; pull down and hold in its attached freeform lane");
   block.setAttribute("aria-pressed",String(clip.id===selectedClipId));
   block.tabIndex=0;
-  block.title+=" · hold to drag · drag down to make freeform";
+  block.title+=" · drag horizontally · pull down and hold to make freeform";
   const label=document.createElement("span");label.className="song-clip-label";
   label.textContent=beat?.title||"Missing Beat";
   const grip=document.createElement("span");grip.className="song-clip-grip";
@@ -320,7 +319,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
      block.style.left=clip.startStep/BAR_STEPS*BAR_PX+"px";
      block.style.width=clip.lengthSteps/BAR_STEPS*BAR_PX+"px";
      if(moved||cancelled){ignoreClick=true;setTimeout(()=>{ignoreClick=false;},0);}
-     if(cancelled||!moved||destination?.invalid)return;
+     if(cancelled||!moved)return;
      if(destination?.freeform){
       const unpacked=apply(()=>{
        clip.startStep=steps;
@@ -329,12 +328,7 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
       if(unpacked){selectedClipId=null;freeformUI.open(track.id,null,steps);}
       return;
      }
-     const dest=!resizing&&getSong().tracks.find(item=>item.id===destination?.trackId&&item.kind==="beat");
-     const movedTrack=dest&&dest.id!==track.id;
-     if(steps!==original||movedTrack)apply(()=>{
-      Object.assign(clip,resizing?{lengthSteps:steps}:{startStep:steps});
-      if(movedTrack){track.clips=track.clips.filter(item=>item.id!==clip.id);dest.clips.push(clip);}
-     });
+     if(steps!==original)apply(()=>Object.assign(clip,resizing?{lengthSteps:steps}:{startStep:steps}));
     }
    });
   });
@@ -419,8 +413,10 @@ export function installSongUI({root,getSong,getSelectedBeatId,onSelectBeat,onCha
     });
     lane.append(add);
    }
-   row.append(head,lane);tracks.append(row);
-   if(track.kind==="beat")tracks.append(freeformUI.renderAttached(track,width));
+   row.append(head,lane);
+   if(track.kind==='beat'){
+    const family=document.createElement('div');family.className='song-track-family';family.dataset.parentTrackId=track.id;family.setAttribute('role','group');family.setAttribute('aria-label',track.name+' and attached freeform');family.append(row,freeformUI.renderAttached(track,width));tracks.append(family);
+   }else tracks.append(row);
   }
   tracks.style.width=totalWidth+"px";
   footer.style.width=totalWidth+"px";

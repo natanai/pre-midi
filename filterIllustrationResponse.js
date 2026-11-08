@@ -19,8 +19,8 @@ export function modeledFilterResponse(filter,frequency,sampleRate=FILTER_ILLUSTR
  // Low/high-pass Q is in dB in Web Audio's historical coefficient contract;
  // band-pass and notch Q is linear. Preserve the native implementation's
  // distinction instead of approximating resonance with a Gaussian bump.
- const quality=(type==="lowpass"||type==="highpass")?
-  10**(resonance/20):resonance;
+ const quality=filter.quality??((type==="lowpass"||type==="highpass")?
+  10**(resonance/20):resonance);
  const alpha=s/(2*quality),a0=1+alpha,a1=-2*c/a0,a2=(1-alpha)/a0;
  let b0,b1,b2;
  if(type==="lowpass"){
@@ -41,7 +41,11 @@ export function modeledFilterResponse(filter,frequency,sampleRate=FILTER_ILLUSTR
   phase:Math.atan2(ni,nr)-Math.atan2(di,dr)};
 }
 
-export const modeledFilterMagnitude=(...args)=>modeledFilterResponse(...args).magnitude;
+export const modeledFilterMagnitude=(filter,frequency,sampleRate)=>{
+ const first=modeledFilterResponse(filter,frequency,sampleRate).magnitude;
+ const extra=(filter.stages??1)-1;
+ return first*(extra?modeledFilterResponse({...filter,quality:Math.SQRT1_2},frequency,sampleRate).magnitude**extra:1);
+};
 
 // A fixed, labeled dB viewport keeps pass bands and resonant peaks legible.
 // Values outside this teaching window are clipped visually, not in audio.

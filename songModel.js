@@ -36,7 +36,7 @@ export function upgradeSongFeatures(song){
  else if(song.tracks?.some(track=>track.kind==="beat"&&track.clips.some(clip=>clip.sourceOffsetSteps>0))||song.version===CLIP_PHASE_SONG_VERSION)
   song.version=CLIP_PHASE_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===EXTENDED_BEAT_VERSION)||song.version===EXTENDED_SONG_VERSION)song.version=EXTENDED_SONG_VERSION;
- else if(song.tracks?.some(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.effects!==undefined||clip.trimStartSeconds!==undefined)))song.version=VOCAL_FX_SONG_VERSION;
+ else if(song.tracks?.some(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.effects!==undefined||clip.trimStartSeconds!==undefined||clip.trimEndSeconds!==undefined)))song.version=VOCAL_FX_SONG_VERSION;
  else if(song.recordings?.some(recording=>recording.mime==='audio/wav')&&song.version<PCM_SONG_VERSION)song.version=PCM_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===AUTOMATION_BEAT_VERSION)&&song.version<AUTOMATION_SONG_VERSION)song.version=AUTOMATION_SONG_VERSION;
  else if(song.beats.some(beat=>beat.version===MODULATION_BEAT_VERSION)&&song.version<MODULATION_SONG_VERSION)song.version=MODULATION_SONG_VERSION;
@@ -164,17 +164,17 @@ export function renameVocalRecording(song,clipId,name){
   for(const asset of owner.samples??[])if(asset.sourceRecordingId===recording.id)asset.name=value;
  return recording;
 }
-export function trimVocalClip(song,clipId,seconds){
+export function trimVocalClip(song,clipId,seconds,edge="start"){
  const track=song?.tracks?.find(track=>track.kind==="vocal"&&track.clips.some(clip=>clip.id===clipId));
  if(!track)throw Error("Vocal Clip does not exist.");
  const clip=track.clips.find(item=>item.id===clipId);
  const recording=song.recordings?.find(item=>item.id===clip.recordingId);
  if(!recording)throw Error("Vocal Clip references a missing Recording.");
  const remaining=recording.durationSeconds-recording.trimSeconds;
- if(!Number.isFinite(seconds)||seconds<0||seconds>=remaining-.01)
+ if(!["start","end"].includes(edge)||!Number.isFinite(seconds)||seconds<0||seconds+(edge==="start"?(clip.trimEndSeconds??0):(clip.trimStartSeconds??0))>=remaining-.01)
   throw Error("Trim must leave at least 0.01 seconds of audio.");
- clip.trimStartSeconds=Math.round(seconds*10000)/10000;
- clip.lengthSteps=Math.max(1,Math.ceil((remaining-clip.trimStartSeconds)/Math.pow(2,vocalEffects(clip).transpose/12)*song.bpm*4/60));
+ clip[edge==="start"?"trimStartSeconds":"trimEndSeconds"]=Math.round(seconds*10000)/10000;
+ clip.lengthSteps=Math.max(1,Math.ceil((remaining-(clip.trimStartSeconds??0)-(clip.trimEndSeconds??0))/Math.pow(2,vocalEffects(clip).transpose/12)*song.bpm*4/60));
  return clip;
 }
 export function moveVocalClip(song,clipId,targetTrackId){
@@ -199,7 +199,7 @@ export function setSongTempo(song,bpm){
  for(const track of song.tracks)if(track.kind==="vocal")for(const clip of track.clips){
   const recording=recordings.get(clip.recordingId);
   if(!recording)continue;
-  const remaining=recording.durationSeconds-recording.trimSeconds-(clip.trimStartSeconds??0);
+  const remaining=recording.durationSeconds-recording.trimSeconds-(clip.trimStartSeconds??0)-(clip.trimEndSeconds??0);
   const rate=Math.pow(2,vocalEffects(clip).transpose/12);
   clip.lengthSteps=Math.max(1,Math.ceil(remaining/rate*bpm*4/60));
  }
@@ -373,10 +373,9 @@ export function validateSong(song){
    if(track.kind==="vocal"){
     if(!knownRecordings.has(clip.recordingId))errors.push("Vocal Clip references a missing Recording.");
     const recording=recordings.find(item=>item.id===clip.recordingId);
-    if(clip.trimStartSeconds!==undefined&&(!Number.isFinite(clip.trimStartSeconds)||clip.trimStartSeconds<0||
-      !recording||clip.trimStartSeconds>=recording.durationSeconds-recording.trimSeconds-.01))
+    if(!Number.isFinite(clip.trimStartSeconds??0)||!Number.isFinite(clip.trimEndSeconds??0)||(clip.trimStartSeconds??0)<0||(clip.trimEndSeconds??0)<0||!recording||(clip.trimStartSeconds??0)+(clip.trimEndSeconds??0)>=recording.durationSeconds-recording.trimSeconds-.01)
      errors.push("Vocal Clip trim must leave audible audio.");
-    if((clip.trimStartSeconds!==undefined||clip.effects!==undefined)&&song.version<VOCAL_FX_SONG_VERSION)
+    if((clip.trimStartSeconds!==undefined||clip.trimEndSeconds!==undefined||clip.effects!==undefined)&&song.version<VOCAL_FX_SONG_VERSION)
      errors.push("Edited vocal clips require Song v16.");
     errors.push(...validateVocalEffects(clip.effects));
     if(!Number.isFinite(clip.gain)||clip.gain<0||clip.gain>2)

@@ -332,12 +332,12 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    let audio=premidi_decoder::decode(bytes.to_vec(),"").unwrap();let mut info=SampleInfo::default();
    host.check(unsafe{premidi_audio_add_sample(host.0,audio.samples.as_ptr(),(audio.samples.len()/audio.channels as usize) as u64,audio.rate,audio.channels,&mut info)}).unwrap();drop(audio);
    let mut packet=vec![];let u32b=|out:&mut Vec<u8>,v:u32|out.extend(v.to_le_bytes());let f64b=|out:&mut Vec<u8>,v:f64|out.extend(v.to_le_bytes());
-   for v in [0x38564d50,48000,1,15,1,info.id]{u32b(&mut packet,v);}
+   for v in [0x38564d50,48000,1,16,1,info.id]{u32b(&mut packet,v);}
    for v in [0.,0.1,0.11,0.11,0.1,0.,1.,0.,info.frames as f64/info.rate as f64,14000.,0.7,0.,5.,0.,0.,0.,5.,0.,0.24,0.26,0.,2.,14000.,0.1]{f64b(&mut packet,v);}
    for v in [0,1,0,2]{u32b(&mut packet,v);}
    u32b(&mut packet,0);f64b(&mut packet,0.);f64b(&mut packet,0.1);u32b(&mut packet,0);f64b(&mut packet,0.11);f64b(&mut packet,0.);
    f64b(&mut packet,60.);f64b(&mut packet,1.);u32b(&mut packet,0);u32b(&mut packet,0);u32b(&mut packet,0);
-   f64b(&mut packet,1.);f64b(&mut packet,1.);
+   f64b(&mut packet,1.);f64b(&mut packet,1.);f64b(&mut packet,1.);u32b(&mut packet,1);for _ in 0..4{for v in [1.,0.,0.,0.,0.]{f64b(&mut packet,v);}}
    let mut session=vec![];for v in [0x31534d50,1,packet.len() as u32]{u32b(&mut session,v);}session.extend(packet);
    last_session=session.clone();host.check(unsafe{premidi_audio_play(host.0,session.as_ptr(),session.len(),0.5,0.,0,0)}).unwrap();
    std::thread::sleep(std::time::Duration::from_millis(30));let mut status=Status::default();host.check(unsafe{premidi_audio_status_get(host.0,&mut status)}).unwrap();assert!(status.callbacks>0&&status.peak_million>0);assert_eq!(status.fault,0);

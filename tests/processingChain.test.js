@@ -42,7 +42,7 @@ test('current projects and native plans retain chain identity without phantom de
  const assets=new Map([['r',{id:1,duration:1,normalization:1}]]),effects={chain,drive:.5,delayMix:.6};
  const patch={type:'sample',presetId:'custom',zones:[{assetId:'r',root:60}],followPitch:false,oneShot:true,transpose:0,gain:1,attack:0,release:0,pan:0,...effects};
  const plans=[planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets),planNativeVocal({recording:{id:'r',durationSeconds:1,trimSeconds:0},clip:{lengthSteps:8,gain:1,effects}},0,.125,assets)];
- for(const plan of plans){assert.equal(plan.delayMix,0);assert.equal(plan.tail,0);assert.equal(plan.drive,.5);assert.deepEqual(plan.chain,chain);const bytes=encodeNativeSample(plan,48000),view=new DataView(bytes.buffer);assert.equal(view.getUint32(12,true),15);assert.equal(view.getUint32(bytes.length-20,true),3);}
+ for(const plan of plans){assert.equal(plan.delayMix,0);assert.equal(plan.tail,0);assert.equal(plan.drive,.5);assert.deepEqual(plan.chain,chain);const bytes=encodeNativeSample(plan,48000),view=new DataView(bytes.buffer);assert.equal(view.getUint32(12,true),16);assert.equal(view.getUint32(bytes.length-192,true),3);}
 });
 
 test('removing and restoring serial stages preserves settings and bounded identity',()=>{

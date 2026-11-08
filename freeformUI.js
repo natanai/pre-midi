@@ -929,11 +929,11 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
  }
  function renderAttached(track,width){
   const row=el("div","song-freeform-row");
-  row.dataset.parentTrackId=track.id;
+  row.dataset.parentTrackId=track.id;row.setAttribute("aria-label","attached freeform for "+track.name);
   const label=el("div","song-freeform-label");
   const tab=action("↳ freeform",()=>open(track.id),"song-freeform-toggle");
   tab.setAttribute("aria-label","open attached freeform editor for "+track.name);
-  tab.title="drop a Beat Clip here to make its notes freeform";
+  tab.title="open this track’s attached freeform; pull its Beat Clip down and hold here to convert";
   label.append(tab);
   const lane=el("div","song-freeform-lane");lane.style.width=width+"px";
   lane.style.setProperty("--song-bar-px",SONG_BAR_PIXELS+"px");

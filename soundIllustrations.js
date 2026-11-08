@@ -347,7 +347,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
   line("M18 95 H344 M18 41 H344 M18 22 V95",true);
   line(pathRange(300,t=>{
    const px=18+t*324;
-   return [px,modeledFilterY(modeledFilterMagnitude(f,freq(px)))];
+   return [px,modeledFilterY(modeledFilterMagnitude({...f,stages:p.filterStages??1},freq(px)))];
   }),false,["filter.cutoff","filter.resonance","filter.type"]);
   line("M"+x.toFixed(2)+" 97 V19",true);
   handle(x,95-60*base-25*r,[

@@ -73,7 +73,7 @@ const labelHelp=Object.freeze({
  "h7":"things are getting weird",
  "h8":"way up there"
 });
-const unitHelp=Object.freeze({oct:"octaves",st:"semitones",ct:"cents",hz:"hertz",khz:"kilohertz",ms:"milliseconds","%":"percent",l:"left",r:"right",c:"center"});
+const unitHelp=Object.freeze({db:"decibels",oct:"octaves",st:"semitones",ct:"cents",hz:"hertz",khz:"kilohertz",ms:"milliseconds","%":"percent",l:"left",r:"right",c:"center"});
 export function helpForLabel(label){
  const key=String(label).toLowerCase();
  return labelHelp[key] || (/^h(?:[9]|[12][0-9]|3[0-2])$/.test(key)
@@ -227,6 +227,7 @@ export function explainUnit(output,rendered){
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 const pretty=(n,p)=>Number(n.toFixed(p));
 export const asUnit=(value,display="number")=>{
+ if(display==="db")return (value>0?"+":"")+pretty(value,1)+" db";
  if(display==="percent")return Math.round(value*100)+"%";
  if(display==="seconds")return Math.round(value*1000)+" ms";
  if(display==="hz")return value>=1000?(value/1000).toFixed(1)+" kHz":Math.round(value)+" Hz";

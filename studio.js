@@ -1215,18 +1215,18 @@ function renderVocalWorkspace(){
     if(Object.keys(effects).length)
      entry.clip.effects={...(entry.clip.effects||{}),...effects};
     if(Object.hasOwn(changes,"transpose")){
-     const remaining=entry.recording.durationSeconds-entry.recording.trimSeconds-(entry.clip.trimStartSeconds??0);
+     const remaining=entry.recording.durationSeconds-entry.recording.trimSeconds-(entry.clip.trimStartSeconds??0)-(entry.clip.trimEndSeconds??0);
      entry.clip.lengthSteps=Math.max(1,Math.ceil(remaining/Math.pow(2,changes.transpose/12)*song.bpm*4/60));
     }
    });
   },
-  onTrim:(clipId,value)=>{
+  onTrim:(clipId,value,edge="start")=>{
    const entry=target(clipId);if(!entry)return;
    const remaining=entry.recording.durationSeconds-entry.recording.trimSeconds;
    if(!Number.isFinite(value)||value<0||value>=remaining-.01){
     message("Trim must leave some audible recording.",true);return;
    }
-   modifySong(()=>trimVocalClip(song,clipId,value));
+   modifySong(()=>trimVocalClip(song,clipId,value,edge));
   },
   onDuplicate:clipId=>{
    if(!target(clipId))return;
@@ -1235,7 +1235,7 @@ function renderVocalWorkspace(){
   },
   onUseInBeat:async clipId=>{
    const entry=target(clipId);if(!entry)return;
-   const {clip,recording}=entry,remaining=recording.durationSeconds-recording.trimSeconds-(clip.trimStartSeconds??0);
+   const {clip,recording}=entry,remaining=recording.durationSeconds-recording.trimSeconds-(clip.trimStartSeconds??0)-(clip.trimEndSeconds??0);
    if(remaining>4){message("Beat samples support up to four seconds. Trim this phrase first.",true);return;}
    if(beat.instruments.length>=12){message("Maximum 12 instruments.",true);return;}
    try{
@@ -1262,7 +1262,7 @@ function renderVocalWorkspace(){
     const fx=vocalEffects(clip);
     const patch={type:"sample",presetId:"custom",zones:[zone],
      followPitch:false,oneShot:true,transpose:fx.transpose,gain:clip.gain,
-     audioMode:"clip",delaySync:clip.effects?.delaySync,chain:fx.chain,attack:fx.attack,release:fx.release,pan:fx.pan,drive:fx.drive,
+     audioMode:"clip",eq:fx.eq,filterStages:fx.filterStages,delaySync:clip.effects?.delaySync,chain:fx.chain,attack:fx.attack,release:fx.release,pan:fx.pan,drive:fx.drive,
      delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,modulation:fx.modulation,automation:fx.automation,
      movement:fx.movement,bend:fx.bend};
     if(fx.filter)patch.filter=fx.filter;
@@ -1885,7 +1885,7 @@ async function chooseSound(preset) {
    if(context.kind==="vocal"){
     const selected=songUI?.getSelectedVocal();if(selected?.clip.id!==context.clipId)throw Error("Vocal selection changed");
     ok=modifySong(()=>{selected.clip.effects=structuredClone(source);
-     const remaining=selected.recording.durationSeconds-selected.recording.trimSeconds-(selected.clip.trimStartSeconds??0);
+     const remaining=selected.recording.durationSeconds-selected.recording.trimSeconds-(selected.clip.trimStartSeconds??0)-(selected.clip.trimEndSeconds??0);
      selected.clip.lengthSteps=Math.max(1,Math.ceil(remaining/2**((source.transpose??0)/12)*song.bpm*4/60));});
    }else if(context.kind==="freeform")ok=modifySong(()=>{
     const inst=song.tracks.find(t=>t.id===context.trackId)?.freeform?.instruments.find(i=>i.id===context.instrumentId);

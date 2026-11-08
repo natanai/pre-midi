@@ -20,7 +20,7 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
  const row=(id,index)=>{
   const item=document.createElement(id==='delay'?'div':'li'),label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';
   check.checked=!chain.bypass.includes(id)&&!(id==='filter'&&patch.filter==null);
-  const name=id==='drive'?'distortion':id==='delay'?'delay send':'filter';
+  const name=id==='eq'?'equalizer':id==='drive'?'distortion':id==='delay'?'delay send':'filter';
   check.setAttribute('aria-label','Enable '+name);check.title='bypass '+name+' without losing its settings';
   check.dataset.processingControl=id+'-toggle';
   check.addEventListener('change',()=>{
@@ -29,6 +29,10 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
    else commit(['chain'],next,check,id);
   });
   label.append(check,document.createTextNode(name));item.append(label);
+  if(id==='filter'){
+   const slope=document.createElement('select');slope.setAttribute('aria-label','filter slope');slope.dataset.processingControl='filter-slope';
+   for(const n of [1,2,4]){const option=document.createElement('option');option.value=String(n);option.textContent=String(n*12)+' db/oct';slope.append(option);}slope.value=String(patch.filterStages??1);slope.title='additional stages steepen the cutoff; resonance stays on the first stage';slope.addEventListener('change',()=>commit(['filterStages'],Number(slope.value),slope,id));item.append(slope);
+  }
   if(id!=='delay'){
    const field=document.createElement('label');field.textContent='mix';
    const input=document.createElement('input');input.type='range';input.min='0';input.max='1';input.step='.01';input.value=String(processorMix(patch,id));input.setAttribute('aria-label',name+' wet mix');input.title='blend processed sound with the original';input.dataset.processingControl=id+'-mix';
@@ -67,10 +71,10 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
   if(id==='delay')root.append(item);else list.append(item);
  };
  chain.order.forEach(row);
- const available=['filter','drive'].filter(id=>!chain.order.includes(id));
+ const available=['filter','eq','drive'].filter(id=>!chain.order.includes(id));
  if(available.length){
   const choice=document.createElement('select');choice.setAttribute('aria-label','Processor to add');choice.dataset.processingControl='add-toggle';
-  for(const id of available){const option=document.createElement('option');option.value=id;option.textContent=id==='drive'?'distortion':'filter';choice.append(option);}
+  for(const id of available){const option=document.createElement('option');option.value=id;option.textContent=id==='eq'?'equalizer':id==='drive'?'distortion':'filter';choice.append(option);}
   const add=document.createElement('button');add.type='button';add.textContent='+ add processor';add.title='restore a processor with its stored settings';add.dataset.processingControl='add-processor';
   add.addEventListener('click',()=>{
    const id=choice.value,next=withProcessorAdded(patch,id);

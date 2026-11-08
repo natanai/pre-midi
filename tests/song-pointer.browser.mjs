@@ -132,7 +132,7 @@ export async function runSongPointerChecks({origin,chrome}){
    // The drop preview gives the exact new bar; Escape removes it without editing.
    box=await rect(clip);lane=await rect(own);
    await mouse("mousePressed",box.x+30,box.cy);
-   await mouse("mouseMoved",box.x+30+54,lane.cy);
+   await mouse("mouseMoved",box.x+30+54,lane.cy);await pause(720);
    assert.match(await value("d.querySelector('.song-drop-hint').textContent"),/release to make freeform · bar 4/);
    assert.equal(await value("d.querySelector('.song-freeform-drop-preview').dataset.startStep"),"48");
    await key("Escape");await mouse("mouseReleased",box.x+30+54,lane.cy);
@@ -146,7 +146,7 @@ export async function runSongPointerChecks({origin,chrome}){
    assert.equal(source(await read()).clips[0].startStep,32,"Wrong-lane drop cancels cleanly");
    // Move + unpack is one transaction and agrees with its pre-release ghost.
    box=await rect(clip);lane=await rect(own);
-   await mouse("mousePressed",box.x+30,box.cy);await mouse("mouseMoved",box.x+30+108,lane.cy);
+   await mouse("mousePressed",box.x+30,box.cy);await mouse("mouseMoved",box.x+30+108,lane.cy);await pause(720);
    assert.equal(await value("d.querySelector('.song-freeform-drop-preview').dataset.startStep"),"64");
    assert.equal(source(await read()).clips[0].startStep,32);
    if(process.env.PREMIDI_POINTER_SCREENSHOTS==="1"){

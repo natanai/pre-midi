@@ -76,3 +76,14 @@ export function trackTimelinePointer(element,start,{onMove,onHold,onFinish,onEnd
  view.addEventListener("pagehide",cancel);
  return cancel;
 }
+
+// Only time spent deliberately pulling into the owning child lane counts.
+// Lateral motion, other Tracks and returning to the parent reset the gate.
+export function attachedLanePull({durationMs=650,minDistance=14}={}){
+ let began=null;
+ return {update({inOwnLane,dy},time){
+  if(!inOwnLane||dy<minDistance){began=null;return {progress:0,ready:false};}
+  began??=time;const progress=Math.max(0,Math.min(1,(time-began)/durationMs));
+  return {progress,ready:progress===1};
+ },reset(){began=null;}};
+}

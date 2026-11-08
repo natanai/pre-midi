@@ -1,3 +1,4 @@
+import {createEq,cascadeFilter,cutoffDestination} from './src/hosts/web/equalizer.js';
 import {connectProcessorMix,prepareProcessorMix} from './src/hosts/web/processor-mix.js';
 import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
 import {validateAutomationPlan,noteCutoffAutomation} from "./src/dsp/automation.js";
@@ -129,20 +130,24 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  }
  const filter=add(ctx.createBiquadFilter());
  filter.type=patch.filter.type;
- if(!processorBypassed(patch,"filter")){destinations.set("filter.cutoff",filter.detune);destinations.set("filter.resonance",filter.Q);}
+ const filterStage=cascadeFilter(ctx,filter,patch,owner),filterNodes=filterStage.filters;
+ if(!processorBypassed(patch,"filter")){destinations.set("filter.cutoff",cutoffDestination(ctx,filterNodes,start,plan.graphEnd,owner));destinations.set("filter.resonance",filter.Q);}
  const sweep=patch.filter.sweep??0;
+ for(const node of filterNodes){
  if(plan.automation){
-  const points=plan.automation.points;filter.frequency.value=points[0].value;filter.frequency.setValueAtTime(points[0].value,points[0].time);
-  for(const point of points.slice(1))filter.frequency.exponentialRampToValueAtTime(point.value,point.time);
-  if(sweep!==0){const source=ctx.createConstantSource(),base=points[0].value,initial=Math.max(50,Math.min(14000,base*2**sweep));source.offset.setValueAtTime(1200*Math.log2(initial/base),start);source.offset.linearRampToValueAtTime(0,plan.filter.sweepEnd);source.connect(filter.detune);source.start(start);source.stop(plan.graphEnd);sources.push(source);}
+  const points=plan.automation.points;node.frequency.value=points[0].value;node.frequency.setValueAtTime(points[0].value,points[0].time);
+  for(const point of points.slice(1))node.frequency.exponentialRampToValueAtTime(point.value,point.time);
+  if(sweep!==0){const source=ctx.createConstantSource(),base=points[0].value,initial=Math.max(50,Math.min(14000,base*2**sweep));source.offset.setValueAtTime(1200*Math.log2(initial/base),start);source.offset.linearRampToValueAtTime(0,plan.filter.sweepEnd);source.connect(node.detune);source.start(start);source.stop(plan.graphEnd);sources.push(source);}
  }else{
-  filter.frequency.setValueAtTime(plan.filter.startCutoff,start);
-  if(sweep!==0)filter.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,plan.filter.sweepEnd);
+  node.frequency.setValueAtTime(plan.filter.startCutoff,start);
+  if(sweep!==0)node.frequency.exponentialRampToValueAtTime(patch.filter.cutoff,plan.filter.sweepEnd);
+ }
  }
  filter.Q.setValueAtTime(patch.filter.resonance,start);
- const stages=new Map();if(!processorBypassed(patch,"filter"))stages.set("filter",{input:filter,output:filter});
- if(motion.tone>0&&!processorBypassed(patch,"filter"))scheduleMovementLfo(ctx,filter.frequency,start,duration,
+ const stages=new Map();if(!processorBypassed(patch,"filter"))stages.set("filter",filterStage);
+ if(motion.tone>0&&!processorBypassed(patch,"filter"))for(const node of filterNodes)scheduleMovementLfo(ctx,node.frequency,start,duration,
   motion.toneRate,patch.filter.cutoff*motion.tone*.8,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
+ const eqStage=!processorBypassed(patch,"eq")&&createEq(ctx,patch.eq,owner);if(eqStage)stages.set("eq",eqStage);
  let signal=mix;
  if(patch.effects.drive>0&&!processorBypassed(patch,"drive")){
   const shaper=add(ctx.createWaveShaper());

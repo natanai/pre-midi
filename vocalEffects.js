@@ -1,3 +1,4 @@
+import {validateEq,validateFilterStages} from './src/dsp/equalizer.js';
 import {validateProcessingChain,validateDelaySync,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
 import {validParameterValue,parameterDefaults} from "./src/dsp/parameters.js";
 import {planPitch} from "./src/dsp/expression.js";
@@ -24,8 +25,8 @@ export function validateVocalEffects(fx){
  errors.push(...validateMovement(fx.movement),...validateBend(fx.bend));
  const tone=validateSampleTone({...fx,filter:fx.filter??undefined});if(tone)errors.push(tone);
  errors.push(...validateRecordedModulation(fx.modulation,{vocal:true}),...validateRecordingAutomation(fx.automation));
- errors.push(...validateProcessingChain(fx.chain),...validateDelaySync(fx.delaySync));
- const allowed=new Set(["delaySync","chain","automation","modulation","pan","transpose","attack","release","drive","delayMix","delayTime","delayFeedback","filter","movement","bend"]);
+ errors.push(...validateEq(fx.eq),...validateFilterStages(fx.filterStages),...validateProcessingChain(fx.chain),...validateDelaySync(fx.delaySync));
+ const allowed=new Set(["eq","filterStages","delaySync","chain","automation","modulation","pan","transpose","attack","release","drive","delayMix","delayTime","delayFeedback","filter","movement","bend"]);
  for(const key of Object.keys(fx))if(!allowed.has(key))errors.push("Unknown vocal effect "+key+".");
  return errors;
 }
@@ -33,7 +34,7 @@ export function vocalSourceRange(recording,clip,unit,elapsedSteps=0,{sampleRate=
  const fx=vocalEffects(clip,unit),rate=Math.pow(2,fx.transpose/12);
  const elapsed=Math.max(0,elapsedSteps)*unit;
  const sourceOffset=recording.trimSeconds+(clip.trimStartSeconds??0);
- const sourceEnd=Math.min(recording.durationSeconds,sourceDuration);
+ const sourceEnd=Math.min(recording.durationSeconds-(clip.trimEndSeconds??0),sourceDuration);
  const totalDuration=Math.max(0,Math.min((sourceEnd-sourceOffset)/rate,clip.lengthSteps*unit));
  const pitch=planPitch({bend:fx.bend},fx.movement,0,totalDuration,0,{elapsed,totalDuration});
  const offset=sourceOffset+recordedSourceTravel(pitch,rate,elapsed,{sampleRate,controlStart});

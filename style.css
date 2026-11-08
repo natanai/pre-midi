@@ -1744,3 +1744,5 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 
 .heading .vocal-icon-button::before,.heading .vocal-icon-button::after{content:none}
 .vocal-icon-button[hidden]{display:none}
+
+.audio-waveform-plot:has(.audio-trim-handle:focus-visible){outline:1px dotted var(--bright);outline-offset:2px}

@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <array>
 #include <cmath>
 namespace premidi {
 // Web Audio legacy resonance: dB for low/highpass, linear Q for bandpass/notch.
@@ -26,4 +27,12 @@ public:
   return static_cast<float>(output);
  }
 };
+class ToneFilter {
+ std::array<Biquad,4> filters{};unsigned count=1;
+public:
+ void setStages(unsigned stages)noexcept{count=stages;}
+ void configure(unsigned type,double cutoff,double q,double rate)noexcept{for(unsigned i=0;i<count;i++)filters[i].configure(type,cutoff,i?type<2?-3.01029995664:0.7071067811865476:q,rate);}
+ float process(float input)noexcept{for(unsigned i=0;i<count;i++)input=filters[i].process(input);return input;}
+};
+
 }
