@@ -19,3 +19,26 @@ No third-party sample or licensed recording was used in their creation.
 These are shared-source audio files; native song files that use the current
 sample-asset format still require their own companion bytes at import time
 unless a future version adds explicit factory-asset resolution.
+
+## Lo-fi keys and drums (original)
+
+The following fourteen WAV sources were synthesized specifically for the studio. Each is a distinct deterministic waveform; no audio file or sample region is reused for multiple new sounds. These are original synthesized timbres, not recordings of acoustic instruments or commercial music. Regenerate them using `node scripts/generate-lofi-samples.mjs`.
+
+| id | sonic source | reference MIDI note | Git blob SHA-1 |
+| --- | --- | ---: | --- |
+| felt-upright-c4 | a soft, damped acoustic-key model | 60 | 92238b146fabd94e5d3b9af883360ecb26e25627 |
+| worn-reed-c4 | asymmetric electric-reed harmonics | 60 | 0ce642f2afb325a4edbf556223ef22ba04daff66 |
+| thumb-tines-c4 | short falling-pitch metal-tine pluck | 60 | 6da84a1fffa0c3fd68aa4580cc3acbf6af532b62 |
+| tape-celesta-c5 | fluttering inharmonic struck bell | 72 | 677441ef1ed6a9ffe655ffba461fb3976cc4901a |
+| dusty-vibes-c4 | long struck bar with slow tremolo | 60 | 7fa11f185224e60843ebcd75d13a34dafc442970 |
+| tape-kick-01 | saturated soft low kick | 60 | f0ff86feaf8f1c4dc19fd852defaaafc278124ed |
+| cardboard-snare-01 | boxy body and low-passed snap | 60 | 5f857aa6935bde759ea0ec4c3693f78c394b8210 |
+| brushed-snare-01 | soft brushed noise with low resonance | 60 | eac77284f78fed6a437161709608ab1e056bb165 |
+| soft-hat-01 | short restrained metallic tick | 60 | 3cacb3e0715945d50c185f6327e5f6edc5151bcb |
+| washed-hat-01 | long subdued open cymbal wash | 60 | ec565f5628258196446895bdd97a5a7cde1c2bcd |
+| vinyl-rim-01 | sharp stick click with ringing overtones | 60 | c30ebde571f8df4cdb10178e5e619ddc9d998c12 |
+| dusty-clap-01 | three closely spaced hand-clap bursts | 60 | fff90a9b91cc5e95cd79f4964adde1695c113c1e |
+| loose-shaker-01 | irregular grainy shaker pulses | 60 | d64a9b2b5f33f20b2809ae8ea8ea5778cecba7ab |
+| wood-tom-01 | falling wooden tom-like resonance | 60 | 47e4991ba787481f0224111ca86529fcea3bc97d |
+
+Like the original five sources, these are 22,050 Hz, 16-bit mono PCM WAV files. Every asset stays under the application's 1 MB per-sample import limit.
