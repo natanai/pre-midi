@@ -15,3 +15,9 @@ The curated guitar range is approximately E2–B5. This is a sampled-instrument 
 **Factory drum racks:** The Drums category contains three editable starting kits beneath individual hits: Warm Room Kit (intimate acoustic indie rock), Night Drive Kit (machine pulse plus acoustic accents), and Distant Static Kit (restrained acoustic/electronic layering). These are original combinations inspired by broad production approaches, not recordings or samples from commercial songs. Every individual recorded sample listed under Drums is used in at least one preset rack; synth hits are reusable alongside them. Rack selections reuse the same pinned assets, not duplicate embedded audio.
 
 **Packaging:** the web Pages build stages exact checked audio into its published `samples/` directory. When a project uses sampled audio, its portable ZIP contains a `.premidi` JSON manifest plus referenced audio in `assets/`. The manifest does not embed Base64 or raw audio. Imported user recordings are the author's responsibility to license for redistribution. The [third-party notices](../THIRD_PARTY_NOTICES.md) remain part of the deployment.
+
+## Original lo-fi sources
+
+Fourteen independently generated sound sources were added for the Keys and Drums categories. Each public sound points to its own PCM WAV asset; no new sound reuses another sound's recording. Source generation is reproducible with `node scripts/generate-lofi-samples.mjs` and the bytes are committed under [factory-samples](../factory-samples/README.md). The audio is original synthesized material, not a recording of a commercial song or acoustic performance.
+
+The same pinned, Git-blob-SHA-verified asset pipeline used by the other factory sources stages these WAVs for both Pages and desktop. New drum hits are standalone sound choices rather than repackaged rack entries.

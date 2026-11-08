@@ -10,7 +10,7 @@ const ids=presets=>new Set(presets.map(p=>p.id));
 test("factory catalog is a single unique list of real sound foundations and complete racks",()=>{
  const catalog=FACTORY_SOUND_CATALOG;
  assert.equal(ids(catalog).size,catalog.length,"Duplicate factory catalog ID");
- assert.equal(catalog.length,65,"Unexpected extra factory starting points; audit them before publishing");
+ assert.equal(catalog.length,79,"Unexpected extra factory starting points; audit them before publishing");
  assert.equal(catalog.filter(p=>p.sounds).length,5);
  assert.equal(catalog.filter(p=>p.id.startsWith("example-")&&!p.sounds).length,0,
   "A song-specific variation is not another factory sound");
@@ -81,4 +81,34 @@ test("sampled factory sounds keep playable distinct recordings; synth recipes ar
   assert.ok(!sig.has(fingerprint),"Identical synth patch sold twice: "+p.id);
   sig.add(fingerprint);
  }
+});
+
+
+test("lo-fi factory entries each have their own uniquely pinned sample",()=>{
+ const names=["felt-upright","worn-reed-keys","thumb-tines","tape-celesta","dusty-vibraphone","tape-kick","cardboard-snare","brush-snare","soft-hat","washed-open-hat","vinyl-rim","dusty-clap","loose-shaker","wood-tom"];
+ const presetIds=new Set(names);
+ assert.equal(presetIds.size,14);
+ const assets=new Set(),hashes=new Set();
+ for(const id of names){
+  const preset=samplePreset(id);
+  assert.ok(preset,"Missing lo-fi sound "+id);
+  assert.ok(ids(FACTORY_SOUND_CATALOG).has(id),"Not publicly browsable: "+id);
+  assert.equal(preset.assets.length,1,"Every lo-fi sound needs its own source");
+  const assetId=preset.assets[0];
+  assert.ok(!assets.has(assetId),"Lo-fi samples may not be shared across sounds: "+assetId);
+  assets.add(assetId);
+  const asset=SAMPLE_ASSETS.find(item=>item.id===assetId);
+  assert.ok(asset,"Missing lo-fi audio asset "+assetId);
+  assert.equal(asset.repo,"natanai/pre-midi");
+  assert.equal(asset.mime,"audio/wav");
+  assert.match(asset.path,/^factory-samples\/[a-z0-9-]+\.wav$/);
+  assert.match(asset.sha,/^[0-9a-f]{40}$/);
+  assert.ok(!hashes.has(asset.sha),"Duplicate lo-fi waveform: "+assetId);
+  hashes.add(asset.sha);
+  assert.equal(preset.followPitch,preset.category==="Keys");
+ }
+ // Existing library sources, including the shared guitar recordings, must not
+ // silently become alternate versions of any newly commissioned waveform.
+ for(const asset of SAMPLE_ASSETS.filter(asset=>!assets.has(asset.id)))
+  assert.ok(!hashes.has(asset.sha),"New source reuses an existing waveform: "+asset.id);
 });
