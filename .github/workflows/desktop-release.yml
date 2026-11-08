@@ -2,6 +2,8 @@ name: Windows portable release
 on:
   push:
     tags: ['v*']
+    branches: [main]
+    paths: ['package.json']
   workflow_dispatch:
     inputs:
       publish_preview:
@@ -46,7 +48,8 @@ jobs:
             const tagged = context.ref.startsWith('refs/tags/');
             if (tagged && context.ref !== 'refs/tags/' + tag) throw Error('Tag/package version mismatch');
             const inputs = context.payload.inputs || {};
-            const requested = tagged || inputs.publish_preview === 'true' || inputs.publish_stable === 'true';
+            const versionPreview = context.eventName === 'push' && !tagged && preview;
+            const requested = tagged || versionPreview || inputs.publish_preview === 'true' || inputs.publish_stable === 'true';
             if (requested && !preview && inputs.publish_stable !== 'true') {
               throw Error('Stable publication requires an explicit qualified workflow_dispatch publish_stable=true');
             }

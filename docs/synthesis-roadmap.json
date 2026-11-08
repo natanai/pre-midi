@@ -3225,6 +3225,11 @@
           "commit": "5993922133f146c550b46f4e55c49efe1f74afb1",
           "status": "success",
           "url": "https://github.com/natanai/pre-midi/actions/runs/42425325275"
+        },
+        "windows_package": {
+          "version": "0.14.1-preview.21",
+          "status": "build_requested",
+          "scope": "Windows x64 portable ZIP including current vocal parity; no optional full audio qualification requested"
         }
       },
       "remaining_qualification": [
