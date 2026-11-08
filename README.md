@@ -73,3 +73,7 @@ Brittle copy/layout/roadmap audits and the generated phone action inventory were
 - [Canonical phone interface architecture and parity gates](docs/phone-studio.md).
 
 The design remains Beat-first, uncluttered and lowercase in the UI. Preserve external audio assets and existing file compatibility in every format change.
+
+### Project-original audio sources
+
+Five original sample WAVs are committed under [factory-samples](factory-samples/README.md) and included in the normal sound catalog and staging pipeline. These do not contain any part of the Blindside recording. Their canonical Git blob IDs and source paths are listed in the factory-samples README. The existing ZIP importer still requires companion audio bytes when an authored Song references a sample; synthesis-only .premidi Songs do not have that dependency.

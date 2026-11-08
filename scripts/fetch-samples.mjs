@@ -19,16 +19,16 @@ async function fetchSample(asset){
   let response;
   try{response=await fetch(url);}
   catch(error){
-   if(attempt===4)throw Error("Cannot fetch CC0 "+asset.id+": "+error.message);
+   if(attempt===4)throw Error("Cannot fetch sample "+asset.id+": "+error.message);
    await pause(500*2**attempt);
    continue;
   }
   if(response.ok)return Buffer.from(await response.arrayBuffer());
   if(attempt===4||![408,429,500,502,503,504].includes(response.status))
-   throw Error("Cannot fetch CC0 "+asset.id+": HTTP "+response.status);
+   throw Error("Cannot fetch sample "+asset.id+": HTTP "+response.status);
   await pause(500*2**attempt);
  }
- throw Error("Cannot fetch CC0 "+asset.id);
+ throw Error("Cannot fetch sample "+asset.id);
 }
 await Promise.all(Array.from({length:4},async()=>{
  while(remaining.length){

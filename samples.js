@@ -8,10 +8,12 @@ import { movementDefaults } from "./expression.js";
 const META="facebookincubator/Meta-open-sound";
 const STARGATE="stargatedaw/stargate-sample-pack";
 const VCSL="sgossner/VCSL";
+const PREMIDI="natanai/pre-midi";
 export const SAMPLE_REPOS={
  [META]:"251c0be57d5d1b3242b91f53e0cde62ab1cb42d9",
  [STARGATE]:"dbfd6ec52d4ed53b60bdbea5fc6adf295127c027",
- [VCSL]:"c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e"
+ [VCSL]:"c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+ [PREMIDI]:"863443002e0b4dae24caac6e580e93ebf8a72f2a"
 };
 const m=(id,repo,path,sha,root,mime="audio/wav",metadata={})=>({
  id,repo,path,sha,root,mime,license:"CC0-1.0",
@@ -47,10 +49,22 @@ export const SAMPLE_ASSETS=[
  m("soft-clap",STARGATE,"stargate-sample-pack/freesound/drums/clap/493707__bastianpusch__handclap01.wav","2c75267c5195dafc3c8d04d24f9fde57c33c5730",60),
  m("recorder",VCSL,"Aerophones/Edge-blown Aerophones/Baroque Alto Recorder/Staccato/AltRecorder_Stac_C4_rr1_Main.wav","db96e84032789b062e96c08a7e616885beacce72",60),
  m("whistle",VCSL,"Aerophones/Edge-blown Aerophones/Ball Whistle/Main_BallWhistle_Short-001.wav","5d6f10fa67189231eef2a4fb72f97e19983e056b",60),
+ // Deterministic original WAV sources committed directly to pre-midi; no third-party recording.
+ m("picked-wire-a3",PREMIDI,"factory-samples/picked-wire-a3.wav","c5e634057fc4ba08c0318663c6702ae7e791c6b5",57,"audio/wav",{license:"Project original",licenseUrl:"https://github.com/natanai/pre-midi/blob/863443002e0b4dae24caac6e580e93ebf8a72f2a/factory-samples/README.md"}),
+ m("muted-amp-a2",PREMIDI,"factory-samples/muted-amp-a2.wav","58fe03e1123537e11a0a8dc31725647216653fd8",45,"audio/wav",{license:"Project original",licenseUrl:"https://github.com/natanai/pre-midi/blob/863443002e0b4dae24caac6e580e93ebf8a72f2a/factory-samples/README.md"}),
+ m("room-kick-01",PREMIDI,"factory-samples/room-kick-01.wav","35c5f044d97d4c3e2365aa4f8e1830585af0abc8",60,"audio/wav",{license:"Project original",licenseUrl:"https://github.com/natanai/pre-midi/blob/863443002e0b4dae24caac6e580e93ebf8a72f2a/factory-samples/README.md"}),
+ m("room-snare-01",PREMIDI,"factory-samples/room-snare-01.wav","5982edb42443b7728f3bef807428cd22f38c574f",60,"audio/wav",{license:"Project original",licenseUrl:"https://github.com/natanai/pre-midi/blob/863443002e0b4dae24caac6e580e93ebf8a72f2a/factory-samples/README.md"}),
+ m("sharp-hat-01",PREMIDI,"factory-samples/sharp-hat-01.wav","5a57f4dfcf35030ae0cb3e31f717433bc84a9913",60,"audio/wav",{license:"Project original",licenseUrl:"https://github.com/natanai/pre-midi/blob/863443002e0b4dae24caac6e580e93ebf8a72f2a/factory-samples/README.md"}),
  ...GUITAR_RECORDINGS.map(item=>m(item.id,META,item.path,item.sha,item.root,"audio/ogg",
   {velocity:item.velocity,string:item.string}))
 ];
 const sampleLibrary=[
+ // Original shared factory sources. These live in the repository, not in a demo project ZIP.
+ {id:"picked-wire",name:"Picked Wire",category:"Guitars",description:"Short bright plucked-string recording with a picked transient.",assets:["picked-wire-a3"],followPitch:true,gain:.82,attack:.003,release:.14},
+ {id:"muted-amp",name:"Muted Amp String",category:"Guitars",description:"Tightly damped amplified string transient with harmonic grit.",assets:["muted-amp-a2"],followPitch:true,gain:.8,attack:.003,release:.1},
+ {id:"short-room-kick",name:"Short Room Kick",category:"Drums",description:"Rounded low impact with a fast downward pitch sweep.",assets:["room-kick-01"],followPitch:false},
+ {id:"dry-noise-snare",name:"Dry Noise Snare",category:"Drums",description:"Short synthetic noise and low-tone snare.",assets:["room-snare-01"],followPitch:false},
+ {id:"sharp-noise-hat",name:"Sharp Noise Hat",category:"Drums",description:"Short high-frequency synthetic hat.",assets:["sharp-hat-01"],followPitch:false},
  {id:"real-piano",name:"Recorded Piano",category:"Keys",description:"Acoustic piano recordings to shape into a bright, soft or dark keyboard sound.",assets:["piano-c3","piano-c4"],followPitch:true},
  // Variations reuse the same two verified CC0 piano recordings; no new assets
  // are embedded in .premidi files or duplicated in portable releases.
