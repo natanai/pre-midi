@@ -1,3 +1,4 @@
+import {connectProcessingGraph} from './src/hosts/web/processing-graph.js';
 import {connectStereoImage,createStereoDelay} from './src/hosts/web/stereo.js';
 import {createEq,cascadeFilter,cutoffDestination} from './src/hosts/web/equalizer.js';
 import {connectProcessorMix} from './src/hosts/web/processor-mix.js';
@@ -64,7 +65,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
   shaper.connect(comp);stages.set("drive",{input:shaper,output:comp});
  }
  const eqStage=!processorBypassed(patch,"eq")&&createEq(context,patch.eq,owner);if(eqStage)stages.set("eq",eqStage);
- for(const id of processingChain(patch).order){const stage=stages.get(id);if(stage)signal=connectProcessorMix(context,signal,stage,patch,id,owner);}
+ signal=connectProcessingGraph(context,signal,patch,stages,owner);
  signal.connect(amp);
  const pulse=add(context.createGain());pulse.gain.setValueAtTime(1,start);
  scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});

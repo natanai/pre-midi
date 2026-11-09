@@ -22,6 +22,26 @@ inline void readRoutes(PacketReader& in,Plan& p){
   require(r.target<8&&r.kind<11&&r.bipolar<=1&&std::abs(r.depth)<=limit&&r.smoothing>=0&&r.smoothing<=.1&&r.rate>=.01&&r.rate<=20&&r.root>=0&&r.root<=127&&((r.kind!=7&&r.kind!=8)||(r.root>=1&&r.root==std::floor(r.root)))&&(r.kind!=10||r.root<=1)&&r.span>=1&&r.span<=127&&(r.kind==9?std::all_of(r.envelope.begin(),r.envelope.end(),[](double v){return v>=-1&&v<=1;}):r.envelope[0]>=0&&r.envelope[0]<=3&&r.envelope[1]>=0&&r.envelope[1]<=3&&r.envelope[2]>=0&&r.envelope[2]<=1&&r.envelope[3]>=.01&&r.envelope[3]<=4),"Invalid native modulation route");
  }
 }
+inline void readProcessingGraph(PacketReader& in,Plan& p){
+ auto& g=p.processing;g.count=in.u32();require(g.count<=graphNodeLimit,"Too many native processor instances");if(!g.count)return;
+ unsigned primary=0;
+ for(unsigned i=0;i<g.count;i++){
+  auto& n=g.nodes[i];n.kind=in.u32();const auto main=in.u32(),bypass=in.u32();n.primary=main!=0;n.bypass=bypass!=0;n.mix=in.f64();
+  n.type=in.u32();n.cutoff=in.f64();n.resonance=in.f64();n.stages=in.u32();n.amount=in.f64();
+  require(n.kind<=2&&main<=1&&bypass<=1&&(!main||n.kind==0)&&n.mix>=0&&n.mix<=1&&n.type<4&&n.cutoff>=50&&n.cutoff<=14000&&n.resonance>=.1&&n.resonance<=16&&(n.stages==1||n.stages==2||n.stages==4)&&n.amount>=0&&n.amount<=1,"Invalid native processor instance");primary+=main;
+  for(auto& band:n.bands){for(auto& v:band.c){v=in.f64();require(std::abs(v)<1000,"Invalid instance EQ coefficient");}const auto& c=band.c;require(std::abs(c[4])<1&&1+c[3]+c[4]>0&&1-c[3]+c[4]>0,"Unstable instance EQ poles");}
+ }
+ require(primary<=1,"Duplicate primary native filter");
+ unsigned used=0;
+ const auto readOrder=[&](GraphRoute& route){
+  route.count=in.u32();require(route.count<=g.count,"Invalid native processing route");
+  for(unsigned i=0;i<route.count;i++){const auto index=in.u32();require(index<g.count&&!(used&(1u<<index)),"Processor must have one native route");used|=1u<<index;route.order[i]=index;}
+ };
+ readOrder(g.serial);g.routeCount=in.u32();g.dry=in.f64();require(g.routeCount<=graphRouteLimit&&g.dry>=0&&g.dry<=1,"Invalid native parallel routing");
+ double shares=g.dry;for(unsigned i=0;i<g.routeCount;i++){auto& route=g.routes[i];route.gain=in.f64();require(route.gain>=0&&route.gain<=1,"Invalid native route share");shares+=route.gain;readOrder(route);}
+ require(used==((1u<<g.count)-1)&&(!g.routeCount||shares<=1+1e-9),"Invalid native graph ownership or headroom");
+}
+
 inline void readProcessing(PacketReader& in,Plan& p){
  const auto flags=in.u32();require(flags<=63,"Invalid processing order/bypass flags");
  p.filterMix=in.f64();p.driveMix=in.f64();require(p.filterMix>=0&&p.filterMix<=1&&p.driveMix>=0&&p.driveMix<=1,"Invalid processor mix");
@@ -30,11 +50,12 @@ inline void readProcessing(PacketReader& in,Plan& p){
  p.stereoWidth=in.f64();p.msBalance=in.f64();p.delayTone=in.f64();const auto ping=in.u32();require(p.stereoWidth>=0&&p.stereoWidth<=2&&std::abs(p.msBalance)<=1&&p.delayTone>=20&&p.delayTone<=20000&&ping<=1,"Invalid stereo/delay configuration");p.delayPingPong=ping!=0;
  p.eqPosition=(flags>>3)&3;p.bypassEq=(flags&32)!=0;
  p.driveFirst=(flags&1)!=0;p.bypassFilter=p.bypassFilter||(flags&2)!=0;p.bypassDrive=(flags&4)!=0;
+ readProcessingGraph(in,p);
 }
 inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
  PacketReader in(data,size);const auto magic=in.u32();
  if(magic==0x38564d50){
-  require(in.u32()==rate&&in.u32()==1,"Invalid native sample execution header");const auto version=in.u32();require(version==17,"Unknown native sample execution version");Plan p;p.version=version;p.kind=in.u32();p.asset=in.u32();
+  require(in.u32()==rate&&in.u32()==1,"Invalid native sample execution header");const auto version=in.u32();require(version==18,"Unknown native sample execution version");Plan p;p.version=version;p.kind=in.u32();p.asset=in.u32();
   p.start=in.f64();p.duration=in.f64();p.sourceEnd=in.f64();p.graphEnd=in.f64();p.off=in.f64();p.pan=in.f64();p.playbackRate=in.f64();p.sampleOffset=in.f64();p.sampleLimit=in.f64();p.cutoff=in.f64();p.q=in.f64();p.drive=in.f64();p.vibratoRate=in.f64();p.vibratoDepth=in.f64();p.vibratoDelay=in.f64();p.tremolo=in.f64();p.tremoloRate=in.f64();p.delayMix=in.f64();p.delayTime=in.f64();p.delayFeedback=in.f64();require(p.delayMix>=0&&p.delayMix<=1&&p.delayTime>=.04999999&&p.delayTime<=2&&p.delayFeedback>=0&&p.delayFeedback<=.80000002,"Invalid native sample delay");p.tone=in.f64();p.toneRate=in.f64();p.sweepStart=in.f64();p.sweepEnd=in.f64();require(p.sweepStart>=50&&p.sweepStart<=14000&&p.sweepEnd>p.start&&p.sweepEnd<=p.graphEnd,"Invalid recording filter sweep");require(p.tone>=0&&p.tone<=1&&p.toneRate>=.1&&p.toneRate<=20,"Invalid sample tone motion");p.filterType=in.u32();const auto bypass=in.u32();p.bypassFilter=bypass!=0;
   require((p.kind==1||p.kind==2)&&p.asset>0&&p.start>=0&&p.start<=601&&p.duration>0&&p.duration<=601&&p.sourceEnd>p.start&&p.graphEnd>=p.sourceEnd&&p.graphEnd-p.start<=602&&p.off>=p.start&&p.off<=p.sourceEnd&&std::abs(p.pan)<=1&&p.playbackRate>0&&p.playbackRate<=65536&&p.sampleOffset>=0&&p.sampleOffset<p.sampleLimit&&p.sampleLimit<=301&&p.cutoff>=50&&p.cutoff<=14000&&p.q>=.1&&p.q<=16&&p.drive>=0&&p.drive<=1&&p.filterType<4&&bypass<=1&&p.vibratoRate>=.1&&p.vibratoRate<=20&&p.vibratoDepth>=0&&p.vibratoDepth<=100&&p.vibratoDelay>=0&&p.vibratoDelay<=3&&p.tremolo>=0&&p.tremolo<=1&&p.tremoloRate>=.1&&p.tremoloRate<=20,"Invalid native sample voice bounds");
   auto& osc=p.oscillators[0];osc.count=in.u32();require(osc.count<=600,"Native sample pitch curve exceeds 600 points");for(unsigned i=0;i<osc.count;i++){osc.curve[i]=in.f64();require(std::abs(osc.curve[i])<=2500,"Invalid native sample pitch curve");}

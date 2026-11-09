@@ -1,3 +1,4 @@
+import {processorKind} from '../../dsp/processing-graph.js';
 import {processorMix} from '../../dsp/processing-chain.js';
 import {configureDriveShaper} from '../../../audioEffects.js';
 const latencies=new Map();
@@ -21,7 +22,7 @@ export function connectProcessorMix(context,signal,stage,patch,id,owner){
  const add=node=>{owner.nodes.push(node);return node;};
  const dry=add(context.createGain()),wet=add(context.createGain()),sum=add(context.createGain());
  dry.gain.value=1-mix;wet.gain.value=mix;
- if(id==='drive'){
+ if(processorKind(patch,id)==='drive'){
   if(!Number.isInteger(context.processorMixLatency))throw Error('Prepare processor latency before mixing distortion');
   const delay=add(context.createDelay(1));delay.delayTime.value=context.processorMixLatency/context.sampleRate;
   signal.connect(delay);delay.connect(dry);

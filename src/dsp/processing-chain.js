@@ -1,32 +1,34 @@
+import {validateGraphExtensions,allProcessorIds,processorOrders} from './processing-graph.js';
 // Stable IDs identify the existing processors. Serial tone stages precede
 // articulation/pan; delay remains an explicitly owned send, never a reorderable
 // feedback edge. This bounded model is shared by every source and host.
 export const DEFAULT_PROCESSING_CHAIN=Object.freeze({version:1,order:Object.freeze(['filter','drive']),bypass:Object.freeze([])});
 export function validateProcessingChain(chain){
  if(chain===undefined)return [];
- if(!chain||typeof chain!=='object'||Array.isArray(chain)||Object.keys(chain).some(k=>!['version','order','bypass','mix'].includes(k))||chain.version!==1||
-  !Array.isArray(chain.order)||chain.order.length>3||new Set(chain.order).size!==chain.order.length||chain.order.some(id=>!['filter','eq','drive'].includes(id))||
-  !Array.isArray(chain.bypass)||new Set(chain.bypass).size!==chain.bypass.length||chain.bypass.some(id=>!['filter','eq','drive','delay'].includes(id)))return ['Invalid processing chain.'];
- if(chain.mix!==undefined&&(!chain.mix||typeof chain.mix!=='object'||Array.isArray(chain.mix)||Object.entries(chain.mix).some(([id,value])=>!['filter','eq','drive'].includes(id)||!Number.isFinite(value)||value<0||value>1)))return ['Invalid processor mix.'];
- return [];
+ if(!chain||typeof chain!=='object'||Array.isArray(chain)||Object.keys(chain).some(k=>!['version','order','bypass','mix','instances','parallel','dry'].includes(k))||chain.version!==1||
+  !Array.isArray(chain.order)||chain.order.length>8||new Set(chain.order).size!==chain.order.length||chain.order.some(id=>typeof id!=='string')||
+  !Array.isArray(chain.bypass)||new Set(chain.bypass).size!==chain.bypass.length||chain.bypass.some(id=>typeof id!=='string'))return ['Invalid processing chain.'];
+ return validateGraphExtensions(chain);
 }
 export const processingChain=patch=>patch.chain??DEFAULT_PROCESSING_CHAIN;
-export const processorBypassed=(patch,id)=>processingChain(patch).bypass.includes(id)||(['filter','eq','drive'].includes(id)&&!processingChain(patch).order.includes(id));
+export const processorBypassed=(patch,id)=>processingChain(patch).bypass.includes(id)||(id!=='delay'&&!processorOrders(processingChain(patch)).some(order=>order.includes(id)));
 export function withProcessorRemoved(patch,id){
- if(!['filter','eq','drive'].includes(id))throw Error('Only serial processors can be removed');
+ if(!allProcessorIds(processingChain(patch)).includes(id))throw Error('Unknown processor');
  const chain=processingChain(patch);
- return {...chain,order:chain.order.filter(key=>key!==id),bypass:[...chain.bypass]};
+ const next={...chain,order:chain.order.filter(key=>key!==id),bypass:[...chain.bypass]};
+ if(chain.parallel)next.parallel=chain.parallel.map(r=>({...r,order:r.order.filter(key=>key!==id)}));
+ if(!['filter','eq','drive'].includes(id)){next.bypass=next.bypass.filter(key=>key!==id);next.instances=chain.instances.filter(p=>p.id!==id);if(next.mix){next.mix={...next.mix};delete next.mix[id];}}return next;
 }
 export function withProcessorAdded(patch,id){
- if(!['filter','eq','drive'].includes(id))throw Error('Unknown serial processor');
+ if(!allProcessorIds(processingChain(patch)).includes(id))throw Error('Unknown processor');
  const chain=processingChain(patch);
- return {...chain,order:chain.order.includes(id)?[...chain.order]:[...chain.order,id],bypass:[...chain.bypass]};
+ return {...chain,order:processorOrders(chain).some(order=>order.includes(id))?[...chain.order]:[...chain.order,id],bypass:[...chain.bypass]};
 }
 export function withProcessorBypass(patch,id,bypassed){
- if(!['filter','eq','drive','delay'].includes(id))throw Error('Unknown processor');
+ if(![...allProcessorIds(processingChain(patch)),'delay'].includes(id))throw Error('Unknown processor');
  const chain=processingChain(patch),bypass=chain.bypass.filter(key=>key!==id);
  if(bypassed)bypass.push(id);
- const order=[...chain.order];if(!bypassed&&id!=='delay'&&!order.includes(id))order.push(id);
+ const order=[...chain.order];if(!bypassed&&id!=='delay'&&!processorOrders(chain).some(order=>order.includes(id)))order.push(id);
  return {...chain,order,bypass};
 }
 export const processingFlags=patch=>(processingChain(patch).order.filter(id=>id!=='eq')[0]==='drive'?1:0)|(processorBypassed(patch,'filter')?2:0)|(processorBypassed(patch,'drive')?4:0)|(processingChain(patch).order.includes('eq')?(processingChain(patch).order.indexOf('eq')===0?8:processingChain(patch).order.at(-1)==='eq'?24:16):0)|(processingChain(patch).bypass.includes('eq')?32:0);

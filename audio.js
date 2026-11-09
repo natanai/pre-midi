@@ -1,3 +1,4 @@
+import {connectProcessingGraph} from './src/hosts/web/processing-graph.js';
 import {connectStereoImage,createStereoDelay} from './src/hosts/web/stereo.js';
 import {createEq,cascadeFilter,cutoffDestination} from './src/hosts/web/equalizer.js';
 import {connectProcessorMix,prepareProcessorMix} from './src/hosts/web/processor-mix.js';
@@ -157,7 +158,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
   compensation.gain.value=1/(1+patch.effects.drive*1.1);
   shaper.connect(compensation);stages.set("drive",{input:shaper,output:compensation});
  }
- for(const id of processingChain(patch).order){const stage=stages.get(id);if(stage)signal=connectProcessorMix(ctx,signal,stage,patch,id,owner);}
+ signal=connectProcessingGraph(ctx,signal,patch,stages,owner);
  const amp=add(ctx.createGain());
  applyAmplitudePlan(amp.gain,plan.amplitude);
  signal.connect(amp);

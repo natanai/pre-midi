@@ -88,7 +88,9 @@ int main(int argc,char** argv){
   for(std::size_t i=0;i<2;i++)if(plan.oscillators[i].wave||plan.version>=2){ownedBanks[i]=std::make_unique<premidi::WaveBank>(plan.oscillators[i].wave,plan.oscillators[i].harmonics,rate);banks[i]=ownedBanks[i].get();}
   std::optional<premidi::DriveRecipe> drive;if(plan.drive>0)drive.emplace(plan.drive);
   std::unique_ptr<premidi::SineLfoTable> lfo;if(plan.version==9)lfo=std::make_unique<premidi::SineLfoTable>(rate);
-  premidi::Voice voice(plan,rate,banks,0,nullptr,drive?&*drive:nullptr,lfo.get());std::size_t channels=2;
+  std::unique_ptr<premidi::ProcessingGraphRecipe> graphRecipe;std::unique_ptr<premidi::ProcessingGraphState> graphState;
+  if(plan.processing.count){graphRecipe=std::make_unique<premidi::ProcessingGraphRecipe>(plan.processing);graphState=std::make_unique<premidi::ProcessingGraphState>();}
+  premidi::Voice voice(plan,rate,banks,0,nullptr,drive?&*drive:nullptr,lfo.get(),nullptr,graphState.get(),graphRecipe.get());std::size_t channels=2;
 #ifdef PREMIDI_PROBE
   const bool probeMode=(argc==2||argc==3)&&std::strcmp(argv[1],"--probe")==0;if(probeMode)channels=5;
 #endif

@@ -41,11 +41,11 @@ class PreparedPageLease final {
     "Native prepared page has no bounded execution packet");
    // Bounded page-local Session is a preparation-only backing resource;
    // it must NEVER be swapped into DeviceHost::Lane as a new mixer.
-   backing=std::make_unique<Session>(packet,length,rate,600,0,externalSamples);
+   backing=std::make_unique<Session>(packet,length,rate,600,0,externalSamples,true);
    require(backing->notes.size()==metadata.onsets,
     "Native prepared page onset count does not match decoded voice packets");
    std::set<const WaveBank*> waveBanks;
-   std::set<const DriveRecipe*> driveRecipes;
+   std::set<const DriveRecipe*> driveRecipes;std::set<const ProcessingGraphRecipe*> graphs;
    std::set<const SineLfoTable*> lfoTables;
    std::set<const SampleData*> samples;
    std::set<int> delayRecipes;
@@ -71,11 +71,12 @@ class PreparedPageLease final {
      samples.insert(plan.sample);
     }else for(const auto* bank:note.banks)if(bank)waveBanks.insert(bank);
     if(note.prepared.drive)driveRecipes.insert(note.prepared.drive);
+    if(note.prepared.processing)graphs.insert(note.prepared.processing);
     if(note.prepared.lfoBank)lfoTables.insert(note.prepared.lfoBank);
     if(note.delay>=0)delayRecipes.insert(note.delay);
    }
    const auto count=waveBanks.size()+driveRecipes.size()+lfoTables.size()+
-    samples.size()+delayRecipes.size();
+    samples.size()+delayRecipes.size()+graphs.size();
    require(count<=512,"Native prepared page exceeds 512 bounded DSP resources");
    actualResources_=static_cast<unsigned>(count);
    metadata_.resources=actualResources_;

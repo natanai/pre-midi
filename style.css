@@ -1748,3 +1748,10 @@ main.editing-vocal .beat-identity{flex:0 0 auto;min-width:auto}
 
 /* Moving a Beat has one visible axis even when the pointer leaves its row. */
 html.song-horizontal-drag,html.song-horizontal-drag *{cursor:ew-resize!important}
+
+.processing-chain ol{list-style:none;padding:0;margin:.35rem 0}
+.processing-chain li{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;padding:.35rem 0;border-bottom:1px solid var(--line,#333)}
+.processing-chain li>.visual-sound-panel{flex:1 0 100%;min-width:0}
+.processing-chain fieldset{min-width:0;margin:.5rem 0;padding:.4rem;border:1px solid var(--line,#333)}
+.processing-chain input[type=range]{width:5.5rem;max-width:100%}
+.processing-chain output{font-size:.75rem;font-variant-numeric:tabular-nums}

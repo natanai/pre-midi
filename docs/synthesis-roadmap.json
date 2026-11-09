@@ -875,7 +875,7 @@
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ],
-      "progress_note": "Partial implementation: shared filter/EQ/drive serial order, add/remove, bypass/mix, up to eight parametric EQ bands, tempo delay, feedback tone and ping-pong, stereo width/mid-side and presets/reuse exist in browser/native paths. Reverb, production dynamics, chorus/flanger/phaser, multiple processor instances and general parallel routing remain open."
+      "progress_note": "Partial implementation: shared filter/EQ/drive serial order, add/remove, bypass/mix, up to eight parametric EQ bands, tempo delay, feedback tone and ping-pong, stereo width/mid-side and presets/reuse exist in browser/native paths. Independent filter/distortion/EQ instances and bounded parallel routes with branch latency alignment now exist. Reverb, production dynamics, chorus/flanger/phaser, sidechains and shared buses remain open."
     },
     {
       "id": "SYN-016",
@@ -2085,7 +2085,7 @@
         "title": "Effect order, bypass, sends and parallel routing",
         "status": "partial",
         "current": "Filter/EQ/drive serial stages have editable order, add/remove, non-destructive bypass and wet/dry; delay is a separately owned bypassable send.",
-        "gap": "Multiple instances, general parallel sends/sidechains and graph-wide latency compensation remain.",
+        "gap": "Independent filter/distortion/EQ instances and bounded parallel paths are implemented with branch latency alignment. Shared-bus sends, sidechains and arrangement-wide latency compensation remain.",
         "evidence_ids": [
           "E01",
           "E10",
@@ -2471,12 +2471,13 @@
           "Editable four-step LFO patterns with shared dials/graph handles, tempo sync, source-age seek and browser/native execution",
           "Four shared route-based performance macros with reset and preset recall",
           "Filter/distortion wet/dry with aligned distortion dry paths",
-          "Tempo-synced delay through quarter notes with shared tails and reuse"
+          "Tempo-synced delay through quarter notes with shared tails and reuse",
+          "Independent filter/distortion/EQ instances and bounded parallel routes with compensated branch blends in native/browser playback and streaming"
         ],
         "remaining": [
           "Remaining effect destinations, followers/sidechains and phase/free-run clock policies",
           "General parameter automation, curve modes and gesture recording",
-          "Multiple processor instances, parallel sends/sidechains and graph-wide latency compensation"
+          "Sidechains, Track/shared-bus sends and arrangement-wide latency compensation"
         ]
       },
       {
@@ -2811,8 +2812,14 @@
         "verification": [
           "Graph-order, bypass, parallel/send isolation, impulse/tail and undo/serialization fixtures."
         ],
-        "completion_evidence": [],
-        "progress_note": "Built-in lifecycle/order/bypass and precise filter/drive wet/dry are implemented. Filter blends directly; distortion dry aligns to measured browser latency and native 192-frame FIR latency. Zero mix returns unshifted dry input. Shared blend graph/range controls use one commit. Multiple instances, parallel sends/sidechains and graph-wide latency compensation remain open."
+        "completion_evidence": [
+          "tests/processingGraph.test.js: independent data, topology validation and project/preset/vocal reuse",
+          "tests/processingGraph.native.mjs: independent instances, sample/vocal parity, seeks, block continuity and 192/384-frame parallel compensation",
+          "tests/processingGraph.audio.mjs: browser independent instances and measured 128/256-frame parallel compensation",
+          "tests/processingGraph.dom.mjs: shared Inspector edits, routing, blend undo/redo, focus and combined illustrations",
+          "scripts/native-stream-device-check.mjs: seek/loop/edit/count-in/capture at 44.1/48/96 kHz, with and without processing graphs; zero callback allocations"
+        ],
+        "progress_note": "Shared processing now supports up to eight independently parameterized filter/distortion/EQ instances, four parallel routes after a serial path, stable IDs, bypass/mix, add/remove/reorder/move, normalized route/dry shares, and one Inspector with interactive illustrations. Native and browser paths align dry and shorter branches to the longest branch, including cascaded drive latency. Per-voice state and control-owned recipes remain isolated and callback allocation-free. Sidechain inputs, Track/shared buses and arrangement-wide latency compensation remain open."
       },
       {
         "id": "SE-09",
@@ -3834,6 +3841,7 @@
       "SE-14",
       "SE-15"
     ],
-    "delivery_policy": "Continue the existing canonical parameter/Inspector/native contracts. No placeholder controls, silent Web Audio fallback, speculative legacy readers or completion claims from interface wiring alone."
+    "delivery_policy": "Continue the existing canonical parameter/Inspector/native contracts. No placeholder controls, silent Web Audio fallback, speculative legacy readers or completion claims from interface wiring alone.",
+    "processing_routing": "Independent filter/distortion/EQ instances and four parallel paths are implemented with within-graph latency alignment; shared buses/sidechains and arrangement-wide latency compensation remain open."
   }
 }

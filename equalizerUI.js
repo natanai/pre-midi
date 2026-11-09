@@ -3,7 +3,7 @@ import {withProcessorAdded,processorBypassed} from './src/dsp/processing-chain.j
 import {createDial} from './dial.js';
 import {captureSoundGraphView} from './soundControlView.js';
 const NS='http://www.w3.org/2000/svg',openStates=new Map();
-export function renderEqualizer(patch,onChange,onPreview=()=>{},soundId='sound'){
+export function renderEqualizer(patch,onChange,onPreview=()=>{},soundId='sound',options={}){
  const root=document.createElement('div');root.className='visual-sound-panel';root.dataset.visualId='eq-'+soundId;root.dataset.visualKind='equalizer';
  const details=document.createElement('details');details.className='synth-group';details.open=openStates.get(soundId)??patch.eq?.bands.some(b=>b.enabled)??false;details.addEventListener('toggle',()=>openStates.set(soundId,details.open));
  const title=document.createElement('summary');title.textContent='equalizer';details.append(title);root.append(details);
@@ -28,7 +28,7 @@ export function renderEqualizer(patch,onChange,onPreview=()=>{},soundId='sound')
   const types=document.createElement('select');types.setAttribute('aria-label','eq band '+(i+1)+' type');for(const type of EQ_TYPES){const option=document.createElement('option');option.value=type;option.textContent=type;types.append(option);}types.value=band.type;types.addEventListener('change',()=>commit(next(i,{type:types.value,enabled:true})));fields.append(types);
   const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','remove eq band '+(i+1));remove.title='remove this equalizer band';remove.addEventListener('click',()=>commit(removeEqBand(read(),band.id)));fields.append(remove);
   for(const [key,label,min,max,step,display]of [['frequency','frequency',20,20000,1,'hz'],['gain','gain',-24,24,.1,'db'],['q','q',.1,18,.01,'number']]){
-   const inactiveReason=key==='gain'&&['highpass','lowpass'].includes(band.type)?'pass filters use frequency and q':key==='q'&&['lowshelf','highshelf'].includes(band.type)?'shelves use a fixed monotonic slope':undefined;
+   const inactiveReason=options.inactiveReason??(processorBypassed(patch,'eq')?'equalizer is bypassed':undefined)??(key==='gain'&&['highpass','lowpass'].includes(band.type)?'pass filters use frequency and q':key==='q'&&['lowshelf','highshelf'].includes(band.type)?'shelves use a fixed monotonic slope':undefined);
    const dial=createDial({label,min,max,step,display,log:key==='frequency',inactiveReason,help:key==='frequency'?'where this band changes the sound':key==='gain'?'boost or cut this frequency range':'how narrow this band sounds'},band[key],value=>commit(next(i,{[key]:value,enabled:true})),value=>{const eq=next(i,{[key]:value,enabled:true});draw(eq);onPreview([['eq'],['chain']],[eq,withProcessorAdded(patch,'eq')]);});dial.dataset.soundPath='eq.bands.'+i+'.'+key;dials[i][key]=dial;fields.append(dial);
   }details.append(fields);
  });

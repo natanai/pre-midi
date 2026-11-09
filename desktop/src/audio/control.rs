@@ -44,7 +44,7 @@ unsafe extern "C" {
  fn premidi_audio_request_transport_stop(host:*mut c_void);
  fn premidi_audio_control(host:*mut c_void,command:u32,looping:i32)->i32;
  fn premidi_audio_status_get(host:*mut c_void,status:*mut Status)->i32;
- fn premidi_audio_stream_begin(host:*mut c_void,owner:u64,revision:u64)->i32;
+ fn premidi_audio_stream_begin(host:*mut c_void,owner:u64,revision:u64,processing:i32)->i32;
  fn premidi_audio_stream_delay(host:*mut c_void,owner:u64,revision:u64,mix:f64,time:f64,feedback:f64,tone:f64,ping:i32)->i32;
  fn premidi_audio_stream_page(host:*mut c_void,owner:u64,revision:u64,sequence:u64,first_frame:u64,end_frame:u64,onsets:u32,last:i32,packet:*const u8,length:usize)->i32;
  fn premidi_audio_stream_advance(host:*mut c_void,owner:u64,revision:u64,frame:u64)->i32;
@@ -200,7 +200,7 @@ pub enum Request {
  Configure{device:Option<u32>,rate:u32,buffer:u32},
  Play{data:Vec<u8>,cycle:f64,seek:f64,looping:bool,preview:bool,#[serde(default)] owner:u64,#[serde(default)] count_in:u32,#[serde(default="default_bpm")] bpm:f64,#[serde(default)] recording:Option<u64>},
  Update{data:Vec<u8>,cycle:f64,looping:bool,tempo_ratio:f64,owner:u64},
- StreamBegin{owner:u64,revision:u64},
+ StreamBegin{owner:u64,revision:u64,#[serde(default)] processing:bool},
  StreamDelay{owner:u64,revision:u64,mix:f64,time:f64,feedback:f64,tone:f64,ping:bool},
  StreamPage{owner:u64,revision:u64,sequence:u64,start_frame:u64,end_frame:u64,onsets:u32,last:bool,data:Vec<u8>},
  StreamAdvance{owner:u64,revision:u64,frame:u64},
@@ -235,7 +235,7 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
  if let Request::Play{owner,preview:true,..}=&request{if *owner==0||*owner<=state.cancelled||*owner>state.issued||*owner<state.preview_current{return Err("Native preview request cancelled".into());}}
  if let Request::Play{recording:Some(owner),..}=&request{if *owner==0||*owner!=state.capture_current{return Err("Native microphone take was cancelled".into());}}
  if let Request::Update{owner,..}=&request{if *owner!=state.current||!state.valid(*owner){return Err("Native edit request cancelled".into());}}
- if let Request::StreamBegin{owner,revision}=&request{
+ if let Request::StreamBegin{owner,revision,..}=&request{
   if !state.valid(*owner)||*revision==0{return Err("Native Song stream begin was cancelled".into());}
  }
  match &request{
@@ -272,9 +272,9 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_play_take(host.0,data.as_ptr(),data.len(),cycle,seek,i32::from(looping),i32::from(preview),bpm,count_in,i32::from(recording.is_some()))})?;
    if preview{state.preview_current=owner;}else{state.current=owner;state.stream_revision=0;}state.status()
   },
-  Request::StreamBegin{owner,revision}=>{
+  Request::StreamBegin{owner,revision,processing}=>{
    let host=state.host.as_ref().unwrap();
-   host.check(unsafe{premidi_audio_stream_begin(host.0,owner,revision)})?;
+   host.check(unsafe{premidi_audio_stream_begin(host.0,owner,revision,i32::from(processing))})?;
    state.current=owner;state.stream_previous_revision=state.stream_revision;state.stream_revision=revision;state.status()
   },
   Request::StreamDelay{owner,revision,mix,time,feedback,tone,ping}=>{
@@ -363,13 +363,13 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    let audio=premidi_decoder::decode(bytes.to_vec(),"").unwrap();let mut info=SampleInfo::default();
    host.check(unsafe{premidi_audio_add_sample(host.0,audio.samples.as_ptr(),(audio.samples.len()/audio.channels as usize) as u64,audio.rate,audio.channels,&mut info)}).unwrap();drop(audio);
    let mut packet=vec![];let u32b=|out:&mut Vec<u8>,v:u32|out.extend(v.to_le_bytes());let f64b=|out:&mut Vec<u8>,v:f64|out.extend(v.to_le_bytes());
-   for v in [0x38564d50,48000,1,17,1,info.id]{u32b(&mut packet,v);}
+   for v in [0x38564d50,48000,1,18,1,info.id]{u32b(&mut packet,v);}
    for v in [0.,0.1,0.11,0.11,0.1,0.,1.,0.,info.frames as f64/info.rate as f64,14000.,0.7,0.,5.,0.,0.,0.,5.,0.,0.24,0.26,0.,2.,14000.,0.1]{f64b(&mut packet,v);}
    for v in [0,1,0,2]{u32b(&mut packet,v);}
    u32b(&mut packet,0);f64b(&mut packet,0.);f64b(&mut packet,0.1);u32b(&mut packet,0);f64b(&mut packet,0.11);f64b(&mut packet,0.);
    f64b(&mut packet,60.);f64b(&mut packet,1.);u32b(&mut packet,0);u32b(&mut packet,0);u32b(&mut packet,0);
    f64b(&mut packet,1.);f64b(&mut packet,1.);f64b(&mut packet,1.);u32b(&mut packet,1);for _ in 0..8{for v in [1.,0.,0.,0.,0.]{f64b(&mut packet,v);}}
-   f64b(&mut packet,1.);f64b(&mut packet,0.);f64b(&mut packet,20000.);u32b(&mut packet,0);
+   f64b(&mut packet,1.);f64b(&mut packet,0.);f64b(&mut packet,20000.);u32b(&mut packet,0);u32b(&mut packet,0);
    let mut session=vec![];for v in [0x31534d50,1,packet.len() as u32]{u32b(&mut session,v);}session.extend(packet);
    last_session=session.clone();host.check(unsafe{premidi_audio_play(host.0,session.as_ptr(),session.len(),0.5,0.,0,0)}).unwrap();
    std::thread::sleep(std::time::Duration::from_millis(30));let mut status=Status::default();host.check(unsafe{premidi_audio_status_get(host.0,&mut status)}).unwrap();assert!(status.callbacks>0&&status.peak_million>0);assert_eq!(status.fault,0);

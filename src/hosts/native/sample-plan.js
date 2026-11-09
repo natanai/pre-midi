@@ -54,7 +54,7 @@ export function planNativeVocal(event,start,unit,assets){
 export function encodeNativeSample(plan,rate){
  if(plan.contract!=='pre-midi-sample-voice'||plan.version!==1)throw Error('Unknown native sample voice contract');
  const parts=[],u32=n=>{if(!Number.isInteger(n)||n<0||n>0xffffffff)throw Error('Invalid native sample integer');const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n,true);parts.push(b);},f64=n=>{if(!Number.isFinite(n))throw Error('Invalid native sample number');const b=new Uint8Array(8);new DataView(b.buffer).setFloat64(0,n,true);parts.push(b);};
- u32(0x38564d50);u32(rate);u32(1);u32(17);u32(plan.kind);u32(plan.asset);
+ u32(0x38564d50);u32(rate);u32(1);u32(18);u32(plan.kind);u32(plan.asset);
  for(const n of [plan.start,plan.duration,plan.end,plan.graphEnd,plan.off,plan.pan,plan.playbackRate,plan.offset,plan.sourceLimit,plan.filter?.cutoff??14000,plan.filter?.resonance??.7,plan.drive,plan.movement.rate,plan.movement.depth,plan.movement.delay,plan.movement.tremolo,plan.movement.tremoloRate])f64(n);
  for(const value of [plan.delayMix??0,plan.delayTime??.24,plan.delayFeedback??.26,plan.movement.tone,plan.movement.toneRate,plan.sweep.startCutoff,plan.sweep.sweepEnd])f64(value);
  u32(['lowpass','highpass','bandpass','notch'].indexOf(plan.filter?.type??'lowpass'));u32(plan.filter?0:1);
