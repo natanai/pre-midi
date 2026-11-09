@@ -12,11 +12,13 @@
 #include "sample.hpp"
 #include "processing-graph.hpp"
 #include "automation.hpp"
+#include "dynamics.hpp"
 namespace premidi {
 constexpr double pi=3.14159265358979323846;
 struct Event {std::uint32_t kind;double time,value;};
 struct Oscillator {double frequency=440,level=0,detune=0;std::uint32_t wave=0,count=0;std::array<double,32> harmonics{};std::array<double,600> curve{};};
 struct Plan {
+ unsigned dynamicsCount=0;std::array<DynamicsRecipe,4> dynamics{};
  ProcessingGraph processing;ParameterAutomation parameterAutomation;
  double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0,delayMix=0,delayTime=.24,delayFeedback=.26;
  double drive=0,vibratoRate=5,vibratoDepth=0,vibratoDelay=0,tone=0,toneRate=2,tremolo=0,tremoloRate=5;
@@ -30,7 +32,7 @@ struct VoicePreparation {ToneFilter filter;std::array<double,16> alpha{};std::ar
 // Prepared on the control thread. process() only touches fixed-size state and a
 // caller-owned output span: no heap allocation, locks, file/device I/O or UI.
 class Voice {
- Plan plan;AutomatedValues automated;ProcessingGraphState* processingState=nullptr;const ProcessingGraphRecipe* processingRecipe=nullptr;double rate;std::uint64_t frame=0;std::array<double,2> phases{};
+ Plan plan;std::array<Dynamics,4> dynamicsState{};AutomatedValues automated;ProcessingGraphState* processingState=nullptr;const ProcessingGraphRecipe* processingRecipe=nullptr;double rate;std::uint64_t frame=0;std::array<double,2> phases{};
  std::uint64_t firstFrame=0,lastSourceFrame=0,lastGraphFrame=0;
  std::array<double,3> legacyPhases{};bool legacyStarted=false;
  float noiseA=0,noiseB=0;double noiseFraction=0;bool noiseStarted=false;
@@ -86,6 +88,7 @@ public:
  struct Probe {float wave0=0,cents0=0,frequency0=0;};Probe probe{};
 #endif
  Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr},std::uint64_t initialFrame=0,const VoicePreparation* prepared=nullptr,const DriveRecipe* driveRecipe=nullptr,const SineLfoTable* lfo=nullptr,SampleChannelState* additional=nullptr,ProcessingGraphState* graphState=nullptr,const ProcessingGraphRecipe* graphRecipe=nullptr) noexcept:plan(input),processingState(graphState),processingRecipe(prepared?prepared->processing:graphRecipe),rate(sampleRate),frame(initialFrame),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity,prepared?&prepared->alpha:nullptr,prepared?prepared->lfoBank:lfo),drive(prepared?prepared->drive:driveRecipe),driveRight(prepared?prepared->drive:driveRecipe),recipe(prepared?prepared->drive:driveRecipe),lfoBank(prepared?prepared->lfoBank:lfo),banks(waveBanks),extraChannels(additional){
+  for(unsigned n=0;n<plan.dynamicsCount;n++)dynamicsState[n].reset(plan.dynamics[n]);
   if(processingState&&processingRecipe)processingState->reset(plan.processing,*processingRecipe,static_cast<unsigned>(sampleRate));
   firstFrame=static_cast<std::uint64_t>(std::ceil(plan.start*rate-1e-9));lastSourceFrame=static_cast<std::uint64_t>(std::ceil(plan.sourceEnd*rate-1e-9));lastGraphFrame=static_cast<std::uint64_t>(std::ceil(plan.graphEnd*rate-1e-9));
   filter.setStages(plan.filterStages);
@@ -195,6 +198,7 @@ public:
     if(renderedPan<=0){const double angle=(renderedPan+1)*pi/2;interleavedStereo[2*i]=static_cast<float>(sample+other*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other*std::sin(angle));}
     else{const double angle=renderedPan*pi/2;interleavedStereo[2*i]=static_cast<float>(sample*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other+sample*std::sin(angle));}
    }else{interleavedStereo[2*i]=static_cast<float>(sample*left);interleavedStereo[2*i+1]=static_cast<float>(sample*right);}
+   if(frame>=firstFrame&&frame<lastGraphFrame)for(unsigned n=0;n<plan.dynamicsCount;n++)dynamicsState[n].process(interleavedStereo+2*i,2,plan.dynamics[n]);
   }
  }
 };

@@ -1,3 +1,4 @@
+import {needsDynamics} from './dynamics.js';
 import {prepareProcessorMix} from './processor-mix.js';
 import {vocalSourceRange} from "../../../vocalEffects.js";
 import {delayTailSeconds} from "../../dsp/effect-tail.js";
@@ -52,7 +53,7 @@ export function vocalSeekEvents(song,step,decoded){
    const recording=recordings.get(clip.recordingId),buffer=recording&&decoded.get(recording.id);
    if(!buffer)continue;
    const range=vocalSourceRange(recording,clip,unit,0,{sourceDuration:buffer.duration}),fx=range.fx;
-   if(!(fx.filter&&!processorBypassed(fx,'filter'))&&!(fx.drive>0&&!processorBypassed(fx,'drive'))&&!(fx.delayMix>0&&!processorBypassed(fx,'delay')))continue;
+   if(!(fx.filter&&!processorBypassed(fx,'filter'))&&!(fx.drive>0&&!processorBypassed(fx,'drive'))&&!(fx.delayMix>0&&!processorBypassed(fx,'delay'))&&!needsDynamics(fx))continue;
    const elapsed=(step-clip.startStep)*unit,tail=delayTailSeconds(fx);
    if(elapsed>=range.duration+tail)continue;
    entries.push({event:structuredClone({recording,clip,track:{id:track.id,kind:"vocal"}}),buffer,unit,elapsed,range,tail});
@@ -64,7 +65,7 @@ export async function renderVocalSeek(request){
  const {event,buffer,sampleRate,phase,unit,range,tail}=request;
  if(typeof OfflineAudioContext!=="function")throw Error("This browser cannot prepare effectful vocal seeks");
  const seconds=phase+range.duration+tail+.02;
- const context=new OfflineAudioContext(2,Math.max(1,Math.ceil(seconds*sampleRate)),sampleRate);await prepareProcessorMix(context);
+ const context=new OfflineAudioContext(2,Math.max(1,Math.ceil(seconds*sampleRate)),sampleRate);await prepareProcessorMix(context,event.clip.effects);
  scheduleVocal(context,context.destination,event,phase,unit,new Map([[event.recording.id,buffer]]),
   {sourceRange:range,controlStart:phase});
  return {buffer:await context.startRendering(),phase,duration:range.duration,tail};

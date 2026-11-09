@@ -1,3 +1,4 @@
+import {encodeDynamics} from './dynamics.js';
 import {encodeParameterAutomation} from './automation.js';
 import {encodeProcessing} from './processing.js';
 import {effectiveDelayEffects,processingFlags,processorMix} from "../../dsp/processing-chain.js";
@@ -33,6 +34,6 @@ export function encodeNativePlan(plan,sampleRate,frames){
   for(const value of [route.depth,route.smoothing,route.source.rate??.5,route.source.kind==="macro"?route.source.value:route.source.kind==="lfo"?(route.source.seed??1):(route.source.root??60),route.source.span??24,...(route.source.shape==="steps"?(route.source.steps??DEFAULT_LFO_STEPS):["attack","decay","sustain","release"].map((key,index)=>route.source.envelope?.[key]??[.8,.5,.5,.5][index]))])f64(value);}
  const points=plan.automation?.points??[];u32(points.length);for(const point of points){f64(point.time);f64(Math.fround(point.value));}
  u32(plan.amplitude.events.length);for(const event of plan.amplitude.events){if(!["set","linear"].includes(event.kind))throw Error("Unknown envelope event");u32(event.kind==="set"?0:1);f64(event.time);f64(Math.fround(event.value));}
- encodeProcessing(p,sampleRate,u32,f64);encodeParameterAutomation(plan.parameterAutomation,p,sampleRate,u32,f64);
+ encodeProcessing(p,sampleRate,u32,f64);encodeParameterAutomation(plan.parameterAutomation,p,sampleRate,u32,f64);encodeDynamics(p,u32,f64);
  const output=new Uint8Array(parts.reduce((sum,b)=>sum+b.length,0));let offset=0;for(const b of parts){output.set(b,offset);offset+=b.length;}return output;
 }

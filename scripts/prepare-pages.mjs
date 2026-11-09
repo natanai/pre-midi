@@ -8,7 +8,7 @@ import {pathToFileURL} from "node:url";
 import {SAMPLE_ASSETS} from "../samples.js";
 
 const entries=["studio.js","phone/main.js"];
-const dependencyPattern=/(?:from\s*|import\s*(?:\(\s*)?)["'](\.{1,2}\/[^"']+\.js)["']/g;
+const dependencyPattern=/(?:from\s*|import\s*(?:\(\s*)?|new\s+URL\s*\(\s*)["'](\.{1,2}\/[^"']+\.js)["']/g;
 const safeModule=file=>/^(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.js$/.test(file);
 export async function runtimeModules(root,entryPoints=entries){
  const found=new Set(),pending=[...entryPoints];
@@ -47,6 +47,8 @@ export function versionPage(html,files,revision){
 export async function preparePages(root,revision=process.env.GITHUB_SHA,output=new URL("dist/",root)){
  const modules=await runtimeModules(root);
  const phoneModules=await runtimeModules(root,["phone/main.js"]);
+ const worklets=modules.filter(file=>file.endsWith("-worklet.js"));
+ const workerModules=new Set(worklets.length?await runtimeModules(root,worklets):[]);
  if(!revision){
   const hash=createHash("sha256");
   for(const file of [...modules,"style.css","studioAlignment.css","freeform.css","index.html","phone/index.html","phone/phone.css","phone/manifest.webmanifest","phone/sw.js"])hash.update(await readFile(new URL(file,root)));
@@ -77,7 +79,12 @@ export async function preparePages(root,revision=process.env.GITHUB_SHA,output=n
  await writeFile(new URL("sw.js",output),worker);
  for(const file of [...modules,"style.css","studioAlignment.css","freeform.css","THIRD_PARTY_NOTICES.md","favicon.svg"]){
   await mkdir(new URL("./",new URL(file,output)),{recursive:true});
-  await copyFile(new URL(file,root),new URL(file,output));
+  if(workerModules.has(file)){
+   // AudioWorklet module graphs have no document import map. Static imports
+   // throughout their dependency closure must use this same build revision.
+   const source=await readFile(new URL(file,root),'utf8');
+   await writeFile(new URL(file,output),source.replace(dependencyPattern,match=>match.slice(0,-1)+'?build='+revision.slice(0,12)+match.at(-1)));
+  }else await copyFile(new URL(file,root),new URL(file,output));
  }
  const samples=new URL("samples/",output);
  await mkdir(samples,{recursive:true});

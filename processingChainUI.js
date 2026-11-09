@@ -1,5 +1,6 @@
+import {DYNAMICS_KINDS,MAX_DYNAMICS} from './src/dsp/dynamics.js';
 import {renderProcessorInstance} from './processorInstanceUI.js';
-import {allProcessorIds,processorOrders,processorInstance,processorKind,withInstance,withParallelRoute,withRouteShare,moveProcessor,MAX_PROCESSORS} from './src/dsp/processing-graph.js';
+import {allProcessorIds,processorOrders,processorInstance,processorKind,withInstance,withParallelRoute,withRouteShare,moveProcessor,MAX_PROCESSORS,PRIMARY_PROCESSORS,PROCESSOR_KINDS} from './src/dsp/processing-graph.js';
 import {processingChain,processorMix,DELAY_DIVISIONS,withProcessorBypass,withProcessorAdded,withProcessorRemoved} from './src/dsp/processing-chain.js';
 import {DEFAULT_SAMPLE_FILTER} from './audioEffects.js';
 const openBySound=new Map();
@@ -28,9 +29,9 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
  };
  const heading=document.createElement('summary');heading.textContent='processing order';root.append(heading);
  const list=document.createElement('ol');root.append(list);
- const title=id=>{const kind=processorKind(patch,id)??id,name=kind==='eq'?'equalizer':kind==='drive'?'distortion':kind==='delay'?'delay send':kind;return processorInstance(patch,id)?name+' '+(Number(id.match(/-(\d+)$/)?.[1]??0)+1):name;};
+ const title=id=>{const kind=processorKind(patch,id)??id,name=kind==='eq'?'equalizer':kind==='drive'?'distortion':kind==='delay'?'delay send':kind;return processorInstance(patch,id)?name+' '+(Number(id.match(/-(\d+)$/)?.[1]??0)+(PRIMARY_PROCESSORS.includes(kind)?1:0)):name;};
  const row=(id,index,routeId='serial',parent=list)=>{
-  const order=routeId==='serial'?chain.order:chain.parallel.find(r=>r.id===routeId).order;
+  const order=routeId==='serial'?chain.order:routeId==='post'?chain.post:chain.parallel.find(r=>r.id===routeId).order;
   const item=document.createElement(id==='delay'?'div':'li'),label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';
   check.checked=!chain.bypass.includes(id)&&!(id==='filter'&&patch.filter==null);
   const name=title(id);
@@ -75,13 +76,13 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
    move.setAttribute('aria-label','Move '+name+(direction<0?' earlier':' later'));move.title=move.getAttribute('aria-label');
    move.dataset.processingControl=id+(direction<0?'-up':'-down');
    move.disabled=index+direction<0||index+direction>=order.length;
-   move.addEventListener('click',()=>{const next=structuredClone(chain),order=routeId==='serial'?next.order:next.parallel.find(r=>r.id===routeId).order;[order[index],order[index+direction]]=[order[index+direction],order[index]];commit(['chain'],next,move,id);});item.append(move);
+   move.addEventListener('click',()=>{const next=structuredClone(chain),order=routeId==='serial'?next.order:routeId==='post'?next.post:next.parallel.find(r=>r.id===routeId).order;[order[index],order[index+direction]]=[order[index+direction],order[index]];commit(['chain'],next,move,id);});item.append(move);
   }
   if(id!=='delay'){
    const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove '+name+' from chain');remove.title='remove from chain and retain its settings';remove.dataset.processingControl=id+'-remove';
    remove.addEventListener('click',()=>commit(['chain'],withProcessorRemoved(patch,id),remove,'add'));item.append(remove);
   }
-  if(id!=='delay'&&chain.parallel?.length){
+  if(id!=='delay'&&routeId!=='post'&&chain.parallel?.length){
    const route=document.createElement('select');route.setAttribute('aria-label','route for '+name);route.dataset.processingControl=id+'-route';
    for(const [value,label]of [['serial','serial'],...chain.parallel.map((r,i)=>[r.id,'parallel '+(i+1)])]){const option=document.createElement('option');option.value=value;option.textContent=label;route.append(option);}
    route.value=routeId;route.addEventListener('change',()=>commit(['chain'],moveProcessor(chain,id,route.value),route,id));item.append(route);
@@ -113,9 +114,10 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
   }
   paintShares(chain);
  }
+ if(chain.post?.length){const group=document.createElement('fieldset'),heading=document.createElement('legend'),list=document.createElement('ol');group.className='post-processing-order';heading.textContent='after level + pan';heading.title='each note or vocal clip has its own stereo-linked dynamics before mixing and echo sends';group.append(heading,list);root.append(group);chain.post.forEach((id,i)=>row(id,i,'post',list));}
  const available=allProcessorIds(chain).filter(id=>!processorOrders(chain).some(order=>order.includes(id)));
  const instanceType=document.createElement('select');instanceType.setAttribute('aria-label','new processor type');instanceType.dataset.processingControl='instance-type';
- for(const [prefix,ids]of [['stored',available],['new',['filter','drive','eq']]])for(const id of ids){const option=document.createElement('option');option.value=prefix+':'+id;option.textContent=prefix+' '+title(id);option.disabled=prefix==='new'&&(chain.instances?.length??0)>=MAX_PROCESSORS;instanceType.append(option);}
+ for(const [prefix,ids]of [['stored',available],['new',PROCESSOR_KINDS]])for(const id of ids){const option=document.createElement('option');option.value=prefix+':'+id;option.textContent=prefix+' '+title(id);option.disabled=(prefix==='new'&&(chain.instances?.length??0)>=MAX_PROCESSORS)||(DYNAMICS_KINDS.includes(prefix==='new'?id:processorKind(patch,id))&&(chain.post?.length??0)>=MAX_DYNAMICS);instanceType.append(option);}
  if(instanceType.selectedOptions[0]?.disabled)instanceType.value=Array.from(instanceType.options).find(option=>!option.disabled)?.value??'';
  const addInstance=document.createElement('button');addInstance.type='button';addInstance.textContent='+ processor';addInstance.dataset.processingControl='add-instance';addInstance.disabled=processorOrders(chain).flat().length>=MAX_PROCESSORS||!instanceType.value;addInstance.title=addInstance.disabled?'eight processors are already in use':'add an independent processor';addInstance.addEventListener('click',()=>{const [mode,id]=instanceType.value.split(':');if(mode==='new')commit(['chain'],withInstance(patch,id),addInstance,'add');else{const next=withProcessorAdded(patch,id);if(id==='filter'&&patch.filter==null)commit([['chain'],['filter']],[next,{...DEFAULT_SAMPLE_FILTER}],addInstance,id);else commit(['chain'],next,addInstance,id);}});
  const addRoute=document.createElement('button');addRoute.type='button';addRoute.textContent='+ parallel';addRoute.dataset.processingControl='add-route';addRoute.disabled=(chain.parallel?.length??0)>=4;addRoute.title=addRoute.disabled?'four parallel routes are already in use':'split the serial output into independently processed routes';addRoute.addEventListener('click',()=>commit(['chain'],withParallelRoute(patch),addRoute,'add'));

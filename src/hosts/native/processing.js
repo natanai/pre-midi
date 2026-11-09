@@ -1,7 +1,7 @@
 import {compileProcessingGraph,PROCESSOR_KINDS} from '../../dsp/processing-graph.js';
 import {processingFlags,processorMix} from '../../dsp/processing-chain.js';
 import {defaultEq,eqCoefficients} from '../../dsp/equalizer.js';
-export const PROCESSING_TRAILER_BYTES=388;
+export const PROCESSING_TRAILER_BYTES=392;
 export function encodeProcessing(patch,rate,u32,f64){
  u32(processingFlags(patch));for(const id of ['filter','drive','eq'])f64(processorMix(patch,id));u32(patch.filterStages??1);
  const bands=(patch.eq??defaultEq()).bands;

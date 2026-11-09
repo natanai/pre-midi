@@ -2043,9 +2043,9 @@
       {
         "id": "CAP-11",
         "title": "Compression, gate, de-essing and limiting",
-        "status": "not_found",
-        "current": "No implementation found in the audited production sound path.",
-        "gap": "Need compressor, expander/gate, frequency-selective de-esser and limiter, with sidechain routing and gain-reduction feedback. Sample dynamics preservation is not compression.",
+        "status": "partial",
+        "current": "Compressor, gate and zero-lookahead sample-peak limiter are usable in synth/sample/vocal playback and export. Per-note/Clip linked stereo detection runs after level and pan. Shared controls, illustrations, bypass/mix/order, preset/project recall and seek reconstruction are implemented.",
+        "gap": "De-esser, sidechain inputs, shared buses, measured gain-reduction feedback, dynamics parameter automation and physical/listening qualification remain. Per-note limiting does not protect the final mix or intersample true peaks.",
         "evidence_ids": [
           "E05",
           "E10",
@@ -2494,7 +2494,12 @@
           "SE-15",
           "SE-16"
         ],
-        "exit": "All in-scope professional comparison gaps are implemented and individually verified in the common Inspector."
+        "exit": "All in-scope professional comparison gaps are implemented and individually verified in the common Inspector.",
+        "status": "in_progress",
+        "completed_slices": [
+          "Shared EQ/filter/stereo and tempo-delay slices described by SE-09/SE-11/SE-13",
+          "Usable compressor/gate/sample-peak limiter with post-level per-note/Clip processing, common editing and native/browser execution"
+        ]
       },
       {
         "id": "M4",
@@ -2826,7 +2831,7 @@
           "tests/processingGraph.dom.mjs: shared Inspector edits, routing, blend undo/redo, focus and combined illustrations",
           "scripts/native-stream-device-check.mjs: seek/loop/edit/count-in/capture at 44.1/48/96 kHz, with and without processing graphs; zero callback allocations"
         ],
-        "progress_note": "Shared processing now supports up to eight independently parameterized filter/distortion/EQ instances, four parallel routes after a serial path, stable IDs, bypass/mix, add/remove/reorder/move, normalized route/dry shares, and one Inspector with interactive illustrations. Native and browser paths align dry and shorter branches to the longest branch, including cascaded drive latency. Per-voice state and control-owned recipes remain isolated and callback allocation-free. Sidechain inputs, Track/shared buses and arrangement-wide latency compensation remain open."
+        "progress_note": "Shared processing now supports up to eight independently parameterized filter/distortion/EQ instances, four parallel routes after a serial path, stable IDs, bypass/mix, add/remove/reorder/move, normalized route/dry shares, and one Inspector with interactive illustrations. Native and browser paths align dry and shorter branches to the longest branch, including cascaded drive latency. Per-voice state and control-owned recipes remain isolated and callback allocation-free. Sidechain inputs, Track/shared buses and arrangement-wide latency compensation remain open. The same chain now owns a bounded post-level dynamics order (chain.post), separate from the pre-articulation tone routes; shared buses are still unfinished."
       },
       {
         "id": "SE-09",
@@ -2860,7 +2865,7 @@
       {
         "id": "SE-10",
         "title": "Add production dynamics and vocal cleanup",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-08"
@@ -2873,7 +2878,12 @@
           "src/dsp/",
           "soundInspector.js",
           "soundIllustrations.js",
-          "src/hosts/native/"
+          "src/hosts/native/",
+          "src/dsp/dynamics.js",
+          "src/dsp/dynamics-kernel.js",
+          "dynamicsUI.js",
+          "native/dynamics.hpp",
+          "src/hosts/web/dynamics-worklet.js"
         ],
         "acceptance": [
           "Provide compressor threshold/ratio/knee/attack/release/makeup/mix and selectable sidechain; expander/gate threshold/range/hold; de-esser frequency/band/threshold/amount.",
@@ -2884,7 +2894,14 @@
         "verification": [
           "Static curve, transient, sibilance, sidechain-isolation and output-peak fixtures; matched-level listening."
         ],
-        "completion_evidence": []
+        "completion_evidence": [
+          "native/dynamics-test.cpp: independent static/knee, linked-channel, sample-peak ceiling and gate hold/range checks",
+          "tests/dynamics.test.js: current project/preset reuse, topology/parameter bounds, post-level lifecycle, worklet packaging and vocal seek selection",
+          "tests/dynamics.audio.mjs: native/worklet PCM, independent prepared-gain oracle, synth/sample/vocal, overlapping voice isolation, order, seeks/loops/page clocks and malformed binary rejection",
+          "tests/dynamics.dom.mjs: common Inspector direct graphs/dials, undo/redo, bypass/removal/order and combined view",
+          "PREMIDI_STREAM_RATES=48000 node scripts/native-stream-device-check.mjs: actual null-device streaming revisions with compressor, seek/loop/count-in/capture and zero callback allocations"
+        ],
+        "progress_note": "First usable dynamics milestone: compressor, gate and sample-peak limiter run after articulation, level, stereo imaging and pan, before dry/echo sends. Up to four independently editable instances occupy chain.post under the existing eight-processor total. Each note or vocal Clip owns a stereo-linked detector; notes do not share state. Native C++ and browser AudioWorklet execute matching curves, gate hold/range and limiter behavior. The common Inspector provides numerical/dial and interactive transfer/gain-response modules, combined view, order, bypass, mix, removal/restoration and preset/project recall. Native seek/loop/edit/count-in/capture and browser dynamics-only vocal seek reconstruction pass focused checks. Zero lookahead/latency; the limiter protects individual rendered note/Clip sample peaks, not the final sum or intersample true peaks. De-esser, sidechain selection/routing, shared Track/Sound buses, measured gain-reduction telemetry, dynamics parameter automation and physical/listening qualification remain open."
       },
       {
         "id": "SE-11",
@@ -3850,6 +3867,7 @@
     ],
     "delivery_policy": "Continue the existing canonical parameter/Inspector/native contracts. No placeholder controls, silent Web Audio fallback, speculative legacy readers or completion claims from interface wiring alone.",
     "processing_routing": "Independent filter/distortion/EQ instances and four parallel paths are implemented with within-graph latency alignment; shared buses/sidechains and arrangement-wide latency compensation remain open.",
-    "automation": "Parameter-lane source milestone implemented; see SE-07 and docs/automation-contract.json. General automation remains in progress for remaining targets, gestures, override/rejoin and wider scopes."
+    "automation": "Parameter-lane source milestone implemented; see SE-07 and docs/automation-contract.json. General automation remains in progress for remaining targets, gestures, override/rejoin and wider scopes.",
+    "dynamics": "First usable compressor/gate/sample-peak limiter milestone implemented. See SE-10 for tested scope and remaining professional dynamics requirements."
   }
 }

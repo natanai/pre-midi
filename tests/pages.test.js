@@ -70,7 +70,8 @@ test("Pages stages nested DSP modules and both stylesheets without development f
   await mkdir(new URL("samples/",root));
   await mkdir(new URL("phone/",root));
   await mkdir(new URL("desktop/icons/",root),{recursive:true});
-  const files={"studio.js":'import {value} from "./src/dsp/value.js";',
+  const files={"studio.js":'import {value} from "./src/dsp/value.js"; export const processor=new URL("./src/dsp/effect-worklet.js",import.meta.url);',
+   "src/dsp/effect-worklet.js":'import {value} from "./worker-kernel.js";',"src/dsp/worker-kernel.js":'export {value} from "./value.js";',
    "src/dsp/value.js":'export const value=1;',"src/dsp/phone-value.js":'export const phoneValue=1;',"src/dsp/phone-extra.js":'export const extra=true;',"style.css":"body{}","studioAlignment.css":".row{}","freeform.css":".freeform{}",
    "phone/index.html":'<head><link rel="stylesheet" href="./phone.css"></head><script type="module" src="./main.js"></script>',"phone/phone.css":"body{}",
    "phone/main.js":'import {phoneValue} from "../src/dsp/phone-value.js"; export const phoneReady=phoneValue; export const load=()=>import("../src/dsp/phone-extra.js");',"phone/manifest.webmanifest":"{}",
@@ -81,6 +82,9 @@ test("Pages stages nested DSP modules and both stylesheets without development f
   for(const asset of SAMPLE_ASSETS)await writeFile(new URL("samples/"+asset.id+(asset.mime==="audio/ogg"?".ogg":".wav"),root),"fixture");
   await preparePages(root,"abcdef123456");
   assert.equal(await readFile(new URL("dist/src/dsp/value.js",root),"utf8"),files["src/dsp/value.js"]);
+  for(const file of ['effect-worklet.js','worker-kernel.js']){
+   const source=await readFile(new URL('dist/src/dsp/'+file,root),'utf8'),specifier=source.match(/from "([^"]+)"/)[1],url=new URL(specifier,new URL('dist/src/dsp/'+file+'?build=abcdef123456',root));assert.equal(url.searchParams.get('build'),'abcdef123456');assert.ok(await readFile(new URL(url.pathname,'file://')));
+  }
   assert.equal(await readFile(new URL("dist/studioAlignment.css",root),"utf8"),files["studioAlignment.css"]);
   assert.equal(await readFile(new URL("dist/freeform.css",root),"utf8"),files["freeform.css"]);
   assert.equal(await readFile(new URL("dist/favicon.svg",root),"utf8"),files["favicon.svg"]);

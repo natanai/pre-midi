@@ -1,3 +1,4 @@
+import {connectPostDynamics} from './src/hosts/web/dynamics.js';
 import {scheduleParameterAutomation} from './src/hosts/web/automation.js';
 import {connectProcessingGraph} from './src/hosts/web/processing-graph.js';
 import {connectStereoImage,createStereoDelay} from './src/hosts/web/stereo.js';
@@ -173,20 +174,21 @@ const pulse=add(ctx.createGain());
   motion.tremoloRate,motion.tremolo*.45,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const gate=add(ctx.createGain());
  const movementGain=add(ctx.createGain());movementGain.gain.value=1;destinations.set("amplitude",movementGain.gain);automationTargets.set("amplitude",movementGain.gain);
- amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);connectStereoImage(ctx,gate,patch,owner,1,{start,end:plan.graphEnd,lanes:plan.parameterAutomation,targets:automationTargets}).connect(pan);
+ amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(ctx,movementGain,patch,owner,1,{start,end:plan.graphEnd,lanes:plan.parameterAutomation,targets:automationTargets}).connect(pan);
+ connectPostDynamics(ctx,pan,patch,owner,start,plan.graphEnd).connect(gate);
  const fx=effectiveDelayEffects(patch,patch.effects),mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
  dry.gain.value=1-mixAmount*.4;
- pan.connect(dry);dry.connect(destination);
+ gate.connect(dry);dry.connect(destination);
  if(mixAmount>0){
   if(!session){
-   const graph=createStereoDelay(ctx,fx,destination);nodes.push(...graph.nodes);pan.connect(graph.input);
+   const graph=createStereoDelay(ctx,fx,destination);nodes.push(...graph.nodes);gate.connect(graph.input);
   }
  }
  scheduleParameterAutomation(ctx,plan.parameterAutomation,automationTargets,owner);
  attachModulation(ctx,plan,destinations,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const voice=ownVoice(ctx,{sources,nodes,gate,start,release:off,end:session?plan.graphEnd:plan.audibleEnd});
- if(session){session.adopt(voice);if(voice.admitted&&mixAmount>0)pan.connect(session.delay(fx,voice));}
+ if(session){session.adopt(voice);if(voice.admitted&&mixAmount>0)gate.connect(session.delay(fx,voice));}
  return voice;
 }
 function eventOffset(instrument,note,notes){
@@ -429,7 +431,7 @@ export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,s
   const bytes=await renderNative([plan],{rate:sampleRate,frames,cycle:Math.max(.05,seconds),gain:1}),stereo=new Float32Array(bytes),mono=Float32Array.from({length:frames},(_,i)=>(stereo[2*i]+stereo[2*i+1])*.5);
   return {sampleRate,length:frames,duration:frames/sampleRate,numberOfChannels:1,getChannelData:()=>mono};
  }
- const ctx=new OfflineAudioContext(1,Math.ceil(seconds*sampleRate),sampleRate);await prepareProcessorMix(ctx);
+ const ctx=new OfflineAudioContext(1,Math.ceil(seconds*sampleRate),sampleRate);await prepareProcessorMix(ctx,patch);
  scheduleNote(ctx,ctx.destination,{patch,volume:1},{pitch,velocity:1},0,duration,null);
  return ctx.startRendering();
 }
@@ -511,7 +513,7 @@ export async function wav(document){
  for(const beat of beats)await decodeSamples(decoder,beat,decoded);
  const events=renderEvents(document),seconds=renderEndSeconds(document,events,decoded);
  if(seconds>600)throw Error("WAV including effect tails exceeds the current 10-minute render limit.");
- const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);await prepareProcessorMix(ctx);
+ const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);await prepareProcessorMix(ctx,document);
  sampleCaches.set(ctx,decoded);
  const vocals=await decodeSongRecordings(ctx,document),out=ctx.createGain();
  out.gain.value=.85;out.connect(ctx.destination);

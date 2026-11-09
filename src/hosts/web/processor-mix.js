@@ -1,10 +1,11 @@
+import {prepareDynamics,needsDynamics} from './dynamics.js';
 import {processorKind} from '../../dsp/processing-graph.js';
 import {processorMix} from '../../dsp/processing-chain.js';
 import {configureDriveShaper} from '../../../audioEffects.js';
 const latencies=new Map();
 // Hosts differ in WaveShaper oversampling latency. Measure once per sample rate
 // before scheduling, never in a device callback or during a held gesture.
-export async function prepareProcessorMix(context){
+export async function prepareProcessorMix(context,document=null){
  const rate=context.sampleRate;if(!latencies.has(rate))latencies.set(rate,(async()=>{
   const Offline=globalThis.OfflineAudioContext;
   if(!Offline)throw Error('Offline audio is required to align processor mixes');
@@ -14,6 +15,9 @@ export async function prepareProcessorMix(context){
   for(let i=1;i<data.length;i++)if(Math.abs(data[i])>Math.abs(data[peak]))peak=i;
   return peak;
  })());
+ // Real-time contexts prepare once for subsequent live edits. Offline renders
+ // load the worklet only if their score actually contains active dynamics.
+ if(typeof context.startRendering!=="function"||needsDynamics(document))await prepareDynamics(context);
  const frames=await latencies.get(rate);context.processorMixLatency=frames;return frames;
 }
 export function connectProcessorMix(context,signal,stage,patch,id,owner){

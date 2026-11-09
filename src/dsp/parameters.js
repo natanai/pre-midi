@@ -169,3 +169,21 @@ export function validateParameterBlock(block,prefix,{context="synth",optional=[]
  for(const key of Object.keys(block))if(!fields.has(key))errors.push("Unsupported "+prefix+" parameter: "+key+".");
  return errors;
 }
+
+// Instance controls share this authority without becoming source-patch fields.
+export const DYNAMICS_PARAMETERS=freeze({
+ threshold:parameter('dynamics.threshold','db',-96,0,-18,.1,'db'),
+ ratio:parameter('dynamics.ratio','ratio',1,40,4,.1,'number'),
+ knee:parameter('dynamics.knee','db',0,24,6,.1,'db'),
+ attack:parameter('dynamics.attack','seconds',0,1,.01,.001,'seconds'),
+ release:parameter('dynamics.release','seconds',.001,5,.1,.001,'seconds'),
+ makeup:parameter('dynamics.makeup','db',-24,24,0,.1,'db'),
+ range:parameter('dynamics.range','db',0,96,60,.1,'db'),
+ hold:parameter('dynamics.hold','seconds',0,2,.02,.001,'seconds')
+});
+export const DYNAMICS_FIELDS=freeze({
+ compressor:['threshold','ratio','knee','attack','release','makeup'],
+ gate:['threshold','range','hold','attack','release'],
+ limiter:['threshold','release']
+});
+export const dynamicsParameter=(kind,key)=>DYNAMICS_FIELDS[kind]?.includes(key)?DYNAMICS_PARAMETERS[key]:null;

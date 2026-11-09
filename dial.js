@@ -3,6 +3,20 @@
 import {captureSoundControlView} from "./soundControlView.js";
 
 const labelHelp=Object.freeze({
+ "compressor threshold":"turn down parts above this level in each note or vocal clip",
+ "compressor ratio":"higher ratios turn loud parts down more",
+ "compressor knee":"soften the change from unchanged to compressed sound",
+ "compressor attack":"how quickly loud parts are turned down",
+ "compressor release":"how slowly the level recovers after a loud part",
+ "compressor makeup":"raise or lower the compressed sound after compression",
+ "gate threshold":"quieten parts below this level in each note or vocal clip",
+ "gate range":"how far quiet parts are turned down",
+ "gate hold":"keep the gate open this long after sound falls below the threshold",
+ "gate attack":"how quickly the gate opens when sound returns",
+ "gate release":"how slowly the gate closes on quiet sound",
+ "limiter threshold":"cap sample peaks of this note or clip before voices and echoes are mixed",
+ "limiter release":"how slowly the level recovers after a peak",
+
  "cutoff timeline":"move brightness through points in this beat; presets keep the base sound",
  "automation":"move sound controls along musical time",
  "automation bar":"the bar where this value belongs",

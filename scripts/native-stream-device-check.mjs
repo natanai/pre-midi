@@ -25,14 +25,15 @@ try{
  // Sanitizer overhead is not a real-time performance measurement. Give its
  // physical-time null callbacks a larger lookahead while checking ownership.
  const rows=[],scale=process.env.PREMIDI_NATIVE_SANITIZE?4:1;
- for(const rate of [44100,48000,96000])for(const graph of [false,true]){
+ for(const rate of (process.env.PREMIDI_STREAM_RATES?process.env.PREMIDI_STREAM_RATES.split(',').map(Number):[44100,48000,96000]))for(const graph of [false,true]){
   const frames=Math.round(rate*.55*scale),mark=[0,.090137,.180137,.270137,.360137,.55]
    .map(s=>Math.floor(s*rate*scale+1e-9));
   const patch=makePatch("touch-keys");
   patch.effects={...patch.effects,drive:.2,delayMix:.45,
    delayTime:.073137,delayFeedback:.6};
   patch.envelope={...patch.envelope,release:.20};
-  if(graph){patch.chain=withInstance(patch,'filter');patch.chain.instances[0].parameters.cutoff=3200;patch.chain=withParallelRoute(patch);patch.chain=moveProcessor(patch.chain,'filter-1','route-1');patch.chain=withRouteShare(patch.chain,'dry',.4);}
+  patch.chain=withInstance(patch,"compressor");patch.chain.instances[0].parameters.threshold=-28;
+  if(graph){patch.chain=withInstance(patch,'filter');patch.chain.instances.find(instance=>instance.kind==='filter').parameters.cutoff=3200;patch.chain=withParallelRoute(patch);patch.chain=moveProcessor(patch.chain,'filter-1','route-1');patch.chain=withRouteShare(patch.chain,'dry',.4);}
   const tone=(pitch,start,duration)=>planSynthVoice({patch,volume:.12},
    {pitch,velocity:.8},start*scale,duration*scale,{automation:[{id:"pan",version:1,target:"pan",unit:"pan",interpolation:"linear",points:[{id:"a",step:0,value:-.4},{id:"b",step:4,value:.6}]}],timeline:{step:0,unit:.125*scale,limitStep:4}});
   const duration=Math.round(rate*.14),pcm=new Float32Array(duration*2);

@@ -66,10 +66,17 @@ inline void readProcessing(PacketReader& in,Plan& p){
  p.driveFirst=(flags&1)!=0;p.bypassFilter=p.bypassFilter||(flags&2)!=0;p.bypassDrive=(flags&4)!=0;
  readProcessingGraph(in,p);readParameterAutomation(in,p);
 }
+inline void readDynamics(PacketReader& in,Plan& p,unsigned rate){
+ p.dynamicsCount=in.u32();require(p.dynamicsCount<=4,"Too many post-level dynamics processors");
+ for(unsigned i=0;i<p.dynamicsCount;i++){
+  auto& d=p.dynamics[i];const auto mode=in.u32();require(mode<=2,"Invalid dynamics mode");d.mode=static_cast<DynamicsRecipe::Mode>(mode);
+  d.threshold=in.f64();d.ratio=in.f64();d.knee=in.f64();d.attack=in.f64();d.release=in.f64();d.makeup=in.f64();d.range=in.f64();d.hold=in.f64();d.mix=in.f64();d=d.prepared(rate);
+ }
+}
 inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
  PacketReader in(data,size);const auto magic=in.u32();
  if(magic==0x38564d50){
-  require(in.u32()==rate&&in.u32()==1,"Invalid native sample execution header");const auto version=in.u32();require(version==19,"Unknown native sample execution version");Plan p;p.version=version;p.kind=in.u32();p.asset=in.u32();
+  require(in.u32()==rate&&in.u32()==1,"Invalid native sample execution header");const auto version=in.u32();require(version==20,"Unknown native sample execution version");Plan p;p.version=version;p.kind=in.u32();p.asset=in.u32();
   p.start=in.f64();p.duration=in.f64();p.sourceEnd=in.f64();p.graphEnd=in.f64();p.off=in.f64();p.pan=in.f64();p.playbackRate=in.f64();p.sampleOffset=in.f64();p.sampleLimit=in.f64();p.cutoff=in.f64();p.q=in.f64();p.drive=in.f64();p.vibratoRate=in.f64();p.vibratoDepth=in.f64();p.vibratoDelay=in.f64();p.tremolo=in.f64();p.tremoloRate=in.f64();p.delayMix=in.f64();p.delayTime=in.f64();p.delayFeedback=in.f64();require(p.delayMix>=0&&p.delayMix<=1&&p.delayTime>=.04999999&&p.delayTime<=2&&p.delayFeedback>=0&&p.delayFeedback<=.80000002,"Invalid native sample delay");p.tone=in.f64();p.toneRate=in.f64();p.sweepStart=in.f64();p.sweepEnd=in.f64();require(p.sweepStart>=50&&p.sweepStart<=14000&&p.sweepEnd>p.start&&p.sweepEnd<=p.graphEnd,"Invalid recording filter sweep");require(p.tone>=0&&p.tone<=1&&p.toneRate>=.1&&p.toneRate<=20,"Invalid sample tone motion");p.filterType=in.u32();const auto bypass=in.u32();p.bypassFilter=bypass!=0;
   require((p.kind==1||p.kind==2)&&p.asset>0&&p.start>=0&&p.start<=601&&p.duration>0&&p.duration<=601&&p.sourceEnd>p.start&&p.graphEnd>=p.sourceEnd&&p.graphEnd-p.start<=602&&p.off>=p.start&&p.off<=p.sourceEnd&&std::abs(p.pan)<=1&&p.playbackRate>0&&p.playbackRate<=65536&&p.sampleOffset>=0&&p.sampleOffset<p.sampleLimit&&p.sampleLimit<=301&&p.cutoff>=50&&p.cutoff<=14000&&p.q>=.1&&p.q<=16&&p.drive>=0&&p.drive<=1&&p.filterType<4&&bypass<=1&&p.vibratoRate>=.1&&p.vibratoRate<=20&&p.vibratoDepth>=0&&p.vibratoDepth<=100&&p.vibratoDelay>=0&&p.vibratoDelay<=3&&p.tremolo>=0&&p.tremolo<=1&&p.tremoloRate>=.1&&p.tremoloRate<=20,"Invalid native sample voice bounds");
   auto& osc=p.oscillators[0];osc.count=in.u32();require(osc.count<=600,"Native sample pitch curve exceeds 600 points");for(unsigned i=0;i<osc.count;i++){osc.curve[i]=in.f64();require(std::abs(osc.curve[i])<=2500,"Invalid native sample pitch curve");}
@@ -80,7 +87,7 @@ inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
   readRoutes(in,p);for(unsigned i=0;i<p.routeCount;i++)require(p.routes[i].target>=4&&p.routes[i].target<8,"Recording route targets an oscillator");
   p.automationCount=in.u32();require(p.automationCount==0||(p.automationCount>=2&&p.automationCount<=36),"Invalid recording automation");
   previous=-1;for(unsigned i=0;i<p.automationCount;i++){auto& point=p.automation[i];point.time=in.f64();point.value=in.f64();require(point.time>previous&&point.time>=p.start&&point.time<=p.graphEnd&&point.value>=50&&point.value<=14000,"Invalid recording cutoff point");previous=point.time;}
-  readProcessing(in,p);require(in.done(),"Trailing native sample packet");return p;
+  readProcessing(in,p);readDynamics(in,p,rate);require(in.done(),"Trailing native sample packet");return p;
  }
  require(magic==0x344e4d50,"Unknown prepared voice transport");
  require(in.u32()==rate,"Voice/device sample rate mismatch");const auto frames=in.u32();require(frames>0&&frames<=rate*12,"Invalid prepared frame bound");
@@ -109,6 +116,6 @@ inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
  double previous=-1;for(unsigned i=0;i<p.automationCount;i++){auto& e=p.automation[i];e.time=in.f64();e.value=in.f64();require(e.time>previous&&e.time>=p.start&&e.time<=p.graphEnd&&e.value>=50&&e.value<=14000,"Invalid native automation point");previous=e.time;}
  p.eventCount=in.u32();require(p.eventCount>=4&&p.eventCount<=6,"Invalid native envelope count");previous=-1;
  for(unsigned i=0;i<p.eventCount;i++){auto& e=p.events[i];e.kind=in.u32();e.time=in.f64();e.value=in.f64();require(e.kind<=1&&e.time>=previous&&e.time>=p.start&&e.time<=p.sourceEnd&&e.value>=0&&e.value<=1,"Invalid native envelope event");previous=e.time;}
- readProcessing(in,p);require(in.done(),"Trailing native voice data");return p;
+ readProcessing(in,p);readDynamics(in,p,rate);require(in.done(),"Trailing native voice data");return p;
 }
 }
