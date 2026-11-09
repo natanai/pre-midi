@@ -2860,7 +2860,7 @@
       {
         "id": "SE-10",
         "title": "Add production dynamics and vocal cleanup",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-08"
@@ -2884,7 +2884,10 @@
         "verification": [
           "Static curve, transient, sibilance, sidechain-isolation and output-peak fixtures; matched-level listening."
         ],
-        "completion_evidence": []
+        "completion_evidence": [
+          "native/dynamics-test.cpp (compile with C++17 and run): focused DSP kernel checks only"
+        ],
+        "progress_note": "Native linked-channel feed-forward compressor, gate and zero-lookahead sample-peak limiter kernels exist in native/dynamics.hpp. Focused C++ tests cover independent static/knee curves, linked gain, limiter ceiling, gate hold/range and bypass. These kernels are NOT connected to playback or exposed in the Inspector yet. Next: post-articulation Sound/Clip bus ownership, bounded state/resource lifetime, browser execution, shared controls/illustrations, de-esser and sidechain inputs. No production dynamics completion or master true-peak protection is claimed."
       },
       {
         "id": "SE-11",
