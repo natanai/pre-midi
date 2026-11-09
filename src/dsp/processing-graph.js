@@ -91,7 +91,12 @@ export function compileProcessingGraph(patch,rate,driveFrames=192){
  });
  const indexes=order=>order.map(id=>ids.indexOf(id));
  const branches=(chain.parallel??[]).map(r=>({id:r.id,gain:r.gain,order:indexes(r.order),latency:r.order.reduce((n,id)=>n+nodes[ids.indexOf(id)].latency,0)}));
- return {nodes,order:indexes(chain.order),branches,dry:chain.dry??0,latency:Math.max(0,...branches.map(b=>b.latency))};
+ // A routed empty graph is still a real blend (including silence). The wire
+ // reserves count zero for no graph, so compile one neutral EQ stage without
+ // creating a musical processor or changing the authored topology.
+ const order=indexes(chain.order);
+ if(!nodes.length){nodes.push({id:'empty-routing',kind:'eq',primary:false,bypass:false,mix:1,type:0,cutoff:8000,resonance:.7,stages:1,amount:0,coefficients:Array.from({length:8},()=>[1,0,0,0,0]),latency:0});order.push(0);}
+ return {nodes,order,branches,dry:chain.dry??0,latency:Math.max(0,...branches.map(b=>b.latency))};
 }
 
 export const hasProcessingGraph=patch=>!!patch?.chain&&((patch.chain.parallel?.length??0)>0||patch.chain.order.some(id=>!PRIMARY_PROCESSORS.includes(id)));

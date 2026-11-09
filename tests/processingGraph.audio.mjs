@@ -14,6 +14,7 @@ const base={chain:{version:1,order:[],bypass:[]}},plain=await render(base.chain)
 const filter={chain:withInstance(base,'filter')};filter.chain.instances[0].parameters.cutoff=300;const one=await render(filter.chain);
 filter.chain=withInstance(filter,'filter');filter.chain.instances[1].parameters.cutoff=800;const two=await render(filter.chain);
 const diff=(a,b)=>a.reduce((n,v,i)=>Math.max(n,Math.abs(v-b[i])),0);assert.ok(diff(one.pcm,two.pcm)>.001);
+const empty={chain:withParallelRoute(base)};assert.equal(diff((await render(empty.chain)).pcm,plain.pcm),0);empty.chain.parallel[0].gain=0;assert.ok((await render(empty.chain)).pcm.every(value=>value===0));
 for(const count of [1,2]){
  const patch=structuredClone(base);for(let i=0;i<count;i++){patch.chain=withInstance(patch,'drive');patch.chain.instances[i].parameters.amount=i?.3:.5;}
  const wet=await render(patch.chain);patch.chain=withParallelRoute(patch);for(const p of patch.chain.instances)patch.chain=moveProcessor(patch.chain,p.id,'route-1');patch.chain=withRouteShare(patch.chain,'dry',.4);

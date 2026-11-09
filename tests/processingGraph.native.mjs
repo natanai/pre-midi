@@ -19,7 +19,10 @@ try{
   if(out.status)throw Error(out.stderr.toString());const copy=new Uint8Array(out.stdout);return new Float32Array(copy.buffer);
  };
  const diff=(a,b)=>{let max=0;for(let i=0;i<a.length;i++)max=Math.max(max,Math.abs(a[i]-b[i]));return max;};
- const plain=render(base),filtered=structuredClone(base);filtered.chain=withInstance(filtered,'filter');filtered.chain.instances[0].parameters.cutoff=300;
+ const plain=render(base),empty=structuredClone(base);empty.chain=withParallelRoute(empty);
+ assert.equal(diff(render(empty),plain),0,'Empty parallel routes preserve dry signal');empty.chain.parallel[0].gain=0;
+ assert.ok(render(empty).every(value=>value===0),'Empty muted routes remain silent');
+ const filtered=structuredClone(base);filtered.chain=withInstance(filtered,'filter');filtered.chain.instances[0].parameters.cutoff=300;
  const one=render(filtered);assert.ok(diff(plain,one)>.01);
  filtered.chain=withInstance(filtered,'filter');filtered.chain.instances[1].parameters.cutoff=800;
  const two=render(filtered);assert.ok(diff(one,two)>.001,'A second independent filter must affect PCM');
