@@ -33,6 +33,11 @@ int premidi_audio_configure(void* host,uint32_t device,uint32_t sample_rate,uint
 int premidi_audio_play(void* host,const uint8_t* data,size_t length,double cycle,double seek,int loop,int preview);
 // Lock-free mute request; safe to call from outside the control worker while the host lives.
 void premidi_audio_request_transport_stop(void* host);
+// Claim on the control thread before preparation. Serialize claims with urgent
+// requests on the host lifetime lock; only a new owner clears transport intent.
+void premidi_audio_claim_transport(void* host,uint64_t owner);
+// Atomic intent only: no parsing, device API, waiting, or Session mutation.
+void premidi_audio_request_transport_state(void* host,uint32_t command);
 int premidi_audio_control(void* host,uint32_t command,int loop);
 int premidi_audio_status_get(void* host,premidi_audio_status* status);
 int premidi_audio_add_sample(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info);

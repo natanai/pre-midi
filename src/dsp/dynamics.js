@@ -6,6 +6,7 @@ export function defaultDynamics(kind){
  const result=Object.fromEntries(DYNAMICS_FIELDS[kind].map(key=>[key,DYNAMICS_PARAMETERS[key].default]));
  if(kind==='gate')result.threshold=-48;
  if(kind==='limiter'){result.threshold=-1;result.release=.05;}
+ if(kind==='deesser'){result.threshold=-30;result.attack=.002;result.release=.06;}
  return result;
 }
 export function validateDynamicsParameters(kind,p){

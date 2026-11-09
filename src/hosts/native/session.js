@@ -6,6 +6,7 @@ import {sampleForNote} from '../../../sampler.js';
 import {getAsset} from '../../../assetRegistry.js';
 import {validatePatch} from '../../../synth.js';
 import {encodeNativeSample,planNativeSample,planNativeVocal} from './sample-plan.js';
+import {createNativePauseControl} from './transport-intent.js';
 
 export const nativeEnabled=()=>!!globalThis.__TAURI__?.core?.invoke&&(localStorage.getItem('premidi-audio-backend')||'native')==='native';
 export const nativeRequest=request=>globalThis.__TAURI__.core.invoke('native_audio',{request});
@@ -74,7 +75,7 @@ export async function prepareNativeAssets(ids,info,{isCurrent=()=>true}={}){
 }
 // Yield between bounded note-plan batches so Stop can cancel a long Song
 // without monopolizing the WebView2 UI thread until all notes are prepared.
-async function preparePlaybackPlans(events,assets,unit,isCurrent){
+export async function prepareNativePlans(events,assets,unit,isCurrent){
  const plans=[];
  for(let i=0;i<events.length;i+=96){
   if(!isCurrent())throw Error('Native playback request cancelled');
@@ -124,16 +125,18 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
  const info=await ensureNativeOutput();
  if(!isCurrent())throw Error('Native playback request cancelled');
  const assets=await prepareNativeAssets(ids,info,{isCurrent});
- const plans=await preparePlaybackPlans(events,assets,unit,isCurrent);
+ const plans=await prepareNativePlans(events,assets,unit,isCurrent);
  let data=Array.from(encodeNativeSession(plans,info.sampleRate));
  if(!isCurrent())throw Error('Native playback request cancelled');
- let {owner}=await nativeRequest({action:'begin'});
+ const {owner}=await nativeRequest({action:'begin'});
  if(epoch!==transportEpoch)throw Error('Native playback request cancelled');
  const loops=()=>typeof loop==='function'?loop():loop;
  await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,startStep*unit),cycle-unit),looping:!!loops(),preview:false,owner,count_in:countIn,bpm:document.bpm,recording});
  if(epoch!==transportEpoch){await nativeRequest({action:'control',command:1,looping:false,owner});throw Error('Native playback request cancelled');}
  let stopped=false,paused=false,polling=false,seeks=0,seekGeneration=0,timer,lastLoop=!!loops(),editGeneration=0,updates=0,operations=Promise.resolve();
  const serialize=fn=>{const task=operations.then(fn);operations=task.catch(()=>{});return task;};
+ const pauseControl=createNativePauseControl({request:nativeRequest,owner,isStopped:()=>stopped,
+  looping:loops,onChange:value=>{paused=value;}});
  const finish=()=>{if(stopped)return;stopped=true;clearInterval(timer);onStop();};
  const reportError=message=>{globalThis.dispatchEvent?.(new CustomEvent('premidi-native-error',{detail:message}));finish();};
  async function tick(){
@@ -155,16 +158,22 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
  timer=setInterval(()=>void tick(),40);
  return {
   backend:'native-cpp',get paused(){return paused;},
-  async pause(){return serialize(async()=>{if(stopped)return;await nativeRequest({action:'control',command:2,looping:!!loops(),owner});paused=true;});},
-  async resume(){return serialize(async()=>{if(stopped)return;await nativeRequest({action:'control',command:3,looping:!!loops(),owner});paused=false;});},
+  pause:pauseControl.pause,
+  resume:pauseControl.resume,
   async update(nextDocument,nextEvents){
    const generation=++editGeneration;updates++;
    try{return await serialize(async()=>{
     if(stopped||generation!==editGeneration)return;
     const nextUnit=60/nextDocument.bpm/4,nextSteps=nextDocument.kind==='song'?nextDocument.nativeLengthSteps:nextDocument.bars*16,nextCycle=nextSteps*nextUnit;
     if(!Number.isFinite(nextCycle)||nextCycle<.05||nextCycle>600)throw Error('Native arrangement must last between .05 seconds and 10 minutes');
-    const status=await ensureNativeOutput(),nextAssets=await prepareNativeAssets(nativeRequiredAssets(nextEvents),status);
-    const nextData=Array.from(encodeNativeSession(nativePlans(nextEvents,nextAssets,nextUnit),status.sampleRate));
+    const current=()=>!stopped&&generation===editGeneration&&isCurrent();
+    const status=await ensureNativeOutput();if(!current())return;
+    let nextAssets,nextPlans;
+    try{
+     nextAssets=await prepareNativeAssets(nativeRequiredAssets(nextEvents),status,{isCurrent:current});
+     nextPlans=await prepareNativePlans(nextEvents,nextAssets,nextUnit,current);
+    }catch(error){if(!current())return;throw error;}
+    const nextData=Array.from(encodeNativeSession(nextPlans,status.sampleRate));
     if(stopped||generation!==editGeneration)return;
     await nativeRequest({action:'update',data:nextData,cycle:nextCycle,looping:!!loops(),tempo_ratio:nextUnit/unit,owner});
     data=nextData;cycle=nextCycle;unit=nextUnit;
@@ -173,8 +182,10 @@ export async function playNative(document,events,{loop=false,onPosition=()=>{},o
   async seek(step){
    const generation=++seekGeneration;seeks++;
    try{return await serialize(async()=>{
-    const claim=await nativeRequest({action:'begin'});if(stopped||generation!==seekGeneration)return;owner=claim.owner;
-    await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,step*unit),cycle-unit),looping:!!loops(),preview:false,owner});paused=false;
+    if(stopped||generation!==seekGeneration)return;
+    // A seek replaces audio within this transport, not its ownership lease.
+    // The native callback applies the current pause intent to the replacement.
+    await nativeRequest({action:'play',data,cycle,seek:Math.min(Math.max(0,step*unit),cycle-unit),looping:!!loops(),preview:false,owner});
    });}finally{seeks--;}
   },
   async stop(){if(stopped)return;finish();await nativeRequest({action:'control',command:1,looping:false,owner});},

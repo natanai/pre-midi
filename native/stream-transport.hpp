@@ -26,6 +26,7 @@ class StreamTransport final {
   std::unique_ptr<PreparedPageLease> resource;
  };
  const unsigned rate_;
+ const std::uint64_t owner_;
  PageMailbox mailbox;
  std::unique_ptr<Session> player;
  std::array<Ready,3> published{};
@@ -48,7 +49,7 @@ private:
  }
  public:
  StreamTransport(std::uint64_t owner,std::uint64_t revision,unsigned rate,bool withProcessing=false)
-  :rate_(rate),mailbox(owner,revision,0){
+  :rate_(rate),owner_(owner),mailbox(owner,revision,0){
   require(rate>=8000&&rate<=192000,"Invalid native streaming output sample rate");
   constexpr std::uint8_t empty[]{0x50,0x4d,0x53,0x31,0,0,0,0};
   player=std::make_unique<Session>(empty,sizeof(empty),rate,1,0);
@@ -57,6 +58,7 @@ private:
  StreamTransport(const StreamTransport&)=delete;
  StreamTransport& operator=(const StreamTransport&)=delete;
  unsigned rate()const noexcept{return rate_;}
+ std::uint64_t owner()const noexcept{return owner_;}
  unsigned state()const noexcept{return paused.load(std::memory_order_acquire)?
   static_cast<unsigned>(premidi::paused):player->stateView.load(std::memory_order_acquire);}
  void setPaused(bool value)noexcept{paused.store(value,std::memory_order_release);}

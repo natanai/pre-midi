@@ -6,6 +6,7 @@ import {
 } from './session.js';
 import {createNativeSongPagePublisher,nativeSongDelayRecipes} from './song-stream-page.js';
 import {songDurationSteps} from '../../../songModel.js';
+import {createNativePauseControl} from './transport-intent.js';
 
 const cancelled=()=>Error('Native Song stream preparation was cancelled by a newer transport.');
 const isLooping=value=>!!(typeof value==='function'?value():value);
@@ -24,11 +25,13 @@ export async function playNativeSongStreamExperimental(song,{
   throw Error('Invalid native Song transport timing.');
  const token=claimNativeTransportEpoch();
  let stopped=false,paused=false,timer=null,polling=false,revision=0,active=null,staging=null;
- let pending=Promise.resolve(),marker=getRevision?.(),operationGeneration=0,replacing=0;
+ let pending=Promise.resolve(),marker=getRevision?.(),operationGeneration=0,replacing=0,pauseRevision=0;
  const check=()=>{if(stopped||!nativeTransportEpochCurrent(token))throw cancelled();};
  const info=await ensureNativeOutput();check();
  const {owner}=await nativeRequest({action:'begin'});check();
  if(!Number.isSafeInteger(owner)||owner<=0)throw Error('Native Song transport did not issue an owner.');
+ const pauseControl=createNativePauseControl({request:nativeRequest,owner,isStopped:()=>stopped,
+  onChange:value=>{check();paused=value;pauseRevision++;}});
  const stop=async()=>{
   if(stopped)return;stopped=true;operationGeneration++;clearInterval(timer);
   // Global Stop cancels the active revision AND any prepared replacement.
@@ -51,7 +54,7 @@ export async function playNativeSongStreamExperimental(song,{
  };
  // Source data is immutable within a revision. An edit never reuses a packet
  // prepared from another document, and backpressure retries remain identical.
- const prepare=async(nextSong,step,{follow=false,lead=0,take=null,generation=operationGeneration}={})=>{
+ const prepare=async(nextSong,step,{follow=false,lead=0,take=null,generation=operationGeneration,retries=0}={})=>{
   check();
   const document=structuredClone(nextSong),unit=60/document.bpm/4,length=songDurationSteps(document);
   if(!Number.isFinite(unit)||length<=0)throw Error('Add a Beat clip before playing this Song.');
@@ -82,11 +85,12 @@ export async function playNativeSongStreamExperimental(song,{
     }
    };
    await advance(target);await fill(current,ack);valid();
-   let due=null;
+   let due=null,preparedPauseRevision=pauseRevision;
    if(follow&&active){
     // Prepare ahead of the old audio clock, then atomically switch at that
     // exact frame. No callback parsing, allocation or mutation of live DSP.
     for(let attempt=0;attempt<12;attempt++){
+     preparedPauseRevision=pauseRevision;
      const old=await status();valid();
      due=old.stream.positionFrame??frameAt(old.stream.positionSeconds,info.sampleRate);
      if(!paused)due+=1024;
@@ -102,12 +106,20 @@ export async function playNativeSongStreamExperimental(song,{
      if(attempt===11)throw Error('Native Song edit preparation could not catch the output clock.');
     }
    }
+   if(follow&&preparedPauseRevision!==pauseRevision)throw Error('Native Song pause changed during handoff');
    await nativeRequest({action:'stream_start',owner,revision:current.revision,bpm:document.bpm,
     count_in:lead,recording:take,seconds:Math.min(300,(length*unit-target/info.sampleRate)||300),due,hold:paused});
    check();active=current;marker=current.marker;staging=null;return current;
   }catch(error){
    try{await nativeRequest({action:'stream_stop',owner,revision:current.revision});}catch{}
    if(staging===current)staging=null;
+   if(follow&&retries<2&&generation===operationGeneration&&
+      /pause changed during handoff|handoff missed its prepared clock/.test(String(error?.message??error))){
+    // Pause can freeze the old clock before a prepared future boundary. Retry
+    // from the actual held phase; never wait for a clock which cannot advance.
+    const old=await status();check();
+    return prepare(document,old.stream.positionSeconds/active.unit,{follow,generation,retries:retries+1});
+   }
    if(Number.isFinite(error.reconstructStep)&&generation===operationGeneration)return prepare(document,error.reconstructStep,{generation});
    throw error;
   }
@@ -161,8 +173,8 @@ export async function playNativeSongStreamExperimental(song,{
  return {
   backend:'native-cpp',get paused(){return paused;},get diagnostics(){return {backend:'native-cpp',streaming:true,liveEdits:true};},
   poll,
-  pause:()=>serialize(async()=>{check();await nativeRequest({action:'control',command:2,looping:false,owner});paused=true;}),
-  resume:()=>serialize(async()=>{check();await nativeRequest({action:'control',command:3,looping:false,owner});paused=false;}),
+  pause:pauseControl.pause,
+  resume:pauseControl.resume,
   update:next=>replace(next,{follow:true}),
   seek:step=>{if(!Number.isFinite(step)||step<0)return Promise.reject(Error('Invalid Song seek position.'));return replace(getDocument?.()??active.document,{step});},
   stop

@@ -16,6 +16,12 @@ const labelHelp=Object.freeze({
  "gate release":"how slowly the gate closes on quiet sound",
  "limiter threshold":"cap sample peaks of this note or clip before voices and echoes are mixed",
  "limiter release":"how slowly the level recovers after a peak",
+ "deesser frequency":"choose the hiss or sharpness to turn down in each note or vocal clip",
+ "deesser bandwidth":"widen the band around the chosen frequency",
+ "deesser threshold":"turn down the selected band when it rises above this level",
+ "deesser amount":"limit how far the selected band can be turned down",
+ "deesser attack":"how quickly sharp sounds are softened",
+ "deesser release":"how slowly the selected band returns after a sharp sound",
 
  "cutoff timeline":"move brightness through points in this beat; presets keep the base sound",
  "automation":"move sound controls along musical time",

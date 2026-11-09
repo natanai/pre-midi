@@ -6,7 +6,7 @@ const api=await import(process.env.WEB_AUDIO_MODULE??'node-web-audio-api');
 // Node's worklet adapter accepts filesystem paths rather than file: URLs.
 class OfflineAudioContext extends api.OfflineAudioContext{constructor(...args){super(...args);const add=this.audioWorklet.addModule.bind(this.audioWorklet);this.audioWorklet.addModule=url=>add(String(url).startsWith('file:')?fileURLToPath(url):url);}}
 globalThis.OfflineAudioContext=OfflineAudioContext;globalThis.AudioWorkletNode=api.AudioWorkletNode;
-const folder=await mkdtemp(join(tmpdir(),'premidi-dynamics-')),bin=join(folder,'render'),rate=24000,frames=rate,pcm=Float32Array.from({length:frames*2},(_,i)=>{const t=Math.floor(i/2)/rate,level=t<.2?.7:t<.4?.04:t<.6?.6:.00002;return level*Math.sin(2*Math.PI*220*t)*(i%2?.5:1);}),asset={rate,channels:2,frames,pcm},handles=new Map([['r',{id:1,duration:1,normalization:1}]]);
+const folder=await mkdtemp(join(tmpdir(),'premidi-dynamics-')),bin=join(folder,'render'),rate=24000,frames=rate,pcm=Float32Array.from({length:frames*2},(_,i)=>{const t=Math.floor(i/2)/rate,level=t<.2?.7:t<.4?.04:t<.6?.6:.00002,sibilance=t>=.2&&t<.6?.2*Math.sin(2*Math.PI*6500*t):0;return (level*Math.sin(2*Math.PI*220*t)+sibilance)*(i%2?.5:1);}),asset={rate,channels:2,frames,pcm},handles=new Map([['r',{id:1,duration:1,normalization:1}]]);
 const difference=(a,b)=>{assert.equal(a.length,b.length);return a.reduce((n,v,i)=>Math.max(n,Math.abs(v-b[i])),0);};
 try{
  execFileSync(process.env.CXX??'c++',['-std=c++17','-O2','-ffp-contract=off',fileURLToPath(new URL('../native/session-render.cpp',import.meta.url)),'-o',bin]);
@@ -21,16 +21,20 @@ try{
   const rendered=await c.startRendering(),output=new Float32Array(frames*2);for(let i=0;i<frames;i++){output[2*i]=rendered.getChannelData(0)[i];output[2*i+1]=rendered.getChannelData(1)[i];}return output;
  };
  let worst=0;
- for(const kind of ['compressor','gate','limiter']){
+ for(const kind of ['compressor','gate','limiter','deesser']){
   const fx=effects(kind);if(kind==='limiter')fx.chain.instances[0].parameters.threshold=-15;
   const plan=planNativeVocal(event(fx),0,.125,handles),audio=native([plan]),browser=await web(fx),error=difference(audio,browser);assert.ok(error<2e-6,kind+' native/worklet '+error);worst=Math.max(worst,error);
   if(kind==='compressor'){
    const bytes=encodeNativeSession([plan],rate,[asset]),at=bytes.length-80,tooMany=bytes.slice(),invalid=bytes.slice();new DataView(tooMany.buffer).setUint32(at,5,true);rejectPacket(tooMany,/Too many post-level/);new DataView(invalid.buffer).setFloat64(at+16,0,true);rejectPacket(invalid,/Invalid dynamics recipe/);
   }
+  if(kind==='deesser'){
+   const invalid=encodeNativeSession([plan],rate,[asset]);new DataView(invalid.buffer).setFloat64(invalid.length-24,0,true);rejectPacket(invalid,/Invalid dynamics recipe/);
+  }
   const doubled=native([plan,plan]);assert.equal(difference(doubled,Float32Array.from(audio,v=>v*2)),0,'Overlapping voices share a detector');
   const repeated=native([plan],{loop:true,seconds:2});assert.equal(difference(audio,repeated.slice(frames*2)),0,'Loop did not reset note-owned dynamics');
   const recipe=compileDynamics(fx)[0],kernel=new DynamicsKernel(recipe,rate);let oracle=0;
-  for(let i=0;i<frames;i++){const left=Math.fround(pcm[2*i]*1.25),right=Math.fround(pcm[2*i+1]*1.25),gain=kernel.gain(Math.max(Math.abs(left),Math.abs(right)));oracle=Math.max(oracle,Math.abs(audio[2*i]-Math.fround(Math.fround(left*gain)*Math.fround(.85))),Math.abs(audio[2*i+1]-Math.fround(Math.fround(right*gain)*Math.fround(.85))));}
+  const frame=new Float32Array(2);
+  for(let i=0;i<frames;i++){frame[0]=Math.fround(pcm[2*i]*1.25);frame[1]=Math.fround(pcm[2*i+1]*1.25);kernel.process(frame);oracle=Math.max(oracle,Math.abs(audio[2*i]-Math.fround(frame[0]*Math.fround(.85))),Math.abs(audio[2*i+1]-Math.fround(frame[1]*Math.fround(.85))));}
   assert.ok(oracle<2e-7,kind+' prepared gain/linked oracle '+oracle);
   assert.equal(difference(audio,native([plan],{block:17})),0);assert.equal(difference(audio.slice(Math.round(.45*rate)*2),native([plan],{seek:.45,seconds:.55})),0);
   const buffer=new OfflineAudioContext(2,1,rate).createBuffer(2,frames,rate);for(let i=0;i<frames;i++){buffer.getChannelData(0)[i]=pcm[2*i];buffer.getChannelData(1)[i]=pcm[2*i+1];}
@@ -46,6 +50,9 @@ try{
  // The compressor must respond to articulation gain, not raw oscillator level.
  const patch=cleanPatch();patch.chain=withInstance(patch,'compressor');patch.chain.instances[0].parameters.threshold=-30;
  const synth=planSynthVoice({patch,volume:.5},{pitch:60,velocity:.8},.010123,.5),synthAudio=native([synth],{assets:[]}),synthError=difference(synthAudio,await web(null,{synth}));assert.ok(synthError<1e-4,'Synth post-articulation dynamics '+synthError);
+ const bright=cleanPatch();bright.chain=withInstance(bright,'deesser');Object.assign(bright.chain.instances[0].parameters,{frequency:4000,threshold:-45,amount:12});
+ const brightPlan=planSynthVoice({patch:bright,volume:.5},{pitch:108,velocity:.8},.010123,.5),brightAudio=native([brightPlan],{assets:[]});assert.ok(difference(brightAudio,await web(null,{synth:brightPlan}))<1e-4,'Synth de-esser native/worklet');
+ bright.chain.bypass=['deesser-1'];assert.ok(difference(brightAudio,native([planSynthVoice({patch:bright,volume:.5},{pitch:108,velocity:.8},.010123,.5)],{assets:[]}))>.001,'Synth de-esser does not process the sound');
  const fx=effects('compressor');fx.chain=withInstance(fx,'limiter');fx.chain.instances[1].parameters.threshold=-20;const forward=native([planNativeVocal(event(fx),0,.125,handles)]);fx.chain.post.reverse();const reverse=native([planNativeVocal(event(fx),0,.125,handles)]);assert.ok(difference(forward,reverse)>.001,'Post-level order has no effect');
  console.log('PASS post-level ordering, fractional synth onset and independent voice ownership',JSON.stringify({worst,synthError}));
 }finally{await rm(folder,{recursive:true,force:true});}

@@ -163,6 +163,7 @@ public:
  unsigned lastLeadFrames=0,lastMusicFrames=0;
  // Prepared handoff clock; read only by the callback after publication.
  Session* alignSource=nullptr;std::uint64_t alignOldFrame=0;
+ std::uint64_t transportOwner=0;
  std::atomic<unsigned> handoff{0};
  Session(const std::uint8_t* data,std::size_t length,unsigned sr,double cycle,double seek,const SampleStore& samples={},bool preparationOnly=false):rate(sr),fadeFrames(std::max(1u,sr/200)),cycleSeconds(cycle){
   require(rate>=8000&&rate<=192000&&std::isfinite(cycle)&&cycle>=.05&&cycle<=600&&std::isfinite(seek)&&seek>=0&&seek<cycle,"Invalid native session timing");
@@ -309,8 +310,22 @@ public:
   return true;
  }
  void command(unsigned command)noexcept{
-  if(command==1||command==2){if(state==playing){fadeLeft=fadeFrames;afterFade=command==1?stopped:paused;}else if(command==1){state=stopped;cursor=0;for(auto& s:voices)s.voice.reset();for(auto& s:retiring)s.voice.reset();}}
-  if(command==3&&state==paused){state=playing;fadeIn=fadeFrames;}
+  if(command==1||command==2){
+   if(state==playing){
+    const auto target=command==1?stopped:paused;
+    // Persistent transport intent is applied on every callback, including to
+    // newly published edits. Repeated Pause must not restart the fade forever.
+    if(afterFade!=target){fadeLeft=fadeFrames;afterFade=target;}
+   }else if(command==1){state=stopped;cursor=0;for(auto& s:voices)s.voice.reset();for(auto& s:retiring)s.voice.reset();}
+  }
+  if(command==3){
+   if(state==paused){state=playing;fadeIn=fadeFrames;}
+   else if(state==playing&&afterFade==paused){
+    // A quick second click can arrive before the pause fade has finished.
+    // Reverse it from its current gain instead of leaving a latent pause.
+    fadeIn=fadeFrames-fadeLeft;fadeLeft=0;afterFade=playing;
+   }
+  }
  }
  bool advanceTo(std::uint64_t target,bool loop)noexcept{
   std::array<float,2*renderBlock> scratch{};

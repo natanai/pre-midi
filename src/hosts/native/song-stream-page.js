@@ -7,7 +7,7 @@ import {nativePageDescriptorCursor} from "./onset-pages.js";
 import {songDurationSteps} from "../../../songModel.js";
 import {rebaseNativePlansToPage} from "./page-plan.js";
 import {
- encodeNativeSession,nativePlans,nativeRequiredAssets,prepareNativeAssets,nativeRequest
+ encodeNativeSession,prepareNativePlans,nativeRequiredAssets,prepareNativeAssets,nativeRequest
 } from "./session.js";
 import {vocalEffects} from "../../../vocalEffects.js";
 
@@ -77,7 +77,9 @@ export async function prepareNativeSongStreamPage(song,page,{
   throw Error("Native Song window changed its scheduled onset count.");
  const assets=await loadAssets(nativeRequiredAssets(events),info);
  validRevision(getRevision,descriptor.revision);
- const plans=nativePlans(events,assets,60/song.bpm/4);
+ const plans=await prepareNativePlans(events,assets,60/song.bpm/4,()=>{
+  validRevision(getRevision,descriptor.revision);return true;
+ });
  if(plans.length!==events.length)
   throw Error("Native Song page contains an inaudible or invalid recorded Clip. Correct its trim before streaming.");
  const rebased=rebaseNativePlansToPage(plans,descriptor.startFrame,sampleRate,page.timeOffset??0);

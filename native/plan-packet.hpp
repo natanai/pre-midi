@@ -69,8 +69,10 @@ inline void readProcessing(PacketReader& in,Plan& p){
 inline void readDynamics(PacketReader& in,Plan& p,unsigned rate){
  p.dynamicsCount=in.u32();require(p.dynamicsCount<=4,"Too many post-level dynamics processors");
  for(unsigned i=0;i<p.dynamicsCount;i++){
-  auto& d=p.dynamics[i];const auto mode=in.u32();require(mode<=2,"Invalid dynamics mode");d.mode=static_cast<DynamicsRecipe::Mode>(mode);
-  d.threshold=in.f64();d.ratio=in.f64();d.knee=in.f64();d.attack=in.f64();d.release=in.f64();d.makeup=in.f64();d.range=in.f64();d.hold=in.f64();d.mix=in.f64();d=d.prepared(rate);
+  auto& d=p.dynamics[i];const auto mode=in.u32();require(mode<=3,"Invalid dynamics mode");d.mode=static_cast<DynamicsRecipe::Mode>(mode);
+  d.threshold=in.f64();d.ratio=in.f64();d.knee=in.f64();d.attack=in.f64();d.release=in.f64();d.makeup=in.f64();d.range=in.f64();d.hold=in.f64();d.mix=in.f64();
+  if(d.mode==DynamicsRecipe::deesser){d.frequency=in.f64();d.bandwidth=in.f64();d.amount=in.f64();}
+  d=d.prepared(rate);
  }
 }
 inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){

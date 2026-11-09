@@ -7,6 +7,9 @@ import {planSynthVoice} from '../src/dsp/synth-voice.js';
 import {nativePlans,encodeNativeSession,unsupportedNativeFeatures,playNative,cancelNativeTransport} from '../src/hosts/native/session.js';
 
 function beat(){const doc=create();doc.bars=1;const inst=doc.instruments[0];inst.timeline=[inst.chunks[0].id];inst.placements=[null];inst.sounds[0].patch=makePatch('touch-keys');inst.volume=.4;inst.sounds[0].gain=.7;inst.chunks[0].notes=[{id:'native-note',pitch:64,start:2,duration:3,velocity:.6}];return doc;}
+async function responds(promise){
+ let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Transport intent waited for preparation')),1000);})]);}finally{clearTimeout(timer);}
+}
 test('native transport consumes the shared canonical timing, sound gain and modulation plan',()=>{
  const doc=beat(),events=renderEvents(doc),plans=nativePlans(events),event=events[0];
  assert.equal(plans.length,1);assert.equal(plans[0].version,2);assert.equal(plans[0].start,2*.125);
@@ -72,6 +75,32 @@ test('a native Song stopped during preparation never starts late',async()=>{
   await assert.rejects(pending,/cancelled/);
   assert.equal(calls.filter(request=>request.action==='play').length,0);
  }finally{if(prior===undefined)delete globalThis.__TAURI__;else globalThis.__TAURI__=prior;}
+});
+test('pause/resume bypass a pending native edit and seek keeps the transport lease and pause intent',async()=>{
+ const prior=globalThis.__TAURI__,calls=[];
+ let owner=0,entered,release,handle;
+ const editing=new Promise(resolve=>{entered=resolve;});
+ globalThis.__TAURI__={core:{invoke:async(_,{request})=>{
+  calls.push(request);
+  if(request.action==='begin')return {owner:++owner};
+  if(request.action==='update'){entered();await new Promise(resolve=>{release=resolve;});}
+  return {sampleRate:48000,generation:1,owner,state:1,positionSeconds:.3};
+ }}};
+ try{
+  const doc=beat();handle=await playNative(doc,renderEvents(doc));
+  const edit=handle.update(doc,renderEvents(doc));await editing;
+  // Awaiting these while the edit is deliberately blocked would deadlock the
+  // old implementation. Intent must reach the bridge before release().
+  await responds(handle.pause());assert.equal(handle.paused,true);
+  await handle.resume();assert.equal(handle.paused,false);
+  const p=handle.pause(),r=handle.resume();await Promise.all([p,r]);
+  assert.deepEqual(calls.filter(c=>c.action==='control').map(c=>c.command),[2,3,2,3]);
+  release();await edit;
+  await handle.pause();await handle.seek(6);
+  assert.equal(handle.paused,true);
+  assert.equal(calls.filter(c=>c.action==='begin').length,1);
+  assert.ok(calls.filter(c=>c.action==='play').every(c=>c.owner===owner));
+ }finally{release?.();await handle?.stop();if(prior===undefined)delete globalThis.__TAURI__;else globalThis.__TAURI__=prior;}
 });
 test('vocal and unresolved sound identities fail explicitly',()=>{
  assert.throws(()=>nativePlans([{kind:'vocal'}]),/missing its recording/);

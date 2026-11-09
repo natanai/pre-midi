@@ -15,6 +15,9 @@ function songFixture(length=6000){
  song.tracks[0].clips[0].lengthSteps=length;
  return song;
 }
+async function responds(promise){
+ let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Transport intent waited for reconstruction')),1000);})]);}finally{clearTimeout(timer);}
+}
 function harness({experimental=true}={}){
  const calls=[],status={sampleRate:48000,generation:1,deviceLost:false};
  let owner=0,revision=0,ackSequence=0,fault=0,streamState=1,backpressureOnce=false;
@@ -184,4 +187,17 @@ test('old revision keeps feeding while a replacement is reconstructed, and newer
   gate.release();await cancelled;await replacement;
   assert.equal(stops,0);assert.equal(mock.calls.filter(r=>r.action==='stream_start').at(-1).revision,3);
  }finally{await handle?.stop();mock.cleanup();}
+});
+test('stream pause/resume reaches the bridge during seek reconstruction and the published revision stays held',async()=>{
+ const mock=harness();let handle,gate;
+ try{
+  handle=await play(songFixture(400),{});
+  gate=mock.holdAdvance();const seek=handle.seek(80);await gate.entered;
+  await responds(handle.pause());assert.equal(handle.paused,true);
+  await handle.resume();assert.equal(handle.paused,false);
+  await handle.pause();assert.equal(handle.paused,true);
+  assert.deepEqual(mock.calls.filter(c=>c.action==='control').map(c=>c.command),[2,3,2]);
+  gate.release();await seek;
+  assert.equal(mock.calls.filter(c=>c.action==='stream_start').at(-1).hold,true);
+ }finally{gate?.release();await handle?.stop();mock.cleanup();}
 });

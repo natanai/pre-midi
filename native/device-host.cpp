@@ -48,23 +48,35 @@ public:
  void command(unsigned value)noexcept{request.store(value);}
  // Only after ma_device_uninit has joined the device thread.
  void clear(){pending.store(nullptr);active.store(nullptr);retiring.store(nullptr);for(auto& slot:owned)slot.reset();request.store(0);remaining=0;}
- void process(float* output,unsigned frames,unsigned& budget)noexcept{
-  if(!retiring.load())if(auto p=pending.load()){
+ void process(float* output,unsigned frames,unsigned& budget,unsigned intent=0,std::uint64_t owner=0,bool adopt=true)noexcept{
+  if(!adopt){
+   if(auto p=pending.load())if(p->transportOwner==owner){p->handoff.store(2);pending.store(nullptr);}
+  }
+  if(adopt&&!retiring.load())if(auto p=pending.load()){
    auto old=active.load();bool ready=true;
    if(p->alignSource){
     const auto now=old?old->position.load():0;ready=old==p->alignSource&&now==p->alignOldFrame;
     if(old==p->alignSource&&now<p->alignOldFrame&&p->alignOldFrame-now<frames){
      const auto before=static_cast<unsigned>(p->alignOldFrame-now);
-     process(output,before,budget);process(output+2*before,frames-before,budget);return;
+     process(output,before,budget,intent,owner);process(output+2*before,frames-before,budget,intent,owner);return;
     }
-    if(old!=p->alignSource||now>p->alignOldFrame){pending.store(nullptr);p->handoff.store(2);}
+    if(old!=p->alignSource||now>p->alignOldFrame||
+       (intent==2&&old&&old->stateView.load()==paused&&now<p->alignOldFrame)){
+     p->handoff.store(2);pending.store(nullptr);
+    }
    }
-   if(ready){if(old){remaining=p->fadeFrames;retiring.store(old);}active.store(p);pending.store(nullptr);p->handoff.store(1);}
+   if(ready){
+    // A never-audible replacement has nothing to fade out when held. Starting
+    // its pause fade would briefly play/advance a paused seek at the new phase.
+    if(intent==2&&p->transportOwner==owner){p->state=paused;p->stateView.store(paused);}
+    if(old){remaining=p->fadeFrames;retiring.store(old);}active.store(p);pending.store(nullptr);p->handoff.store(1);
+   }
   }
   auto a=active.load();auto r=retiring.load();
-  if(a){const auto control=request.exchange(0);if(control)a->command(control);a->process(output,frames,looping.load()!=0,budget);}
+  if(a){const auto control=request.exchange(0),desired=a->transportOwner==owner?intent:0;if(control||desired)a->command(control?control:desired);a->process(output,frames,looping.load()!=0,budget);}
   else std::fill(output,output+2*frames,0.f);
   if(r){
+   if(intent&&r->transportOwner==owner)r->command(intent);
    std::array<float,2*renderBlock> tail{};r->process(tail.data(),frames,looping.load()!=0,budget);
    for(unsigned i=0;i<frames;i++){
     const float oldGain=remaining?static_cast<float>(remaining)/a->fadeFrames:0,newGain=1-oldGain;
@@ -95,8 +107,14 @@ class DeviceHost {
  std::vector<ma_device_info> devices;
  std::string error;
  std::atomic<unsigned> intentionalStop{0},lost{0};
-  // Independent lock-free Stop latch, also set while the Rust worker prepares audio.
-  std::atomic<bool> transportStopRequested{false};
+ // Urgent intent bypasses preparation/export queues. Only the control thread
+ // claims owners; Rust serializes claims/requests with its short lifetime lock.
+ // Owner and intent form ONE atomic snapshot; a callback which observed an
+ // old Stop must not apply it to a newly claimed/published transport.
+ std::atomic<std::uint64_t> transportControl{0};
+ std::atomic<bool> transportMaintenanceHold{false};
+ unsigned transportIntent()const noexcept{return transportControl.load(std::memory_order_acquire)&3;}
+ bool stopRequested()const noexcept{return transportIntent()==1;}
  std::atomic<std::uint64_t> callbacks{0},frames{0},totalNs{0},maxNs{0},misses{0},oversized{0},clipped{0},peak{0};
  static void notify(const ma_device_notification* event)noexcept{
   auto& host=*static_cast<DeviceHost*>(event->pDevice->pUserData);
@@ -122,16 +140,17 @@ class DeviceHost {
   unsigned transportBudget=maxOnsets,previewBudget=maxOnsets;std::uint64_t clipping=0,peakValue=0;
   for(unsigned offset=0;offset<count;){
    const auto n=std::min(renderBlock,count-offset);std::array<float,2*renderBlock> a{},b{};
-   if(host.transportStopRequested.load(std::memory_order_acquire)){
+   const auto control=host.transportControl.load(std::memory_order_acquire),owner=control>>2;
+   const unsigned intent=host.transportMaintenanceHold.load()?2:control&3;
+   if((control&3)==1){
     // Stop the Song on this callback while keeping previews and device running.
     // Owned DSP resources are retired later by the queued control command.
-    host.transport.command(1);
-    host.transport.process(a.data(),n,transportBudget);
+    host.transport.process(a.data(),n,transportBudget,1,owner,false);
     a.fill(0.f);
    }else if(stream||host.streamPending.load(std::memory_order_acquire)){
-    host.processStream(a.data(),n,transportBudget);
+    host.processStream(a.data(),n,transportBudget,intent,owner);
     stream=host.streamActive.load(std::memory_order_acquire);
-   }else host.transport.process(a.data(),n,transportBudget);
+   }else host.transport.process(a.data(),n,transportBudget,intent,owner);
    host.preview.process(b.data(),n,previewBudget);
    if(host.duplex){
     auto* active=host.transport.current();
@@ -217,6 +236,7 @@ public:
  void switchDuplex(bool enabled){
   ensure();
   if(duplex==enabled)return;
+  transportMaintenanceHold.store(true);
   auto* activeStream=streamActive.load();const bool resumeStream=activeStream&&activeStream->state()!=paused;
   if(resumeStream)activeStream->setPaused(true);
   const auto sampleRate=device.sampleRate,period=device.playback.internalPeriodSizeInFrames;const auto outputId=device.playback.id;
@@ -235,6 +255,7 @@ public:
   };
   const bool success=initialize(enabled);if(!success){if(!initialize(false))lost.store(1);}
   intentionalStop.store(0);if(resumeStream)activeStream->setPaused(false);if(resumeA)transport.command(3);if(resumeB)preview.command(3);
+  transportMaintenanceHold.store(false);
   require(success,enabled?"Could not open the native microphone. Check Windows microphone privacy settings and the default input device.":"Could not restore the native playback device");
  }
  void prepareCapture(double seconds,double offset,bool sync){
@@ -250,15 +271,17 @@ public:
  void copyCapture(float* output,std::uint64_t count){require(!duplex&&output&&count==capture.size(),"Native capture has not stopped safely");std::copy(capture.data(),capture.data()+count,output);}
  void previewControl(unsigned command){require(command>=1&&command<=3,"Invalid native preview command");preview.command(command);}
  void play(const std::uint8_t* data,std::size_t length,double cycle,double seek,bool loop,bool audition,double bpm=120,unsigned bars=0,bool recording=false){
-  if(!audition)transportStopRequested.store(false,std::memory_order_release);
+  if(!audition&&!(transportControl.load()>>2))transportControl.store(0);
   ensure();
   if(!audition&&streamOwned)stopStream(streamOwner,streamRevision);
   auto session=std::make_unique<Session>(data,length,device.sampleRate,cycle,seek,samples);
+  if(!audition){require(!stopRequested(),"Native playback preparation was stopped");session->transportOwner=transportControl.load()>>2;}
   if(bars)session->countIn(bpm,bars);
   if(recording){require(!audition&&duplex&&capture.phase.load()==1,"Prepare a native Song take before playback");capture.duration(device.sampleRate,cycle-seek);captureTarget.store(session.get());}
   auto* published=session.get();auto& lane=audition?preview:transport;lane.looping.store(loop?1:0);lane.publish(std::move(session));
   for(unsigned attempt=0;attempt<150;attempt++){
    if(lane.current()==published)return;
+   if(!audition&&(stopRequested()||published->handoff.load()==2))throw std::runtime_error("Native playback preparation was stopped");
    if(lost.load())break;
    std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
@@ -279,23 +302,28 @@ public:
   require(!streamOwned,"Native streamed Song edits require revision invalidation and a new stream");
   require(std::isfinite(ratio)&&ratio>=.01&&ratio<=32,"Invalid native edit tempo ratio");
   auto* old=transport.current();if(!old||old->stateView.load()==finished||old->stateView.load()==stopped)return;
-  const bool hold=old->stateView.load()==paused;
   require(std::isfinite(cycle)&&cycle>=.05&&cycle<=600,"Invalid native edit duration");
   const auto started=std::chrono::steady_clock::now();
   for(;;){
+   require(!stopRequested(),"Native edit preparation was stopped");
+   const bool hold=transportIntent()==2||old->stateView.load()==paused;
    const auto base=old->position.load();
    const double seek=std::fmod(std::fmod(static_cast<double>(base)/device.sampleRate,old->cycleSeconds)*ratio,cycle);
    auto value=std::make_unique<Session>(data,length,device.sampleRate,cycle,loop?0:seek,samples);
+   value->transportOwner=old->transportOwner;
    if(loop)require(value->warmLoopPosition(seek,static_cast<std::uint64_t>(base/(device.sampleRate*old->cycleSeconds))),"Native loop edit reconstruction failed");
    const auto initial=value->position.load();
    std::uint64_t due=base;
    if(!hold)for(;;){
+    if(transportIntent()==2||stopRequested())break;
     due=old->position.load()+4*renderBlock;
     const auto target=initial+static_cast<std::uint64_t>(std::llround((due-base)*ratio));
     require(value->advanceTo(target,loop),"Native edit reached the end of its new arrangement");
     if(due>=old->position.load()+2*renderBlock)break;
     require(std::chrono::steady_clock::now()-started<std::chrono::seconds(2),"Native edit preparation exceeded the real-time catch-up budget");
    }
+   if(stopRequested())throw std::runtime_error("Native edit preparation was stopped");
+   if(!hold&&transportIntent()==2)continue;
    value->alignSource=old;value->alignOldFrame=due;
    if(hold){value->state=paused;value->stateView.store(paused);}
    auto* published=value.get();transport.looping.store(loop?1:0);transport.publish(std::move(value));
@@ -315,7 +343,7 @@ public:
   require((owner!=streamOwner||revision>streamRevision)&&(owner!=stagedOwner||revision>stagedRevision),"Native Song revisions must advance monotonically");
   ensure();
   if(streamOwned&&owner!=streamOwner)stopStream(streamOwner,streamRevision);
-  if(!streamOwned)transportStopRequested.store(false,std::memory_order_release);
+  if(!streamOwned&&!(transportControl.load()>>2))transportControl.store(0);
   require(!streamPending.load(),"A native Song handoff is already pending");
   for(unsigned i=0;i<100&&streamRetiring.load();i++)std::this_thread::sleep_for(std::chrono::milliseconds(2));
   require(!streamRetiring.load(),"Native Song crossfade is still completing");
@@ -351,17 +379,20 @@ public:
  }
  // Audio callback only: adopt already prepared state and fade its predecessor.
  // Ownership/destruction stays on the control thread after fade retirement.
- void processStream(float* output,unsigned count,unsigned& budget)noexcept{
+ void processStream(float* output,unsigned count,unsigned& budget,unsigned intent=0,std::uint64_t owner=0)noexcept{
   auto* active=streamActive.load(std::memory_order_acquire);
+  if(active&&intent&&(!owner||active->owner()==owner))active->setPaused(intent==2);
   if(auto* next=streamPending.load(std::memory_order_acquire)){
+   if(intent&&(!owner||next->owner()==owner))next->setPaused(intent==2);
    const auto now=active?active->position():0;
    if(streamSource&&active!=streamSource){streamPending.store(nullptr);streamHandoff.store(2);}
+   else if(streamSource&&now<streamDue&&active->state()==paused){streamPending.store(nullptr);streamHandoff.store(2);}
    else if(streamSource&&now<streamDue){
     const auto width=static_cast<unsigned>(std::min<std::uint64_t>(count,streamDue-now));
     active->process(output,width,budget);
     if(width<count){
      const auto lead=active->lastLeadFrames,music=active->lastMusicFrames;
-     processStream(output+2*width,count-width,budget);
+     processStream(output+2*width,count-width,budget,intent,owner);
      if(auto* adopted=streamActive.load()){adopted->lastLeadFrames+=lead;adopted->lastMusicFrames+=music;}
     }
     return;
@@ -377,6 +408,7 @@ public:
   if(active){if(!active->process(output,count,budget))std::fill(output,output+2*count,0.f);}
   else std::fill(output,output+2*count,0.f);
   if(auto* old=streamRetiring.load(std::memory_order_acquire)){
+   if(intent&&(!owner||old->owner()==owner))old->setPaused(intent==2);
    std::array<float,2*renderBlock> prior{};
    // Paused edits remain silent, with no transport-clock advancement.
    old->process(prior.data(),count,budget);
@@ -395,11 +427,11 @@ public:
   target.countIn(bpm,bars);target.setPaused(hold);
   if(recording){require(duplex&&capture.phase.load()==1,"Prepare the native microphone before Song playback");capture.duration(device.sampleRate,seconds);captureStreamTarget.store(&target);}
   streamSource=due==UINT64_MAX?nullptr:streamActive.load();streamDue=due;
-  require(!transportStopRequested.load(std::memory_order_acquire),"Native Song preparation was stopped");
+  require(!stopRequested(),"Native Song preparation was stopped");
   streamHandoff.store(0);
   streamPending.store(&target,std::memory_order_release);
   for(unsigned attempt=0;attempt<300;attempt++){
-   if(transportStopRequested.load(std::memory_order_acquire)){streamPending.store(nullptr,std::memory_order_release);waitStreamQuiescent();throw std::runtime_error("Native Song preparation was stopped");}
+   if(stopRequested()){streamPending.store(nullptr,std::memory_order_release);waitStreamQuiescent();throw std::runtime_error("Native Song preparation was stopped");}
    const auto result=streamHandoff.load(std::memory_order_acquire);
    if(result==2)throw std::runtime_error("Native Song handoff missed its prepared clock; retry at a later frame");
    if(result==1){
@@ -471,9 +503,20 @@ public:
    }at+=n;
   }
  }
- void requestTransportStop()noexcept{transportStopRequested.store(true,std::memory_order_release);}
+ void requestTransportStop()noexcept{setTransportIntent(1);capture.stop();}
+ void claimTransport(std::uint64_t owner)noexcept{
+  if(owner!=(transportControl.load()>>2)){transport.command(0);transportControl.store(owner<<2,std::memory_order_release);}
+ }
+ void setTransportIntent(unsigned command)noexcept{
+  auto previous=transportControl.load(std::memory_order_acquire);
+  while(!transportControl.compare_exchange_weak(previous,(previous&~std::uint64_t(3))|command,std::memory_order_release,std::memory_order_acquire)){}
+ }
+ void requestTransportState(unsigned command)noexcept{
+  if(command==2||command==3)setTransportIntent(command);
+ }
  void control(unsigned command,bool loop){
   require(command<=4,"Unknown native transport command");
+  requestTransportState(command);
   if(streamOwned||streamStaged){
    if(command==1||command==4){if(streamOwned)stopStream(streamOwner,streamRevision);else stopStream(stagedOwner,stagedRevision);}
    else if(command==2||command==3)
@@ -533,6 +576,8 @@ int premidi_audio_stream_stop(void* host,uint64_t owner,uint64_t revision){auto&
 int premidi_audio_stream_status_get(void* host,premidi_stream_status* value){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{premidi::require(value,"Missing native stream status output");h.streamStatus(*value);});}
 
 void premidi_audio_request_transport_stop(void* host){if(host)static_cast<premidi::DeviceHost*>(host)->requestTransportStop();}
+void premidi_audio_claim_transport(void* host,uint64_t owner){if(host)static_cast<premidi::DeviceHost*>(host)->claimTransport(owner);}
+void premidi_audio_request_transport_state(void* host,uint32_t command){if(host)static_cast<premidi::DeviceHost*>(host)->requestTransportState(command);}
 int premidi_audio_control(void* host,uint32_t command,int loop){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.control(command,loop!=0);});}
 int premidi_audio_status_get(void* host,premidi_audio_status* status){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.status(*status);});}
 int premidi_audio_add_sample(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.addSample(pcm,frames,rate,channels,*info);});}

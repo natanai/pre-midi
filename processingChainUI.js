@@ -29,7 +29,7 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
  };
  const heading=document.createElement('summary');heading.textContent='processing order';root.append(heading);
  const list=document.createElement('ol');root.append(list);
- const title=id=>{const kind=processorKind(patch,id)??id,name=kind==='eq'?'equalizer':kind==='drive'?'distortion':kind==='delay'?'delay send':kind;return processorInstance(patch,id)?name+' '+(Number(id.match(/-(\d+)$/)?.[1]??0)+(PRIMARY_PROCESSORS.includes(kind)?1:0)):name;};
+ const title=id=>{const kind=processorKind(patch,id)??id,name=kind==='eq'?'equalizer':kind==='drive'?'distortion':kind==='delay'?'delay send':kind==='deesser'?'de-esser':kind;return processorInstance(patch,id)?name+' '+(Number(id.match(/-(\d+)$/)?.[1]??0)+(PRIMARY_PROCESSORS.includes(kind)?1:0)):name;};
  const row=(id,index,routeId='serial',parent=list)=>{
   const order=routeId==='serial'?chain.order:routeId==='post'?chain.post:chain.parallel.find(r=>r.id===routeId).order;
   const item=document.createElement(id==='delay'?'div':'li'),label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';

@@ -179,11 +179,15 @@ export const DYNAMICS_PARAMETERS=freeze({
  release:parameter('dynamics.release','seconds',.001,5,.1,.001,'seconds'),
  makeup:parameter('dynamics.makeup','db',-24,24,0,.1,'db'),
  range:parameter('dynamics.range','db',0,96,60,.1,'db'),
- hold:parameter('dynamics.hold','seconds',0,2,.02,.001,'seconds')
+ hold:parameter('dynamics.hold','seconds',0,2,.02,.001,'seconds'),
+ frequency:parameter('dynamics.frequency','hz',1000,14000,6500,10,'hz',{ui:{step:10,display:'hz',log:true}}),
+ bandwidth:parameter('dynamics.bandwidth','octaves',.1,3,1,.01,'octaves'),
+ amount:parameter('dynamics.amount','db',0,24,9,.1,'db')
 });
 export const DYNAMICS_FIELDS=freeze({
  compressor:['threshold','ratio','knee','attack','release','makeup'],
  gate:['threshold','range','hold','attack','release'],
- limiter:['threshold','release']
+ limiter:['threshold','release'],
+ deesser:['frequency','bandwidth','threshold','amount','attack','release']
 });
 export const dynamicsParameter=(kind,key)=>DYNAMICS_FIELDS[kind]?.includes(key)?DYNAMICS_PARAMETERS[key]:null;

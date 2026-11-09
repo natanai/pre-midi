@@ -17,5 +17,19 @@ int main(){
  for(unsigned i=0;i<800;i++){float v[1]={.001f};state.process(v,1,p);if(i==799)assert(v[0]<.000002f);}
  p.mix=0;float dry[2]={.7f,-.2f};state.process(dry,2,p);assert(dry[0]==.7f&&dry[1]==-.2f);
  bool rejected=false;try{recipe.ratio=0;recipe.prepared(48000);}catch(...){rejected=true;}assert(rejected);
- std::cout<<"PASS linked dynamics static/knee oracles, sample-peak ceiling, gate hold/range and dry bypass\n";
+ recipe=DynamicsRecipe{};recipe.mode=DynamicsRecipe::deesser;recipe.frequency=6000;recipe.threshold=-96;recipe.amount=12;recipe.attack=0;
+ const auto tone=[&](double frequency){
+  p=recipe.prepared(48000);state.reset(p);double re=0,im=0;
+  for(unsigned i=0;i<96000;i++){
+   const double phase=2*3.14159265358979323846*frequency*i/48000;const float input=static_cast<float>(.5*std::sin(phase));float v[2]={input,-.5f*input};state.process(v,2,p);
+   assert(v[1]==-.5f*v[0]);if(i>=48000){re+=v[0]*std::cos(phase);im+=v[0]*std::sin(phase);}
+  }
+  return 20*std::log10(2*std::hypot(re,im)/48000/.5);
+ };
+ assert(std::abs(tone(6000)+12)<.02);assert(std::abs(tone(200))<.02);
+ for(unsigned rate:{8000,48000,192000})for(double frequency:{1000.,14000.})for(double bandwidth:{.1,3.}){
+  recipe.frequency=frequency;recipe.bandwidth=bandwidth;recipe.amount=24;p=recipe.prepared(rate);state.reset(p);
+  for(unsigned i=0;i<4096;i++){float v[2]={i==0?1.f:0.f,i==0?-.5f:0.f};state.process(v,2,p);for(float n:v)assert(std::isfinite(n)&&std::abs(n)<2);}
+ }
+ std::cout<<"PASS linked dynamics curves, sample-peak ceiling, gate hold/range, de-esser frequency selection/amount/stereo and stable extremes\n";
 }

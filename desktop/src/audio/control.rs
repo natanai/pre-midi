@@ -42,6 +42,8 @@ unsafe extern "C" {
  fn premidi_audio_update(host:*mut c_void,data:*const u8,length:usize,cycle:f64,looping:i32,tempo_ratio:f64)->i32;
  fn premidi_audio_render(host:*mut c_void,data:*const u8,length:usize,cycle:f64,rate:u32,frames:u64,output:*mut u8,output_bytes:usize,format:u32,gain:f64)->i32;
  fn premidi_audio_request_transport_stop(host:*mut c_void);
+ fn premidi_audio_claim_transport(host:*mut c_void,owner:u64);
+ fn premidi_audio_request_transport_state(host:*mut c_void,command:u32);
  fn premidi_audio_control(host:*mut c_void,command:u32,looping:i32)->i32;
  fn premidi_audio_status_get(host:*mut c_void,status:*mut Status)->i32;
  fn premidi_audio_stream_begin(host:*mut c_void,owner:u64,revision:u64,processing:i32)->i32;
@@ -87,28 +89,52 @@ impl Host {
 }
 type Reply=SyncSender<Result<Value,String>>;
 type BytesReply=SyncSender<Result<Vec<u8>,String>>;
-enum Work{Json(Request,Reply),Render(RenderRequest,BytesReply),FinishCapture(u64,BytesReply),Decode(DecodeRequest,BytesReply)}
-pub struct Audio{sender:SyncSender<Work>,closing:Arc<AtomicBool>,transport:Arc<Mutex<usize>>}
+enum Work{
+ Json(Request,Reply),Render(RenderRequest,BytesReply),FinishCapture(u64,BytesReply),Decode(DecodeRequest,BytesReply),
+ #[cfg(test)] TestInitialize(Reply),
+ #[cfg(test)] TestHold(SyncSender<()>,std::sync::mpsc::Receiver<()>),
+}
+#[derive(Default)]
+struct TransportControl{pointer:usize,owner:u64,issued:u64,cancelled:u64}
+impl TransportControl{
+ fn request(&mut self,command:u32,owner:Option<u64>)->Result<Value,String>{
+  if owner.is_some_and(|value|value>self.issued){return Err("Unknown native session".into());}
+  if command==1||command==4{self.cancelled=self.cancelled.max(owner.unwrap_or(self.issued));}
+  let accepted=self.pointer!=0&&owner.is_none_or(|value|value==self.owner)&&
+   ((command==1||command==4)||self.owner>self.cancelled);
+  if accepted{unsafe{
+   if command==1||command==4{premidi_audio_request_transport_stop(self.pointer as *mut c_void);}
+   else{premidi_audio_request_transport_state(self.pointer as *mut c_void,command);}
+  }}
+  Ok(json!({"owner":self.owner,"accepted":accepted}))
+ }
+}
+pub struct Audio{sender:SyncSender<Work>,closing:Arc<AtomicBool>,transport:Arc<Mutex<TransportControl>>}
 impl Default for Audio{
  fn default()->Self{
   let (sender,receiver)=sync_channel::<Work>(8);
   let closing=Arc::new(AtomicBool::new(false));let worker_closing=closing.clone();
-  // Share only an atomic mute entrypoint, not the COM-affine DeviceHost worker.
-  let transport=Arc::new(Mutex::new(0usize));let worker_transport=transport.clone();
+  // Share only atomic intent entrypoints, not the COM-affine DeviceHost worker.
+  let transport=Arc::new(Mutex::new(TransportControl::default()));let worker_transport=transport.clone();
   std::thread::Builder::new().name("pre-midi audio control".into()).spawn(move||{
-   let mut host=ControlState::default();
+   let mut host=ControlState{transport:worker_transport.clone(),..Default::default()};
    while let Ok(work)=receiver.recv(){match work{
     Work::Json(request,reply)=>{
      let shutdown=matches!(&request,Request::Shutdown);
      // Prevent a concurrent mute from borrowing Host during its destruction.
-     if shutdown{*worker_transport.lock().unwrap()=0;}
+     if shutdown{worker_transport.lock().unwrap().pointer=0;}
      let result=if worker_closing.load(Ordering::SeqCst)&&!shutdown{Err("pre-midi is closing".into())}else{handle(&mut host,request)};
-     if !shutdown{if let Some(active)=host.host.as_ref(){*worker_transport.lock().unwrap()=active.0 as usize;}}
      let _=reply.send(result);
     },
     Work::Render(request,reply)=>{let result=if worker_closing.load(Ordering::SeqCst){Err("pre-midi is closing".into())}else{render(&mut host,request)};let _=reply.send(result);},
     Work::FinishCapture(owner,reply)=>{let _=reply.send(finish_capture(&mut host,owner));},
     Work::Decode(request,reply)=>{let result=if worker_closing.load(Ordering::SeqCst){Err("pre-midi is closing".into())}else{decode_audio(request)};let _=reply.send(result);},
+    #[cfg(test)] Work::TestInitialize(reply)=>{
+     let pointer=unsafe{premidi_audio_create(1)};assert!(!pointer.is_null());
+     host.host=Some(Host(pointer));worker_transport.lock().unwrap().pointer=pointer as usize;
+     let _=reply.send(Ok(json!({})));
+    },
+    #[cfg(test)] Work::TestHold(entered,release)=>{let _=entered.send(());let _=release.recv();},
    }
    }
   }).expect("Could not create audio control thread");
@@ -117,15 +143,18 @@ impl Default for Audio{
 }
 impl Audio{
  fn mute_transport_now(&self){
-  if let Ok(pointer)=self.transport.lock(){
-   if *pointer!=0{unsafe{premidi_audio_request_transport_stop(*pointer as *mut c_void)};}
-  }
+  let _=self.transport.lock().unwrap().request(1,None);
  }
  pub(super) fn reopen(&self){self.closing.store(false,Ordering::SeqCst);}
  pub(super) fn call(&self,request:Request)->Result<Value,String>{
   if self.closing.load(Ordering::SeqCst){return Err("pre-midi is closing".into());}
-  let urgent=matches!(&request,Request::Control{command:1|4,owner:None,..});
-  if urgent{self.mute_transport_now();}
+  let urgent=matches!(&request,Request::Control{command:1..=4,..});
+  if let Request::Control{command:command @ 1..=4,owner,..}=&request{
+   let result=self.transport.lock().unwrap().request(*command,*owner)?;
+   // Pause/resume acknowledge intent without entering the decode/render queue.
+   // Stop also queues resource retirement; its audio latch is already set.
+   if *command==2||*command==3{return Ok(result);}
+  }
   let (reply,result)=sync_channel(1);
   // Never drop Stop on a full queue; the callback is already muted before waiting.
   if urgent{
@@ -216,10 +245,21 @@ pub enum Request {
 fn default_take_seconds()->f64{300.0}
 fn default_bpm()->f64{120.0}
 #[derive(Default)]
-struct ControlState{host:Option<Host>,issued:u64,cancelled:u64,current:u64,stream_revision:u64,stream_previous_revision:u64,preview_current:u64,capture_issued:u64,capture_current:u64,generation:u64,assets:HashMap<(u32,Vec<u8>),SampleInfo>}
+struct ControlState{host:Option<Host>,transport:Arc<Mutex<TransportControl>>,issued:u64,cancelled:u64,current:u64,stream_revision:u64,stream_previous_revision:u64,preview_current:u64,capture_issued:u64,capture_current:u64,generation:u64,assets:HashMap<(u32,Vec<u8>),SampleInfo>}
 impl ControlState{
- fn begin(&mut self)->Result<Value,String>{self.issued=self.issued.checked_add(1).ok_or("Audio session ID exhausted")?;Ok(json!({"owner":self.issued}))}
- fn valid(&self,owner:u64)->bool{owner>self.cancelled&&owner<=self.issued&&owner>=self.current}
+ fn begin(&mut self)->Result<Value,String>{
+  // IDs cross JavaScript and occupy the upper bits of the native intent word.
+  if self.issued>=9_007_199_254_740_991{return Err("Audio session ID exhausted".into());}
+  self.issued+=1;self.transport.lock().unwrap().issued=self.issued;Ok(json!({"owner":self.issued}))
+ }
+ fn valid(&self,owner:u64)->bool{owner>self.cancelled&&owner>self.transport.lock().unwrap().cancelled&&owner<=self.issued&&owner>=self.current}
+ fn claim_transport(&self,owner:u64)->Result<(),String>{
+  let mut transport=self.transport.lock().unwrap();
+  if owner<=transport.cancelled{return Err("Native playback request cancelled".into());}
+  let host=self.host.as_ref().unwrap();transport.pointer=host.0 as usize;transport.owner=owner;
+  unsafe{premidi_audio_claim_transport(host.0,owner);}
+  Ok(())
+ }
  fn status(&self)->Result<Value,String>{
   let mut value=if let Some(host)=&self.host{host.status()?}else{json!({"state":0,"sampleRate":0,"deviceLost":false})};
   value["owner"]=json!(self.current);value["previewOwner"]=json!(self.preview_current);value["captureOwner"]=json!(self.capture_current);value["generation"]=json!(self.generation);Ok(value)
@@ -227,9 +267,10 @@ impl ControlState{
 }
 fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
  if matches!(&request,Request::Begin){return state.begin();}
- if matches!(&request,Request::Shutdown){state.cancelled=state.issued;state.current=0;state.stream_revision=0;state.preview_current=0;state.capture_current=0;state.assets.clear();state.host.take();return Ok(json!({"closed":true}));}
+ if matches!(&request,Request::Shutdown){let mut transport=state.transport.lock().unwrap();transport.pointer=0;transport.owner=0;transport.cancelled=state.issued;drop(transport);state.cancelled=state.issued;state.current=0;state.stream_revision=0;state.preview_current=0;state.capture_current=0;state.assets.clear();state.host.take();return Ok(json!({"closed":true}));}
  if let Request::Control{command:1|4,owner,..}=&request{
   let cancelled=owner.unwrap_or(state.issued);if cancelled>state.issued{return Err("Unknown native session".into());}state.cancelled=state.cancelled.max(cancelled);
+  let mut transport=state.transport.lock().unwrap();transport.cancelled=transport.cancelled.max(cancelled);
  }
  if let Request::Play{owner,preview:false,..}=&request{if !state.valid(*owner){return Err("Native playback request cancelled".into());}}
  if let Request::Play{owner,preview:true,..}=&request{if *owner==0||*owner<=state.cancelled||*owner>state.issued||*owner<state.preview_current{return Err("Native preview request cancelled".into());}}
@@ -248,6 +289,7 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
  }
  if matches!(&request,Request::Control{..}|Request::Status)&&state.host.is_none(){return state.status();}
  if state.host.is_none(){state.generation+=1;state.host=Some(Host::new()?);}
+ state.transport.lock().unwrap().pointer=state.host.as_ref().unwrap().0 as usize;
  match request {
   Request::Devices=>{
    let host=state.host.as_ref().unwrap();let count=unsafe{premidi_audio_devices(host.0)};host.check(count)?;let mut devices=vec![];
@@ -269,10 +311,12 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
   Request::Configure{device,rate,buffer}=>{state.assets.clear();state.generation+=1;state.cancelled=state.issued;state.current=0;state.stream_revision=0;state.preview_current=0;state.capture_current=0;let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_configure(host.0,device.unwrap_or(u32::MAX),rate,buffer)})?;state.status()},
   Request::Play{data,cycle,seek,looping,preview,owner,count_in,bpm,recording}=>{
    if data.len()>16*1024*1024{return Err("Native session exceeds 16 MiB".into());}
+   if !preview{state.claim_transport(owner)?;}
    let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_play_take(host.0,data.as_ptr(),data.len(),cycle,seek,i32::from(looping),i32::from(preview),bpm,count_in,i32::from(recording.is_some()))})?;
    if preview{state.preview_current=owner;}else{state.current=owner;state.stream_revision=0;}state.status()
   },
   Request::StreamBegin{owner,revision,processing}=>{
+   state.claim_transport(owner)?;
    let host=state.host.as_ref().unwrap();
    host.check(unsafe{premidi_audio_stream_begin(host.0,owner,revision,i32::from(processing))})?;
    state.current=owner;state.stream_previous_revision=state.stream_revision;state.stream_revision=revision;state.status()
@@ -354,6 +398,48 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
   let worker=Audio::default();assert_eq!(worker.call(Request::Begin).unwrap()["owner"],1);
   assert!(worker.render(RenderRequest{data:vec![],cycle:1.0,rate:0,frames:0,wav:true,gain:0.85}).is_err());
   worker.close();assert!(worker.call(Request::Begin).is_err());worker.reopen();assert_eq!(worker.call(Request::Begin).unwrap()["owner"],2);worker.close();
+ }
+ #[test]fn urgent_transport_intent_bypasses_a_full_preparation_queue(){
+  use std::time::{Duration,Instant};
+  let worker=Arc::new(Audio::default());
+  let (reply,result)=sync_channel(1);worker.sender.send(Work::TestInitialize(reply)).unwrap();result.recv().unwrap().unwrap();
+  worker.call(Request::Configure{device:None,rate:48000,buffer:128}).unwrap();
+  let owner=worker.call(Request::Begin).unwrap()["owner"].as_u64().unwrap();
+  let packet=[0x31534d50u32.to_le_bytes(),0u32.to_le_bytes()].concat();
+  let play=||Request::Play{data:packet.clone(),cycle:10.,seek:0.,looping:true,preview:false,owner,count_in:0,bpm:120.,recording:None};
+  worker.call(play()).unwrap();
+  let (entered,entry)=sync_channel(1);let (release,held)=sync_channel(1);
+  worker.sender.send(Work::TestHold(entered,held)).unwrap();entry.recv().unwrap();
+  // A queued replacement plus seven status requests fill the real production
+  // mailbox. Simulate a decode/render which cannot finish until we release it.
+  let (reply,cancelled_play)=sync_channel(1);worker.sender.send(Work::Json(play(),reply)).unwrap();
+  for _ in 0..7{let (reply,_)=sync_channel(1);worker.sender.send(Work::Json(Request::Status,reply)).unwrap();}
+  let pointer=worker.transport.lock().unwrap().pointer as *mut c_void;
+  let status=||{let mut value=Status::default();assert_eq!(unsafe{premidi_audio_status_get(pointer,&mut value)},0);value};
+  let wait_for=|wanted:u64|{
+   let deadline=Instant::now()+Duration::from_millis(500);
+   while status().state!=wanted{assert!(Instant::now()<deadline,"urgent intent waited for the blocked worker");std::thread::sleep(Duration::from_millis(2));}
+  };
+  assert_eq!(worker.call(Request::Control{command:2,looping:true,owner:Some(owner)}).unwrap()["accepted"],true);
+  wait_for(2);let position=status().position;std::thread::sleep(Duration::from_millis(20));assert_eq!(status().position,position);
+  // Resume can arrive during the pause fade, before its state becomes paused.
+  worker.call(Request::Control{command:3,looping:true,owner:Some(owner)}).unwrap();wait_for(1);
+  for command in [2,3,2,3]{worker.call(Request::Control{command,looping:true,owner:Some(owner)}).unwrap();}
+  std::thread::sleep(Duration::from_millis(25));assert_eq!(status().state,1);assert!(status().position>position);
+  let stopping=worker.clone();let stop=std::thread::spawn(move||stopping.call(Request::Control{command:1,looping:false,owner:Some(owner)}));
+  wait_for(0); // Stop mutes even while its retirement command waits for space.
+  release.send(()).unwrap();assert!(cancelled_play.recv().unwrap().is_err());stop.join().unwrap().unwrap();
+  assert_eq!(worker.call(Request::Status).unwrap()["state"],0);
+  let next=worker.call(Request::Begin).unwrap()["owner"].as_u64().unwrap();
+  worker.call(Request::Play{data:packet.clone(),cycle:10.,seek:0.,looping:true,preview:false,owner:next,count_in:0,bpm:120.,recording:None}).unwrap();
+  assert_eq!(worker.call(Request::Control{command:2,looping:true,owner:Some(owner)}).unwrap()["accepted"],false);
+  worker.call(Request::Control{command:1,looping:false,owner:Some(owner)}).unwrap();
+  assert_eq!(worker.call(Request::Status).unwrap()["state"],1);
+  worker.call(Request::Control{command:2,looping:true,owner:Some(next)}).unwrap();wait_for(2);
+  worker.call(Request::Play{data:packet,cycle:10.,seek:2.,looping:true,preview:false,owner:next,count_in:0,bpm:120.,recording:None}).unwrap();
+  assert_eq!(status().state,2);assert_eq!(status().position,96000);
+  std::thread::sleep(Duration::from_millis(20));assert_eq!(status().position,96000);
+  worker.close();
  }
  #[test]fn native_codecs_own_and_play_every_studio_container(){
   let fixtures:&[&[u8]]=&[include_bytes!("../../../native/decoder/tests/fixtures/tone.wav"),include_bytes!("../../../native/decoder/tests/fixtures/tone.mp3"),include_bytes!("../../../native/decoder/tests/fixtures/vorbis.ogg"),include_bytes!("../../../native/decoder/tests/fixtures/opus.ogg"),include_bytes!("../../../native/decoder/tests/fixtures/tone.webm"),include_bytes!("../../../native/decoder/tests/fixtures/tone.mp4")];
