@@ -78,7 +78,7 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
    move.addEventListener('click',()=>{const next=structuredClone(chain),order=routeId==='serial'?next.order:next.parallel.find(r=>r.id===routeId).order;[order[index],order[index+direction]]=[order[index+direction],order[index]];commit(['chain'],next,move,id);});item.append(move);
   }
   if(id!=='delay'){
-   const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove '+name+' from chain');remove.title=processorInstance(patch,id)?'remove this processor':'remove from chain and retain its settings';remove.dataset.processingControl=id+'-remove';
+   const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove '+name+' from chain');remove.title='remove from chain and retain its settings';remove.dataset.processingControl=id+'-remove';
    remove.addEventListener('click',()=>commit(['chain'],withProcessorRemoved(patch,id),remove,'add'));item.append(remove);
   }
   if(id!=='delay'&&chain.parallel?.length){
@@ -113,10 +113,11 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
   }
   paintShares(chain);
  }
- const available=['filter','eq','drive'].filter(id=>!processorOrders(chain).some(order=>order.includes(id)));
+ const available=allProcessorIds(chain).filter(id=>!processorOrders(chain).some(order=>order.includes(id)));
  const instanceType=document.createElement('select');instanceType.setAttribute('aria-label','new processor type');instanceType.dataset.processingControl='instance-type';
- for(const [prefix,ids]of [['stored',available],['new',['filter','drive','eq']]])for(const id of ids){const option=document.createElement('option');option.value=prefix+':'+id;option.textContent=prefix+' '+(id==='drive'?'distortion':id==='eq'?'equalizer':id);instanceType.append(option);}
- const addInstance=document.createElement('button');addInstance.type='button';addInstance.textContent='+ processor';addInstance.dataset.processingControl='add-instance';addInstance.disabled=processorOrders(chain).flat().length>=MAX_PROCESSORS;addInstance.title=addInstance.disabled?'eight processors are already in use':'add an independent processor';addInstance.addEventListener('click',()=>{const [mode,id]=instanceType.value.split(':');if(mode==='new')commit(['chain'],withInstance(patch,id),addInstance,'add');else{const next=withProcessorAdded(patch,id);if(id==='filter'&&patch.filter==null)commit([['chain'],['filter']],[next,{...DEFAULT_SAMPLE_FILTER}],addInstance,id);else commit(['chain'],next,addInstance,id);}});
+ for(const [prefix,ids]of [['stored',available],['new',['filter','drive','eq']]])for(const id of ids){const option=document.createElement('option');option.value=prefix+':'+id;option.textContent=prefix+' '+title(id);option.disabled=prefix==='new'&&(chain.instances?.length??0)>=MAX_PROCESSORS;instanceType.append(option);}
+ if(instanceType.selectedOptions[0]?.disabled)instanceType.value=Array.from(instanceType.options).find(option=>!option.disabled)?.value??'';
+ const addInstance=document.createElement('button');addInstance.type='button';addInstance.textContent='+ processor';addInstance.dataset.processingControl='add-instance';addInstance.disabled=processorOrders(chain).flat().length>=MAX_PROCESSORS||!instanceType.value;addInstance.title=addInstance.disabled?'eight processors are already in use':'add an independent processor';addInstance.addEventListener('click',()=>{const [mode,id]=instanceType.value.split(':');if(mode==='new')commit(['chain'],withInstance(patch,id),addInstance,'add');else{const next=withProcessorAdded(patch,id);if(id==='filter'&&patch.filter==null)commit([['chain'],['filter']],[next,{...DEFAULT_SAMPLE_FILTER}],addInstance,id);else commit(['chain'],next,addInstance,id);}});
  const addRoute=document.createElement('button');addRoute.type='button';addRoute.textContent='+ parallel';addRoute.dataset.processingControl='add-route';addRoute.disabled=(chain.parallel?.length??0)>=4;addRoute.title=addRoute.disabled?'four parallel routes are already in use':'split the serial output into independently processed routes';addRoute.addEventListener('click',()=>commit(['chain'],withParallelRoute(patch),addRoute,'add'));
  root.append(instanceType,addInstance,addRoute);
  row('delay');

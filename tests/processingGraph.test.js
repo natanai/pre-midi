@@ -31,7 +31,7 @@ test('parallel paths have unique processors and bounded editable shares',()=>{
  assert.deepEqual(compiled.order,[]);assert.deepEqual(compiled.branches[0].order,[0]);
  const repeated=structuredClone(patch.chain);repeated.order.push('drive-1');assert.ok(validateProcessingChain(repeated).length);
  const excessive=structuredClone(patch.chain);excessive.dry=.8;assert.ok(validateProcessingChain(excessive).length);
- const removed=withProcessorRemoved(patch,'drive-1');assert.deepEqual(removed.parallel[0].order,[]);assert.equal(removed.instances.length,0);
+ const removed=withProcessorRemoved(patch,'drive-1');assert.deepEqual(removed.parallel[0].order,[]);assert.equal(removed.instances.length,1);
 });
 test('muted parallel routes can be rebalanced without overshooting unity',()=>{
  let chain={version:1,order:[],bypass:[],parallel:[{id:'a',gain:0,order:[]},{id:'b',gain:0,order:[]}],dry:1};

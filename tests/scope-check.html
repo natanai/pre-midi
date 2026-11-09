@@ -111,8 +111,8 @@ async function run(){
   parent[name]?.(from);edit(to);
   measured.push([name,await pair(name,from,to)]);
  }
- const automation={version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
-  points:[{id:"begin",step:0,value:250},{id:"end",step:32,value:7000}]};
+ const automation=[{id:'cutoff',version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
+  points:[{id:"begin",step:0,value:250},{id:"end",step:32,value:7000}]}];
  const [staticAudio,movingAudio]=await Promise.all([
   renderScopeAudio(base,{bpm:120,bars:8},.78,60),
   renderScopeAudio(base,{bpm:120,bars:8},.78,60,automation)]);

@@ -11,13 +11,13 @@ export const SUSTAIN_BEAT_VERSION=25;
 // v27 stores source-phase cutoff curves on individual reusable Chunk notes.
 export const CAPTURED_AUTOMATION_BEAT_VERSION=27;
 export const MAX_BEAT_BARS=64;
-import {validateCutoffAutomation,validateCapturedCutoffAutomation} from "./src/dsp/automation.js";
+import {noteAutomation,validateAutomation,validateCapturedAutomation} from "./src/dsp/automation.js";
 import {requiresSampleSliceFormat} from "./sampleSlice.js";
-export const requiresAutomationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>inst?.automation!==undefined);
+export const requiresAutomationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>inst?.automation!==undefined||inst?.sounds?.some(sound=>sound.patch?.automation!==undefined));
 export const BEAT_VERSIONS=[VERSION,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION];
 export const requiresCapturedAutomationFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>
  Array.isArray(inst?.chunks)&&inst.chunks.some(chunk=>Array.isArray(chunk?.notes)&&
-  chunk.notes.some(note=>note?.cutoffAutomation!==undefined)));
+  chunk.notes.some(note=>note?.automation!==undefined)));
 export const requiresSustainFormat=doc=>Array.isArray(doc?.instruments)&&doc.instruments.some(inst=>
  Array.isArray(inst?.chunks)&&inst.chunks.some(chunk=>Array.isArray(chunk?.notes)&&
   chunk.notes.some(note=>Number.isInteger(note?.start)&&Number.isInteger(note?.duration)&&
@@ -114,7 +114,8 @@ export function validate(doc) {
   }
   if(ids.has(instrument.id))errors.push("Instrument IDs must be distinct.");
   ids.add(instrument.id);
-  errors.push(...validateCutoffAutomation(instrument.automation,instrument,doc.bars));
+  errors.push(...validateAutomation(instrument.automation,instrument.sounds?.[0]?.patch,doc.bars));
+  if(instrument.automation!==undefined&&Array.isArray(instrument.sounds))for(const sound of instrument.sounds)if(sound?.patch)errors.push(...validateAutomation(noteAutomation(instrument,{soundId:sound.id}).automation,sound.patch,doc.bars));
   if(!within(instrument.volume,0,1)) errors.push("Invalid instrument volume.");
   if(!["pitched","rack"].includes(instrument.layout)||instrument.patch!==undefined)
    errors.push("Invalid instrument layout.");
@@ -161,12 +162,12 @@ export function validate(doc) {
      steps.add(key);
     }
     errors.push(...validateBend(note?.bend));
-     if(note?.cutoffAutomation!==undefined){
+     if(note?.automation!==undefined){
       if(doc.version!==CAPTURED_AUTOMATION_BEAT_VERSION)
-       errors.push("Captured cutoff movement on Chunk notes requires Beat v27.");
-      if(instrument.layout!=="pitched"||instrument.sounds?.[0]?.patch?.type!=="synth")
-       errors.push("Captured cutoff movement requires a pitched synthesizer.");
-      errors.push(...validateCapturedCutoffAutomation(note.cutoffAutomation));
+       errors.push("Captured automation on Chunk notes requires Beat v27.");
+      if(instrument.layout!=="pitched"||!["synth","sample"].includes(instrument.sounds?.[0]?.patch?.type))
+       errors.push("Captured automation requires a pitched Sound.");
+      errors.push(...validateCapturedAutomation(note.automation,instrument.sounds?.[0]?.patch));
      }
    }
   }

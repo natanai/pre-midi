@@ -25,7 +25,7 @@ export function soundParameter(patch,path){
  if(path[0]==='chain'&&path[1]==='instances'&&path[3]==='parameters'){
   const instance=patch.chain?.instances?.[path[2]];if(instance&&['filter','drive'].includes(instance.kind))return processorParameter(instance.kind,path.at(-1));
  }
- if(patch.type==="automation"&&path[0]==="points"&&path.at(-1)==="value")return parameterFor("filter.cutoff");
+ if(patch.type==="automation"&&path[0]==="points"&&path.at(-1)==="value")return patch.parameter??parameterFor(patch.target??"filter.cutoff",patch.sourceType??"synth");
  if(path[0]==="zones"&&path.at(-1)==="root")return parameterFor("zones.root",patch.type);
  if(path[0]==="modulation"&&path[1]==="routes"){
   const key=path.includes("steps")?"step":path.at(-1);

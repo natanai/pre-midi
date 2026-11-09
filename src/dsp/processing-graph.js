@@ -42,7 +42,7 @@ export function processorKind(patch,id){return processorInstance(patch,id)?.kind
 export function withInstance(patch,kind){
  if(!PROCESSOR_KINDS.includes(kind))throw Error('Unknown processor type.');
  const chain=structuredClone(patch.chain??{version:1,order:['filter','drive'],bypass:[]});
- if(processorOrders(chain).flat().length>=MAX_PROCESSORS)throw Error('Processing supports up to eight processors.');
+ if(processorOrders(chain).flat().length>=MAX_PROCESSORS||(chain.instances?.length??0)>=MAX_PROCESSORS)throw Error('Processing supports up to eight processors.');
  const taken=new Set(allProcessorIds(chain));let n=1;while(taken.has(kind+'-'+n))n++;
  const instance={id:kind+'-'+n,kind,parameters:kind==='filter'?{type:'lowpass',cutoff:8000,resonance:.7,stages:1}:kind==='drive'?{amount:.2}:defaultEq()};
  chain.instances=[...(chain.instances??[]),instance];chain.order.push(instance.id);return chain;

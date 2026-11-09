@@ -53,13 +53,13 @@ export const SOUND_PARAMETERS=freeze([
  }),
  parameter("filter.sweep","octaves",-5,5,0,.1,"number",{bypass:{mode:"zero"}}),
  parameter("filter.sweepTime","seconds",.01,3,.2,.01,"seconds",{inactiveWhen:[nonzero("filter.sweep","filter sweep is zero")]}),
- parameter("noise","linear_gain",0,1,0,.01,"percent",{contexts:["synth"],scope:"source",bypass:{mode:"zero"}}),
+ parameter("noise","linear_gain",0,1,0,.01,"percent",{contexts:["synth"],scope:"source",bypass:{mode:"zero"},automation:{index:10}}),
  parameter("noiseDecay","seconds",0,4,0,.01,"seconds",{contexts:["synth"],scope:"source",bypass:{mode:"zero",meaning:"continuous noise"},inactiveWhen:[nonzero("noise","noise level is zero")]}),
  parameter("pan","pan",-1,1,0,.01,"pan",{modulation:{index:5,name:"pan",unit:"pan",limit:2}}),
  parameter("amplitude","linear_gain",0,2,1,.01,"percent",{routeOnly:true,modulation:{index:7,name:"amplitude",unit:"linear_gain",limit:1}}),
  parameter("effects.drive","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
- parameter("stereoWidth","ratio",0,2,1,.01,"percent"),
- parameter("msBalance","balance",-1,1,0,.01,"number"),
+ parameter("stereoWidth","ratio",0,2,1,.01,"percent",{automation:{index:8}}),
+ parameter("msBalance","balance",-1,1,0,.01,"number",{automation:{index:9}}),
  parameter("delayTone","hz",20,20000,20000,1,"hz",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
  {id:"delayPingPong",unit:"boolean",default:false,interpolation:"step",contexts:all,scope:"processing",bypass:{mode:"none"}},
  parameter("effects.delayMix","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
@@ -97,6 +97,8 @@ const contextMaps=new Map([...contextLists].map(([context,items])=>[context,new 
 export const parameterFor=(id,context="synth")=>contextMaps.get(context)?.get(id)??null;
 export const parametersFor=context=>contextLists.get(context)??[];
 export const SYNTH_PARAMETERS=parametersFor("synth");
+// Live-safe automation reuses the modulation indices and parameter bounds.
+export const automationParametersFor=context=>parametersFor(context).filter(p=>p.modulation||p.automation).map(p=>({...p,automationIndex:p.modulation?.index??p.automation.index}));
 export function validParameterValue(id,value,context="synth"){
  const p=parameterFor(id,context);
  if(!p)return false;

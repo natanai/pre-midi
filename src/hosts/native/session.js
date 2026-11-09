@@ -1,7 +1,7 @@
 import {encodeNativePlan} from './plan.js';
 import {resolveEvent} from '../../../soundModel.js';
 import {planSynthVoice} from '../../dsp/synth-voice.js';
-import {noteCutoffAutomation} from '../../dsp/automation.js';
+import {noteAutomation} from '../../dsp/automation.js';
 import {sampleForNote} from '../../../sampler.js';
 import {getAsset} from '../../../assetRegistry.js';
 import {validatePatch} from '../../../synth.js';
@@ -39,10 +39,10 @@ export function nativePlans(events,assets=new Map(),unit=.125){
   if(!resolved)throw Error('Native playback found an unresolved sound identity');
   const {voice,note}=resolved,unsupported=unsupportedNativeFeatures(voice.patch);
   if(unsupported.length)throw Error(`${event.instrument.name||'Sound'}: native playback does not yet support ${unsupported.join(', ')}.`);
-  if(voice.patch.type==='sample')return planNativeSample(voice,note,event.at,event.duration,assets,{unit:event.timeline?.unit??unit});
+  if(voice.patch.type==='sample'){const selected=noteAutomation(event.instrument,event.note,event.timeline);return planNativeSample(voice,note,event.at,event.duration,assets,{unit:event.timeline?.unit??unit,automation:selected.automation??voice.patch.automation,timeline:selected.timeline});}
   const duration=event.instrument.layout==='rack'?Math.max(.015,voice.patch.envelope.attack+voice.patch.envelope.decay):event.duration;
   return planSynthVoice(voice,note,event.at,duration,
-    {...noteCutoffAutomation(event.instrument,event.note,event.timeline),unit:event.timeline?.unit??unit});
+    {...noteAutomation(event.instrument,event.note,event.timeline??{step:0,unit,limitStep:duration/unit}),unit:event.timeline?.unit??unit});
  }).filter(Boolean);
 }
 const assetCache=new Map();let assetGeneration;

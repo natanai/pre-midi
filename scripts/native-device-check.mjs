@@ -55,7 +55,7 @@ try{
  compare('release-first-stealing',stolen.pcm,a.map((v,i)=>.85*(63*v+c[i]+b[i]*(i/2<rate*.03?1:Math.max(0,1-(Math.floor(i/2)-rate*.03)/(rate*.005))))));
  if(stolen.report.stolen!==1)throw Error('Stealing count mismatch');
  const automation={version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:[{id:'low',step:0,value:400},{id:'high',step:4,value:6000}]};
- const automated=plan(makePatch('touch-keys'),60,0,.15,.1,{automation,timeline:{step:0,unit:.125,limitStep:16}});
+ const automated=plan(makePatch('touch-keys'),60,0,.15,.1,{automation:[{...automation,id:"cutoff"}],timeline:{step:0,unit:.125,limitStep:16}});
  const automatedResult=await render([automated]);compare('v3-cutoff-automation',automatedResult.pcm,floatArray(renderer.render(automated,rate,frames)).map(v=>v*.85));
  const loopVoice=plan(sine(),69,0,.09,.03),loopSeconds=.125,total=.5,expected=new Array(Math.round(total*rate)*2).fill(0);
  for(let cycle=0;cycle<4;cycle++){

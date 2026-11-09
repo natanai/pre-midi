@@ -126,6 +126,7 @@ class Session {
   if(p.version>=4)p.sweepEnd+=shift;
   for(unsigned i=0;i<p.eventCount;i++)p.events[i].time+=shift;
   for(unsigned i=0;i<p.automationCount;i++)p.automation[i].time+=shift;
+  for(unsigned i=0;i<p.parameterAutomation.count;i++)for(unsigned j=0;j<p.parameterAutomation.lanes[i].count;j++)p.parameterAutomation.lanes[i].points[j].time+=shift;
   free->banks=note.banks;free->start=at;free->off=frameAt(p.off);free->end=frameAt(p.graphEnd);free->order=++serial;
   free->voice.emplace(p,rate,free->banks,at,&note.prepared,nullptr,nullptr,free->channels,free->processing);admitted++;
   if(free->delay>=0)tailEnd=std::max(tailEnd,frameAt(p.graphEnd+buses[free->delay].tail));

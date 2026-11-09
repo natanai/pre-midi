@@ -17,7 +17,7 @@ import {modeledSampleEnvelope,modeledRecordingLevels,SAMPLE_REFERENCE_VIEW} from
 import {envelopeLevelAt,planAmplitudeEnvelope} from "./src/dsp/amplitude-envelope.js";
 import {MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {assignSoundEdit} from "./soundEditPath.js";
-import {cutoffAt} from "./src/dsp/automation.js";
+import {cutoffAt,laneValueAt} from "./src/dsp/automation.js";
 import {WAVES,FILTERS} from "./synth.js";
 
 import {ISOLATED_SOUND_PANELS,isolatedSoundDiagram} from "./soundPanelModels.js";
@@ -186,9 +186,10 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
   if(levels)tag(265,15,"total "+Math.round(100*volume*gain)+"%");
  }else if(type==="automation"){
   const total=Math.max(1,(p.bars??1)*16);
-  const frequencyY=value=>98-72*clamp(Math.log(Math.max(50,value)/50)/Math.log(280));
+  const parameter=p.parameter??{min:50,max:14000,ui:{log:true}},log=!!parameter.ui?.log;
+  const frequencyY=value=>98-72*clamp(log?Math.log(Math.max(parameter.min,value)/parameter.min)/Math.log(parameter.max/parameter.min):(value-parameter.min)/(parameter.max-parameter.min));
   line("M18 103 H342 M18 20 V103",true);
-  line(pathRange(240,t=>[18+324*t,frequencyY(cutoffAt(p,t*total,p.points[0].value))]),
+  line(pathRange(240,t=>[18+324*t,frequencyY(laneValueAt(p,t*total,p.points[0].value))]),
    false,p.points.flatMap((_,i)=>["points."+i+".step","points."+i+".value"]));
   for(const [index,point] of p.points.entries()){
    const x=18+324*clamp(point.step/total),y=frequencyY(point.value);
@@ -197,8 +198,8 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
    handle(x,y,[
     referenceAxis(["points",index,"step"],0,total,"linearX",{from:18,to:342,step:1,unit:"step",
      hardMin:index?p.points[index-1].step+1:0,hardMax:index<p.points.length-1?p.points[index+1].step-1:total}),
-    axis(["points",index,"value"],"logY",{from:98,to:26,unit:"Hz"})
-   ],(index===0?"start":index===p.points.length-1?"end":"point "+(index+1))+" position / brightness");
+    axis(["points",index,"value"],log?"logY":"linearY",{from:98,to:26,unit:p.unit??"hz"})
+   ],(index===0?"start":index===p.points.length-1?"end":"point "+(index+1))+" position / value");
    tag(x+4,Math.max(16,y-8),index===0?"start":index===p.points.length-1?"end":String(index+1));
   }
   tag(18,14,"high");tag(18,111,"low");tag(278,112,"bar →");

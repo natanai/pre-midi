@@ -25,7 +25,7 @@ export function validateVocalEffects(fx){
  }
  errors.push(...validateMovement(fx.movement),...validateBend(fx.bend));
  const tone=validateSampleTone({...fx,filter:fx.filter??undefined});if(tone)errors.push(tone);
- errors.push(...validateRecordedModulation(fx.modulation,{vocal:true}),...validateRecordingAutomation(fx.automation));
+ errors.push(...validateRecordedModulation(fx.modulation,{vocal:true}),...validateRecordingAutomation(fx.automation,{...fx,type:"vocal"}));
  errors.push(...validateStereo(fx),...validateEq(fx.eq),...validateFilterStages(fx.filterStages),...validateProcessingChain(fx.chain),...validateDelaySync(fx.delaySync));
  const allowed=new Set(["stereoWidth","msBalance","delayTone","delayPingPong","eq","filterStages","delaySync","chain","automation","modulation","pan","transpose","attack","release","drive","delayMix","delayTime","delayFeedback","filter","movement","bend"]);
  for(const key of Object.keys(fx))if(!allowed.has(key))errors.push("Unknown vocal effect "+key+".");

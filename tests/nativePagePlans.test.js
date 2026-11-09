@@ -12,8 +12,8 @@ const synthetic=(at,duration=.25,automation=false)=>{
  if(automation)patch.filter={...patch.filter,cutoff:1200,sweep:1,sweepTime:.18};
  return planSynthVoice({patch,volume:.5},
   {pitch:64,velocity:.9},at,duration,automation?{
-   automation:{version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
-    points:[{id:"a",step:0,value:300},{id:"b",step:3,value:6000}]},
+   automation:[{id:'cutoff',version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
+    points:[{id:"a",step:0,value:300},{id:"b",step:3,value:6000}]}],
    timeline:{step:0,unit:.125,limitStep:16}
   }:{});
 };
@@ -59,7 +59,7 @@ test("Sample and vocal page rebasing retains source offsets and absolute release
  const rate=48000,base=875.713,start=base+.075,frame=nativeFrameAt(base,rate);
  const asset={id:1,rate,channels:2,frames:4800,duration:.1,normalization:2.6},assets=new Map([["recorded",asset]]);
  const effects={filter:{type:"lowpass",cutoff:1200,resonance:.7,sweep:1,sweepTime:.05},
-  automation:{version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",points:[{id:"a",step:0,value:1200},{id:"b",step:1,value:600}]}};
+  automation:[{id:'cutoff',version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",points:[{id:"a",step:0,value:1200},{id:"b",step:1,value:600}]}]};
  const patch={type:"sample",presetId:"test",zones:[{assetId:"recorded",root:60}],
   followPitch:true,oneShot:true,transpose:0,gain:.9,attack:0,release:.025,pan:0,...effects};
  const sample=planNativeSample({patch,volume:.2},{pitch:60,velocity:.8},start,.05,assets);

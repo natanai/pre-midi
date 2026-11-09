@@ -130,9 +130,9 @@ test("v25 sustained Chunk notes remain editable without legacy one-bar clamping"
 test("v27 automated long notes remain resizable from desktop Beat gestures",async()=>{
  const score=create(),chunk=score.instruments[0].chunks[0];
  const note={id:id(),pitch:60,start:13,duration:35,velocity:.8,
-  cutoffAutomation:{version:1,step:8,limitStep:128,block:{version:1,
+  automation:{version:1,step:8,limitStep:128,block:[{id:'cutoff',version:1,
    target:"filter.cutoff",unit:"hz",interpolation:"exponential",
-   points:[{id:"a",step:0,value:300},{id:"b",step:128,value:5000}]}}};
+   points:[{id:"a",step:0,value:300},{id:"b",step:128,value:5000}]}]}};
  chunk.notes.push(note);upgradeBeatFeatures(score);
  assert.equal(score.version,CAPTURED_AUTOMATION_BEAT_VERSION);
  assert.equal(applyNoteCommand(chunk,{type:"note.resize",noteId:note.id,duration:48},

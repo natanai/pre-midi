@@ -1,10 +1,16 @@
 # Native audio playback
 
+## Current parameter automation (2026-11-09)
+
+The current `automation` field is an array of up to eight independent lanes. Each has 2–32 musical-time points with linear, exponential or stepped interpolation. Synth oscillator level/detune and noise, shared cutoff/resonance/pan/amplitude/stereo imaging, and added filter-instance cutoff/resonance are implemented. Sound lanes are preset-reusable; Instrument lanes override matching targets, and captured note lanes preserve source phase through Freeform conversion. `docs/automation-contract.json` declares ownership, bounds and precedence.
+
+Native execution evaluates at sample time using fixed 36-event storage and monotonic cursors. Page rebasing and callback activation shift every lane through seeks and loops without allocation. Browser AudioParams retain the same automation-before-modulation clamp policy. Focused PCM checks include an independent pan/amplitude oracle, stereo image, filter and oscillator targets, block/seek continuity and page rebasing. The null-device seek/loop/edit/count-in/capture matrix also includes automation at 44.1/48/96 kHz. General effect/articulation/discrete targets, gesture recording, explicit override/rejoin and wider automation scopes remain unfinished. DOM checks pass; full Chromium observation was blocked by this environment's process-singleton socket restriction.
+
 ## Current processor routing (2026-11-09)
 
 The shared `chain` model supports eight active filter, distortion or EQ processors and four parallel routes after a serial path. Added instances have independent parameters and stable IDs. Native execution preallocates per-voice, per-channel state on control; prepared pages pin immutable, deduplicated recipes. A streaming revision declares whether it needs graph state before publishing pages. No graph allocation, parsing or ownership destruction occurs in the callback.
 
-Within each graph, parallel dry and shorter routes align to the longest route. Each active native drive adds 192 frames; the browser measures its drive kernel latency before constructing parallel paths. Bypass or zero mix removes that stage's latency. This is per-voice branch alignment; Track/shared buses, sidechain inputs and arrangement-wide latency compensation remain unfinished. Current sample execution uses packet v18 with a validated graph trailer; this does not change project file versions.
+Within each graph, parallel dry and shorter routes align to the longest route. Each active native drive adds 192 frames; the browser measures its drive kernel latency before constructing parallel paths. Bypass or zero mix removes that stage's latency. This is per-voice branch alignment; Track/shared buses, sidechain inputs and arrangement-wide latency compensation remain unfinished. Current sample execution uses packet v19 with a validated graph trailer; this does not change project file versions.
 
 Focused model, native PCM, browser audio and shared Inspector tests are `tests/processingGraph.*`. The null-device streaming check exercises graph and ordinary revisions at 44.1/48/96 kHz with seek, loops, edits, count-in and capture, asserting zero callback allocations. Physical Windows listening and a new portable package are not qualified by those checks.
 

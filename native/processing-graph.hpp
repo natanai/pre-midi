@@ -1,5 +1,6 @@
 #pragma once
 #include "filter.hpp"
+#include "automation.hpp"
 #include "drive.hpp"
 #include "equalizer.hpp"
 #include <array>
@@ -60,19 +61,19 @@ class ProcessingGraphState {
  struct Channel{std::array<Stage,graphNodeLimit> stages;std::array<Align,graphRouteLimit+1> align;};
  std::array<Channel,graphChannelLimit> channels;
  unsigned rate=48000,maxLatency=0;std::array<unsigned,graphRouteLimit> latency{};
- float stage(float input,unsigned index,Channel& channel,const ProcessingGraph& graph,double cutoff,double resonance)noexcept{
+ float stage(float input,unsigned index,Channel& channel,const ProcessingGraph& graph,double cutoff,double resonance,const AutomatedValues* automation=nullptr)noexcept{
   const auto& n=graph.nodes[index];if(n.bypass||n.mix==0)return input;
   auto& state=channel.stages[index];float value=input;
   if(n.kind==0){
-   const double f=n.primary?cutoff:n.cutoff,q=n.primary?resonance:n.resonance;
+   const double f=n.primary?cutoff:automation?automation->processor(index,0,n.cutoff):n.cutoff,q=n.primary?resonance:automation?automation->processor(index,1,n.resonance):n.resonance;
    if(f!=state.cutoff||q!=state.resonance){state.filter.configure(n.type,f,q,rate);state.cutoff=f;state.resonance=q;}
    value=state.filter.process(input);
   }else if(n.kind==1)return state.drive.mixed(input,n.mix);
   else value=state.eq.process(input,n.bands);
   return static_cast<float>((1-n.mix)*input+n.mix*value);
  }
- float serial(float value,const GraphRoute& route,Channel& channel,const ProcessingGraph& graph,double cutoff,double resonance)noexcept{
-  for(unsigned i=0;i<route.count;i++)value=stage(value,route.order[i],channel,graph,cutoff,resonance);
+ float serial(float value,const GraphRoute& route,Channel& channel,const ProcessingGraph& graph,double cutoff,double resonance,const AutomatedValues* automation=nullptr)noexcept{
+  for(unsigned i=0;i<route.count;i++)value=stage(value,route.order[i],channel,graph,cutoff,resonance,automation);
   return value;
  }
  static unsigned pathLatency(const ProcessingGraph& graph,const GraphRoute& route)noexcept{
@@ -92,12 +93,12 @@ public:
    }
   }
  }
- float process(float input,unsigned index,const ProcessingGraph& graph,double cutoff,double resonance)noexcept{
-  auto& channel=channels[index];input=serial(input,graph.serial,channel,graph,cutoff,resonance);
+ float process(float input,unsigned index,const ProcessingGraph& graph,double cutoff,double resonance,const AutomatedValues* automation=nullptr)noexcept{
+  auto& channel=channels[index];input=serial(input,graph.serial,channel,graph,cutoff,resonance,automation);
   if(!graph.routeCount)return input;
   float sum=channel.align[0].next(input,maxLatency)*static_cast<float>(graph.dry);
   for(unsigned i=0;i<graph.routeCount;i++){
-   const auto value=serial(input,graph.routes[i],channel,graph,cutoff,resonance);
+   const auto value=serial(input,graph.routes[i],channel,graph,cutoff,resonance,automation);
    sum+=channel.align[i+1].next(value,maxLatency-latency[i])*static_cast<float>(graph.routes[i].gain);
   }
   return sum;

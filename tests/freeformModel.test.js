@@ -6,7 +6,7 @@ import {renderEvents} from "../audio.js";
 import {parseSong} from "../songIO.js";
 import {createSong,addBeat,editBeatClip,upgradeSongFeatures,validateSong,SUSTAIN_SONG_VERSION,CAPTURED_AUTOMATION_SONG_VERSION} from "../songModel.js";
 import {nativePlans} from "../src/hosts/native/session.js";
-import {noteCutoffAutomation} from "../src/dsp/automation.js";
+import {noteAutomation} from "../src/dsp/automation.js";
 import {planSynthVoice} from "../src/dsp/synth-voice.js";
 import {createFreeform,addFreeformInstrument,addFreeformNote,
  addFreeformChunkPlacement,editFreeformChunkPlacement,removeFreeformChunkPlacement,
@@ -182,7 +182,7 @@ const cutoffCurve=()=>({version:1,target:"filter.cutoff",unit:"hz",
  ]});
 const automatedSong=({offset=0,length=256}={})=>{
  const beat=create(),inst=beat.instruments[0];
- inst.automation=cutoffCurve();
+ inst.automation=[{...cutoffCurve(),id:"cutoff"}];
  inst.chunks[0].notes=[
   {id:"low-source",pitch:60,start:4,duration:6,velocity:.8},
   {id:"top-source",pitch:67,start:12,duration:4,velocity:.75}
@@ -196,7 +196,7 @@ const automatedSong=({offset=0,length=256}={})=>{
 const round=value=>Math.round(value*1e9)/1e9;
 const signature=plan=>({
  at:round(plan.start),pitch:plan.expression.pitch,duration:round(plan.duration),
- cutoff:plan.automation?.points.map(point=>[round(point.time),round(point.value)])
+ cutoff:plan.parameterAutomation?.find(lane=>lane.target==="filter.cutoff")?.points.map(point=>[round(point.time),round(point.value)])
 });
 test("unpacking automated repetitions gives exactly matching native voice timelines",()=>{
  const song=automatedSong({offset:16,length:256}),clip=song.tracks[0].clips[0];
@@ -211,7 +211,7 @@ test("unpacking automated repetitions gives exactly matching native voice timeli
  assert.deepEqual(after,before,"Automated cutoff envelopes, starts, and note durations must match");
  const captured=song.tracks[0].freeform.instruments[0].notes;
  assert.ok(captured.length>2);
- assert.ok(captured.every(note=>note.cutoffAutomation?.version===1));
+ assert.ok(captured.every(note=>note.automation?.version===1));
  const unchanged=after.map(({cutoff})=>cutoff.map(([time,value])=>value));
  moveFreeformPassage(song.tracks[0].freeform,passage.id,passage.startStep+16);
  const shifted=nativePlans(renderEvents(song)).map(signature);
@@ -261,10 +261,10 @@ test("captured cutoff movement is validated, versioned, and never silently disca
  assert.match(validateSong(song).join(" "),/requires freeform v2/);
  track.freeform.version=2;
  song.version=CAPTURED_AUTOMATION_SONG_VERSION;
- const note=inst.notes[0],savedStep=note.cutoffAutomation.step;
- note.cutoffAutomation.step=-1;
- assert.match(validateSong(song).join(" "),/Invalid captured note cutoff movement/);
- note.cutoffAutomation.step=savedStep;
+ const note=inst.notes[0],savedStep=note.automation.step;
+ note.automation.step=-1;
+ assert.match(validateSong(song).join(" "),/Invalid captured note automation/);
+ note.automation.step=savedStep;
  assert.deepEqual(validateSong(song),[]);
 });
 test("freeform Chunk creation may retain a captured note cutoff curve",()=>{
@@ -278,8 +278,8 @@ test("freeform Chunk creation may retain a captured note cutoff curve",()=>{
  const placed=addFreeformChunkPlacement(inst,inst.chunks[0].id,400);
  const at=placed.startStep+cloneNote.start;
  const event=eventsAtFreeformStep(layer,at).find(entry=>entry.note.id===cloneNote.id);
- assert.ok(event?.note.cutoffAutomation);
- const resolved=noteCutoffAutomation(event.instrument,event.note,{step:at,unit:.125,limitStep:512});
+ assert.ok(event?.note.automation);
+ const resolved=noteAutomation(event.instrument,event.note,{step:at,unit:.125,limitStep:512});
  const preview=planSynthVoice({patch:inst.sounds[0].patch,volume:inst.volume},{...cloneNote,pitch:60},0,.4,resolved);
  assert.equal(preview.version,3);
 });

@@ -17,7 +17,7 @@ export function withProcessorRemoved(patch,id){
  const chain=processingChain(patch);
  const next={...chain,order:chain.order.filter(key=>key!==id),bypass:[...chain.bypass]};
  if(chain.parallel)next.parallel=chain.parallel.map(r=>({...r,order:r.order.filter(key=>key!==id)}));
- if(!['filter','eq','drive'].includes(id)){next.bypass=next.bypass.filter(key=>key!==id);next.instances=chain.instances.filter(p=>p.id!==id);if(next.mix){next.mix={...next.mix};delete next.mix[id];}}return next;
+ return next;
 }
 export function withProcessorAdded(patch,id){
  if(!allProcessorIds(processingChain(patch)).includes(id))throw Error('Unknown processor');

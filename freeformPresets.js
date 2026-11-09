@@ -10,8 +10,8 @@ const safeName=name=>{
  return name.trim().slice(0,60);
 };
 const hasCutoffMovement=instrument=>
- instrument?.notes?.some(note=>note.cutoffAutomation!==undefined)||
- instrument?.chunks?.some(chunk=>chunk.notes.some(note=>note.cutoffAutomation!==undefined));
+ instrument?.notes?.some(note=>note.automation!==undefined)||
+ instrument?.chunks?.some(chunk=>chunk.notes.some(note=>note.automation!==undefined));
 const referenced=patch=>patch?.type==="sample"?
  patch.zones.map(zone=>zone.assetId):[];
 

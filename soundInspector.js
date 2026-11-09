@@ -5,7 +5,7 @@ import {renderProcessingChain} from "./processingChainUI.js";
 import {setSoundIllustrationTempo} from "./soundIllustrations.js";
 import {soundField,soundCapability} from "./soundParameterAdapter.js";
 import {mountSoundPanelView} from "./soundPanelView.js";
-import {renderCutoffAutomation} from "./automationUI.js";
+import {renderAutomation} from "./automationUI.js";
 // One canonical Sound Inspector renderer for both the Beat and the attached
 // freeform Song context. Context adapters own undo, selection and asset access;
 // this module alone owns the common controls, illustrations and scope layout.
@@ -120,7 +120,7 @@ export function renderSoundInspectorCore({
  volumeRoot,gainRoot,primaryRoots,
  accent="#86c6a7",sampleNames="",onReplaceSample=()=>{},stageLayout=null,
  onPatchChange,onLevelChange,onStageChange,
- onCutoffAutomation=null,scopeRenderer=null,stageOpen=null,includeStage=true
+ onAutomation=null,scopeRenderer=null,stageOpen=null,includeStage=true
 }){
  if(!instrument||!sound||!context||!modulesRoot||!scopeRoot||
   !volumeRoot||!gainRoot||primaryRoots?.length!==3||
@@ -138,7 +138,7 @@ export function renderSoundInspectorCore({
  const updateScope=scopeRenderer?
   scopeRenderer(patch,level):
   createSignalDisplay(scopeRoot,patch,context,accent,level,
-   sound.referencePitch,instrument.automation??null,sound.id);
+   sound.referencePitch,instrument.automation??patch.automation??null,sound.id);
  let stagePanel=null;
  const redraw=(next,volume=instrument.volume,gain=sound.gain)=>{
   updateScope(next,vocal&&next!==patch?next.gain:volume*gain);
@@ -190,9 +190,10 @@ export function renderSoundInspectorCore({
    onReplaceSample,preview,sound.id,{deferView:true,bpm:context.bpm??120});
  else{
   renderPatchEditor(modulesRoot,patch,onPatchChange,preview,sound.id,{deferView:true,bpm:context.bpm??120});
-  onCutoffAutomation?.(modulesRoot,instrument,context);
+  if(onAutomation)onAutomation(modulesRoot,instrument,context);
+  else renderAutomation(modulesRoot,{...instrument,id:sound.id,sounds:[sound],automation:patch.automation},context,block=>onPatchChange(["automation"],block));
  }
- if(recorded)renderCutoffAutomation(modulesRoot,{id:sound.id,layout:"pitched",sounds:[sound],automation:patch.automation},
+ if(recorded)renderAutomation(modulesRoot,{id:sound.id,layout:"pitched",sounds:[sound],automation:patch.automation},
   {bars:context.bars??Math.max(1,Math.ceil((context.vocal?.clip.lengthSteps??16)/16))},block=>onPatchChange(["automation"],block??undefined));
  modulesRoot.append(renderEqualizer(patch,onPatchChange,preview,sound.id),renderStereoImage(patch,onPatchChange,preview,sound.id),renderDelayStereo(patch,onPatchChange,preview,sound.id));
  modulesRoot.prepend(renderPerformanceMacros(patch,onPatchChange,preview),renderProcessingChain(patch,onPatchChange,sound.id,preview));

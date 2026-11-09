@@ -1,84 +1,83 @@
 {
-  "version": 1,
-  "task": "SYN-010",
-  "status": "initial_cutoff_slice",
+  "version": 2,
+  "task": "SYN-010 / SE-07",
+  "status": "parameter_lanes_in_progress",
   "persistence": {
-    "instrumentField": "automation",
-    "blockVersion": 1,
-    "patchVersionsUnchanged": [
-      1,
-      2
-    ],
-    "legacyBeatVersions": [
-      7,
-      9
-    ],
-    "legacySongVersions": [
-      8,
-      10
-    ],
-    "automatedBeatVersion": 11,
-    "automatedSongVersion": 12,
-    "executionPlanVersion": 3,
-    "policy": "No silent downgrade. Old readers reject the new versions. Removing a lane does not downgrade a project. pre-programmed needs explicit parser/rendering parity before it can play the new formats."
+    "field": "automation",
+    "shape": "An array of up to eight lanes with stable id, version:1, target, unit, interpolation, points and optional bypass",
+    "ownership": "Sound patch lanes are reusable in presets. Instrument lanes override matching Sound targets. A note automation descriptor captures the complete lane set plus source step/limitStep when unpacking a Beat passage. Vocal lanes belong to Clip effects.",
+    "current_only": "Current readers validate the lane array. No old single-lane project reader or saved-file migration was added.",
+    "external_assets": "Automation references parameters only. Recording bytes stay in external Assets."
   },
-  "target": {
-    "id": "filter.cutoff",
-    "unit": "hz",
-    "min": 50,
-    "max": 14000,
-    "initialScope": "One two-point lane on a piano-roll synth instrument; unsupported instrument types reject instead of silently ignoring the lane"
+  "targets": {
+    "authority": "src/dsp/parameters.js; automationParametersFor derives modulation targets and declared automation indices from the same bounds and units",
+    "implemented": [
+      "oscillators.0.detune",
+      "oscillators.0.level",
+      "oscillators.1.detune",
+      "oscillators.1.level",
+      "filter.cutoff",
+      "filter.resonance",
+      "pan",
+      "amplitude",
+      "stereoWidth",
+      "msBalance",
+      "noise",
+      "processor.<stable filter instance id>.cutoff",
+      "processor.<stable filter instance id>.resonance"
+    ],
+    "contexts": "Synths expose oscillator/noise targets; samples and vocals expose applicable processing targets. Added filter instances expose independent cutoff/resonance. Width affects stereo content; it does not manufacture side information from a mono source.",
+    "inactive_processors": "Removing an instance from routing retains its settings and lanes for restoration. Unrouted instance lanes compile to no events. Bypass and zero mix retain their normal processing semantics."
   },
   "points": {
-    "identity": "Two stable IDs, increasing integer sixteenth-note steps on the Beat clock",
-    "range": "0 through bars*16 inclusive",
-    "interpolation": "Exponential in Hz, linear in octaves; exact endpoints",
-    "outsideRange": "Hold first value before begin; hold last after end",
-    "smoothing": "No extra smoothing or hidden UI timer; the explicit exponential segment is the transition",
-    "ordering": "Increasing musical position; simultaneous authored points reject. Compiled boundary events use stable order and distinct boundary/point namespaces."
+    "authored_limit": 32,
+    "execution_limit": 36,
+    "position": "Distinct stable point IDs and strictly increasing integer sixteenth-note steps inside the source range",
+    "interpolation": [
+      "linear",
+      "exponential (strictly positive values)",
+      "step"
+    ],
+    "outside_range": "Hold the first/last value. Clip source-end boundaries hold through release tails.",
+    "step_timing": "A step applies on the first sample at or after its boundary, with the same 1e-9-frame rounding tolerance used for native onsets.",
+    "bounds": "Units, source support and value bounds come from the canonical parameter authority."
   },
   "precedence": [
-    "Patch base cutoff if there is no lane",
-    "Beat-clock timeline cutoff replaces the base when a lane exists",
-    "Per-note legacy tone, legacy sweep and canonical modulation apply after the timeline base",
-    "Final host filter frequency is bounded to Nyquist"
+    "Sound patch base",
+    "Matching Sound / Instrument timeline lane",
+    "Per-note captured source-phase lane set",
+    "Legacy sweep/expression and routed modulation",
+    "Final parameter/device bounds"
   ],
-  "legacySweep": "On automated voices, a separate detune control multiplies the timeline base by the authored per-note sweep. Native still explicitly rejects sweep and legacy LFO/tone until their own parity work is complete.",
   "clock": {
     "unit": "60 / actual transport BPM / 4 seconds per step",
-    "chunk": "The lane spans the Beat clock and never restarts at Chunk boundaries",
-    "song": "Each referenced Beat iteration uses its own local step; Song BPM determines seconds. Clip/Beat end values hold through release tails.",
-    "loop": "New cycle voices restart the lane; older release tails keep their terminal cutoff",
-    "seek": "New notes evaluate the lane at the actual seek position, including a seek into the middle of the segment. Existing onset-based transport does not chase/reconstruct voices that began before the seek.",
-    "edits": "Scheduled voices retain their immutable plan. Edits are heard on newly scheduled notes or the next playback pass; no live automation recording or mid-note plan replacement is claimed."
+    "beat": "Lanes span the Beat clock; Chunk boundaries do not reset them. Each referenced Beat repetition begins its own source clock.",
+    "freeform": "Captured lanes retain their source step and limitStep when a passage moves horizontally.",
+    "vocal": "Vocal source elapsedSteps and Clip duration bound the curve.",
+    "native_streaming": "JS page rebasing and C++ page/cycle activation shift every parameter event. Seek/loop reconstruction retains held voices, filter history and delay returns.",
+    "live_edits": "Use the existing prepared native revision replacement. Gesture recording and explicit manual override/rejoin modes remain unfinished."
   },
   "rendering": {
-    "browser": "Compiled absolute-time AudioParam exponential ramps in the existing filter graph",
-    "native": "Bounded six-point curve in the same C++ Voice, evaluated at sample time before modulation; no audio-thread allocation, JSON or I/O",
-    "offline": "Beat/Song WAV uses the same render events and compiled voice plans; no normalization/limiting behavior was added",
-    "callback": "Offline and allocation/block assertions do not establish device latency, underruns or callback deadlines"
+    "browser": "AudioParam lanes plus control signals retain pitch expression and modulation clamp precedence; dynamic stereo imaging uses the same mid/side equations.",
+    "native": "Eight fixed lanes with 36 events each and monotonic cursors. Preparation and parsing stay on control. Per-sample evaluation and page/loop shifts allocate no callback memory.",
+    "wire": "Current sample execution packet v19 appends a validated parameter-automation trailer; synth plans use the same trailer.",
+    "offline": "The same plans drive playback and native/browser WAV rendering."
   },
   "interface": {
-    "entry": "move over time next to the existing Cutoff control",
-    "editing": "Two begin/end rows with bar, beat and Hz values; remove and undo use the canonical project mutation path",
-    "presets": "Timeline automation is stored in the Beat, not a sound preset",
-    "incompatibleChanges": "Remove cutoff movement before changing an automated instrument to a rack or recording"
+    "entry": "One shared automation panel in the Sound Inspector and selected Freeform note editor",
+    "editing": "Parameter selection, independent lanes, bypass/remove, linear/exponential/step curves, numeric points and interactive two-axis illustrations use the project undo path."
   },
   "qualification": [
-    "tests/automation.test.js",
-    "tests/automation-check.html",
-    "npm run benchmark:automation -- --require-clean"
+    "tests/parameterAutomation.test.js",
+    "tests/parameterAutomation.audio.mjs",
+    "tests/parameterAutomation.dom.mjs",
+    "scripts/native-stream-device-check.mjs",
+    "native/control-tests"
   ],
   "remaining": [
-    "Additional targets and points",
-    "Recorded automation",
-    "Held-note chase after seek",
-    "Live replacement of already scheduled voice plans",
-    "Song/game override recording and precedence",
-    "Reference hardware/device and human musical/newcomer evaluation"
-  ],
-  "qualificationNotes": {
-    "stress": "Maximum-route capture timeout begins after the suspended preparation phase; preparation cost remains separately recorded and unqualified for interactive startup",
-    "restoredAssets": "Recorded-preset selection waits for binary asset restoration; a valid newer synchronous cached draft is not replaced by an older asynchronous draft"
-  }
+    "Additional effect/source/articulation targets and discrete parameter changes",
+    "Gesture recording and explicit live override/rejoin",
+    "Track/Song/game automation scopes and overrides",
+    "Physical Windows and observed listening/newcomer qualification"
+  ]
 }

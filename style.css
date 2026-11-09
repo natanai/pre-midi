@@ -1265,10 +1265,8 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .modulation-editor .modulation-routing[open] > summary::after {content:"−"}
 .modulation-editor > button {margin:0 12px 12px}
 
-.automation-toggle {font-size:10px;padding:4px 0;min-height:0;text-decoration:underline}
-.cutoff-automation {margin:0 12px 12px;border-top:1px solid var(--line)}
-.cutoff-automation:not([open]) > summary::after {content:"+"}
-.cutoff-automation[open] > summary::after {content:"−"}
+.parameter-automation {margin:12px 0}
+.automation-lane {margin:12px 0;padding:0 8px;border:1px solid var(--line)}
 .automation-point {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:start;min-width:0;margin:12px 0;border:0;padding:0}
 .automation-point input {width:100%;min-width:0}
 .automation-point legend {padding:0 0 8px;color:var(--muted);font-size:11px}
@@ -1435,7 +1433,6 @@ body.sound-visual-zoom .visual-sound-panel.zoomed {position:fixed;z-index:220;le
 .visual-sound-panel.zoomed .oscillator-stack {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));align-items:start}
 .visual-sound-panel.zoomed .oscillator-unit {min-width:0;border-bottom:0}
 .visual-sound-panel.zoomed .oscillator-unit>.synth-fields {display:grid;grid-template-columns:repeat(auto-fit,minmax(82px,1fr));gap:14px 10px}
-.visual-sound-panel.zoomed .automation-toggle {grid-column:1/-1;justify-self:start}
 .visual-sound-panel.zoomed .visual-graph-label {font-size:11px}
 .sound-section,.freeform-sound-host {overflow-anchor:none}
 .visual-sound-panel.zoomed>.synth-group>summary {cursor:default;padding-right:44px}

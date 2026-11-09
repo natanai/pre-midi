@@ -712,28 +712,28 @@
       "prerequisite_progress": {
         "shared_parameter_ids": "src/dsp/parameters.js",
         "combination_and_smoothing": "docs/modulation-contract.json",
-        "remaining": "Recorded automation, held-note chase, additional targets/points and Song/game overrides remain; the persisted two-point cutoff lane is implemented."
+        "remaining": "Additional effect/articulation/discrete targets, gesture recording, explicit override/rejoin and Track/Song/game scopes remain."
       },
       "verification": {
         "implemented": [
-          "One filter.cutoff lane with two stable musical points",
-          "Sample-timed exponential interpolation and base/automation/modulation precedence",
-          "Beat v11 / Song v12 / execution-plan v3 persistence with legacy readers protected",
-          "Native v3 curve execution in the same C++ core",
-          "Beat-clock playback, seeking state, repeated Song clips, Chunk boundaries and WAV parity",
-          "Contextual Cutoff movement controls, remove and undo"
+          "Eight independent parameter lanes with 32 authored / 36 prepared points",
+          "Linear/exponential/step interpolation with shared source and transport clocks",
+          "Native/browser target and modulation precedence, stereo imaging and added filter instances",
+          "Held-note native seek, page/cycle activation and prepared edit replacement",
+          "Shared numerical/two-axis controls, bypass/remove, undo and current project/preset recall"
         ],
         "contract": "docs/automation-contract.json",
         "tests": [
-          "tests/automation.test.js",
-          "tests/automation-check.html",
-          "tests/audio-quality/automation-render.html"
+          "tests/parameterAutomation.test.js",
+          "tests/parameterAutomation.audio.mjs",
+          "tests/parameterAutomation.dom.mjs",
+          "scripts/native-stream-device-check.mjs"
         ],
         "remaining": [
-          "Held-note chase on seek",
-          "Live automation recording and mid-note plan replacement",
-          "Additional targets, points, Song/game overrides",
-          "Hardware and human musical/newcomer evaluation"
+          "Additional effect/articulation/discrete targets",
+          "Gesture recording and explicit manual override/rejoin",
+          "Track/Song/game scopes",
+          "Hardware and observed listening/newcomer evaluation"
         ],
         "report": "benchmarks/automation-qualification.json",
         "qualification": {
@@ -1994,8 +1994,8 @@
         "id": "CAP-09",
         "title": "Automation and parameter gestures",
         "status": "partial",
-        "current": "Cutoff automation supports 2\u201332 points and captured Freeform note/source phase; shared recorded-audio cutoff editing also exists.",
-        "gap": "General parameter targets, additional interpolation modes, gesture recording and override/rejoin policies remain.",
+        "current": "Up to eight independent parameter lanes with 2\u201332 points, linear/exponential/step interpolation, bypass/remove, shared numerical/two-axis editing and source-phase capture are implemented. Targets include oscillator level/detune, filter cutoff/resonance, pan, amplitude, noise, stereo width/mid-side and added filter instances. Sound preset, Instrument override, Beat/Song and Freeform recall share one lane-array contract. Native/browser execution, modulation precedence and streaming page/cycle shifts pass focused software checks. Additional effect/articulation/discrete targets, gesture recording, override/rejoin and wider automation scopes remain open.",
+        "gap": "Additional effect/articulation/discrete targets, gesture recording, override/rejoin and Track/Song/game scopes remain.",
         "evidence_ids": [
           "E08",
           "E21"
@@ -2472,11 +2472,12 @@
           "Four shared route-based performance macros with reset and preset recall",
           "Filter/distortion wet/dry with aligned distortion dry paths",
           "Tempo-synced delay through quarter notes with shared tails and reuse",
-          "Independent filter/distortion/EQ instances and bounded parallel routes with compensated branch blends in native/browser playback and streaming"
+          "Independent filter/distortion/EQ instances and bounded parallel routes with compensated branch blends in native/browser playback and streaming",
+          "Eight parameter lanes with source-phase capture, linear/exponential/step curves, shared editing and native/browser execution"
         ],
         "remaining": [
           "Remaining effect destinations, followers/sidechains and phase/free-run clock policies",
-          "General parameter automation, curve modes and gesture recording",
+          "Remaining effect/articulation/discrete automation targets, gesture recording, override/rejoin and wider scopes",
           "Sidechains, Track/shared-bus sends and arrangement-wide latency compensation"
         ]
       },
@@ -2776,8 +2777,14 @@
         "verification": [
           "Independent value/phase oracle plus edited Song seek/loop/export round trips for synth, sample and vocal."
         ],
-        "completion_evidence": [],
-        "progress_note": "Cutoff automation now supports 2\u201332 authored points, shared add/remove/numerical and two-axis editing, piecewise exponential interpolation, seek-boundary and tail-hold planning, captured Freeform source phase, and native/browser playback. Native execution storage is bounded to 36 events. Beat/Song serialization retains full curves and tempo-synced movement. Other parameter targets, interpolation/curve modes, gesture recording and override/rejoin policies remain planned; SE-07 is not complete."
+        "completion_evidence": [
+          "docs/automation-contract.json: current scopes, target authority, precedence and clocks",
+          "tests/parameterAutomation.test.js: validation, current Beat/Song recall, Instrument overrides and Freeform source phase",
+          "tests/parameterAutomation.audio.mjs: independent pan/amplitude oracle; linear/exponential/step, oscillator/filter/instance, stereo and modulation PCM checks; seek/block/page continuity",
+          "tests/parameterAutomation.dom.mjs: lane edits, undo/redo, focus, interpolation, two-axis points, bypass/remove",
+          "scripts/native-stream-device-check.mjs: automated native streaming seek/loop/edit/count-in/capture at 44.1/48/96 kHz with zero callback allocations"
+        ],
+        "progress_note": "Up to eight independent parameter lanes with 2\u201332 points, linear/exponential/step interpolation, bypass/remove, shared numerical/two-axis editing and source-phase capture are implemented. Targets include oscillator level/detune, filter cutoff/resonance, pan, amplitude, noise, stereo width/mid-side and added filter instances. Sound preset, Instrument override, Beat/Song and Freeform recall share one lane-array contract. Native/browser execution, modulation precedence and streaming page/cycle shifts pass focused software checks. Additional effect/articulation/discrete targets, gesture recording, override/rejoin and wider automation scopes remain open."
       },
       {
         "id": "SE-08",
@@ -3842,6 +3849,7 @@
       "SE-15"
     ],
     "delivery_policy": "Continue the existing canonical parameter/Inspector/native contracts. No placeholder controls, silent Web Audio fallback, speculative legacy readers or completion claims from interface wiring alone.",
-    "processing_routing": "Independent filter/distortion/EQ instances and four parallel paths are implemented with within-graph latency alignment; shared buses/sidechains and arrangement-wide latency compensation remain open."
+    "processing_routing": "Independent filter/distortion/EQ instances and four parallel paths are implemented with within-graph latency alignment; shared buses/sidechains and arrangement-wide latency compensation remain open.",
+    "automation": "Parameter-lane source milestone implemented; see SE-07 and docs/automation-contract.json. General automation remains in progress for remaining targets, gestures, override/rejoin and wider scopes."
   }
 }

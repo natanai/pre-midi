@@ -5,7 +5,7 @@ import {cutoffAt,planCutoffAutomation,automationValueAt,validateCutoffAutomation
 import {planNativeSample,planNativeVocal} from '../src/hosts/native/sample-plan.js';
 import {planSynthVoice} from '../src/dsp/synth-voice.js';
 import {makePatch} from '../synth.js';
-import {editFreeformNoteCutoff} from '../freeformNoteAutomation.js';
+import {editFreeformNoteAutomation} from '../freeformNoteAutomation.js';
 import {create,parse,upgradeBeatFeatures} from '../schema.js';
 import {createSong} from '../songModel.js';
 import {parseSong} from '../songIO.js';
@@ -30,10 +30,10 @@ test('multipoint curves interpolate every segment and preserve seek and tail-hol
  const plan=planCutoffAutomation(block,{start:5,end:12,step:12,unit:.125,limitStep:40});
  assert.deepEqual(validateAutomationPlan(plan),[]);
  for(const t of [5,5.5,6,7,8,10,12])assert.ok(Math.abs(automationValueAt(plan,t)-cutoffAt(block,Math.min(40,12+(t-5)/.125)))<1e-8);
- const captured={version:1,block,step:12,limitStep:40};
- const edited=editFreeformNoteCutoff(captured,[['points',2,'step'],['points',2,'value']],[100,900]);
- assert.equal(edited.block.points[2].step,47);assert.equal(edited.block.points[2].value,900);assert.equal(edited.step,12);assert.equal(edited.limitStep,40);
- assert.equal(captured.block.points[2].step,32);
+ const captured={version:1,block:[{...block,id:"cutoff"}],step:12,limitStep:40};
+ const edited=editFreeformNoteAutomation(captured,[['points',2,'step'],['points',2,'value']],[100,900]);
+ assert.equal(edited.block[0].points[2].step,47);assert.equal(edited.block[0].points[2].value,900);assert.equal(edited.step,12);assert.equal(edited.limitStep,40);
+ assert.equal(captured.block[0].points[2].step,32);
 });
 test('point insertion preserves the curve and stable IDs, deletion and limits stay bounded',()=>{
  const original=lane(),more=insertCutoffPoint(original,'new');
@@ -44,7 +44,7 @@ test('point insertion preserves the curve and stable IDs, deletion and limits st
  assert.equal(full.points.length,MAX_AUTOMATION_POINTS);assert.equal(insertCutoffPoint(full),full);
  assert.deepEqual(validateCutoffAutomation(full,null,4),[]);
  const plan=planCutoffAutomation(full,{start:0,end:8,step:0,unit:.125,limitStep:48});assert.deepEqual(validateAutomationPlan(plan),[]);
- const beat=create();beat.instruments[0].sounds[0].patch.version=2;beat.instruments[0].sounds[0].patch.modulation=structuredClone(modulation);beat.instruments[0].automation=full;upgradeBeatFeatures(beat);
+ const beat=create();beat.instruments[0].sounds[0].patch.version=2;beat.instruments[0].sounds[0].patch.modulation=structuredClone(modulation);beat.instruments[0].automation=[{...full,id:"cutoff"}];upgradeBeatFeatures(beat);
  assert.deepEqual(parse(JSON.stringify(beat)),beat);
  const song=createSong(beat);assert.deepEqual(parseSong(JSON.stringify(song)),song);
 });

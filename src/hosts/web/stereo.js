@@ -1,6 +1,7 @@
 // Imaging precedes pan. Mono sources retain mono routing and cannot gain a
 // phantom side channel merely because width is edited.
-export function connectStereoImage(context,signal,patch,owner,channels=1){
+export function connectStereoImage(context,signal,patch,owner,channels=1,automation=null){
+ if(automation?.lanes?.some(lane=>["stereoWidth","msBalance"].includes(lane.target)))return automatedImage(context,signal,patch,owner,channels,automation);
  const width=patch.stereoWidth??1,balance=patch.msBalance??0;if(width===1&&balance===0)return signal;
  const add=node=>{owner.nodes.push(node);return node;},mid=balance>0?1-balance:1,side=width*(balance<0?1+balance:1);
  if(channels===1){const gain=add(context.createGain());gain.gain.value=mid;signal.connect(gain);return gain;}
@@ -19,4 +20,14 @@ export function createStereoDelay(context,effects,destination){
  returns.connect(feedback);
  if(effects.delayPingPong){const split=add(context.createChannelSplitter(2)),swap=add(context.createChannelMerger(2));feedback.connect(split);split.connect(swap,0,1);split.connect(swap,1,0);swap.connect(delay);}else feedback.connect(delay);
  delay.connect(wet);wet.connect(destination);return {input:send,wet,nodes};
+}
+
+function automatedImage(context,signal,patch,owner,channels,{start,end,targets}){
+ const add=node=>{owner.nodes.push(node);return node;};
+ const width=context.createConstantSource(),balance=context.createConstantSource();owner.sources.push(width,balance);width.offset.value=patch.stereoWidth??1;balance.offset.value=patch.msBalance??0;targets.set('stereoWidth',width.offset);targets.set('msBalance',balance.offset);width.start(start);balance.start(start);width.stop(end);balance.stop(end);
+ const midControl=add(context.createWaveShaper()),sideControl=add(context.createWaveShaper());midControl.curve=Float32Array.from({length:4097},(_,i)=>1-Math.max(0,i/2048-1));sideControl.curve=Float32Array.from({length:4097},(_,i)=>1+Math.min(0,i/2048-1));balance.connect(midControl);balance.connect(sideControl);
+ const mid=add(context.createGain()),midGain=add(context.createGain());midGain.gain.value=0;midControl.connect(midGain.gain);mid.connect(midGain);
+ if(channels===1){signal.connect(mid);return midGain;}
+ const split=add(context.createChannelSplitter(2)),side=add(context.createGain()),negative=add(context.createGain()),sideWidth=add(context.createGain()),sideGain=add(context.createGain()),merge=add(context.createChannelMerger(2)),invert=add(context.createGain());
+ signal.connect(split);mid.gain.value=.5;side.gain.value=.5;negative.gain.value=-1;split.connect(mid,0);split.connect(mid,1);split.connect(side,0);split.connect(negative,1);negative.connect(side);sideWidth.gain.value=0;sideGain.gain.value=0;width.connect(sideWidth.gain);sideControl.connect(sideGain.gain);side.connect(sideWidth);sideWidth.connect(sideGain);midGain.connect(merge,0,0);midGain.connect(merge,0,1);sideGain.connect(merge,0,0);invert.gain.value=-1;sideGain.connect(invert);invert.connect(merge,0,1);return merge;
 }

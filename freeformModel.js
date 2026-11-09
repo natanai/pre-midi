@@ -1,10 +1,10 @@
 // Song-owned freeform musical instructions; notes and Chunks share the Beat sound engine.
 // Never flatten musical data into audio or create a separately movable Song Track.
-import {create,clone,id,makeChunk,makeInstrument,upgradeBeatFeatures,validate as validateBeat} from "./schema.js";
+import {create,clone,id,makeChunk,makeInstrument,upgradeBeatFeatures,requiresAutomationFormat,validate as validateBeat} from "./schema.js";
 import {eventsAtStep,STEPS_PER_BAR} from "./arrangement.js";
 import {referencedSampleIds} from "./soundModel.js";
 import {validateBend} from "./expression.js";
-import {validateCutoffAutomation,validateCapturedCutoffAutomation} from "./src/dsp/automation.js";
+import {noteAutomation,validateAutomation,validateCapturedAutomation} from "./src/dsp/automation.js";
 
 export const FREEFORM_SONG_VERSION=22;
 export const FREEFORM_AUTOMATION_SONG_VERSION=23;
@@ -99,7 +99,7 @@ export function attachBeatInstruments(song,track,beatId=null){
   makeAttachedInstrument(layer,beat,source);
  }
  if(beat.instruments.some(inst=>inst.chunks.some(chunk=>
-  chunk.notes.some(note=>note.cutoffAutomation!==undefined))))layer.version=2;
+  chunk.notes.some(note=>note.automation!==undefined))))layer.version=2;
  synchronizeLinkedFreeform(song);
  return layer;
 }
@@ -455,22 +455,22 @@ export function validateFreeform(layer){
        note.soundId!==undefined))
     errors.push("Invalid freeform note.");
    errors.push(...validateBend(note?.bend));
-   if(note?.cutoffAutomation!==undefined){
-    if(layer.version<2)errors.push("Captured note cutoff movement requires freeform v2.");
-    if(instrument.layout!=="pitched"||instrument.sounds?.[0]?.patch?.type!=="synth")
-     errors.push("Captured cutoff movement requires a pitched synthesizer.");
-    errors.push(...validateCapturedCutoffAutomation(note.cutoffAutomation));
+   if(note?.automation!==undefined){
+    if(layer.version<2)errors.push("Captured note automation requires freeform v2.");
+    if(instrument.layout!=="pitched"||!["synth","sample"].includes(instrument.sounds?.[0]?.patch?.type))
+     errors.push("Captured automation requires a pitched Sound.");
+    errors.push(...validateCapturedAutomation(note.automation,instrument.sounds?.[0]?.patch));
    }
   }
   if(instrument.chunkPlacements.length>10000||!distinct(instrument.chunkPlacements))
    errors.push("Invalid freeform Chunk placements.");
   for(const chunk of instrument.chunks)
    for(const note of chunk.notes){
-    if(note.cutoffAutomation===undefined)continue;
+    if(note.automation===undefined)continue;
     if(layer.version<2)errors.push("Captured Chunk movement requires freeform v2.");
-    if(instrument.layout!=="pitched"||instrument.sounds?.[0]?.patch?.type!=="synth")
-     errors.push("Captured Chunk movement requires a pitched synthesizer.");
-    errors.push(...validateCapturedCutoffAutomation(note.cutoffAutomation));
+    if(instrument.layout!=="pitched"||!["synth","sample"].includes(instrument.sounds?.[0]?.patch?.type))
+     errors.push("Captured Chunk movement requires a pitched Sound.");
+    errors.push(...validateCapturedAutomation(note.automation,instrument.sounds?.[0]?.patch));
    }
   const chunkIds=new Set(instrument.chunks.map(chunk=>chunk.id));
   for(const placement of instrument.chunkPlacements)
@@ -590,8 +590,8 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
  const beat=song.beats.find(b=>b.id===clip.beatId);
  if(!beat)throw Error("Beat Clip references a missing Beat.");
  for(const inst of beat.instruments)if(inst.automation!==undefined){
-  const problems=validateCutoffAutomation(inst.automation,inst,beat.bars);
-  if(problems.length)throw Error("Source Beat cutoff movement is invalid: "+problems[0]);
+  const problems=validateAutomation(inst.automation,inst.sounds?.[0]?.patch,beat.bars);
+  if(problems.length)throw Error("Source Beat automation is invalid: "+problems[0]);
  }
  const end=clip.startStep+clip.lengthSteps,from=fromStep??clip.startStep,to=toStep??end;
  if(!whole(from)||!positive(to)||from<clip.startStep||to>end||from>=to||
@@ -643,25 +643,26 @@ export function unpackBeatClip(song,clipId,{fromStep=null,toStep=null}={}){
     strumGroup:event.instrument.id+":"+event.chunk.id+":"+event.sourceBar+":"+step,
     strumKey:source.id};
    if(note.soundId!==undefined)note.soundId=soundMap.get(note.soundId);
-   if(event.instrument.automation!==undefined&&note.cutoffAutomation===undefined){
+   const sourceAutomation=noteAutomation(event.instrument,event.note).automation;
+   if(sourceAutomation?.length&&note.automation===undefined){
     // Match the original Beat/Clip automation limit, including partial Clips.
     // The movement follows this note when its passage moves in the Song.
-    note.cutoffAutomation={version:1,block:clone(event.instrument.automation),
+    note.automation={version:1,block:clone(sourceAutomation),
      step:local,limitStep:Math.min(cycle,local+end+(clip.automationTailSteps??0)-step)};
    }
    addFreeformNote(converted,note);
   }
  }
  layer.passages.push(passage);
- if(beat.instruments.some(inst=>inst.automation!==undefined||
-   inst.chunks.some(chunk=>chunk.notes.some(note=>note.cutoffAutomation!==undefined))))
+ if(layer.instruments.some(inst=>inst.notes.some(note=>note.automation))||beat.instruments.some(inst=>inst.automation!==undefined||
+   inst.chunks.some(chunk=>chunk.notes.some(note=>note.automation!==undefined))))
   layer.version=2;
  const errors=validateFreeform(layer);
  if(errors.length)throw Error("Could not unpack: "+errors[0]);
  const keep=[];
  if(from>clip.startStep){
   const left={...clone(clip),lengthSteps:from-clip.startStep};
-  if(beat.instruments.some(inst=>inst.automation!==undefined)||clip.automationTailSteps!==undefined)
+  if(requiresAutomationFormat(beat)||clip.automationTailSteps!==undefined)
    left.automationTailSteps=end-from+(clip.automationTailSteps??0);
   keep.push(left);
  }

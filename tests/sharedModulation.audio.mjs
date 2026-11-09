@@ -32,6 +32,6 @@ for(const bpm of [40,120,240]){
  assert.ok(difference<1e-7);console.log('PASS Web Audio tempo sync',JSON.stringify({bpm,difference}));
 }
 const curve={version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',points:Array.from({length:32},(_,i)=>({id:'p'+i,step:i,value:i%2?6000:200}))};
-const automated=await render([],1.7,{automation:curve,unit:.025,lengthSteps:32}),plain=await render([],1.7,{unit:.025,lengthSteps:32});
+const automated=await render([],1.7,{automation:[{...curve,id:"cutoff"}],unit:.025,lengthSteps:32}),plain=await render([],1.7,{unit:.025,lengthSteps:32});
 const curveEffect=automated.reduce((max,value,i)=>Math.max(max,Math.abs(value-plain[i])),0);
 assert.ok(curveEffect>.01);assert.ok(automated.every(Number.isFinite));console.log('PASS Web Audio multipoint automation',JSON.stringify({curveEffect}));

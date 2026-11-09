@@ -1,3 +1,4 @@
+import {scheduleParameterAutomation} from './src/hosts/web/automation.js';
 import {connectProcessingGraph} from './src/hosts/web/processing-graph.js';
 import {connectStereoImage,createStereoDelay} from './src/hosts/web/stereo.js';
 import {createEq,cascadeFilter,cutoffDestination} from './src/hosts/web/equalizer.js';
@@ -6,7 +7,7 @@ import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp
 import {parameterFor,parameterDefaults,clampParameterValue,modulationTargetsFor,modulationSourcesFor} from "./src/dsp/parameters.js";
 import {windowEnvelope} from "./src/dsp/envelope-window.js";
 import {planFilterSweep,filterSweepRatioAt} from "./src/dsp/filter-sweep.js";
-import {validateCutoffAutomation,planCutoffAutomation} from "./src/dsp/automation.js";
+import {validateAutomation,planCutoffAutomation,cutoffLane,planParameterAutomation,automationParameters} from "./src/dsp/automation.js";
 // Canonical post-source processing for sampled Sounds and timeline recordings.
 import {configureDriveShaper,sampleTone} from './audioEffects.js';
 import {movement,scheduleMovementLfo} from './expression.js';
@@ -39,10 +40,11 @@ export function recordingEnvelope(start,duration,gain,attack,release,{elapsed=0,
   {kind:0,time:Math.max(rise,totalDuration-fade),value:gain},{kind:1,time:totalDuration,value:0}];
  return elapsed>0?windowEnvelope(events,elapsed,start):events.map(event=>({...event,time:event.time+start}));
 }
-export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,start,duration,owner,expression={pitch:60,velocity:1},unit=.125,elapsedSteps=0}){
+export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,start,duration,owner,expression={pitch:60,velocity:1},unit=.125,elapsedSteps=0,timeline}){
  const elapsed=Math.max(0,elapsedSteps)*unit;
  const fx=effectiveDelayEffects(patch,recordedEffects(patch),unit),motion=fx.movement,add=node=>{owner.nodes.push(node);return node;};
- let signal=source,filter=null,filterStage=null;const stages=new Map();
+ let signal=source,filter=null,filterStage=null;const stages=new Map(),automationTargets=new Map();owner.automationTargets=automationTargets;
+ const parameterAutomation=planParameterAutomation(fx.automation,{...patch,type:patch.type??"vocal"},{start,end:start+duration,step:elapsedSteps,unit,limitStep:elapsedSteps+duration/unit,...timeline,start,end:start+duration});
  if(fx.filter&&!processorBypassed(patch,"filter")){
   filter=add(context.createBiquadFilter());filter.type=fx.filter.type;filterStage=cascadeFilter(context,filter,patch,owner);
   filter.frequency.value=0;
@@ -52,9 +54,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
   sweep.gain.setValueAtTime(filterSweepRatioAt(sweepPlan,fx.filter.cutoff,elapsed),start);
   if(elapsed<sweepPlan.sweepDuration)sweep.gain.exponentialRampToValueAtTime(1,start+sweepPlan.sweepDuration-elapsed);
   base.connect(sweep);for(const node of filterStage.filters)sweep.connect(node.frequency);base.start(start);base.stop(start+duration+.04);
-  if(fx.automation){const plan=planCutoffAutomation(fx.automation,{start,end:start+duration,step:elapsedSteps,unit,limitStep:Math.max(elapsedSteps+duration/unit,fx.automation.points.at(-1).step)});
-   for(const [i,point] of plan.points.entries())base.offset[i?'exponentialRampToValueAtTime':'setValueAtTime'](point.value,point.time);
-  }
+  automationTargets.set('filter.cutoff',base.offset);automationTargets.set('filter.resonance',filter.Q);
   filter.Q.setValueAtTime(fx.filter.resonance,start);
   if(motion.tone>0)for(const node of filterStage.filters)scheduleMovementLfo(context,node.frequency,start,duration,motion.toneRate,fx.filter.cutoff*motion.tone*.8,owner,{elapsed});
   stages.set("filter",filterStage);
@@ -69,10 +69,11 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  signal.connect(amp);
  const pulse=add(context.createGain());pulse.gain.setValueAtTime(1,start);
  scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});
- const movementGain=add(context.createGain());movementGain.gain.value=1;
- amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);connectStereoImage(context,gate,patch,owner,source.buffer?.numberOfChannels??1).connect(pan);pan.pan.value=fx.pan;
+ const movementGain=add(context.createGain());movementGain.gain.value=1;automationTargets.set("amplitude",movementGain.gain);automationTargets.set("pan",pan.pan);
+ amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);connectStereoImage(context,gate,patch,owner,source.buffer?.numberOfChannels??1,{start,end:start+duration,lanes:parameterAutomation,targets:automationTargets}).connect(pan);pan.pan.value=fx.pan;
  const targets=new Map([['pan',pan.pan],['amplitude',movementGain.gain]]);if(filter){targets.set('filter.cutoff',cutoffDestination(context,filterStage.filters,start,start+duration,owner));targets.set('filter.resonance',filter.Q);}
- attachModulation(context,{modulation:resolveModulation(fx.modulation,unit),start,off:start+duration,graphEnd:start+duration,expression,elapsed,resonance:fx.filter?.resonance},targets,owner);
+ scheduleParameterAutomation(context,parameterAutomation,automationTargets,owner);
+ attachModulation(context,{parameterAutomation,modulation:resolveModulation(fx.modulation,unit),start,off:start+duration,graphEnd:start+duration,expression,elapsed,resonance:fx.filter?.resonance},targets,owner);
  const dry=add(context.createGain());dry.gain.value=1-fx.delayMix*.4;pan.connect(dry);dry.connect(out);
  return {fx,tail:delayTailSeconds(fx),connectDelay(session,voice){
   if(!(fx.delayMix>0)||!voice.admitted&&session)return;
@@ -87,6 +88,7 @@ export function processingFromPatch(patch){
  const result=Object.fromEntries(keys.filter(key=>fx[key]!==undefined).map(key=>[key,structuredClone(fx[key])]));
  result.chain=structuredClone(processingChain(patch));
  if(result.filter===null&&!result.chain.bypass.includes('filter'))result.chain.bypass.push('filter');
+ if(result.automation){const allowed=automationParameters({...result,type:'vocal'}).map(p=>p.id);result.automation=result.automation.filter(lane=>allowed.includes(lane.target));if(!result.automation.length)delete result.automation;}
  if(result.modulation)result.modulation.routes=result.modulation.routes.filter(route=>modulationTargetsFor('vocal').some(target=>target.id===route.target)&&modulationSourcesFor('vocal').includes(route.source.kind));
  if(result.filter)result.filter={...sampleTone({filter:result.filter}).filter};
  result.attack=clampParameterValue('envelope.attack',result.attack,'vocal');result.release=clampParameterValue('envelope.release',result.release,'vocal');
@@ -95,7 +97,7 @@ export function processingFromPatch(patch){
 export function applyProcessingToPatch(patch,processing){
  const fx=structuredClone(processing);
  if(patch.type==='synth'){
-  for(const key of ['stereoWidth','msBalance','delayTone','delayPingPong','eq','filterStages','delaySync','chain','pan','movement','bend','filter'])if(fx[key]!==undefined&&fx[key]!==null)patch[key]=fx[key];
+  for(const key of ['stereoWidth','msBalance','delayTone','delayPingPong','eq','filterStages','delaySync','chain','automation','pan','movement','bend','filter'])if(fx[key]!==undefined&&fx[key]!==null)patch[key]=fx[key];
   if(fx.filter===null){const chain=processingChain(patch);patch.chain={...chain,order:[...chain.order],bypass:[...new Set([...chain.bypass,'filter'])]};}
   patch.envelope.attack=clampParameterValue('envelope.attack',fx.attack??patch.envelope.attack);
   patch.envelope.release=clampParameterValue('envelope.release',fx.release??patch.envelope.release);
@@ -106,4 +108,4 @@ export function applyProcessingToPatch(patch,processing){
  patch.presetId='custom';return patch;
 }
 
-export const validateRecordingAutomation=block=>block===undefined||block===null?[]:validateCutoffAutomation(block,null,1000000);
+export const validateRecordingAutomation=(block,patch={type:"vocal"})=>block===undefined?[]:validateAutomation(block,patch,1000000);

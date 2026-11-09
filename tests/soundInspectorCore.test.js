@@ -43,7 +43,6 @@ test("illustrations, ordinary knobs and measured sound scope share the same patc
  assert.match(core,/onLevelChange\("volume",value\)/);
  assert.match(core,/onLevelChange\("gain",value\)/);
  assert.match(core,/root\.dataset\.soundPath=paths\[index\]/);
- assert.match(core,/onCutoffAutomation\?\.\(modulesRoot,instrument,context\)/);
  assert.match(core,/illustration\.disposeSoundIllustration\?\.\(\)/);
 });
 
@@ -187,6 +186,7 @@ test("desktop contexts acquire the identical Inspector node and clear prior adap
  const prior=globalThis.document;
  class Node{
   constructor(tag='div',id=''){this.tag=tag;this.id=id;this.children=[];this.parentElement=null;}
+  setAttribute(name,value){this[name]=value;}
   append(node){if(node.parentElement)node.parentElement.children=node.parentElement.children.filter(n=>n!==node);this.children.push(node);node.parentElement=this;}
   querySelectorAll(selector){const all=this.children.flatMap(n=>[n,...n.querySelectorAll('*')]);
    if(selector==='*')return all;if(selector==='[id]')return all.filter(n=>n.id);

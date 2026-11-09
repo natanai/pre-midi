@@ -1,5 +1,5 @@
 import {processingFromPatch,applyProcessingToPatch} from "./recordedAudio.js";
-import {renderCutoffAutomation} from "./automationUI.js";
+import {renderAutomation} from "./automationUI.js";
 import {upgradeBeatFeatures,resizeBeatBars,MAX_BEAT_BARS,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION} from "./schema.js";
 import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
@@ -1256,7 +1256,7 @@ function renderSound() {
  });
  $("convert-rack").hidden=inst.layout==="rack";
  $("convert-rack").disabled=!!inst.automation||!canConvertToRack(inst);
- $("convert-rack").title=inst.automation?"remove cutoff movement before converting to rack":canConvertToRack(inst)?"convert this instrument into a one-sound rack":"requires a single pitch without overlapping hits";
+ $("convert-rack").title=inst.automation?"remove automation before converting to rack":canConvertToRack(inst)?"convert this instrument into a one-sound rack":"requires a single pitch without overlapping hits";
  $("convert-pitched").hidden=inst.layout!=="rack";
  $("convert-pitched").textContent=inst.sounds.length===1?"convert to piano roll":"extract sound to piano roll";
  $("convert-pitched").disabled=!canMoveRackSoundToPianoRoll(beat,inst.id,entry.id);
@@ -1291,13 +1291,13 @@ function renderSound() {
     }
    }
   }),
-  onCutoffAutomation:(root,current,source)=>
-   renderCutoffAutomation(root,current,source,block=>{
+  onAutomation:(root,current,source)=>
+   renderAutomation(root,{...current,automation:current.automation??sound().patch.automation},source,block=>{
     const changed=modify(()=>{
-     if(block)instrument().automation=block;
-     else delete instrument().automation;
+     const target=instrument().automation!==undefined?instrument():sound().patch;
+     if(block)target.automation=block;else delete target.automation;
     });
-    if(changed&&playback)message("cutoff movement updates with new notes");
+    if(changed&&playback)message("automation updated");
    })
  });
  $("remove-instrument").disabled=false;
@@ -2014,7 +2014,7 @@ async function chooseSound(preset) {
     .find(item=>item.id===context.instrumentId):
    beat.instruments.find(item=>item.id===context.instrumentId);
   if(context.kind!=="freeform"&&context.mode!=="add"&&selected?.automation&&patch.type!=="synth"&&trigger==="pitched"&&!preset.sounds){
-   message("Remove cutoff movement before replacing this instrument with a recording.",true);return;
+   message("Remove automation before replacing this instrument with a recording.",true);return;
   }
  const settings=(preset.sounds||preset.patch||preset.category==="Mine")?preset:null;
   let chosen=null;

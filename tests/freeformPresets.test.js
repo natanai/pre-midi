@@ -44,10 +44,10 @@ test("replacing pitched Sound keeps independently placed notes and blocks droppi
  assert.equal(inst.sounds[0].name,"new timbre");
  assert.deepEqual(validateFreeform(layer),[]);
  layer.version=2;
- note.cutoffAutomation={version:1,step:0,limitStep:16,block:{
+ note.automation={version:1,step:0,limitStep:16,block:[{id:'cutoff',
   version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
   points:[{id:"start",step:0,value:400},{id:"end",step:16,value:800}]
- }};
+ }]};
  const wave=asset();
  assert.throws(()=>applyFreeformPreset(layer,selected,{
   name:"wav",patch:sample(wave),trigger:"pitched",assets:[wave]

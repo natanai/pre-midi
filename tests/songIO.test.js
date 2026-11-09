@@ -127,10 +127,10 @@ test("new reusable Beat from freeform sample retains exactly one external audio 
 
 test("Song v23 preserves per-note cutoff movement through portable .premidi export",async()=>{
  const beat=create();
- beat.instruments[0].automation={version:1,target:"filter.cutoff",unit:"hz",
+ beat.instruments[0].automation=[{id:'cutoff',version:1,target:"filter.cutoff",unit:"hz",
   interpolation:"exponential",points:[
    {id:"a",step:0,value:500},{id:"b",step:128,value:6000}
-  ]};
+  ]}];
  beat.instruments[0].chunks[0].notes=[
   {id:"a",pitch:60,start:2,duration:4,velocity:.8}
  ];

@@ -134,9 +134,9 @@
   advanced.bars=2;advancedInst.timeline=[advancedInst.chunks[0].id,null];
   advancedInst.placements=[null,null];
   advancedInst.chunks[0].notes=[{id:id(),pitch:63,start:14,duration:24,velocity:.82,
-   cutoffAutomation:{version:1,step:14,limitStep:32,
-    block:{version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',
-     points:[{id:id(),step:0,value:430},{id:id(),step:32,value:4300}]}}}];
+   automation:{version:1,step:14,limitStep:32,
+    block:[{id:'cutoff',version:1,target:'filter.cutoff',unit:'hz',interpolation:'exponential',
+     points:[{id:id(),step:0,value:430},{id:id(),step:32,value:4300}]}]}}];
   schema.upgradeBeatFeatures(advanced);
   assert(advanced.version===27&&!schema.validate(advanced).length,
    'portable Beat v27 retains a continuous multi-bar note and captured cutoff curve');
@@ -189,7 +189,7 @@
   const owningTrack=advancedReopen.tracks.find(track=>track.kind==='beat'&&track.freeform);
   const editableLayer=owningTrack.freeform;
   const editableSource=editableLayer.instruments.find(item=>
-   item.notes.some(note=>note.cutoffAutomation));
+   item.notes.some(note=>note.automation));
   assert(!!editableSource,'unpacked automated Beat becomes an editable freeform Instrument');
   const sourceBefore=JSON.stringify(editableSource),beforeLifecyclePlans=signature(advancedReopen);
   const originalCount=renderEvents(advancedReopen).filter(event=>event.kind==='note').length;
@@ -197,7 +197,7 @@
   assert(cloneInstrument.id!==editableSource.id&&
    cloneInstrument.sounds[0].id!==editableSource.sounds[0].id&&
    cloneInstrument.notes.every((note,index)=>note.id!==editableSource.notes[index].id)&&
-   cloneInstrument.notes.some(note=>note.cutoffAutomation),
+   cloneInstrument.notes.some(note=>note.automation),
    'portable Instrument clone keeps automation with independent note and Sound identities');
   assert(renderEvents(advancedReopen).filter(event=>event.kind==='note').length>originalCount&&
    !songs.validateSong(advancedReopen).length,

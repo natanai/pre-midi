@@ -107,19 +107,19 @@ test("a sustained Chunk note requires v25 and round-trips without retriggering",
 test("captured cutoff movement uses v27 and rejects invalid curves and unsupported layouts",()=>{
  const beat=create(),chunk=beat.instruments[0].chunks[0];
  chunk.notes=[{id:id(),pitch:60,start:12,duration:25,velocity:.8,
-  cutoffAutomation:{version:1,step:4,limitStep:128,block:{version:1,
+  automation:{version:1,step:4,limitStep:128,block:[{id:'cutoff',version:1,
    target:"filter.cutoff",unit:"hz",interpolation:"exponential",points:[
     {id:"lo",step:0,value:450},{id:"hi",step:128,value:5200}
-   ]}}}];
+   ]}]}}];
  assert.match(validate(beat).join(" "),/Beat v27/);
  upgradeBeatFeatures(beat);
  assert.equal(beat.version,CAPTURED_AUTOMATION_BEAT_VERSION);
  assert.deepEqual(validate(beat),[]);
  assert.deepEqual(parse(JSON.stringify(beat)),beat);
- const broken=clone(beat);broken.instruments[0].chunks[0].notes[0].cutoffAutomation.step=-1;
- assert.match(validate(broken).join(" "),/Invalid captured note cutoff movement/);
- const wrongLayout=clone(beat);wrongLayout.instruments[0].sounds[0].patch.type="sample";
- assert.match(validate(wrongLayout).join(" "),/pitched synthesizer/);
+ const broken=clone(beat);broken.instruments[0].chunks[0].notes[0].automation.step=-1;
+ assert.match(validate(broken).join(" "),/Invalid captured note automation/);
+ const wrongLayout=clone(beat);wrongLayout.instruments[0].layout="rack";
+ assert.match(validate(wrongLayout).join(" "),/pitched Sound/);
  const downgraded=clone(beat);downgraded.version=SUSTAIN_BEAT_VERSION;
  assert.match(validate(downgraded).join(" "),/Beat v27/);
 });

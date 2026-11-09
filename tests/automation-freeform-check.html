@@ -17,10 +17,10 @@
   automated.instruments[0].chunks[0].notes=[{
    id:"automated-browser-note",pitch:60,start:2,duration:4,velocity:.8
   }];
-  automated.instruments[0].automation={
+  automated.instruments[0].automation=[{id:'cutoff',
    version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
    points:[{id:"low",step:0,value:400},{id:"high",step:16,value:6800}]
-  };
+  }];
   upgradeBeatFeatures(automated);
   const originalSong=createSong(automated);
   const beforeEvents=renderEvents(originalSong);

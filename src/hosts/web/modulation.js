@@ -1,3 +1,4 @@
+import {applyParameterLane} from './automation.js';
 import {parameterFor} from "../../dsp/parameters.js";
 import {prepareControlLfo,startControlLfo} from "./oscillator.js";
 import {validateModulation,smoothingAlpha,modulationStateBefore,modulationWave,randomLfoShape,DEFAULT_LFO_STEPS} from "../../dsp/modulation.js";
@@ -13,6 +14,7 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
  const source=node=>{owner.sources.push(node);node.start(plan.start);node.stop(plan.graphEnd);return node;};
  const constant=value=>{const node=context.createConstantSource();node.offset.value=value;return source(node);};
  const targetInputs=new Map();
+ const automatedBase=(target,base,offset,sum)=>{const lane=plan.parameterAutomation?.find(lane=>lane.target===target);if(lane){const control=constant(0);applyParameterLane(control.offset,lane);control.connect(sum);if(offset)constant(-offset).connect(sum);}else constant(base-offset).connect(sum);};
  for(const route of [...definition.routes].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
   let input,normal;
   if(route.source.kind==="lfo"){
@@ -86,12 +88,12 @@ export function attachModulation(context,plan,destinations,owner,{precise=false}
   if(target==="filter.resonance"||target==="amplitude"){
    const p=parameterFor(target),half=(p.max-p.min)/2,mid=(p.max+p.min)/2;
    const base=target==="amplitude"?1:plan.patch?.filter?.resonance??plan.resonance??destination.value;
-   constant(base-mid).connect(sum);destination.cancelScheduledValues(plan.start);destination.value=0;destination.setValueAtTime(0,plan.start);
+   automatedBase(target,base,mid,sum);destination.cancelScheduledValues(plan.start);destination.value=0;destination.setValueAtTime(0,plan.start);
    const normalize=add(context.createGain()),clamp=add(context.createWaveShaper()),scale=add(context.createGain());
    normalize.gain.value=1/half;clamp.curve=new Float32Array([-1,0,1]);scale.gain.value=half;
    sum.connect(normalize);normalize.connect(clamp);clamp.connect(scale);scale.connect(destination);constant(mid).connect(destination);
   }else if(target.endsWith(".level")){
-   constant(destination.value).connect(sum);destination.value=0;
+   automatedBase(target,destination.value,0,sum);destination.cancelScheduledValues(plan.start);destination.value=0;destination.setValueAtTime(0,plan.start);
    const clamp=add(context.createWaveShaper());clamp.curve=new Float32Array([0,0,1]);sum.connect(clamp);clamp.connect(destination);
   }else{
    const limit=parameterFor(target).modulation.limit;

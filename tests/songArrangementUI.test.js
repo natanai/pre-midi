@@ -230,7 +230,7 @@ test("freeform note-to-Chunk conversion retains source-phase cutoff movement alo
  assert.match(source,/delete basic\.passageId/);
  assert.match(source,/cutoff over time · source phase/);
  assert.match(source,/illustrateSoundPanel\(visualDetails,"automation"/);
- assert.doesNotMatch(source,/delete basic\.cutoffAutomation/);
+ assert.doesNotMatch(source,/delete basic\.automation/);
 });
 
 test("attached freeform Rack offers Sound-row reordering through Song undo",()=>{

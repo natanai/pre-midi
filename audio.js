@@ -1,9 +1,10 @@
+import {scheduleParameterAutomation} from './src/hosts/web/automation.js';
 import {connectProcessingGraph} from './src/hosts/web/processing-graph.js';
 import {connectStereoImage,createStereoDelay} from './src/hosts/web/stereo.js';
 import {createEq,cascadeFilter,cutoffDestination} from './src/hosts/web/equalizer.js';
 import {connectProcessorMix,prepareProcessorMix} from './src/hosts/web/processor-mix.js';
 import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
-import {validateAutomationPlan,noteCutoffAutomation} from "./src/dsp/automation.js";
+import {validateAutomationPlan,noteAutomation} from "./src/dsp/automation.js";
 import {prepareOscillator} from "./src/hosts/web/oscillator.js";
 import {validateModulation} from "./src/dsp/modulation.js";
 import {resolveEvent} from "./soundModel.js";
@@ -75,7 +76,7 @@ function noiseBuffer(ctx) {
 }
 export const stepEvents = eventsAtStep;
 export function scheduleNote(ctx,destination,instrument,event,start,duration,beat,session=null,timeline=null) {
- const selected=timeline?noteCutoffAutomation(instrument,event,timeline):
+ const selected=timeline?noteAutomation(instrument,event,timeline):
   {automation:undefined,timeline};
  const {automation,timeline:effectiveTimeline}=selected;
  if(instrument.sounds){
@@ -86,23 +87,23 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
   instrument=resolved.voice;event=resolved.note;
  }
  if(instrument.patch.type==="sample"){
-  return scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx),session,{unit:effectiveTimeline?.unit??60/(beat?.bpm??120)/4});
+  return scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx),session,{unit:effectiveTimeline?.unit??60/(beat?.bpm??120)/4,automation,timeline:effectiveTimeline});
  }
  return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline:effectiveTimeline,unit:effectiveTimeline?.unit??60/(beat?.bpm??120)/4}),session);
 }
 export function scheduleSynthPlan(ctx,destination,plan,session=null){
  if(plan.contract!=="pre-midi-synth-voice"||![1,2,3].includes(plan.version))throw Error("Unsupported synth voice plan");
  if(plan.version===1&&plan.modulation!==undefined)throw Error("Modulation requires synth voice contract v2");
- if(plan.version!==3&&plan.automation!==undefined)throw Error("Automation requires synth voice contract v3");
- if(plan.version===3){const errors=validateAutomationPlan(plan.automation);if(errors.length)throw Error(errors.join(" "));}
+ if(plan.version!==3&&(plan.automation!==undefined||plan.parameterAutomation?.length))throw Error("Automation requires synth voice contract v3");
+ if(plan.automation){const errors=validateAutomationPlan(plan.automation);if(errors.length)throw Error(errors.join(" "));}
  if(plan.version>=2){const errors=validateModulation(plan.modulation);if(errors.length)throw Error(errors.join(" "));
   if(plan.modulation.routes.some(route=>route.smoothing>0)&&typeof ctx.createIIRFilter!=="function")throw Error("This host does not support smoothed modulation");}
  const {patch,off,end,start,duration}=plan,motion=plan.movement;
- const sources=[],nodes=[],owner={sources,nodes},destinations=new Map();
+ const sources=[],nodes=[],automationTargets=new Map(),owner={sources,nodes,automationTargets},destinations=new Map();
  const add=node=>{nodes.push(node);return node;};
  const mix=add(ctx.createGain());
  for(const [index,slot] of plan.oscillators.entries()){
-  if(!slot.level&&!plan.modulation?.routes.some(route=>route.target===`oscillators.${index}.level`))continue;
+  if(!slot.level&&!plan.modulation?.routes.some(route=>route.target===`oscillators.${index}.level`)&&!plan.parameterAutomation?.some(lane=>lane.target===`oscillators.${index}.level`))continue;
   const {oscillator,sourceStart,warmed}=prepareOscillator(ctx,slot,plan,index);
   const gain=add(ctx.createGain());
   // Initialize before scheduling: a start inside a render quantum must not
@@ -114,19 +115,19 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
    oscillator.frequency.setValueCurveAtTime(new Float32Array([value,value]),sourceStart,Math.max(.001,end-sourceStart));
   }else{if(start>0)oscillator.frequency.value=slot.frequency;oscillator.frequency.setValueAtTime(slot.frequency,start);}
   schedulePitchPlan(ctx,oscillator.detune,slot.pitch,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
-  gain.gain.value=slot.level;
+  gain.gain.value=slot.level;automationTargets.set(`oscillators.${index}.level`,gain.gain);automationTargets.set(`oscillators.${index}.detune`,{param:oscillator.detune,additive:true,base:slot.detune});
   if(warmed&&!plan.modulation?.routes.some(route=>route.target===`oscillators.${index}.level`)){gain.gain.value=0;gain.gain.setValueAtTime(slot.level,start);}
   destinations.set(`oscillators.${index}.level`,gain.gain);destinations.set(`oscillators.${index}.detune`,oscillator.detune);
   oscillator.connect(gain);gain.connect(mix);
   oscillator.start(sourceStart);oscillator.stop(end);
   sources.push(oscillator);
  }
- if(patch.noise>0) {
+ if(patch.noise>0||plan.parameterAutomation?.some(lane=>lane.target==="noise")) {
   const source=ctx.createBufferSource(),gain=add(ctx.createGain());
   source.buffer=noiseBuffer(ctx);source.loop=true;
-  gain.gain.setValueAtTime(patch.noise,start);
-   if((patch.noiseDecay??0)>0)gain.gain.setTargetAtTime(0,start,Math.max(.002,patch.noiseDecay/5));
-  source.connect(gain);gain.connect(mix);
+  gain.gain.setValueAtTime(patch.noise,start);automationTargets.set("noise",gain.gain);
+   if((patch.noiseDecay??0)>0){const decay=add(ctx.createGain());decay.gain.setValueAtTime(1,start);decay.gain.setTargetAtTime(0,start,Math.max(.002,patch.noiseDecay/5));source.connect(gain);gain.connect(decay);decay.connect(mix);}
+  else{source.connect(gain);gain.connect(mix);}
   source.start(start);source.stop(end);
   sources.push(source);
  }
@@ -135,6 +136,8 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  const filterStage=cascadeFilter(ctx,filter,patch,owner),filterNodes=filterStage.filters;
  if(!processorBypassed(patch,"filter")){destinations.set("filter.cutoff",cutoffDestination(ctx,filterNodes,start,plan.graphEnd,owner));destinations.set("filter.resonance",filter.Q);}
  const sweep=patch.filter.sweep??0;
+ if(!processorBypassed(patch,"filter")){automationTargets.set("filter.cutoff",filterNodes.map(node=>node.frequency));automationTargets.set("filter.resonance",filter.Q);}
+ if(sweep!==0&&plan.parameterAutomation?.some(lane=>lane.target==="filter.cutoff"))for(const node of filterNodes){const source=ctx.createConstantSource();source.offset.setValueAtTime(1200*Math.log2(plan.filter.startCutoff/patch.filter.cutoff),start);source.offset.linearRampToValueAtTime(0,plan.filter.sweepEnd);source.connect(node.detune);source.start(start);source.stop(plan.graphEnd);sources.push(source);}
  for(const node of filterNodes){
  if(plan.automation){
   const points=plan.automation.points;node.frequency.value=points[0].value;node.frequency.setValueAtTime(points[0].value,points[0].time);
@@ -163,14 +166,14 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  applyAmplitudePlan(amp.gain,plan.amplitude);
  signal.connect(amp);
  const pan=add(ctx.createStereoPanner());
- pan.pan.value=patch.pan;destinations.set("pan",pan.pan);
+ pan.pan.value=patch.pan;destinations.set("pan",pan.pan);automationTargets.set("pan",pan.pan);
 const pulse=add(ctx.createGain());
  pulse.gain.setValueAtTime(1,start);
  if(motion.tremolo>0)scheduleMovementLfo(ctx,pulse.gain,start,duration,
   motion.tremoloRate,motion.tremolo*.45,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const gate=add(ctx.createGain());
- const movementGain=add(ctx.createGain());movementGain.gain.value=1;destinations.set("amplitude",movementGain.gain);
- amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);connectStereoImage(ctx,gate,patch,owner,1).connect(pan);
+ const movementGain=add(ctx.createGain());movementGain.gain.value=1;destinations.set("amplitude",movementGain.gain);automationTargets.set("amplitude",movementGain.gain);
+ amp.connect(pulse);pulse.connect(movementGain);movementGain.connect(gate);connectStereoImage(ctx,gate,patch,owner,1,{start,end:plan.graphEnd,lanes:plan.parameterAutomation,targets:automationTargets}).connect(pan);
  const fx=effectiveDelayEffects(patch,patch.effects),mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
  dry.gain.value=1-mixAmount*.4;
@@ -180,6 +183,7 @@ const pulse=add(ctx.createGain());
    const graph=createStereoDelay(ctx,fx,destination);nodes.push(...graph.nodes);pan.connect(graph.input);
   }
  }
+ scheduleParameterAutomation(ctx,plan.parameterAutomation,automationTargets,owner);
  attachModulation(ctx,plan,destinations,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const voice=ownVoice(ctx,{sources,nodes,gate,start,release:off,end:session?plan.graphEnd:plan.audibleEnd});
  if(session){session.adopt(voice);if(voice.admitted&&mixAmount>0)pan.connect(session.delay(fx,voice));}

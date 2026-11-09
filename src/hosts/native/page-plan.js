@@ -55,6 +55,7 @@ export function rebaseNativePlanToPage(plan,pageStartFrame,sampleRate,timeOffset
  }
  if(plan.automation)rebased.automation={...plan.automation,
   points:plan.automation.points.map(point=>({...point,time:localTime(point.time)}))};
+ if(plan.parameterAutomation)rebased.parameterAutomation=plan.parameterAutomation.map(lane=>({...lane,points:lane.points.map(point=>({...point,time:localTime(point.time)}))}));
  if(rebased.start>601)
   throw Error("Native page voice starts beyond the bounded session-local clock");
  return rebased;

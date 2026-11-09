@@ -18,6 +18,7 @@ export function connectProcessingGraph(context,signal,patch,stages,owner){
    const filter=add(context.createBiquadFilter());filter.type=p.type;filter.frequency.value=p.cutoff;filter.Q.value=p.resonance;
    stage=cascadeFilter(context,filter,{filter:p,filterStages:p.stages??1},owner);
    for(const f of stage.filters)f.frequency.value=p.cutoff;
+   owner.automationTargets?.set("processor."+node.id+".cutoff",stage.filters.map(f=>f.frequency));owner.automationTargets?.set("processor."+node.id+".resonance",filter.Q);
   }else if(instance.kind==='drive'&&p.amount>0){
    const shaper=add(context.createWaveShaper()),gain=add(context.createGain());configureDriveShaper(shaper,p.amount);gain.gain.value=1/(1+p.amount*1.1);shaper.connect(gain);stage={input:shaper,output:gain};
   }else if(instance.kind==='eq')stage=createEq(context,p,owner);

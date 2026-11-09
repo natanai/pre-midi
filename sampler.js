@@ -80,7 +80,7 @@ export function sampleForNote(patch,pitch,velocity=.8){
 export function validateSamplerPatch(patch){
  if(!patch||patch.type!=="sample")return ["Invalid sampler instrument."];
  const errors=[];
- errors.push(...validateRecordedModulation(patch.modulation),...validateRecordingAutomation(patch.automation));
+ errors.push(...validateRecordedModulation(patch.modulation),...validateRecordingAutomation(patch.automation,{...patch,type:"sample"}));
  if(patch.audioMode!==undefined&&patch.audioMode!=="clip")errors.push("Invalid recorded envelope mode.");
  for(const key of ["delayMix","delayTime","delayFeedback"])
   if(patch[key]!==undefined&&!validParameterValue("effects."+key,patch[key],"sample"))errors.push("Invalid sample delay.");
@@ -166,7 +166,7 @@ function sampleNormalization(buffer){
  peakLevels.set(buffer,scale);
  return scale;
 }
-export function scheduleSample(context,out,inst,event,start,duration,beat,cache,session=null,{unit=60/(beat?.bpm??120)/4}={}) {
+export function scheduleSample(context,out,inst,event,start,duration,beat,cache,session=null,{unit=60/(beat?.bpm??120)/4,automation,timeline}={}) {
  const patch=inst.patch,zone=sampleForNote(patch,event.pitch,event.velocity);
  const buffer=zone&&cache.get(zone.assetId);
  if(!buffer)return; // Can only happen while freshly imported samples decode during playback.
@@ -192,7 +192,7 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
   amp.gain.setValueAtTime(0,start);amp.gain.linearRampToValueAtTime(gain,at+.001);
   amp.gain.setValueAtTime(gain,Math.max(at+.001,releaseStart));amp.gain.linearRampToValueAtTime(0,start+life);
  }
- const graph=connectRecordedAudio(context,{source:src,amp,gate,pan,out,patch,start,duration:life,owner,expression:event,unit});
+ const graph=connectRecordedAudio(context,{source:src,amp,gate,pan,out,patch:{...patch,automation:automation??patch.automation},start,duration:life,owner,expression:event,unit,timeline});
  src.start(start,region.offset,region.sourceLength);src.stop(start+life+.01);
  const voice=ownVoice(context,{...owner,gate,start,release:Math.max(start,Math.min(start+life,releaseStart)),end:start+life+.01+(session?0:graph.tail)});
  if(session)session.adopt(voice);graph.connectDelay(session,voice);return voice;
