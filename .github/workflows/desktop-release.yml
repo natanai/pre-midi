@@ -48,7 +48,18 @@ jobs:
             const tagged = context.ref.startsWith('refs/tags/');
             if (tagged && context.ref !== 'refs/tags/' + tag) throw Error('Tag/package version mismatch');
             const inputs = context.payload.inputs || {};
-            const versionPreview = context.eventName === 'push' && !tagged && preview;
+            let versionChanged = false;
+            if (context.eventName === 'push' && !tagged) {
+              try {
+                const previous = await github.rest.repos.getContent({...context.repo,path:'package.json',ref:context.payload.before});
+                const oldVersion = JSON.parse(Buffer.from(previous.data.content,'base64').toString('utf8')).version;
+                versionChanged = oldVersion !== version;
+              } catch(error) {
+                if(error.status !== 404) throw error;
+                versionChanged = true;
+              }
+            }
+            const versionPreview = context.eventName === 'push' && !tagged && preview && versionChanged;
             const requested = tagged || versionPreview || inputs.publish_preview === 'true' || inputs.publish_stable === 'true';
             if (requested && !preview && inputs.publish_stable !== 'true') {
               throw Error('Stable publication requires an explicit qualified workflow_dispatch publish_stable=true');
@@ -67,7 +78,7 @@ jobs:
             core.setOutput('commit',commit);
             core.setOutput('tag',tag);
             core.setOutput('publish',String(publish));
-            core.setOutput('build','true');
+            core.setOutput('build',String(requested || context.eventName === 'workflow_dispatch'));
             core.setOutput('qualify',String(inputs.qualify_audio === 'true' || inputs.publish_stable === 'true'));
   build:
     needs: source
