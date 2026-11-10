@@ -1,3 +1,4 @@
+#include "reverb.hpp"
 #include "equalizer.hpp"
 #pragma once
 #include <array>
@@ -18,6 +19,7 @@ constexpr double pi=3.14159265358979323846;
 struct Event {std::uint32_t kind;double time,value;};
 struct Oscillator {double frequency=440,level=0,detune=0;std::uint32_t wave=0,count=0;std::array<double,32> harmonics{};std::array<double,600> curve{};};
 struct Plan {
+ ReverbRecipe reverb;
  unsigned dynamicsCount=0;std::array<DynamicsRecipe,4> dynamics{};
  ProcessingGraph processing;ParameterAutomation parameterAutomation;
  double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0,delayMix=0,delayTime=.24,delayFeedback=.26;

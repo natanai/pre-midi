@@ -11,7 +11,7 @@ const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
 const keys=(v,allowed)=>object(v)&&Object.keys(v).every(k=>allowed.includes(k));
 const finite=(v,min,max)=>Number.isFinite(v)&&v>=min&&v<=max;
 export function validateProcessorInstance(instance){
- if(!keys(instance,['id','kind','parameters'])||typeof instance.id!=='string'||!/^[a-zA-Z0-9_-]{1,80}$/.test(instance.id)||PRIMARY_PROCESSORS.includes(instance.id)||instance.id==='delay'||!PROCESSOR_KINDS.includes(instance.kind))return ['Invalid processor instance.'];
+ if(!keys(instance,['id','kind','parameters'])||typeof instance.id!=='string'||!/^[a-zA-Z0-9_-]{1,80}$/.test(instance.id)||PRIMARY_PROCESSORS.includes(instance.id)||['delay','reverb'].includes(instance.id)||!PROCESSOR_KINDS.includes(instance.kind))return ['Invalid processor instance.'];
  const p=instance.parameters;
  if(DYNAMICS_KINDS.includes(instance.kind))return validateDynamicsParameters(instance.kind,p)?[]:["Invalid dynamics instance."];
  if(instance.kind==='drive')return keys(p,['amount'])&&validParameterValue('effects.drive',p.amount)?[]:['Invalid distortion instance.'];
@@ -37,7 +37,7 @@ export function validateGraphExtensions(chain){
  if(parallel.length&&gain>1+1e-9)errors.push('Parallel shares cannot exceed 100 percent.');
  const mix=chain.mix??{};
  if(!object(mix)||Object.entries(mix).some(([id,value])=>!available.has(id)||!finite(value,0,1)))errors.push('Invalid processor mix.');
- if((chain.bypass??[]).some(id=>!available.has(id)&&id!=='delay'))errors.push('Invalid processor bypass.');
+ if((chain.bypass??[]).some(id=>!available.has(id)&&!['delay','reverb'].includes(id)))errors.push('Invalid processor bypass.');
  return errors;
 }
 export function processorInstance(patch,id){return patch.chain?.instances?.find(p=>p.id===id)??null;}

@@ -45,7 +45,7 @@ int main(int argc,char** argv){
    static_cast<double>(frames)/rate,0);
   premidi::StreamTransport stream(91,7,rate);
   for(const auto& n:baseline.notes)if(n.plan.delayMix>0)
-   stream.registerDelay(n.plan.delayMix,n.plan.delayTime,n.plan.delayFeedback);
+   stream.registerEffects(n.plan.delayMix,n.plan.delayTime,n.plan.delayFeedback);
   std::vector<Fixture> pages;
   std::uint64_t last=0;
   for(int index=4;index<argc;index+=4){

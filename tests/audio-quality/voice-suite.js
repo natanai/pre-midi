@@ -1,7 +1,7 @@
 import {modulationFixtures} from "./modulation-fixtures.js";
 import {scheduleNote,scheduleSynthPlan,play,audition} from "../../audio.js";
 import {planSynthVoice} from "../../src/dsp/synth-voice.js";
-import {delayTailSeconds} from "../../src/dsp/effect-tail.js";
+import {effectTailSeconds} from "../../src/dsp/effect-tail.js";
 import {VoiceSession} from "../../src/hosts/web/voice-session.js";
 import {scheduleSample} from "../../sampler.js";
 import {scheduleVocal} from "../../songAudio.js";
@@ -87,7 +87,7 @@ export async function runVoiceBenchmark(){
   scheduleNote(ctx,ctx.destination,{patch:short,volume:.1},{pitch:72,velocity:1},.1,.05,null,session);
   const end=session.end,data=(await ctx.startRendering()).getChannelData(0);
   add("completion/stolen-long-release/"+delay,{end,oldEnd:old.end,tailRms:signalStats(data.subarray(48000)).rms},
-   {shortened:Math.abs(end-Math.max(.322,delay?.105+delayTailSeconds(patch.effects):0))<1e-9,fadePreserved:Math.abs(old.end-.105)<1e-9,silentAfterBound:signalStats(data.subarray(48000)).rms<.000002,
+   {shortened:Math.abs(end-Math.max(.322,delay?.105+effectTailSeconds(patch.effects):0))<1e-9,fadePreserved:Math.abs(old.end-.105)<1e-9,silentAfterBound:signalStats(data.subarray(48000)).rms<.000002,
     ...(delay?{realEcho:signalStats(data.subarray(11040,13440)).rms>.0001}:{})});
  }
  {

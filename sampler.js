@@ -1,3 +1,4 @@
+import {validateReverb} from './src/dsp/reverb.js';
 import {validateStereo} from './src/dsp/stereo.js';
 import {validateEq,validateFilterStages} from './src/dsp/equalizer.js';
 import {validateProcessingChain,validateDelaySync} from "./src/dsp/processing-chain.js";
@@ -102,8 +103,8 @@ export function validateSamplerPatch(patch){
   const id=field==="attack"||field==="release"?"envelope."+field:field;
   if(!validParameterValue(id,patch[field],"sample"))errors.push("Invalid sample "+field+".");
  }
- errors.push(...validateStereo(patch),...validateEq(patch.eq),...validateFilterStages(patch.filterStages),...validateProcessingChain(patch.chain),...validateDelaySync(patch.delaySync));
- const allowed=new Set(["stereoWidth","msBalance","delayTone","delayPingPong","eq","filterStages","delaySync","chain","type","presetId","zones","followPitch","oneShot","preserveDynamics","audioMode","strumMs","transpose","gain","attack","release","pan","filter","drive","movement","bend","modulation","automation","delayMix","delayTime","delayFeedback"]);
+ errors.push(...validateReverb(patch.reverb),...validateStereo(patch),...validateEq(patch.eq),...validateFilterStages(patch.filterStages),...validateProcessingChain(patch.chain),...validateDelaySync(patch.delaySync));
+ const allowed=new Set(["reverb","stereoWidth","msBalance","delayTone","delayPingPong","eq","filterStages","delaySync","chain","type","presetId","zones","followPitch","oneShot","preserveDynamics","audioMode","strumMs","transpose","gain","attack","release","pan","filter","drive","movement","bend","modulation","automation","delayMix","delayTime","delayFeedback"]);
  for(const key of Object.keys(patch))if(!allowed.has(key))errors.push("Unsupported sample parameter: "+key+".");
  return errors;
 }

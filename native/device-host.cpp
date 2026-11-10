@@ -361,9 +361,9 @@ public:
    "Native Song page belongs to a cancelled or stale transport revision");
   return *streamOwned;
  }
- int streamDelay(std::uint64_t owner,std::uint64_t revision,
-  double mix,double time,double feedback,double tone,bool ping){
-  return requireStream(owner,revision).registerDelay(mix,time,feedback,tone,ping);
+ int streamEffects(std::uint64_t owner,std::uint64_t revision,
+  double mix,double time,double feedback,double tone,bool ping,const ReverbRecipe& room){
+  return requireStream(owner,revision).registerEffects(mix,time,feedback,tone,ping,room);
  }
  bool streamPage(std::uint64_t owner,std::uint64_t revision,
   std::uint64_t sequence,std::uint64_t first,std::uint64_t end,
@@ -563,7 +563,7 @@ int premidi_audio_configure(void* host,uint32_t device,uint32_t rate,uint32_t fr
 int premidi_audio_play(void* host,const uint8_t* data,size_t length,double cycle,double seek,int loop,int preview){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.play(data,length,cycle,seek,loop!=0,preview!=0);});}
 
 int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision,int withProcessing){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.beginStream(owner,revision,withProcessing!=0);});}
-int premidi_audio_stream_delay(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback,double tone,int ping){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.streamDelay(owner,revision,mix,time,feedback,tone,ping!=0);});}
+int premidi_audio_stream_effects(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback,double tone,int ping,const premidi_reverb_parameters* room){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{premidi::ReverbRecipe r;if(room)r={room->mix,room->preDelay,room->decay,room->damping,room->size,room->width};h.streamEffects(owner,revision,mix,time,feedback,tone,ping!=0,r);});}
 int premidi_audio_stream_page(void* host,uint64_t owner,uint64_t revision,uint64_t sequence,uint64_t first,uint64_t end,uint32_t onsets,int last,const uint8_t* packet,size_t length){
  auto& h=*static_cast<premidi::DeviceHost*>(host);bool published=false;
  const auto status=h.checked([&]{published=h.streamPage(owner,revision,sequence,first,end,onsets,last!=0,packet,length);});

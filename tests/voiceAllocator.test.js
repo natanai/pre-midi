@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {VoiceAllocator} from "../src/dsp/voice-allocator.js";
-import {delayTailSeconds} from "../src/dsp/effect-tail.js";
+import {effectTailSeconds} from "../src/dsp/effect-tail.js";
 test("voice stealing prefers released voices, then oldest held voice with stable ties",()=>{
  const pool=new VoiceAllocator(2);
  const first=pool.admit({start:0,release:3,end:4});
@@ -43,10 +43,10 @@ test("randomized interval reservations remain deterministic and within budget",(
  assert.deepEqual(run(),run());
 });
 test("tail duration follows feedback rather than a fixed timeout",()=>{
- assert.equal(delayTailSeconds({delayMix:0,delayTime:1,delayFeedback:.8}),0);
- const long=delayTailSeconds({delayMix:1,delayTime:1,delayFeedback:.8});
+ assert.equal(effectTailSeconds({delayMix:0,delayTime:1,delayFeedback:.8}),0);
+ const long=effectTailSeconds({delayMix:1,delayTime:1,delayFeedback:.8});
  assert.ok(long>40&&long<60);
- assert.equal(delayTailSeconds({delayMix:1,delayTime:1,delayFeedback:0}),1.02);
+ assert.equal(effectTailSeconds({delayMix:1,delayTime:1,delayFeedback:0}),1.02);
  assert.throws(()=>new VoiceAllocator(0));
 });
 

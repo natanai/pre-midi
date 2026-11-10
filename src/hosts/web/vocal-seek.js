@@ -1,7 +1,7 @@
 import {needsDynamics} from './dynamics.js';
 import {prepareProcessorMix} from './processor-mix.js';
 import {vocalSourceRange} from "../../../vocalEffects.js";
-import {delayTailSeconds} from "../../dsp/effect-tail.js";
+import {effectTailSeconds} from "../../dsp/effect-tail.js";
 import {scheduleVocal} from "../../../songAudio.js";
 import {ownVoice} from "./voice-session.js";
 import {processorBypassed} from '../../dsp/processing-chain.js';
@@ -53,8 +53,8 @@ export function vocalSeekEvents(song,step,decoded){
    const recording=recordings.get(clip.recordingId),buffer=recording&&decoded.get(recording.id);
    if(!buffer)continue;
    const range=vocalSourceRange(recording,clip,unit,0,{sourceDuration:buffer.duration}),fx=range.fx;
-   if(!(fx.filter&&!processorBypassed(fx,'filter'))&&!(fx.drive>0&&!processorBypassed(fx,'drive'))&&!(fx.delayMix>0&&!processorBypassed(fx,'delay'))&&!needsDynamics(fx))continue;
-   const elapsed=(step-clip.startStep)*unit,tail=delayTailSeconds(fx);
+   if(!(fx.filter&&!processorBypassed(fx,'filter'))&&!(fx.drive>0&&!processorBypassed(fx,'drive'))&&!(fx.delayMix>0&&!processorBypassed(fx,'delay'))&&!(fx.reverb.mix>0)&&!needsDynamics(fx))continue;
+   const elapsed=(step-clip.startStep)*unit,tail=effectTailSeconds(fx);
    if(elapsed>=range.duration+tail)continue;
    entries.push({event:structuredClone({recording,clip,track:{id:track.id,kind:"vocal"}}),buffer,unit,elapsed,range,tail});
   }

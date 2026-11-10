@@ -3,7 +3,7 @@ import {resolveModulation} from "./modulation.js";
 import {planCutoffAutomation,planParameterAutomation,cutoffLane,validateAutomation} from "./automation.js";
 import {movement,planPitch} from "./expression.js";
 import {planAmplitudeEnvelope} from "./amplitude-envelope.js";
-import {delayTailSeconds} from "./effect-tail.js";
+import {effectTailSeconds} from "./effect-tail.js";
 import {planFilterSweep} from "./filter-sweep.js";
 export const SYNTH_VOICE_CONTRACT_VERSION=1;
 export const noteFrequency=pitch=>440*2**((pitch-69)/12);
@@ -13,7 +13,7 @@ export function planSynthVoice(instrument,event,start,duration,{automation,timel
  const patch=JSON.parse(JSON.stringify(instrument.patch));
  if(automation===undefined&&patch.automation){automation=patch.automation;timeline??={step:0,unit,limitStep:duration/unit};}
  const automationErrors=validateAutomation(automation,patch);if(automationErrors.length)throw Error(automationErrors.join(" "));
- const {delayTone,delayPingPong,...effects}=effectiveDelayEffects(patch,patch.effects,unit);
+ const {delayTone,delayPingPong,reverb,...effects}=effectiveDelayEffects(patch,patch.effects,unit);
  patch.effects=effects;delete patch.delaySync;
  if(!Number.isFinite(event.pitch)||event.pitch<0||event.pitch>127||!Number.isFinite(event.velocity)||event.velocity<0||event.velocity>1||
   !Number.isFinite(instrument.volume)||instrument.volume<0||patch.type!=="synth"||!Number.isFinite(start)||start<0||!Number.isFinite(duration)||duration<=0)
@@ -31,7 +31,7 @@ export function planSynthVoice(instrument,event,start,duration,{automation,timel
  const filter={...patch.filter,...planFilterSweep(patch.filter,start,duration)};
  const result={contract:"pre-midi-synth-voice",version:SYNTH_VOICE_CONTRACT_VERSION,
   patch,presetId:patch.presetId,start,duration,off,end,graphEnd:end+.15,
-  audibleEnd:end+.15+delayTailSeconds(effectiveDelayEffects(patch,patch.effects)),peak,amplitude,filter,movement:motion,
+  audibleEnd:end+.15+effectTailSeconds(effectiveDelayEffects(patch,patch.effects)),peak,amplitude,filter,movement:motion,
   oscillators:patch.oscillators.map(slot=>({...slot,frequency:Math.min(18000,noteFrequency(event.pitch)*2**slot.octave),
    pitch:planPitch(note,motion,start,duration,slot.detune)})),
   routing:["oscillators_and_noise","filter","drive","amplitude","tremolo","pan","dry_and_delay_send"],

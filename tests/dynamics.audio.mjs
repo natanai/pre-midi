@@ -25,10 +25,10 @@ try{
   const fx=effects(kind);if(kind==='limiter')fx.chain.instances[0].parameters.threshold=-15;
   const plan=planNativeVocal(event(fx),0,.125,handles),audio=native([plan]),browser=await web(fx),error=difference(audio,browser);assert.ok(error<2e-6,kind+' native/worklet '+error);worst=Math.max(worst,error);
   if(kind==='compressor'){
-   const bytes=encodeNativeSession([plan],rate,[asset]),at=bytes.length-80,tooMany=bytes.slice(),invalid=bytes.slice();new DataView(tooMany.buffer).setUint32(at,5,true);rejectPacket(tooMany,/Too many post-level/);new DataView(invalid.buffer).setFloat64(at+16,0,true);rejectPacket(invalid,/Invalid dynamics recipe/);
+   const bytes=encodeNativeSession([plan],rate,[asset]),at=bytes.length-48-80,tooMany=bytes.slice(),invalid=bytes.slice();new DataView(tooMany.buffer).setUint32(at,5,true);rejectPacket(tooMany,/Too many post-level/);new DataView(invalid.buffer).setFloat64(at+16,0,true);rejectPacket(invalid,/Invalid dynamics recipe/);
   }
   if(kind==='deesser'){
-   const invalid=encodeNativeSession([plan],rate,[asset]);new DataView(invalid.buffer).setFloat64(invalid.length-24,0,true);rejectPacket(invalid,/Invalid dynamics recipe/);
+   const invalid=encodeNativeSession([plan],rate,[asset]);new DataView(invalid.buffer).setFloat64(invalid.length-48-24,0,true);rejectPacket(invalid,/Invalid dynamics recipe/);
   }
   const doubled=native([plan,plan]);assert.equal(difference(doubled,Float32Array.from(audio,v=>v*2)),0,'Overlapping voices share a detector');
   const repeated=native([plan],{loop:true,seconds:2});assert.equal(difference(audio,repeated.slice(frames*2)),0,'Loop did not reset note-owned dynamics');

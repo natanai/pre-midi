@@ -7,7 +7,7 @@ import {vocalSourceRange} from "./vocalEffects.js";
 // The scope measures real playback PCM; it is not a separate illustrative synth.
 import {movement,pitchCents} from "./expression.js";
 import {envelopeLevelAt} from "./src/dsp/amplitude-envelope.js";
-import {delayTailSeconds} from "./src/dsp/effect-tail.js";
+import {effectTailSeconds} from "./src/dsp/effect-tail.js";
 import {routeValueAt,smoothingAlpha} from "./src/dsp/modulation.js";
 import {planSynthVoice} from "./src/dsp/synth-voice.js";
 import {scheduleSynthPlan} from "./audio.js";
@@ -34,8 +34,8 @@ export function scopeAmplitudeAt(patch,t){
   envelopeLevelAt(envelope,1,HOLD)*(1-clamp((t-HOLD)/envelope.release));
 }
 export function scopeWindowSeconds(patch,sampleLife=0){
- const length=patch.type==="sample"?sampleLife+delayTailSeconds(patch)+.08:
-  HOLD+patch.envelope.release+delayTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
+ const length=patch.type==="sample"?sampleLife+effectTailSeconds(patch)+.08:
+  HOLD+patch.envelope.release+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
  return clamp(Math.max(2.2,length),2.2,MAX_WINDOW);
 }
 // Per-channel extrema preserve waveform dynamics and delay tails. Never
@@ -128,7 +128,7 @@ function pitchPath(patch,seconds,referencePitch,oscillator=0){
 async function vocalScope(patch,context,level){
  const event=vocalEventFromPatch(patch,context,level),unit=60/context.bpm/4;
  const life=vocalSourceRange(event.recording,event.clip,unit).duration;
- const seconds=Math.min(MAX_WINDOW,Math.max(2.2,life+delayTailSeconds(event.clip.effects)+.08));
+ const seconds=Math.min(MAX_WINDOW,Math.max(2.2,life+effectTailSeconds(event.clip.effects)+.08));
  if(nativeEnabled()){
   const onset={kind:"vocal",event,at:0};const status=await nativeRequest({action:"status"});
   const rate=status.sampleRate||RATE,assets=await prepareNativeAssets(nativeRequiredAssets([onset]),status);
@@ -165,7 +165,7 @@ async function webAudio(patch,beat,level,pitch,automation){
   automation?{unit:60/(beat?.bpm??120)/4,automation,timeline:{step:0,unit:60/(beat?.bpm??120)/4,
    limitStep:(beat?.bars??8)*16}}:{unit:60/(beat?.bpm??120)/4}));
  const output=await context.startRendering();
- const full=patch.type==="sample"?life+delayTailSeconds(patch)+.08:HOLD+patch.envelope.release+delayTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
+ const full=patch.type==="sample"?life+effectTailSeconds(patch)+.08:HOLD+patch.envelope.release+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
  return {buffer:output,seconds,clipped:full>MAX_WINDOW};
 }
 async function nativeAudio(patch,beat,level,pitch,automation){
@@ -189,7 +189,7 @@ async function nativeAudio(patch,beat,level,pitch,automation){
  if(pcm.length<frames*2)throw Error("Incomplete native waveform");
  const channels=[new Float32Array(frames),new Float32Array(frames)];
  for(let i=0;i<frames;i++){channels[0][i]=pcm[2*i];channels[1][i]=pcm[2*i+1];}
- const full=zone?life+delayTailSeconds(patch)+.08:HOLD+patch.envelope.release+delayTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
+ const full=zone?life+effectTailSeconds(patch)+.08:HOLD+patch.envelope.release+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
  return {buffer:{length:frames,sampleRate:rate,numberOfChannels:2,getChannelData:c=>channels[c]},
   seconds,clipped:full>MAX_WINDOW};
 }

@@ -3,6 +3,12 @@
 import {captureSoundControlView} from "./soundControlView.js";
 
 const labelHelp=Object.freeze({
+ "reverb mix":"blend the original sound with its room reflections",
+ "reverb preDelay":"leave a short gap before the room reflections arrive",
+ "reverb decay":"let the room ring longer after a sound ends",
+ "reverb damping":"make bright reflections fade sooner",
+ "reverb size":"spread the reflections farther apart for a larger room",
+ "reverb width":"spread the room tail across the stereo field",
  "compressor threshold":"turn down parts above this level in each note or vocal clip",
  "compressor ratio":"higher ratios turn loud parts down more",
  "compressor knee":"soften the change from unchanged to compressed sound",

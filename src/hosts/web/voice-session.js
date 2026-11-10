@@ -1,6 +1,7 @@
-import {createStereoDelay} from './stereo.js';
+import {createEffectsBus} from './effects-bus.js';
+import {roomKey,defaultReverb} from '../../dsp/reverb.js';
 import {VoiceAllocator,STEAL_FADE_SECONDS} from "../../dsp/voice-allocator.js";
-import {delayTailSeconds} from "../../dsp/effect-tail.js";
+import {effectTailSeconds} from "../../dsp/effect-tail.js";
 export const isOffline=context=>typeof OfflineAudioContext!=="undefined"&&context instanceof OfflineAudioContext;
 const disconnect=node=>{try{node.disconnect();}catch{}};
 // A stop gate only ever goes from unity to zero; it never cancels authored ADSR.
@@ -89,11 +90,11 @@ export class VoiceSession{
  }
  delay(effects,voice){
   const domain=voice.vocalClipId===undefined?"sound":"vocal";
-  const key=JSON.stringify([domain,effects.delayMix,effects.delayTime,effects.delayFeedback,effects.delayTone??20000,effects.delayPingPong??false]);
+  const key=JSON.stringify([domain,effects.delayMix,effects.delayTime,effects.delayFeedback,effects.delayTone??20000,effects.delayPingPong??false,roomKey(effects.reverb??defaultReverb())]);
   let bus=this.buses.get(key);
   if(!bus){
-   const graph=createStereoDelay(this.context,effects,this.destination);
-   bus={domain,input:graph.input,wet:graph.wet,nodes:graph.nodes,inputs:new Set(),tail:delayTailSeconds(effects),
+   const graph=createEffectsBus(this.context,effects,this.destination);
+   bus={domain,input:graph.input,wet:graph.wet,nodes:graph.nodes,level:graph.level,inputs:new Set(),tail:effectTailSeconds(effects),
     get end(){return Math.max(0,...[...this.inputs].filter(voice=>!voice.cancelled).map(voice=>voice.end+this.tail));}};this.buses.set(key,bus);
   }
   bus.inputs.add(voice);
@@ -106,7 +107,7 @@ export class VoiceSession{
   }
   for(const voice of this.history)if(voice.vocalClipId!==undefined)voice.stop(at);
   for(const [key,bus] of this.buses)if(bus.domain==="vocal"){
-   const wet=bus.wet;wet.gain.cancelScheduledValues(at);wet.gain.setValueAtTime(.8,at);wet.gain.linearRampToValueAtTime(0,at+STEAL_FADE_SECONDS);
+   const wet=bus.wet;wet.gain.cancelScheduledValues(at);wet.gain.setValueAtTime(bus.level??.8,at);wet.gain.linearRampToValueAtTime(0,at+STEAL_FADE_SECONDS);
    this.buses.delete(key);
    const deadline=this.context.createBufferSource();deadline.buffer=this.context.createBuffer(1,1,this.context.sampleRate);
    deadline.onended=()=>{bus.nodes.forEach(disconnect);disconnect(deadline);};deadline.start(at+STEAL_FADE_SECONDS+.001);
@@ -125,7 +126,7 @@ export class VoiceSession{
   let end=at;
   for(const voice of [...this.voices.values(),...this.history])end=Math.max(end,voice.stop(at));
   for(const bus of this.buses.values()){
-   const wet=bus.wet;wet.gain.cancelScheduledValues(at);wet.gain.setValueAtTime(.8,at);wet.gain.linearRampToValueAtTime(0,at+STEAL_FADE_SECONDS);
+   const wet=bus.wet;wet.gain.cancelScheduledValues(at);wet.gain.setValueAtTime(bus.level??.8,at);wet.gain.linearRampToValueAtTime(0,at+STEAL_FADE_SECONDS);
   }
   // Audio-time cleanup keeps working if the UI timer is throttled or suspended.
   const deadline=this.context.createBufferSource();deadline.buffer=this.context.createBuffer(1,1,this.context.sampleRate);

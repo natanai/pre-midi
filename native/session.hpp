@@ -31,7 +31,9 @@ class Session {
  std::vector<Bank> banks;std::unique_ptr<SineLfoTable> lfoBank;
  SampleStore ownedSamples;std::unique_ptr<SampleChannelState[]> channelState;unsigned channelWidth=0;
  struct DriveEntry {double amount;std::unique_ptr<DriveRecipe> recipe;};std::vector<DriveEntry> drives;
- struct Bus {double mix,time,feedback,tail;Delay delay;std::array<float,2*renderBlock> input{};double tone=20000;bool ping=false;};
+ struct Bus {double mix,time,feedback,tail;Delay delay;std::array<float,2*renderBlock> input{};double tone=20000;bool ping=false;ReverbRecipe room;std::unique_ptr<Reverb> reverb;
+  Bus(double m,double t,double f,unsigned rate,double toneValue,bool pingValue,const ReverbRecipe& r):mix(m),time(t),feedback(f),tail(std::max(Delay::tail(m,t,f,toneValue),r.tail())),delay(m,t,f,rate,toneValue,pingValue),tone(toneValue),ping(pingValue),room(r){if(r.mix>0)reverb=std::make_unique<Reverb>(r,rate);}
+ };
  std::vector<Bus> buses;std::uint64_t tailEnd=0;
  std::array<Slot,voiceLimit> voices;
  std::array<Slot,retireLimit> retiring;
@@ -135,14 +137,14 @@ class Session {
   std::array<float,2*renderBlock> scratch{};
   for(auto& bus:buses)std::fill(bus.input.begin(),bus.input.end(),0.f);
   for(auto& s:voices)if(s.voice){s.voice->process(scratch.data(),frames);for(unsigned i=0;i<2*frames;i++){
-   output[i]+=scratch[i]*static_cast<float>(1-s.plan.delayMix*.4)*.85f;
+   output[i]+=scratch[i]*static_cast<float>((1-s.plan.delayMix*.4)*(1-s.plan.reverb.mix))*.85f;
    if(s.delay>=0)buses[s.delay].input[i]+=scratch[i];
   }}
   for(auto& s:retiring)if(s.voice){s.voice->process(scratch.data(),frames);for(unsigned i=0;i<frames;i++){
    const float gain=cursor+i<s.fadeEnd?static_cast<float>(s.fadeEnd-cursor-i)/fadeFrames:0;
-   for(unsigned ch=0;ch<2;ch++){const float sample=scratch[2*i+ch]*gain;output[2*i+ch]+=sample*static_cast<float>(1-s.plan.delayMix*.4)*.85f;if(s.delay>=0)buses[s.delay].input[2*i+ch]+=sample;}
+   for(unsigned ch=0;ch<2;ch++){const float sample=scratch[2*i+ch]*gain;output[2*i+ch]+=sample*static_cast<float>((1-s.plan.delayMix*.4)*(1-s.plan.reverb.mix))*.85f;if(s.delay>=0)buses[s.delay].input[2*i+ch]+=sample;}
   }}
-  for(auto& bus:buses){std::fill(scratch.begin(),scratch.end(),0.f);bus.delay.process(bus.input.data(),scratch.data(),frames);for(unsigned i=0;i<2*frames;i++)output[i]+=scratch[i]*.85f;}
+  for(auto& bus:buses){std::fill(scratch.begin(),scratch.end(),0.f);if(bus.mix>0)bus.delay.process(bus.input.data(),scratch.data(),frames);if(bus.reverb)bus.reverb->process(bus.input.data(),scratch.data(),frames);for(unsigned i=0;i<2*frames;i++)output[i]+=scratch[i]*.85f;}
  }
  void reconstruct(Slot& s,std::uint64_t target){
   if(!s.voice)return;
@@ -200,10 +202,10 @@ public:
     if(!graph){processingRecipes.push_back(std::make_unique<ProcessingGraphRecipe>(note.plan.processing));graph=processingRecipes.back().get();}
    }
    note.prepared=Voice(note.plan,rate,note.banks,0,nullptr,drive,note.plan.version==9?lfoBank.get():nullptr,nullptr,nullptr,graph).preparation();notes.push_back(note);
-   if(note.plan.delayMix>0){
+   if(note.plan.delayMix>0||note.plan.reverb.mix>0){
     const auto& p=note.plan;std::size_t index=0;
-    for(;index<buses.size();index++)if(buses[index].mix==p.delayMix&&buses[index].time==p.delayTime&&buses[index].feedback==p.delayFeedback&&buses[index].tone==p.delayTone&&buses[index].ping==p.delayPingPong)break;
-    if(index==buses.size()){require(buses.size()<32,"Native session exceeds 32 delay buses");buses.push_back({p.delayMix,p.delayTime,p.delayFeedback,Delay::tail(p.delayMix,p.delayTime,p.delayFeedback,p.delayTone),Delay(p.delayMix,p.delayTime,p.delayFeedback,rate,p.delayTone,p.delayPingPong),{},p.delayTone,p.delayPingPong});}
+    for(;index<buses.size();index++)if(buses[index].mix==p.delayMix&&buses[index].time==p.delayTime&&buses[index].feedback==p.delayFeedback&&buses[index].tone==p.delayTone&&buses[index].ping==p.delayPingPong&&buses[index].room==p.reverb)break;
+    if(index==buses.size()){require(buses.size()<32,"Native session exceeds 32 delay buses");buses.emplace_back(p.delayMix,p.delayTime,p.delayFeedback,rate,p.delayTone,p.delayPingPong,p.reverb);}
     notes.back().delay=static_cast<int>(index);
    }
   }
@@ -248,18 +250,18 @@ public:
  // CONTROL thread only: install the complete shared-effect recipe catalog
  // before publication. No allocation or vector mutation is permitted after
  // the native callback starts consuming page instructions.
- int registerStreamingDelay(double mix,double time,double feedback,double tone=20000,bool ping=false){
+ int registerStreamingEffects(double mix,double time,double feedback,double tone=20000,bool ping=false,const ReverbRecipe& room={}){
+  room.validate();
   require(streamed&&!streamSequence&&cursor==0,
    "Native shared delay recipes must be installed before the stream starts");
   require(std::isfinite(mix)&&std::isfinite(time)&&std::isfinite(feedback)&&
-   std::isfinite(tone)&&tone>=20&&tone<=20000&&mix>0&&mix<=1&&time>=.04999999&&time<=2&&feedback>=0&&feedback<=.80000002,
+   std::isfinite(tone)&&tone>=20&&tone<=20000&&mix>=0&&mix<=1&&(mix>0||room.mix>0)&&time>=.04999999&&time<=2&&feedback>=0&&feedback<=.80000002,
    "Invalid native streaming delay recipe");
   for(unsigned i=0;i<buses.size();i++)
-   if(buses[i].mix==mix&&buses[i].time==time&&buses[i].feedback==feedback&&buses[i].tone==tone&&buses[i].ping==ping)
+   if(buses[i].mix==mix&&buses[i].time==time&&buses[i].feedback==feedback&&buses[i].tone==tone&&buses[i].ping==ping&&buses[i].room==room)
     return static_cast<int>(i);
   require(buses.size()<32,"Native streaming Song exceeds 32 shared delay buses");
-  const auto tail=Delay::tail(mix,time,feedback,tone);
-  buses.push_back({mix,time,feedback,tail,Delay(mix,time,feedback,rate,tone,ping),{},tone,ping});
+  buses.emplace_back(mix,time,feedback,rate,tone,ping,room);
   return static_cast<int>(buses.size()-1);
  }
 
@@ -281,15 +283,15 @@ public:
   // real-time second and fail closed on a larger unsupported displacement.
   std::uint64_t previous=0;
   for(const auto& item:prepared){
-   if((item.plan.processing.count&&!processingStates)||item.plan.start<0||((item.delay>=0)!=(item.plan.delayMix>0)))return fail();
+   if((item.plan.processing.count&&!processingStates)||item.plan.start<0||((item.delay>=0)!=(item.plan.delayMix>0||item.plan.reverb.mix>0)))return fail();
    const auto offset=frameAt(item.plan.start);
    if(offset<previous||offset>descriptor.endFrame-descriptor.startFrame+rate)
     return fail();
-   if(item.plan.delayMix>0){
+   if(item.plan.delayMix>0||item.plan.reverb.mix>0){
     bool found=false;
     for(const auto& bus:buses)
      if(bus.mix==item.plan.delayMix&&bus.time==item.plan.delayTime&&
-        bus.feedback==item.plan.delayFeedback&&bus.tone==item.plan.delayTone&&bus.ping==item.plan.delayPingPong){found=true;break;}
+        bus.feedback==item.plan.delayFeedback&&bus.tone==item.plan.delayTone&&bus.ping==item.plan.delayPingPong&&bus.room==item.plan.reverb){found=true;break;}
     if(!found)return fail();
    }
    previous=offset;
@@ -298,10 +300,10 @@ public:
    const auto onset=descriptor.startFrame+frameAt(item.plan.start);
    if(onset<descriptor.startFrame||onset>UINT64_MAX-rate)return fail();
    int delay=-1;
-   if(item.plan.delayMix>0)
+   if(item.plan.delayMix>0||item.plan.reverb.mix>0)
     for(unsigned i=0;i<buses.size();i++)
      if(buses[i].mix==item.plan.delayMix&&buses[i].time==item.plan.delayTime&&
-        buses[i].feedback==item.plan.delayFeedback&&buses[i].tone==item.plan.delayTone&&buses[i].ping==item.plan.delayPingPong){delay=static_cast<int>(i);break;}
+        buses[i].feedback==item.plan.delayFeedback&&buses[i].tone==item.plan.delayTone&&buses[i].ping==item.plan.delayPingPong&&buses[i].room==item.plan.reverb){delay=static_cast<int>(i);break;}
    insertPending({&item,onset,descriptor.startFrame,++streamOrder,delay});
   }
   streamBaseFrame=descriptor.startFrame;

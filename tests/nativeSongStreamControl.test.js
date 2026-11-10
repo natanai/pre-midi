@@ -31,7 +31,7 @@ function harness({experimental=true}={}){
    case "status":return {...status,owner,stream:{}};
    case "begin":return {owner:++owner};
    case "stream_begin":revisions.set(request.revision,{frame:0,ack:0});return {...status,owner};
-   case "stream_delay":return {state:0};
+   case "stream_effects":return {state:0};
    case "stream_page":
     if(backpressureOnce&&request.sequence===4&&ackSequence===1)
      return {accepted:false,stream:{ackSequence}};

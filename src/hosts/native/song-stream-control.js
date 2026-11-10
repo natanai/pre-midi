@@ -4,7 +4,7 @@ import {songUsesProcessingGraph} from '../../dsp/processing-graph.js';
 import {
  nativeRequest,ensureNativeOutput,claimNativeTransportEpoch,nativeTransportEpochCurrent
 } from './session.js';
-import {createNativeSongPagePublisher,nativeSongDelayRecipes} from './song-stream-page.js';
+import {createNativeSongPagePublisher,nativeSongEffectsRecipes} from './song-stream-page.js';
 import {songDurationSteps} from '../../../songModel.js';
 import {createNativePauseControl} from './transport-intent.js';
 
@@ -64,8 +64,8 @@ export async function playNativeSongStreamExperimental(song,{
   staging=current;
   await nativeRequest({action:'stream_begin',owner,revision:current.revision,processing:songUsesProcessingGraph(document)});valid();
   try{
-   for(const recipe of nativeSongDelayRecipes(document)){
-    await nativeRequest({action:'stream_delay',owner,revision:current.revision,...recipe});valid();
+   for(const recipe of nativeSongEffectsRecipes(document)){
+    await nativeRequest({action:'stream_effects',owner,revision:current.revision,...recipe});valid();
    }
    current.publisher=createNativeSongPagePublisher(document,{
     owner,revision:current.revision,sampleRate:info.sampleRate,info,renderWindow,

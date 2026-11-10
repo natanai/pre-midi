@@ -31,6 +31,14 @@ try{
  document.getElementById('undo').click();assert.equal(Number(parameter(3,'frequency').getAttribute('aria-valuenow')),6500);
  parameter(3,'amount').focus();parameter(3,'amount').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}));assert.equal(Number(parameter(3,'amount').getAttribute('aria-valuenow')),9.1);
  [...document.querySelectorAll('.sound-panel-view button')].find(button=>button.textContent==='combined').click();parameter(3,'bandwidth').focus();assert.ok([...document.querySelectorAll('.sound-combined-figure:not([hidden])')].some(el=>el.dataset.visualId.includes('deesser-1')));
+ [...document.querySelectorAll('.sound-panel-view button')].find(button=>button.textContent==='modules').click();
+ const room=key=>document.querySelector('[data-sound-path="reverb.'+key+'"] [role="slider"]');
+ assert.ok(room('mix'));assert.ok(room('preDelay'));assert.ok(room('damping'));
+ room('mix').focus();room('mix').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}));assert.equal(Number(room('mix').getAttribute('aria-valuenow')),.01);
+ const roomHandle=room('decay').closest('.visual-sound-panel').querySelector('.visual-graph-point');roomHandle.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));assert.ok(Number(room('preDelay').getAttribute('aria-valuenow'))>.02);
+ document.getElementById('undo').click();assert.equal(Number(room('preDelay').getAttribute('aria-valuenow')),.02);
+ button('reverb-toggle').click();assert.equal(Number(room('mix').getAttribute('aria-valuenow')),.01);button('reverb-toggle').click();
+ [...document.querySelectorAll('.sound-panel-view button')].find(button=>button.textContent==='combined').click();room('width').focus();assert.ok([...document.querySelectorAll('.sound-combined-figure:not([hidden])')].some(el=>el.dataset.visualId.includes('reverb-mix-width')));
  const deadline=Date.now()+3000;
  while(document.getElementById('status').dataset.saving==='true'&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));
  assert.notEqual(document.getElementById('status').dataset.saving,'true','queued edit saves settle before closing the host');

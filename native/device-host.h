@@ -14,8 +14,15 @@ typedef struct {
  uint64_t position,ack_sequence,ack_end_frame,released_through;
  uint32_t state,fault,sample_rate,active;
 } premidi_stream_status;
+typedef struct {double mix,preDelay,decay,damping,size,width;} premidi_reverb_parameters;
+#ifdef __cplusplus
+#define PREMIDI_ROOM_DEFAULT =nullptr
+#else
+#define PREMIDI_ROOM_DEFAULT
+#endif
 int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision,int with_processing);
-int premidi_audio_stream_delay(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback,double tone,int ping);
+int premidi_audio_stream_effects(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback,double tone,int ping,const premidi_reverb_parameters* room PREMIDI_ROOM_DEFAULT);
+#undef PREMIDI_ROOM_DEFAULT
 int premidi_audio_stream_page(void* host,uint64_t owner,uint64_t revision,uint64_t sequence,uint64_t first_frame,uint64_t end_frame,uint32_t onsets,int last,const uint8_t* packet,size_t length);
 int premidi_audio_stream_start(void* host,uint64_t owner,uint64_t revision);
 int premidi_audio_stream_advance(void* host,uint64_t owner,uint64_t revision,uint64_t frame);

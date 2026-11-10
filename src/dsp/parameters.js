@@ -191,3 +191,11 @@ export const DYNAMICS_FIELDS=freeze({
  deesser:['frequency','bandwidth','threshold','amount','attack','release']
 });
 export const dynamicsParameter=(kind,key)=>DYNAMICS_FIELDS[kind]?.includes(key)?DYNAMICS_PARAMETERS[key]:null;
+export const REVERB_PARAMETERS=freeze({
+ mix:parameter('reverb.mix','linear_gain',0,1,0,.01,'percent'),
+ preDelay:parameter('reverb.preDelay','seconds',0,.2,.02,.001,'seconds'),
+ decay:parameter('reverb.decay','seconds',.2,6,1.5,.01,'seconds'),
+ damping:parameter('reverb.damping','linear_gain',0,1,.45,.01,'percent'),
+ size:parameter('reverb.size','linear_gain',0,1,.5,.01,'percent'),
+ width:parameter('reverb.width','linear_gain',0,1,1,.01,'percent')
+});

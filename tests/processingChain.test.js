@@ -1,4 +1,4 @@
-import {nativeSongDelayRecipes} from '../src/hosts/native/song-stream-page.js';
+import {nativeSongEffectsRecipes} from '../src/hosts/native/song-stream-page.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {validateProcessingChain,processingFlags,processingChain,withProcessorBypass,withProcessorAdded,withProcessorRemoved} from '../src/dsp/processing-chain.js';
@@ -38,11 +38,11 @@ test('processing presets and vocal preview preserve order, authored values and b
 });
 test('current projects and native plans retain chain identity without phantom delay tails',()=>{
  const beat=create();beat.instruments[0].sounds[0].patch.chain=structuredClone(chain);upgradeBeatFeatures(beat);
- assert.deepEqual(parse(JSON.stringify(beat)),beat);const song=createSong(beat);assert.deepEqual(parseSong(JSON.stringify(song)),song);assert.deepEqual(nativeSongDelayRecipes(song),[],'Bypassed delay does not consume a streaming bus');
+ assert.deepEqual(parse(JSON.stringify(beat)),beat);const song=createSong(beat);assert.deepEqual(parseSong(JSON.stringify(song)),song);assert.deepEqual(nativeSongEffectsRecipes(song),[],'Bypassed delay does not consume a streaming bus');
  const assets=new Map([['r',{id:1,duration:1,normalization:1}]]),effects={chain,drive:.5,delayMix:.6};
  const patch={type:'sample',presetId:'custom',zones:[{assetId:'r',root:60}],followPitch:false,oneShot:true,transpose:0,gain:1,attack:0,release:0,pan:0,...effects};
  const plans=[planNativeSample({patch,volume:1},{pitch:60,velocity:1},0,1,assets),planNativeVocal({recording:{id:'r',durationSeconds:1,trimSeconds:0},clip:{lengthSteps:8,gain:1,effects}},0,.125,assets)];
- for(const plan of plans){assert.equal(plan.delayMix,0);assert.equal(plan.tail,0);assert.equal(plan.drive,.5);assert.deepEqual(plan.chain,chain);const bytes=encodeNativeSample(plan,48000),view=new DataView(bytes.buffer);assert.equal(view.getUint32(12,true),20);assert.equal(view.getUint32(bytes.length-392,true),3);}
+ for(const plan of plans){assert.equal(plan.delayMix,0);assert.equal(plan.tail,0);assert.equal(plan.drive,.5);assert.deepEqual(plan.chain,chain);const bytes=encodeNativeSample(plan,48000),view=new DataView(bytes.buffer);assert.equal(view.getUint32(12,true),21);assert.equal(view.getUint32(bytes.length-440,true),3);}
 });
 
 test('removing and restoring serial stages preserves settings and bounded identity',()=>{

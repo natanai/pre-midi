@@ -17,7 +17,7 @@ int main(int argc,char** argv){try{
  double maximum=0;std::uint64_t errorFrame=0;
  for(const auto seek:{rate/23u,rate/7u,rate/3u}){
   premidi::StreamTransport candidate(1,2,rate,processing);
-  for(const auto& n:reference.notes)if(n.plan.delayMix>0)candidate.registerDelay(n.plan.delayMix,n.plan.delayTime,n.plan.delayFeedback,n.plan.delayTone,n.plan.delayPingPong);
+  for(const auto& n:reference.notes)if(n.plan.delayMix>0||n.plan.reverb.mix>0)candidate.registerEffects(n.plan.delayMix,n.plan.delayTime,n.plan.delayFeedback,n.plan.delayTone,n.plan.delayPingPong,n.plan.reverb);
   std::size_t sequence=0;auto fill=[&]{candidate.reclaim();while(sequence<pages.size()){auto& p=pages[sequence];if(!candidate.publish({1,2,sequence+1,p.first,p.end,p.onsets,0,false,p.last},p.bytes.data(),p.bytes.size()))break;++sequence;}};
   while(candidate.position()<seek){fill();const auto end=std::min<std::uint64_t>(seek,candidate.acknowledgmentEnd()?candidate.acknowledgmentEnd():pages[0].end);const auto target=std::max(candidate.position()+1,end);premidi::require(candidate.advanceTo(target),"Revision preroll failed");}
   // Count-in must not advance the Song or lose its reconstructed history.
@@ -32,7 +32,7 @@ int main(int argc,char** argv){try{
  {
   auto loopingOwner=std::make_unique<premidi::Session>(full.data(),full.size(),rate,static_cast<double>(frames)/rate,0);auto& looping=*loopingOwner;
   premidi::StreamTransport stream(3,4,rate,processing);
-  for(const auto& n:looping.notes)if(n.plan.delayMix>0)stream.registerDelay(n.plan.delayMix,n.plan.delayTime,n.plan.delayFeedback,n.plan.delayTone,n.plan.delayPingPong);
+  for(const auto& n:looping.notes)if(n.plan.delayMix>0||n.plan.reverb.mix>0)stream.registerEffects(n.plan.delayMix,n.plan.delayTime,n.plan.delayFeedback,n.plan.delayTone,n.plan.delayPingPong,n.plan.reverb);
   std::size_t sequence=0;std::array<float,256> a{},b{};
   for(std::uint64_t at=0;at<2*frames;){
    stream.reclaim();

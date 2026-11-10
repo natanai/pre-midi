@@ -1,3 +1,4 @@
+import {defaultReverb,roomKey} from '../../dsp/reverb.js';
 import {effectiveDelayEffects} from "../../dsp/processing-chain.js";
 // JavaScript control-thread source for native Song pages.
 // This is deliberately NOT the shipping Song transport. Callers must supply
@@ -23,16 +24,16 @@ const validRevision=(read,revision)=>{
 // A streaming Session must own its entire shared delay-bus catalog BEFORE
 // the callback starts. Synth packets round time/feedback to float32, while
 // recorded vocal packets preserve their original float64 values.
-export function nativeSongDelayRecipes(song){
+export function nativeSongEffectsRecipes(song){
  if(song?.kind!=="song")throw Error("Native delay catalog requires a Song.");
  const recipes=new Map();
- const add=(mix,time,feedback,round=false,tone=20000,ping=false)=>{
-  if(!(mix>0))return;
+ const add=(mix,time,feedback,round=false,tone=20000,ping=false,reverb=defaultReverb())=>{
+  if(!(mix>0||reverb.mix>0))return;
   const recipe={mix,time:round?Math.fround(time):time,
-   feedback:round?Math.fround(feedback):feedback,tone,ping};
+   feedback:round?Math.fround(feedback):feedback,tone,ping,reverb};
   if(![recipe.mix,recipe.time,recipe.feedback,recipe.tone].every(Number.isFinite))
    throw Error("Nonfinite native Song delay parameters.");
-  const key=JSON.stringify([recipe.mix,recipe.time,recipe.feedback,recipe.tone,recipe.ping]);
+  const key=JSON.stringify([recipe.mix,recipe.time,recipe.feedback,recipe.tone,recipe.ping,roomKey(recipe.reverb)]);
   if(!recipes.has(key))recipes.set(key,recipe);
   if(recipes.size>STREAM_DELAY_LIMIT)
    throw Error("Native Song exceeds 32 shared delay-bus recipes.");
@@ -47,14 +48,14 @@ export function nativeSongDelayRecipes(song){
   const patches=instrument.sounds?.length?
    instrument.sounds.map(sound=>sound.patch):instrument.patch?[instrument.patch]:[];
   for(const patch of patches){
-   if(patch?.type==="synth"&&patch.effects){const fx=effectiveDelayEffects(patch,patch.effects,60/song.bpm/4);add(fx.delayMix,fx.delayTime,fx.delayFeedback,true,fx.delayTone,fx.delayPingPong);}
-   else if(patch?.type==="sample"){const fx=effectiveDelayEffects(patch,patch,60/song.bpm/4);add(fx.delayMix??0,fx.delayTime??.24,fx.delayFeedback??.26,false,fx.delayTone,fx.delayPingPong);}
+   if(patch?.type==="synth"&&patch.effects){const fx=effectiveDelayEffects(patch,patch.effects,60/song.bpm/4);add(fx.delayMix,fx.delayTime,fx.delayFeedback,true,fx.delayTone,fx.delayPingPong,fx.reverb);}
+   else if(patch?.type==="sample"){const fx=effectiveDelayEffects(patch,patch,60/song.bpm/4);add(fx.delayMix??0,fx.delayTime??.24,fx.delayFeedback??.26,false,fx.delayTone,fx.delayPingPong,fx.reverb);}
   }
  }
  for(const track of song.tracks??[])if(track.kind==="vocal")
   for(const clip of track.clips??[]){
    const fx=effectiveDelayEffects(clip.effects??{},vocalEffects(clip,60/song.bpm/4),60/song.bpm/4);
-   add(fx.delayMix,fx.delayTime,fx.delayFeedback,false,fx.delayTone,fx.delayPingPong);
+   add(fx.delayMix,fx.delayTime,fx.delayFeedback,false,fx.delayTone,fx.delayPingPong,fx.reverb);
   }
  return [...recipes.values()];
 }
@@ -83,13 +84,13 @@ export async function prepareNativeSongStreamPage(song,page,{
  if(plans.length!==events.length)
   throw Error("Native Song page contains an inaudible or invalid recorded Clip. Correct its trim before streaming.");
  const rebased=rebaseNativePlansToPage(plans,descriptor.startFrame,sampleRate,page.timeOffset??0);
- const catalog=nativeSongDelayRecipes(song);
+ const catalog=nativeSongEffectsRecipes(song);
  for(const plan of rebased){
   const fx=plan.contract==="pre-midi-synth-voice"?effectiveDelayEffects(plan.patch,plan.patch.effects):plan;
-  if(!(fx?.delayMix>0))continue;
+  if(!(fx?.delayMix>0||fx?.reverb?.mix>0))continue;
   const time=plan.contract==="pre-midi-synth-voice"?Math.fround(fx.delayTime):fx.delayTime;
   const feedback=plan.contract==="pre-midi-synth-voice"?Math.fround(fx.delayFeedback):fx.delayFeedback;
-  if(!catalog.some(recipe=>recipe.mix===fx.delayMix&&recipe.time===time&&recipe.feedback===feedback&&recipe.tone===(fx.delayTone??20000)&&recipe.ping===(fx.delayPingPong??false)))
+  if(!catalog.some(recipe=>recipe.mix===fx.delayMix&&recipe.time===time&&recipe.feedback===feedback&&recipe.tone===(fx.delayTone??20000)&&recipe.ping===(fx.delayPingPong??false)&&JSON.stringify(roomKey(recipe.reverb))===JSON.stringify(roomKey(fx.reverb??defaultReverb()))))
    throw Error("Native Song delay recipe was not registered before playback.");
  }
  const packet=encodeNativeSession(rebased,sampleRate);

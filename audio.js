@@ -1,7 +1,8 @@
+import {createEffectsBus} from './src/hosts/web/effects-bus.js';
 import {connectPostDynamics} from './src/hosts/web/dynamics.js';
 import {scheduleParameterAutomation} from './src/hosts/web/automation.js';
 import {connectProcessingGraph} from './src/hosts/web/processing-graph.js';
-import {connectStereoImage,createStereoDelay} from './src/hosts/web/stereo.js';
+import {connectStereoImage} from './src/hosts/web/stereo.js';
 import {createEq,cascadeFilter,cutoffDestination} from './src/hosts/web/equalizer.js';
 import {connectProcessorMix,prepareProcessorMix} from './src/hosts/web/processor-mix.js';
 import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
@@ -17,7 +18,7 @@ import {alignedTimelineStart} from "./src/hosts/web/timeline-clock.js";
 import {prepareVocalSeek,scheduleVocalSeek} from "./src/hosts/web/vocal-seek.js";
 import {createVocalLiveEditor,vocalPlaybackSignature} from "./src/hosts/web/vocal-live-edit.js";
 import {vocalSourceRange} from "./vocalEffects.js";
-import {delayTailSeconds} from "./src/dsp/effect-tail.js";
+import {effectTailSeconds} from "./src/dsp/effect-tail.js";
 import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
 import { schedulePitchPlan, scheduleMovementLfo } from "./expression.js";
@@ -178,17 +179,17 @@ const pulse=add(ctx.createGain());
  connectPostDynamics(ctx,pan,patch,owner,start,plan.graphEnd).connect(gate);
  const fx=effectiveDelayEffects(patch,patch.effects),mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
- dry.gain.value=1-mixAmount*.4;
+ dry.gain.value=(1-mixAmount*.4)*(1-fx.reverb.mix);
  gate.connect(dry);dry.connect(destination);
- if(mixAmount>0){
+ if(mixAmount>0||fx.reverb.mix>0){
   if(!session){
-   const graph=createStereoDelay(ctx,fx,destination);nodes.push(...graph.nodes);gate.connect(graph.input);
+   const graph=createEffectsBus(ctx,fx,destination);nodes.push(...graph.nodes);gate.connect(graph.input);
   }
  }
  scheduleParameterAutomation(ctx,plan.parameterAutomation,automationTargets,owner);
  attachModulation(ctx,plan,destinations,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const voice=ownVoice(ctx,{sources,nodes,gate,start,release:off,end:session?plan.graphEnd:plan.audibleEnd});
- if(session){session.adopt(voice);if(voice.admitted&&mixAmount>0)gate.connect(session.delay(fx,voice));}
+ if(session){session.adopt(voice);if(voice.admitted&&(mixAmount>0||fx.reverb.mix>0))gate.connect(session.delay(fx,voice));}
  return voice;
 }
 function eventOffset(instrument,note,notes){
@@ -480,7 +481,7 @@ export function renderEndSeconds(document,events,decoded){
  for(const event of events){
   if(event.kind==="vocal"){
    const {duration,fx}=vocalSourceRange(event.event.recording,event.event.clip,secondsPerStep(document));
-   end=Math.max(end,event.at+duration+delayTailSeconds(fx)+.02);
+   end=Math.max(end,event.at+duration+effectTailSeconds(fx)+.02);
    continue;
   }
   if(event.kind!=="note")continue;
@@ -491,7 +492,7 @@ export function renderEndSeconds(document,events,decoded){
    const rate=zone?(patch.followPitch?2**((resolved.note.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12)):1;
    const length=buffer?buffer.duration/rate:0;
    const life=patch.oneShot?length:Math.min(length,Math.max(.015,event.duration+patch.release));
-   end=Math.max(end,event.at+life+delayTailSeconds(effectiveDelayEffects(patch,patch,secondsPerStep(document)))+.03);
+   end=Math.max(end,event.at+life+effectTailSeconds(effectiveDelayEffects(patch,patch,secondsPerStep(document)))+.03);
   }else{
    const duration=event.instrument.layout==="rack"?Math.max(.015,patch.envelope.attack+patch.envelope.decay):event.duration;
    end=Math.max(end,planSynthVoice(resolved.voice,resolved.note,event.at,duration,{unit:secondsPerStep(document)}).audibleEnd+.02);

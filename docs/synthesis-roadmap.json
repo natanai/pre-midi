@@ -1368,7 +1368,7 @@
         "limits": "Song seeks and edits reconstruct preceding DSP history on the control thread. Large arrangements can take preparation time; this is not a low-latency or hardware-qualified claim."
       }
     },
-    "execution_packet_note": "execution_packet=9 and the aggregate counts above describe the historical extended-synthesis checkpoint, not the current recorded-audio codec; current source sample packet is 17 and the processing trailer is 380 bytes."
+    "execution_packet_note": "execution_packet=9 and the aggregate counts describe the historical extended-synthesis checkpoint. Current recorded-audio execution is sample packet 21, with a 440-byte default processing/automation/dynamics/room trailer; nonempty graphs/lanes/dynamics add bounded variable payloads. Only the current decoder is supported."
   },
   "sound_panel_expansions": {
     "status": "partially implemented; tracked by sound_editing tasks",
@@ -2015,8 +2015,8 @@
         "id": "CAP-10",
         "title": "Delay and reverberation",
         "status": "partial",
-        "current": "Synth/sample/vocal delay and reuse retain time/mix/feedback, tempo sync, feedback tone, ping-pong and shared tail ownership in browser/native playback.",
-        "gap": "Algorithmic reverb and physical seek/loop/listening qualification remain.",
+        "current": "Shared delay and algorithmic reverb work across synth/sample/vocal, presets/reuse, native/browser playback and WAV export. Reverb has pre-delay, nominal RT60 decay, damping/size, wet/dry and stereo width with interactive/precise controls, shared bus ownership, continuous loops and reconstructed seeks/tails.",
+        "gap": "Physical Windows output/microphone/device and matched listening qualification remain.",
         "evidence_ids": [
           "E05",
           "E06",
@@ -2037,7 +2037,10 @@
         "implementation_paths": [
           "src/dsp/processing-chain.js",
           "native/delay.hpp",
-          "recordedAudio.js"
+          "recordedAudio.js",
+          "src/dsp/reverb.js",
+          "native/reverb.hpp",
+          "reverbUI.js"
         ]
       },
       {
@@ -2499,7 +2502,8 @@
         "completed_slices": [
           "Shared EQ/filter/stereo and tempo-delay slices described by SE-09/SE-11/SE-13",
           "Usable compressor/gate/sample-peak limiter with post-level per-note/Clip processing, common editing and native/browser execution",
-          "Shared split-band de-esser with independent per-note/Clip stereo-linked state, interactive/numerical editing, portable reuse and native/browser playback/export/seek verification"
+          "Shared split-band de-esser with independent per-note/Clip stereo-linked state, interactive/numerical editing, portable reuse and native/browser playback/export/seek verification",
+          "Shared algorithmic reverb with interactive/precise controls, synth/sample/vocal reuse, parallel echo sends, finite export tails, continuous loops and reconstructed seeks"
         ]
       },
       {
@@ -2931,8 +2935,16 @@
         "verification": [
           "Impulse/echo timing, decay and tail-boundary cases; same effectful source in every context."
         ],
-        "completion_evidence": [],
-        "progress_note": "Shared free seconds and 1/16, 1/8, dotted 1/8 and quarter-note sync through two seconds now include feedback low-pass tone and stereo ping-pong. First echo is unfiltered; ping-pong folds the send by (L+R)/sqrt(2) into left, then swaps feedback channels. Shared buses include tone/stereo mode in their identity; tails, streaming page lifetime, presets and vocal reuse retain them. Native echo timing now matches the complete authored interval without an extra callback quantum. Reverb and physical seek/loop/listening qualification remain open."
+        "completion_evidence": [
+          "tests/reverb.test.js: current project/reuse/vocal control recall, bypass, validation, impulse pre-delay, finite tails and mono/stereo behavior",
+          "tests/reverb.audio.mjs: native/worklet maximum PCM error 3.725290298461914e-9 at 24 kHz; synth/sample/vocal, shared overlaps, parallel echo, continuous loops, block/seek and completed-Clip continuation",
+          "tests/dynamics.dom.mjs: shared room dials/direct graphs, history, bypass and combined view",
+          "48 kHz null-device streaming with reverb, compressor/de-esser and parallel processing: seek/loop/edit/count-in/capture, zero callback allocations",
+          "Compiled Rust production-control tests, including full-queue pause/stop/rapid toggles/stale owners and validated room recipe FFI"
+        ],
+        "progress_note": "Tempo-sync delay, tone and ping-pong are retained. Shared algorithmic reverb now runs in parallel with echo after post-level dynamics, with pre-delay, nominal RT60 decay, damping, room size, wet/dry and stereo width. One canonical reverb block is validated, edited through three interactive/numerical modules, recalled and transferred between synth/sample/vocal sources. Complete wet recipes share control-owned buses; native streaming registers them before pages, loops retain continuous state and seeks reconstruct ended-source room tails. The common finite tail policy covers preview, Song playback, cached browser vocal seeks and WAV export. Native callbacks allocate/destroy nothing. Source implementation is complete; matched listening and physical Windows seek/loop/device acceptance remain open for preview.30.",
+        "implementation_complete": true,
+        "qualification_complete": false
       },
       {
         "id": "SE-12",
@@ -3881,7 +3893,14 @@
         "native/control-tests: 7 compiled production-control tests, including a full eight-slot mailbox, rapid toggles, queued Play cancellation and stale-handle protection",
         "48 kHz miniaudio null-device stream with compressor/de-esser and parallel graph: seek/loop/edit/count-in/capture, zero callback allocations"
       ],
-      "limits": "Playback preparation may still take time. Physical Windows/WebView2/WASAPI device-buffer response is unobserved; released preview.29 does not contain these changes."
+      "limits": "Playback preparation may still take time. Physical Windows/WebView2/WASAPI device-buffer response is unobserved; released preview.29 does not contain these changes.",
+      "package_requested": "0.14.1-preview.30"
+    },
+    "reverb": {
+      "status": "implemented; focused software checks pass",
+      "package_requested": "0.14.1-preview.30",
+      "reference": "SE-11",
+      "remaining": "Physical Windows and listening acceptance; modulation effects and independent pitch/time remain separate unfinished tasks"
     }
   }
 }

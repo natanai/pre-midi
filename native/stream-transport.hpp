@@ -74,10 +74,10 @@ private:
  }
  bool ready()const noexcept{return nextSequence>1;}
  // Control-only preparation, before page one is submitted.
- int registerDelay(double mix,double time,double feedback,double tone=20000,bool ping=false){
+ int registerEffects(double mix,double time,double feedback,double tone=20000,bool ping=false,const ReverbRecipe& room={}){
   require(!controlStarted&&nextSequence==1,
    "Native shared effects must be prepared before the first Song page");
-  return player->registerStreamingDelay(mix,time,feedback,tone,ping);
+  return player->registerStreamingEffects(mix,time,feedback,tone,ping,room);
  }
  // Control-only: page packet can be PMS1 or PMS2 with bound registered audio.
  // Backpressure returns false without publishing/incrementing sequence or

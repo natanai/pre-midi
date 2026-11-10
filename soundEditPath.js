@@ -1,3 +1,4 @@
+import {defaultReverb} from './src/dsp/reverb.js';
 // Patch edits from knobs and illustration handles share the same path rules.
 // In particular, legacy sampled sounds may not carry a filter definition.
 import {DEFAULT_LFO_STEPS} from "./src/dsp/modulation.js";
@@ -8,7 +9,7 @@ export function assignSoundEdit(patch,path,value){
   let owner=patch;
   for(const key of keys.slice(0,-1)){
    if(owner[key]===undefined||owner[key]===null)
-    owner[key]=key==="steps"&&owner.kind==="lfo"?[...DEFAULT_LFO_STEPS]:(patch.type==="sample"||patch.type==="vocal")&&owner===patch&&key==="filter"?
+    owner[key]=key==="reverb"&&owner===patch?defaultReverb():key==="steps"&&owner.kind==="lfo"?[...DEFAULT_LFO_STEPS]:(patch.type==="sample"||patch.type==="vocal")&&owner===patch&&key==="filter"?
      {...DEFAULT_SAMPLE_FILTER}:{};
    owner=owner[key];
   }

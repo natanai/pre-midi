@@ -12,6 +12,10 @@ struct Status {
  lead_remaining:u64,preview_position:u64,preview_state:u64,capture_phase:u64,capture_frames:u64,capture_missing:u64,capture_clipped:u64,capture_peak_million:u64,capture_lead:u64,capture_start:u64,
 }
 #[repr(C)]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoomParameters{mix:f64,#[serde(rename="preDelay")]pre_delay:f64,decay:f64,damping:f64,size:f64,width:f64}
+#[repr(C)]
 #[derive(Default,Clone,Serialize)]
 struct SampleInfo {id:u32,rate:u32,channels:u32,frames:u64,normalization:f64}
 #[repr(C)]
@@ -47,7 +51,7 @@ unsafe extern "C" {
  fn premidi_audio_control(host:*mut c_void,command:u32,looping:i32)->i32;
  fn premidi_audio_status_get(host:*mut c_void,status:*mut Status)->i32;
  fn premidi_audio_stream_begin(host:*mut c_void,owner:u64,revision:u64,processing:i32)->i32;
- fn premidi_audio_stream_delay(host:*mut c_void,owner:u64,revision:u64,mix:f64,time:f64,feedback:f64,tone:f64,ping:i32)->i32;
+ fn premidi_audio_stream_effects(host:*mut c_void,owner:u64,revision:u64,mix:f64,time:f64,feedback:f64,tone:f64,ping:i32,room:*const RoomParameters)->i32;
  fn premidi_audio_stream_page(host:*mut c_void,owner:u64,revision:u64,sequence:u64,first_frame:u64,end_frame:u64,onsets:u32,last:i32,packet:*const u8,length:usize)->i32;
  fn premidi_audio_stream_advance(host:*mut c_void,owner:u64,revision:u64,frame:u64)->i32;
  fn premidi_audio_stream_start_take(host:*mut c_void,owner:u64,revision:u64,bpm:f64,bars:u32,recording:i32,seconds:f64,due:u64,hold:i32)->i32;
@@ -230,7 +234,7 @@ pub enum Request {
  Play{data:Vec<u8>,cycle:f64,seek:f64,looping:bool,preview:bool,#[serde(default)] owner:u64,#[serde(default)] count_in:u32,#[serde(default="default_bpm")] bpm:f64,#[serde(default)] recording:Option<u64>},
  Update{data:Vec<u8>,cycle:f64,looping:bool,tempo_ratio:f64,owner:u64},
  StreamBegin{owner:u64,revision:u64,#[serde(default)] processing:bool},
- StreamDelay{owner:u64,revision:u64,mix:f64,time:f64,feedback:f64,tone:f64,ping:bool},
+ StreamEffects{owner:u64,revision:u64,mix:f64,time:f64,feedback:f64,tone:f64,ping:bool,#[serde(default)]reverb:Option<RoomParameters>},
  StreamPage{owner:u64,revision:u64,sequence:u64,start_frame:u64,end_frame:u64,onsets:u32,last:bool,data:Vec<u8>},
  StreamAdvance{owner:u64,revision:u64,frame:u64},
  StreamStart{owner:u64,revision:u64,#[serde(default="default_bpm")] bpm:f64,#[serde(default)] count_in:u32,#[serde(default)] recording:Option<u64>,#[serde(default="default_take_seconds")] seconds:f64,#[serde(default)] due:Option<u64>,#[serde(default)] hold:bool},
@@ -280,7 +284,7 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
   if !state.valid(*owner)||*revision==0{return Err("Native Song stream begin was cancelled".into());}
  }
  match &request{
-  Request::StreamDelay{owner,revision,..}|Request::StreamPage{owner,revision,..}|
+  Request::StreamEffects{owner,revision,..}|Request::StreamPage{owner,revision,..}|
   Request::StreamStart{owner,revision,..}|Request::StreamAdvance{owner,revision,..}|Request::StreamStop{owner,revision}|
   Request::StreamStatus{owner,revision}
    if *owner!=state.current||*revision==0||(*revision!=state.stream_revision&&*revision!=state.stream_previous_revision)=>
@@ -321,9 +325,9 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    host.check(unsafe{premidi_audio_stream_begin(host.0,owner,revision,i32::from(processing))})?;
    state.current=owner;state.stream_previous_revision=state.stream_revision;state.stream_revision=revision;state.status()
   },
-  Request::StreamDelay{owner,revision,mix,time,feedback,tone,ping}=>{
+  Request::StreamEffects{owner,revision,mix,time,feedback,tone,ping,reverb}=>{
    let host=state.host.as_ref().unwrap();
-   host.check(unsafe{premidi_audio_stream_delay(host.0,owner,revision,mix,time,feedback,tone,i32::from(ping))})?;
+   host.check(unsafe{premidi_audio_stream_effects(host.0,owner,revision,mix,time,feedback,tone,i32::from(ping),reverb.as_ref().map_or(std::ptr::null(),|v|v as *const RoomParameters))})?;
    host.stream_status()
   },
   Request::StreamPage{owner,revision,sequence,start_frame,end_frame,onsets,last,data}=>{
@@ -449,13 +453,14 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    let audio=premidi_decoder::decode(bytes.to_vec(),"").unwrap();let mut info=SampleInfo::default();
    host.check(unsafe{premidi_audio_add_sample(host.0,audio.samples.as_ptr(),(audio.samples.len()/audio.channels as usize) as u64,audio.rate,audio.channels,&mut info)}).unwrap();drop(audio);
    let mut packet=vec![];let u32b=|out:&mut Vec<u8>,v:u32|out.extend(v.to_le_bytes());let f64b=|out:&mut Vec<u8>,v:f64|out.extend(v.to_le_bytes());
-   for v in [0x38564d50,48000,1,20,1,info.id]{u32b(&mut packet,v);}
+   for v in [0x38564d50,48000,1,21,1,info.id]{u32b(&mut packet,v);}
    for v in [0.,0.1,0.11,0.11,0.1,0.,1.,0.,info.frames as f64/info.rate as f64,14000.,0.7,0.,5.,0.,0.,0.,5.,0.,0.24,0.26,0.,2.,14000.,0.1]{f64b(&mut packet,v);}
    for v in [0,1,0,2]{u32b(&mut packet,v);}
    u32b(&mut packet,0);f64b(&mut packet,0.);f64b(&mut packet,0.1);u32b(&mut packet,0);f64b(&mut packet,0.11);f64b(&mut packet,0.);
    f64b(&mut packet,60.);f64b(&mut packet,1.);u32b(&mut packet,0);u32b(&mut packet,0);u32b(&mut packet,0);
    f64b(&mut packet,1.);f64b(&mut packet,1.);f64b(&mut packet,1.);u32b(&mut packet,1);for _ in 0..8{for v in [1.,0.,0.,0.,0.]{f64b(&mut packet,v);}}
    f64b(&mut packet,1.);f64b(&mut packet,0.);f64b(&mut packet,20000.);u32b(&mut packet,0);u32b(&mut packet,0);u32b(&mut packet,0);u32b(&mut packet,0);
+   for v in [0.,0.02,1.5,0.45,0.5,1.]{f64b(&mut packet,v);}
    let mut session=vec![];for v in [0x31534d50,1,packet.len() as u32]{u32b(&mut session,v);}session.extend(packet);
    last_session=session.clone();host.check(unsafe{premidi_audio_play(host.0,session.as_ptr(),session.len(),0.5,0.,0,0)}).unwrap();
    std::thread::sleep(std::time::Duration::from_millis(30));let mut status=Status::default();host.check(unsafe{premidi_audio_status_get(host.0,&mut status)}).unwrap();assert!(status.callbacks>0&&status.peak_million>0);assert_eq!(status.fault,0);
@@ -476,6 +481,10 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
   let empty=[0x31534d50u32.to_le_bytes(),0u32.to_le_bytes()].concat();
   let request=|state:&mut ControlState,value:Value|handle(state,serde_json::from_value(value).unwrap()).unwrap();
   request(&mut state,json!({"action":"stream_begin","owner":owner,"revision":1}));
+  request(&mut state,json!({"action":"stream_effects","owner":owner,"revision":1,"mix":0.,"time":0.2,"feedback":0.,"tone":20000.,"ping":false,
+   "reverb":{"mix":0.3,"preDelay":0.02,"decay":0.4,"damping":0.35,"size":0.7,"width":0.8}}));
+  assert!(handle(&mut state,serde_json::from_value(json!({"action":"stream_effects","owner":owner,"revision":1,"mix":0.,"time":0.2,"feedback":0.,"tone":20000.,"ping":false,
+   "reverb":{"mix":0.3,"preDelay":0.02,"decay":99.,"damping":0.35,"size":0.7,"width":0.8}})).unwrap()).is_err());
   request(&mut state,json!({"action":"stream_page","owner":owner,"revision":1,"sequence":1,"start_frame":0,"end_frame":48000,"onsets":0,"last":false,"data":empty}));
   request(&mut state,json!({"action":"stream_start","owner":owner,"revision":1,"hold":true}));
   request(&mut state,json!({"action":"stream_begin","owner":owner,"revision":2}));

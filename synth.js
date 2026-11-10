@@ -1,3 +1,4 @@
+import {validateReverb} from './src/dsp/reverb.js';
 import {validateAutomation} from "./src/dsp/automation.js";
 import {validateStereo} from './src/dsp/stereo.js';
 import {validateEq,validateFilterStages} from './src/dsp/equalizer.js';
@@ -122,8 +123,8 @@ export function validatePatch(patch) {
   errors.push("Invalid vibrato.");
  errors.push(...validateMovement(patch.movement),...validateBend(patch.bend));
  errors.push(...validateParameterBlock(patch.effects,"effects"));
- errors.push(...validateAutomation(patch.automation,patch),...validateStereo(patch),...validateEq(patch.eq),...validateFilterStages(patch.filterStages),...validateProcessingChain(patch.chain),...validateDelaySync(patch.delaySync));
- const allowed=new Set(["stereoWidth","msBalance","delayTone","delayPingPong","eq","filterStages","delaySync","chain","automation","type","presetId","version","oscillators","noise","noiseDecay","pan","filter","envelope","movement","effects","bend","modulation"]);
+ errors.push(...validateAutomation(patch.automation,patch),...validateReverb(patch.reverb),...validateStereo(patch),...validateEq(patch.eq),...validateFilterStages(patch.filterStages),...validateProcessingChain(patch.chain),...validateDelaySync(patch.delaySync));
+ const allowed=new Set(["reverb","stereoWidth","msBalance","delayTone","delayPingPong","eq","filterStages","delaySync","chain","automation","type","presetId","version","oscillators","noise","noiseDecay","pan","filter","envelope","movement","effects","bend","modulation"]);
  for(const key of Object.keys(patch))if(!allowed.has(key))errors.push("Unsupported sound parameter: "+key+".");
  return errors;
 }

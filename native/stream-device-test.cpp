@@ -35,6 +35,10 @@ static std::vector<std::uint8_t> read(const char* path){
  return {(std::istreambuf_iterator<char>(file)),{}};
 }
 struct Page{std::uint64_t first,end;unsigned onsets;bool last;std::vector<std::uint8_t> bytes;};
+static int effects(void* host,std::uint64_t owner,std::uint64_t revision,const premidi::Plan& p){
+ const auto& r=p.reverb;const premidi_reverb_parameters room{r.mix,r.preDelay,r.decay,r.damping,r.size,r.width};
+ return premidi_audio_stream_effects(host,owner,revision,p.delayMix,p.delayTime,p.delayFeedback,p.delayTone,p.delayPingPong,&room);
+}
 int main(int argc,char** argv){
  try{
   premidi::require(argc>=8&&(argc-4)%4==0,"stream device: rate frames full-packet pages...");
@@ -62,9 +66,8 @@ int main(int argc,char** argv){
    check(premidi_audio_configure(host,UINT32_MAX,rate,128));
    constexpr std::uint64_t owner=91,revision=7;
    check(premidi_audio_stream_begin(host,owner,revision,processing));
-   for(const auto& note:reference.notes)if(note.plan.delayMix>0)
-    check(premidi_audio_stream_delay(host,owner,revision,note.plan.delayMix,
-     note.plan.delayTime,note.plan.delayFeedback,note.plan.delayTone,note.plan.delayPingPong));
+   for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
+    check(effects(host,owner,revision,note.plan));
    std::size_t published=0;unsigned backpressure=0;
    const auto feed=[&]{
     while(published<pages.size()){
@@ -106,9 +109,8 @@ int main(int argc,char** argv){
    // A request arriving from another thread must stop the Song clock without
    // waiting for the host control thread to retire its pages.
    check(premidi_audio_stream_begin(host,owner+1,revision+1,processing));
-   for(const auto& note:reference.notes)if(note.plan.delayMix>0)
-    check(premidi_audio_stream_delay(host,owner+1,revision+1,note.plan.delayMix,
-     note.plan.delayTime,note.plan.delayFeedback,note.plan.delayTone,note.plan.delayPingPong));
+   for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
+    check(effects(host,owner+1,revision+1,note.plan));
    check(premidi_audio_stream_page(host,owner+1,revision+1,1,
     pages[0].first,pages[0].end,pages[0].onsets,pages[0].last?1:0,
     pages[0].bytes.data(),pages[0].bytes.size()));
@@ -123,14 +125,14 @@ int main(int argc,char** argv){
    // A prepared seek/edit revision can replace a paused stream without
    // waking it or destroying callback-owned resources.
    check(premidi_audio_stream_begin(host,owner+2,revision+2,processing));
-   for(const auto& note:reference.notes)if(note.plan.delayMix>0)
-    check(premidi_audio_stream_delay(host,owner+2,revision+2,note.plan.delayMix,note.plan.delayTime,note.plan.delayFeedback,note.plan.delayTone,note.plan.delayPingPong));
+   for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
+    check(effects(host,owner+2,revision+2,note.plan));
    for(unsigned i=0;i<3&&i<pages.size();i++){const auto& p=pages[i];check(premidi_audio_stream_page(host,owner+2,revision+2,i+1,p.first,p.end,p.onsets,p.last,p.bytes.data(),p.bytes.size()));}
    check(premidi_audio_stream_start_take(host,owner+2,revision+2,120,0,0,1,UINT64_MAX,1));
    check(premidi_audio_stream_status_get(host,&status));const auto heldPosition=status.position;
    check(premidi_audio_stream_begin(host,owner+2,revision+3,processing));
-   for(const auto& note:reference.notes)if(note.plan.delayMix>0)
-    check(premidi_audio_stream_delay(host,owner+2,revision+3,note.plan.delayMix,note.plan.delayTime,note.plan.delayFeedback,note.plan.delayTone,note.plan.delayPingPong));
+   for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
+    check(effects(host,owner+2,revision+3,note.plan));
    for(unsigned i=0;i<3&&i<pages.size();i++){const auto& p=pages[i];check(premidi_audio_stream_page(host,owner+2,revision+3,i+1,p.first,p.end,p.onsets,p.last,p.bytes.data(),p.bytes.size()));}
    check(premidi_audio_stream_advance(host,owner+2,revision+3,rate/7));
    check(premidi_audio_stream_start_take(host,owner+2,revision+3,120,0,0,1,heldPosition,1));
@@ -144,8 +146,8 @@ int main(int argc,char** argv){
    // This tests callback alignment independently of instrumented preparation CPU.
    check(premidi_audio_control(host,2,0));
    check(premidi_audio_stream_begin(host,owner+2,revision+4,processing));
-   for(const auto& note:reference.notes)if(note.plan.delayMix>0)
-    check(premidi_audio_stream_delay(host,owner+2,revision+4,note.plan.delayMix,note.plan.delayTime,note.plan.delayFeedback,note.plan.delayTone,note.plan.delayPingPong));
+   for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
+    check(effects(host,owner+2,revision+4,note.plan));
    for(unsigned i=0;i<3&&i<pages.size();i++){const auto& p=pages[i];check(premidi_audio_stream_page(host,owner+2,revision+4,i+1,p.first,p.end,p.onsets,p.last,p.bytes.data(),p.bytes.size()));}
    check(premidi_audio_stream_status_get(host,&status));const auto due=status.position+rate/20;
    check(premidi_audio_stream_advance(host,owner+2,revision+4,due));
@@ -157,8 +159,8 @@ int main(int argc,char** argv){
    // Count-in/capture share the stream callback clock, including source seek.
    check(premidi_audio_capture_prepare(host,.2,3,1));
    check(premidi_audio_stream_begin(host,owner+3,revision+4,processing));
-   for(const auto& note:reference.notes)if(note.plan.delayMix>0)
-    check(premidi_audio_stream_delay(host,owner+3,revision+4,note.plan.delayMix,note.plan.delayTime,note.plan.delayFeedback,note.plan.delayTone,note.plan.delayPingPong));
+   for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
+    check(effects(host,owner+3,revision+4,note.plan));
    published=0;
    const auto captureFeed=[&]{while(published<pages.size()){const auto& p=pages[published];const int result=premidi_audio_stream_page(host,owner+3,revision+4,published+1,p.first,p.end,p.onsets,p.last,p.bytes.data(),p.bytes.size());check(result);if(result==1)break;++published;}};
    captureFeed();check(premidi_audio_stream_advance(host,owner+3,revision+4,rate/20));

@@ -1,3 +1,4 @@
+import {defaultReverb} from '../src/dsp/reverb.js';
 import test from "node:test";
 import assert from "node:assert/strict";
 import {create,upgradeBeatFeatures} from "../schema.js";
@@ -7,7 +8,7 @@ import {renderEventsInWindow} from "../audio.js";
 import {nativePageDescriptorCursor} from "../src/hosts/native/onset-pages.js";
 import {nativeFrameAt} from "../src/hosts/native/page-plan.js";
 import {
- nativeSongDelayRecipes,prepareNativeSongStreamPage,createNativeSongPagePublisher
+ nativeSongEffectsRecipes,prepareNativeSongStreamPage,createNativeSongPagePublisher
 } from "../src/hosts/native/song-stream-page.js";
 
 function fixture(length=96){
@@ -60,10 +61,10 @@ test("native shared Song delay catalog preserves the exact synth and vocal packe
  song.tracks.push({kind:"vocal",clips:[{effects:{
   delayMix:.55,delayTime:.127137,delayFeedback:.41
  }}]});
- const actual=nativeSongDelayRecipes(song);
+ const actual=nativeSongEffectsRecipes(song);
  assert.deepEqual(actual,[
-  {mix:.35,time:Math.fround(.073137),feedback:Math.fround(.31),tone:20000,ping:false},
-  {mix:.55,time:.127137,feedback:.41,tone:20000,ping:false}
+  {mix:.35,time:Math.fround(.073137),feedback:Math.fround(.31),tone:20000,ping:false,reverb:defaultReverb()},
+  {mix:.55,time:.127137,feedback:.41,tone:20000,ping:false,reverb:defaultReverb()}
  ]);
  assert.notEqual(actual[0].time,actual[1].time);
  const original=JSON.stringify(song);
@@ -73,7 +74,7 @@ test("native shared Song delay catalog preserves the exact synth and vocal packe
    ...second.patch,effects:{...second.patch.effects,delayMix:.5,delayTime:.05+i*.01}
   }
  }));
- assert.throws(()=>nativeSongDelayRecipes(song),/32 shared delay-bus/);
+ assert.throws(()=>nativeSongEffectsRecipes(song),/32 shared delay-bus/);
  assert.notEqual(JSON.stringify(song),original);
 });
 

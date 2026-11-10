@@ -49,7 +49,7 @@ int main(int argc,char** argv){
   premidi::Session streamed(empty.data(),empty.size(),rate,1,0);
   streamed.enableStreaming();
   for(const auto& note:baseline.notes)
-   if(note.plan.delayMix>0)streamed.registerStreamingDelay(
+   if(note.plan.delayMix>0)streamed.registerStreamingEffects(
     note.plan.delayMix,note.plan.delayTime,note.plan.delayFeedback);
   premidi::PageMailbox mailbox(91,7,0);
   std::vector<Page> pages;

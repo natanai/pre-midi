@@ -1,3 +1,4 @@
+import {renderReverb} from './reverbUI.js';
 import {DYNAMICS_KINDS,MAX_DYNAMICS} from './src/dsp/dynamics.js';
 import {renderProcessorInstance} from './processorInstanceUI.js';
 import {allProcessorIds,processorOrders,processorInstance,processorKind,withInstance,withParallelRoute,withRouteShare,moveProcessor,MAX_PROCESSORS,PRIMARY_PROCESSORS,PROCESSOR_KINDS} from './src/dsp/processing-graph.js';
@@ -32,7 +33,7 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
  const title=id=>{const kind=processorKind(patch,id)??id,name=kind==='eq'?'equalizer':kind==='drive'?'distortion':kind==='delay'?'delay send':kind==='deesser'?'de-esser':kind;return processorInstance(patch,id)?name+' '+(Number(id.match(/-(\d+)$/)?.[1]??0)+(PRIMARY_PROCESSORS.includes(kind)?1:0)):name;};
  const row=(id,index,routeId='serial',parent=list)=>{
   const order=routeId==='serial'?chain.order:routeId==='post'?chain.post:chain.parallel.find(r=>r.id===routeId).order;
-  const item=document.createElement(id==='delay'?'div':'li'),label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';
+  const item=document.createElement(['delay','reverb'].includes(id)?'div':'li'),label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';
   check.checked=!chain.bypass.includes(id)&&!(id==='filter'&&patch.filter==null);
   const name=title(id);
   check.setAttribute('aria-label','Enable '+name);check.title='bypass '+name+' without losing its settings';
@@ -47,7 +48,7 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
    const slope=document.createElement('select');slope.setAttribute('aria-label','filter slope');slope.dataset.processingControl='filter-slope';
    for(const n of [1,2,4]){const option=document.createElement('option');option.value=String(n);option.textContent=String(n*12)+' db/oct';slope.append(option);}slope.value=String(patch.filterStages??1);slope.title='additional stages steepen the cutoff; resonance stays on the first stage';slope.addEventListener('change',()=>commit(['filterStages'],Number(slope.value),slope,id));item.append(slope);
   }
-  if(id!=='delay'){
+  if(!['delay','reverb'].includes(id)){
    const field=document.createElement('label');field.textContent='mix';
    const input=document.createElement('input');input.type='range';input.min='0';input.max='1';input.step='.01';input.value=String(processorMix(patch,id));input.setAttribute('aria-label',name+' wet mix');input.title='blend processed sound with the original';input.dataset.processingControl=id+'-mix';
    const output=document.createElement('output');output.textContent=Math.round(Number(input.value)*100)+'%';
@@ -71,23 +72,23 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
    input.addEventListener('change',()=>commit(['chain'],{...chain,mix:{...chain.mix,[id]:Number(input.value)}},input,id));
    field.append(input,output);item.append(field);
   }
-  if(id!=='delay')for(const [direction,icon] of [[-1,'↑'],[1,'↓']]){
+  if(!['delay','reverb'].includes(id))for(const [direction,icon] of [[-1,'↑'],[1,'↓']]){
    const move=document.createElement('button');move.type='button';move.textContent=icon;
    move.setAttribute('aria-label','Move '+name+(direction<0?' earlier':' later'));move.title=move.getAttribute('aria-label');
    move.dataset.processingControl=id+(direction<0?'-up':'-down');
    move.disabled=index+direction<0||index+direction>=order.length;
    move.addEventListener('click',()=>{const next=structuredClone(chain),order=routeId==='serial'?next.order:routeId==='post'?next.post:next.parallel.find(r=>r.id===routeId).order;[order[index],order[index+direction]]=[order[index+direction],order[index]];commit(['chain'],next,move,id);});item.append(move);
   }
-  if(id!=='delay'){
+  if(!['delay','reverb'].includes(id)){
    const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Remove '+name+' from chain');remove.title='remove from chain and retain its settings';remove.dataset.processingControl=id+'-remove';
    remove.addEventListener('click',()=>commit(['chain'],withProcessorRemoved(patch,id),remove,'add'));item.append(remove);
   }
-  if(id!=='delay'&&routeId!=='post'&&chain.parallel?.length){
+  if(!['delay','reverb'].includes(id)&&routeId!=='post'&&chain.parallel?.length){
    const route=document.createElement('select');route.setAttribute('aria-label','route for '+name);route.dataset.processingControl=id+'-route';
    for(const [value,label]of [['serial','serial'],...chain.parallel.map((r,i)=>[r.id,'parallel '+(i+1)])]){const option=document.createElement('option');option.value=value;option.textContent=label;route.append(option);}
    route.value=routeId;route.addEventListener('change',()=>commit(['chain'],moveProcessor(chain,id,route.value),route,id));item.append(route);
   }
-  if(id==='delay')root.append(item);else parent.append(item);
+  if(['delay','reverb'].includes(id))root.append(item);else parent.append(item);
   const instance=processorInstance(patch,id);if(instance)item.append(renderProcessorInstance(patch,instance,onChange,onPreview,key,name));
  };
  chain.order.forEach((id,i)=>row(id,i));
@@ -122,7 +123,7 @@ export function renderProcessingChain(patch,onChange,soundId=null,onPreview=()=>
  const addInstance=document.createElement('button');addInstance.type='button';addInstance.textContent='+ processor';addInstance.dataset.processingControl='add-instance';addInstance.disabled=processorOrders(chain).flat().length>=MAX_PROCESSORS||!instanceType.value;addInstance.title=addInstance.disabled?'eight processors are already in use':'add an independent processor';addInstance.addEventListener('click',()=>{const [mode,id]=instanceType.value.split(':');if(mode==='new')commit(['chain'],withInstance(patch,id),addInstance,'add');else{const next=withProcessorAdded(patch,id);if(id==='filter'&&patch.filter==null)commit([['chain'],['filter']],[next,{...DEFAULT_SAMPLE_FILTER}],addInstance,id);else commit(['chain'],next,addInstance,id);}});
  const addRoute=document.createElement('button');addRoute.type='button';addRoute.textContent='+ parallel';addRoute.dataset.processingControl='add-route';addRoute.disabled=(chain.parallel?.length??0)>=4;addRoute.title=addRoute.disabled?'four parallel routes are already in use':'split the serial output into independently processed routes';addRoute.addEventListener('click',()=>commit(['chain'],withParallelRoute(patch),addRoute,'add'));
  root.append(instanceType,addInstance,addRoute);
- row('delay');
+ row('delay');row('reverb');root.append(renderReverb(patch,onChange,onPreview,soundId));
  const timing=document.createElement('select');timing.setAttribute('aria-label','delay timing');timing.dataset.processingControl='delay-timing';
  for(const [value,label] of [['seconds','seconds'],...DELAY_DIVISIONS.map(n=>[String(n),n===.25?'1/16 note':n===.5?'1/8 note':n===.75?'dotted 1/8':'1/4 note'])]){const option=document.createElement('option');option.value=value;option.textContent=label;timing.append(option);}
  timing.value=String(patch.delaySync??'seconds');timing.addEventListener('change',()=>commit(['delaySync'],timing.value==='seconds'?undefined:Number(timing.value),timing,'delay'));root.append(timing);return root;

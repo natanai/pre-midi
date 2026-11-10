@@ -1,3 +1,4 @@
+import {defaultReverb} from '../src/dsp/reverb.js';
 import {withInstance,withParallelRoute,moveProcessor,withRouteShare} from '../src/dsp/processing-graph.js';
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
@@ -29,6 +30,7 @@ try{
   const frames=Math.round(rate*.55*scale),mark=[0,.090137,.180137,.270137,.360137,.55]
    .map(s=>Math.floor(s*rate*scale+1e-9));
   const patch=makePatch("touch-keys");
+  patch.reverb={...defaultReverb(),mix:.35,decay:.2,preDelay:.015};
   patch.effects={...patch.effects,drive:.2,delayMix:.45,
    delayTime:.073137,delayFeedback:.6};
   patch.envelope={...patch.envelope,release:.20};
