@@ -3830,13 +3830,13 @@
       {
         "id": "SAMPLER-SUSTAIN-AND-ZONE-RANGES",
         "date": "2026-11-10",
-        "status": "source milestone implemented; preview.36 packaging requested",
+        "status": "published in Windows preview.36; physical/listening qualification remains open",
         "task_ids": [
           "SE-14",
           "SE-16"
         ],
         "summary": "Shared waveform sustain/overlap and key/velocity region editing, native/browser looping, finite release, source mapping and a revision-aware waveform decode cache. Retain waveform articulation overlays, wider automation/routing/tuning/noise and physical qualification as open work.",
-        "verification": "107 routine cases; independent native tap oracle; 44.1 kHz native/browser maximum PCM difference 1.714e-7 with pitch movement; seek/block identity; focused DOM checks; 48 kHz native stream with zero callback allocations."
+        "verification": "107 routine cases; independent native tap oracle; 44.1 kHz native/browser maximum PCM difference 1.714e-7 with pitch movement; seek/block identity; focused DOM checks; 48 kHz native stream with zero callback allocations. Matching Windows preview.36 build passed native sampler waveform decode/keyboard, finite sustain/release, gap silence, pause/resume/stop, project recall and portable lifecycle checks; 15 Rust tests passed. Live Pages loop/range keyboard edits were observed; final separate waveform handles also passed the focused shared DOM check."
       }
     ],
     "vocal_parity_milestone": {
@@ -3928,10 +3928,10 @@
   },
   "repository_checkpoint": {
     "audited_on": "2026-11-10",
-    "source_commit": "8f7519ae7ee4f463fe97f02501246932b898c854",
-    "preview_version": "0.14.1-preview.34",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.34",
-    "method": "Reconciled current task claims with source at 8f7519ae7ee4f463fe97f02501246932b898c854 and this turn's source/data/DSP/Inspector/transport checks. Final Windows workflow and artifact evidence are recorded in latest_delivery. Automated WebView/null-device results do not establish physical audio or listening acceptance.",
+    "source_commit": "1d77501e0cde518949c4f60b172fb4b8ce957283",
+    "preview_version": "0.14.1-preview.36",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.36",
+    "method": "Reconciled the canonical backlog with current source at 1d77501e0cde518949c4f60b172fb4b8ce957283, focused source/data/DSP/shared-editor checks and observed Pages source edits. Final Windows workflow and artifact evidence are recorded in latest_delivery. Automated WebView/null-device results do not establish physical audio or listening acceptance.",
     "architecture": {
       "shell": "Tauri / Rust",
       "interface": "HTML/CSS/JavaScript in WebView2 on Windows",
@@ -3941,7 +3941,7 @@
       "Physical Windows audio/microphone/device recovery and dense or long-session acceptance for the implemented opt-in streaming lifecycle",
       "Broader modulation destinations and follower/sidechain/free-run sources; effect/discrete automation, gesture recording, override/rejoin and wider scopes",
       "Shared Track buses, selectable sidechains, arrangement-wide latency compensation and measured processor telemetry",
-      "Sampler waveform/sustain-loop/crossfade editing, monophonic pitch correction, additional shapers and noise colors",
+      "Waveform articulation overlays, monophonic pitch correction, additional shapers and noise colors",
       "Observed editor, newcomer and listening qualification; separately deferred mobile/game completion"
     ],
     "completion_percentage": null,
@@ -4015,19 +4015,20 @@
     "sampler_source_editing": {
       "status": "source crop, sustain/crossfade and key/velocity range milestone implemented",
       "package_requested": "0.14.1-preview.36",
-      "package_status": "pending",
-      "remaining": "Waveform articulation overlays and observed physical/editor/listening qualification"
+      "package_status": "published",
+      "remaining": "Waveform articulation overlays and observed physical/editor/listening qualification",
+      "package_version": "0.14.1-preview.36"
     }
   },
   "latest_delivery": {
-    "version": "0.14.1-preview.34",
-    "source_commit": "8f7519ae7ee4f463fe97f02501246932b898c854",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.34",
-    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.34/pre-midi-0.14.1-preview.34-windows-x86_64-portable.zip",
-    "bytes": 17209721,
-    "sha256": "bcd72aa73fabc7672f4e57e842380774678aca101ce1208248745b333fbcbf7c",
-    "build_run": "https://github.com/natanai/pre-midi/actions/runs/42883400815",
-    "status": "Published; exact tag source, Windows compilation, routine checks, 15 Rust tests, runtime dependencies, portable launch/update/isolation/move/copy/recovery, exact vendor licenses and shared-graph WebView geometry/keyboard checks passed",
+    "version": "0.14.1-preview.36",
+    "source_commit": "1d77501e0cde518949c4f60b172fb4b8ce957283",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.36",
+    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.36/pre-midi-0.14.1-preview.36-windows-x86_64-portable.zip",
+    "bytes": 17218722,
+    "sha256": "45c0c14ba8f8e364ab9fec722bbfb693cfa1769629c3c6ba14e77cec25750d64",
+    "build_run": "https://github.com/natanai/pre-midi/actions/runs/42925527954",
+    "status": "Published; exact tag source, 107 routine cases, Windows compilation, 15 Rust tests including urgent transport under a full preparation queue, native sampler waveform editing, loop/gap playback/export, pause/resume/stop and project recall, plus portable launch/upgrade/isolation/relocation/copy/recovery passed. Downloaded ZIP checksum, CRC, version, portable folders and source license contents verified (Windows CRLF normalized).",
     "remaining": "Broader roadmap implementation and physical Windows audio/microphone/listening acceptance remain open. Optional full audio qualification was not requested."
   }
 }

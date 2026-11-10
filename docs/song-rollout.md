@@ -258,7 +258,7 @@ Vocal Clips may share a voice Track, move between voice Tracks, duplicate by ref
 - Vocal Tracks render **above** Beat Tracks, with the selected Beat editor **below** them.
 - Projects preserve editable synthesis and linked Beat identities; never flatten them simply to arrange or export.
 - Audio is referenced via external Assets; binary recording bytes never enter `.premidi` JSON.
-- Keep versioned import compatibility and automated tests as first-class engineering requirements.
+- Keep current-format project round trips and meaningful automated checks as engineering requirements; do not retain speculative legacy readers.
 - Preserve the minimalist UI, accessibility and cross-device interaction requirements in `AGENTS.md`.
 
 Native Windows capture now writes external WAV Recordings through explicit Song v14. Legacy v8/v10/v12 Songs retain their formats. Native callback count-in, calibrated capture offset, raw previews and portable ZIP/seek/WAV checks accompany this path; physical Windows microphone/latency qualification remains pending.
@@ -331,4 +331,4 @@ Sampled Sounds now mount the existing vocal waveform editor in the canonical Ins
 
 ### Sampler sustain and zone ranges (2026-11-10)
 
-The source editor adds sustain-loop endpoints/overlap and key/velocity regions to the common sample/vocal waveform foundation. Native/browser note gates, release, reverse/stretch, preview, scope and export lengths share the loop contract. Source gaps render silence. The current packet is v23, without an older reader. Frame/overlap bounds, an independent tap oracle, stereo/pitch/source-transform PCM, seek/block continuity, shared editor behavior and zero-allocation 48 kHz streaming pass focused checks. Preview.35 packages the milestone; remaining broader work stays in docs/synthesis-roadmap.json.
+The source editor adds sustain-loop endpoints/overlap and key/velocity regions to the common sample/vocal waveform foundation. Native/browser note gates, release, reverse/stretch, preview, scope and export lengths share the loop contract. Source gaps render silence. The current packet is v23, without an older reader. Frame/overlap bounds, an independent tap oracle, stereo/pitch/source-transform PCM, seek/block continuity, shared editor behavior and zero-allocation 48 kHz streaming pass focused checks. Preview.36 publishes the milestone after matching Windows native sampler editing, loop/gap PCM, project recall, transport and portable lifecycle checks, plus 15 Rust tests. Downloaded ZIP integrity and source license contents were verified. Physical acceptance and remaining broader work stay open in docs/synthesis-roadmap.json.
