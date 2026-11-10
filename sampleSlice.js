@@ -1,3 +1,4 @@
+import {validateSampleLoop} from './src/dsp/sample-loop.js';
 // Source-time regions let playable samples reference an existing recording.
 // A Beat may carry this region in instructions without copying or rewriting WAV bytes.
 export const MAX_SAMPLE_SLICE_SECONDS=4;
@@ -5,6 +6,7 @@ export function hasSampleSlice(zone){
  return zone?.startSeconds!==undefined||zone?.durationSeconds!==undefined;
 }
 export function validateSampleSlice(zone){
+ const loopError=validateSampleLoop(zone);if(loopError)return loopError;
  if(!hasSampleSlice(zone))return null;
  if(!Number.isFinite(zone.startSeconds)||zone.startSeconds<0||zone.startSeconds>300||
   !Number.isFinite(zone.durationSeconds)||zone.durationSeconds<=.01||

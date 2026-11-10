@@ -1368,7 +1368,7 @@
         "package_version": "0.14.1-preview.31"
       }
     },
-    "execution_packet_note": "execution_packet=9 and aggregate counts describe the historical extended-synthesis checkpoint. Current recorded-audio execution is sample packet 22, with a 440-byte empty processing/automation/post/room trailer; nonempty graphs, lanes and post processors add bounded variable payloads. Only the current decoder is supported."
+    "execution_packet_note": "execution_packet=9 and aggregate counts describe the historical extended-synthesis checkpoint. Current recorded-audio execution is sample packet 23, with a 468-byte empty processing/automation/post/room trailer; nonempty graphs, lanes and post processors add bounded variable payloads. Only the current decoder is supported."
   },
   "sound_panel_expansions": {
     "status": "partially implemented; tracked by sound_editing tasks",
@@ -2663,7 +2663,7 @@
             "result": "Browser-compatible OfflineAudioContext: ongoing effectful seek maximum difference 1.66893e-5; ended-Clip echo 6.46791e-7 at 24000 Hz. Native sampled/vocal PCM difference 0 at 22050 Hz with nonzero filter sweep; sweep changes PCM by 0.813198 peak. Native page rebase preserves sample/vocal sweep and cutoff automation clocks. Cache invalidation/bounds/cancellation and vocal-only voice/echo retirement pass."
           }
         ],
-        "progress_note": "Current vocal processing parity is implemented: shared filter sweep, tone/drive/movement/delay, original-age source/pitch/envelope/modulation, stateful browser seek continuations and echo tails, live-edit replacement/cancellation, and native recorded-audio packet 17 with the current shared processing trailer. Routine and focused data/DSP checks pass. Pages deployment succeeded. The public desktop loads with one Inspector DOM frame; real vocal UI observation is blocked by cloud-browser fixture file access. Physical Windows listening remains unqualified.",
+        "progress_note": "Current vocal processing parity is implemented: shared filter sweep, tone/drive/movement/delay, original-age source/pitch/envelope/modulation, stateful browser seek continuations and echo tails, live-edit replacement/cancellation, and native recorded-audio packet 23 with the current shared processing trailer. Routine and focused data/DSP checks pass. Pages deployment succeeded. The public desktop loads with one Inspector DOM frame; real vocal UI observation is blocked by cloud-browser fixture file access. Physical Windows listening remains unqualified.",
         "remaining_implementation": [],
         "source_clock_contract": {
           "owner": "src/dsp/recorded-source-clock.js",
@@ -2671,7 +2671,7 @@
           "source_position": "Accumulate playbackRate * 2^(detune/1200) over 128-frame host control quanta; use the original Clip gate to evaluate progress. Source seconds and Song/wall seconds remain separate.",
           "web_transport": "src/hosts/web/timeline-clock.js aligns virtual Song time zero to a render-quantum boundary on initial playback and seeks. Initial overlapping source windows are prepared before choosing the audible start time, outside the lookahead scheduler.",
           "bounds": "Eight cached control clocks with sparse checkpoints every 256 control quanta; no asset copies, audio callback allocations or sample-sized control arrays. Existing source/host limits remain.",
-          "current_native_sample_packet": 16,
+          "current_native_sample_packet": 23,
           "qualification": "Focused model and C++ regressions; no physical browser/Windows listening or complete seek PCM equivalence claim."
         }
       },
@@ -3046,8 +3046,17 @@
         "verification": [
           "Boundary/quiet-onset/end-trim/loop-crossfade cases, duplicate independence, immutable bytes and reuse round trips."
         ],
-        "completion_evidence": [],
-        "progress_note": "Vocal start/end trims now use the same waveform surface, millisecond numeric/keyboard editing, mirrored handles/shading and independent restoration. Both ends update Song clip duration/thumbnail and source bounds in native/browser playback, seek caching and Beat reuse without rewriting recording bytes. Shared sampler source viewport, reverse and loop editing remain open. Recorded source regions now support reversible source playback via the common source treatment, without rewriting assets. The sampler still needs a common waveform/crop/loop editor; sustain loops and loop crossfades remain unfinished. The shared Inspector now offers lazy per-zone waveform crop editing for sampled Sounds, using the same start/end handles, zoom, numerical and keyboard editor as vocals. Native source inspection decodes through C++, browser inspection uses its decoder, and both contexts share a bounded latest-asset decode cache. Crop transactions preserve pitch/velocity mapping and immutable asset identity, reject out-of-bounds or over-four-second excerpts, and restore the authored region after rejected edits. Sustain loops/crossfades and mapping-range editing remain open."
+        "completion_evidence": [
+          "tests/sampleLoop.test.js, tests/sampleMapping.test.js and tests/recordedAssetDecode.test.js: bounds, mapping/release clocks, gaps, source identity, project recall and decode ownership/invalidation",
+          "native/sample-loop-test.cpp: independent overlap, period, wrap and fractional tap oracle",
+          "tests/sampleLoop.audio.mjs: native/browser PCM through stereo, transpose, glide/vibrato, stretch/reverse, fractional half-loop overlap, release, seek and block continuity",
+          "tests/sampleLoop.dom.mjs and tests/sampleMapping.dom.mjs: shared waveform/range keyboard/numeric edits, focus, invalid ranges, reset and fixed drag zoom",
+          "PREMIDI_STREAM_SAMPLE_LOOP=1 PREMIDI_STREAM_RATES=48000 node scripts/native-stream-device-check.mjs: source loops in streaming revisions with zero callback allocations"
+        ],
+        "progress_note": "Shared sample/vocal waveform crops, zoom and keyboard/numerical source editing are implemented. Sampler zones now have sustain-loop start/end and crossfade handles, loop-aware note/release lifetimes, source-relative reverse/stretch mapping and explicit key/velocity range editing with direct two-axis region handles. Authored gaps are silent in both hosts; source identity, crop, loops, root/velocity selection and current project recall are preserved. Original bytes remain external and unchanged. Native packet v23 and the browser prepared-buffer path agree on crossfaded interpolation, including fractional boundaries. Waveform start/end/fade sliders are individually accessible within a named group, and zoom stays fixed during handle drags. Decode revisions avoid repeated or stale source inspection. Waveform-overlay articulation-fade handles and physical/observed listening acceptance remain open; existing attack/release controls and illustrations stay available in the same Inspector.",
+        "remaining_implementation": [
+          "Waveform-overlay articulation fade handles, retaining existing note/Clip trigger and source-time semantics"
+        ]
       },
       {
         "id": "SE-15",
@@ -3817,6 +3826,17 @@
         ],
         "summary": "One waveform source editor for sampler zones and vocal Clips, with reversible crop transactions and one native-aware decoder. Open disclosure triggers decoding; playback/transport queues are unchanged.",
         "verification": "100 routine cases plus existing waveform timing/zoom/PCM tests; physical browser/Windows interaction remains unobserved."
+      },
+      {
+        "id": "SAMPLER-SUSTAIN-AND-ZONE-RANGES",
+        "date": "2026-11-10",
+        "status": "source milestone implemented; preview.35 packaging requested",
+        "task_ids": [
+          "SE-14",
+          "SE-16"
+        ],
+        "summary": "Shared waveform sustain/overlap and key/velocity region editing, native/browser looping, finite release, source mapping and a revision-aware waveform decode cache. Retain waveform articulation overlays, wider automation/routing/tuning/noise and physical qualification as open work.",
+        "verification": "107 routine cases; independent native tap oracle; 44.1 kHz native/browser maximum PCM difference 1.714e-7 with pitch movement; seek/block identity; focused DOM checks; 48 kHz native stream with zero callback allocations."
       }
     ],
     "vocal_parity_milestone": {
@@ -3991,6 +4011,12 @@
       "remaining": "Monophonic correction/tuning controls and physical/listening/quality qualification",
       "package_status": "published",
       "package_version": "0.14.1-preview.34"
+    },
+    "sampler_source_editing": {
+      "status": "source crop, sustain/crossfade and key/velocity range milestone implemented",
+      "package_requested": "0.14.1-preview.35",
+      "package_status": "pending",
+      "remaining": "Waveform articulation overlays and observed physical/editor/listening qualification"
     }
   },
   "latest_delivery": {

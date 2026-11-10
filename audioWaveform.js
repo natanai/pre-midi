@@ -1,3 +1,5 @@
+import {getAssetRevision} from './assetRegistry.js';
+import {explainLabel} from './dial.js';
 import {createUIIcon,setIconButton} from "./uiIcons.js";
 // Shared PCM waveform viewport for recorded audio assets.
 // Musical placement stays on the Clip; trim is a reversible source-time offset.
@@ -55,7 +57,7 @@ export function waveformPeaksFromOverview(overview,recordingDuration,start,end,b
 const zoomByAsset=new Map(),edgeByAsset=new Map();
 let lastDecodedKey=null,lastDecodedPromise=null;
 export function decodedWaveformAsset(recording,loadDecoded){
- const key=recording.id+":"+recording.durationSeconds+":"+recording.path;
+ const key=recording.id+":"+getAssetRevision(recording.id)+":"+recording.durationSeconds+":"+recording.path;
  if(key!==lastDecodedKey){
   lastDecodedKey=key;
   lastDecodedPromise=Promise.resolve().then(loadDecoded).catch(error=>{
@@ -75,12 +77,15 @@ const element=(name,text)=>{
  if(text!==undefined)node.textContent=text;
  return node;
 };
-export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTrimEnd=null,onPreview=()=>{},loadDecoded,onFindStart=null}){
+export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTrimEnd=null,onPreview=()=>{},loadDecoded,onFindStart=null,regionKind="trim",loopFade=0,onLoopFade=null,bounds=null}){
  const duration=recording.durationSeconds-recording.trimSeconds;
- const max=maxTrimSeconds(duration);
+ const max=maxTrimSeconds(duration),lower=bounds?.start??0,upper=bounds?.end??duration;
  let applied=normalizeTrimSeconds(trimStart,duration),value=applied,zoom=zoomByAsset.get(recording.id)||1;
  let end=duration-normalizeTrimSeconds(trimEnd,duration),appliedEnd=end,active=edgeByAsset.get(recording.id)??"start";
- let buffer=null,drag=null;
+ let buffer=null,drag=null,fade=loopFade,appliedFade=loopFade;
+ if(active==="fade"&&!onLoopFade)active="start";
+ const position=()=>active==="fade"?end-fade:active==="end"?end:value;
+ const maxFade=()=>Math.floor(Math.min(.5,(end-value)/2)*1000+1e-7)/1000;
  const wrapper=element("div");wrapper.className="audio-waveform-editor";
  const svg=svgElement("svg",{viewBox:"0 0 480 100",preserveAspectRatio:"none",role:"slider",tabindex:0,"aria-label":"trim start","aria-valuemin":0,"aria-valuemax":max,"aria-valuenow":value,"aria-description":"drag the start marker or use arrow keys to trim the recording start"});
  svg.classList.add("vocal-waveform");
@@ -94,7 +99,11 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
  const endMarker=svgElement("line",{x1:480,x2:480,y1:0,y2:100,stroke:"#ddd","stroke-width":2});
  const endHit=svgElement("rect",{x:456,y:0,width:24,height:100,fill:"transparent",role:"slider",tabindex:0,"aria-label":"trim end"});endHit.classList.add("audio-trim-handle");
  endHit.style.display=endMarker.style.display=endShade.style.display=onTrimEnd?"":"none";
- svg.append(center,path,shade,endShade,marker,endMarker,hit,endHit);
+ const fadeShade=svgElement("rect",{x:0,y:0,width:0,height:100,fill:"#aaa","fill-opacity":".18","pointer-events":"none"});
+ const fadeMarker=svgElement("line",{x1:0,x2:0,y1:0,y2:100,stroke:"#ddd","stroke-dasharray":"3 3","pointer-events":"none"});
+ const fadeHit=svgElement("rect",{x:0,y:0,width:16,height:100,fill:"transparent",role:"slider",tabindex:0,"aria-label":"loop crossfade"});
+ for(const n of [fadeShade,fadeMarker,fadeHit])n.style.display=onLoopFade?"":"none";
+ svg.append(center,path,shade,endShade,fadeShade,marker,endMarker,fadeMarker,hit,endHit,fadeHit);
  const plot=element("div");plot.className="audio-waveform-plot";
  const flag=element("span");flag.append(createUIIcon("trim",14));flag.className="audio-trim-label";flag.setAttribute("aria-hidden","true");
  const endFlag=element("span");endFlag.append(createUIIcon("trim",14));endFlag.className="audio-trim-label";endFlag.style.transform="translateX(-100%) rotate(180deg)";endFlag.setAttribute("aria-hidden","true");endFlag.hidden=!onTrimEnd;
@@ -112,12 +121,14 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
  const timing=element("div");timing.className="vocal-timing";
  const field=element("label");field.className="vocal-number";
  const label=element("span");label.append(createUIIcon("trim",16),element("span","start"));
- const input=element("input");input.type="number";input.min="0";input.max=String(max);input.step=".001";input.value=String(value);
- input.setAttribute("aria-label","Trim start in seconds");input.title="start of kept audio in seconds; enter or leave this field to apply";
+ const input=element("input");input.type="number";input.min=String(lower);input.max=String(Math.min(max,upper-.011));input.step=".001";input.value=String(value);
+ input.setAttribute("aria-label",(regionKind==="loop"?"Loop":"Trim")+" start in seconds");input.title="start of kept audio in seconds; enter or leave this field to apply";
  field.append(label,input);timing.append(field);
  const endField=element("label");endField.className="vocal-number";endField.hidden=!onTrimEnd;
  const endCaption=element("span");endCaption.append(createUIIcon("trim",16),element("span","end"));
- const endInput=element("input");endInput.type="number";endInput.min=".011";endInput.max=String(duration);endInput.step=".001";endInput.value=String(end);endInput.setAttribute("aria-label","Trim end in seconds");endInput.title="end of kept audio in seconds; enter or leave this field to apply";endField.append(endCaption,endInput);timing.append(endField);
+ const endInput=element("input");endInput.type="number";endInput.min=".011";endInput.max=String(upper);endInput.step=".001";endInput.value=String(end);endInput.setAttribute("aria-label",(regionKind==="loop"?"Loop":"Trim")+" end in seconds");endInput.title="end of kept audio in seconds; enter or leave this field to apply";endField.append(endCaption,endInput);timing.append(endField);
+ const fadeField=element("label");fadeField.className="vocal-number";fadeField.hidden=!onLoopFade;
+ const fadeCaption=element("span","crossfade"),fadeInput=element("input");fadeInput.type="number";fadeInput.min="0";fadeInput.step=".001";fadeInput.setAttribute("aria-label","Loop crossfade in seconds");explainLabel(fadeCaption,"sample loop crossfade");fadeField.append(fadeCaption,fadeInput);timing.append(fadeField);
  const actions=element("div");actions.className="trim-actions";
  const detect=element("button");detect.type="button";detect.className="vocal-icon-button";
  setIconButton(detect,"onset","trim the silent lead-in to the first detected sound");detect.hidden=!onFindStart;
@@ -128,20 +139,22 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
  wrapper.append(controls,plot,toolbar);
  const show=()=>{
   // Keep the visible source-time window fixed while dragging the trim handle.
-  const w=drag?.window??waveformWindow(duration,active==="end"?end:value,zoom);
+  const w=drag?.window??waveformWindow(duration,position(),zoom);
   startLabel.textContent=w.start.toFixed(3)+"s";
   endLabel.textContent=w.end.toFixed(3)+"s";
   time.textContent=(Math.abs(value-applied)<.0005?"start ":"preview start ")+value.toFixed(3)+"s · end "+end.toFixed(3)+"s · keep "+(end-value).toFixed(3)+"s";
   const x=waveformXAtTime(value,w),right=waveformXAtTime(end,w);
+  const fx=waveformXAtTime(end-fade,w);fadeShade.setAttribute("x",String(fx));fadeShade.setAttribute("width",String(Math.max(0,right-fx)));fadeMarker.setAttribute("x1",String(fx));fadeMarker.setAttribute("x2",String(fx));fadeHit.setAttribute("x",String(clamp(fx-8,0,464)));fadeHit.setAttribute("aria-valuemin","0");fadeHit.setAttribute("aria-valuemax",String(maxFade()));fadeHit.setAttribute("aria-valuenow",String(fade));fadeHit.setAttribute("aria-valuetext",fade.toFixed(3)+" seconds");fadeInput.max=String(maxFade());if(document.activeElement!==fadeInput)fadeInput.value=fade.toFixed(3);
+  if(regionKind==="loop"){svg.setAttribute("aria-label","loop start");endHit.setAttribute("aria-label","loop end");time.textContent+=" · repeat "+Math.max(0,end-value-fade).toFixed(3)+"s";}
   endShade.setAttribute("x",String(right));endShade.setAttribute("width",String(480-right));endMarker.setAttribute("x1",String(right));endMarker.setAttribute("x2",String(right));endHit.setAttribute("x",String(clamp(right-12,0,456)));endFlag.style.left=(right/480*100)+"%";
-  endHit.setAttribute("aria-valuemin",String(value+.011));endHit.setAttribute("aria-valuemax",String(duration));endHit.setAttribute("aria-valuenow",String(end));endHit.setAttribute("aria-valuetext",end.toFixed(3)+" seconds");
-  input.max=String(Math.max(0,end-.011));endInput.min=String(value+.011);if(document.activeElement!==endInput)endInput.value=end.toFixed(3);restoreEnd.disabled=end===duration&&appliedEnd===duration;
+  endHit.setAttribute("aria-valuemin",String(value+.011));endHit.setAttribute("aria-valuemax",String(upper));endHit.setAttribute("aria-valuenow",String(end));endHit.setAttribute("aria-valuetext",end.toFixed(3)+" seconds");
+  input.max=String(Math.max(0,end-.011));endInput.min=String(value+.011);if(document.activeElement!==endInput)endInput.value=end.toFixed(3);restoreEnd.disabled=end===upper&&appliedEnd===upper;
   flag.style.left=Math.min(92,x/480*100)+"%";
   shade.setAttribute("width",String(x));marker.setAttribute("x1",String(x));marker.setAttribute("x2",String(x));
   hit.setAttribute("x",String(clamp(x-12,0,456)));
   svg.setAttribute("aria-valuenow",String(value));svg.setAttribute("aria-valuetext",value.toFixed(3)+" seconds");
   if(document.activeElement!==input)input.value=value.toFixed(3);
-  restore.disabled=value===0&&applied===0;
+  restore.disabled=value===lower&&applied===lower;
   const first=w.start+recording.trimSeconds,last=w.end+recording.trimSeconds;
   const levels=buffer?
    waveformPeaksFromBuffer(buffer,first,last):
@@ -153,22 +166,25 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
  };
  const preview=(next,edge=active)=>{
   active=edge;edgeByAsset.set(recording.id,active);
-  if(edge==="end")end=Math.round(clamp(next,value+.011,duration)*1000)/1000;
-  else value=Math.min(normalizeTrimSeconds(next,duration),Math.floor((end-.011)*1000)/1000);
+  if(edge==="fade")fade=Math.round(clamp(end-next,0,maxFade())*1000)/1000;
+  else if(edge==="end")end=Math.round(clamp(next,value+.011,upper)*1000)/1000;
+  else value=Math.max(lower,Math.min(normalizeTrimSeconds(next,duration),Math.floor((end-.011)*1000)/1000));
   show();onPreview(value);
  };
  wrapper.setTrimPreview=preview;
  const commit=(next,edge=active)=>{
   preview(next,edge);
-  const changed=edge==="end"?end!==appliedEnd:value!==applied;
-  if(edge==="end")appliedEnd=end;else applied=value;
-  show();if(changed){if(edge==="end")onTrimEnd?.(Math.round((duration-end)*1000)/1000);else onTrim(value);}
+  const changed=edge==="fade"?fade!==appliedFade:edge==="end"?end!==appliedEnd:value!==applied;
+  if(edge==="fade")appliedFade=fade;else if(edge==="end")appliedEnd=end;else applied=value;
+  show();if(changed){if(edge==="fade")onLoopFade?.(fade);else if(edge==="end")onTrimEnd?.(Math.round((duration-end)*1000)/1000);else onTrim(value);}
  };
+ fadeHit.addEventListener("focus",()=>{active="fade";edgeByAsset.set(recording.id,active);show();});
+ fadeInput.addEventListener("change",()=>{if(fadeInput.reportValidity()&&Number.isFinite(fadeInput.valueAsNumber))commit(end-fadeInput.valueAsNumber,"fade");});
  const typed=()=>{if(input.reportValidity()&&Number.isFinite(input.valueAsNumber))commit(input.valueAsNumber,"start");};
  input.addEventListener("input",()=>{if(input.validity.valid&&Number.isFinite(input.valueAsNumber))preview(input.valueAsNumber,"start");});
  input.addEventListener("change",typed);
  input.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();typed();}});
- restore.addEventListener("click",()=>commit(0,"start"));restoreEnd.addEventListener("click",()=>commit(duration,"end"));
+ restore.addEventListener("click",()=>commit(lower,"start"));restoreEnd.addEventListener("click",()=>commit(upper,"end"));
  const typedEnd=()=>{if(endInput.reportValidity()&&Number.isFinite(endInput.valueAsNumber))commit(endInput.valueAsNumber,"end");};
  endInput.addEventListener("input",()=>{if(endInput.validity.valid&&Number.isFinite(endInput.valueAsNumber))preview(endInput.valueAsNumber,"end");});endInput.addEventListener("change",typedEnd);endInput.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();typedEnd();}});svg.addEventListener("focus",e=>{if(e.target===svg){active="start";edgeByAsset.set(recording.id,active);show();}});endHit.addEventListener("focus",()=>{active="end";edgeByAsset.set(recording.id,active);show();});
  detect.addEventListener("click",async()=>{
@@ -185,16 +201,16 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
   if(drag||e.pointerType==="mouse"&&e.button!==0)return;
   e.preventDefault();
   const rect=svg.getBoundingClientRect();
-  const currentWindow=waveformWindow(duration,active==="end"?end:value,zoom);
+  const currentWindow=waveformWindow(duration,position(),zoom);
   const px=(e.clientX-rect.left)/rect.width*480;
-  active=onTrimEnd&&(e.target===endHit||e.target!==hit&&Math.abs(px-waveformXAtTime(end,currentWindow))<Math.abs(px-waveformXAtTime(value,currentWindow)))?"end":"start";edgeByAsset.set(recording.id,active);
-  const window=waveformWindow(duration,active==="end"?end:value,zoom);
+  active=onLoopFade&&e.target===fadeHit?"fade":onTrimEnd&&(e.target===endHit||e.target!==hit&&Math.abs(px-waveformXAtTime(end,currentWindow))<Math.abs(px-waveformXAtTime(value,currentWindow)))?"end":"start";edgeByAsset.set(recording.id,active);
+  const window=currentWindow;
   const pointerX=(e.clientX-rect.left)/rect.width*480;
-  drag={pointerId:e.pointerId,initial:active==="end"?end:value,window,left:rect.left,width:rect.width,
-   grabOffset:e.target===hit||e.target===endHit?pointerX-waveformXAtTime(active==="end"?end:value,window):0};
-  (active==="end"?endHit:svg).focus({preventScroll:true});
+  drag={pointerId:e.pointerId,initial:position(),window,left:rect.left,width:rect.width,
+   grabOffset:e.target===hit||e.target===endHit||e.target===fadeHit?pointerX-waveformXAtTime(position(),window):0};
+  (active==="fade"?fadeHit:active==="end"?endHit:svg).focus({preventScroll:true});
   svg.setPointerCapture(e.pointerId);
-  if(e.target!==hit&&e.target!==endHit)preview(waveformTimeAtX(pointerX,window));
+  if(e.target!==hit&&e.target!==endHit&&e.target!==fadeHit)preview(waveformTimeAtX(pointerX,window));
  });
  svg.addEventListener("pointermove",e=>{
   if(!drag||e.pointerId!==drag.pointerId)return;
@@ -206,22 +222,22 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
   const previous=drag.initial;
   drag=null;
   if(e.type!=="pointerup"){preview(previous);return;}
-  show();commit(active==="end"?end:value);
+  show();commit(position());
  };
  svg.addEventListener("pointerup",finish);svg.addEventListener("pointercancel",finish);
  svg.addEventListener("lostpointercapture",finish);
  svg.addEventListener("keydown",e=>{
-  let target;const position=active==="end"?end:value;
+  let target;const at=position();
   const delta=e.shiftKey?.01:.001;
-  if(e.key==="ArrowLeft"||e.key==="ArrowDown")target=position-delta;
-  else if(e.key==="ArrowRight"||e.key==="ArrowUp")target=position+delta;
-  else if(e.key==="PageDown")target=position-.05;
-  else if(e.key==="PageUp")target=position+.05;
-  else if(e.key==="Home")target=active==="end"?value+.011:0;
-  else if(e.key==="End")target=active==="end"?duration:Math.max(0,end-.011);
+  if(e.key==="ArrowLeft"||e.key==="ArrowDown")target=at-delta;
+  else if(e.key==="ArrowRight"||e.key==="ArrowUp")target=at+delta;
+  else if(e.key==="PageDown")target=at-.05;
+  else if(e.key==="PageUp")target=at+.05;
+  else if(e.key==="Home")target=active==="fade"?end-maxFade():active==="end"?value+.011:lower;
+  else if(e.key==="End")target=active==="fade"?end:active==="end"?upper:Math.max(lower,end-.011);
   else if(e.key==="Escape"&&drag){const previous=drag.initial;drag=null;preview(previous);e.preventDefault();return;}
   else return;
-  e.preventDefault();target=active==="end"?clamp(target,value+.011,duration):normalizeTrimSeconds(target,duration);
+  e.preventDefault();target=active==="fade"?clamp(target,end-maxFade(),end):active==="end"?clamp(target,value+.011,upper):Math.max(lower,normalizeTrimSeconds(target,duration));
   commit(target);
  });
  show();

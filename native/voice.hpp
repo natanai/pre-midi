@@ -11,6 +11,7 @@
 #include "modulation.hpp"
 #include "drive.hpp"
 #include "sample.hpp"
+#include "sample-loop.hpp"
 #include "processing-graph.hpp"
 #include "automation.hpp"
 #include "post-processing.hpp"
@@ -24,6 +25,7 @@ struct Plan {
  ProcessingGraph processing;ParameterAutomation parameterAutomation;
  double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0,delayMix=0,delayTime=.24,delayFeedback=.26;
  double drive=0,vibratoRate=5,vibratoDepth=0,vibratoDelay=0,tone=0,toneRate=2,tremolo=0,tremoloRate=5;
+ bool sampleLoop=false;double loopStart=0,loopEnd=0,loopFade=0;
  unsigned kind=0,asset=0;double playbackRate=1,sampleOffset=0,sampleLimit=301;double filterMix=1,driveMix=1,stereoWidth=1,msBalance=0,delayTone=20000;bool delayPingPong=false;unsigned eqPosition=0,filterStages=1;double eqMix=1;bool bypassEq=false;std::array<EqBand,8> eqBands{};bool bypassFilter=false,bypassDrive=false,driveFirst=false;const SampleData* sample=nullptr;
  std::uint32_t version=1,routeCount=0,automationCount=0;std::array<Event,36> automation{};double off=1,pitch=60,velocity=1;std::array<Route,16> routes{};
  std::uint32_t filterType=0;std::array<Oscillator,2> oscillators{};
@@ -42,7 +44,7 @@ class Voice {
  SampleChannelState* extraChannels=nullptr;
  unsigned extraCount()const noexcept{return plan.kind&&plan.sample?(plan.sample->channels==4?2:plan.sample->channels==6?4:0):0;}
  void resetChannels()noexcept{if(extraChannels)for(unsigned i=0;i<extraCount();i++)extraChannels[i]=SampleChannelState(filter,recipe);}
- double samplePosition=0,sampleStep=1;std::uint64_t sampleQuantum=UINT64_MAX;
+ SampleLoop loop;double samplePosition=0,sampleStep=1;std::uint64_t sampleQuantum=UINT64_MAX;
  float envelope(double t) const noexcept {
   if(t<plan.events[0].time)return 0;
   double value=plan.events[0].value;
@@ -90,6 +92,7 @@ public:
  struct Probe {float wave0=0,cents0=0,frequency0=0;};Probe probe{};
 #endif
  Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr},std::uint64_t initialFrame=0,const VoicePreparation* prepared=nullptr,const DriveRecipe* driveRecipe=nullptr,const SineLfoTable* lfo=nullptr,SampleChannelState* additional=nullptr,ProcessingGraphState* graphState=nullptr,const ProcessingGraphRecipe* graphRecipe=nullptr,const PreparedPostProcessing* postPrepared=nullptr,float* postDelay=nullptr) noexcept:plan(input),postRecipe(prepared?prepared->post:postPrepared),processingState(graphState),processingRecipe(prepared?prepared->processing:graphRecipe),rate(sampleRate),frame(initialFrame),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity,prepared?&prepared->alpha:nullptr,prepared?prepared->lfoBank:lfo),drive(prepared?prepared->drive:driveRecipe),driveRight(prepared?prepared->drive:driveRecipe),recipe(prepared?prepared->drive:driveRecipe),lfoBank(prepared?prepared->lfoBank:lfo),banks(waveBanks),extraChannels(additional){
+  if(plan.sampleLoop&&plan.sample)loop=SampleLoop(plan.loopStart,plan.loopEnd,plan.loopFade,plan.sample->rate);
   for(unsigned n=0;n<plan.postCount;n++)postState[n].reset(plan.post[n],postRecipe?postRecipe->motion[n].get():nullptr,static_cast<unsigned>(sampleRate),postDelay?postDelay+n*postDelayFrames(static_cast<unsigned>(sampleRate))*2:nullptr);
   if(processingState&&processingRecipe)processingState->reset(plan.processing,*processingRecipe,static_cast<unsigned>(sampleRate));
   firstFrame=static_cast<std::uint64_t>(std::ceil(plan.start*rate-1e-9));lastSourceFrame=static_cast<std::uint64_t>(std::ceil(plan.sourceEnd*rate-1e-9));lastGraphFrame=static_cast<std::uint64_t>(std::ceil(plan.graphEnd*rate-1e-9));
@@ -141,8 +144,10 @@ public:
       sampleStep=std::clamp(static_cast<float>(plan.playbackRate)*std::pow(2.,detune/1200.)*plan.sample->rate/rate,0.,1024.);
      }
      if(beginning)samplePosition=plan.sampleOffset*plan.sample->rate+std::max(0.,t-plan.start)*rate*sampleStep;
+     if(plan.sampleLoop)samplePosition=loop.wrap(samplePosition);
      if(samplePosition<plan.sampleLimit*plan.sample->rate){
-      mix=plan.sample->at(samplePosition,0);mixRight=plan.sample->at(samplePosition,std::min(1u,plan.sample->channels-1));for(unsigned ch=0;ch<extraCount();ch++)additional[ch]=plan.sample->at(samplePosition,ch+2);
+      const auto at=[&](unsigned ch){return plan.sampleLoop?loop.at(*plan.sample,samplePosition,ch):plan.sample->at(samplePosition,ch);};
+      mix=at(0);mixRight=at(std::min(1u,plan.sample->channels-1));for(unsigned ch=0;ch<extraCount();ch++)additional[ch]=at(ch+2);
      }
      samplePosition+=sampleStep;
     }else for(std::size_t j=0;j<2;j++){

@@ -1,3 +1,4 @@
+import {sampleLoopRegion,sampleLife} from './src/dsp/sample-loop.js';
 import {createAnalysisQueue} from './src/hosts/analysis-queue.js';
 import {sampleSourceRequest} from './src/dsp/source-processing.js';
 import {postTailSeconds} from './src/dsp/post-processing.js';
@@ -152,14 +153,15 @@ async function webAudio(patch,beat,level,pitch,automation){
  let buffer=null,zone=null;
  if(patch.type==="sample"){
   zone=sampleForNote(patch,pitch,1);
-  if(!zone||!beat?.samples?.some(asset=>asset.id===zone.assetId))throw Error("Recording is missing from this beat");
+  if(!zone){const seconds=scopeWindowSeconds(patch,0),ctx=new OfflineAudioContext(2,Math.ceil(seconds*RATE),RATE);return {buffer:ctx.createBuffer(2,Math.ceil(seconds*RATE),RATE),seconds,clipped:false};}
+  if(!beat?.samples?.some(asset=>asset.id===zone.assetId))throw Error("Recording is missing from this beat");
   const bytes=getAsset(zone.assetId);
   if(!bytes)throw Error("Recording bytes are unavailable");
   const decoder=new OfflineAudioContext(2,1,RATE);
   buffer=await decoder.decodeAudioData(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
  }
  const request=buffer?sampleSourceRequest(patch,{pitch,velocity:1},zone,buffer.duration):null,original=request?request.region.sourceLength*request.recipe.time/request.rate:0;
- const life=buffer?(patch.oneShot?original:Math.min(original,HOLD+patch.release)):0;
+ const life=buffer?sampleLife(patch,original,HOLD,sampleLoopRegion(zone,request,patch.oneShot)):0;
  const seconds=scopeWindowSeconds(patch,life),context=new OfflineAudioContext(2,Math.ceil(seconds*RATE),RATE);
  await prepareProcessorMix(context,patch);
  const voice={patch,volume:level},note={pitch,velocity:1};
@@ -184,7 +186,7 @@ async function nativeAudio(patch,beat,level,pitch,automation,isCurrent){
  const zone=patch.type==="sample"?sampleForNote(patch,pitch,1):null;
  const stored=zone?assets.get(zone.assetId):null;
  const request=stored?sampleSourceRequest(patch,{pitch,velocity:1},zone,stored.duration):null,original=request?request.region.sourceLength*request.recipe.time/request.rate:0;
- const life=zone?(patch.oneShot?original:Math.min(original,HOLD+patch.release)):0;
+ const life=zone?sampleLife(patch,original,HOLD,sampleLoopRegion(zone,request,patch.oneShot)):0;
  const seconds=scopeWindowSeconds(patch,life),frames=Math.ceil(seconds*rate);
  const pcm=new Float32Array(await renderNative(await prepareNativePlans([event],assets,60/(beat?.bpm??120)/4,isCurrent),
   {rate,frames,cycle:seconds,gain:1}));

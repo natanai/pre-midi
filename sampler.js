@@ -1,3 +1,6 @@
+import {sampleZoneContains,validateSampleRange} from './src/dsp/sample-mapping.js';
+import {sampleLoopRegion,sampleLife} from './src/dsp/sample-loop.js';
+import {prepareSampleLoop,preparedSampleLoop} from './src/hosts/web/sample-loop.js';
 import {validateSourceProcessing,sampleSourceRequest,needsSourceProcessing} from './src/dsp/source-processing.js';
 import {prepareSourceBuffer,preparedSourceBuffer} from './src/hosts/web/source-processing.js';
 import {validateReverb} from './src/dsp/reverb.js';
@@ -17,6 +20,7 @@ import {validateSampleSlice,sampleSourceRegion} from "./sampleSlice.js";
 // Browser library URLs are staging inputs; .premidi files hold relative audio paths.
 export const MAX_SAMPLE_BYTES=MAX_ASSET_BYTES;
 export const MAX_BEAT_BYTES=1_000_000;
+const zoneFields=new Set(['assetId','root','velocity','string','startSeconds','durationSeconds','loop','keyLow','keyHigh','velocityLow','velocityHigh']);
 const audioTypes={"audio/wav":"wav","audio/ogg":"ogg","audio/mpeg":"mp3"};
 export function validateSampleAsset(asset){
  if(!asset||typeof asset!=="object"||!/^[A-Za-z0-9_-]{1,128}$/.test(asset.id||""))return "Sample needs a safe ID.";
@@ -69,7 +73,7 @@ export function sampleZones(patch){
  return Array.isArray(patch?.zones)?patch.zones:[];
 }
 export function sampleForNote(patch,pitch,velocity=.8){
- const zones=sampleZones(patch);
+ const zones=sampleZones(patch).filter(zone=>sampleZoneContains(zone,pitch,velocity));
  const semitones=pitch+(patch.transpose||0);
  const closest=zones.reduce((distance,zone)=>Math.min(distance,Math.abs(zone.root-semitones)),Infinity);
  const layer=zones.filter(zone=>Math.abs(zone.root-semitones)===closest);
@@ -89,11 +93,11 @@ export function validateSamplerPatch(patch){
   if(patch[key]!==undefined&&!validParameterValue("effects."+key,patch[key],"sample"))errors.push("Invalid sample delay.");
  if(typeof patch.presetId!=="string"||patch.presetId.length>100)errors.push("Invalid sample preset.");
  if(!Array.isArray(patch.zones)||patch.zones.length<1||patch.zones.length>64||
-   patch.zones.some(zone=>typeof zone?.assetId!=="string"||!zone.assetId||
+   patch.zones.some(zone=>!zone||typeof zone!=='object'||Array.isArray(zone)||Object.keys(zone).some(key=>!zoneFields.has(key))||typeof zone?.assetId!=="string"||!zone.assetId||
     !validParameterValue("zones.root",zone.root,"sample")||
     (zone.velocity!==undefined && (!Number.isFinite(zone.velocity)||zone.velocity<0||zone.velocity>1))||
     (zone.string!==undefined && (typeof zone.string!=="string"||zone.string.length>20))||
-    validateSampleSlice(zone)))errors.push("Invalid sample key mapping or source excerpt.");
+    validateSampleSlice(zone)||validateSampleRange(zone)))errors.push("Invalid sample key mapping or source excerpt.");
  if(patch.oneShot!==undefined&&typeof patch.oneShot!=="boolean")errors.push("Invalid one-shot playback mode.");
  if(typeof patch.followPitch!=="boolean")errors.push("Invalid pitch-follow mode.");
  errors.push(...validateMovement(patch.movement));
@@ -164,7 +168,10 @@ export async function decodeSamples(context,beat,cache,only=usedSampleIds(beat),
 }
 export async function prepareSampleSource(context,cache,patch,note,options){
  const zone=sampleForNote(patch,note.pitch,note.velocity),buffer=zone&&cache.get(zone.assetId);if(!buffer?.getChannelData)return;
- const request=sampleSourceRequest(patch,note,zone,buffer.duration);return prepareSourceBuffer(context,cache,zone.assetId,request,options);
+ const request=sampleSourceRequest(patch,note,zone,buffer.duration);await prepareSourceBuffer(context,cache,zone.assetId,request,options);
+ if(options?.isCurrent&&!options.isCurrent())throw Error('Source preparation cancelled');
+ const source=preparedSourceBuffer(cache,zone.assetId,request),region=needsSourceProcessing(request.recipe)?{offset:0,sourceLength:source.duration}:request.region;
+ return prepareSampleLoop(context,zone,source,region,sampleLoopRegion(zone,request,patch.oneShot,region.offset+region.sourceLength));
 }
 const peakLevels=new WeakMap();
 function sampleNormalization(buffer){
@@ -189,16 +196,18 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
  const owner={sources:[src],nodes:[amp,pan,gate]};
  const recordedGain=patch.preserveDynamics?3.5:sampleNormalization(original);
  const gain=patch.audioMode==="clip"?Math.min(2,inst.volume*patch.gain*event.velocity):Math.min(2,inst.volume*patch.gain*event.velocity*.7*recordedGain);
- src.buffer=buffer;src.playbackRate.value=playbackRate;
+ src.playbackRate.value=playbackRate;
  const motion=movement(patch);
  pan.pan.value=patch.pan;
  const region=processed?{offset:0,sourceLength:buffer.duration,length:buffer.duration/playbackRate}:sampleSourceRegion(zone,buffer.duration,playbackRate);
- const life=patch.oneShot?region.length:Math.min(region.length,Math.max(.015,duration+patch.release));
+ const loop=sampleLoopRegion(zone,request,patch.oneShot,region.offset+region.sourceLength),loopSource=preparedSampleLoop(zone,buffer,region,loop),life=sampleLife(patch,region.length,duration,loop);
+ src.buffer=loopSource?.buffer??buffer;
+ if(loopSource){src.loop=true;src.loopStart=loopSource.start;src.loopEnd=loopSource.end;}
  // The whole recording keeps pitch modulation, not only the short grid note.
  schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,life),0,owner,{controlRate:'k'});
  const at=start+Math.min(patch.attack,life*.5);
  const releaseStart=patch.oneShot?start+Math.max(0,life-patch.release):
-  patch.followPitch?Math.min(start+duration,start+life-.01):start+life-.01;
+  loop?start+duration:patch.followPitch?Math.min(start+duration,start+life-.01):start+life-.01;
  if(patch.audioMode==="clip"){
   for(const e of recordingEnvelope(start,life,gain,patch.attack,patch.release))
    amp.gain[e.kind?"linearRampToValueAtTime":"setValueAtTime"](e.value,e.time);
@@ -207,7 +216,7 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
   amp.gain.setValueAtTime(gain,Math.max(at+.001,releaseStart));amp.gain.linearRampToValueAtTime(0,start+life);
  }
  const graph=connectRecordedAudio(context,{source:src,amp,gate,pan,out,patch:{...patch,automation:automation??patch.automation},start,duration:life,owner,expression:event,unit,timeline});
- src.start(start,region.offset,region.sourceLength);src.stop(start+life+.01);
+ if(loopSource)src.start(start,loopSource.offset);else src.start(start,region.offset,region.sourceLength);src.stop(start+life+.01);
  const voice=ownVoice(context,{...owner,gate,start,release:Math.max(start,Math.min(start+life,releaseStart)),end:start+life+.01+graph.postTail+(session?0:graph.tail)});
  if(session)session.adopt(voice);graph.connectDelay(session,voice);return voice;
 }

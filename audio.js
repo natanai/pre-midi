@@ -1,3 +1,4 @@
+import {sampleLoopRegion,sampleLife} from './src/dsp/sample-loop.js';
 import {createPreparedDocument} from './src/hosts/web/prepared-document.js';
 import {sampleSourceRequest} from './src/dsp/source-processing.js';
 import {createEffectsBus} from './src/hosts/web/effects-bus.js';
@@ -508,7 +509,7 @@ export function renderEndSeconds(document,events,decoded){
    const zone=sampleForNote(patch,resolved.note.pitch,event.note.velocity),buffer=zone&&decoded.get(zone.assetId);
    const request=zone&&buffer?sampleSourceRequest(patch,resolved.note,zone,buffer.duration):null;
    const length=request?request.region.sourceLength*request.recipe.time/request.rate:0;
-   const life=patch.oneShot?length:Math.min(length,Math.max(.015,event.duration+patch.release));
+   const life=sampleLife(patch,length,event.duration,request?sampleLoopRegion(zone,request,patch.oneShot):null);
    end=Math.max(end,event.at+life+postTailSeconds(patch,secondsPerStep(document))+effectTailSeconds(effectiveDelayEffects(patch,patch,secondsPerStep(document)))+.03);
   }else{
    const duration=event.instrument.layout==="rack"?Math.max(.015,patch.envelope.attack+patch.envelope.decay):event.duration;

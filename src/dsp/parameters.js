@@ -85,6 +85,13 @@ export const SOUND_PARAMETERS=freeze([
  parameter("transpose","semitones",-24,24,0,1,"semitones",{contexts:recorded,scope:"source",interpolation:"step"}),
  parameter("strumMs","milliseconds",-25,25,0,1,"number",{contexts:["sample"],scope:"source"}),
  parameter("zones.root","midi_note",0,127,60,1,"number",{contexts:["sample"],scope:"source",integer:true,interpolation:"step"}),
+ parameter("zones.loop.start","seconds",0,300.5,0,.001,"seconds",{contexts:["sample"],scope:"source"}),
+ parameter("zones.loop.end","seconds",.011,300.5,1,.001,"seconds",{contexts:["sample"],scope:"source"}),
+ parameter("zones.loop.crossfade","seconds",0,.5,0,.001,"seconds",{contexts:["sample"],scope:"source"}),
+ parameter("zones.keyLow","midi_note",0,127,0,1,"number",{contexts:["sample"],scope:"source",integer:true,interpolation:"step"}),
+ parameter("zones.keyHigh","midi_note",0,127,127,1,"number",{contexts:["sample"],scope:"source",integer:true,interpolation:"step"}),
+ parameter("zones.velocityLow","normalized",0,1,0,.01,"percent",{contexts:["sample"],scope:"source"}),
+ parameter("zones.velocityHigh","normalized",0,1,1,.01,"percent",{contexts:["sample"],scope:"source"}),
  ...["followPitch","oneShot","preserveDynamics"].map(id=>({
   id,unit:"boolean",default:id==="followPitch",interpolation:"step",contexts:["sample"],scope:"source",bypass:{mode:"none"}
  }))

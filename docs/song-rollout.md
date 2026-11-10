@@ -328,3 +328,7 @@ This source remains behind the existing streaming opt-in and is **not in the pub
 ### Shared sampler source regions (2026-11-10)
 
 Sampled Sounds now mount the existing vocal waveform editor in the canonical Inspector, with per-zone selection, start/end crop, zoom and numerical/keyboard editing. Crops preserve the external recording and mapping; the existing four-second excerpt bound remains. Source disclosure decodes lazily through the shared native-aware decoder. Sustain loops/crossfades remain open under SE-14. This source milestone is newer than Windows preview.34.
+
+### Sampler sustain and zone ranges (2026-11-10)
+
+The source editor adds sustain-loop endpoints/overlap and key/velocity regions to the common sample/vocal waveform foundation. Native/browser note gates, release, reverse/stretch, preview, scope and export lengths share the loop contract. Source gaps render silence. The current packet is v23, without an older reader. Frame/overlap bounds, an independent tap oracle, stereo/pitch/source-transform PCM, seek/block continuity, shared editor behavior and zero-allocation 48 kHz streaming pass focused checks. Preview.35 packages the milestone; remaining broader work stays in docs/synthesis-roadmap.json.

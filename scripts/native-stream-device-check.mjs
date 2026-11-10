@@ -50,8 +50,9 @@ try{
   const handles=new Map([["recorded",asset]]);
   const samplePatch={type:"sample",presetId:"stream-device",zones:[{assetId:"recorded",root:60}],
    followPitch:true,oneShot:true,transpose:0,gain:.8,attack:0,release:.025,pan:0};
+  if(process.env.PREMIDI_STREAM_SAMPLE_LOOP==='1'){samplePatch.oneShot=false;samplePatch.zones[0].loop={start:.025,end:.11,crossfade:.01};}
   const sampleAt=start=>planNativeSample({patch:samplePatch,volume:.16},
-   {pitch:60,velocity:.9},start*scale,.05*scale,handles);
+   {pitch:60,velocity:.9},start*scale,(process.env.PREMIDI_STREAM_SAMPLE_LOOP==='1'?.18:.05)*scale,handles);
   const parts=[
    [tone(62,.018,.34),tone(67,.102,.11)], // delayed strum: authored in page one
    [tone(73,.090137,.12),sampleAt(.131)],

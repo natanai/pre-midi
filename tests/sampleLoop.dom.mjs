@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+const {Window}=await import(process.env.DOM_MODULE??'happy-dom'),w=new Window();
+for(const key of ['window','document','HTMLElement','Element','SVGElement','Event','KeyboardEvent','MouseEvent','CustomEvent','Node','getComputedStyle','requestAnimationFrame','cancelAnimationFrame'])if(key in w)Object.defineProperty(globalThis,key,{value:typeof w[key]==='function'&&['getComputedStyle','requestAnimationFrame','cancelAnimationFrame'].includes(key)?w[key].bind(w):w[key],configurable:true});
+const {renderAudioWaveform}=await import('../audioWaveform.js');
+try{
+ const edits=[];const editor=renderAudioWaveform({recording:{id:'loop-test',durationSeconds:2,trimSeconds:0},regionKind:'loop',trimStart:.2,trimEnd:.5,loopFade:.1,onTrim:value=>edits.push(['start',value]),onTrimEnd:value=>edits.push(['end',value]),onLoopFade:value=>edits.push(['fade',value])});document.body.append(editor);
+ const fade=editor.querySelector('[aria-label="loop crossfade"]');fade.focus();fade.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));assert.deepEqual(edits.at(-1),['fade',.101]);
+ const input=editor.querySelector('[aria-label="Loop crossfade in seconds"]');input.value='.15';/* happy-dom misclassifies valid decimal steps through floating-point modulo */input.reportValidity=()=>true;input.dispatchEvent(new Event('change'));assert.deepEqual(edits.at(-1),['fade',.15]);
+ const start=editor.querySelector('[aria-label="loop start"]');start.focus();start.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));assert.deepEqual(edits.at(-1),['start',.201]);
+ const end=editor.querySelector('[aria-label="loop end"]');end.focus();end.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));assert.deepEqual(edits.at(-1),['end',.501]);
+ const restored=renderAudioWaveform({recording:{id:'loop-test',durationSeconds:2,trimSeconds:0},onTrim:()=>{}});document.body.append(restored);assert.equal(restored.querySelector('.vocal-waveform').getAttribute('aria-label'),'trim start');assert.equal(restored.querySelector('[aria-label="loop crossfade"]').style.display,'none');
+ const zoomed=renderAudioWaveform({recording:{id:'zoom-loop-test',durationSeconds:1,trimSeconds:0},regionKind:'loop',trimStart:.2,trimEnd:.65,loopFade:.05,onTrim:()=>{},onTrimEnd:()=>{},onLoopFade:()=>{}});document.body.append(zoomed);
+ const zoom=zoomed.querySelector('[aria-label="waveform zoom"]');zoom.value='4';zoom.dispatchEvent(new Event('change'));const clock=zoomed.querySelector('.audio-waveform-tools').firstElementChild.textContent,plot=zoomed.querySelector('.vocal-waveform');plot.getBoundingClientRect=()=>({left:0,width:480});plot.setPointerCapture=()=>{};
+ zoomed.querySelector('[aria-label="loop end"]').dispatchEvent(new w.PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',button:0,pointerId:1,clientX:408}));assert.equal(zoomed.querySelector('.audio-waveform-tools').firstElementChild.textContent,clock,'switching trim handles must retain the visible zoom window throughout the drag');plot.dispatchEvent(new w.PointerEvent('pointercancel',{pointerId:1}));
+ console.log('PASS shared waveform loop start/end/crossfade keyboard and numerical edits, plus ordinary crop mode');
+}finally{await w.happyDOM.close();}

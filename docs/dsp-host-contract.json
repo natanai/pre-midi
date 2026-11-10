@@ -113,7 +113,7 @@
     "runtime": "Plans carry resolved postProcessing recipes. Free-Hz rate and musical sync remain authored; DSP rate resolves with the same modulationRate function used by musical LFOs. Each note/Clip restarts at its authored phase.",
     "state": "Native control prepares/deduplicates immutable coefficient tables and optional per-voice delay storage. The callback borrows them through voice retirement and page tails. The matching browser worklet has the same phase and state semantics.",
     "tail": "graphEnd includes the sum of active serial modulation-effect tails; audibleEnd adds the longest shared send tail. Source end/envelope do not change. See docs/native-audio.md for bounds and qualification.",
-    "wire": "Current sample execution v22; ordered tags 0..3 dynamics, 4..7 chorus/flanger/phaser/auto-pan, 8/9 ring modulation/frequency shift. Only the current decoder is supported."
+    "wire": "Current sample execution v23; ordered tags 0..3 dynamics, 4..7 chorus/flanger/phaser/auto-pan, 8/9 ring modulation/frequency shift. Only the current decoder is supported. The current sample packet ends with a sustain-loop flag and three doubles (start, end, crossfade), quantized to output frames before encoding."
   },
   "source_processing": {
     "authority": "src/dsp/parameters.js: SOURCE_PROCESSING_PARAMETERS; src/dsp/source-processing.js",
@@ -121,5 +121,15 @@
     "timing": "Source crop precedes reverse and pitch/time/formants. Pitch mode declares rate or independent behavior; source elapsed clocks, fades, Clip duration and WAV end calculations share this mapping.",
     "bounds": "Time .5..2, effective independent pitch +/-48 semitones, formant +/-12. Spectral mono/stereo only. Original assets are unchanged; recipes stay editable.",
     "open": "Monophonic correction/tuning and physical/listening acceptance remain unfinished."
+  },
+  "sample_source": {
+    "authority": "src/dsp/sample-loop.js, src/dsp/sample-mapping.js and the source parameter authority",
+    "persistence": "Optional zone.loop = {start,end,crossfade}, in absolute original-source seconds. Optional keyLow/keyHigh (inclusive 0..127) and velocityLow/velocityHigh (inclusive 0..1); absent ranges cover all notes/velocities. Bytes stay in external assets.",
+    "selection": "Filter on played key and velocity first, then choose the nearest recorded pitch/take with the existing stable tie order. Unmapped notes are silent in both hosts. Transpose does not move the played-key range.",
+    "loop": "The source intro plays once. The tail/head overlap is linear; the effective repeat begins at start+crossfade, so its period is end-start-crossfade. A sustained note loops through its release fade, then retires. One-shot ignores the stored loop.",
+    "mapping": "Crop precedes reverse/stretch; loop endpoints and crossfade follow the same original-source mapping. Runtime points are quantized to output frames, with fade limited to half the quantized span.",
+    "execution": "Native uses immutable SampleData and fixed-size loop state, with no callback allocation. Browser preparation copies only the source intro/loop into a weakly owned AudioBuffer, adds the boundary interpolation tap, and uses AudioBufferSource looping. Decoding/preparation occurs before musical snapshot publication.",
+    "limits": "Original-source loop at least 11 ms; crossfade up to half its span or 500 ms. Existing crop/asset/source-processing/render bounds remain. Browser loop preparation is capped at 256 MiB PCM.",
+    "qualification": "Independent tap oracle; native/browser stereo, pitch/glide/vibrato, reverse/stretch and fractional-boundary PCM, seek/block continuity; 48 kHz native streaming loops/seek/edit/count-in/capture with zero callback allocations. Physical Windows/listening acceptance is separate."
   }
 }

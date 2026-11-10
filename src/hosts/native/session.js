@@ -68,7 +68,7 @@ export function nativeRequiredAssets(events){
   if(!resolved)throw Error('Native playback found an unresolved sound identity');
   const errors=validatePatch(resolved.voice.patch);if(errors.length)throw Error(errors.join('; '));
   if(resolved.voice.patch.type==='sample'){
-   const zone=sampleForNote(resolved.voice.patch,resolved.note.pitch,resolved.note.velocity);if(!zone)throw Error('Native sample has no matching zone');ids.add(zone.assetId);
+   const zone=sampleForNote(resolved.voice.patch,resolved.note.pitch,resolved.note.velocity);if(zone)ids.add(zone.assetId);
   }
  }
  return ids;

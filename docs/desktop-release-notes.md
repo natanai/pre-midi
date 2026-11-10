@@ -1,29 +1,28 @@
-# pre-midi 0.14.1-preview.34 - Windows portable preview
+# pre-midi 0.14.1-preview.35 - Windows portable preview
 
 Windows 11 x64 portable ZIP, with manual updates and folder-local data.
 
-## Changes since preview.31
+## Changes since preview.34
 
-- Chorus, flanger, phaser, auto-pan, ring modulation and frequency shifting in the shared processing Inspector, with direct illustrations, ordinary controls and native/browser rendering.
-- Independent pitch and time for recorded Sounds and vocals, with formant preservation/shift and reversible source playback. Choose pitch + speed or independent pitch; stretch and transpose remain editable while the original recording stays untouched.
-- Source treatment follows trims, source elapsed time, note pitch-follow, Clip duration/tempo, audition, measured scope, native revisions and WAV export. Native source preparation uses C++; browser preparation uses a Worker/WASM build of the same library.
-- Ring/frequency shifting use a bounded FIR with matched dry/wet delay and explicit frequency-boundary filtering. These stages add 64 frames each; arrangement-wide latency compensation remains unfinished.
-- Obsolete scope previews are skipped before entering native preparation. Existing urgent native pause/resume/Stop, transport ownership and paused-seek safeguards are retained.
-- Repairs shared illustration handle positioning, consistent pointer coordinates, keyboard access and accessible graph actions. Actual packaged WebView geometry is checked at two widths.
-- Includes the Signalsmith Stretch/Linear notices and individual licenses in the portable ZIP; preview.34 includes the correction for their omission from the preview.32 package.
+- Shared waveform source crops for samples and vocals, with per-zone selection, numerical/keyboard edits, zoom and reversible source boundaries.
+- Sampler sustain loops and crossfades. Edit loop start/end and the overlap boundary in the waveform. Notes repeat through their release fade; one-shot retains full-source playback. Tail/head overlap shortens the repeat by the overlap, shown in the readout.
+- Key and velocity ranges with two-axis graph boundaries and precise fields. Notes outside all mapped regions are silent; overlapping candidates retain nearest recorded-key/take selection.
+- Loop points follow crop, reverse and independent time/pitch. Preview, measured scope, Beat/Song playback and WAV export use the same note/release lifetime.
+- Waveform controls expose separate accessible start/end/overlap sliders and retain their zoom window while dragging. Mapping focus survives edits.
+- Source inspection shares pending decodes and invalidates replaced audio by registry revision. Existing urgent native pause/resume/Stop and ownership safeguards remain in place.
 
-Focused source/data, DSP, shared Inspector, Rust control and 48 kHz null-device streaming checks passed locally, with zero callback allocations. Windows build and portable checks are recorded by this release's workflow; they do not replace testing on your audio device.
+Original recordings stay unchanged and external to `.premidi`. Sustain overlap is linear, limited to half the source loop or 500 ms. Native interpolation and browser preparation use the same frame boundaries; native audio callbacks allocate no loop memory. Native keyboard auditions retain the existing timed-preview policy; live native MIDI/QWERTY note-off is separate work.
+
+Focused source/data, DSP and shared-editor checks passed locally, including native/browser PCM with pitch movement, stereo, reverse/stretch, release, seek and block continuity. The 48 kHz null-device streaming checks passed with source loops and zero callback allocations. The release workflow records the matching Windows build and portable acceptance results.
 
 ## Install and test
 
 Extract the complete ZIP into a writable folder and open `pre-midi.exe`. Keep `portable.txt` beside it. For a manual update, close the app and replace application files only; preserve `data/`, `projects/` and `exports/`.
 
-Try the six modulation effects on a synth and recording. On a vocal, compare pitch + speed with independent pitch, then change stretch, formants and reverse. Test trim, undo, save/reopen and WAV export. Try play/pause/stop while source processing or scope previews are preparing. Music ZIPs include external audio assets; plain `.premidi` files reference them.
+On a sampled Sound, open source region and select sustain loop. Enable the loop, adjust its endpoints/overlap, then place a long note and listen through release. Compare rate transpose, independent pitch/time and reverse. Select key + velocity to edit its playing range; test notes inside/outside it. Try save/reopen, undo and WAV export, then play/pause/stop during source edits. Music ZIPs include audio assets; plain `.premidi` files reference them.
 
 ## Still on the roadmap
 
-The full roadmap is **not complete**. Wider automation/modulation targets and gesture recording, shared buses/sidechains/global latency compensation, monophonic correction/tuning, sampler waveform/loop editing, remaining noise/shaper controls and physical/newcomer/listening qualification remain open. Phone and game-host completion remain separate work.
-
-Pitch/time ranges are .5–2× duration, up to ±48 semitones of effective independent pitch and ±12 semitones of formant shift. Spectral processing supports mono/stereo and retains existing memory/arrangement limits. Quality at extremes needs listening review.
+The full roadmap is not complete. Wider automation/modulation targets and gesture recording, shared buses/sidechains/global latency compensation, monophonic correction/tuning, waveform articulation overlays, remaining noise/shaper controls and physical/newcomer/listening qualification remain open. Phone and game-host completion remain separate work.
 
 This preview is unsigned and uses manual ZIP updates. No installer or registry changes are required.

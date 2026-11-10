@@ -3,6 +3,10 @@
 import {captureSoundControlView} from "./soundControlView.js";
 
 const labelHelp=Object.freeze({
+ "sample key range":"only notes inside this key and velocity range trigger this recording",
+ "sample velocity range":"choose which playing strengths trigger this recording",
+ "sample sustain loop":"repeat this source region while a note is held and fade it on release",
+ "sample loop crossfade":"overlap the loop tail and head to soften the join",
  "ringmod frequency":"add and subtract this carrier frequency from the sound to create metallic sidebands",
  "ringmod phase":"choose where the carrier starts on each note or clip",
  "ringmod stereo":"offset the right carrier for a wider metallic sound",

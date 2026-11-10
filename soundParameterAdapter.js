@@ -7,7 +7,7 @@ import {parameterFor,parameterField,parameterCapability,MODULATION_CONTROLS} fro
 export function soundParameterId(path,context="synth"){
  const id=Array.isArray(path)?path.join("."):path;
  if(context==="sample"||context==="vocal"){
-  if(/^zones\.\d+\.root$/.test(id))return "zones.root";
+  if(/^zones\.\d+\.(?:root|keyLow|keyHigh|velocityLow|velocityHigh|loop\.(?:start|end|crossfade))$/.test(id))return "zones."+id.split(".").slice(2).join(".");
   if(id==="attack"||id==="release")return "envelope."+id;
   if(["drive","delayMix","delayTime","delayFeedback"].includes(id))return "effects."+id;
  }
@@ -15,7 +15,7 @@ export function soundParameterId(path,context="synth"){
 }
 export function soundParameterPath(id,context="synth"){
  if(context!=="synth"){
-  if(id==="zones.root")return ["zones",0,"root"];
+  if(id.startsWith("zones."))return ["zones",0,...id.split(".").slice(1)];
   if(id==="envelope.attack"||id==="envelope.release")return [id.split(".")[1]];
   if(id.startsWith("effects.")&&(context==="sample"||id==="effects.drive"))return [id.split(".")[1]];
  }
@@ -28,7 +28,7 @@ export function soundParameter(patch,path){
   const instance=patch.chain?.instances?.[path[2]];if(instance&&instance.kind!=='eq')return processorParameter(instance.kind,path.at(-1));
  }
  if(patch.type==="automation"&&path[0]==="points"&&path.at(-1)==="value")return patch.parameter??parameterFor(patch.target??"filter.cutoff",patch.sourceType??"synth");
- if(path[0]==="zones"&&path.at(-1)==="root")return parameterFor("zones.root",patch.type);
+ if(path[0]==="zones")return parameterFor("zones."+path.slice(2).join("."),patch.type);
  if(path[0]==="modulation"&&path[1]==="routes"){
   const key=path.includes("steps")?"step":path.at(-1);
   if(path.includes("envelope"))return parameterFor("envelope."+key);

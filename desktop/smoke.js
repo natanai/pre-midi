@@ -112,6 +112,38 @@
   const processedAsset=await audioRequest({action:'source',asset:sourceAsset.id,params:{start:0,duration:sourceDuration,time:1.5,semitones:7,formant:-2,preserve:1,reverse:1}});
   assert(processedAsset.id!==sourceAsset.id&&processedAsset.frames===Math.round(Math.round(sourceDuration*44100)*1.5),'native source pitch/time/formants/reverse prepare owned PCM without Web Audio');
 
+  // Real WebView + native acceptance for the shared sampler source editor.
+  // Browser rendering/capture remain disabled throughout this block.
+  const {encodePcmWav}=await load('recording.js');
+  const loopPcm=Float32Array.from({length:4410},(_,i)=>.2*Math.sin(2*Math.PI*233*i/44100));
+  const loopAsset=sampler.makeSampleAsset('portable-loop','loop fixture','audio/wav',encodePcmWav([loopPcm]),'portable acceptance');
+  const loopBeat=create(),loopInst=loopBeat.instruments[0];loopBeat.bars=1;loopBeat.samples=[loopAsset];loopInst.timeline=[loopInst.chunks[0].id];loopInst.placements=[null];
+  loopInst.chunks[0].notes=[{id:id(),pitch:60,start:0,duration:16,velocity:.8}];
+  loopInst.sounds[0].patch={type:'sample',presetId:'custom',zones:[{assetId:loopAsset.id,root:60,keyLow:48,keyHigh:72,velocityLow:.1,velocityHigh:1,loop:{start:.02,end:.08,crossfade:.01}}],followPitch:false,oneShot:false,transpose:0,gain:.8,attack:0,release:.1,pan:0};
+  upgradeBeatFeatures(loopBeat);
+  const {renderSampleSource}=await load('sampleSourceUI.js'),{assignSoundEdit}=await load('soundEditPath.js');
+  const sourceRoot=document.createElement('section');sourceRoot.id='portable-source-editor';document.body.append(sourceRoot);
+  try{
+   const source=renderSampleSource(loopInst.sounds[0].patch,loopBeat,(path,value)=>assignSoundEdit(loopInst.sounds[0].patch,path,value),'portable-loop-sound');sourceRoot.append(source);source.open=true;
+   const mode=source.querySelector('[aria-label="sample region editing"]');mode.value='loop';mode.dispatchEvent(new Event('change'));
+   for(let i=0;i<100&&!source.querySelector('[aria-label="loop crossfade"]');i++)await pause(10);
+   const fade=source.querySelector('[aria-label="loop crossfade"]');assert(!!fade,'portable shared sampler waveform decodes with the native host');
+   fade.focus();fade.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));
+   assert(Math.abs(loopInst.sounds[0].patch.zones[0].loop.crossfade-.011)<1e-9,'portable waveform crossfade keyboard edit retains source-relative loop data');
+  }finally{sourceRoot.remove();}
+  const loopExport=exportProject(loopBeat),loopReopen=await importProject(new File([loopExport.blob],loopExport.name));
+  assert(loopReopen.instruments[0].sounds[0].patch.zones[0].loop.crossfade===.011,'portable project round trip retains sampler loops and key/velocity ranges');
+  const loopWav=new DataView(await (await wav(loopReopen)).arrayBuffer());let heldPeak=0;
+  for(let i=44+Math.floor(.8*44100)*4;i<Math.min(loopWav.byteLength,44+Math.floor(1.2*44100)*4);i+=2)heldPeak=Math.max(heldPeak,Math.abs(loopWav.getInt16(i,true)));
+  assert(heldPeak>10,'native WAV sustain loop remains audible beyond the original recording');
+  const loopSession=await play(()=>loopReopen,{loop:()=>true});await loopSession.pause();
+  for(let i=0;i<100&&(await audioRequest({action:'status'})).state!==2;i++)await pause(10);
+  assert((await audioRequest({action:'status'})).state===2,'native sampler sustain loop acknowledges pause');
+  await loopSession.resume();await loopSession.stop();assert((await audioRequest({action:'status'})).state===0,'native sampler sustain loop resumes and stops through the owned transport');
+  loopReopen.instruments[0].sounds[0].patch.zones[0].keyLow=61;
+  const unmapped=new DataView(await (await wav(loopReopen)).arrayBuffer());let silent=true;for(let i=44;i<unmapped.byteLength;i+=2)if(unmapped.getInt16(i,true)!==0){silent=false;break;}
+  assert(silent,'unmapped key/velocity regions render silence without Web Audio fallback');
+
   assert(Math.abs(recorded.durationSeconds-60/beat.bpm*4)<1/44100,'native take starts exactly after count-in and retains the arrangement duration');
   const {makeRecordingAsset}=await load('recordingAssets.js'),{addVocalTake,validateSong}=await load('songModel.js');
   const recordedSong=(await load('songModel.js')).createSong(beat);
