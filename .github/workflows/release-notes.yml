@@ -1,0 +1,33 @@
+name: Sync published preview notes
+on:
+  push:
+    branches: [main]
+    paths: ['docs/desktop-release-notes.md']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: preview-notes-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+            if (!version.includes('-')) return;
+            let release;
+            try {
+              release = (await github.rest.repos.getReleaseByTag({...context.repo, tag: 'v' + version})).data;
+            } catch (error) {
+              if (error.status === 404) return;
+              throw error;
+            }
+            if (release.draft || !release.prerelease) return;
+            const body = fs.readFileSync('docs/desktop-release-notes.md', 'utf8');
+            if (release.body !== body) await github.rest.repos.updateRelease({...context.repo, release_id: release.id, body});

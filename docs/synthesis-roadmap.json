@@ -1326,11 +1326,11 @@
     "qualification": "Historical extended-execution software qualification: 620 acoustic/library cases, 201 functional tests, 113 PCM mixer comparisons and 12 null-device profiles. Later features have focused evidence under sound_editing/implementation_updates. AGENTS.md defines current lean checks; full qualification is not a routine merge gate.",
     "physical_windows": "unqualified; no Windows WASAPI hardware available in this environment",
     "song_streaming": {
-      "stage": "Newer source implements prepared Song revision seeks, continuous loop pages, live edits with audio-clock handoff, paused revision replacement, native count-in and synchronized capture. Source remains opt-in pending physical Windows and broad long-session acceptance. Released preview.29 predates this milestone; default bounded playback limits remain unchanged.",
+      "stage": "Preview.31 packages prepared revision seek, continuous loop pages, live edits, paused replacements, count-in and synchronized recording. Source remains opt-in pending physical Windows and broad long-session acceptance; default bounded limits remain unchanged.",
       "shipping_limit_seconds": 600,
       "shipping_limit_onsets": 4096,
-      "preview_release": "v0.14.1-preview.29",
-      "release_qualifier": "Published preview.29 contains the opt-in feeder and urgent Stop/pending-Play fixes; normal transport keeps its limits. Full streamed lifecycle and physical Windows qualification remain open.",
+      "preview_release": "v0.14.1-preview.31",
+      "release_qualifier": "Preview.31 contains the complete source-level streamed lifecycle and urgent transport repairs. Streaming remains experimental/opt-in; normal transport retains its existing bounds pending physical and large-session acceptance.",
       "manual_windows_qualification": "not observed",
       "next_reference": "docs/song-stabilization-handoff-2026-11-05.md",
       "staged_js_bridge": {
@@ -1348,7 +1348,7 @@
       "source_milestone": {
         "date": "2026-11-08",
         "implementation_status": "implemented; software qualification",
-        "packaged": false,
+        "packaged": true,
         "transport": "Control-prepared replacement revisions reconstruct the canonical Session voice/filter/sample/echo state. Callback handoff/crossfade never parses, allocates or destroys resources. Old pages refill during preparation; newer edits cancel only the pending replacement.",
         "loop_clock": "Repeated source pages use continuous absolute frames and persistent shared delays; page boundaries floor musical time while onsets ceil it, preserving sub-frame source phase.",
         "recording": "Native stream and Capture share callback music/count-in/pause frames. Existing 300-second take and measured-offset limits remain.",
@@ -1362,10 +1362,10 @@
         ],
         "remaining": [
           "Physical Windows 11 audio/microphone, device loss/sleep and observed editing acceptance",
-          "Representative dense and hours-long Song start/seek/edit preparation time and memory qualification",
-          "A requested Windows package containing this source; preview.29 is unchanged"
+          "Representative dense and hours-long Song start/seek/edit preparation time and memory qualification"
         ],
-        "limits": "Song seeks and edits reconstruct preceding DSP history on the control thread. Large arrangements can take preparation time; this is not a low-latency or hardware-qualified claim."
+        "limits": "Song seeks and edits reconstruct preceding DSP history on the control thread. Large arrangements can take preparation time; this is not a low-latency or hardware-qualified claim.",
+        "package_version": "0.14.1-preview.31"
       }
     },
     "execution_packet_note": "execution_packet=9 and the aggregate counts describe the historical extended-synthesis checkpoint. Current recorded-audio execution is sample packet 21, with a 440-byte default processing/automation/dynamics/room trailer; nonempty graphs/lanes/dynamics add bounded variable payloads. Only the current decoder is supported."
@@ -3873,7 +3873,6 @@
       "SE-08",
       "SE-09",
       "SE-10",
-      "SE-11",
       "SE-12",
       "SE-13",
       "SE-14",
@@ -3886,7 +3885,7 @@
     "transport_responsiveness": {
       "date": "2026-11-09",
       "status": "implemented; software qualification",
-      "packaged": false,
+      "packaged": true,
       "repair": "Shared pause/resume intent bypasses JS edit/seek queues and the Rust preparation/render mailbox. Owned Stop also gates the callback immediately. One atomic native owner/intent snapshot prevents an old Stop from affecting a new playback; paused seeks retain ownership and new revisions inherit current intent. Bounded edits and stream pages yield between plan batches.",
       "evidence": [
         "tests/nativeSession.test.js and tests/nativeSongStreamControl.test.js: pause/resume while edit/seek preparation is deliberately blocked; held revision and lease preservation",
@@ -3894,13 +3893,29 @@
         "48 kHz miniaudio null-device stream with compressor/de-esser and parallel graph: seek/loop/edit/count-in/capture, zero callback allocations"
       ],
       "limits": "Playback preparation may still take time. Physical Windows/WebView2/WASAPI device-buffer response is unobserved; released preview.29 does not contain these changes.",
-      "package_requested": "0.14.1-preview.31"
+      "package_requested": "0.14.1-preview.31",
+      "package_version": "0.14.1-preview.31"
     },
     "reverb": {
       "status": "implemented; focused software checks pass",
       "package_requested": "0.14.1-preview.31",
       "reference": "SE-11",
-      "remaining": "Physical Windows and listening acceptance; modulation effects and independent pitch/time remain separate unfinished tasks"
-    }
+      "remaining": "Physical Windows and listening acceptance; modulation effects and independent pitch/time remain separate unfinished tasks",
+      "package_status": "published"
+    },
+    "remaining_qualification_task_ids": [
+      "SE-11"
+    ]
+  },
+  "latest_delivery": {
+    "version": "0.14.1-preview.31",
+    "source_commit": "a8fe322ee83839b0619b65255e7b8e88dac5be4f",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.31",
+    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.31/pre-midi-0.14.1-preview.31-windows-x86_64-portable.zip",
+    "bytes": 17076112,
+    "sha256": "fadacf1bee8ae90bdadfbd660d4994affff64edbc97e42c7f9fdf06b63ac04ec",
+    "build_run": "https://github.com/natanai/pre-midi/actions/runs/42732024798",
+    "status": "published; Windows compilation, 14 Rust tests, runtime dependency inspection and portable launch/update/isolation/move/copy/recovery passed",
+    "remaining": "Physical Windows 11 audio/microphone/listening acceptance and unfinished synthesis tasks; optional full qualification was not requested"
   }
 }
