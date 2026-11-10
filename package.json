@@ -1,10 +1,10 @@
 {
   "name": "pre-midi",
-  "version": "0.14.1-preview.31",
+  "version": "0.14.1-preview.32",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test --test-reporter=dot tests/schema.test.js tests/songModel.test.js tests/songIO.test.js tests/noteEditing.test.js tests/chunkContinuation.test.js tests/soundEditPath.test.js tests/dynamics.test.js tests/modulationEffects.test.js tests/reverb.test.js tests/nativeSession.test.js tests/nativeSongStreamControl.test.js",
+    "test": "node --test --test-reporter=dot tests/schema.test.js tests/songModel.test.js tests/songIO.test.js tests/noteEditing.test.js tests/chunkContinuation.test.js tests/soundEditPath.test.js tests/dynamics.test.js tests/modulationEffects.test.js tests/frequencyEffects.test.js tests/sourceProcessing.test.js tests/analysisQueue.test.js tests/preparedDocument.test.js tests/reverb.test.js tests/nativeSession.test.js tests/nativeSongStreamControl.test.js",
     "check": "node scripts/check-js.mjs && npm test",
     "benchmark:audio": "node scripts/audio-benchmark.mjs",
     "benchmark:voices": "node scripts/audio-benchmark.mjs --suite voices",

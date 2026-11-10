@@ -48,6 +48,8 @@ void premidi_audio_request_transport_state(void* host,uint32_t command);
 int premidi_audio_control(void* host,uint32_t command,int loop);
 int premidi_audio_status_get(void* host,premidi_audio_status* status);
 int premidi_audio_add_sample(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info);
+typedef struct premidi_source_parameters {double start,duration,time,semitones,formant;uint32_t preserve,reverse;} premidi_source_parameters;
+int premidi_audio_process_source(void* host,uint32_t asset,const premidi_source_parameters* params,premidi_sample_info* info);
 int premidi_audio_add_sample_rate(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info,uint32_t target_rate);
 int premidi_audio_update(void* host,const uint8_t* data,size_t length,double cycle,int loop,double tempo_ratio);
 int premidi_audio_render(void* host,const uint8_t* data,size_t length,double cycle,uint32_t rate,uint64_t frames,uint8_t* output,size_t output_bytes,uint32_t format,double gain);

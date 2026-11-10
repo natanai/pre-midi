@@ -1,3 +1,4 @@
+import {renderSourceProcessing} from './sourceProcessingUI.js';
 import {processorBypassed} from "./src/dsp/processing-chain.js";
 import {setSoundIllustrationTempo} from "./soundIllustrations.js";
 import {parameterFor,parameterDefaults} from "./src/dsp/parameters.js";
@@ -147,6 +148,7 @@ export function renderRecordedAudioEditor(root,patch,onChange,{metadata="",openU
   visuals.push(visual);
   anchor.replaceWith(visual.element);
  }
+ root.append(renderSourceProcessing(patch,onChange,preview,soundId));
  const action=document.createElement("button");action.type="button";action.className="sample-replace-action";
  action.textContent="Replace with my audio…";action.addEventListener("click",openUpload);
  if(openUpload&&!vocal)root.append(action);

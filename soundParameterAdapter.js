@@ -1,3 +1,4 @@
+import {SOURCE_PROCESSING_PARAMETERS} from './src/dsp/parameters.js';
 import {processorParameter} from './src/dsp/processing-graph.js';
 import {DEFAULT_LFO_STEPS} from "./src/dsp/modulation.js";
 import {parameterFor,parameterField,parameterCapability,MODULATION_CONTROLS} from "./src/dsp/parameters.js";
@@ -22,6 +23,7 @@ export function soundParameterPath(id,context="synth"){
 }
 export const soundField=(id,context="synth",presentation={})=>parameterField(id,{context,path:soundParameterPath(id,context),...presentation});
 export function soundParameter(patch,path){
+ if(path[0]==='sourceProcessing')return SOURCE_PROCESSING_PARAMETERS[path[1]];
  if(path[0]==='chain'&&path[1]==='instances'&&path[3]==='parameters'){
   const instance=patch.chain?.instances?.[path[2]];if(instance&&instance.kind!=='eq')return processorParameter(instance.kind,path.at(-1));
  }

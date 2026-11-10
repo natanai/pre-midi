@@ -1,3 +1,5 @@
+import {validateSourceProcessing,sampleSourceRequest,needsSourceProcessing} from './src/dsp/source-processing.js';
+import {prepareSourceBuffer,preparedSourceBuffer} from './src/hosts/web/source-processing.js';
 import {validateReverb} from './src/dsp/reverb.js';
 import {validateStereo} from './src/dsp/stereo.js';
 import {validateEq,validateFilterStages} from './src/dsp/equalizer.js';
@@ -103,8 +105,8 @@ export function validateSamplerPatch(patch){
   const id=field==="attack"||field==="release"?"envelope."+field:field;
   if(!validParameterValue(id,patch[field],"sample"))errors.push("Invalid sample "+field+".");
  }
- errors.push(...validateReverb(patch.reverb),...validateStereo(patch),...validateEq(patch.eq),...validateFilterStages(patch.filterStages),...validateProcessingChain(patch.chain),...validateDelaySync(patch.delaySync));
- const allowed=new Set(["reverb","stereoWidth","msBalance","delayTone","delayPingPong","eq","filterStages","delaySync","chain","type","presetId","zones","followPitch","oneShot","preserveDynamics","audioMode","strumMs","transpose","gain","attack","release","pan","filter","drive","movement","bend","modulation","automation","delayMix","delayTime","delayFeedback"]);
+ errors.push(...validateSourceProcessing(patch.sourceProcessing),...validateReverb(patch.reverb),...validateStereo(patch),...validateEq(patch.eq),...validateFilterStages(patch.filterStages),...validateProcessingChain(patch.chain),...validateDelaySync(patch.delaySync));
+ const allowed=new Set(["sourceProcessing","reverb","stereoWidth","msBalance","delayTone","delayPingPong","eq","filterStages","delaySync","chain","type","presetId","zones","followPitch","oneShot","preserveDynamics","audioMode","strumMs","transpose","gain","attack","release","pan","filter","drive","movement","bend","modulation","automation","delayMix","delayTime","delayFeedback"]);
  for(const key of Object.keys(patch))if(!allowed.has(key))errors.push("Unsupported sample parameter: "+key+".");
  return errors;
 }
@@ -132,7 +134,7 @@ export function usedSampleIds(beat){
  }
  return used;
 }
-export async function decodeSamples(context,beat,cache,only=usedSampleIds(beat)){
+export async function decodeSamples(context,beat,cache,only=usedSampleIds(beat),{isCurrent=()=>true}={}){
  const waiting=[];
  for(const asset of beat.samples||[]) {
   if(only && !only.has(asset.id))continue;
@@ -152,6 +154,17 @@ export async function decodeSamples(context,beat,cache,only=usedSampleIds(beat))
   waiting.push(task);
  }
  await Promise.all(waiting);
+ for(const instrument of beat.instruments??[]){
+  const placed=new Set(Array.isArray(instrument.timeline)?instrument.timeline.filter(Boolean):(instrument.chunkPlacements??[]).map(p=>p.chunkId));
+  for(const note of [...(instrument.notes??[]),...(instrument.chunks??[]).filter(c=>placed.has(c.id)).flatMap(c=>c.notes??[])]){
+   if(!isCurrent())throw Error('Source preparation cancelled');
+   const resolved=resolveEvent(instrument,note);if(resolved?.voice.patch.type==='sample')await prepareSampleSource(context,cache,resolved.voice.patch,resolved.note,{isCurrent});
+  }
+ }
+}
+export async function prepareSampleSource(context,cache,patch,note,options){
+ const zone=sampleForNote(patch,note.pitch,note.velocity),buffer=zone&&cache.get(zone.assetId);if(!buffer?.getChannelData)return;
+ const request=sampleSourceRequest(patch,note,zone,buffer.duration);return prepareSourceBuffer(context,cache,zone.assetId,request,options);
 }
 const peakLevels=new WeakMap();
 function sampleNormalization(buffer){
@@ -169,17 +182,17 @@ function sampleNormalization(buffer){
 }
 export function scheduleSample(context,out,inst,event,start,duration,beat,cache,session=null,{unit=60/(beat?.bpm??120)/4,automation,timeline}={}) {
  const patch=inst.patch,zone=sampleForNote(patch,event.pitch,event.velocity);
- const buffer=zone&&cache.get(zone.assetId);
- if(!buffer)return; // Can only happen while freshly imported samples decode during playback.
- const playbackRate=patch.followPitch?2**((event.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12);
+ const original=zone&&cache.get(zone.assetId);
+ if(!original)return; // Can only happen while freshly imported samples decode during playback.
+ const request=sampleSourceRequest(patch,event,zone,original.duration),processed=needsSourceProcessing(request.recipe),buffer=preparedSourceBuffer(cache,zone.assetId,request),playbackRate=request.rate;
  const src=context.createBufferSource(),amp=context.createGain(),pan=context.createStereoPanner(),gate=context.createGain();
  const owner={sources:[src],nodes:[amp,pan,gate]};
- const recordedGain=patch.preserveDynamics?3.5:sampleNormalization(buffer);
+ const recordedGain=patch.preserveDynamics?3.5:sampleNormalization(original);
  const gain=patch.audioMode==="clip"?Math.min(2,inst.volume*patch.gain*event.velocity):Math.min(2,inst.volume*patch.gain*event.velocity*.7*recordedGain);
  src.buffer=buffer;src.playbackRate.value=playbackRate;
  const motion=movement(patch);
  pan.pan.value=patch.pan;
- const region=sampleSourceRegion(zone,buffer.duration,playbackRate);
+ const region=processed?{offset:0,sourceLength:buffer.duration,length:buffer.duration/playbackRate}:sampleSourceRegion(zone,buffer.duration,playbackRate);
  const life=patch.oneShot?region.length:Math.min(region.length,Math.max(.015,duration+patch.release));
  // The whole recording keeps pitch modulation, not only the short grid note.
  schedulePitch(context,src.detune,{...event,bend:event.bend??patch.bend},motion,start,Math.max(.02,life),0,owner,{controlRate:'k'});

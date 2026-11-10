@@ -3,6 +3,20 @@
 import {captureSoundControlView} from "./soundControlView.js";
 
 const labelHelp=Object.freeze({
+ "ringmod frequency":"add and subtract this carrier frequency from the sound to create metallic sidebands",
+ "ringmod phase":"choose where the carrier starts on each note or clip",
+ "ringmod stereo":"offset the right carrier for a wider metallic sound",
+ "frequencyshift frequency":"move frequencies up or down by this many hertz instead of preserving musical intervals",
+ "frequencyshift phase":"rotate the translated signal at the start of each note or clip",
+ "frequencyshift stereo":"offset the right translation phase to change the stereo image",
+
+ "source transpose":"shift pitch with speed in pitch + speed mode or keep duration in independent pitch mode",
+ "source stretch":"make the source longer or shorter while keeping its pitch",
+ "source pitch mode":"choose whether transposing also changes playback speed",
+ "source formant":"move the voice or instrument resonance while keeping its musical pitch",
+ "source preserveformants":"keep the original resonance when independently shifting pitch",
+ "source reverse":"play the selected source region backward without changing the recording",
+
  "chorus rate":"move the doubled sound faster or slower",
  "chorus depth":"widen the pitch movement of the doubled sound",
  "chorus delay":"separate the doubled sound from the original",

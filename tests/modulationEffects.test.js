@@ -2,20 +2,20 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {create,parse,upgradeBeatFeatures} from '../schema.js';import {createSong} from '../songModel.js';import {parseSong} from '../songIO.js';
 import {validatePatch} from '../synth.js';import {withInstance,moveProcessor} from '../src/dsp/processing-graph.js';
 import {validateProcessingChain,withProcessorRemoved,withProcessorAdded,withProcessorBypass} from '../src/dsp/processing-chain.js';
-import {MOD_EFFECT_KINDS,ModEffectKernel,modEffectTail} from '../src/dsp/modulation-effects.js';
+import {CLASSIC_MOD_EFFECT_KINDS,ModEffectKernel,modEffectTail} from '../src/dsp/modulation-effects.js';
 import {compilePostProcessing,postTailSeconds,songNeedsPostDelay} from '../src/dsp/post-processing.js';
 import {processingFromPatch,applyProcessingToPatch} from '../recordedAudio.js';import {vocalSeekEvents} from '../src/hosts/web/vocal-seek.js';
 import {planSynthVoice} from '../src/dsp/synth-voice.js';import {planNativeVocal} from '../src/hosts/native/sample-plan.js';import {renderEndSeconds} from '../audio.js';
 const effect=kind=>({chain:withInstance({},kind)});
 test('modulation effects share project recall, bounded post ordering and recorded source reuse',()=>{
  const beat=create(),patch=beat.instruments[0].sounds[0].patch;
- for(const kind of MOD_EFFECT_KINDS)patch.chain=withInstance(patch,kind);
+ for(const kind of CLASSIC_MOD_EFFECT_KINDS)patch.chain=withInstance(patch,kind);
  assert.deepEqual(validatePatch(patch),[]);upgradeBeatFeatures(beat);assert.deepEqual(parse(JSON.stringify(beat)),beat);const song=createSong(beat);assert.deepEqual(parseSong(JSON.stringify(song)),song);
  const copy=structuredClone(patch);applyProcessingToPatch(copy,processingFromPatch(patch));assert.deepEqual(compilePostProcessing(copy),compilePostProcessing(patch));
  assert.throws(()=>withInstance(patch,'compressor'),/four/);assert.throws(()=>moveProcessor(patch.chain,'chorus-1','serial'),/after level/);
  patch.chain.instances[0].parameters.phase=.37;patch.chain=withProcessorRemoved(patch,'chorus-1');patch.chain=withProcessorAdded(patch,'chorus-1');assert.equal(compilePostProcessing(patch).at(-1).phase,.37);
  assert.ok(songNeedsPostDelay(createSong(beat)));patch.chain=withProcessorBypass(patch,'chorus-1',true);patch.chain=withProcessorBypass(patch,'flanger-1',true);assert.equal(songNeedsPostDelay(createSong(beat)),false);
- for(const kind of MOD_EFFECT_KINDS){const fx=effect(kind);for(const [key,bad]of [['rate',0],['depth',-1],['phase',2],['sync',.75],['foreign',1]]){const invalid=structuredClone(fx);invalid.chain.instances[0].parameters[key]=bad;assert.ok(validateProcessingChain(invalid.chain).length,kind+' '+key);}}
+ for(const kind of CLASSIC_MOD_EFFECT_KINDS){const fx=effect(kind);for(const [key,bad]of [['rate',0],['depth',-1],['phase',2],['sync',.75],['foreign',1]]){const invalid=structuredClone(fx);invalid.chain.instances[0].parameters[key]=bad;assert.ok(validateProcessingChain(invalid.chain).length,kind+' '+key);}}
 });
 test('tempo sync resolves at scheduling without changing saved free rate or phase',()=>{
  const beat=create(),patch=beat.instruments[0].sounds[0].patch;patch.chain=withInstance(patch,'chorus');const p=patch.chain.instances[0].parameters;p.sync=2;p.rate=3.71;p.phase=.23;

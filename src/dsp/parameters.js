@@ -213,5 +213,14 @@ export const MOD_EFFECT_PARAMETERS=freeze({
  chorus:{...stereoMotion(),delay:parameter('chorus.delay','seconds',.005,.04,.018,.0001,'seconds'),depth:parameter('chorus.depth','seconds',0,.012,.004,.0001,'seconds')},
  flanger:{...stereoMotion(),delay:parameter('flanger.delay','seconds',.0002,.01,.003,.0001,'seconds'),depth:parameter('flanger.depth','seconds',0,.005,.002,.0001,'seconds')},
  phaser:{...stereoMotion(),frequency:parameter('phaser.frequency','hz',50,8000,900,1,'hz',{ui:{step:1,display:'hz',log:true}}),depth:parameter('phaser.depth','octaves',0,4,2,.01,'octaves')},
- autopan:{...motionControls(),depth:parameter('autopan.depth','linear_gain',0,1,1,.01,'percent')}
+ autopan:{...motionControls(),depth:parameter('autopan.depth','linear_gain',0,1,1,.01,'percent')},
+ ringmod:{frequency:parameter('ringmod.frequency','hz',0,2000,100,1,'hz'),phase:motionControls().phase,stereo:stereoMotion().stereo},
+ frequencyshift:{frequency:parameter('frequencyshift.frequency','hz',-2000,2000,100,1,'hz'),phase:motionControls().phase,stereo:stereoMotion().stereo}
+});
+export const SOURCE_PROCESSING_PARAMETERS=freeze({
+ mode:choice('sourceProcessing.mode',['rate','independent'],'rate'),
+ time:parameter('sourceProcessing.time','ratio',.5,2,1,.01,'percent'),
+ formant:parameter('sourceProcessing.formant','semitones',-12,12,0,.1,'semitones'),
+ preserveFormants:{id:'sourceProcessing.preserveFormants',unit:'boolean',default:true},
+ reverse:{id:'sourceProcessing.reverse',unit:'boolean',default:false}
 });

@@ -1,3 +1,4 @@
+import {sampleSourceRequest,vocalSourceRequest,needsSourceProcessing} from '../../dsp/source-processing.js';
 import {encodeNativePlan} from './plan.js';
 import {resolveEvent} from '../../../soundModel.js';
 import {planSynthVoice} from '../../dsp/synth-voice.js';
@@ -10,11 +11,12 @@ import {createNativePauseControl} from './transport-intent.js';
 
 export const nativeEnabled=()=>!!globalThis.__TAURI__?.core?.invoke&&(localStorage.getItem('premidi-audio-backend')||'native')==='native';
 export const nativeRequest=request=>globalThis.__TAURI__.core.invoke('native_audio',{request});
-let transportEpoch=0;
+let transportEpoch=0,previewEpoch=0;
+export const nativePreviewGuard=()=>{const epoch=previewEpoch;return()=>epoch===previewEpoch;};
 // Shared by the bounded player and the opt-in native Song page feeder.
 export const claimNativeTransportEpoch=()=>++transportEpoch;
 export const nativeTransportEpochCurrent=epoch=>epoch===transportEpoch;
-export async function cancelNativeTransport(){transportEpoch++;return nativeRequest({action:'control',command:1,looping:false,owner:null});}
+export async function cancelNativeTransport(){transportEpoch++;previewEpoch++;return nativeRequest({action:'control',command:1,looping:false,owner:null});}
 export function unsupportedNativeFeatures(patch){
  if(!['synth','sample'].includes(patch?.type))return ['unknown sound type'];
  return [];
@@ -46,7 +48,19 @@ export function nativePlans(events,assets=new Map(),unit=.125){
     {...noteAutomation(event.instrument,event.note,event.timeline??{step:0,unit,limitStep:duration/unit}),unit:event.timeline?.unit??unit});
  }).filter(Boolean);
 }
-const assetCache=new Map();let assetGeneration;
+const assetCache=new Map(),sourceCache=new Map();let assetGeneration;
+export async function prepareNativeSources(events,assets,isCurrent=()=>true){
+ for(const event of events){
+  if(!isCurrent())throw Error('Native source preparation cancelled');
+  let id,request;
+  if(event.kind==='vocal'){id=event.event.recording.id;const raw=assets.get(id);if(raw)request=vocalSourceRequest(event.event.recording,event.event.clip,raw.duration);}
+  else{const resolved=event.instrument.sounds?resolveEvent(event.instrument,event.note):{voice:event.instrument,note:event.note};if(resolved?.voice.patch.type==='sample'){const patch=resolved.voice.patch,zone=sampleForNote(patch,resolved.note.pitch,resolved.note.velocity);id=zone?.assetId;const raw=assets.get(id);if(raw)request=sampleSourceRequest(patch,resolved.note,zone,raw.duration);}}
+  if(!request||!needsSourceProcessing(request.recipe))continue;
+  const raw=assets.get(id),key=raw.id+':'+request.key,p=request.recipe;
+  if(!sourceCache.has(key))sourceCache.set(key,nativeRequest({action:'source',asset:raw.id,params:{...p,preserve:Number(p.preserve),reverse:Number(p.reverse)}}).then(a=>({...a,duration:a.frames/a.rate})).catch(error=>{sourceCache.delete(key);throw error;}));
+  assets.set(request.key,await sourceCache.get(key));if(!isCurrent())throw Error('Native source preparation cancelled');
+ }
+}
 export function nativeRequiredAssets(events){
  const ids=new Set();for(const event of events){
   if(event.kind==='vocal'){ids.add(event.event.recording.id);continue;}
@@ -61,11 +75,11 @@ export function nativeRequiredAssets(events){
 }
 export async function prepareNativeAssets(ids,info,{isCurrent=()=>true}={}){
  const check=()=>{if(!isCurrent())throw Error('Native playback request cancelled');};
- const generation=info.generation+':'+info.sampleRate;if(assetGeneration!==generation){assetCache.clear();assetGeneration=generation;}
+ const generation=String(info.generation);if(assetGeneration!==generation){assetCache.clear();sourceCache.clear();assetGeneration=generation;}
  const result=new Map();for(const id of ids){
   check();
   const bytes=getAsset(id);if(!bytes)throw Error('Missing audio asset '+id+'. Open the music ZIP containing its audio.');
-  const digest=await crypto.subtle.digest('SHA-256',bytes),key=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+  const digest=await crypto.subtle.digest('SHA-256',bytes),key=info.sampleRate+':'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
   check();
   if(!assetCache.has(key))assetCache.set(key,nativeRequest({action:'asset',data:Array.from(bytes),rate:info.sampleRate}).then(asset=>({...asset,duration:asset.frames/asset.rate})).catch(error=>{assetCache.delete(key);throw error;}));
   result.set(id,await assetCache.get(key));
@@ -76,7 +90,7 @@ export async function prepareNativeAssets(ids,info,{isCurrent=()=>true}={}){
 // Yield between bounded note-plan batches so Stop can cancel a long Song
 // without monopolizing the WebView2 UI thread until all notes are prepared.
 export async function prepareNativePlans(events,assets,unit,isCurrent){
- const plans=[];
+ const plans=[];await prepareNativeSources(events,assets,isCurrent);
  for(let i=0;i<events.length;i+=96){
   if(!isCurrent())throw Error('Native playback request cancelled');
   plans.push(...nativePlans(events.slice(i,i+96),assets,unit));
@@ -98,13 +112,14 @@ export async function ensureNativeOutput(){
  return nativeRequest({action:'configure',device,rate:saved?.rate??0,buffer:saved?.buffer??0});
 }
 export async function auditionNative(instrument,notes,{duration=.24,bpm=120}={}){
+ const isCurrent=nativePreviewGuard(),check=()=>{if(!isCurrent())throw Error('Native preview request cancelled');};
  const unsupported=unsupportedNativeFeatures(instrument.patch);
  if(unsupported.length)throw Error('Native preview does not yet support '+unsupported.join(', ')+'.');
- const status=await ensureNativeOutput();
+ const status=await ensureNativeOutput();check();
  const events=notes.map(note=>({kind:'note',instrument,note,at:note.at??0,duration:note.duration??duration}));
- const assets=await prepareNativeAssets(nativeRequiredAssets(events),status),plans=nativePlans(events,assets,60/bpm/4);
- const cycle=Math.max(.05,...plans.map(plan=>plan.graphEnd));
- const {owner}=await nativeRequest({action:'begin'});
+ const {owner}=await nativeRequest({action:'begin'});check();
+ const assets=await prepareNativeAssets(nativeRequiredAssets(events),status,{isCurrent}),plans=await prepareNativePlans(events,assets,60/bpm/4,isCurrent);check();
+ const cycle=Math.min(600,Math.max(.05,...plans.map(plan=>plan.graphEnd)));
  return nativeRequest({action:'play',data:Array.from(encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true,owner});
 }
 export async function renderNative(plans,{rate,frames,cycle,wav=false,gain=.85}){

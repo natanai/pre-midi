@@ -1,5 +1,5 @@
 import {MOD_EFFECT_PARAMETERS} from './src/dsp/parameters.js';
-import {modEffectRecipe,motionTable,MOTION_TABLE_SIZE} from './src/dsp/modulation-effects.js';
+import {modEffectRecipe,motionTable,MOTION_TABLE_SIZE,frequencyEffect} from './src/dsp/modulation-effects.js';
 import {renderParameterModule} from './stereoProcessingUI.js';
 import {explainLabel,helpForLabel} from './dial.js';
 const ns='http://www.w3.org/2000/svg',clamp=v=>Math.max(0,Math.min(1,v));
@@ -8,6 +8,7 @@ const text=(root,x,y,s)=>{const p=document.createElementNS(ns,'text');p.setAttri
 const fraction=(v,p)=>p.ui.log?Math.log(v/p.min)/Math.log(p.max/p.min):(v-p.min)/(p.max-p.min);
 const value=(v,p)=>Math.max(p.min,Math.min(p.max,Math.round((p.ui.log?p.min*(p.max/p.min)**clamp(v):p.min+clamp(v)*(p.max-p.min))/p.ui.step)*p.ui.step));
 export function renderModEffectInstance(patch,instance,onChange,onPreview,soundId,title,inactiveReason){
+ if(frequencyEffect(instance.kind))return renderFrequencyEffect(patch,instance,onChange,onPreview,soundId,title,inactiveReason);
  const root=document.createElement('div');root.className='modulation-effect-instance';
  const index=patch.chain.instances.findIndex(n=>n.id===instance.id),prefix=['chain','instances',index,'parameters'],kind=instance.kind;
  const get=p=>p.chain.instances.find(n=>n.id===instance.id)?.parameters??instance.parameters;
@@ -58,4 +59,19 @@ export function renderModEffectInstance(patch,instance,onChange,onPreview,soundI
   root.append(module);
  }
  return root;
+}
+
+function renderFrequencyEffect(patch,instance,onChange,onPreview,soundId,title,inactiveReason){
+ const root=document.createElement('div');root.className='modulation-effect-instance';const index=patch.chain.instances.findIndex(p=>p.id===instance.id),prefix=['chain','instances',index,'parameters'],kind=instance.kind,get=p=>p.chain.instances.find(n=>n.id===instance.id)?.parameters??instance.parameters;
+ for(const [group,keys]of [['frequency'],['phase','stereo']].entries()){
+  const defs=keys.map(k=>MOD_EFFECT_PARAMETERS[kind][k]);root.append(renderParameterModule(patch,onChange,onPreview,soundId+'-'+instance.id,{
+   kind:'frequency-effect-'+kind+'-'+group,title:title+' · '+keys.join(' + '),
+   fields:keys.map((key,i)=>({path:[...prefix,key],get:p=>get(p)[key],config:{label:key==='frequency'?(kind==='ringmod'?'carrier':'shift'):key==='stereo'?'stereo phase':key,min:defs[i].min,max:defs[i].max,...defs[i].ui,help:helpForLabel(kind+' '+key),inactiveReason}})),
+   hint:group?'drag horizontally for start phase and vertically for stereo phase':'drag horizontally for frequency',
+   position:values=>[20+320*fraction(values[0],defs[0]),keys.length===1?75:130-110*fraction(values[1],defs[1])],values:(x,y)=>defs.map((p,i)=>value(i?(130-y)/110:(x-20)/320,p)),
+   draw:(svg,p)=>{const n=get(p);if(group===0){
+    line(svg,'M20 130 H340',true);line(svg,'M100 130 V40',true);const peaks=kind==='ringmod'?[Math.abs(1000-n.frequency),1000+n.frequency]:[1000+n.frequency];for(const f of peaks)if(f>0)line(svg,'M'+(20+320*f/4000)+' 130 V30');text(svg,20,145,'0 hz');text(svg,300,145,'4 khz');text(svg,20,12,'1 khz source · shifted frequencies');
+   }else{for(const ch of [0,1])line(svg,Array.from({length:161},(_,i)=>{const angle=2*Math.PI*(i/160*2+n.phase+(ch?n.stereo:0));return(i?'L':'M')+(20+i*2)+' '+(75-45*Math.cos(angle));}).join(' '),ch===1);text(svg,20,145,'two carrier cycles · left + right');}}
+  }));
+ }return root;
 }

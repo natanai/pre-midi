@@ -1,3 +1,5 @@
+import {createPreparedDocument} from './src/hosts/web/prepared-document.js';
+import {sampleSourceRequest} from './src/dsp/source-processing.js';
 import {createEffectsBus} from './src/hosts/web/effects-bus.js';
 import {postTailSeconds} from './src/dsp/post-processing.js';
 import {connectPostProcessing} from './src/hosts/web/post-processing.js';
@@ -14,13 +16,13 @@ import {resolveEvent} from "./soundModel.js";
 import {eventsAtStep} from "./arrangement.js";
 import {eventsAtSongStep,songDurationSteps} from "./songModel.js";
 import {scheduledSongOnsets,scheduledSongOnsetsInWindow,createLiveSongScheduler} from "./songSchedule.js";
-import {decodeSongRecordings,recordingEventsAtStep,scheduleVocal} from "./songAudio.js";
+import {decodeSongRecordings,prepareVocalSource,recordingEventsAtStep,scheduleVocal} from "./songAudio.js";
 import {alignedTimelineStart} from "./src/hosts/web/timeline-clock.js";
 import {prepareVocalSeek,scheduleVocalSeek} from "./src/hosts/web/vocal-seek.js";
 import {createVocalLiveEditor,vocalPlaybackSignature} from "./src/hosts/web/vocal-live-edit.js";
 import {vocalSourceRange} from "./vocalEffects.js";
 import {effectTailSeconds} from "./src/dsp/effect-tail.js";
-import { decodeSamples, scheduleSample, sampleForNote } from "./sampler.js";
+import { decodeSamples, prepareSampleSource, scheduleSample, sampleForNote } from "./sampler.js";
 import { strumOffset } from "./guitarTiming.js";
 import { schedulePitchPlan, scheduleMovementLfo } from "./expression.js";
 import {validatePatch} from "./synth.js";
@@ -29,7 +31,7 @@ import {applyAmplitudePlan} from "./envelope.js";
 import {planSynthVoice,noteFrequency,extendedSynthExecution} from "./src/dsp/synth-voice.js";
 import {attachModulation} from "./src/hosts/web/modulation.js";
 import {VoiceSession,ownVoice} from "./src/hosts/web/voice-session.js";
-import {nativeEnabled,auditionNative,playNative,renderNative,nativeRequest,prepareNativeAssets,ensureNativeOutput,nativeRequiredAssets,nativePlans} from "./src/hosts/native/session.js";
+import {nativeEnabled,auditionNative,playNative,renderNative,nativeRequest,prepareNativeAssets,ensureNativeOutput,nativeRequiredAssets,prepareNativePlans,nativePreviewGuard} from "./src/hosts/native/session.js";
 import {playNativeSongStreamExperimental} from "./src/hosts/native/song-stream-control.js";
 export {nativeEnabled,cancelNativeTransport} from './src/hosts/native/session.js';
 let webTransportEpoch=0;
@@ -223,6 +225,7 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
   const zone=instrument.patch?.type==="sample"?sampleForNote(instrument.patch,pitch,expression?.velocity??.8):null;
   await decodeSamples(context,beat,bufferCache(context),new Set(zone?[zone.assetId]:[]));
  }
+ if(instrument.patch.type==='sample')await prepareSampleSource(context,bufferCache(context),instrument.patch,{pitch,velocity:expression?.velocity??.8});
  return scheduleNote(context,context.destination,instrument,
   {pitch,velocity:expression?.velocity??.8,bend:expression?.bend},
   context.currentTime+.01,hitDuration??expression?.duration??.24,beat,previews());
@@ -231,15 +234,16 @@ export async function audition(instrument,pitch,beat=null,expression=null) {
 export async function auditionVocal(event,bpm=120){
  const unit=60/bpm/4;
  if(nativeEnabled()){
-  const onset={kind:"vocal",event,at:0},status=await ensureNativeOutput();
-  const assets=await prepareNativeAssets(nativeRequiredAssets([onset]),status),plans=nativePlans([onset],assets,unit);
-  const cycle=Math.max(.05,...plans.map(p=>p.graphEnd+(p.tail??0)));
-  const {owner}=await nativeRequest({action:"begin"});
+  const isCurrent=nativePreviewGuard(),check=()=>{if(!isCurrent())throw Error("Native preview request cancelled");};
+  const onset={kind:"vocal",event,at:0},status=await ensureNativeOutput();check();
+  const {owner}=await nativeRequest({action:"begin"});check();
+  const assets=await prepareNativeAssets(nativeRequiredAssets([onset]),status,{isCurrent}),plans=await prepareNativePlans([onset],assets,unit,isCurrent);check();
+  const cycle=Math.min(600,Math.max(.05,...plans.map(p=>p.graphEnd+(p.tail??0))));
   return nativeRequest({action:"play",data:Array.from((await import('./src/hosts/native/session.js')).encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true,owner});
  }
  context||=new AudioContext();await prepareProcessorMix(context);if(context.state!=="running")await context.resume();
  const song={kind:"song",recordings:[event.recording]};
- const decoded=await decodeSongRecordings(context,song);
+ const decoded=await decodeSongRecordings(context,song);await prepareVocalSource(context,decoded,event);
  return scheduleVocal(context,context.destination,event,context.currentTime+.01,unit,decoded,{session:previews()});
 }
 export async function auditionHeld(instrument,pitch,beat=null){
@@ -261,6 +265,7 @@ export async function auditionHeld(instrument,pitch,beat=null){
   const zone=sampleForNote(patch,pitch,.82);
   await decodeSamples(context,beat,bufferCache(context),new Set(zone?[zone.assetId]:[]));
  }
+ if(patch.type==='sample')await prepareSampleSource(context,bufferCache(context),patch,{pitch,velocity:.82});
  const voice=scheduleNote(context,context.destination,selected,
   {pitch,velocity:.82},context.currentTime+.01,15,beat,previews());
  const tail=Math.max(.015,Math.min(2.5,patch.envelope?.release??patch.release??.18));
@@ -282,6 +287,7 @@ export async function auditionChord(instrument,pitches,beat,velocity=.85) {
  const needs=new Set(notes.map(n=>instrument.patch.type==="sample"?
   sampleForNote(instrument.patch,n.pitch,n.velocity)?.assetId:null).filter(Boolean));
  await decodeSamples(context,beat,bufferCache(context),needs);
+ if(instrument.patch.type==='sample')for(const note of notes)await prepareSampleSource(context,bufferCache(context),instrument.patch,note);
  const now=context.currentTime+.04,duration=.8;
  for(const note of notes){
   scheduleNote(context,context.destination,instrument,note,
@@ -313,10 +319,14 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  context||=new AudioContext();await prepareProcessorMix(context);
  if(context.state!=="running")await context.resume();
  if(!isCurrent())throw Error("Playback request cancelled");
- const ctx=context,out=ctx.createGain(),read=typeof beat==="function"?beat:()=>beat;
- const liveSong=typeof getRevision==="function"?createLiveSongScheduler(read,getRevision):null;
- await Promise.all(musicSampleContexts(read()).map(entry=>decodeSamples(ctx,entry,bufferCache(ctx))));
- const vocalBuffers=await decodeSongRecordings(ctx,read());
+ const ctx=context,out=ctx.createGain(),getDocument=typeof beat==="function"?beat:()=>beat;
+ let vocalBuffers,latestMark=getRevision?.();
+ const prepared=createPreparedDocument(getDocument,async(document,current)=>{
+  for(const entry of musicSampleContexts(document))await decodeSamples(ctx,entry,bufferCache(ctx),undefined,{isCurrent:current});
+  vocalBuffers=await decodeSongRecordings(ctx,document,{isCurrent:current});
+ },isCurrent);
+ await prepared.refresh();if(!isCurrent())throw Error("Playback request cancelled");
+ const read=prepared.read,liveSong=typeof getRevision==="function"?createLiveSongScheduler(read,()=>prepared.revision):null;
  const loops=()=>typeof loop==="function"?loop():loop;
  out.gain.value=.85;
  const start=Number.isSafeInteger(startStep)&&startStep>=0?startStep:0;
@@ -399,10 +409,16 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
   if(!loops()&&scheduled>=(current.kind==="song"?songDurationSteps(current):current.bars*16)&&ctx.currentTime>=Math.max(nextTime,session.end))stop();
  }
  const firstTime=nextTime,firstUnit=secondsPerStep(read());
- const refresh=createVocalLiveEditor({context:ctx,destination:out,read,decoded:vocalBuffers,session,looping:loops,
+ const refreshVocals=createVocalLiveEditor({context:ctx,destination:out,read,decoded:vocalBuffers,session,looping:loops,
   isCurrent:()=>!stopped&&isCurrent(),scheduled:()=>scheduled,
   position:at=>activeStep?activeStep.absolute+(at-activeStep.time)/activeStep.unit:start+(at-firstTime)/firstUnit});
- timer=setInterval(tick,25);tick();return {backend:"web-audio",stop,refresh,get diagnostics(){return session.diagnostics;}};
+ let refreshing=null;
+ const refresh=()=>{
+  const task=(async()=>{const mark=getRevision?.();if(await prepared.refresh()){latestMark=mark;await refreshVocals();}})();refreshing=task;
+  return task.finally(()=>{if(refreshing===task)refreshing=null;});
+ };
+ const schedule=()=>{if(typeof getRevision==='function'&&getRevision()!==latestMark&&!refreshing)void refresh().catch(error=>{if(!stopped){stop();globalThis.dispatchEvent?.(new CustomEvent('premidi-native-error',{detail:String(error.message??error)}));}});tick();};
+ timer=setInterval(schedule,25);schedule();return {backend:"web-audio",stop,refresh,get diagnostics(){return session.diagnostics;}};
 }
 function pcmWav(buffer) {
  const ch=Math.min(2,buffer.numberOfChannels),size=buffer.length*ch*2;
@@ -490,8 +506,8 @@ export function renderEndSeconds(document,events,decoded){
   const {patch}=resolved.voice;
   if(patch.type==="sample"){
    const zone=sampleForNote(patch,resolved.note.pitch,event.note.velocity),buffer=zone&&decoded.get(zone.assetId);
-   const rate=zone?(patch.followPitch?2**((resolved.note.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12)):1;
-   const length=buffer?buffer.duration/rate:0;
+   const request=zone&&buffer?sampleSourceRequest(patch,resolved.note,zone,buffer.duration):null;
+   const length=request?request.region.sourceLength*request.recipe.time/request.rate:0;
    const life=patch.oneShot?length:Math.min(length,Math.max(.015,event.duration+patch.release));
    end=Math.max(end,event.at+life+postTailSeconds(patch,secondsPerStep(document))+effectTailSeconds(effectiveDelayEffects(patch,patch,secondsPerStep(document)))+.03);
   }else{
@@ -507,7 +523,7 @@ export async function wav(document){
   const events=renderEvents(document,{maxEvents:4096}),info=await nativeRequest({action:'status'}),rate=44100;
   const assets=await prepareNativeAssets(nativeRequiredAssets(events),{...info,sampleRate:rate}),seconds=renderEndSeconds(document,events,assets);
   if(seconds>600)throw Error("WAV including effect tails exceeds the current 10-minute render limit.");
-  const plans=nativePlans(events,assets,secondsPerStep(document)),cycle=(document.kind==='song'?songDurationSteps(document):document.bars*16)*secondsPerStep(document);
+  const plans=await prepareNativePlans(events,assets,secondsPerStep(document),()=>true),cycle=(document.kind==='song'?songDurationSteps(document):document.bars*16)*secondsPerStep(document);
   const bytes=await renderNative(plans,{rate,frames:Math.ceil(seconds*rate),cycle,wav:true});return new Blob([bytes],{type:'audio/wav'});
  }
  const beats=musicSampleContexts(document);

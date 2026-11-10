@@ -81,6 +81,10 @@
   for(let i=0;i<300;i++){if((await audioRequest({action:'status'})).capture.phase===3)break;await pause(20);}
   const recorded=await take.finish();await recordedSession.stop();
   assert(recorded.mime==='audio/wav'&&recorded.bytes.length>44,'native microphone writes lossless WAV without MediaRecorder');
+  const sourceAsset=await audioRequest({action:'asset',data:Array.from(recorded.bytes),rate:44100}),sourceDuration=Math.min(.2,sourceAsset.frames/sourceAsset.rate);
+  const processedAsset=await audioRequest({action:'source',asset:sourceAsset.id,params:{start:0,duration:sourceDuration,time:1.5,semitones:7,formant:-2,preserve:1,reverse:1}});
+  assert(processedAsset.id!==sourceAsset.id&&processedAsset.frames===Math.round(Math.round(sourceDuration*44100)*1.5),'native source pitch/time/formants/reverse prepare owned PCM without Web Audio');
+
   assert(Math.abs(recorded.durationSeconds-60/beat.bpm*4)<1/44100,'native take starts exactly after count-in and retains the arrangement duration');
   const {makeRecordingAsset}=await load('recordingAssets.js'),{addVocalTake,validateSong}=await load('songModel.js');
   const recordedSong=(await load('songModel.js')).createSong(beat);

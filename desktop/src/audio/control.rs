@@ -16,6 +16,10 @@ struct Status {
 #[serde(deny_unknown_fields)]
 pub struct RoomParameters{mix:f64,#[serde(rename="preDelay")]pre_delay:f64,decay:f64,damping:f64,size:f64,width:f64}
 #[repr(C)]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceParameters{start:f64,duration:f64,time:f64,semitones:f64,formant:f64,preserve:u32,reverse:u32}
+#[repr(C)]
 #[derive(Default,Clone,Serialize)]
 struct SampleInfo {id:u32,rate:u32,channels:u32,frames:u64,normalization:f64}
 #[repr(C)]
@@ -26,6 +30,7 @@ struct StreamStatus {
 }
 unsafe extern "C" {
  #[cfg(test)]fn premidi_audio_add_sample(host:*mut c_void,pcm:*const f32,frames:u64,rate:u32,channels:u32,info:*mut SampleInfo)->i32;
+ fn premidi_audio_process_source(host:*mut c_void,asset:u32,params:*const SourceParameters,info:*mut SampleInfo)->i32;
  fn premidi_audio_add_sample_rate(host:*mut c_void,pcm:*const f32,frames:u64,rate:u32,channels:u32,info:*mut SampleInfo,target_rate:u32)->i32;
  fn premidi_audio_create(test:i32)->*mut c_void;
  fn premidi_audio_destroy(host:*mut c_void);
@@ -229,6 +234,7 @@ fn render(state:&mut ControlState,request:RenderRequest)->Result<Vec<u8>,String>
 #[serde(tag="action",rename_all="snake_case",deny_unknown_fields)]
 pub enum Request {
  Devices,Status,Begin,
+ Source{asset:u32,params:SourceParameters},
  Asset{data:Vec<u8>,#[serde(default)] rate:Option<u32>},
  Configure{device:Option<u32>,rate:u32,buffer:u32},
  Play{data:Vec<u8>,cycle:f64,seek:f64,looping:bool,preview:bool,#[serde(default)] owner:u64,#[serde(default)] count_in:u32,#[serde(default="default_bpm")] bpm:f64,#[serde(default)] recording:Option<u64>},
@@ -310,6 +316,9 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
     .map_err(|_|"Native audio decoder rejected malformed media".to_string())??;
    let mut info=SampleInfo::default();host.check(unsafe{premidi_audio_add_sample_rate(host.0,audio.samples.as_ptr(),(audio.samples.len()/audio.channels as usize) as u64,audio.rate,audio.channels,&mut info,target)})?;
    state.assets.insert(key,info.clone());Ok(serde_json::to_value(info).unwrap())
+  },
+  Request::Source{asset,params}=>{
+   let host=state.host.as_ref().unwrap();let mut info=SampleInfo::default();host.check(unsafe{premidi_audio_process_source(host.0,asset,&params,&mut info)})?;Ok(serde_json::to_value(info).unwrap())
   },
   Request::Status=>state.status(),
   Request::Configure{device,rate,buffer}=>{state.assets.clear();state.generation+=1;state.cancelled=state.issued;state.current=0;state.stream_revision=0;state.preview_current=0;state.capture_current=0;let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_configure(host.0,device.unwrap_or(u32::MAX),rate,buffer)})?;state.status()},
@@ -505,6 +514,15 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
   let take=finish_capture(&mut state,capture).unwrap();assert_eq!(take.len(),44+2400*2);
   request(&mut state,json!({"action":"control","command":1,"looping":false,"owner":owner}));
   assert!(handle(&mut state,Request::StreamStop{owner,revision:3}).is_err());
+ }
+ #[test]fn source_processing_prepares_owned_pcm_without_opening_an_output(){
+  let host=Host(unsafe{premidi_audio_create(1)});assert!(!host.0.is_null());let mut state=ControlState{host:Some(host),..Default::default()};
+  let original=handle(&mut state,Request::Asset{data:include_bytes!("../../../native/decoder/tests/fixtures/tone.wav").to_vec(),rate:Some(48000)}).unwrap();
+  let frames=original["frames"].as_u64().unwrap();let id=original["id"].as_u64().unwrap() as u32;
+  let processed=handle(&mut state,Request::Source{asset:id,params:SourceParameters{start:0.,duration:frames as f64/48000.,time:1.5,semitones:12.,formant:0.,preserve:1,reverse:0}}).unwrap();
+  assert_eq!(processed["frames"].as_u64().unwrap(),(frames as f64*1.5).round() as u64);assert_ne!(processed["id"],original["id"]);assert_eq!(processed["rate"],48000);
+  assert!(handle(&mut state,Request::Source{asset:id,params:SourceParameters{start:0.,duration:1.,time:0.,semitones:0.,formant:0.,preserve:1,reverse:0}}).is_err());
+  assert_eq!(state.status().unwrap()["sampleRate"],0);
  }
  #[test]fn cancelled_or_old_audio_handles_cannot_start_or_stop_new_sessions(){
   let mut state=ControlState::default();state.begin().unwrap();state.begin().unwrap();state.current=2;

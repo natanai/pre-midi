@@ -86,10 +86,10 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
   const graph=createEffectsBus(context,fx,out);owner.nodes.push(...graph.nodes);gate.connect(graph.input);
  }};
 }
-// Transfer only shared processing, never oscillators, asset mapping or timing.
+// Transfer authored source treatment and shared processing, never PCM, asset mappings or Clip placement.
 export function processingFromPatch(patch){
  const synth=patch.type==='synth',fx=recordedEffects({...patch,...(synth?{drive:patch.effects.drive,attack:patch.envelope.attack,release:patch.envelope.release}:{}),...(patch.effects??{})});
- const keys=['reverb','stereoWidth','msBalance','delayTone','delayPingPong','eq','filterStages','delaySync','chain','pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
+ const keys=['sourceProcessing','reverb','stereoWidth','msBalance','delayTone','delayPingPong','eq','filterStages','delaySync','chain','pan','transpose','attack','release','drive','delayMix','delayTime','delayFeedback','filter','movement','bend','modulation','automation'];
  const result=Object.fromEntries(keys.filter(key=>fx[key]!==undefined).map(key=>[key,structuredClone(fx[key])]));
  result.chain=structuredClone(processingChain(patch));
  if(result.filter===null&&!result.chain.bypass.includes('filter'))result.chain.bypass.push('filter');

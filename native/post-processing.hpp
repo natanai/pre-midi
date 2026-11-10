@@ -15,7 +15,7 @@ struct PreparedPostProcessing {
  PreparedPostProcessing(unsigned length,const std::array<PostRecipe,postLimit>& input,unsigned rate):count(length),recipes(input){for(unsigned i=0;i<count;i++)if(recipes[i].kind>=4)motion[i]=std::make_unique<ModEffectPrepared>(recipes[i].motion,rate);}
  bool matches(unsigned length,const std::array<PostRecipe,postLimit>& input)const noexcept{if(length!=count)return false;for(unsigned i=0;i<count;i++)if(!samePostRecipe(input[i],recipes[i]))return false;return true;}
 };
-inline bool usesPostDelay(unsigned length,const std::array<PostRecipe,postLimit>& recipes)noexcept{for(unsigned i=0;i<length;i++)if(recipes[i].kind==4||recipes[i].kind==5)return true;return false;}
+inline bool usesPostDelay(unsigned length,const std::array<PostRecipe,postLimit>& recipes)noexcept{for(unsigned i=0;i<length;i++)if(recipes[i].kind==4||recipes[i].kind==5||recipes[i].kind==8||recipes[i].kind==9)return true;return false;}
 class PostState {
  Dynamics dynamics;ModEffectState motion;
 public:

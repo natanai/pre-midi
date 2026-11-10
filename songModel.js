@@ -3,6 +3,7 @@
 // pre-programmed reader compatibility remains separately qualified.
 import {FORMAT,BEAT_VERSIONS,MODULATION_BEAT_VERSION,AUTOMATION_BEAT_VERSION,EXTENDED_BEAT_VERSION,SAMPLE_SLICE_BEAT_VERSION,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION,requiresSustainFormat,upgradeBeatFeatures,clone,create,id,validate as validateBeat} from "./schema.js";
 import {STEPS_PER_BAR,eventsAtStep} from "./arrangement.js";
+import {sourceSettings,sourceRate} from "./src/dsp/source-processing.js";
 import {validateVocalEffects,vocalEffects} from "./vocalEffects.js";
 import {requiresSampleSliceFormat,isRecordingSampleAlias} from "./sampleSlice.js";
 import {FREEFORM_SONG_VERSION,FREEFORM_AUTOMATION_SONG_VERSION,freeformEndStep,eventsAtFreeformStep,resolveFreeformInstrument,sourceForFreeformInstrument,validateFreeform} from "./freeformModel.js";
@@ -174,7 +175,7 @@ export function trimVocalClip(song,clipId,seconds,edge="start"){
  if(!["start","end"].includes(edge)||!Number.isFinite(seconds)||seconds<0||seconds+(edge==="start"?(clip.trimEndSeconds??0):(clip.trimStartSeconds??0))>=remaining-.01)
   throw Error("Trim must leave at least 0.01 seconds of audio.");
  clip[edge==="start"?"trimStartSeconds":"trimEndSeconds"]=Math.round(seconds*10000)/10000;
- clip.lengthSteps=Math.max(1,Math.ceil((remaining-(clip.trimStartSeconds??0)-(clip.trimEndSeconds??0))/Math.pow(2,vocalEffects(clip).transpose/12)*song.bpm*4/60));
+ clip.lengthSteps=Math.max(1,Math.ceil((remaining-(clip.trimStartSeconds??0)-(clip.trimEndSeconds??0))*sourceSettings(clip.effects).time/sourceRate(vocalEffects(clip))*song.bpm*4/60));
  return clip;
 }
 export function moveVocalClip(song,clipId,targetTrackId){
@@ -200,7 +201,7 @@ export function setSongTempo(song,bpm){
   const recording=recordings.get(clip.recordingId);
   if(!recording)continue;
   const remaining=recording.durationSeconds-recording.trimSeconds-(clip.trimStartSeconds??0)-(clip.trimEndSeconds??0);
-  const rate=Math.pow(2,vocalEffects(clip).transpose/12);
+  const rate=sourceRate(vocalEffects(clip))/sourceSettings(clip.effects).time;
   clip.lengthSteps=Math.max(1,Math.ceil(remaining/rate*bpm*4/60));
  }
  return song;

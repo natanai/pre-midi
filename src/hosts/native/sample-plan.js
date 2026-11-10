@@ -1,3 +1,4 @@
+import {sampleSourceRequest,vocalSourceRequest,needsSourceProcessing} from '../../dsp/source-processing.js';
 import {compilePostProcessing,postTailSeconds} from '../../dsp/post-processing.js';
 import {encodePostProcessing} from './post-processing.js';
 import {encodeParameterAutomation} from './automation.js';
@@ -16,12 +17,13 @@ import {sampleSourceRegion} from '../../../sampleSlice.js';
 
 export function planNativeSample(instrument,note,start,duration,assets,{unit=.125,automation=instrument.patch.automation,timeline}={}){
  const patch=instrument.patch,errors=validatePatch(patch);if(errors.length)throw Error(errors.join('; '));
- const zone=sampleForNote(patch,note.pitch,note.velocity),asset=zone&&assets.get(zone.assetId);
+ const zone=sampleForNote(patch,note.pitch,note.velocity),original=zone&&assets.get(zone.assetId);
+ const request=original&&sampleSourceRequest(patch,note,zone,original.duration),processed=request&&needsSourceProcessing(request.recipe),asset=processed?assets.get(request.key):original;
  if(!asset)throw Error('Native audio asset is not prepared: '+(zone?.assetId??'missing sample zone'));
- const rate=patch.followPitch?2**((note.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12);
- const region=sampleSourceRegion(zone,asset.duration,rate);
+ const rate=request.rate;
+ const region=processed?{offset:0,sourceLength:asset.duration,length:asset.duration/rate}:sampleSourceRegion(zone,asset.duration,rate);
  const life=patch.oneShot?region.length:Math.min(region.length,Math.max(.015,duration+patch.release));
- const motion=movement(patch),fx=effectiveDelayEffects(patch,recordedEffects(patch),unit),peak=patch.audioMode==="clip"?Math.min(2,instrument.volume*patch.gain*note.velocity):Math.min(2,instrument.volume*patch.gain*note.velocity*.7*(patch.preserveDynamics?3.5:asset.normalization));
+ const motion=movement(patch),fx=effectiveDelayEffects(patch,recordedEffects(patch),unit),peak=patch.audioMode==="clip"?Math.min(2,instrument.volume*patch.gain*note.velocity):Math.min(2,instrument.volume*patch.gain*note.velocity*.7*(patch.preserveDynamics?3.5:original.normalization));
  const at=start+Math.min(patch.attack,life*.5)+.001;
  const releaseStart=patch.oneShot?start+Math.max(0,life-patch.release):patch.followPitch?Math.min(start+duration,start+life-.01):start+life-.01;
  return {contract:'pre-midi-sample-voice',version:1,kind:1,reverb:fx.reverb,stereoWidth:patch.stereoWidth,msBalance:patch.msBalance,delayTone:fx.delayTone,delayPingPong:fx.delayPingPong,eq:patch.eq,filterStages:patch.filterStages,chain:patch.chain,asset:asset.id,start,duration:Math.max(.02,life),off:patch.audioMode==="clip"?start+life:Math.max(start,releaseStart),end:start+life+.01,graphEnd:start+life+.01+postTailSeconds(patch,unit),postProcessing:compilePostProcessing(patch,unit),
@@ -34,10 +36,11 @@ export function planNativeSample(instrument,note,start,duration,assets,{unit=.12
 }
 export function planNativeVocal(event,start,unit,assets){
  if(!event?.recording||!event?.clip)throw Error('Native vocal event is missing its recording or clip');
- const {recording,clip}=event,asset=assets.get(recording.id);
+ const {recording,clip}=event,original=assets.get(recording.id);
+ const request=original&&vocalSourceRequest(recording,clip,original.duration),processed=request&&needsSourceProcessing(request.recipe),asset=processed?assets.get(request.key):original;
  if(!asset)throw Error('Native vocal asset is not prepared: '+recording.id);
- const fx=effectiveDelayEffects(clip.effects??{},vocalEffects(clip,unit),unit),range=vocalSourceRange(recording,clip,unit,0,{sourceDuration:asset.duration});
- const offset=Math.max(0,Math.min(range.offset,asset.duration-.005));
+ const fx=effectiveDelayEffects(clip.effects??{},vocalEffects(clip,unit),unit),range=vocalSourceRange(recording,clip,unit,0,{sourceDuration:original.duration});
+ const sourceOffset=processed?(range.offset-request.recipe.start)*request.recipe.time:range.offset,offset=Math.max(0,Math.min(sourceOffset,asset.duration-.005));
  const duration=Math.min(range.duration,(asset.duration-offset)/range.rate);
  if(!(duration>.005))return null;
  const end=start+duration,gain=clip.gain??1;
@@ -47,7 +50,7 @@ export function planNativeVocal(event,start,unit,assets){
   {kind:0,time:start,value:gain},{kind:0,time:end,value:0});
  const tail=effectTailSeconds(fx);
  return {contract:'pre-midi-sample-voice',version:1,kind:2,reverb:fx.reverb,stereoWidth:fx.stereoWidth,msBalance:fx.msBalance,delayTone:fx.delayTone,delayPingPong:fx.delayPingPong,eq:fx.eq,filterStages:fx.filterStages,chain:clip.effects?.chain,asset:asset.id,start,duration,
-  off:end,end,graphEnd:end+postTailSeconds(clip.effects??{},unit),postProcessing:compilePostProcessing(clip.effects??{},unit),playbackRate:range.rate,offset,sourceLimit:range.sourceEnd,pan:fx.pan,
+  off:end,end,graphEnd:end+postTailSeconds(clip.effects??{},unit),postProcessing:compilePostProcessing(clip.effects??{},unit),playbackRate:range.rate,offset,sourceLimit:processed?asset.duration:range.sourceEnd,pan:fx.pan,
   filter:fx.filter,drive:fx.drive,movement:movement(fx),sweep:planFilterSweep(fx.filter,start,duration,"vocal"),
   pitch:{...range.pitch,start,duration},
   delayMix:fx.delayMix,delayTime:fx.delayTime,delayFeedback:fx.delayFeedback,tail,

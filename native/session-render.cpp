@@ -29,7 +29,7 @@ int main(int argc,char** argv){try{
  premidi::require(argc==8,"session-render: rate cycle seek loop frames block state");
  const auto rate=static_cast<unsigned>(std::stoul(argv[1])),frames=static_cast<unsigned>(std::stoul(argv[5])),block=static_cast<unsigned>(std::stoul(argv[6]));
  premidi::require(rate>=8000&&rate<=192000&&frames>0&&frames<=rate*600&&block>0&&block<=8192,"Invalid native session render size");
- premidi::Session session(bytes.data(),bytes.size(),rate,std::stod(argv[2]),std::stod(argv[3]));const bool loop=std::stoi(argv[4])!=0;
+ auto sessionOwner=std::make_unique<premidi::Session>(bytes.data(),bytes.size(),rate,std::stod(argv[2]),std::stod(argv[3]));auto& session=*sessionOwner;const bool loop=std::stoi(argv[4])!=0;
  std::vector<float> pcm(static_cast<std::size_t>(frames)*2);for(unsigned at=0;at<frames;){const auto count=std::min(block,frames-at);unsigned budget=premidi::maxOnsets;audioScope=true;session.process(pcm.data()+2*at,count,loop,budget);audioScope=false;at+=count;}
  premidi::require(!allocations&&!session.fault.load(),"Native render allocated or exceeded callback bounds");for(float value:pcm){premidi::require(std::isfinite(value),"Nonfinite native session PCM");writeFloat(value);}return 0;
 }catch(const std::exception& error){audioScope=false;std::cerr<<error.what()<<'\n';return 1;}}

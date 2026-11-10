@@ -1,6 +1,6 @@
 import {POST_PROCESSOR_LIMIT} from './parameters.js';
 import {DYNAMICS_KINDS,compileDynamics} from './dynamics.js';
-import {MOD_EFFECT_KINDS,modEffectRecipe,modEffectTail,delayEffect} from './modulation-effects.js';
+import {MOD_EFFECT_KINDS,modEffectRecipe,modEffectTail,delayEffect,frequencyEffect} from './modulation-effects.js';
 export const POST_PROCESSOR_KINDS=Object.freeze([...DYNAMICS_KINDS,...MOD_EFFECT_KINDS]);
 export function compilePostProcessing(patch,unit=.125){
  const chain=patch.chain;if(!chain)return [];
@@ -15,7 +15,7 @@ export function compilePostProcessing(patch,unit=.125){
  });
 }
 export const postTailSeconds=(patch,unit=.125)=>compilePostProcessing(patch,unit).reduce((n,p)=>n+(MOD_EFFECT_KINDS.includes(p.kind)?modEffectTail(p):0),0);
-export const needsPostDelay=patch=>compilePostProcessing(patch).some(p=>delayEffect(p.kind));
+export const needsPostDelay=patch=>compilePostProcessing(patch).some(p=>delayEffect(p.kind)||frequencyEffect(p.kind));
 export function songNeedsPostDelay(song){
  return [...(song.beats??[]).flatMap(b=>b.instruments??[]),...(song.tracks??[]).flatMap(t=>t.freeform?.instruments??[])].some(i=>(i.sounds??[{patch:i.patch}]).some(s=>s.patch&&needsPostDelay(s.patch)))||
   (song.tracks??[]).some(t=>t.kind==='vocal'&&t.clips?.some(c=>c.effects&&needsPostDelay(c.effects)));

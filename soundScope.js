@@ -1,8 +1,10 @@
+import {createAnalysisQueue} from './src/hosts/analysis-queue.js';
+import {sampleSourceRequest} from './src/dsp/source-processing.js';
+import {postTailSeconds} from './src/dsp/post-processing.js';
 import {prepareProcessorMix} from './src/hosts/web/processor-mix.js';
 import {effectiveDelayEffects} from "./src/dsp/processing-chain.js";
-import {sampleSourceRegion} from "./sampleSlice.js";
 import {vocalEventFromPatch} from "./vocalAudioView.js";
-import {scheduleVocal} from "./songAudio.js";
+import {scheduleVocal,prepareVocalSource} from "./songAudio.js";
 import {vocalSourceRange} from "./vocalEffects.js";
 // The scope measures real playback PCM; it is not a separate illustrative synth.
 import {movement,pitchCents} from "./expression.js";
@@ -11,11 +13,12 @@ import {effectTailSeconds} from "./src/dsp/effect-tail.js";
 import {routeValueAt,smoothingAlpha} from "./src/dsp/modulation.js";
 import {planSynthVoice} from "./src/dsp/synth-voice.js";
 import {scheduleSynthPlan} from "./audio.js";
-import {scheduleSample,sampleForNote} from "./sampler.js";
+import {scheduleSample,sampleForNote,prepareSampleSource} from "./sampler.js";
 import {getAsset} from "./assetRegistry.js";
-import {nativeEnabled,nativeRequest,nativePlans,nativeRequiredAssets,prepareNativeAssets,renderNative} from "./src/hosts/native/session.js";
+import {nativeEnabled,nativeRequest,prepareNativePlans,nativeRequiredAssets,prepareNativeAssets,renderNative} from "./src/hosts/native/session.js";
 
 const NS="http://www.w3.org/2000/svg",RATE=44100,HOLD=1.25,MAX_WINDOW=12,COUNT=300,TIME_WIDTH=720;
+const renderLatest=createAnalysisQueue();
 const mounted=new WeakMap();
 const clamp=(v,lo=0,hi=1)=>Math.min(hi,Math.max(lo,v));
 const node=(type,attributes={})=>{
@@ -34,8 +37,8 @@ export function scopeAmplitudeAt(patch,t){
   envelopeLevelAt(envelope,1,HOLD)*(1-clamp((t-HOLD)/envelope.release));
 }
 export function scopeWindowSeconds(patch,sampleLife=0){
- const length=patch.type==="sample"?sampleLife+effectTailSeconds(patch)+.08:
-  HOLD+patch.envelope.release+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
+ const length=patch.type==="sample"?sampleLife+postTailSeconds(patch)+effectTailSeconds(patch)+.08:
+  HOLD+patch.envelope.release+postTailSeconds(patch)+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
  return clamp(Math.max(2.2,length),2.2,MAX_WINDOW);
 }
 // Per-channel extrema preserve waveform dynamics and delay tails. Never
@@ -125,14 +128,14 @@ function pitchPath(patch,seconds,referencePitch,oscillator=0){
   return (i?"L":"M")+(i/(COUNT-1)*TIME_WIDTH).toFixed(2)+" "+(232-distance).toFixed(2);
  }).join(" ");
 }
-async function vocalScope(patch,context,level){
+async function vocalScope(patch,context,level,isCurrent){
  const event=vocalEventFromPatch(patch,context,level),unit=60/context.bpm/4;
  const life=vocalSourceRange(event.recording,event.clip,unit).duration;
- const seconds=Math.min(MAX_WINDOW,Math.max(2.2,life+effectTailSeconds(event.clip.effects)+.08));
+ const seconds=Math.min(MAX_WINDOW,Math.max(2.2,life+postTailSeconds(patch)+effectTailSeconds(event.clip.effects)+.08));
  if(nativeEnabled()){
   const onset={kind:"vocal",event,at:0};const status=await nativeRequest({action:"status"});
-  const rate=status.sampleRate||RATE,assets=await prepareNativeAssets(nativeRequiredAssets([onset]),status);
-  const frames=Math.ceil(seconds*rate),pcm=new Float32Array(await renderNative(nativePlans([onset],assets,unit),{rate,frames,cycle:seconds,gain:1}));
+  const rate=status.sampleRate||RATE,assets=await prepareNativeAssets(nativeRequiredAssets([onset]),{...status,sampleRate:rate},{isCurrent});
+  const frames=Math.ceil(seconds*rate),pcm=new Float32Array(await renderNative(await prepareNativePlans([onset],assets,unit,isCurrent),{rate,frames,cycle:seconds,gain:1}));
   const channels=[new Float32Array(frames),new Float32Array(frames)];
   for(let n=0;n<frames;n++){channels[0][n]=pcm[2*n];channels[1][n]=pcm[2*n+1];}
   return {buffer:{length:frames,sampleRate:rate,numberOfChannels:2,getChannelData:c=>channels[c]},seconds,clipped:seconds<life};
@@ -141,7 +144,8 @@ async function vocalScope(patch,context,level){
  if(!bytes)throw Error("Recording audio is missing");
  await prepareProcessorMix(offline,patch);
  const buffer=await offline.decodeAudioData(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
- scheduleVocal(offline,offline.destination,event,0,unit,new Map([[event.recording.id,buffer]]));
+ const decoded=new Map([[event.recording.id,buffer]]);await prepareVocalSource(offline,decoded,event);
+ scheduleVocal(offline,offline.destination,event,0,unit,decoded);
  return {buffer:await offline.startRendering(),seconds,clipped:seconds<life};
 }
 async function webAudio(patch,beat,level,pitch,automation){
@@ -154,21 +158,20 @@ async function webAudio(patch,beat,level,pitch,automation){
   const decoder=new OfflineAudioContext(2,1,RATE);
   buffer=await decoder.decodeAudioData(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
  }
- const rate=zone?(patch.followPitch?2**((pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12)):1;
- const original=buffer?sampleSourceRegion(zone,buffer.duration,rate).length:0;
+ const request=buffer?sampleSourceRequest(patch,{pitch,velocity:1},zone,buffer.duration):null,original=request?request.region.sourceLength*request.recipe.time/request.rate:0;
  const life=buffer?(patch.oneShot?original:Math.min(original,HOLD+patch.release)):0;
  const seconds=scopeWindowSeconds(patch,life),context=new OfflineAudioContext(2,Math.ceil(seconds*RATE),RATE);
  await prepareProcessorMix(context,patch);
  const voice={patch,volume:level},note={pitch,velocity:1};
- if(buffer)scheduleSample(context,context.destination,voice,note,0,HOLD,beat,new Map([[zone.assetId,buffer]]));
+ if(buffer){const decoded=new Map([[zone.assetId,buffer]]);await prepareSampleSource(context,decoded,patch,note);scheduleSample(context,context.destination,voice,note,0,HOLD,beat,decoded);}
  else scheduleSynthPlan(context,context.destination,planSynthVoice(voice,note,0,HOLD,
   automation?{unit:60/(beat?.bpm??120)/4,automation,timeline:{step:0,unit:60/(beat?.bpm??120)/4,
    limitStep:(beat?.bars??8)*16}}:{unit:60/(beat?.bpm??120)/4}));
  const output=await context.startRendering();
- const full=patch.type==="sample"?life+effectTailSeconds(patch)+.08:HOLD+patch.envelope.release+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
+ const full=patch.type==="sample"?life+postTailSeconds(patch)+effectTailSeconds(patch)+.08:HOLD+patch.envelope.release+postTailSeconds(patch)+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
  return {buffer:output,seconds,clipped:full>MAX_WINDOW};
 }
-async function nativeAudio(patch,beat,level,pitch,automation){
+async function nativeAudio(patch,beat,level,pitch,automation,isCurrent){
  const event={kind:"note",instrument:{patch,volume:level,...(automation?{automation}:{})},
   note:{pitch,velocity:1},at:0,duration:HOLD,
   ...(automation?{timeline:{step:0,unit:60/(beat?.bpm??120)/4,
@@ -177,26 +180,25 @@ async function nativeAudio(patch,beat,level,pitch,automation){
  // Match the configured native device rate even for purely synthesized sounds.
  const status=await nativeRequest({action:"status"});
  const rate=status?.sampleRate||RATE;
- const assets=ids.size?await prepareNativeAssets(ids,status):new Map();
+ const assets=ids.size?await prepareNativeAssets(ids,{...status,sampleRate:rate},{isCurrent}):new Map();
  const zone=patch.type==="sample"?sampleForNote(patch,pitch,1):null;
  const stored=zone?assets.get(zone.assetId):null;
- const speed=zone?(patch.followPitch?2**((pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12)):1;
- const original=stored?sampleSourceRegion(zone,stored.duration,speed).length:0;
+ const request=stored?sampleSourceRequest(patch,{pitch,velocity:1},zone,stored.duration):null,original=request?request.region.sourceLength*request.recipe.time/request.rate:0;
  const life=zone?(patch.oneShot?original:Math.min(original,HOLD+patch.release)):0;
  const seconds=scopeWindowSeconds(patch,life),frames=Math.ceil(seconds*rate);
- const pcm=new Float32Array(await renderNative(nativePlans([event],assets,60/(beat?.bpm??120)/4),
+ const pcm=new Float32Array(await renderNative(await prepareNativePlans([event],assets,60/(beat?.bpm??120)/4,isCurrent),
   {rate,frames,cycle:seconds,gain:1}));
  if(pcm.length<frames*2)throw Error("Incomplete native waveform");
  const channels=[new Float32Array(frames),new Float32Array(frames)];
  for(let i=0;i<frames;i++){channels[0][i]=pcm[2*i];channels[1][i]=pcm[2*i+1];}
- const full=zone?life+effectTailSeconds(patch)+.08:HOLD+patch.envelope.release+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
+ const full=zone?life+postTailSeconds(patch)+effectTailSeconds(patch)+.08:HOLD+patch.envelope.release+postTailSeconds(patch)+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
  return {buffer:{length:frames,sampleRate:rate,numberOfChannels:2,getChannelData:c=>channels[c]},
   seconds,clipped:full>MAX_WINDOW};
 }
-export async function renderScopeAudio(patch,beat,level=1,pitch=60,automation=null){
+export async function renderScopeAudio(patch,beat,level=1,pitch=60,automation=null,isCurrent=()=>true){
  // Native mode must not silently render a Web Audio substitute.
- if(patch.type==="vocal")return vocalScope(patch,beat,level);
- return nativeEnabled()?nativeAudio(patch,beat,level,pitch,automation):webAudio(patch,beat,level,pitch,automation);
+ if(patch.type==="vocal")return vocalScope(patch,beat,level,isCurrent);
+ return nativeEnabled()?nativeAudio(patch,beat,level,pitch,automation,isCurrent):webAudio(patch,beat,level,pitch,automation);
 }
 export function disposeSignalDisplay(root){mounted.get(root)?.dispose();}
 export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,referencePitch=60,automation=null,soundId=null){
@@ -306,7 +308,9 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
   currentLevel=level;const token=++revision;
   clearTimeout(timer);
   timer=setTimeout(()=>{
-   void renderScopeAudio(nextPatch,beat,currentLevel,referencePitch,automation).then(({buffer,seconds,clipped})=>{
+   const current=()=>!disposed&&token===revision;
+   void renderLatest(current,()=>renderScopeAudio(nextPatch,beat,currentLevel,referencePitch,automation,current)).then(result=>{
+    if(!result)return;const {buffer,seconds,clipped}=result;
     if(disposed||token!==revision)return;
     latestBuffer=buffer;latestSeconds=seconds;
     paintWave();

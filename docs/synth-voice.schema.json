@@ -153,7 +153,9 @@
               "chorus",
               "flanger",
               "phaser",
-              "autopan"
+              "autopan",
+              "ringmod",
+              "frequencyshift"
             ]
           },
           "mix": {

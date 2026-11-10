@@ -113,6 +113,13 @@
     "runtime": "Plans carry resolved postProcessing recipes. Free-Hz rate and musical sync remain authored; DSP rate resolves with the same modulationRate function used by musical LFOs. Each note/Clip restarts at its authored phase.",
     "state": "Native control prepares/deduplicates immutable coefficient tables and optional per-voice delay storage. The callback borrows them through voice retirement and page tails. The matching browser worklet has the same phase and state semantics.",
     "tail": "graphEnd includes the sum of active serial modulation-effect tails; audibleEnd adds the longest shared send tail. Source end/envelope do not change. See docs/native-audio.md for bounds and qualification.",
-    "wire": "Current sample execution v22; ordered tags 0..3 dynamics, 4..7 chorus/flanger/phaser/auto-pan. Only the current decoder is supported."
+    "wire": "Current sample execution v22; ordered tags 0..3 dynamics, 4..7 chorus/flanger/phaser/auto-pan, 8/9 ring modulation/frequency shift. Only the current decoder is supported."
+  },
+  "source_processing": {
+    "authority": "src/dsp/parameters.js: SOURCE_PROCESSING_PARAMETERS; src/dsp/source-processing.js",
+    "preparation": "C++ Signalsmith Stretch or official embedded WASM in a browser Worker prepare immutable PCM from original external assets. The callback never runs a source FFT.",
+    "timing": "Source crop precedes reverse and pitch/time/formants. Pitch mode declares rate or independent behavior; source elapsed clocks, fades, Clip duration and WAV end calculations share this mapping.",
+    "bounds": "Time .5..2, effective independent pitch +/-48 semitones, formant +/-12. Spectral mono/stereo only. Original assets are unchanged; recipes stay editable.",
+    "open": "Monophonic correction/tuning and physical/listening acceptance remain unfinished."
   }
 }

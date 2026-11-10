@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';import {execFileSync,spawnSync} from 'node:child_process';import {mkdtemp,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';import {fileURLToPath} from 'node:url';
 import {prepareProcessorMix} from '../src/hosts/web/processor-mix.js';
 import {defaultReverb} from '../src/dsp/reverb.js';
-import {withInstance} from '../src/dsp/processing-graph.js';import {compilePostProcessing} from '../src/dsp/post-processing.js';import {MOD_EFFECT_KINDS,ModEffectKernel,modEffectTail} from '../src/dsp/modulation-effects.js';import {DynamicsKernel} from '../src/dsp/dynamics-kernel.js';
+import {withInstance} from '../src/dsp/processing-graph.js';import {compilePostProcessing} from '../src/dsp/post-processing.js';import {CLASSIC_MOD_EFFECT_KINDS,ModEffectKernel,modEffectTail} from '../src/dsp/modulation-effects.js';import {DynamicsKernel} from '../src/dsp/dynamics-kernel.js';
 import {planNativeVocal,planNativeSample} from '../src/hosts/native/sample-plan.js';import {encodeNativeSession} from '../src/hosts/native/session.js';import {rebaseNativePlansToPage} from '../src/hosts/native/page-plan.js';import {preparePostProcessing} from '../src/hosts/web/post-processing.js';
 import {scheduleVocal} from '../songAudio.js';import {scheduleSynthPlan} from '../audio.js';import {planSynthVoice} from '../src/dsp/synth-voice.js';import {cleanPatch} from './audio-quality/fixtures.js';import {prepareVocalSeek,VocalSeekCache} from '../src/hosts/web/vocal-seek.js';
 const api=await import(process.env.WEB_AUDIO_MODULE??'node-web-audio-api');
@@ -25,7 +25,7 @@ try{
  // from the existing host-specific interpolation of an abruptly cut PCM endpoint.
  const dry=effect('autopan');dry.chain.bypass=['autopan-1'];const dryPlan=planNativeVocal(event(dry),.010123,.125,handles),dryA=native([dryPlan]),dryB=await web(dry,{start:.010123}),dryError=difference(dryA,dryB);assert.ok(dryError<2e-6,'fractional source endpoint '+dryError);
  let worst=0;
- for(const kind of MOD_EFFECT_KINDS){
+ for(const kind of CLASSIC_MOD_EFFECT_KINDS){
   const fx=effect(kind);Object.assign(fx.chain.instances[0].parameters,{rate:3,phase:.23,...(kind==='autopan'?{}:{feedback:-.6,stereo:.37})});
   const plan=planNativeVocal(event(fx),0,.125,handles),audio=native([plan]),error=difference(audio,await web(fx));assert.ok(error<2e-6,kind+' native/worklet '+error);worst=Math.max(worst,error);
   const kernels=compilePostProcessing(fx).map(p=>new ModEffectKernel(p,rate)),frame=new Float32Array(2);let oracle=0;
@@ -41,6 +41,12 @@ try{
   const e=event(fx),song={kind:'song',bpm:120,recordings:[e.recording],tracks:[{id:'v',kind:'vocal',clips:[{...e.clip,recordingId:'r',startStep:0}]}]},cached=(await prepareVocalSeek(song,1.2,new Map([['r',buffer]]),rate,{seekCache:new VocalSeekCache()})).get('c');assert.ok(cached);let seekError=0;for(let i=Math.round(.15*rate);i<Math.min(frames,cached.buffer.length);i++)for(let ch=0;ch<2;ch++)seekError=Math.max(seekError,Math.abs(audio[2*i+ch]-Math.fround(cached.buffer.getChannelData(ch)[i]*Math.fround(.85))));assert.ok(seekError<2e-7,'browser seek history '+seekError);
   const bypass=structuredClone(fx);bypass.chain.bypass=[kind+'-1'];assert.ok(difference(audio,native([planNativeVocal(event(bypass),0,.125,handles)]))>.001,'inaudible processor');
   console.log('PASS',kind,'native/worklet, synth/sample/vocal, overlap, loop, seek, block, page phase and bypass',JSON.stringify({error,oracle,synthError,seekError}));
+ }
+ for(const kind of ['ringmod','frequencyshift']){
+  const fx=effect(kind);Object.assign(fx.chain.instances[0].parameters,{frequency:kind==='ringmod'?100:-100,phase:.23,stereo:.37});
+  const plan=planNativeVocal(event(fx),.010123,.125,handles),audio=native([plan]),browser=await web(fx,{start:.010123}),error=difference(audio,browser);assert.ok(error<2e-6,kind+' native/worklet '+error);
+  assert.equal(difference(audio,native([plan],{block:17})),0);assert.equal(difference(audio.slice(rate/2),native([plan],{seek:.25,seconds:seconds-.25})),0);
+  console.log('PASS',kind,'native/worklet, fractional onset, block and seek',JSON.stringify({error}));
  }
  // Changing post order changes the signal; all processors remain per voice.
  const mixed=effect('chorus');mixed.chain=withInstance(mixed,'compressor');mixed.chain.instances[1].parameters.threshold=-30;const forward=native([planNativeVocal(event(mixed),0,.125,handles)]);mixed.chain.post.reverse();assert.ok(difference(forward,native([planNativeVocal(event(mixed),0,.125,handles)]))>.001);assert.ok(difference(native([planNativeVocal(event(mixed),0,.125,handles)]),await web(mixed))<2e-6);

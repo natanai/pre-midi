@@ -2068,8 +2068,8 @@
         "id": "CAP-12",
         "title": "Chorus, flanger, phaser and creative modulation effects",
         "status": "partial",
-        "current": "Shared chorus, flanger, phaser and auto-pan implemented in native/browser synth/sample/vocal playback and export, with ordinary controls, interactive illustrations, per-note/Clip state, tempo sync, processor lifecycle and finite tails.",
-        "gap": "Ring modulation/frequency shifting, wider effect automation, free-running clocks, listening and physical Windows qualification remain.",
+        "current": "All six named modulation-effect types have native/browser source implementations with the shared Inspector and per-note/Clip state.",
+        "gap": "Physical/listening and CPU qualification, broader effect automation/free-run clocks and arrangement-wide latency compensation remain open.",
         "evidence_ids": [
           "E05",
           "E10",
@@ -2110,8 +2110,8 @@
         "id": "CAP-14",
         "title": "Independent pitch, time and formants",
         "status": "partial",
-        "current": "Sample/vocal transpose changes playback rate and therefore duration. Vocal UI recalculates length after transpose.",
-        "gap": "No independent stretch, formant-preserving pitch, independent formant shift or scale-based monophonic pitch correction found.",
+        "current": "Independent pitch/time, formant shift/preservation and reverse implemented for sampled Sounds and vocals using control-side C++ and Worker/WASM preparation.",
+        "gap": "Scale/key monophonic correction, tuning controls and physical/listening/quality qualification remain unfinished.",
         "evidence_ids": [
           "E09",
           "E11",
@@ -2949,7 +2949,7 @@
       {
         "id": "SE-12",
         "title": "Add shared modulation effects",
-        "status": "in_progress",
+        "status": "implemented_unverified",
         "priority": "P1",
         "depends_on": [
           "SE-06",
@@ -2981,9 +2981,12 @@
           "tests/modulationEffects.dom.mjs: common Inspector direct graphs/dials, timing selector, undo/redo, order, bypass/removal and combined view",
           "native/modulation-effects-test.cpp: poisoned/unwritten ring guards, storage reuse and independent retiring-voice feedback history",
           "scripts/native-stream-device-check.mjs at 48 kHz: chorus/phaser plus compressor/de-esser, reverb/echo and optional parallel routing; seek/revision/loop/count-in/capture; zero callback allocations",
-          "native/control-tests: seven production Rust/control tests, including urgent pause/resume/Stop through a blocked/full preparation queue"
+          "native/control-tests: seven production Rust/control tests, including urgent pause/resume/Stop through a blocked/full preparation queue",
+          "tests/frequencyEffects.test.js: independent sideband translation, mirror rejection, matched delay and shifted-boundary leakage oracles",
+          "tests/modulationEffects.audio.mjs: ring/frequency-shift native/worklet PCM, fractional onset, block and seek; max observed difference 2.9802322387695312e-8",
+          "scripts/native-stream-device-check.mjs at 48 kHz: frequency shift, chorus, dynamics, reverb/echo and optional parallel tone graph; zero callback allocations"
         ],
-        "progress_note": "Classic modulation-effects source milestone implemented: chorus, flanger, six-section normalized-lattice phaser and equal-power auto-pan share the existing processor lifecycle and Inspector. Four post-level instances total (including dynamics) follow level/stereo/pan and precede dry/echo/room sends. Applicable free-Hz/beat sync, depth, initial/stereo phase, feedback, wet delay or center frequency and mix are editable and reusable. The shared modulationRate function resolves tempo at scheduling; authored settings remain untouched. Note/Clip-owned state and original-age clocks survive native/browser seeks, loops and page revisions. Serial effect tails extend graphEnd without extending source envelopes. No added fixed block latency. Ring modulation/frequency shifting, broader effect automation, free-running clock policy, matched listening and physical Windows acceptance remain open; SE-12 and M3 are not complete."
+        "progress_note": "All six named processor types now have source implementations: chorus, flanger, phaser, auto-pan, ring modulation and frequency shifting. The same post-level instance lifecycle, precise controls, direct reference illustrations and native/browser recipes apply to synth/sample/vocal sources. Ring/frequency shifting use a prepared 129-tap windowed FIR with channel-phase offsets, a 64-frame matched dry/wet delay and explicit frequency-boundary filtering. Sideband, mirror rejection, Nyquist-wrap/DC-crossing, PCM/block/seek and callback-allocation checks pass. Arrangement-wide latency compensation, broader effect automation/free-run policy and physical/listening qualification remain separate unfinished work; this is not whole-roadmap completion."
       },
       {
         "id": "SE-13",
@@ -3044,12 +3047,12 @@
           "Boundary/quiet-onset/end-trim/loop-crossfade cases, duplicate independence, immutable bytes and reuse round trips."
         ],
         "completion_evidence": [],
-        "progress_note": "Vocal start/end trims now use the same waveform surface, millisecond numeric/keyboard editing, mirrored handles/shading and independent restoration. Both ends update Song clip duration/thumbnail and source bounds in native/browser playback, seek caching and Beat reuse without rewriting recording bytes. Shared sampler source viewport, reverse and loop editing remain open."
+        "progress_note": "Vocal start/end trims now use the same waveform surface, millisecond numeric/keyboard editing, mirrored handles/shading and independent restoration. Both ends update Song clip duration/thumbnail and source bounds in native/browser playback, seek caching and Beat reuse without rewriting recording bytes. Shared sampler source viewport, reverse and loop editing remain open. Recorded source regions now support reversible source playback via the common source treatment, without rewriting assets. The sampler still needs a common waveform/crop/loop editor; sustain loops and loop crossfades remain unfinished."
       },
       {
         "id": "SE-15",
         "title": "Add independent time, pitch, formants and vocal tuning",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-08",
@@ -3059,11 +3062,12 @@
           "SYN-014"
         ],
         "implementation_paths": [
-          "src/dsp/",
-          "vocalEffects.js",
-          "sampler.js",
-          "songAudio.js",
-          "soundInspector.js"
+          "src/dsp/source-processing.js",
+          "sourceProcessingUI.js",
+          "native/source-processing.hpp",
+          "src/hosts/web/source-kernel.js",
+          "src/hosts/web/source-worker.js",
+          "src/hosts/native/session.js"
         ],
         "acceptance": [
           "Keep current rate-based transpose as an explicit mode; add pitch-independent stretch and duration-independent pitch with formant preservation and independent formant shift.",
@@ -3074,7 +3078,14 @@
         "verification": [
           "Pitch/duration/formant measurements, speech/consonant/transient listening and host comparisons at declared ranges."
         ],
-        "completion_evidence": []
+        "completion_evidence": [
+          "tests/sourceProcessing.test.js: portable recipes, context bounds, crop/time mapping, Clip tempo/trim/Inspector reuse and cancelled preparation",
+          "tests/sourceProcessing.audio.mjs: native/WASM independent sine frequency/duration oracles, short-source impulse retention, finite PCM and exact reverse",
+          "tests/sourcePlayback.audio.mjs: prepared treatment through native/browser sample/vocal/post-effect playback and seek; maximum 7.450580596923828e-9 for playback on the same prepared PCM",
+          "tests/sourceProcessing.dom.mjs: shared source mode/stretch/formant/reverse, direct graph editing, undo/focus and combined view",
+          "native/control-tests: source PCM registration without an output device plus existing blocked-worker urgent transport regressions"
+        ],
+        "progress_note": "Independent pitch and time, formant preservation/shift and reverse are implemented for sampled Sounds and vocal Clips. Explicit pitch+speed versus independent-pitch mode preserves the current rate behavior. Source treatment is prepared before playback using pinned Signalsmith Stretch 1.3.2 C++/browser WASM; original audio and editable recipes remain in projects. Supported time ratio .5..2, independent effective pitch +/-48 semitones, formants +/-12; mono/stereo spectral processing, with explicit rejection of wider channels. Crop, source elapsed time, note pitch-follow, Clip duration, tempo, live native revisions, previews, real scope and WAV lengths use the same mapping. Numerical frequency/duration, short-source, reverse, reuse/native-browser playback/seek and Inspector/history checks pass. Monophonic scale/key pitch correction, tuning response/amount and physical/listening/CPU-quality acceptance remain open."
       },
       {
         "id": "SE-16",
@@ -3771,6 +3782,20 @@
         "native_contract": "Sample packet v22; prepared 1024-point phase/coefficient tables and optional 60 ms per-voice delay storage. Stream revisions declare tone graph and post-delay resources independently before publication. State reset uses age guards instead of clearing large rings on the callback.",
         "verification": "88 routine cases; independent DSP oracles/extrema, native/worklet source/order/seek/loop/overlap/page/sync/send checks, shared DOM and seven production Rust control tests pass. 48 kHz null-device stream with classic effects/dynamics/parallel routing allocates nothing in callbacks.",
         "qualification_limits": "Source only; published Windows preview.31 remains unchanged. No physical/listening, complete SE-12/M3 or whole-roadmap claim. Hard-cut fractional PCM endpoint interpolation remains host-specific; phase fixtures use silent source endpoints."
+      },
+      {
+        "id": "SOURCE-PROCESSING-AND-FREQUENCY-EFFECTS",
+        "date": "2026-11-10",
+        "status": "implemented scoped milestones; roadmap remains in progress",
+        "task_ids": [
+          "SE-12",
+          "SE-14",
+          "SE-15",
+          "SE-16"
+        ],
+        "summary": "Add independent source pitch/time/formants/reverse and ring/frequency-shift processors, then prepare Windows preview.32. Retain every remaining automation, routing, tuning, source-editor and physical-acceptance requirement.",
+        "verification": "99 small-suite cases targeted for final packaging; focused source/frequency audio and Inspector checks, eight Rust control tests and 48 kHz dynamic streaming. Source FFT preparation stays outside callbacks; stale scope snapshots skip preparation through one serialized analysis queue.",
+        "remaining": "Broader automation and modulation sources, sidechains/shared buses and global latency compensation, sampler waveform/loop editing, distortion/noise extensions, monophonic correction, newcomer/listening/physical qualification and separately deferred mobile/game work."
       }
     ],
     "vocal_parity_milestone": {
@@ -3930,10 +3955,17 @@
       "SE-11"
     ],
     "modulation_effects": {
-      "status": "classic effects implemented; focused software checks pass",
+      "status": "all six named processor types implemented; focused software checks pass",
       "reference": "SE-12",
-      "package_status": "source only; not in preview.31",
-      "remaining": "Ring modulation, frequency shifting, broader effect automation/free-run policy, matched listening and physical Windows acceptance"
+      "package_requested": "0.14.1-preview.32",
+      "package_status": "pending",
+      "remaining": "Physical/listening/CPU qualification, broader effect automation/free-run clocks and arrangement-wide latency compensation"
+    },
+    "independent_source_processing": {
+      "status": "independent pitch/time, formant preservation/shift and reverse implemented",
+      "reference": "SE-15",
+      "package_requested": "0.14.1-preview.32",
+      "remaining": "Monophonic correction/tuning controls and physical/listening/quality qualification"
     }
   },
   "latest_delivery": {
