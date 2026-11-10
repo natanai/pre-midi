@@ -3793,8 +3793,8 @@
           "SE-15",
           "SE-16"
         ],
-        "summary": "Add independent source pitch/time/formants/reverse and ring/frequency-shift processors, then prepare Windows preview.32. Retain every remaining automation, routing, tuning, source-editor and physical-acceptance requirement.",
-        "verification": "99 small-suite cases targeted for final packaging; focused source/frequency audio and Inspector checks, eight Rust control tests and 48 kHz dynamic streaming. Source FFT preparation stays outside callbacks; stale scope snapshots skip preparation through one serialized analysis queue.",
+        "summary": "Add independent source pitch/time/formants/reverse and ring/frequency-shift processors, then prepare Windows preview.33. Retain every remaining automation, routing, tuning, source-editor and physical-acceptance requirement.",
+        "verification": "99 routine cases pass. Focused source/frequency audio and Inspector checks, eight Rust control tests and 48 kHz dynamic streaming pass. Actual module-Worker preparation and live browser source snapshot publication pass. Preview.32 Windows build/portable checks passed; artifact inspection found missing vendor notices and preview.33 corrects packaging with a ZIP license-integrity check. Source FFT preparation stays outside callbacks; stale scope snapshots skip preparation through one serialized analysis queue.",
         "remaining": "Broader automation and modulation sources, sidechains/shared buses and global latency compensation, sampler waveform/loop editing, distortion/noise extensions, monophonic correction, newcomer/listening/physical qualification and separately deferred mobile/game work."
       }
     ],
@@ -3957,26 +3957,27 @@
     "modulation_effects": {
       "status": "all six named processor types implemented; focused software checks pass",
       "reference": "SE-12",
-      "package_requested": "0.14.1-preview.32",
+      "package_requested": "0.14.1-preview.33",
       "package_status": "pending",
       "remaining": "Physical/listening/CPU qualification, broader effect automation/free-run clocks and arrangement-wide latency compensation"
     },
     "independent_source_processing": {
       "status": "independent pitch/time, formant preservation/shift and reverse implemented",
       "reference": "SE-15",
-      "package_requested": "0.14.1-preview.32",
-      "remaining": "Monophonic correction/tuning controls and physical/listening/quality qualification"
+      "package_requested": "0.14.1-preview.33",
+      "remaining": "Monophonic correction/tuning controls and physical/listening/quality qualification",
+      "package_status": "pending"
     }
   },
   "latest_delivery": {
-    "version": "0.14.1-preview.31",
-    "source_commit": "a8fe322ee83839b0619b65255e7b8e88dac5be4f",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.31",
-    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.31/pre-midi-0.14.1-preview.31-windows-x86_64-portable.zip",
-    "bytes": 17076112,
-    "sha256": "fadacf1bee8ae90bdadfbd660d4994affff64edbc97e42c7f9fdf06b63ac04ec",
-    "build_run": "https://github.com/natanai/pre-midi/actions/runs/42732024798",
-    "status": "published; Windows compilation, 14 Rust tests, runtime dependency inspection and portable launch/update/isolation/move/copy/recovery passed",
-    "remaining": "Physical Windows 11 audio/microphone/listening acceptance and unfinished synthesis tasks; optional full qualification was not requested"
+    "version": "0.14.1-preview.32",
+    "source_commit": "62f5ea7fc3a51da78efafd8e9c720568c4704fd1",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.32",
+    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.32/pre-midi-0.14.1-preview.32-windows-x86_64-portable.zip",
+    "bytes": 17206131,
+    "sha256": "14b35348dc0ac07db8d195beb472df9b410ea1c7e72a0784475d2285c7d9c121",
+    "build_run": "https://github.com/natanai/pre-midi/actions/runs/42880408359",
+    "status": "Published and automated Windows checks passed; supersede with preview.33 to include source-processing notices/licenses omitted by the preview.32 packager",
+    "remaining": "Roadmap implementation and physical/listening acceptance remain open; preview.33 corrects package notices"
   }
 }

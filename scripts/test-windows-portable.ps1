@@ -47,6 +47,15 @@ function Invoke-StudioSmoke {
 
 $portable = Join-Path $env:RUNNER_TEMP 'premidi portable first'
 Expand-Archive $zip.FullName $portable
+$sourceLicenses = @{
+  'LICENSE.txt' = 'Signalsmith-Stretch.txt'
+  'LINEAR-LICENSE.txt' = 'Signalsmith-Linear.txt'
+}
+foreach ($source in $sourceLicenses.Keys) {
+  $expected = Get-FileHash (Join-Path $repo "native/vendor/signalsmith-stretch/$source") -Algorithm SHA256
+  $actual = Get-FileHash (Join-Path $portable "licenses/$($sourceLicenses[$source])") -Algorithm SHA256
+  if ($actual.Hash -ne $expected.Hash) { throw "Portable source-processing license mismatch: $source" }
+}
 Invoke-StudioSmoke (Join-Path $portable 'pre-midi.exe') 'portable-fresh' 'portable-a' -Fresh
 
 # Windows can briefly retain WebView child-process handles after the main exit.

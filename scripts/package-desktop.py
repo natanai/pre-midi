@@ -32,8 +32,12 @@ if platform=='windows':
  with zipfile.ZipFile(out/name,'w',zipfile.ZIP_DEFLATED) as z:
   z.write(build/'pre-midi.exe','pre-midi.exe')
   z.writestr('version.txt',version)
-  z.write(root/'native/THIRD-PARTY-NOTICES.txt','THIRD-PARTY-NOTICES.txt')
+  notices=(root/'native/THIRD-PARTY-NOTICES.txt').read_text()+'\n\n'+(root/'THIRD_PARTY_NOTICES.md').read_text()
+  z.writestr('THIRD-PARTY-NOTICES.txt',notices)
   for notice in sorted((root/'native/licenses').glob('*.txt')):z.write(notice,'licenses/'+notice.name)
+  vendor=root/'native/vendor/signalsmith-stretch'
+  for source,notice_name in [('LICENSE.txt','Signalsmith-Stretch.txt'),('LINEAR-LICENSE.txt','Signalsmith-Linear.txt')]:
+   z.write(vendor/source,'licenses/'+notice_name)
   z.writestr('portable.txt','pre-midi portable edition\n')
   for folder in ['data/','projects/','exports/']:z.writestr(folder,'')
   z.writestr('README.txt','''pre-midi portable - Windows 11 x64

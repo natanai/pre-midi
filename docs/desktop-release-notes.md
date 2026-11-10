@@ -1,4 +1,4 @@
-# pre-midi 0.14.1-preview.32 - Windows portable preview
+# pre-midi 0.14.1-preview.33 - Windows portable preview
 
 Windows 11 x64 portable ZIP, with manual updates and folder-local data.
 
@@ -9,6 +9,7 @@ Windows 11 x64 portable ZIP, with manual updates and folder-local data.
 - Source treatment follows trims, source elapsed time, note pitch-follow, Clip duration/tempo, audition, measured scope, native revisions and WAV export. Native source preparation uses C++; browser preparation uses a Worker/WASM build of the same library.
 - Ring/frequency shifting use a bounded FIR with matched dry/wet delay and explicit frequency-boundary filtering. These stages add 64 frames each; arrangement-wide latency compensation remains unfinished.
 - Obsolete scope previews are skipped before entering native preparation. Existing urgent native pause/resume/Stop, transport ownership and paused-seek safeguards are retained.
+- Includes the Signalsmith Stretch/Linear notices and individual licenses in the portable ZIP; preview.33 corrects their omission from the preview.32 package.
 
 Focused source/data, DSP, shared Inspector, Rust control and 48 kHz null-device streaming checks passed locally, with zero callback allocations. Windows build and portable checks are recorded by this release's workflow; they do not replace testing on your audio device.
 

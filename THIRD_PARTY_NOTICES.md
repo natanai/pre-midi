@@ -1,6 +1,6 @@
-# Third-party sample notices
+# Third-party notices
 
-The application uses built-in Web Audio and original procedural synthesis code; it does not bundle a third-party audio runtime.
+The studio uses original synthesis and processing code alongside the native and browser dependencies listed here and in `native/THIRD-PARTY-NOTICES.txt`. Windows playback runs through C++17/miniaudio; browser independent source processing includes Signalsmith's embedded-WASM build.
 
 The optional recorded instruments downloaded for the web deployment are **CC0 1.0 Universal**:
 - [Meta Open Sound](https://github.com/facebookincubator/Meta-open-sound): piano, nylon and steel guitars.
