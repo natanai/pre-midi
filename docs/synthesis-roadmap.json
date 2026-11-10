@@ -3793,9 +3793,20 @@
           "SE-15",
           "SE-16"
         ],
-        "summary": "Add independent source pitch/time/formants/reverse and ring/frequency-shift processors, then prepare Windows preview.34. Retain every remaining automation, routing, tuning, source-editor and physical-acceptance requirement.",
-        "verification": "99 routine cases pass. Focused source/frequency audio and Inspector checks, eight Rust control tests and 48 kHz dynamic streaming pass. Actual module-Worker preparation and live browser source snapshot publication pass. Preview.32 Windows build/portable checks passed; artifact inspection found missing vendor notices and preview.33 corrects packaging with a ZIP license-integrity check. Source FFT preparation stays outside callbacks; stale scope snapshots skip preparation through one serialized analysis queue. Observed Chrome source controls and direct diagrams exposed a shared SVG-handle offset/accessibility defect. Preview.34 switches the common renderer to existing HTML graph handles with aligned coordinates and adds actual packaged Windows WebView geometry/keyboard checks. The local workspace became unavailable after publishing preview.33; final verification uses the GitHub Windows workflow.",
-        "remaining": "Broader automation and modulation sources, sidechains/shared buses and global latency compensation, sampler waveform/loop editing, distortion/noise extensions, monophonic correction, newcomer/listening/physical qualification and separately deferred mobile/game work."
+        "summary": "Add independent source pitch/time/formants/reverse and ring/frequency-shift processors, then prepare Windows preview.33. Retain every remaining automation, routing, tuning, source-editor and physical-acceptance requirement.",
+        "verification": "99 routine cases pass. Focused source/frequency audio and Inspector checks, eight Rust control tests and 48 kHz dynamic streaming pass. Actual module-Worker preparation and live browser source snapshot publication pass. Windows preview.34 compiled and passed 15 Rust tests, runtime dependency inspection, portable launch/update/isolation/move/copy/recovery and exact source-processing license checks. Packaged WebView checks verify the shared HTML graph handle at 320/640 px, its keyboard edit and native source processing without Web Audio. Source FFT preparation stays outside callbacks; stale scope snapshots skip preparation through one serialized analysis queue.",
+        "remaining": "Broader automation and modulation sources, sidechains/shared buses and global latency compensation, sampler waveform/loop editing, distortion/noise extensions, monophonic correction, newcomer/listening/physical qualification and separately deferred mobile/game work.",
+        "windows_preview": {
+          "version": "0.14.1-preview.34",
+          "source_commit": "8f7519ae7ee4f463fe97f02501246932b898c854",
+          "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.34",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.34/pre-midi-0.14.1-preview.34-windows-x86_64-portable.zip",
+          "bytes": 17209721,
+          "sha256": "bcd72aa73fabc7672f4e57e842380774678aca101ce1208248745b333fbcbf7c",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/42883400815",
+          "status": "Published; exact tag source, Windows compilation, routine checks, 15 Rust tests, runtime dependencies, portable launch/update/isolation/move/copy/recovery, exact vendor licenses and shared-graph WebView geometry/keyboard checks passed",
+          "remaining": "Broader roadmap implementation and physical Windows audio/microphone/listening acceptance remain open. Optional full audio qualification was not requested."
+        }
       }
     ],
     "vocal_parity_milestone": {
@@ -3886,21 +3897,22 @@
     "capability_audit_note": "Current/gap text reconciled against d87799e. Original E/REF IDs describe the initial comparison; current implementation paths are listed per capability. Status partial can mean unfinished feature scope or unverified observation; do not interpret every gap as missing code."
   },
   "repository_checkpoint": {
-    "audited_on": "2026-11-08",
-    "source_commit": "d87799e",
-    "preview_version": "0.14.1-preview.29",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.29",
-    "method": "Compared task and capability claims with current parameter validators, Inspector ownership, browser/native execution, transport guards, tests and published release metadata. Source presence does not establish physical hardware acceptance. Historical evidence below remains scoped to its original commit.",
+    "audited_on": "2026-11-10",
+    "source_commit": "8f7519ae7ee4f463fe97f02501246932b898c854",
+    "preview_version": "0.14.1-preview.34",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.34",
+    "method": "Reconciled current task claims with source at 8f7519ae7ee4f463fe97f02501246932b898c854 and this turn's source/data/DSP/Inspector/transport checks. Final Windows workflow and artifact evidence are recorded in latest_delivery. Automated WebView/null-device results do not establish physical audio or listening acceptance.",
     "architecture": {
       "shell": "Tauri / Rust",
       "interface": "HTML/CSS/JavaScript in WebView2 on Windows",
       "audio": "C++17 / miniaudio; native playback, capture and WAV rendering"
     },
     "remaining_focus": [
-      "Complete experimental Song streaming seek/loop/live-edit/count-in/recording lifecycle; default limits remain 600 seconds / 4096 onsets",
-      "General modulation destinations, followers, parameter automation and multi-instance/parallel processing",
-      "Remaining production processors and source editing described by SE-09 through SE-15",
-      "Physical Windows audio, microphone, device recovery and observed editor/listening qualification"
+      "Physical Windows audio/microphone/device recovery and dense or long-session acceptance for the implemented opt-in streaming lifecycle",
+      "Broader modulation destinations and follower/sidechain/free-run sources; effect/discrete automation, gesture recording, override/rejoin and wider scopes",
+      "Shared Track buses, selectable sidechains, arrangement-wide latency compensation and measured processor telemetry",
+      "Sampler waveform/sustain-loop/crossfade editing, monophonic pitch correction, additional shapers and noise colors",
+      "Observed editor, newcomer and listening qualification; separately deferred mobile/game completion"
     ],
     "completion_percentage": null,
     "scope_note": "Native desktop implementation exists. Native mobile, game-host parity and cross-platform distributions are separate tasks. No current cross-repository game-reader audit was performed. Automatic signed installation is deferred while the user uses manual portable ZIP updates."
@@ -3913,7 +3925,7 @@
       "General automation, multiple processor instances and parallel routing",
       "Dynamics, reverb, modulation effects and independent pitch/time processing"
     ],
-    "streaming": "Source milestone implemented; see native_extended_execution/song_streaming/source_milestone. Hardware/large-session acceptance and packaging remain.",
+    "streaming": "Prepared streaming seek, loop, live editing, paused replacement, count-in and synchronized capture are implemented and included in the Windows preview. Streaming remains opt-in pending physical Windows and representative large-session acceptance.",
     "remaining_implementation_task_ids": [
       "SE-05",
       "SE-06",
@@ -3921,7 +3933,6 @@
       "SE-08",
       "SE-09",
       "SE-10",
-      "SE-12",
       "SE-13",
       "SE-14",
       "SE-15"
@@ -3948,36 +3959,45 @@
       "status": "implemented; focused software checks pass",
       "package_requested": "0.14.1-preview.31",
       "reference": "SE-11",
-      "remaining": "Physical Windows and listening acceptance; modulation effects and independent pitch/time remain separate unfinished tasks",
+      "remaining": "Physical Windows and listening acceptance; wider routing and automation are separately tracked.",
       "package_status": "published"
     },
     "remaining_qualification_task_ids": [
-      "SE-11"
+      "SE-11",
+      "SE-12"
     ],
     "modulation_effects": {
       "status": "all six named processor types implemented; focused software checks pass",
       "reference": "SE-12",
-      "package_requested": "0.14.1-preview.34",
-      "package_status": "pending",
-      "remaining": "Physical/listening/CPU qualification, broader effect automation/free-run clocks and arrangement-wide latency compensation"
+      "package_requested": "0.14.1-preview.33",
+      "package_status": "published",
+      "remaining": "Physical/listening/CPU qualification, broader effect automation/free-run clocks and arrangement-wide latency compensation",
+      "package_version": "0.14.1-preview.34"
     },
     "independent_source_processing": {
       "status": "independent pitch/time, formant preservation/shift and reverse implemented",
       "reference": "SE-15",
-      "package_requested": "0.14.1-preview.34",
+      "package_requested": "0.14.1-preview.33",
       "remaining": "Monophonic correction/tuning controls and physical/listening/quality qualification",
-      "package_status": "pending"
+      "package_status": "published",
+      "package_version": "0.14.1-preview.34"
+    },
+    "execution_blocker": {
+      "date": "2026-11-10",
+      "status": "local workspace unavailable before all roadmap work could finish",
+      "saved_source": "8f7519ae7ee4f463fe97f02501246932b898c854",
+      "note": "All implemented work and the final shared graph repair are published. Windows CI verified preview.34; remaining substantial DSP/editor work needs a restored development workspace. Do not infer completion from the available ZIP."
     }
   },
   "latest_delivery": {
-    "version": "0.14.1-preview.32",
-    "source_commit": "62f5ea7fc3a51da78efafd8e9c720568c4704fd1",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.32",
-    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.32/pre-midi-0.14.1-preview.32-windows-x86_64-portable.zip",
-    "bytes": 17206131,
-    "sha256": "14b35348dc0ac07db8d195beb472df9b410ea1c7e72a0784475d2285c7d9c121",
-    "build_run": "https://github.com/natanai/pre-midi/actions/runs/42880408359",
-    "status": "Published and automated Windows checks passed; supersede with preview.33 to include source-processing notices/licenses omitted by the preview.32 packager",
-    "remaining": "Roadmap implementation and physical/listening acceptance remain open; preview.33 corrects package notices"
+    "version": "0.14.1-preview.34",
+    "source_commit": "8f7519ae7ee4f463fe97f02501246932b898c854",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.34",
+    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.34/pre-midi-0.14.1-preview.34-windows-x86_64-portable.zip",
+    "bytes": 17209721,
+    "sha256": "bcd72aa73fabc7672f4e57e842380774678aca101ce1208248745b333fbcbf7c",
+    "build_run": "https://github.com/natanai/pre-midi/actions/runs/42883400815",
+    "status": "Published; exact tag source, Windows compilation, routine checks, 15 Rust tests, runtime dependencies, portable launch/update/isolation/move/copy/recovery, exact vendor licenses and shared-graph WebView geometry/keyboard checks passed",
+    "remaining": "Broader roadmap implementation and physical Windows audio/microphone/listening acceptance remain open. Optional full audio qualification was not requested."
   }
 }
