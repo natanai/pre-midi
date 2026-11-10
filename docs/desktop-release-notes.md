@@ -1,4 +1,4 @@
-# pre-midi 0.14.1-preview.35 - Windows portable preview
+# pre-midi 0.14.1-preview.36 - Windows portable preview
 
 Windows 11 x64 portable ZIP, with manual updates and folder-local data.
 

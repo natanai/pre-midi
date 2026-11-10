@@ -3830,7 +3830,7 @@
       {
         "id": "SAMPLER-SUSTAIN-AND-ZONE-RANGES",
         "date": "2026-11-10",
-        "status": "source milestone implemented; preview.35 packaging requested",
+        "status": "source milestone implemented; preview.36 packaging requested",
         "task_ids": [
           "SE-14",
           "SE-16"
@@ -4014,7 +4014,7 @@
     },
     "sampler_source_editing": {
       "status": "source crop, sustain/crossfade and key/velocity range milestone implemented",
-      "package_requested": "0.14.1-preview.35",
+      "package_requested": "0.14.1-preview.36",
       "package_status": "pending",
       "remaining": "Waveform articulation overlays and observed physical/editor/listening qualification"
     }

@@ -87,13 +87,13 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
  const position=()=>active==="fade"?end-fade:active==="end"?end:value;
  const maxFade=()=>Math.floor(Math.min(.5,(end-value)/2)*1000+1e-7)/1000;
  const wrapper=element("div");wrapper.className="audio-waveform-editor";
- const svg=svgElement("svg",{viewBox:"0 0 480 100",preserveAspectRatio:"none",role:"slider",tabindex:0,"aria-label":"trim start","aria-valuemin":0,"aria-valuemax":max,"aria-valuenow":value,"aria-description":"drag the start marker or use arrow keys to trim the recording start"});
+ const svg=svgElement("svg",{viewBox:"0 0 480 100",preserveAspectRatio:"none",role:"group","aria-label":regionKind==="loop"?"sample loop waveform":"audio crop waveform"});
  svg.classList.add("vocal-waveform");
  const center=svgElement("line",{x1:0,x2:480,y1:50,y2:50,stroke:"#777","stroke-opacity":".6"});
  const path=svgElement("path",{fill:"none",stroke:"#9bc3b8","stroke-width":1.5});
  const shade=svgElement("rect",{x:0,y:0,width:0,height:100,fill:"#777","fill-opacity":".26"});
  const marker=svgElement("line",{x1:0,x2:0,y1:0,y2:100,stroke:"#ddd","stroke-width":2});
- const hit=svgElement("rect",{x:0,y:0,width:24,height:100,fill:"transparent",stroke:"none","aria-hidden":"true"});
+ const hit=svgElement("rect",{x:0,y:0,width:24,height:100,fill:"transparent",stroke:"none",role:"slider",tabindex:0,"aria-label":regionKind==="loop"?"loop start":"trim start","aria-valuemin":lower,"aria-valuemax":max,"aria-valuenow":value,"aria-description":"drag the start marker or use arrow keys to change the source start"});
  hit.classList.add("audio-trim-handle");
  const endShade=svgElement("rect",{x:480,y:0,width:0,height:100,fill:"#777","fill-opacity":".26"});
  const endMarker=svgElement("line",{x1:480,x2:480,y1:0,y2:100,stroke:"#ddd","stroke-width":2});
@@ -101,7 +101,7 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
  endHit.style.display=endMarker.style.display=endShade.style.display=onTrimEnd?"":"none";
  const fadeShade=svgElement("rect",{x:0,y:0,width:0,height:100,fill:"#aaa","fill-opacity":".18","pointer-events":"none"});
  const fadeMarker=svgElement("line",{x1:0,x2:0,y1:0,y2:100,stroke:"#ddd","stroke-dasharray":"3 3","pointer-events":"none"});
- const fadeHit=svgElement("rect",{x:0,y:0,width:16,height:100,fill:"transparent",role:"slider",tabindex:0,"aria-label":"loop crossfade"});
+ const fadeHit=svgElement("rect",{x:0,y:0,width:16,height:35,fill:"transparent",role:"slider",tabindex:0,"aria-label":"loop crossfade"});
  for(const n of [fadeShade,fadeMarker,fadeHit])n.style.display=onLoopFade?"":"none";
  svg.append(center,path,shade,endShade,fadeShade,marker,endMarker,fadeMarker,hit,endHit,fadeHit);
  const plot=element("div");plot.className="audio-waveform-plot";
@@ -145,14 +145,14 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
   time.textContent=(Math.abs(value-applied)<.0005?"start ":"preview start ")+value.toFixed(3)+"s · end "+end.toFixed(3)+"s · keep "+(end-value).toFixed(3)+"s";
   const x=waveformXAtTime(value,w),right=waveformXAtTime(end,w);
   const fx=waveformXAtTime(end-fade,w);fadeShade.setAttribute("x",String(fx));fadeShade.setAttribute("width",String(Math.max(0,right-fx)));fadeMarker.setAttribute("x1",String(fx));fadeMarker.setAttribute("x2",String(fx));fadeHit.setAttribute("x",String(clamp(fx-8,0,464)));fadeHit.setAttribute("aria-valuemin","0");fadeHit.setAttribute("aria-valuemax",String(maxFade()));fadeHit.setAttribute("aria-valuenow",String(fade));fadeHit.setAttribute("aria-valuetext",fade.toFixed(3)+" seconds");fadeInput.max=String(maxFade());if(document.activeElement!==fadeInput)fadeInput.value=fade.toFixed(3);
-  if(regionKind==="loop"){svg.setAttribute("aria-label","loop start");endHit.setAttribute("aria-label","loop end");time.textContent+=" · repeat "+Math.max(0,end-value-fade).toFixed(3)+"s";}
+  if(regionKind==="loop"){endHit.setAttribute("aria-label","loop end");time.textContent+=" · repeat "+Math.max(0,end-value-fade).toFixed(3)+"s";}
   endShade.setAttribute("x",String(right));endShade.setAttribute("width",String(480-right));endMarker.setAttribute("x1",String(right));endMarker.setAttribute("x2",String(right));endHit.setAttribute("x",String(clamp(right-12,0,456)));endFlag.style.left=(right/480*100)+"%";
   endHit.setAttribute("aria-valuemin",String(value+.011));endHit.setAttribute("aria-valuemax",String(upper));endHit.setAttribute("aria-valuenow",String(end));endHit.setAttribute("aria-valuetext",end.toFixed(3)+" seconds");
   input.max=String(Math.max(0,end-.011));endInput.min=String(value+.011);if(document.activeElement!==endInput)endInput.value=end.toFixed(3);restoreEnd.disabled=end===upper&&appliedEnd===upper;
   flag.style.left=Math.min(92,x/480*100)+"%";
   shade.setAttribute("width",String(x));marker.setAttribute("x1",String(x));marker.setAttribute("x2",String(x));
   hit.setAttribute("x",String(clamp(x-12,0,456)));
-  svg.setAttribute("aria-valuenow",String(value));svg.setAttribute("aria-valuetext",value.toFixed(3)+" seconds");
+  hit.setAttribute("aria-valuemax",String(end-.011));hit.setAttribute("aria-valuenow",String(value));hit.setAttribute("aria-valuetext",value.toFixed(3)+" seconds");
   if(document.activeElement!==input)input.value=value.toFixed(3);
   restore.disabled=value===lower&&applied===lower;
   const first=w.start+recording.trimSeconds,last=w.end+recording.trimSeconds;
@@ -186,7 +186,7 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
  input.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();typed();}});
  restore.addEventListener("click",()=>commit(lower,"start"));restoreEnd.addEventListener("click",()=>commit(upper,"end"));
  const typedEnd=()=>{if(endInput.reportValidity()&&Number.isFinite(endInput.valueAsNumber))commit(endInput.valueAsNumber,"end");};
- endInput.addEventListener("input",()=>{if(endInput.validity.valid&&Number.isFinite(endInput.valueAsNumber))preview(endInput.valueAsNumber,"end");});endInput.addEventListener("change",typedEnd);endInput.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();typedEnd();}});svg.addEventListener("focus",e=>{if(e.target===svg){active="start";edgeByAsset.set(recording.id,active);show();}});endHit.addEventListener("focus",()=>{active="end";edgeByAsset.set(recording.id,active);show();});
+ endInput.addEventListener("input",()=>{if(endInput.validity.valid&&Number.isFinite(endInput.valueAsNumber))preview(endInput.valueAsNumber,"end");});endInput.addEventListener("change",typedEnd);endInput.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();typedEnd();}});hit.addEventListener("focus",()=>{active="start";edgeByAsset.set(recording.id,active);show();});endHit.addEventListener("focus",()=>{active="end";edgeByAsset.set(recording.id,active);show();});
  detect.addEventListener("click",async()=>{
   detect.disabled=true;
   try{const at=await onFindStart();if(!wrapper.isConnected)return;
@@ -208,7 +208,7 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
   const pointerX=(e.clientX-rect.left)/rect.width*480;
   drag={pointerId:e.pointerId,initial:position(),window,left:rect.left,width:rect.width,
    grabOffset:e.target===hit||e.target===endHit||e.target===fadeHit?pointerX-waveformXAtTime(position(),window):0};
-  (active==="fade"?fadeHit:active==="end"?endHit:svg).focus({preventScroll:true});
+  (active==="fade"?fadeHit:active==="end"?endHit:hit).focus({preventScroll:true});
   svg.setPointerCapture(e.pointerId);
   if(e.target!==hit&&e.target!==endHit&&e.target!==fadeHit)preview(waveformTimeAtX(pointerX,window));
  });
