@@ -36,3 +36,10 @@ export function isRecordingSampleAlias(recording,sample){
   sample.mime==="audio/wav"&&recording.mime==="audio/wav"&&
   sample.path===recording.path;
 }
+
+// One crop transaction retains zone mapping and immutable asset identity.
+export function sampleZoneWithRegion(zone,start,end,sourceSeconds){
+ if(!Number.isFinite(sourceSeconds)||sourceSeconds<=0||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end>sourceSeconds||end<=start)throw Error("Invalid sample source region");
+ const next={...zone,startSeconds:start,durationSeconds:end-start};
+ const error=validateSampleSlice(next);if(error)throw Error(error);return next;
+}

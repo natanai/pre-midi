@@ -4,9 +4,7 @@ import {vocalSourceRange} from "./vocalEffects.js";
 import {mountSoundInspectorChrome,renderSoundInspectorCore} from "./soundInspector.js";
 import {auditionVocal} from "./audio.js";
 import {vocalDisplayPatch,vocalChangesFromControl} from "./vocalAudioView.js";
-import {recordingBytes} from "./recordingAssets.js";
-import {nativeEnabled} from "./src/hosts/native/session.js";
-import {decodeNativeAudio} from "./src/hosts/native/capture.js";
+import {decodeRecordedAsset} from './recordedAssetDecode.js';
 import {suggestVocalOnset} from "./songRecorder.js";
 import {renderAudioWaveform,decodedWaveformAsset} from "./audioWaveform.js";
 
@@ -23,18 +21,8 @@ function labelledNumber(root,label,value,min,max,step,change){
  input.value=String(value);input.addEventListener("change",()=>change(Number(input.value)));
  wrap.append(input);root.append(wrap);return input;
 }
-export async function decodeVocalRecording(recording){
- const bytes=recordingBytes(recording);
- let audio;
- if(nativeEnabled())audio=await decodeNativeAudio(bytes,{mono:false});
- else{
-  const ctx=new AudioContext();
-  try{const raw=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
-   audio=await ctx.decodeAudioData(raw);}
-  finally{await ctx.close();}
- }
- return audio;
-}
+export const decodeVocalRecording=decodeRecordedAsset;
+
 async function autoTrim(recording){
  return suggestVocalOnset(await decodedWaveformAsset(recording,()=>decodeVocalRecording(recording)),recording.trimSeconds);
 }

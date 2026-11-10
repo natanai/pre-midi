@@ -324,3 +324,7 @@ Native capture uses the stream's actual count-in/music/pause frames, including a
 Software checks cover source immutability, page retry identity, old-revision refill during a coalesced edit, fractional loop clocks, seek/loop PCM comparisons below 1e-7 at 44.1/48/96 kHz, paused native handoff, count-in/capture and callback allocation guards, plus compiled Rust control tests. These are software/null-device checks. Physical Windows 11 playback/microphone, observed UI interaction and representative hours-long/dense preparation time remain unqualified. History reconstruction can be expensive; no low-latency claim is made.
 
 This source remains behind the existing streaming opt-in and is **not in the published preview.29 ZIP**. Default native playback and WAV export retain their existing bounds. This milestone does not implement general automation/routing, production dynamics, reverb, modulation effects or independent pitch/time processing; those remain in `synthesis-roadmap.json`.
+
+### Shared sampler source regions (2026-11-10)
+
+Sampled Sounds now mount the existing vocal waveform editor in the canonical Inspector, with per-zone selection, start/end crop, zoom and numerical/keyboard editing. Crops preserve the external recording and mapping; the existing four-second excerpt bound remains. Source disclosure decodes lazily through the shared native-aware decoder. Sustain loops/crossfades remain open under SE-14. This source milestone is newer than Windows preview.34.
