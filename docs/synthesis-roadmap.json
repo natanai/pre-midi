@@ -2942,7 +2942,7 @@
           "48 kHz null-device streaming with reverb, compressor/de-esser and parallel processing: seek/loop/edit/count-in/capture, zero callback allocations",
           "Compiled Rust production-control tests, including full-queue pause/stop/rapid toggles/stale owners and validated room recipe FFI"
         ],
-        "progress_note": "Tempo-sync delay, tone and ping-pong are retained. Shared algorithmic reverb now runs in parallel with echo after post-level dynamics, with pre-delay, nominal RT60 decay, damping, room size, wet/dry and stereo width. One canonical reverb block is validated, edited through three interactive/numerical modules, recalled and transferred between synth/sample/vocal sources. Complete wet recipes share control-owned buses; native streaming registers them before pages, loops retain continuous state and seeks reconstruct ended-source room tails. The common finite tail policy covers preview, Song playback, cached browser vocal seeks and WAV export. Native callbacks allocate/destroy nothing. Source implementation is complete; matched listening and physical Windows seek/loop/device acceptance remain open for preview.30.",
+        "progress_note": "Tempo-sync delay, tone and ping-pong are retained. Shared algorithmic reverb now runs in parallel with echo after post-level dynamics, with pre-delay, nominal RT60 decay, damping, room size, wet/dry and stereo width. One canonical reverb block is validated, edited through three interactive/numerical modules, recalled and transferred between synth/sample/vocal sources. Complete wet recipes share control-owned buses; native streaming registers them before pages, loops retain continuous state and seeks reconstruct ended-source room tails. The common finite tail policy covers preview, Song playback, cached browser vocal seeks and WAV export. Native callbacks allocate/destroy nothing. Source implementation is complete; matched listening and physical Windows seek/loop/device acceptance remain open for preview.31.",
         "implementation_complete": true,
         "qualification_complete": false
       },
@@ -3894,11 +3894,11 @@
         "48 kHz miniaudio null-device stream with compressor/de-esser and parallel graph: seek/loop/edit/count-in/capture, zero callback allocations"
       ],
       "limits": "Playback preparation may still take time. Physical Windows/WebView2/WASAPI device-buffer response is unobserved; released preview.29 does not contain these changes.",
-      "package_requested": "0.14.1-preview.30"
+      "package_requested": "0.14.1-preview.31"
     },
     "reverb": {
       "status": "implemented; focused software checks pass",
-      "package_requested": "0.14.1-preview.30",
+      "package_requested": "0.14.1-preview.31",
       "reference": "SE-11",
       "remaining": "Physical Windows and listening acceptance; modulation effects and independent pitch/time remain separate unfinished tasks"
     }

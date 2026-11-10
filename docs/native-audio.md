@@ -8,7 +8,7 @@ Echo and room are parallel sends, sharing a bus only when the complete authored 
 
 Room tail reservation is `preDelay + 3 × decay + .5` seconds, combined with echo by maximum, not sum. Seeks warm prior source history, including completed vocal Clips; loops preserve the shared room state. Page resources stay pinned through their complete effect lifetime. Preview, Beat/Song playback and WAV export use this policy, with existing render limits. Processing remains editable; source assets are untouched. The current sample execution packet is v21 and contains six independently validated room doubles after dynamics; no older packet reader is retained. The streaming control action is `stream_effects`, registering the complete wet recipe before page one.
 
-Focused tests: `tests/reverb.test.js`, `tests/reverb.audio.mjs`, shared `tests/dynamics.dom.mjs`, compiled Rust control tests and the 48 kHz null-device streaming check with room/dynamics/parallel routing. Native/worklet PCM maximum difference was 3.725290298461914e-9 at 24 kHz; callback allocations were zero. The Windows preview requested for these changes is preview.30. Physical Windows and matched listening remain user acceptance work.
+Focused tests: `tests/reverb.test.js`, `tests/reverb.audio.mjs`, shared `tests/dynamics.dom.mjs`, compiled Rust control tests and the 48 kHz null-device streaming check with room/dynamics/parallel routing. Native/worklet PCM maximum difference was 3.725290298461914e-9 at 24 kHz; callback allocations were zero. The Windows preview requested for these changes is preview.31. Physical Windows and matched listening remain user acceptance work.
 
 ## Transport responsiveness (2026-11-09)
 

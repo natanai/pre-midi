@@ -61,7 +61,11 @@
   let device;
   for(let attempt=0;attempt<100;attempt++){device=await audioRequest({action:'status'});if(device.callbacks>0&&device.peak>0)break;await pause(20);}
   assert(device.callbacks>0&&device.peak>0&&device.fault===0,'C++ synthesis produced nonzero PCM in miniaudio callbacks');
-  await session.pause();const paused=await audioRequest({action:'status'});await pause(40);const still=await audioRequest({action:'status'});
+  await session.pause();let paused;
+  // Pause acknowledges intent without waiting behind control work. Observe
+  // its callback fade before measuring the held clock, with a finite deadline.
+  for(let attempt=0;attempt<100;attempt++){paused=await audioRequest({action:'status'});if(paused.state===2)break;await pause(10);}
+  await pause(40);const still=await audioRequest({action:'status'});
   assert(paused.state===2&&still.positionSeconds===paused.positionSeconds,'native pause preserves the audio position');
   inst.sounds[0].patch=makePatch('sine-keys');await session.refresh();
   assert((await audioRequest({action:'status'})).state===2,'native paused edit retains the transport state');
