@@ -31,6 +31,33 @@
    assert(normalized(info.dataPath)===root+'/data/webview','portable WebView profile is inside the executable folder');
    assert(normalized(info.projectsPath)===root+'/projects'&&normalized(info.exportsPath)===root+'/exports','portable save defaults are inside the executable folder');
   }
+  // Check graph geometry in the actual packaged WebView. DOM emulators
+  // cannot catch SVG percentage-transform offsets or real control hit areas.
+  const {renderStereoImage}=await load('stereoProcessingUI.js');
+  const graphHost=document.createElement('div');graphHost.style.cssText='position:fixed;left:0;top:0;width:320px;z-index:99999';
+  document.body.append(graphHost);
+  try{
+   let graphEdit;
+   const graph=renderStereoImage({type:'sample',stereoWidth:1,msBalance:0},
+    (paths,values)=>{graphEdit={paths,values};},()=>{},'portable-geometry');
+   graphHost.append(graph);graph.querySelector('details').open=true;
+   const handle=graph.querySelector('.visual-graph-point'),svg=graph.querySelector('svg');
+   assert(handle.tagName==='BUTTON'&&handle.getAttribute('aria-label')==='stereo image two-axis control',
+    'shared graphs expose a native accessible control outside the SVG');
+   for(const width of [320,640]){
+    graphHost.style.width=width+'px';
+    const bounds=graph.querySelector('.visual-panel-area').getBoundingClientRect(),hit=handle.getBoundingClientRect();
+    assert(bounds.width>0&&bounds.height>0&&hit.width>=28&&hit.height>=28&&
+     Math.abs(hit.left+hit.width/2-bounds.left-bounds.width/2)<1.1&&
+     Math.abs(hit.top+hit.height/2-bounds.top-bounds.height/2)<1.1,
+     'shared graph handle matches its reference coordinates at '+width+' px');
+    assert(Math.abs(svg.getBoundingClientRect().width-bounds.width)<1.1,
+     'shared graph reference fills its control viewport at '+width+' px');
+   }
+   handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+   assert(graphEdit?.paths[0].join('.')==='stereoWidth'&&Math.abs(graphEdit.values[0]-1.01)<1e-9,
+    'shared graph keyboard edits use the canonical parameter change');
+  }finally{graphHost.remove();}
   const {create,id,upgradeBeatFeatures}=await load('schema.js'),{makePatch}=await load('synth.js');
   const {exportProject,importProject}=await load('packageIO.js');
   const {wav,play}=await load('audio.js');

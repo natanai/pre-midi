@@ -298,7 +298,7 @@
         "report": "benchmarks/web-audio-reference.json",
         "contract": "docs/dsp-contract.schema.json",
         "method": "18 constant-input rendered ADSR cases against an independent analytical oracle; overlapping and retriggered production voices at three sample rates",
-        "max_sample_error_gate": 3e-05,
+        "max_sample_error_gate": 0.00003,
         "shared_runtime": "live transport, audition, conversion preview and WAV export all use scheduleNote -> scheduleAmplitudeEnvelope -> planAmplitudeEnvelope",
         "compatibility": "preserves 2 ms attack floor, zero-decay sustain step and 0.000001 release floor; unchanged stored patch v1 and Beat v7/Song v8",
         "scope": "current ADSR scheduling contract; physical live-device loopback and native DSP equivalence are later host qualification"
@@ -747,7 +747,7 @@
           ],
           "pcm_limits": {
             "max_absolute": 0.0001,
-            "rms": 2e-05
+            "rms": 0.00002
           },
           "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
           "raw_reports": "benchmarks/automation-reference.json"
@@ -1994,7 +1994,7 @@
         "id": "CAP-09",
         "title": "Automation and parameter gestures",
         "status": "partial",
-        "current": "Up to eight independent parameter lanes with 2\u201332 points, linear/exponential/step interpolation, bypass/remove, shared numerical/two-axis editing and source-phase capture are implemented. Targets include oscillator level/detune, filter cutoff/resonance, pan, amplitude, noise, stereo width/mid-side and added filter instances. Sound preset, Instrument override, Beat/Song and Freeform recall share one lane-array contract. Native/browser execution, modulation precedence and streaming page/cycle shifts pass focused software checks. Additional effect/articulation/discrete targets, gesture recording, override/rejoin and wider automation scopes remain open.",
+        "current": "Up to eight independent parameter lanes with 2–32 points, linear/exponential/step interpolation, bypass/remove, shared numerical/two-axis editing and source-phase capture are implemented. Targets include oscillator level/detune, filter cutoff/resonance, pan, amplitude, noise, stereo width/mid-side and added filter instances. Sound preset, Instrument override, Beat/Song and Freeform recall share one lane-array contract. Native/browser execution, modulation precedence and streaming page/cycle shifts pass focused software checks. Additional effect/articulation/discrete targets, gesture recording, override/rejoin and wider automation scopes remain open.",
         "gap": "Additional effect/articulation/discrete targets, gesture recording, override/rejoin and Track/Song/game scopes remain.",
         "evidence_ids": [
           "E08",
@@ -2446,7 +2446,7 @@
             "title": "Repeatable random movement",
             "implementation_status": "complete",
             "scope": [
-              "Sample-and-hold and linearly interpolated random LFO shapes with seeds 1\u2013127",
+              "Sample-and-hold and linearly interpolated random LFO shapes with seeds 1–127",
               "One shared route editor and interactive sequence-seed handle in all Sound contexts",
               "Stateless original-source-age sequence; authored Hz/divisions, polarity and smoothing retain existing semantics"
             ],
@@ -2794,7 +2794,7 @@
           "tests/parameterAutomation.dom.mjs: lane edits, undo/redo, focus, interpolation, two-axis points, bypass/remove",
           "scripts/native-stream-device-check.mjs: automated native streaming seek/loop/edit/count-in/capture at 44.1/48/96 kHz with zero callback allocations"
         ],
-        "progress_note": "Up to eight independent parameter lanes with 2\u201332 points, linear/exponential/step interpolation, bypass/remove, shared numerical/two-axis editing and source-phase capture are implemented. Targets include oscillator level/detune, filter cutoff/resonance, pan, amplitude, noise, stereo width/mid-side and added filter instances. Sound preset, Instrument override, Beat/Song and Freeform recall share one lane-array contract. Native/browser execution, modulation precedence and streaming page/cycle shifts pass focused software checks. Additional effect/articulation/discrete targets, gesture recording, override/rejoin and wider automation scopes remain open."
+        "progress_note": "Up to eight independent parameter lanes with 2–32 points, linear/exponential/step interpolation, bypass/remove, shared numerical/two-axis editing and source-phase capture are implemented. Targets include oscillator level/detune, filter cutoff/resonance, pan, amplitude, noise, stereo width/mid-side and added filter instances. Sound preset, Instrument override, Beat/Song and Freeform recall share one lane-array contract. Native/browser execution, modulation precedence and streaming page/cycle shifts pass focused software checks. Additional effect/articulation/discrete targets, gesture recording, override/rejoin and wider automation scopes remain open."
       },
       {
         "id": "SE-08",
@@ -3444,7 +3444,7 @@
         "changes": [
           "Resolve stored beat divisions into effective Hz at the host/voice boundary; preserve the original Sound definition",
           "Pass actual Beat/Song tempo through synth, sampled/vocal playback, preview and native plans; use owner tempo in diagrams",
-          "Share add/remove/numeric/graph editing for 2\u201332 cutoff points; preserve increasing order, IDs and captured Freeform source-time metadata",
+          "Share add/remove/numeric/graph editing for 2–32 cutoff points; preserve increasing order, IDs and captured Freeform source-time metadata",
           "Use piecewise exponential interpolation and bounded 36-event native storage, retaining seek boundaries and tail holds"
         ],
         "verification": {
@@ -3555,7 +3555,7 @@
         "summary": "Deliver deterministic random movement in the common Inspector and browser/native DSP",
         "contract": {
           "sequence": "uint32 stateless hash of seed and floor(original source-age * effective Hz); sample-hold retains the knot, smooth-random linearly interpolates adjacent knots",
-          "seed": "Integer 1\u2013127; default 1. Source shape/seed survive presets and current project JSON",
+          "seed": "Integer 1–127; default 1. Source shape/seed survive presets and current project JSON",
           "clock": "Note/Clip retrigger at original source onset; seek uses original elapsed age; tempo divisions resolve at voice onset. No global RNG or shared mutable sequence",
           "native": "Current route kinds 7/8 use the existing source root slot as seed; packet layout is unchanged; decoding validates the bounded integer seed. Hash/arithmetic remain allocation-free",
           "web": "One ConstantSource per random route, bounded to 12001 scheduled knots; holds start at the first sample at/after the knot; smooth ramps retain the following knot through voice end",
@@ -3619,12 +3619,12 @@
           {
             "id": "B25-MACROS",
             "status": "implemented",
-            "contract": "Four named 0\u20131 macros, multiple route destinations within 16 routes, signed depth/range/smoothing, reset/save reset and current preset/project recall. One shared Inspector surface. Native kind 10 consumes the prepared scalar."
+            "contract": "Four named 0–1 macros, multiple route destinations within 16 routes, signed depth/range/smoothing, reset/save reset and current preset/project recall. One shared Inspector surface. Native kind 10 consumes the prepared scalar."
           },
           {
             "id": "B25-MIX",
             "status": "implemented",
-            "contract": "chain.mix filter/drive values 0\u20131 default to fully processed. Zero mix is unshifted input. Partial drive mix aligns dry to measured per-runtime browser oversampler latency or native 192 frames. Browser calibration is asynchronous preparation. Shared interactive blend graph and ordinary precise controls commit once."
+            "contract": "chain.mix filter/drive values 0–1 default to fully processed. Zero mix is unshifted input. Partial drive mix aligns dry to measured per-runtime browser oversampler latency or native 192 frames. Browser calibration is asynchronous preparation. Shared interactive blend graph and ordinary precise controls commit once."
           },
           {
             "id": "B25-SYNC",
@@ -3681,7 +3681,7 @@
           {
             "id": "B26-EQ",
             "status": "implemented",
-            "contract": "Four fixed EQ bands, bell/shelf/pass types, frequency 20\u201320000 Hz, +/-24 dB, Q .1\u201318, enable and serial order/bypass/mix. Shelves use a fixed monotonic slope. Shared normalized RBJ coefficients feed native fixed-state DF-I and Web IIR nodes; disabled/neutral bands are transparent. Filter slopes use one/two/four cascaded stages, resonance on the first and Q=.707 on subsequent stages. EQ is per voice before articulation, not a global mastering bus."
+            "contract": "Four fixed EQ bands, bell/shelf/pass types, frequency 20–20000 Hz, +/-24 dB, Q .1–18, enable and serial order/bypass/mix. Shelves use a fixed monotonic slope. Shared normalized RBJ coefficients feed native fixed-state DF-I and Web IIR nodes; disabled/neutral bands are transparent. Filter slopes use one/two/four cascaded stages, resonance on the first and Q=.707 on subsequent stages. EQ is per voice before articulation, not a global mastering bus."
           },
           {
             "id": "B26-SONG-PULL",
@@ -3793,8 +3793,8 @@
           "SE-15",
           "SE-16"
         ],
-        "summary": "Add independent source pitch/time/formants/reverse and ring/frequency-shift processors, then prepare Windows preview.33. Retain every remaining automation, routing, tuning, source-editor and physical-acceptance requirement.",
-        "verification": "99 routine cases pass. Focused source/frequency audio and Inspector checks, eight Rust control tests and 48 kHz dynamic streaming pass. Actual module-Worker preparation and live browser source snapshot publication pass. Preview.32 Windows build/portable checks passed; artifact inspection found missing vendor notices and preview.33 corrects packaging with a ZIP license-integrity check. Source FFT preparation stays outside callbacks; stale scope snapshots skip preparation through one serialized analysis queue.",
+        "summary": "Add independent source pitch/time/formants/reverse and ring/frequency-shift processors, then prepare Windows preview.34. Retain every remaining automation, routing, tuning, source-editor and physical-acceptance requirement.",
+        "verification": "99 routine cases pass. Focused source/frequency audio and Inspector checks, eight Rust control tests and 48 kHz dynamic streaming pass. Actual module-Worker preparation and live browser source snapshot publication pass. Preview.32 Windows build/portable checks passed; artifact inspection found missing vendor notices and preview.33 corrects packaging with a ZIP license-integrity check. Source FFT preparation stays outside callbacks; stale scope snapshots skip preparation through one serialized analysis queue. Observed Chrome source controls and direct diagrams exposed a shared SVG-handle offset/accessibility defect. Preview.34 switches the common renderer to existing HTML graph handles with aligned coordinates and adds actual packaged Windows WebView geometry/keyboard checks. The local workspace became unavailable after publishing preview.33; final verification uses the GitHub Windows workflow.",
         "remaining": "Broader automation and modulation sources, sidechains/shared buses and global latency compensation, sampler waveform/loop editing, distortion/noise extensions, monophonic correction, newcomer/listening/physical qualification and separately deferred mobile/game work."
       }
     ],
@@ -3957,14 +3957,14 @@
     "modulation_effects": {
       "status": "all six named processor types implemented; focused software checks pass",
       "reference": "SE-12",
-      "package_requested": "0.14.1-preview.33",
+      "package_requested": "0.14.1-preview.34",
       "package_status": "pending",
       "remaining": "Physical/listening/CPU qualification, broader effect automation/free-run clocks and arrangement-wide latency compensation"
     },
     "independent_source_processing": {
       "status": "independent pitch/time, formant preservation/shift and reverse implemented",
       "reference": "SE-15",
-      "package_requested": "0.14.1-preview.33",
+      "package_requested": "0.14.1-preview.34",
       "remaining": "Monophonic correction/tuning controls and physical/listening/quality qualification",
       "package_status": "pending"
     }
