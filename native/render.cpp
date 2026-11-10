@@ -15,9 +15,9 @@
 #include <fcntl.h>
 #endif
 static std::uint64_t allocations=0;
-void* operator new(std::size_t size){++allocations;if(void* p=std::malloc(size))return p;throw std::bad_alloc();}
-void operator delete(void* p) noexcept{std::free(p);}
-void operator delete(void* p,std::size_t) noexcept{std::free(p);}
+__attribute__((noinline)) void* operator new(std::size_t size){++allocations;if(void* p=std::malloc(size))return p;throw std::bad_alloc();}
+__attribute__((noinline)) void operator delete(void* p) noexcept{std::free(p);}
+__attribute__((noinline)) void operator delete(void* p,std::size_t) noexcept{std::free(p);}
 static void require(bool condition,const char* message){if(!condition)throw std::runtime_error(message);}
 int main(int argc,char** argv){
  try{
@@ -90,7 +90,10 @@ int main(int argc,char** argv){
   std::unique_ptr<premidi::SineLfoTable> lfo;if(plan.version==9)lfo=std::make_unique<premidi::SineLfoTable>(rate);
   std::unique_ptr<premidi::ProcessingGraphRecipe> graphRecipe;std::unique_ptr<premidi::ProcessingGraphState> graphState;
   if(plan.processing.count){graphRecipe=std::make_unique<premidi::ProcessingGraphRecipe>(plan.processing);graphState=std::make_unique<premidi::ProcessingGraphState>();}
-  premidi::Voice voice(plan,rate,banks,0,nullptr,drive?&*drive:nullptr,lfo.get(),nullptr,graphState.get(),graphRecipe.get());std::size_t channels=2;
+  std::unique_ptr<premidi::PreparedPostProcessing> post;
+  if(plan.postCount)post=std::make_unique<premidi::PreparedPostProcessing>(plan.postCount,plan.post,rate);
+  std::unique_ptr<float[]> postDelay;if(premidi::usesPostDelay(plan.postCount,plan.post))postDelay=std::unique_ptr<float[]>(new float[premidi::postDelayFrames(rate)*2*premidi::postLimit]);
+  premidi::Voice voice(plan,rate,banks,0,nullptr,drive?&*drive:nullptr,lfo.get(),nullptr,graphState.get(),graphRecipe.get(),post.get(),postDelay.get());std::size_t channels=2;
 #ifdef PREMIDI_PROBE
   const bool probeMode=(argc==2||argc==3)&&std::strcmp(argv[1],"--probe")==0;if(probeMode)channels=5;
 #endif

@@ -199,3 +199,19 @@ export const REVERB_PARAMETERS=freeze({
  size:parameter('reverb.size','linear_gain',0,1,.5,.01,'percent'),
  width:parameter('reverb.width','linear_gain',0,1,1,.01,'percent')
 });
+export const POST_PROCESSOR_LIMIT=4;
+const motionControls=()=>({
+ rate:parameter('motion.rate','hz',.01,20,.5,.01,'hz',{ui:{step:.01,display:'hz',log:true}}),
+ sync:choice('motion.sync',[0,.25,.5,1,2,4,8,16],0),
+ phase:parameter('motion.phase','cycles',0,1,0,.01,'percent')
+});
+const stereoMotion=()=>({
+ ...motionControls(),stereo:parameter('motion.stereo','cycles',0,1,.25,.01,'percent'),
+ feedback:parameter('motion.feedback','linear_gain',-.8,.8,.1,.01,'percent')
+});
+export const MOD_EFFECT_PARAMETERS=freeze({
+ chorus:{...stereoMotion(),delay:parameter('chorus.delay','seconds',.005,.04,.018,.0001,'seconds'),depth:parameter('chorus.depth','seconds',0,.012,.004,.0001,'seconds')},
+ flanger:{...stereoMotion(),delay:parameter('flanger.delay','seconds',.0002,.01,.003,.0001,'seconds'),depth:parameter('flanger.depth','seconds',0,.005,.002,.0001,'seconds')},
+ phaser:{...stereoMotion(),frequency:parameter('phaser.frequency','hz',50,8000,900,1,'hz',{ui:{step:1,display:'hz',log:true}}),depth:parameter('phaser.depth','octaves',0,4,2,.01,'octaves')},
+ autopan:{...motionControls(),depth:parameter('autopan.depth','linear_gain',0,1,1,.01,'percent')}
+});

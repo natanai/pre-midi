@@ -1,5 +1,6 @@
 import {createEffectsBus} from './src/hosts/web/effects-bus.js';
-import {connectPostDynamics} from './src/hosts/web/dynamics.js';
+import {postTailSeconds} from './src/dsp/post-processing.js';
+import {connectPostProcessing} from './src/hosts/web/post-processing.js';
 import {scheduleParameterAutomation} from './src/hosts/web/automation.js';
 import {connectProcessingGraph} from './src/hosts/web/processing-graph.js';
 import {connectStereoImage} from './src/hosts/web/stereo.js';
@@ -73,12 +74,13 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});
  const movementGain=add(context.createGain());movementGain.gain.value=1;automationTargets.set("amplitude",movementGain.gain);automationTargets.set("pan",pan.pan);
  amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(context,movementGain,patch,owner,source.buffer?.numberOfChannels??1,{start,end:start+duration,lanes:parameterAutomation,targets:automationTargets}).connect(pan);pan.pan.value=fx.pan;
- connectPostDynamics(context,pan,patch,owner,start,start+duration+.01).connect(gate);
+ const postTail=postTailSeconds(patch,unit);
+ connectPostProcessing(context,pan,patch,owner,start,start+duration+(patch.type==='sample'?.01:0)+postTail,{unit,elapsed}).connect(gate);
  const targets=new Map([['pan',pan.pan],['amplitude',movementGain.gain]]);if(filter){targets.set('filter.cutoff',cutoffDestination(context,filterStage.filters,start,start+duration,owner));targets.set('filter.resonance',filter.Q);}
  scheduleParameterAutomation(context,parameterAutomation,automationTargets,owner);
  attachModulation(context,{parameterAutomation,modulation:resolveModulation(fx.modulation,unit),start,off:start+duration,graphEnd:start+duration,expression,elapsed,resonance:fx.filter?.resonance},targets,owner);
  const dry=add(context.createGain());dry.gain.value=(1-fx.delayMix*.4)*(1-fx.reverb.mix);gate.connect(dry);dry.connect(out);
- return {fx,tail:effectTailSeconds(fx),connectDelay(session,voice){
+ return {fx,postTail,tail:effectTailSeconds(fx),connectDelay(session,voice){
   if(!(fx.delayMix>0||fx.reverb.mix>0)||!voice.admitted&&session)return;
   if(session){gate.connect(session.delay(fx,voice));return;}
   const graph=createEffectsBus(context,fx,out);owner.nodes.push(...graph.nodes);gate.connect(graph.input);

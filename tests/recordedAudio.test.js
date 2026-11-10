@@ -16,7 +16,7 @@ test('a reused vocal and sampled Sound retain identical current processing and g
  for(const key of ['filter','sweep','drive','movement','pan','playbackRate','offset','sourceLimit','delayMix','delayTime','delayFeedback','modulation'])assert.deepEqual(sample[key],vocal[key],key);
  assert.deepEqual(sample.events,vocal.events);
  assert.deepEqual(validatePatch(patch),[]);assert.deepEqual(validateVocalEffects(processing),[]);
- assert.equal(new DataView(encodeNativeSample(sample,44100).buffer).getUint32(12,true),21);
+ assert.equal(new DataView(encodeNativeSample(sample,44100).buffer).getUint32(12,true),22);
 });
 test('processing-only presets preserve modulation, tone, delay and automation without source assets',()=>{
  const fx=processingFromPatch(patch),preset=presetFromProcessing(fx,'voice processing');

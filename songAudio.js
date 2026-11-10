@@ -50,7 +50,7 @@ export function scheduleVocal(context,destination,event,startTime,unit,decoded,{
  // start()'s duration is source-buffer seconds, independent of detune. The
  // authored Clip gate controls wall time; pitch motion must not trim content.
  source.start(startTime,offset,range.sourceRemaining);source.stop(end);
- const voice=ownVoice(context,{sources,nodes,gate,priority:1,start:startTime,release:end,end:session?end:end+delayTail});
+ const voice=ownVoice(context,{sources,nodes,gate,priority:1,start:startTime,release:end,end:end+graph.postTail+(session?0:delayTail)});
  voice.vocalClipId=clip.id;
  if(session)session.adopt(voice);graph.connectDelay(session,voice);
  return voice;

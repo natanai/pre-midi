@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://natanai.github.io/pre-midi/contracts/synth-voice",
   "title": "Host-neutral pre-midi synth voice execution plans",
-  "description": "v1 preserves original patch semantics; v2 adds explicit canonical modulation. Older project versions are read unchanged; modulated projects use Beat v9/Song v10.",
+  "description": "Current host-neutral synth plans carry authored patches and resolved modulation, automation and post-processing recipes. Project-file validation remains in the canonical schema.",
   "type": "object",
   "required": [
     "contract",
@@ -21,7 +21,8 @@
     "movement",
     "oscillators",
     "routing",
-    "expression"
+    "expression",
+    "postProcessing"
   ],
   "additionalProperties": false,
   "properties": {
@@ -102,7 +103,8 @@
         "amplitude",
         "tremolo",
         "pan",
-        "dry_and_delay_send"
+        "post_processing",
+        "dry_and_effect_sends"
       ]
     },
     "expression": {
@@ -127,6 +129,46 @@
     "automation": {
       "type": "object",
       "description": "v3 compiled filter.cutoff timeline; validated by src/dsp/automation.js"
+    },
+    "postProcessing": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "mix"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "compressor",
+              "gate",
+              "limiter",
+              "deesser",
+              "chorus",
+              "flanger",
+              "phaser",
+              "autopan"
+            ]
+          },
+          "mix": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "description": "Resolved recipes from src/dsp/post-processing.js; authored rate/sync remain in patch.chain.instances."
+      }
+    },
+    "parameterAutomation": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "Compiled current parameter lanes from src/dsp/automation.js"
     }
   },
   "x-parameter-registry": "src/dsp/parameters.js: SYNTH_PARAMETERS",

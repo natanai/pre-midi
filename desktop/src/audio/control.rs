@@ -233,7 +233,7 @@ pub enum Request {
  Configure{device:Option<u32>,rate:u32,buffer:u32},
  Play{data:Vec<u8>,cycle:f64,seek:f64,looping:bool,preview:bool,#[serde(default)] owner:u64,#[serde(default)] count_in:u32,#[serde(default="default_bpm")] bpm:f64,#[serde(default)] recording:Option<u64>},
  Update{data:Vec<u8>,cycle:f64,looping:bool,tempo_ratio:f64,owner:u64},
- StreamBegin{owner:u64,revision:u64,#[serde(default)] processing:bool},
+ StreamBegin{owner:u64,revision:u64,#[serde(default)] processing:bool,#[serde(default)] post_delay:bool},
  StreamEffects{owner:u64,revision:u64,mix:f64,time:f64,feedback:f64,tone:f64,ping:bool,#[serde(default)]reverb:Option<RoomParameters>},
  StreamPage{owner:u64,revision:u64,sequence:u64,start_frame:u64,end_frame:u64,onsets:u32,last:bool,data:Vec<u8>},
  StreamAdvance{owner:u64,revision:u64,frame:u64},
@@ -319,10 +319,10 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    let host=state.host.as_ref().unwrap();host.check(unsafe{premidi_audio_play_take(host.0,data.as_ptr(),data.len(),cycle,seek,i32::from(looping),i32::from(preview),bpm,count_in,i32::from(recording.is_some()))})?;
    if preview{state.preview_current=owner;}else{state.current=owner;state.stream_revision=0;}state.status()
   },
-  Request::StreamBegin{owner,revision,processing}=>{
+  Request::StreamBegin{owner,revision,processing,post_delay}=>{
    state.claim_transport(owner)?;
    let host=state.host.as_ref().unwrap();
-   host.check(unsafe{premidi_audio_stream_begin(host.0,owner,revision,i32::from(processing))})?;
+   host.check(unsafe{premidi_audio_stream_begin(host.0,owner,revision,i32::from(processing)|(i32::from(post_delay)<<1))})?;
    state.current=owner;state.stream_previous_revision=state.stream_revision;state.stream_revision=revision;state.status()
   },
   Request::StreamEffects{owner,revision,mix,time,feedback,tone,ping,reverb}=>{
@@ -453,7 +453,7 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    let audio=premidi_decoder::decode(bytes.to_vec(),"").unwrap();let mut info=SampleInfo::default();
    host.check(unsafe{premidi_audio_add_sample(host.0,audio.samples.as_ptr(),(audio.samples.len()/audio.channels as usize) as u64,audio.rate,audio.channels,&mut info)}).unwrap();drop(audio);
    let mut packet=vec![];let u32b=|out:&mut Vec<u8>,v:u32|out.extend(v.to_le_bytes());let f64b=|out:&mut Vec<u8>,v:f64|out.extend(v.to_le_bytes());
-   for v in [0x38564d50,48000,1,21,1,info.id]{u32b(&mut packet,v);}
+   for v in [0x38564d50,48000,1,22,1,info.id]{u32b(&mut packet,v);}
    for v in [0.,0.1,0.11,0.11,0.1,0.,1.,0.,info.frames as f64/info.rate as f64,14000.,0.7,0.,5.,0.,0.,0.,5.,0.,0.24,0.26,0.,2.,14000.,0.1]{f64b(&mut packet,v);}
    for v in [0,1,0,2]{u32b(&mut packet,v);}
    u32b(&mut packet,0);f64b(&mut packet,0.);f64b(&mut packet,0.1);u32b(&mut packet,0);f64b(&mut packet,0.11);f64b(&mut packet,0.);

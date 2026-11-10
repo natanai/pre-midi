@@ -20,7 +20,7 @@ typedef struct {double mix,preDelay,decay,damping,size,width;} premidi_reverb_pa
 #else
 #define PREMIDI_ROOM_DEFAULT
 #endif
-int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision,int with_processing);
+int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision,int resource_flags); // bit 0 tone graph, bit 1 post delay storage
 int premidi_audio_stream_effects(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback,double tone,int ping,const premidi_reverb_parameters* room PREMIDI_ROOM_DEFAULT);
 #undef PREMIDI_ROOM_DEFAULT
 int premidi_audio_stream_page(void* host,uint64_t owner,uint64_t revision,uint64_t sequence,uint64_t first_frame,uint64_t end_frame,uint32_t onsets,int last,const uint8_t* packet,size_t length);

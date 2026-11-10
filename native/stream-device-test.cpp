@@ -47,6 +47,7 @@ int main(int argc,char** argv){
   const auto full=read(argv[3]);
   auto referenceOwner=std::make_unique<premidi::Session>(full.data(),full.size(),rate,static_cast<double>(frames)/rate,0);auto& reference=*referenceOwner;
   const bool processing=std::any_of(reference.notes.begin(),reference.notes.end(),[](const auto& n){return n.plan.processing.count>0;});
+ const bool postDelay=std::any_of(reference.notes.begin(),reference.notes.end(),[](const auto& n){return premidi::usesPostDelay(n.plan.postCount,n.plan.post);});
   std::vector<Page> pages;
   std::uint64_t last=0;
   for(int at=4;at<argc;at+=4){
@@ -65,7 +66,7 @@ int main(int argc,char** argv){
   try{
    check(premidi_audio_configure(host,UINT32_MAX,rate,128));
    constexpr std::uint64_t owner=91,revision=7;
-   check(premidi_audio_stream_begin(host,owner,revision,processing));
+   check(premidi_audio_stream_begin(host,owner,revision,processing|(postDelay?2:0)));
    for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
     check(effects(host,owner,revision,note.plan));
    std::size_t published=0;unsigned backpressure=0;
@@ -108,7 +109,7 @@ int main(int argc,char** argv){
    premidi::require(stale<0,"Stale Song owner restarted a cancelled stream");
    // A request arriving from another thread must stop the Song clock without
    // waiting for the host control thread to retire its pages.
-   check(premidi_audio_stream_begin(host,owner+1,revision+1,processing));
+   check(premidi_audio_stream_begin(host,owner+1,revision+1,processing|(postDelay?2:0)));
    for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
     check(effects(host,owner+1,revision+1,note.plan));
    check(premidi_audio_stream_page(host,owner+1,revision+1,1,
@@ -124,13 +125,13 @@ int main(int argc,char** argv){
    check(premidi_audio_stream_stop(host,owner+1,revision+1));
    // A prepared seek/edit revision can replace a paused stream without
    // waking it or destroying callback-owned resources.
-   check(premidi_audio_stream_begin(host,owner+2,revision+2,processing));
+   check(premidi_audio_stream_begin(host,owner+2,revision+2,processing|(postDelay?2:0)));
    for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
     check(effects(host,owner+2,revision+2,note.plan));
    for(unsigned i=0;i<3&&i<pages.size();i++){const auto& p=pages[i];check(premidi_audio_stream_page(host,owner+2,revision+2,i+1,p.first,p.end,p.onsets,p.last,p.bytes.data(),p.bytes.size()));}
    check(premidi_audio_stream_start_take(host,owner+2,revision+2,120,0,0,1,UINT64_MAX,1));
    check(premidi_audio_stream_status_get(host,&status));const auto heldPosition=status.position;
-   check(premidi_audio_stream_begin(host,owner+2,revision+3,processing));
+   check(premidi_audio_stream_begin(host,owner+2,revision+3,processing|(postDelay?2:0)));
    for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
     check(effects(host,owner+2,revision+3,note.plan));
    for(unsigned i=0;i<3&&i<pages.size();i++){const auto& p=pages[i];check(premidi_audio_stream_page(host,owner+2,revision+3,i+1,p.first,p.end,p.onsets,p.last,p.bytes.data(),p.bytes.size()));}
@@ -145,7 +146,7 @@ int main(int argc,char** argv){
    // Prime while paused, then resume the old clock before the exact handoff.
    // This tests callback alignment independently of instrumented preparation CPU.
    check(premidi_audio_control(host,2,0));
-   check(premidi_audio_stream_begin(host,owner+2,revision+4,processing));
+   check(premidi_audio_stream_begin(host,owner+2,revision+4,processing|(postDelay?2:0)));
    for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
     check(effects(host,owner+2,revision+4,note.plan));
    for(unsigned i=0;i<3&&i<pages.size();i++){const auto& p=pages[i];check(premidi_audio_stream_page(host,owner+2,revision+4,i+1,p.first,p.end,p.onsets,p.last,p.bytes.data(),p.bytes.size()));}
@@ -158,7 +159,7 @@ int main(int argc,char** argv){
    check(premidi_audio_stream_stop(host,owner+2,revision+4));
    // Count-in/capture share the stream callback clock, including source seek.
    check(premidi_audio_capture_prepare(host,.2,3,1));
-   check(premidi_audio_stream_begin(host,owner+3,revision+4,processing));
+   check(premidi_audio_stream_begin(host,owner+3,revision+4,processing|(postDelay?2:0)));
    for(const auto& note:reference.notes)if(note.plan.delayMix>0||note.plan.reverb.mix>0)
     check(effects(host,owner+3,revision+4,note.plan));
    published=0;

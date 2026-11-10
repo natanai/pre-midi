@@ -338,7 +338,7 @@ public:
  }
  // Control thread only. These operations NEVER mutate the callback's
  // existing Session, parse packets on the callback, or fall back to Web Audio.
- void beginStream(std::uint64_t owner,std::uint64_t revision,bool withProcessing){
+ void beginStream(std::uint64_t owner,std::uint64_t revision,bool withProcessing,bool withPostDelay){
   require(owner>0&&revision>0,"Native Song stream owner/revision must be positive");
   require((owner!=streamOwner||revision>streamRevision)&&(owner!=stagedOwner||revision>stagedRevision),"Native Song revisions must advance monotonically");
   ensure();
@@ -351,7 +351,7 @@ public:
    require(prior->stateView.load()!=playing&&prior->stateView.load()!=paused,
     "Stop the previous bounded native Session before streaming");
   streamOld.reset();
-  streamStaged=std::make_unique<StreamTransport>(owner,revision,device.sampleRate,withProcessing);
+  streamStaged=std::make_unique<StreamTransport>(owner,revision,device.sampleRate,withProcessing,withPostDelay);
   stagedOwner=owner;stagedRevision=revision;
  }
  StreamTransport& requireStream(std::uint64_t owner,std::uint64_t revision){
@@ -562,7 +562,7 @@ const char* premidi_audio_backend(void* host){return static_cast<premidi::Device
 int premidi_audio_configure(void* host,uint32_t device,uint32_t rate,uint32_t frames){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.open(device,rate,frames);});}
 int premidi_audio_play(void* host,const uint8_t* data,size_t length,double cycle,double seek,int loop,int preview){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.play(data,length,cycle,seek,loop!=0,preview!=0);});}
 
-int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision,int withProcessing){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.beginStream(owner,revision,withProcessing!=0);});}
+int premidi_audio_stream_begin(void* host,uint64_t owner,uint64_t revision,int withProcessing){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{premidi::require(withProcessing>=0&&withProcessing<=3,"Invalid native stream resource flags");h.beginStream(owner,revision,(withProcessing&1)!=0,(withProcessing&2)!=0);});}
 int premidi_audio_stream_effects(void* host,uint64_t owner,uint64_t revision,double mix,double time,double feedback,double tone,int ping,const premidi_reverb_parameters* room){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{premidi::ReverbRecipe r;if(room)r={room->mix,room->preDelay,room->decay,room->damping,room->size,room->width};h.streamEffects(owner,revision,mix,time,feedback,tone,ping!=0,r);});}
 int premidi_audio_stream_page(void* host,uint64_t owner,uint64_t revision,uint64_t sequence,uint64_t first,uint64_t end,uint32_t onsets,int last,const uint8_t* packet,size_t length){
  auto& h=*static_cast<premidi::DeviceHost*>(host);bool published=false;

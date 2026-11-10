@@ -48,12 +48,12 @@ private:
   return slot.pointer.load(std::memory_order_acquire);
  }
  public:
- StreamTransport(std::uint64_t owner,std::uint64_t revision,unsigned rate,bool withProcessing=false)
+ StreamTransport(std::uint64_t owner,std::uint64_t revision,unsigned rate,bool withProcessing=false,bool withPostDelay=false)
   :rate_(rate),owner_(owner),mailbox(owner,revision,0){
   require(rate>=8000&&rate<=192000,"Invalid native streaming output sample rate");
   constexpr std::uint8_t empty[]{0x50,0x4d,0x53,0x31,0,0,0,0};
   player=std::make_unique<Session>(empty,sizeof(empty),rate,1,0);
-  player->enableStreaming(withProcessing);
+  player->enableStreaming(withProcessing,withPostDelay);
  }
  StreamTransport(const StreamTransport&)=delete;
  StreamTransport& operator=(const StreamTransport&)=delete;

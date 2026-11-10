@@ -195,6 +195,6 @@ export function scheduleSample(context,out,inst,event,start,duration,beat,cache,
  }
  const graph=connectRecordedAudio(context,{source:src,amp,gate,pan,out,patch:{...patch,automation:automation??patch.automation},start,duration:life,owner,expression:event,unit,timeline});
  src.start(start,region.offset,region.sourceLength);src.stop(start+life+.01);
- const voice=ownVoice(context,{...owner,gate,start,release:Math.max(start,Math.min(start+life,releaseStart)),end:start+life+.01+(session?0:graph.tail)});
+ const voice=ownVoice(context,{...owner,gate,start,release:Math.max(start,Math.min(start+life,releaseStart)),end:start+life+.01+graph.postTail+(session?0:graph.tail)});
  if(session)session.adopt(voice);graph.connectDelay(session,voice);return voice;
 }

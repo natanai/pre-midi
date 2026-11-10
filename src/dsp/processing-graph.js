@@ -1,11 +1,13 @@
-import {DYNAMICS_KINDS,MAX_DYNAMICS,defaultDynamics,validateDynamicsParameters} from './dynamics.js';
-import {parameterFor,validParameterValue,dynamicsParameter} from './parameters.js';
+import {DYNAMICS_KINDS,defaultDynamics,validateDynamicsParameters} from './dynamics.js';
+import {parameterFor,validParameterValue,dynamicsParameter,MOD_EFFECT_PARAMETERS,POST_PROCESSOR_LIMIT} from './parameters.js';
+import {MOD_EFFECT_KINDS,defaultModEffect,validModEffect} from './modulation-effects.js';
+import {POST_PROCESSOR_KINDS} from './post-processing.js';
 import {validateEq,eqCoefficients,defaultEq,validateFilterStages} from './equalizer.js';
 
 export const MAX_PROCESSORS=8,MAX_PARALLEL_ROUTES=4;
-export const PROCESSOR_KINDS=Object.freeze(['filter','drive','eq',...DYNAMICS_KINDS]);
+export const PROCESSOR_KINDS=Object.freeze(['filter','drive','eq',...POST_PROCESSOR_KINDS]);
 export const PRIMARY_PROCESSORS=Object.freeze(['filter','drive','eq']);
-export const processorParameter=(kind,key)=>dynamicsParameter(kind,key)??parameterFor(kind==='drive'?'effects.drive':kind==='filter'?'filter.'+key:'');
+export const processorParameter=(kind,key)=>MOD_EFFECT_PARAMETERS[kind]?.[key]??dynamicsParameter(kind,key)??parameterFor(kind==='drive'?'effects.drive':kind==='filter'?'filter.'+key:'');
 export const processorField=(kind,key,label)=>{const p=processorParameter(kind,key);return {label,min:p.min,max:p.max,step:p.ui.step,display:p.ui.display,log:p.ui.log};};
 const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
 const keys=(v,allowed)=>object(v)&&Object.keys(v).every(k=>allowed.includes(k));
@@ -13,6 +15,7 @@ const finite=(v,min,max)=>Number.isFinite(v)&&v>=min&&v<=max;
 export function validateProcessorInstance(instance){
  if(!keys(instance,['id','kind','parameters'])||typeof instance.id!=='string'||!/^[a-zA-Z0-9_-]{1,80}$/.test(instance.id)||PRIMARY_PROCESSORS.includes(instance.id)||['delay','reverb'].includes(instance.id)||!PROCESSOR_KINDS.includes(instance.kind))return ['Invalid processor instance.'];
  const p=instance.parameters;
+ if(MOD_EFFECT_KINDS.includes(instance.kind))return validModEffect(instance.kind,p)?[]:['Invalid modulation effect instance.'];
  if(DYNAMICS_KINDS.includes(instance.kind))return validateDynamicsParameters(instance.kind,p)?[]:["Invalid dynamics instance."];
  if(instance.kind==='drive')return keys(p,['amount'])&&validParameterValue('effects.drive',p.amount)?[]:['Invalid distortion instance.'];
  if(instance.kind==='eq')return !object(p)||validateEq(p).length?['Invalid equalizer instance.']:[];
@@ -24,8 +27,8 @@ export function validateGraphExtensions(chain){
  const errors=instances.flatMap(validateProcessorInstance),ids=instances.map(i=>i?.id);
  if(new Set(ids).size!==ids.length)errors.push('Processor identities must be unique.');
  const post=chain.post??[];
- if(!Array.isArray(post)||post.length>MAX_DYNAMICS||post.some(id=>!DYNAMICS_KINDS.includes(instances.find(n=>n?.id===id)?.kind)))return ['Dynamics needs up to four post-level processors.'];
- if([...(chain.order??[]),...parallel.flatMap(r=>Array.isArray(r?.order)?r.order:[])].some(id=>DYNAMICS_KINDS.includes(instances.find(n=>n?.id===id)?.kind)))errors.push('Dynamics belongs after level and pan.');
+ if(!Array.isArray(post)||post.length>POST_PROCESSOR_LIMIT||post.some(id=>!POST_PROCESSOR_KINDS.includes(instances.find(n=>n?.id===id)?.kind)))return ['Up to four post-level processors are supported.'];
+ if([...(chain.order??[]),...parallel.flatMap(r=>Array.isArray(r?.order)?r.order:[])].some(id=>POST_PROCESSOR_KINDS.includes(instances.find(n=>n?.id===id)?.kind)))errors.push('Post processors belong after level and pan.');
  const available=new Set([...PRIMARY_PROCESSORS,...ids]),used=[...(chain.order??[]),...post];
  let gain=chain.dry??0;const routes=new Set();
  if(!finite(gain,0,1))errors.push('Invalid parallel dry share.');
@@ -49,10 +52,11 @@ export function withInstance(patch,kind){
  if(!PROCESSOR_KINDS.includes(kind))throw Error('Unknown processor type.');
  const chain=structuredClone(patch.chain??{version:1,order:['filter','drive'],bypass:[]});
  if(processorOrders(chain).flat().length>=MAX_PROCESSORS||(chain.instances?.length??0)>=MAX_PROCESSORS)throw Error('Processing supports up to eight processors.');
- if(DYNAMICS_KINDS.includes(kind)&&(chain.post?.length??0)>=MAX_DYNAMICS)throw Error("Up to four dynamics processors are supported.");
+ if(POST_PROCESSOR_KINDS.includes(kind)&&(chain.post?.length??0)>=POST_PROCESSOR_LIMIT)throw Error("Up to four post-level processors are supported.");
  const taken=new Set(allProcessorIds(chain));let n=1;while(taken.has(kind+'-'+n))n++;
- const instance={id:kind+'-'+n,kind,parameters:DYNAMICS_KINDS.includes(kind)?defaultDynamics(kind):kind==='filter'?{type:'lowpass',cutoff:8000,resonance:.7,stages:1}:kind==='drive'?{amount:.2}:defaultEq()};
- chain.instances=[...(chain.instances??[]),instance];if(DYNAMICS_KINDS.includes(kind))(chain.post??=[]).push(instance.id);else chain.order.push(instance.id);return chain;
+ const instance={id:kind+'-'+n,kind,parameters:MOD_EFFECT_KINDS.includes(kind)?defaultModEffect(kind):DYNAMICS_KINDS.includes(kind)?defaultDynamics(kind):kind==='filter'?{type:'lowpass',cutoff:8000,resonance:.7,stages:1}:kind==='drive'?{amount:.2}:defaultEq()};
+ chain.instances=[...(chain.instances??[]),instance];if(MOD_EFFECT_KINDS.includes(kind))(chain.mix??={})[instance.id]=kind==='autopan'?1:.5;
+ if(POST_PROCESSOR_KINDS.includes(kind))(chain.post??=[]).push(instance.id);else chain.order.push(instance.id);return chain;
 }
 export function withParallelRoute(patch){
  const chain=structuredClone(patch.chain??{version:1,order:['filter','drive'],bypass:[]});
@@ -72,7 +76,7 @@ export function withRouteShare(chain,id,value){
  return next;
 }
 export function moveProcessor(chain,id,toRoute,before=null){
- if(chain.post?.includes(id))throw Error("Dynamics belongs after level and pan.");
+ if(chain.post?.includes(id))throw Error("Post processors belong after level and pan.");
  const next=structuredClone(chain),orders=toneProcessorOrders(next);
  if(!orders.some(order=>order.includes(id)))throw Error('Processor is not in the chain.');
  const destination=toRoute==='serial'?next.order:next.parallel?.find(r=>r.id===toRoute)?.order;

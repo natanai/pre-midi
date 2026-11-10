@@ -1,5 +1,5 @@
 import {prepareReverb,needsReverb} from './reverb.js';
-import {prepareDynamics,needsDynamics} from './dynamics.js';
+import {preparePostProcessing,needsPostProcessing} from './post-processing.js';
 import {processorKind} from '../../dsp/processing-graph.js';
 import {processorMix} from '../../dsp/processing-chain.js';
 import {configureDriveShaper} from '../../../audioEffects.js';
@@ -18,7 +18,7 @@ export async function prepareProcessorMix(context,document=null){
  })());
  // Real-time contexts prepare once for subsequent live edits. Offline renders
  // load the worklet only if their score actually contains active dynamics.
- if(typeof context.startRendering!=="function"||needsDynamics(document))await prepareDynamics(context);
+ if(typeof context.startRendering!=="function"||needsPostProcessing(document))await preparePostProcessing(context);
  if(typeof context.startRendering!=="function"||needsReverb(document))await prepareReverb(context);
  const frames=await latencies.get(rate);context.processorMixLatency=frames;return frames;
 }

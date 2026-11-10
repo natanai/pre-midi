@@ -1,5 +1,6 @@
 import {effectiveReverb} from './reverb.js';
-import {DYNAMICS_KINDS,MAX_DYNAMICS} from './dynamics.js';
+import {POST_PROCESSOR_KINDS} from './post-processing.js';
+import {POST_PROCESSOR_LIMIT} from './parameters.js';
 import {validateGraphExtensions,allProcessorIds,processorOrders} from './processing-graph.js';
 // Stable IDs identify the existing processors. Serial tone stages precede
 // articulation/pan; delay remains an explicitly owned send, never a reorderable
@@ -26,7 +27,7 @@ export function withProcessorAdded(patch,id){
  if(!allProcessorIds(processingChain(patch)).includes(id))throw Error('Unknown processor');
  const chain=processingChain(patch);
  const next=structuredClone(chain);
- if(!processorOrders(chain).some(order=>order.includes(id))){if(processorOrders(chain).flat().length>=8)throw Error("Processing supports up to eight processors.");const kind=chain.instances?.find(n=>n.id===id)?.kind;if(DYNAMICS_KINDS.includes(kind)){if((chain.post?.length??0)>=MAX_DYNAMICS)throw Error('Up to four dynamics processors are supported.');(next.post??=[]).push(id);}else next.order.push(id);}
+ if(!processorOrders(chain).some(order=>order.includes(id))){if(processorOrders(chain).flat().length>=8)throw Error("Processing supports up to eight processors.");const kind=chain.instances?.find(n=>n.id===id)?.kind;if(POST_PROCESSOR_KINDS.includes(kind)){if((chain.post?.length??0)>=POST_PROCESSOR_LIMIT)throw Error('Up to four post-level processors are supported.');(next.post??=[]).push(id);}else next.order.push(id);}
  return next;
 }
 export function withProcessorBypass(patch,id,bypassed){

@@ -36,6 +36,8 @@ try{
   patch.envelope={...patch.envelope,release:.20};
   patch.chain=withInstance(patch,"compressor");patch.chain.instances[0].parameters.threshold=-28;
   patch.chain=withInstance(patch,"deesser");Object.assign(patch.chain.instances[1].parameters,{frequency:1000,threshold:-40});
+  patch.chain=withInstance(patch,'chorus');Object.assign(patch.chain.instances[2].parameters,{rate:3.7,phase:.27,feedback:-.5});
+  patch.chain=withInstance(patch,'phaser');Object.assign(patch.chain.instances[3].parameters,{rate:2.3,depth:3,feedback:.6});
   if(graph){patch.chain=withInstance(patch,'filter');patch.chain.instances.find(instance=>instance.kind==='filter').parameters.cutoff=3200;patch.chain=withParallelRoute(patch);patch.chain=moveProcessor(patch.chain,'filter-1','route-1');patch.chain=withRouteShare(patch.chain,'dry',.4);}
   const tone=(pitch,start,duration)=>planSynthVoice({patch,volume:.12},
    {pitch,velocity:.8},start*scale,duration*scale,{automation:[{id:"pan",version:1,target:"pan",unit:"pan",interpolation:"linear",points:[{id:"a",step:0,value:-.4},{id:"b",step:4,value:.6}]}],timeline:{step:0,unit:.125*scale,limitStep:4}});

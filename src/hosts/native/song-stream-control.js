@@ -1,3 +1,4 @@
+import {songNeedsPostDelay} from '../../dsp/post-processing.js';
 import {songUsesProcessingGraph} from '../../dsp/processing-graph.js';
 // Source-linked native Song transport. Revisions are prepared on the control
 // thread, including voice/filter/echo history, before an audio-clock handoff.
@@ -62,7 +63,7 @@ export async function playNativeSongStreamExperimental(song,{
   const current={document,unit,length,marker:getRevision?.(),loop:looping,revision:++revision,retryAfterAck:null,filling:false};
   const valid=()=>{check();if(current!==active&&generation!==operationGeneration)throw cancelled();return current.revision;};
   staging=current;
-  await nativeRequest({action:'stream_begin',owner,revision:current.revision,processing:songUsesProcessingGraph(document)});valid();
+  await nativeRequest({action:'stream_begin',owner,revision:current.revision,processing:songUsesProcessingGraph(document),post_delay:songNeedsPostDelay(document)});valid();
   try{
    for(const recipe of nativeSongEffectsRecipes(document)){
     await nativeRequest({action:'stream_effects',owner,revision:current.revision,...recipe});valid();

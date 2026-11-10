@@ -5,6 +5,6 @@ fn main(){
  if target=="windows"{for name in ["ole32","uuid","avrt","winmm"]{println!("cargo:rustc-link-lib={name}");}}
  if target=="linux"{for name in ["dl","pthread","m"]{println!("cargo:rustc-link-lib={name}");}}
  if target=="macos"{for name in ["CoreAudio","AudioToolbox","CoreFoundation"]{println!("cargo:rustc-link-lib=framework={name}");}}
- for name in ["processing-graph.hpp","automation.hpp","dynamics.hpp","reverb.hpp","voice.hpp","drive.hpp","delay.hpp","sample.hpp", "capture.hpp","session.hpp","stream-transport.hpp","plan-packet.hpp","waves.hpp","filter.hpp","modulation.hpp","device-host.h","vendor/miniaudio/miniaudio.h"]{println!("cargo:rerun-if-changed=../{name}");}
+ for name in ["processing-graph.hpp","automation.hpp","dynamics.hpp","modulation-effects.hpp","post-processing.hpp","reverb.hpp","voice.hpp","drive.hpp","delay.hpp","sample.hpp", "capture.hpp","session.hpp","stream-transport.hpp","plan-packet.hpp","waves.hpp","filter.hpp","modulation.hpp","device-host.h","vendor/miniaudio/miniaudio.h"]{println!("cargo:rerun-if-changed=../{name}");}
  println!("cargo:rerun-if-changed=../../desktop/src/audio/control.rs");println!("cargo:rerun-if-changed=../device-host.cpp");
 }

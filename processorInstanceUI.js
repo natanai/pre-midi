@@ -1,3 +1,5 @@
+import {renderModEffectInstance} from './modulationEffectsUI.js';
+import {MOD_EFFECT_KINDS} from './src/dsp/modulation-effects.js';
 import {renderDynamicsInstance} from './dynamicsUI.js';
 import {DYNAMICS_KINDS} from './src/dsp/dynamics.js';
 import {processorField,processorInactiveReason} from './src/dsp/processing-graph.js';
@@ -10,6 +12,7 @@ const NS='http://www.w3.org/2000/svg',clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const path=(root,points)=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',points);p.setAttribute('stroke','var(--track-accent,#08e4ec)');p.setAttribute('fill','none');p.setAttribute('stroke-width','1.5');root.append(p);};
 export function renderProcessorInstance(patch,instance,onChange,onPreview,soundId,title){
  const inactiveReason=processorInactiveReason(patch,instance.id);
+ if(MOD_EFFECT_KINDS.includes(instance.kind))return renderModEffectInstance(patch,instance,onChange,onPreview,soundId,title,inactiveReason);
  if(DYNAMICS_KINDS.includes(instance.kind))return renderDynamicsInstance(patch,instance,onChange,onPreview,soundId,title,inactiveReason);
  const index=patch.chain.instances.findIndex(p=>p.id===instance.id),prefix=['chain','instances',index,'parameters'];
  const get=p=>p.chain.instances.find(n=>n.id===instance.id)?.parameters??instance.parameters;

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "program_id": "pre-midi-professional-synthesis",
   "title": "Professional native-first synthesis and DSP",
-  "updated_on": "2026-11-09",
+  "updated_on": "2026-11-10",
   "status": "active",
   "scope": "Synthesizer sound generation, DSP fidelity, quality qualification and cross-host rendering; complements docs/song-rollout.md instead of replacing its Song-specific stages.",
   "mission": "Deliver professionally viable editable instruments that sound correct in native desktop/mobile production and natively in pre-programmed, while retaining a compatible web studio wherever technically feasible.",
@@ -875,7 +875,7 @@
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ],
-      "progress_note": "Partial implementation: shared filter/EQ/drive serial order, add/remove, bypass/mix, up to eight parametric EQ bands, tempo delay, feedback tone and ping-pong, stereo width/mid-side and presets/reuse exist in browser/native paths. Independent filter/distortion/EQ instances and bounded parallel routes with branch latency alignment now exist. Reverb, production dynamics, chorus/flanger/phaser, sidechains and shared buses remain open."
+      "progress_note": "Partial implementation: shared filter/EQ/drive serial order, add/remove, bypass/mix, up to eight parametric EQ bands, tempo delay, feedback tone and ping-pong, stereo width/mid-side and presets/reuse exist in browser/native paths. Independent filter/distortion/EQ instances and bounded parallel routes with branch latency alignment now exist. Usable dynamics, algorithmic reverb and classic chorus/flanger/phaser/auto-pan now exist; ring/frequency shifting, broader production qualification, sidechains and shared buses remain open."
     },
     {
       "id": "SYN-016",
@@ -1368,7 +1368,7 @@
         "package_version": "0.14.1-preview.31"
       }
     },
-    "execution_packet_note": "execution_packet=9 and the aggregate counts describe the historical extended-synthesis checkpoint. Current recorded-audio execution is sample packet 21, with a 440-byte default processing/automation/dynamics/room trailer; nonempty graphs/lanes/dynamics add bounded variable payloads. Only the current decoder is supported."
+    "execution_packet_note": "execution_packet=9 and aggregate counts describe the historical extended-synthesis checkpoint. Current recorded-audio execution is sample packet 22, with a 440-byte empty processing/automation/post/room trailer; nonempty graphs, lanes and post processors add bounded variable payloads. Only the current decoder is supported."
   },
   "sound_panel_expansions": {
     "status": "partially implemented; tracked by sound_editing tasks",
@@ -1436,7 +1436,7 @@
     "schema_version": 1,
     "program_id": "pre-midi-sound-editing-feature-complete",
     "title": "Roadmap to feature-complete sound editing",
-    "updated_on": "2026-11-09",
+    "updated_on": "2026-11-10",
     "status": "in_progress",
     "audit_commit": "bf28bf53de08f5eb514f8e4f778df711edc7aa8c",
     "audit_scope": "Baseline source audit at audit_commit; subsequent changes and verification limits are recorded in implementation_updates.",
@@ -2067,9 +2067,9 @@
       {
         "id": "CAP-12",
         "title": "Chorus, flanger, phaser and creative modulation effects",
-        "status": "not_found",
-        "current": "No implementation found in the audited production sound path.",
-        "gap": "Vibrato/tremolo do not substitute for these processors. Add common chorus, flanger, phaser, auto-pan and ring/frequency-shift processors with shared UI and bounded feedback.",
+        "status": "partial",
+        "current": "Shared chorus, flanger, phaser and auto-pan implemented in native/browser synth/sample/vocal playback and export, with ordinary controls, interactive illustrations, per-note/Clip state, tempo sync, processor lifecycle and finite tails.",
+        "gap": "Ring modulation/frequency shifting, wider effect automation, free-running clocks, listening and physical Windows qualification remain.",
         "evidence_ids": [
           "E05",
           "E10",
@@ -2836,7 +2836,7 @@
           "tests/processingGraph.dom.mjs: shared Inspector edits, routing, blend undo/redo, focus and combined illustrations",
           "scripts/native-stream-device-check.mjs: seek/loop/edit/count-in/capture at 44.1/48/96 kHz, with and without processing graphs; zero callback allocations"
         ],
-        "progress_note": "Shared processing now supports up to eight independently parameterized filter/distortion/EQ instances, four parallel routes after a serial path, stable IDs, bypass/mix, add/remove/reorder/move, normalized route/dry shares, and one Inspector with interactive illustrations. Native and browser paths align dry and shorter branches to the longest branch, including cascaded drive latency. Per-voice state and control-owned recipes remain isolated and callback allocation-free. Sidechain inputs, Track/shared buses and arrangement-wide latency compensation remain open. The same chain now owns a bounded post-level dynamics order (chain.post), separate from the pre-articulation tone routes; shared buses are still unfinished."
+        "progress_note": "Shared processing now supports up to eight independently parameterized filter/distortion/EQ instances, four parallel routes after a serial path, stable IDs, bypass/mix, add/remove/reorder/move, normalized route/dry shares, and one Inspector with interactive illustrations. Native and browser paths align dry and shorter branches to the longest branch, including cascaded drive latency. Per-voice state and control-owned recipes remain isolated and callback allocation-free. Sidechain inputs, Track/shared buses and arrangement-wide latency compensation remain open. The same chain now owns a bounded post-level dynamics/modulation-effect order (chain.post), separate from the pre-articulation tone routes; shared buses are still unfinished."
       },
       {
         "id": "SE-09",
@@ -2888,7 +2888,7 @@
           "src/dsp/dynamics-kernel.js",
           "dynamicsUI.js",
           "native/dynamics.hpp",
-          "src/hosts/web/dynamics-worklet.js"
+          "src/hosts/web/post-worklet.js"
         ],
         "acceptance": [
           "Provide compressor threshold/ratio/knee/attack/release/makeup/mix and selectable sidechain; expander/gate threshold/range/hold; de-esser frequency/band/threshold/amount.",
@@ -2949,7 +2949,7 @@
       {
         "id": "SE-12",
         "title": "Add shared modulation effects",
-        "status": "planned",
+        "status": "in_progress",
         "priority": "P1",
         "depends_on": [
           "SE-06",
@@ -2959,10 +2959,13 @@
           "SYN-015"
         ],
         "implementation_paths": [
-          "src/dsp/",
-          "soundInspector.js",
-          "soundIllustrations.js",
-          "src/hosts/native/"
+          "src/dsp/modulation-effects.js",
+          "src/dsp/post-processing.js",
+          "modulationEffectsUI.js",
+          "native/modulation-effects.hpp",
+          "native/post-processing.hpp",
+          "src/hosts/web/post-worklet.js",
+          "src/hosts/native/post-processing.js"
         ],
         "acceptance": [
           "Implement chorus, flanger, phaser and auto-pan with applicable rate/sync/depth/stereo/mix/feedback controls using the shared modulation clock.",
@@ -2972,7 +2975,15 @@
         "verification": [
           "Sideband/notch, stereo phase, impulse and feedback stability fixtures plus audible reference phrases."
         ],
-        "completion_evidence": []
+        "completion_evidence": [
+          "tests/modulationEffects.test.js: current project/reuse/order/bypass bounds; tempo resolution; independent pan/impulse/all-pass-frequency oracles and extreme feedback/tail checks at 8/192 kHz",
+          "tests/modulationEffects.audio.mjs: native/worklet PCM through synth/sample/vocal; ordering, overlap isolation, original-age seeks, loops, block/page invariance, sync and echo/room sends",
+          "tests/modulationEffects.dom.mjs: common Inspector direct graphs/dials, timing selector, undo/redo, order, bypass/removal and combined view",
+          "native/modulation-effects-test.cpp: poisoned/unwritten ring guards, storage reuse and independent retiring-voice feedback history",
+          "scripts/native-stream-device-check.mjs at 48 kHz: chorus/phaser plus compressor/de-esser, reverb/echo and optional parallel routing; seek/revision/loop/count-in/capture; zero callback allocations",
+          "native/control-tests: seven production Rust/control tests, including urgent pause/resume/Stop through a blocked/full preparation queue"
+        ],
+        "progress_note": "Classic modulation-effects source milestone implemented: chorus, flanger, six-section normalized-lattice phaser and equal-power auto-pan share the existing processor lifecycle and Inspector. Four post-level instances total (including dynamics) follow level/stereo/pan and precede dry/echo/room sends. Applicable free-Hz/beat sync, depth, initial/stereo phase, feedback, wet delay or center frequency and mix are editable and reusable. The shared modulationRate function resolves tempo at scheduling; authored settings remain untouched. Note/Clip-owned state and original-age clocks survive native/browser seeks, loops and page revisions. Serial effect tails extend graphEnd without extending source envelopes. No added fixed block latency. Ring modulation/frequency shifting, broader effect automation, free-running clock policy, matched listening and physical Windows acceptance remain open; SE-12 and M3 are not complete."
       },
       {
         "id": "SE-13",
@@ -3748,6 +3759,18 @@
           "General parallel routing, production dynamics, reverb or independent time stretch",
           "Physical Windows 11 audio/microphone acceptance or real-browser visual acceptance"
         ]
+      },
+      {
+        "id": "CLASSIC-MODULATION-EFFECTS",
+        "date": "2026-11-10",
+        "status": "implemented source milestone; focused software qualification",
+        "task_ids": [
+          "SE-12"
+        ],
+        "summary": "Chorus, flanger, phaser and auto-pan in one native/browser post-processing path, with the shared Inspector, tempo/phase, source reuse and bounded tails. Ring/frequency shift and independent pitch/time remain open.",
+        "native_contract": "Sample packet v22; prepared 1024-point phase/coefficient tables and optional 60 ms per-voice delay storage. Stream revisions declare tone graph and post-delay resources independently before publication. State reset uses age guards instead of clearing large rings on the callback.",
+        "verification": "88 routine cases; independent DSP oracles/extrema, native/worklet source/order/seek/loop/overlap/page/sync/send checks, shared DOM and seven production Rust control tests pass. 48 kHz null-device stream with classic effects/dynamics/parallel routing allocates nothing in callbacks.",
+        "qualification_limits": "Source only; published Windows preview.31 remains unchanged. No physical/listening, complete SE-12/M3 or whole-roadmap claim. Hard-cut fractional PCM endpoint interpolation remains host-specific; phase fixtures use silent source endpoints."
       }
     ],
     "vocal_parity_milestone": {
@@ -3834,7 +3857,7 @@
       "qualification_complete": false,
       "remaining_implementation": []
     },
-    "capability_audit_updated_on": "2026-11-08",
+    "capability_audit_updated_on": "2026-11-10",
     "capability_audit_note": "Current/gap text reconciled against d87799e. Original E/REF IDs describe the initial comparison; current implementation paths are listed per capability. Status partial can mean unfinished feature scope or unverified observation; do not interpret every gap as missing code."
   },
   "repository_checkpoint": {
@@ -3905,7 +3928,13 @@
     },
     "remaining_qualification_task_ids": [
       "SE-11"
-    ]
+    ],
+    "modulation_effects": {
+      "status": "classic effects implemented; focused software checks pass",
+      "reference": "SE-12",
+      "package_status": "source only; not in preview.31",
+      "remaining": "Ring modulation, frequency shifting, broader effect automation/free-run policy, matched listening and physical Windows acceptance"
+    }
   },
   "latest_delivery": {
     "version": "0.14.1-preview.31",

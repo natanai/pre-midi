@@ -1,5 +1,5 @@
 import {vocalSeekEvents} from '../src/hosts/web/vocal-seek.js';
-import {needsDynamics} from '../src/hosts/web/dynamics.js';
+import {needsPostProcessing} from '../src/hosts/web/post-processing.js';
 import test from 'node:test';import assert from 'node:assert/strict';
 import {create,parse,upgradeBeatFeatures} from '../schema.js';import {createSong} from '../songModel.js';import {parseSong} from '../songIO.js';import {validatePatch} from '../synth.js';
 import {withInstance,moveProcessor,compileProcessingGraph} from '../src/dsp/processing-graph.js';import {withProcessorRemoved,withProcessorAdded,withProcessorBypass,validateProcessingChain} from '../src/dsp/processing-chain.js';
@@ -8,7 +8,7 @@ import {runtimeModules} from '../scripts/prepare-pages.mjs';
 import {DynamicsKernel} from '../src/dsp/dynamics-kernel.js';
 test('dynamics instances share recall and lifecycle while retaining their post-level position',()=>{
  const beat=create(),patch=beat.instruments[0].sounds[0].patch;patch.chain=withInstance(patch,'compressor');patch.chain=withInstance(patch,'limiter');
- const stored=patch.chain.instances[0];stored.parameters.threshold=-24.3;assert.deepEqual(validatePatch(patch),[]);assert.deepEqual(patch.chain.order,['filter','drive']);assert.deepEqual(patch.chain.post,['compressor-1','limiter-1']);assert.equal(compileProcessingGraph(patch,48000),null);assert.equal(needsDynamics(beat),true);assert.equal(needsDynamics(create()),false);
+ const stored=patch.chain.instances[0];stored.parameters.threshold=-24.3;assert.deepEqual(validatePatch(patch),[]);assert.deepEqual(patch.chain.order,['filter','drive']);assert.deepEqual(patch.chain.post,['compressor-1','limiter-1']);assert.equal(compileProcessingGraph(patch,48000),null);assert.equal(needsPostProcessing(beat),true);assert.equal(needsPostProcessing(create()),false);
  upgradeBeatFeatures(beat);assert.deepEqual(parse(JSON.stringify(beat)),beat);const song=createSong(beat);assert.deepEqual(parseSong(JSON.stringify(song)),song);
  const fx=processingFromPatch(patch),other=structuredClone(patch);applyProcessingToPatch(other,fx);assert.deepEqual(other.chain,patch.chain);other.chain.instances[0].parameters.threshold=-12;assert.equal(stored.parameters.threshold,-24.3);
  patch.chain=withProcessorRemoved(patch,'compressor-1');assert.equal(compileDynamics(patch).length,1);patch.chain=withProcessorAdded(patch,'compressor-1');assert.deepEqual(patch.chain.post,['limiter-1','compressor-1']);assert.equal(patch.chain.instances[0].parameters.threshold,-24.3);
@@ -24,7 +24,7 @@ test('malformed parameters and routing cannot silently put dynamics before artic
  const old=structuredClone(patch);old.chain=withProcessorRemoved(old,'gate-1');old.chain=withInstance(old,'limiter');assert.throws(()=>withProcessorAdded(old,'gate-1'),/four/);
 });
 test('published dependency closure includes the worklet and its versioned numerical dependency',async()=>{
- const modules=await runtimeModules(new URL('../',import.meta.url));assert.ok(modules.includes('src/hosts/web/dynamics-worklet.js'));assert.ok(modules.includes('src/dsp/dynamics-kernel.js'));assert.ok(modules.every(path=>!path.startsWith('tests/')));
+ const modules=await runtimeModules(new URL('../',import.meta.url));assert.ok(modules.includes('src/hosts/web/post-worklet.js'));assert.ok(modules.includes('src/dsp/dynamics-kernel.js'));assert.ok(modules.every(path=>!path.startsWith('tests/')));
 });
 
 test('dynamics-only vocal seeks restore history and bypassed/zero-mix Clips need no warm-up',()=>{

@@ -1,3 +1,4 @@
+import {compilePostProcessing,postTailSeconds} from './post-processing.js';
 import {effectiveDelayEffects} from "./processing-chain.js";
 import {resolveModulation} from "./modulation.js";
 import {planCutoffAutomation,planParameterAutomation,cutoffLane,validateAutomation} from "./automation.js";
@@ -30,11 +31,11 @@ export function planSynthVoice(instrument,event,start,duration,{automation,timel
  const amplitude=planAmplitudeEnvelope({start,off,peak,envelope:patch.envelope});
  const filter={...patch.filter,...planFilterSweep(patch.filter,start,duration)};
  const result={contract:"pre-midi-synth-voice",version:SYNTH_VOICE_CONTRACT_VERSION,
-  patch,presetId:patch.presetId,start,duration,off,end,graphEnd:end+.15,
-  audibleEnd:end+.15+effectTailSeconds(effectiveDelayEffects(patch,patch.effects)),peak,amplitude,filter,movement:motion,
+  patch,presetId:patch.presetId,start,duration,off,end,postProcessing:compilePostProcessing(patch,unit),graphEnd:end+.15+postTailSeconds(patch,unit),
+  audibleEnd:end+.15+postTailSeconds(patch,unit)+effectTailSeconds(effectiveDelayEffects(patch,patch.effects)),peak,amplitude,filter,movement:motion,
   oscillators:patch.oscillators.map(slot=>({...slot,frequency:Math.min(18000,noteFrequency(event.pitch)*2**slot.octave),
    pitch:planPitch(note,motion,start,duration,slot.detune)})),
-  routing:["oscillators_and_noise","filter","drive","amplitude","tremolo","pan","dry_and_delay_send"],
+  routing:["oscillators_and_noise","filter","drive","amplitude","tremolo","pan","post_processing","dry_and_effect_sends"],
   expression:note};
  if(patch.version===2){result.version=2;result.modulation=resolveModulation(patch.modulation,unit);}
  if(automation?.length){if(!timeline)throw Error("Automation requires a timeline position");result.version=3;result.modulation??={version:1,routes:[]};result.parameterAutomation=planParameterAutomation(automation,patch,{...timeline,start,end:result.graphEnd});}

@@ -13,7 +13,7 @@ struct PreparedNote {Plan plan;std::array<const WaveBank*,2> banks{};VoicePrepar
 struct Slot {
  std::optional<Voice> voice;Plan plan;std::array<const WaveBank*,2> banks{};
  int delay=-1;SampleChannelState* channels=nullptr;ProcessingGraphState* processing=nullptr;
- const DriveRecipe* drive=nullptr;const SineLfoTable* lfo=nullptr;const ProcessingGraphRecipe* graphRecipe=nullptr;
+ const DriveRecipe* drive=nullptr;const SineLfoTable* lfo=nullptr;const ProcessingGraphRecipe* graphRecipe=nullptr;const PreparedPostProcessing* postRecipe=nullptr;float* postDelay=nullptr;
  std::uint64_t start=0,off=0,end=0,order=0,fadeEnd=0;
 };
 // A session owns immutable instructions and banks. Its fixed-size mixer state
@@ -27,6 +27,16 @@ class Session {
   processingStates=std::make_unique<ProcessingGraphState[]>(voiceLimit+retireLimit);unsigned i=0;
   for(auto& s:voices)s.processing=processingStates.get()+i++;
   for(auto& s:retiring)s.processing=processingStates.get()+i++;
+ }
+ std::unique_ptr<float[]> postDelayState;
+ std::vector<std::unique_ptr<PreparedPostProcessing>> postRecipes;
+ void preparePostDelay(){
+  if(postDelayState)return;
+  const auto stride=postDelayFrames(rate)*2*postLimit;
+  // Intentionally uninitialized: each voice's age guard prevents stale reads.
+  postDelayState=std::unique_ptr<float[]>(new float[(voiceLimit+retireLimit)*stride]);unsigned i=0;
+  for(auto& s:voices)s.postDelay=postDelayState.get()+i++*stride;
+  for(auto& s:retiring)s.postDelay=postDelayState.get()+i++*stride;
  }
  std::vector<Bank> banks;std::unique_ptr<SineLfoTable> lfoBank;
  SampleStore ownedSamples;std::unique_ptr<SampleChannelState[]> channelState;unsigned channelWidth=0;
@@ -119,18 +129,18 @@ class Session {
    if(free->start<at){
     Slot* tail=nullptr;for(auto& s:retiring)if(!s.voice){tail=&s;break;}
     if(!tail){error=1;return;}
-    auto* storage=tail->channels;auto* graphStorage=tail->processing;*tail=*free;free->processing=graphStorage;tail->channels=storage;if(channelWidth){std::copy(free->channels,free->channels+channelWidth,storage);tail->voice->relocateChannels(storage);}tail->fadeEnd=std::min(tail->end,at+fadeFrames);
+    auto* storage=tail->channels;auto* graphStorage=tail->processing;auto* postStorage=tail->postDelay;*tail=*free;free->processing=graphStorage;free->postDelay=postStorage;tail->channels=storage;if(channelWidth){std::copy(free->channels,free->channels+channelWidth,storage);tail->voice->relocateChannels(storage);}tail->fadeEnd=std::min(tail->end,at+fadeFrames);
    }
    stolen++;
   }
-  free->plan=note.plan;free->delay=mappedDelay==-2?note.delay:mappedDelay;free->graphRecipe=note.prepared.processing;free->drive=note.prepared.drive;free->lfo=note.prepared.lfoBank;const double shift=streamed?static_cast<double>(streamSpawnBase)/rate:cycle*cycleSeconds;
+  free->plan=note.plan;free->delay=mappedDelay==-2?note.delay:mappedDelay;free->graphRecipe=note.prepared.processing;free->postRecipe=note.prepared.post;free->drive=note.prepared.drive;free->lfo=note.prepared.lfoBank;const double shift=streamed?static_cast<double>(streamSpawnBase)/rate:cycle*cycleSeconds;
   auto& p=free->plan;p.start+=shift;p.off+=shift;p.sourceEnd+=shift;p.graphEnd+=shift;
   if(p.version>=4)p.sweepEnd+=shift;
   for(unsigned i=0;i<p.eventCount;i++)p.events[i].time+=shift;
   for(unsigned i=0;i<p.automationCount;i++)p.automation[i].time+=shift;
   for(unsigned i=0;i<p.parameterAutomation.count;i++)for(unsigned j=0;j<p.parameterAutomation.lanes[i].count;j++)p.parameterAutomation.lanes[i].points[j].time+=shift;
   free->banks=note.banks;free->start=at;free->off=frameAt(p.off);free->end=frameAt(p.graphEnd);free->order=++serial;
-  free->voice.emplace(p,rate,free->banks,at,&note.prepared,nullptr,nullptr,free->channels,free->processing);admitted++;
+  free->voice.emplace(p,rate,free->banks,at,&note.prepared,nullptr,nullptr,free->channels,free->processing,nullptr,nullptr,free->postDelay);admitted++;
   if(free->delay>=0)tailEnd=std::max(tailEnd,frameAt(p.graphEnd+buses[free->delay].tail));
  }
  void mix(float* output,unsigned frames)noexcept{
@@ -148,7 +158,7 @@ class Session {
  }
  void reconstruct(Slot& s,std::uint64_t target){
   if(!s.voice)return;
-  s.voice.emplace(s.plan,rate,s.banks,s.start,nullptr,s.drive,s.lfo,s.channels,s.processing,s.graphRecipe);
+  s.voice.emplace(s.plan,rate,s.banks,s.start,nullptr,s.drive,s.lfo,s.channels,s.processing,s.graphRecipe,s.postRecipe,s.postDelay);
   std::array<float,2*renderBlock> scratch{};
   for(auto at=s.start;at<target;){const auto count=static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,target-at));s.voice->process(scratch.data(),count);at+=count;}
  }
@@ -201,7 +211,13 @@ public:
     for(const auto& candidate:processingRecipes)if(sameProcessingGraph(candidate->graph,note.plan.processing)){graph=candidate.get();break;}
     if(!graph){processingRecipes.push_back(std::make_unique<ProcessingGraphRecipe>(note.plan.processing));graph=processingRecipes.back().get();}
    }
-   note.prepared=Voice(note.plan,rate,note.banks,0,nullptr,drive,note.plan.version==9?lfoBank.get():nullptr,nullptr,nullptr,graph).preparation();notes.push_back(note);
+   const PreparedPostProcessing* post=nullptr;
+   if(note.plan.postCount){
+    if(!preparationOnly&&usesPostDelay(note.plan.postCount,note.plan.post))preparePostDelay();
+    for(const auto& candidate:postRecipes)if(candidate->matches(note.plan.postCount,note.plan.post)){post=candidate.get();break;}
+    if(!post){postRecipes.push_back(std::make_unique<PreparedPostProcessing>(note.plan.postCount,note.plan.post,rate));post=postRecipes.back().get();}
+   }
+   note.prepared=Voice(note.plan,rate,note.banks,0,nullptr,drive,note.plan.version==9?lfoBank.get():nullptr,nullptr,nullptr,graph,post).preparation();notes.push_back(note);
    if(note.plan.delayMix>0||note.plan.reverb.mix>0){
     const auto& p=note.plan;std::size_t index=0;
     for(;index<buses.size();index++)if(buses[index].mix==p.delayMix&&buses[index].time==p.delayTime&&buses[index].feedback==p.delayFeedback&&buses[index].tone==p.delayTone&&buses[index].ping==p.delayPingPong&&buses[index].room==p.reverb)break;
@@ -235,7 +251,7 @@ public:
  // Called on the CONTROL thread before this Session is ever published.
  // Preallocating maximum sample channel scratch makes 4/6-channel samples
  // valid in later pages without changing callback-owned allocations.
- void enableStreaming(bool withProcessing=false){
+ void enableStreaming(bool withProcessing=false,bool withPostDelay=false){
   require(notes.empty()&&cursor==0&&!streamed&&buses.empty(),
    "Native stream needs an empty and unstarted Session");
   channelWidth=4;
@@ -244,6 +260,7 @@ public:
   for(auto& voice:voices)voice.channels=channelState.get()+slot++*channelWidth;
   for(auto& voice:retiring)voice.channels=channelState.get()+slot++*channelWidth;
   if(withProcessing)prepareProcessingStates();
+  if(withPostDelay)preparePostDelay();
   streamed=true;
  }
 
@@ -283,7 +300,7 @@ public:
   // real-time second and fail closed on a larger unsupported displacement.
   std::uint64_t previous=0;
   for(const auto& item:prepared){
-   if((item.plan.processing.count&&!processingStates)||item.plan.start<0||((item.delay>=0)!=(item.plan.delayMix>0||item.plan.reverb.mix>0)))return fail();
+   if((item.plan.processing.count&&!processingStates)||(usesPostDelay(item.plan.postCount,item.plan.post)&&!postDelayState)||item.plan.start<0||((item.delay>=0)!=(item.plan.delayMix>0||item.plan.reverb.mix>0)))return fail();
    const auto offset=frameAt(item.plan.start);
    if(offset<previous||offset>descriptor.endFrame-descriptor.startFrame+rate)
     return fail();

@@ -60,7 +60,7 @@
   "rendering": {
     "browser": "AudioParam lanes plus control signals retain pitch expression and modulation clamp precedence; dynamic stereo imaging uses the same mid/side equations.",
     "native": "Eight fixed lanes with 36 events each and monotonic cursors. Preparation and parsing stay on control. Per-sample evaluation and page/loop shifts allocate no callback memory.",
-    "wire": "Current sample execution packet v19 appends a validated parameter-automation trailer; synth plans use the same trailer.",
+    "wire": "Current sample execution packet v22 carries the validated parameter-automation trailer before ordered post processors and the room recipe; synth plans use the same trailer.",
     "offline": "The same plans drive playback and native/browser WAV rendering."
   },
   "interface": {

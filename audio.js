@@ -1,5 +1,6 @@
 import {createEffectsBus} from './src/hosts/web/effects-bus.js';
-import {connectPostDynamics} from './src/hosts/web/dynamics.js';
+import {postTailSeconds} from './src/dsp/post-processing.js';
+import {connectPostProcessing} from './src/hosts/web/post-processing.js';
 import {scheduleParameterAutomation} from './src/hosts/web/automation.js';
 import {connectProcessingGraph} from './src/hosts/web/processing-graph.js';
 import {connectStereoImage} from './src/hosts/web/stereo.js';
@@ -176,7 +177,7 @@ const pulse=add(ctx.createGain());
  const gate=add(ctx.createGain());
  const movementGain=add(ctx.createGain());movementGain.gain.value=1;destinations.set("amplitude",movementGain.gain);automationTargets.set("amplitude",movementGain.gain);
  amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(ctx,movementGain,patch,owner,1,{start,end:plan.graphEnd,lanes:plan.parameterAutomation,targets:automationTargets}).connect(pan);
- connectPostDynamics(ctx,pan,patch,owner,start,plan.graphEnd).connect(gate);
+ connectPostProcessing(ctx,pan,patch,owner,start,plan.graphEnd,{recipes:plan.postProcessing}).connect(gate);
  const fx=effectiveDelayEffects(patch,patch.effects),mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
  dry.gain.value=(1-mixAmount*.4)*(1-fx.reverb.mix);
@@ -481,7 +482,7 @@ export function renderEndSeconds(document,events,decoded){
  for(const event of events){
   if(event.kind==="vocal"){
    const {duration,fx}=vocalSourceRange(event.event.recording,event.event.clip,secondsPerStep(document));
-   end=Math.max(end,event.at+duration+effectTailSeconds(fx)+.02);
+   end=Math.max(end,event.at+duration+postTailSeconds(fx,secondsPerStep(document))+effectTailSeconds(fx)+.02);
    continue;
   }
   if(event.kind!=="note")continue;
@@ -492,7 +493,7 @@ export function renderEndSeconds(document,events,decoded){
    const rate=zone?(patch.followPitch?2**((resolved.note.pitch+patch.transpose-zone.root)/12):2**(patch.transpose/12)):1;
    const length=buffer?buffer.duration/rate:0;
    const life=patch.oneShot?length:Math.min(length,Math.max(.015,event.duration+patch.release));
-   end=Math.max(end,event.at+life+effectTailSeconds(effectiveDelayEffects(patch,patch,secondsPerStep(document)))+.03);
+   end=Math.max(end,event.at+life+postTailSeconds(patch,secondsPerStep(document))+effectTailSeconds(effectiveDelayEffects(patch,patch,secondsPerStep(document)))+.03);
   }else{
    const duration=event.instrument.layout==="rack"?Math.max(.015,patch.envelope.attack+patch.envelope.decay):event.duration;
    end=Math.max(end,planSynthVoice(resolved.voice,resolved.note,event.at,duration,{unit:secondsPerStep(document)}).audibleEnd+.02);
