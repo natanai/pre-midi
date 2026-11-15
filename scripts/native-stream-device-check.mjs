@@ -30,11 +30,13 @@ try{
   const frames=Math.round(rate*.55*scale),mark=[0,.090137,.180137,.270137,.360137,.55]
    .map(s=>Math.floor(s*rate*scale+1e-9));
   const patch=makePatch("touch-keys");
+  patch.noise=.16;patch.noiseColor=graph?'brown':'pink';patch.noiseCutoff=2800;
   patch.reverb={...defaultReverb(),mix:.35,decay:.2,preDelay:.015};
   patch.effects={...patch.effects,drive:.2,delayMix:.45,
    delayTime:.073137,delayFeedback:.6};
   patch.envelope={...patch.envelope,release:.20};
   patch.chain=withInstance(patch,"compressor");patch.chain.instances[0].parameters.threshold=-28;
+  patch.chain.drive={shape:graph?'wavefold':'hard clip',inputGain:6};
   patch.chain=withInstance(patch,"deesser");Object.assign(patch.chain.instances[1].parameters,{frequency:1000,threshold:-40});
   patch.chain=withInstance(patch,'chorus');Object.assign(patch.chain.instances[2].parameters,{rate:3.7,phase:.27,feedback:-.5});
   patch.chain=withInstance(patch,'frequencyshift');Object.assign(patch.chain.instances[3].parameters,{frequency:100,phase:.23});

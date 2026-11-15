@@ -10,6 +10,7 @@
 #include "filter.hpp"
 #include "modulation.hpp"
 #include "drive.hpp"
+#include "noise.hpp"
 #include "sample.hpp"
 #include "sample-loop.hpp"
 #include "processing-graph.hpp"
@@ -24,6 +25,8 @@ struct Plan {
  unsigned postCount=0;std::array<PostRecipe,postLimit> post{};
  ProcessingGraph processing;ParameterAutomation parameterAutomation;
  double start=0,duration=1,sourceEnd=1,graphEnd=1.15,pan=0,cutoff=8000,q=.7,sweepStart=8000,sweepEnd=0,noise=0,noiseDecay=0,delayMix=0,delayTime=.24,delayFeedback=.26;
+ unsigned noiseColor=0;double noiseCutoff=20000;
+ unsigned driveShape=0;double driveInput=0;
  double drive=0,vibratoRate=5,vibratoDepth=0,vibratoDelay=0,tone=0,toneRate=2,tremolo=0,tremoloRate=5;
  bool sampleLoop=false;double loopStart=0,loopEnd=0,loopFade=0;
  unsigned kind=0,asset=0;double playbackRate=1,sampleOffset=0,sampleLimit=301;double filterMix=1,driveMix=1,stereoWidth=1,msBalance=0,delayTone=20000;bool delayPingPong=false;unsigned eqPosition=0,filterStages=1;double eqMix=1;bool bypassEq=false;std::array<EqBand,8> eqBands{};bool bypassFilter=false,bypassDrive=false,driveFirst=false;const SampleData* sample=nullptr;
@@ -32,15 +35,16 @@ struct Plan {
  std::uint32_t eventCount=0;std::array<Event,6> events{};
 };
 struct SampleChannelState {Equalizer eq;ToneFilter filter;Drive drive;SampleChannelState()noexcept=default;SampleChannelState(const ToneFilter& input,const DriveRecipe* recipe)noexcept:filter(input),drive(recipe){}};
-struct VoicePreparation {ToneFilter filter;std::array<double,16> alpha{};std::array<double,2> initialFrequency{};double left=0,right=0;bool movingCutoff=false;const DriveRecipe* drive=nullptr;const SineLfoTable* lfoBank=nullptr;const ProcessingGraphRecipe* processing=nullptr;const PreparedPostProcessing* post=nullptr;};
+struct VoicePreparation {ToneFilter filter;NoiseState noise;std::array<double,16> alpha{};std::array<double,2> initialFrequency{};double left=0,right=0;bool movingCutoff=false;const DriveRecipe* drive=nullptr;const SineLfoTable* lfoBank=nullptr;const ProcessingGraphRecipe* processing=nullptr;const PreparedPostProcessing* post=nullptr;};
 // Prepared on the control thread. process() only touches fixed-size state and a
 // caller-owned output span: no heap allocation, locks, file/device I/O or UI.
 class Voice {
  Plan plan;std::array<PostState,postLimit> postState{};const PreparedPostProcessing* postRecipe=nullptr;AutomatedValues automated;ProcessingGraphState* processingState=nullptr;const ProcessingGraphRecipe* processingRecipe=nullptr;double rate;std::uint64_t frame=0;std::array<double,2> phases{};
  std::uint64_t firstFrame=0,lastSourceFrame=0,lastGraphFrame=0;
  std::array<double,3> legacyPhases{};bool legacyStarted=false;
+ NoiseState noise;
  float noiseA=0,noiseB=0;double noiseFraction=0;bool noiseStarted=false;
- Equalizer eq,eqRight;ToneFilter filter,filterRight;Modulation modulation;Drive drive,driveRight;const DriveRecipe* recipe;const SineLfoTable* lfoBank;bool sourceStarted=false,movingCutoff=false;std::uint32_t noiseSeed=0x7f41a08b,noiseIndex=0;double left,right;std::array<const WaveBank*,2> banks;std::array<double,2> initialFrequency{};
+ Equalizer eq,eqRight;ToneFilter filter,filterRight;Modulation modulation;Drive drive,driveRight;const DriveRecipe* recipe;const SineLfoTable* lfoBank;bool sourceStarted=false,movingCutoff=false;double left,right;std::array<const WaveBank*,2> banks;std::array<double,2> initialFrequency{};
  SampleChannelState* extraChannels=nullptr;
  unsigned extraCount()const noexcept{return plan.kind&&plan.sample?(plan.sample->channels==4?2:plan.sample->channels==6?4:0):0;}
  void resetChannels()noexcept{if(extraChannels)for(unsigned i=0;i<extraCount();i++)extraChannels[i]=SampleChannelState(filter,recipe);}
@@ -81,12 +85,6 @@ class Voice {
   }
   return base;
  }
- float nextNoise()noexcept{
-  noiseSeed=noiseSeed*1664525u+1013904223u;
-  const auto value=static_cast<float>((static_cast<double>(noiseSeed)/4294967296.*2.-1.)*.85);
-  if(++noiseIndex>=static_cast<std::uint32_t>(std::ceil(rate*2.))){noiseIndex=0;noiseSeed=0x7f41a08b;}
-  return value;
- }
 public:
 #ifdef PREMIDI_PROBE
  struct Probe {float wave0=0,cents0=0,frequency0=0;};Probe probe{};
@@ -97,7 +95,8 @@ public:
   if(processingState&&processingRecipe)processingState->reset(plan.processing,*processingRecipe,static_cast<unsigned>(sampleRate));
   firstFrame=static_cast<std::uint64_t>(std::ceil(plan.start*rate-1e-9));lastSourceFrame=static_cast<std::uint64_t>(std::ceil(plan.sourceEnd*rate-1e-9));lastGraphFrame=static_cast<std::uint64_t>(std::ceil(plan.graphEnd*rate-1e-9));
   filter.setStages(plan.filterStages);
-  if(prepared){filter=filterRight=prepared->filter;movingCutoff=prepared->movingCutoff;left=prepared->left;right=prepared->right;initialFrequency=prepared->initialFrequency;resetChannels();return;}
+  if(prepared){noise=prepared->noise;filter=filterRight=prepared->filter;movingCutoff=prepared->movingCutoff;left=prepared->left;right=prepared->right;initialFrequency=prepared->initialFrequency;resetChannels();return;}
+  if(plan.noiseColor||plan.noiseCutoff<20000||plan.noise>0||plan.parameterAutomation.count)noise.prepare(rate,plan.noiseColor,plan.noiseCutoff);
   for(unsigned i=0;i<plan.routeCount;i++)if((plan.routes[i].target==4||plan.routes[i].target==6))movingCutoff=true;
   if(plan.automationCount||plan.parameterAutomation.count||plan.version>=4||plan.tone>0)movingCutoff=true;
   filter.configure(plan.filterType,cutoffAt(plan.start),plan.q,rate);
@@ -107,7 +106,7 @@ public:
   resetChannels();
  }
  void relocateChannels(SampleChannelState* additional)noexcept{extraChannels=additional;}
- VoicePreparation preparation()const noexcept{return {filter,modulation.preparedAlpha(),initialFrequency,left,right,movingCutoff,recipe,lfoBank,processingRecipe,postRecipe};}
+ VoicePreparation preparation()const noexcept{return {filter,noise,modulation.preparedAlpha(),initialFrequency,left,right,movingCutoff,recipe,lfoBank,processingRecipe,postRecipe};}
  void process(float* interleavedStereo,std::size_t frames) noexcept {
   for(std::size_t i=0;i<frames;i++,frame++){
 #ifdef PREMIDI_PROBE
@@ -165,8 +164,8 @@ public:
      phases[j]=banked?banks[j]->advance(phases[j],frequency):std::fmod(phases[j]+2*pi*frequency/rate,2*pi);
     }
     if(plan.version>=5&&(plan.noise>0||automated.has(10))){
-     if(!noiseStarted){noiseA=nextNoise();noiseB=nextNoise();noiseFraction=std::clamp((t-plan.start)*rate,0.,1.);noiseStarted=true;}
-     const float value=static_cast<float>(noiseA+(noiseB-noiseA)*noiseFraction);noiseA=noiseB;noiseB=nextNoise();
+     if(!noiseStarted){noiseA=noise.next();noiseB=noise.next();noiseFraction=std::clamp((t-plan.start)*rate,0.,1.);noiseStarted=true;}
+     const float value=static_cast<float>(noiseA+(noiseB-noiseA)*noiseFraction);noiseA=noiseB;noiseB=noise.next();
      const double elapsed=std::max(0.,t-plan.start);
      const double gain=plan.noiseDecay>0?std::exp(-elapsed/std::max(.002,plan.noiseDecay/5.)):1.;
      mix+=static_cast<float>(value*automated.value(10,plan.noise)*gain);

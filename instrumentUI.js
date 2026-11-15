@@ -19,8 +19,8 @@ const groups=[
  {name:"Envelope",open:false,fields:[PRIMARY_SYNTH_FIELDS[1],field("envelope.decay","Decay"),field("envelope.sustain","Sustain"),PRIMARY_SYNTH_FIELDS[2]]},
  {name:"Filter & noise",open:false,fields:[
   PRIMARY_SYNTH_FIELDS[0],field("filter.type","Filter"),field("filter.resonance","Resonance"),
-  field("effects.drive","Distortion"),field("filter.sweep","Filter sweep"),field("filter.sweepTime","Sweep time"),
-  field("noise","Noise"),field("noiseDecay","Noise decay")
+  field("effects.drive","Distortion"),field("chain.drive.shape","Distortion shape"),field("chain.drive.inputGain","Drive input"),field("filter.sweep","Filter sweep"),field("filter.sweepTime","Sweep time"),
+  field("noise","Noise"),field("noiseDecay","Noise decay"),field("noiseColor","Noise color"),field("noiseCutoff","Noise cutoff")
  ]},
  {name:"Pitch & movement",open:false,fields:[
   field("bend.shape","Bend shape"),field("bend.amount","Bend amount"),field("bend.rate","Wave speed"),

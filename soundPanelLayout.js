@@ -34,8 +34,8 @@ export function soundPanelViews(patch,kind){
  if(kind==="filter")return [
   view("response","filter",["filter.type","filter.cutoff","filter.resonance"]),
   ...(patch.type==="synth"||patch.filter?[view("sweep","filter sweep",["filter.cutoff","filter.sweep","filter.sweepTime"],"filter-sweep")]:[]),
-  view("drive","distortion",["filter.type","filter.cutoff","filter.resonance",patch.type==="synth"?"effects.drive":"drive"],"distortion"),
-  ...(patch.type==="synth"?[view("noise","noise",["noise","noiseDecay"],"noise")]:[])
+  view("drive","distortion",["filter.type","filter.cutoff","filter.resonance",patch.type==="synth"?"effects.drive":"drive","chain.drive.inputGain","chain.drive.shape"],"distortion"),
+  ...(patch.type==="synth"?[view("noise","noise",["noise","noiseDecay"],"noise"),view("noise-spectrum","noise spectrum",["noiseColor","noiseCutoff"],"noise-spectrum")]:[])
  ];
  if(kind==="envelope")return [
   view("held","amplitude envelope",["envelope.attack","envelope.decay","envelope.sustain","envelope.release"]),

@@ -14,7 +14,7 @@ import {resolveEvent} from "./soundModel.js";
 import { SAMPLE_ASSETS,sampleAsset,sampleFile,rawUrl } from "./samples.js";
 import {putAsset,getAsset,MAX_ASSET_BYTES} from "./assetRegistry.js";
 import { validateMovement, validateBend, movement, schedulePitch, scheduleMovementLfo } from "./expression.js";
-import {configureDriveShaper,validateSampleTone} from "./audioEffects.js";
+import {validateSampleTone} from "./audioEffects.js";
 import {validateSampleSlice,sampleSourceRegion} from "./sampleSlice.js";
 // The only durable sample asset representation is the beat's samples array.
 // Browser library URLs are staging inputs; .premidi files hold relative audio paths.

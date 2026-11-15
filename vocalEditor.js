@@ -1,3 +1,4 @@
+import {sourceRate,sourceSettings} from "./src/dsp/source-processing.js";
 import {setIconButton} from "./uiIcons.js";
 import {mountEditorWorkspace,syncEditorInspector} from "./editorWorkspace.js";
 import {vocalSourceRange} from "./vocalEffects.js";
@@ -83,11 +84,12 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
  root.querySelector(".notes-heading .chunk-heading").prepend(back);
  actions.append(duplicate,use);
  placement.append(position,actions);
- const sourceRoot=getWorkspace("piano");
+ const sourceRoot=getWorkspace("piano"),patch=vocalDisplayPatch(clip,recording),source=sourceSettings(patch);
+ const articulation={type:"vocal",reverse:source.reverse,sourcePerSecond:sourceRate(patch)/source.time,limit:clip.lengthSteps*60/bpm/4,
+  attack:clip.effects?patch.attack:0,release:clip.effects?patch.release:0,onChange:(key,value)=>onApply(clipId,{[key]:value})};
  sourceRoot.append(renderAudioWaveform({recording,trimStart:clip.trimStartSeconds??0,trimEnd:clip.trimEndSeconds??0,
   onTrim:value=>onTrim(clipId,value,"start"),onTrimEnd:value=>onTrim(clipId,value,"end"),onFindStart:()=>autoTrim(recording),
-  loadDecoded:()=>decodeVocalRecording(recording)}));
- const patch=vocalDisplayPatch(clip,recording);
+  loadDecoded:()=>decodeVocalRecording(recording),articulation}));
  const apply=(path,value)=>onApply(clipId,vocalChangesFromControl(patch,path,value));
  const frame=mountSoundInspectorChrome(getWorkspace("sound-section"),{owner:"vocal"}),get=frame.get;
  const name=get("instrument-name");name.value=recording.name;name.disabled=false;

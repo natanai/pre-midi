@@ -6,7 +6,7 @@ import {processorField,processorInactiveReason} from './src/dsp/processing-graph
 import {renderParameterModule} from './stereoProcessingUI.js';
 import {renderEqualizer} from './equalizerUI.js';
 import {modeledFilterResponse} from './filterIllustrationResponse.js';
-import {driveCurve} from './audioEffects.js';
+import {DRIVE_SHAPES,driveTransfer} from './src/dsp/distortion.js';
 import {explainLabel} from './dial.js';
 const NS='http://www.w3.org/2000/svg',clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const path=(root,points)=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',points);p.setAttribute('stroke','var(--track-accent,#08e4ec)');p.setAttribute('fill','none');p.setAttribute('stroke-width','1.5');root.append(p);};
@@ -29,21 +29,25 @@ export function renderProcessorInstance(patch,instance,onChange,onPreview,soundI
   }
   const draw=root.drawSoundIllustration;root.drawSoundIllustration=next=>draw({eq:get(next)});return root;
  }
- const fields=instance.kind==='drive'?[{path:[...prefix,'amount'],get:p=>get(p).amount,config:processorField('drive','amount','distortion')}]:[
+ const isDrive=instance.kind==='drive';
+ const fields=isDrive?[
+  {path:[...prefix,'amount'],get:p=>get(p).amount,config:processorField('drive','amount','distortion')},
+  {path:[...prefix,'inputGain'],get:p=>get(p).inputGain??0,config:processorField('drive','inputGain','drive input')}
+ ]:[
   {path:[...prefix,'cutoff'],get:p=>get(p).cutoff,config:processorField('filter','cutoff','brightness')},
   {path:[...prefix,'resonance'],get:p=>get(p).resonance,config:processorField('filter','resonance','resonance')}
  ];
- for(const field of fields)field.config={...field.config,inactiveReason};
+ for(const field of fields)field.config={...field.config,inactiveReason:inactiveReason??
+  (field.path.at(-1)==='inputGain'&&instance.parameters.amount===0?'distortion amount is zero':undefined)};
  return renderParameterModule(patch,onChange,onPreview,soundId+'-'+instance.id,{
   kind:'processor-'+instance.kind,title,fields,
-  hint:instance.kind==='filter'?'drag horizontally for brightness and vertically for resonance':'drag horizontally for distortion',
-  position:values=>instance.kind==='drive'?[20+320*values[0],135]:[20+320*Math.log(values[0]/50)/Math.log(280),130-100*Math.log(values[1]/.1)/Math.log(160)],
-  values:(x,y)=>instance.kind==='drive'?[Math.round(clamp((x-20)/320,0,1)*100)/100]:[Math.round(50*280**clamp((x-20)/320,0,1)),Math.round(.1*160**clamp((130-y)/100,0,1)*10)/10],
+  hint:instance.kind==='filter'?'drag horizontally for brightness and vertically for resonance':'drag horizontally for distortion and vertically for input gain',
+  position:values=>isDrive?[20+320*values[0],75-2.5*values[1]]:[20+320*Math.log(values[0]/50)/Math.log(280),130-100*Math.log(values[1]/.1)/Math.log(160)],
+  values:(x,y)=>isDrive?[Math.round(clamp((x-20)/320,0,1)*100)/100,Math.round(clamp((75-y)/2.5,-24,24)*2)/2]:[Math.round(50*280**clamp((x-20)/320,0,1)),Math.round(.1*160**clamp((130-y)/100,0,1)*10)/10],
   draw:(root,p)=>{
    const params=get(p);
-   if(instance.kind==='drive'){
-    const curve=driveCurve(params.amount),compensation=1/(1+params.amount*1.1);
-    path(root,Array.from({length:129},(_,i)=>{const at=Math.round(i/128*1023),input=2*i/128-1,value=params.amount?curve[at]*compensation:input;return (i?'L':'M')+(20+320*i/128)+' '+(70-value*55);}).join(' '));
+   if(isDrive){
+    path(root,Array.from({length:129},(_,i)=>{const input=2*i/128-1,value=driveTransfer(input,params.amount,params);return (i?'L':'M')+(20+320*i/128)+' '+(70-value*55);}).join(' '));
    }else path(root,Array.from({length:161},(_,i)=>{
     const frequency=20*1000**(i/160),first=modeledFilterResponse(params,frequency).magnitude,
      rest=modeledFilterResponse({...params,quality:Math.SQRT1_2},frequency).magnitude;
@@ -51,14 +55,15 @@ export function renderProcessorInstance(patch,instance,onChange,onPreview,soundI
     return (i?'L':'M')+(20+320*i/160)+' '+clamp(65-db*2,5,135);
    }).join(' '));
   },
-  extra:instance.kind==='filter'?(details)=>{
+  extra:details=>{
    const fields=document.createElement('div');fields.className='synth-fields';
-   for(const [key,label,options]of [['type','filter type',['lowpass','highpass','bandpass','notch']],['stages','filter slope',[1,2,4]]]){
+   const choices=isDrive?[['shape','distortion shape',DRIVE_SHAPES]]:[['type','filter type',['lowpass','highpass','bandpass','notch']],['stages','filter slope',[1,2,4]]];
+   for(const [key,label,options]of choices){
     const field=document.createElement('label'),word=document.createElement('span'),select=document.createElement('select');field.className='synth-field';word.textContent=label;explainLabel(word,label);select.setAttribute('aria-label',title+' '+label);
     field.dataset.soundPath=[...prefix,key].join('.');
     for(const value of options){const option=document.createElement('option');option.value=String(value);option.textContent=key==='stages'?value*12+' db/oct':value;select.append(option);}
-    select.value=String(get(patch)[key]??1);select.addEventListener('change',()=>onChange([...prefix,key],key==='stages'?Number(select.value):select.value));field.append(word,select);fields.append(field);
+    select.value=String(get(patch)[key]??options[0]);select.addEventListener('change',()=>onChange([...prefix,key],key==='stages'?Number(select.value):select.value));field.append(word,select);fields.append(field);
    }details.append(fields);
-  }:undefined
+  }
  });
 }

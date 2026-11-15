@@ -27,7 +27,9 @@ import { decodeSamples, prepareSampleSource, scheduleSample, sampleForNote } fro
 import { strumOffset } from "./guitarTiming.js";
 import { schedulePitchPlan, scheduleMovementLfo } from "./expression.js";
 import {validatePatch} from "./synth.js";
-import {configureDriveShaper} from "./audioEffects.js";
+import {fillNoise,noiseSettings} from "./src/dsp/noise.js";
+import {driveSettings} from "./src/dsp/distortion.js";
+import {driveStage} from "./audioEffects.js";
 import {applyAmplitudePlan} from "./envelope.js";
 import {planSynthVoice,noteFrequency,extendedSynthExecution} from "./src/dsp/synth-voice.js";
 import {attachModulation} from "./src/hosts/web/modulation.js";
@@ -67,17 +69,15 @@ const noiseBuffers=new WeakMap();
 const sampleCaches=new WeakMap();
 const bufferCache=ctx=>{if(!sampleCaches.has(ctx))sampleCaches.set(ctx,new Map());return sampleCaches.get(ctx);};
 export async function primeSamples(beat){if(context)await decodeSamples(context,beat,bufferCache(context));}
-function noiseBuffer(ctx) {
- let data=noiseBuffers.get(ctx);
- if(data)return data;
- const samples=Math.ceil(ctx.sampleRate*2),buffer=ctx.createBuffer(1,samples,ctx.sampleRate);
- const channel=buffer.getChannelData(0);
- let seed=0x7f41a08b;
- for(let i=0;i<samples;i++){
-  seed=(Math.imul(seed,1664525)+1013904223)>>>0;
-  channel[i]=((seed/4294967296)*2-1)*.85;
- }
- noiseBuffers.set(ctx,buffer);
+function noiseBuffer(ctx,patch) {
+ const settings=noiseSettings(patch),key=settings.color+":"+settings.cutoff;
+ let cache=noiseBuffers.get(ctx);
+ if(!cache){cache=new Map();noiseBuffers.set(ctx,cache);}
+ if(cache.has(key))return cache.get(key);
+ const buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*2),ctx.sampleRate);
+ fillNoise(buffer.getChannelData(0),ctx.sampleRate,settings);
+ if(cache.size>=12)cache.delete(cache.keys().next().value);
+ cache.set(key,buffer);
  return buffer;
 }
 export const stepEvents = eventsAtStep;
@@ -130,7 +130,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  }
  if(patch.noise>0||plan.parameterAutomation?.some(lane=>lane.target==="noise")) {
   const source=ctx.createBufferSource(),gain=add(ctx.createGain());
-  source.buffer=noiseBuffer(ctx);source.loop=true;
+  source.buffer=noiseBuffer(ctx,patch);source.loop=true;
   gain.gain.setValueAtTime(patch.noise,start);automationTargets.set("noise",gain.gain);
    if((patch.noiseDecay??0)>0){const decay=add(ctx.createGain());decay.gain.setValueAtTime(1,start);decay.gain.setTargetAtTime(0,start,Math.max(.002,patch.noiseDecay/5));source.connect(gain);gain.connect(decay);decay.connect(mix);}
   else{source.connect(gain);gain.connect(mix);}
@@ -161,11 +161,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  const eqStage=!processorBypassed(patch,"eq")&&createEq(ctx,patch.eq,owner);if(eqStage)stages.set("eq",eqStage);
  let signal=mix;
  if(patch.effects.drive>0&&!processorBypassed(patch,"drive")){
-  const shaper=add(ctx.createWaveShaper());
-  configureDriveShaper(shaper,patch.effects.drive);
-  const compensation=add(ctx.createGain());
-  compensation.gain.value=1/(1+patch.effects.drive*1.1);
-  shaper.connect(compensation);stages.set("drive",{input:shaper,output:compensation});
+  stages.set("drive",driveStage(ctx,patch.effects.drive,driveSettings(patch),owner));
  }
  signal=connectProcessingGraph(ctx,signal,patch,stages,owner);
  const amp=add(ctx.createGain());

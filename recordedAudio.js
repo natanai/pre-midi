@@ -12,7 +12,8 @@ import {windowEnvelope} from "./src/dsp/envelope-window.js";
 import {planFilterSweep,filterSweepRatioAt} from "./src/dsp/filter-sweep.js";
 import {validateAutomation,planCutoffAutomation,cutoffLane,planParameterAutomation,automationParameters} from "./src/dsp/automation.js";
 // Canonical post-source processing for sampled Sounds and timeline recordings.
-import {configureDriveShaper,sampleTone} from './audioEffects.js';
+import {driveSettings} from './src/dsp/distortion.js';
+import {driveStage,sampleTone} from './audioEffects.js';
 import {movement,scheduleMovementLfo} from './expression.js';
 import {attachModulation} from './src/hosts/web/modulation.js';
 import {validateModulation,resolveModulation} from './src/dsp/modulation.js';
@@ -63,9 +64,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
   stages.set("filter",filterStage);
  }
  if(fx.drive>0&&!processorBypassed(patch,"drive")){
-  const shaper=add(context.createWaveShaper()),comp=add(context.createGain());
-  configureDriveShaper(shaper,fx.drive);comp.gain.value=1/(1+fx.drive*1.1);
-  shaper.connect(comp);stages.set("drive",{input:shaper,output:comp});
+  stages.set("drive",driveStage(context,fx.drive,driveSettings(patch),owner));
  }
  const eqStage=!processorBypassed(patch,"eq")&&createEq(context,patch.eq,owner);if(eqStage)stages.set("eq",eqStage);
  signal=connectProcessingGraph(context,signal,patch,stages,owner);

@@ -1,3 +1,4 @@
+import {DRIVE_SHAPES,driveSettings} from "./src/dsp/distortion.js";
 import {processorBypassed,withProcessorBypass} from "./src/dsp/processing-chain.js";
 import {soundField,soundParameter,soundCapability} from "./soundParameterAdapter.js";
 // Shared sampled-audio controls for Beat Sounds and Song vocal Clips.
@@ -50,7 +51,7 @@ function selectorLabel(title,aria){
 }
 export function renderAudioToneControls(root,patch,onChange,onPreview=()=>{},
  {allowBypass=false,showCutoff=false}={}){
- const tone=sampleTone(patch),off=allowBypass&&(patch.filter==null||patch.audioFilterBypassed===true);
+ const tone=sampleTone(patch),settings=driveSettings(patch),off=allowBypass&&(patch.filter==null||patch.audioFilterBypassed===true);
  const {label,select}=selectorLabel("filter type","Recorded sound filter type");
  for(const type of allowBypass?["off",...SAMPLE_FILTERS]:SAMPLE_FILTERS){
   const option=document.createElement("option");option.value=type;option.textContent=type;select.append(option);
@@ -77,7 +78,16 @@ export function renderAudioToneControls(root,patch,onChange,onPreview=()=>{},
     {inactiveReason:capability.state==="inactive"?capability.reason:undefined});
   }
  }
- slider(root,config("effects.drive","Distortion"),tone.drive,["drive"],onChange,onPreview,{inactiveReason:processorBypassed(patch,"drive")?"distortion is bypassed":undefined});
+ const inactiveReason=processorBypassed(patch,"drive")?"distortion is bypassed":undefined;
+ slider(root,config("effects.drive","Distortion"),tone.drive,["drive"],onChange,onPreview,{inactiveReason});
+ slider(root,config("chain.drive.inputGain","Drive input"),settings.inputGain??0,["chain","drive","inputGain"],onChange,onPreview,
+  {inactiveReason:inactiveReason??(tone.drive===0?"distortion amount is zero":undefined)});
+ const shape=selectorLabel("distortion shape","recorded sound distortion shape");
+ shape.label.dataset.soundPath="chain.drive.shape";
+ for(const id of DRIVE_SHAPES){const option=document.createElement("option");option.value=option.textContent=id;shape.select.append(option);}
+ shape.select.value=settings.shape??DRIVE_SHAPES[0];
+ shape.select.addEventListener("change",()=>onChange(["chain","drive","shape"],shape.select.value));
+ root.append(shape.label);
 }
 export function renderAudioMovementControls(root,patch,onChange,onPreview=()=>{}){
  const m=movement(patch);

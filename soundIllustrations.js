@@ -1,3 +1,4 @@
+import {DRIVE_SHAPES,driveSettings} from "./src/dsp/distortion.js";
 import {processorBypassed,withProcessorBypass} from "./src/dsp/processing-chain.js";
 import {LFO_SHAPES,randomLfoShape,DEFAULT_LFO_STEPS,resolveModulation} from "./src/dsp/modulation.js";
 import {soundAxis,readSoundParameter,soundParameterPath} from "./soundParameterAdapter.js";
@@ -49,11 +50,7 @@ const axisDirection=axis=>{
  return (horizontal?"left/right":"up/down")+": "+increase+
   " increases "+axis.path.at(-1);
 };
-const cloneEdit=(patch,path,value)=>{
- const next=structuredClone(patch);let owner=next;
- for(const key of path.slice(0,-1))owner=owner[key]??={};
- owner[path.at(-1)]=value;return next;
-};
+const cloneEdit=(patch,path,value)=>assignSoundEdit(structuredClone(patch),path,value);
 const svgNode=(name,attrs={},content="")=>{
  const element=document.createElementNS(NS,name);
  for(const [key,value] of Object.entries(attrs))element.setAttribute(key,String(value));
@@ -266,14 +263,17 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
   const synth=p.type==="synth",drive=synth?p.effects.drive:p.drive??0;
   const f=p.filter??DEFAULT_SAMPLE_FILTER;
   const drivePath=synth?["effects","drive"]:["drive"];
-  const links=["chain","filter.cutoff","filter.resonance","filter.type",drivePath.join(".")];
+  const links=["chain","chain.drive.inputGain","chain.drive.shape","filter.cutoff","filter.resonance","filter.type",drivePath.join(".")];
   const tone=modeledToneWaveform(p);
+  if(drive===0)dormant("chain.drive.inputGain","distortion amount is zero; the dashed curve shows its response");
   const scale=Math.max(1,...tone.input.map(Math.abs),...tone.output.map(Math.abs));
   const wavePath=values=>pathFrom(values.map((value,i)=>
    [22+316*i/(values.length-1),60-30*value/scale]));
   line("M20 60 H342",true);
   line(wavePath(tone.input),true);
   line(wavePath(tone.output),false,links);
+  if(drive===0&&!processorBypassed(p,"drive"))
+   line(wavePath(modeledToneWaveform(cloneEdit(p,drivePath,.35)).output),true,["chain.drive.inputGain","chain.drive.shape"],"reference");
   const cutoff=clamp(Math.log(f.cutoff/50)/Math.log(280));
   const x=26+308*cutoff,y=104-78*drive;
   handle(x,y,[
@@ -288,6 +288,9 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
    handle(26+308*(f.resonance-.1)/15.9,92,[axis(["filter","resonance"],"linearX",{from:26,to:334})],"resonance");
    action(180,105,["filter","type"],FILTERS,"filter shape");
   }else action(180,105,["audioFilterBypassed"],[true,false],"turn filter on");
+  const gain=driveSettings(p).inputGain??0;
+  handle(30+115*(gain+24)/48,91,[axis(["chain","drive","inputGain"],"linearX",{from:30,to:145,unit:"dB"})],"drive input");
+  action(68,24,["chain","drive","shape"],DRIVE_SHAPES,"distortion shape");
   tag(168,111,"±"+shortValue(scale));
  }else if(type==="filter"&&page===1){
    const f=p.filter,sweep=f.sweep??0,time=f.sweepTime??.2;

@@ -116,6 +116,8 @@ export function validatePatch(patch) {
    errors.push("A harmonic oscillator needs 32 strengths between 0 and 1.");
  }
  if(!valid("noise",patch.noise)||!valid("pan",patch.pan))errors.push("Invalid noise level or panning.");
+ for(const id of ["noiseColor","noiseCutoff"])
+  if(patch[id]!==undefined&&!valid(id,patch[id]))errors.push("Invalid "+id+".");
  if(patch.noiseDecay!==undefined&&!valid("noiseDecay",patch.noiseDecay))errors.push("Invalid noise decay.");
  errors.push(...validateParameterBlock(patch.filter,"filter",{optional:["sweep","sweepTime"]}));
  errors.push(...validateParameterBlock(patch.envelope,"envelope"));
@@ -124,7 +126,7 @@ export function validatePatch(patch) {
  errors.push(...validateMovement(patch.movement),...validateBend(patch.bend));
  errors.push(...validateParameterBlock(patch.effects,"effects"));
  errors.push(...validateAutomation(patch.automation,patch),...validateReverb(patch.reverb),...validateStereo(patch),...validateEq(patch.eq),...validateFilterStages(patch.filterStages),...validateProcessingChain(patch.chain),...validateDelaySync(patch.delaySync));
- const allowed=new Set(["reverb","stereoWidth","msBalance","delayTone","delayPingPong","eq","filterStages","delaySync","chain","automation","type","presetId","version","oscillators","noise","noiseDecay","pan","filter","envelope","movement","effects","bend","modulation"]);
+ const allowed=new Set(["reverb","stereoWidth","msBalance","delayTone","delayPingPong","eq","filterStages","delaySync","chain","automation","type","presetId","version","oscillators","noise","noiseColor","noiseCutoff","noiseDecay","pan","filter","envelope","movement","effects","bend","modulation"]);
  for(const key of Object.keys(patch))if(!allowed.has(key))errors.push("Unsupported sound parameter: "+key+".");
  return errors;
 }

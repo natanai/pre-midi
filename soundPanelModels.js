@@ -1,10 +1,11 @@
+import {noiseSettings,noiseResponse,NOISE_COLORS,NOISE_MAX_CUTOFF} from "./src/dsp/noise.js";
 import {soundAxis} from "./soundParameterAdapter.js";
 // Isolated reference lessons for the visible Sound modules. These reuse
 // playback's control equations; source recordings remain in the measured scope.
 import {movement,pitchCents,BEND_SHAPES} from "./expression.js";
 import {modeledVibrato,MOVEMENT_ILLUSTRATION_SECONDS as duration} from "./movementIllustrationResponse.js";
 import {modeledRecordingLevels} from "./sampleIllustrationResponse.js";
-export const ISOLATED_SOUND_PANELS=new Set(["filter-sweep","noise","glide","bend","vibrato","pulse","tone-movement","stereo","recording-pitch","recording-level"]);
+export const ISOLATED_SOUND_PANELS=new Set(["filter-sweep","noise","noise-spectrum","glide","bend","vibrato","pulse","tone-movement","stereo","recording-pitch","recording-level"]);
 const clamp=(n,a=0,b=1)=>Math.max(a,Math.min(b,n));
 export function isolatedSoundDiagram(p,type){
  const paths=[],handles=[],labels=[],actions=[],inactive=[];
@@ -42,6 +43,16 @@ export function isolatedSoundDiagram(p,type){
   point(30+300*decay/4,100-75*level,[axis(["noiseDecay"],"linearX",30,330,"s"),
    axis(["noise"],"linearY",100,25,"percent")],"noise decay / level");
   tag(18,14,level===0?"noise off · guide":"noise source");tag(307,111,"4 s");
+ }else if(type==="noise-spectrum"){
+  const settings=noiseSettings(p),map=x=>28+304*x,frequency=x=>100*200**x;
+  const linked=["noiseColor","noiseCutoff"],role=p.noise>0?"signal":"reference";
+  line("M28 65 H332",[],"guide");
+  trace(t=>[map(t),65-1.8*clamp(20*Math.log10(noiseResponse(frequency(t),48000,settings)),-21,21)],linked,role,180);
+  point(map(Math.log(settings.cutoff/100)/Math.log(NOISE_MAX_CUTOFF/100)),96,
+   [axis(["noiseCutoff"],"logX",28,332,"Hz")],"noise cutoff");
+  choice(166,22,["noiseColor"],NOISE_COLORS,"noise color");
+  tag(28,14,"100 hz");tag(297,14,"20 khz");
+  if(!p.noise)for(const id of linked)dormant(id,"noise level is zero; the dashed curve shows the spectrum");
  }else if(type==="glide"){
   line("M18 62 H342",[],"guide");
   trace(t=>[18+324*t,62-pitchCents(null,m,t*duration,duration)/100*3.5],["movement.glide","movement.glideTime"]);

@@ -81,12 +81,12 @@ int main(int argc,char** argv){
   _setmode(_fileno(stdin),_O_BINARY);_setmode(_fileno(stdout),_O_BINARY);
 #endif
   const std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(std::cin)),{});
-  premidi::PacketReader header(bytes.data(),bytes.size());require(header.u32()==0x344e4d50,"Unsupported prepared transport version");
+  premidi::PacketReader header(bytes.data(),bytes.size());require(header.u32()==0x354e4d50,"Unsupported prepared transport version");
   const auto rate=header.u32(),frames=header.u32();require(rate>=8000&&rate<=192000&&frames>0&&frames<=rate*12,"Invalid render size");
   const auto plan=premidi::readPlan(bytes.data(),bytes.size(),rate);
   std::array<std::unique_ptr<premidi::WaveBank>,2> ownedBanks;std::array<const premidi::WaveBank*,2> banks{};
   for(std::size_t i=0;i<2;i++)if(plan.oscillators[i].wave||plan.version>=2){ownedBanks[i]=std::make_unique<premidi::WaveBank>(plan.oscillators[i].wave,plan.oscillators[i].harmonics,rate);banks[i]=ownedBanks[i].get();}
-  std::optional<premidi::DriveRecipe> drive;if(plan.drive>0)drive.emplace(plan.drive);
+  std::optional<premidi::DriveRecipe> drive;if(plan.drive>0)drive.emplace(plan.drive,plan.driveShape,plan.driveInput);
   std::unique_ptr<premidi::SineLfoTable> lfo;if(plan.version==9)lfo=std::make_unique<premidi::SineLfoTable>(rate);
   std::unique_ptr<premidi::ProcessingGraphRecipe> graphRecipe;std::unique_ptr<premidi::ProcessingGraphState> graphState;
   if(plan.processing.count){graphRecipe=std::make_unique<premidi::ProcessingGraphRecipe>(plan.processing);graphState=std::make_unique<premidi::ProcessingGraphState>();}

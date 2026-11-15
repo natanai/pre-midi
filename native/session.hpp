@@ -40,7 +40,7 @@ class Session {
  }
  std::vector<Bank> banks;std::unique_ptr<SineLfoTable> lfoBank;
  SampleStore ownedSamples;std::unique_ptr<SampleChannelState[]> channelState;unsigned channelWidth=0;
- struct DriveEntry {double amount;std::unique_ptr<DriveRecipe> recipe;};std::vector<DriveEntry> drives;
+ struct DriveEntry {double amount,inputGain;unsigned shape;std::unique_ptr<DriveRecipe> recipe;};std::vector<DriveEntry> drives;
  struct Bus {double mix,time,feedback,tail;Delay delay;std::array<float,2*renderBlock> input{};double tone=20000;bool ping=false;ReverbRecipe room;std::unique_ptr<Reverb> reverb;
   Bus(double m,double t,double f,unsigned rate,double toneValue,bool pingValue,const ReverbRecipe& r):mix(m),time(t),feedback(f),tail(std::max(Delay::tail(m,t,f,toneValue),r.tail())),delay(m,t,f,rate,toneValue,pingValue),tone(toneValue),ping(pingValue),room(r){if(r.mix>0)reverb=std::make_unique<Reverb>(r,rate);}
  };
@@ -200,9 +200,9 @@ public:
     note.banks[i]=found->value.get();
    }
    const DriveRecipe* drive=nullptr;
-   if(note.plan.drive>0){
-    for(const auto& entry:drives)if(entry.amount==note.plan.drive){drive=entry.recipe.get();break;}
-    if(!drive){require(drives.size()<128,"Native session exceeds 128 drive recipes");drives.push_back({note.plan.drive,std::make_unique<DriveRecipe>(note.plan.drive)});drive=drives.back().recipe.get();}
+   if(note.plan.drive>0&&!note.plan.processing.count&&!note.plan.bypassDrive&&note.plan.driveMix>0){
+    for(const auto& entry:drives)if(entry.amount==note.plan.drive&&entry.shape==note.plan.driveShape&&entry.inputGain==note.plan.driveInput){drive=entry.recipe.get();break;}
+    if(!drive){require(drives.size()<128,"Native session exceeds 128 drive recipes");drives.push_back({note.plan.drive,note.plan.driveInput,note.plan.driveShape,std::make_unique<DriveRecipe>(note.plan.drive,note.plan.driveShape,note.plan.driveInput)});drive=drives.back().recipe.get();}
    }
    if(note.plan.version==9&&!lfoBank)lfoBank=std::make_unique<SineLfoTable>(rate);
    const ProcessingGraphRecipe* graph=nullptr;

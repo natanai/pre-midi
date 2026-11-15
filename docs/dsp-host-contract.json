@@ -24,7 +24,9 @@
     "seed": "0x7f41a08b",
     "recurrence": "uint32(1664525*seed+1013904223)",
     "sample": "((seed/4294967296)*2-1)*0.85",
-    "loop": "ceil(sampleRate*2) samples, zero initial phase per voice",
+    "loop": "ceil(sampleRate*2) samples, zero initial phase per voice; colored filters start from the end-of-period warm-up state",
+    "color": "white uses the original sequence; pink combines three matched-pole bands and white; brown uses a leaky integrator. Colored sources are bounded to ±0.85.",
+    "cutoff": "100–20000 Hz one-pole low-pass before source level and decay; 20000 bypasses the additional filter",
     "decay": "exponential target zero with time constant max(0.002,noiseDecay/5)"
   },
   "filter": {
@@ -45,7 +47,7 @@
     "tremolo": "unity plus sine modulation at depth=tremolo*0.45"
   },
   "effects": {
-    "drive": "Existing 1024-point quantized tanh curve, 4x oversampling, compensation 1/(1+drive*1.1)",
+    "drive": "1024-point transfer table for soft clip, hard clip or wavefold, with 4x oversampling and -24 to +24 dB input trim. Wet compensation is 1/(1+drive*1.1) divided by the square root of positive input boost as a linear gain.",
     "delay": "linear per-voice dry path 1-delayMix*0.4; shared send delayMix*0.55; feedback; wet=0.8",
     "sharing": "Only identical delayMix/time/feedback/tone/ping-pong recipes share a bus in the same session. New edits retain old tails on their original bus.",
     "tail": "Conservative feedback recurrence bound at 1e-5 (-100 dBFS) for a full-scale input. Native release qualification still needs true-peak/headroom and device tests.",

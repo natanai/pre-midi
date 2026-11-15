@@ -1,3 +1,4 @@
+import {driveSettings,validDriveSettings} from './distortion.js';
 import {DYNAMICS_KINDS,defaultDynamics,validateDynamicsParameters} from './dynamics.js';
 import {parameterFor,validParameterValue,dynamicsParameter,MOD_EFFECT_PARAMETERS,POST_PROCESSOR_LIMIT} from './parameters.js';
 import {MOD_EFFECT_KINDS,defaultModEffect,validModEffect} from './modulation-effects.js';
@@ -7,7 +8,7 @@ import {validateEq,eqCoefficients,defaultEq,validateFilterStages} from './equali
 export const MAX_PROCESSORS=8,MAX_PARALLEL_ROUTES=4;
 export const PROCESSOR_KINDS=Object.freeze(['filter','drive','eq',...POST_PROCESSOR_KINDS]);
 export const PRIMARY_PROCESSORS=Object.freeze(['filter','drive','eq']);
-export const processorParameter=(kind,key)=>MOD_EFFECT_PARAMETERS[kind]?.[key]??dynamicsParameter(kind,key)??parameterFor(kind==='drive'?'effects.drive':kind==='filter'?'filter.'+key:'');
+export const processorParameter=(kind,key)=>MOD_EFFECT_PARAMETERS[kind]?.[key]??dynamicsParameter(kind,key)??parameterFor(kind==='drive'?(key==='amount'?'effects.drive':'chain.drive.'+key):kind==='filter'?'filter.'+key:'');
 export const processorField=(kind,key,label)=>{const p=processorParameter(kind,key);return {label,min:p.min,max:p.max,step:p.ui.step,display:p.ui.display,log:p.ui.log};};
 const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
 const keys=(v,allowed)=>object(v)&&Object.keys(v).every(k=>allowed.includes(k));
@@ -17,7 +18,11 @@ export function validateProcessorInstance(instance){
  const p=instance.parameters;
  if(MOD_EFFECT_KINDS.includes(instance.kind))return validModEffect(instance.kind,p)?[]:['Invalid modulation effect instance.'];
  if(DYNAMICS_KINDS.includes(instance.kind))return validateDynamicsParameters(instance.kind,p)?[]:["Invalid dynamics instance."];
- if(instance.kind==='drive')return keys(p,['amount'])&&validParameterValue('effects.drive',p.amount)?[]:['Invalid distortion instance.'];
+ if(instance.kind==='drive'){
+  if(!object(p))return ['Invalid distortion instance.'];
+  const {amount,...settings}=p;
+  return validParameterValue('effects.drive',amount)&&validDriveSettings(settings)?[]:['Invalid distortion instance.'];
+ }
  if(instance.kind==='eq')return !object(p)||validateEq(p).length?['Invalid equalizer instance.']:[];
  return keys(p,['type','cutoff','resonance','stages'])&&validParameterValue('filter.type',p.type)&&validParameterValue('filter.cutoff',p.cutoff)&&validParameterValue('filter.resonance',p.resonance)&&validateFilterStages(p.stages).length===0?[]:['Invalid filter instance.'];
 }
@@ -26,6 +31,7 @@ export function validateGraphExtensions(chain){
  if(!Array.isArray(instances)||instances.length>MAX_PROCESSORS||!Array.isArray(parallel)||parallel.length>MAX_PARALLEL_ROUTES)return ['Processing supports up to eight processors and four parallel routes.'];
  const errors=instances.flatMap(validateProcessorInstance),ids=instances.map(i=>i?.id);
  if(new Set(ids).size!==ids.length)errors.push('Processor identities must be unique.');
+ if(chain.drive!==undefined&&!validDriveSettings(chain.drive))errors.push("Invalid main distortion settings.");
  const post=chain.post??[];
  if(!Array.isArray(post)||post.length>POST_PROCESSOR_LIMIT||post.some(id=>!POST_PROCESSOR_KINDS.includes(instances.find(n=>n?.id===id)?.kind)))return ['Up to four post-level processors are supported.'];
  if([...(chain.order??[]),...parallel.flatMap(r=>Array.isArray(r?.order)?r.order:[])].some(id=>POST_PROCESSOR_KINDS.includes(instances.find(n=>n?.id===id)?.kind)))errors.push('Post processors belong after level and pan.');
@@ -94,10 +100,10 @@ export function compileProcessingGraph(patch,rate,driveFrames=192){
  if(!(chain.parallel?.length)&&!ids.some(id=>!PRIMARY_PROCESSORS.includes(id)))return null;
  const nodes=ids.map(id=>{
   const instance=processorInstance(patch,id),kind=instance?.kind??id;
-  const p=instance?.parameters??(kind==='filter'?{...(patch.filter??{type:'lowpass',cutoff:14000,resonance:.7}),stages:patch.filterStages??1}:kind==='eq'?patch.eq??defaultEq():{amount:patch.effects?.drive??patch.drive??0});
+  const p=instance?.parameters??(kind==='filter'?{...(patch.filter??{type:'lowpass',cutoff:14000,resonance:.7}),stages:patch.filterStages??1}:kind==='eq'?patch.eq??defaultEq():{amount:patch.effects?.drive??patch.drive??0,...driveSettings(patch)});
   const bypass=chain.bypass.includes(id)||(id==='filter'&&patch.filter===null),mix=chain.mix?.[id]??1;
   return {id,kind,primary:id==='filter',bypass,mix,
-   type:['lowpass','highpass','bandpass','notch'].indexOf(p.type??'lowpass'),cutoff:p.cutoff??8000,resonance:p.resonance??.7,stages:p.stages??1,amount:p.amount??0,
+   type:['lowpass','highpass','bandpass','notch'].indexOf(p.type??'lowpass'),cutoff:p.cutoff??8000,resonance:p.resonance??.7,stages:p.stages??1,amount:p.amount??0,shape:p.shape,inputGain:p.inputGain,
    coefficients:Array.from({length:8},(_,i)=>p.bands?.[i]?eqCoefficients(p.bands[i],rate):[1,0,0,0,0]),
    latency:!bypass&&mix>0&&kind==='drive'&&p.amount>0?driveFrames:0};
  });

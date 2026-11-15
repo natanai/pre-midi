@@ -1,3 +1,4 @@
+import {mountWaveformFades} from "./waveformFades.js";
 import {getAssetRevision} from './assetRegistry.js';
 import {explainLabel} from './dial.js';
 import {createUIIcon,setIconButton} from "./uiIcons.js";
@@ -77,7 +78,7 @@ const element=(name,text)=>{
  if(text!==undefined)node.textContent=text;
  return node;
 };
-export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTrimEnd=null,onPreview=()=>{},loadDecoded,onFindStart=null,regionKind="trim",loopFade=0,onLoopFade=null,bounds=null}){
+export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTrimEnd=null,onPreview=()=>{},loadDecoded,onFindStart=null,regionKind="trim",loopFade=0,onLoopFade=null,bounds=null,articulation=null}){
  const duration=recording.durationSeconds-recording.trimSeconds;
  const max=maxTrimSeconds(duration),lower=bounds?.start??0,upper=bounds?.end??duration;
  let applied=normalizeTrimSeconds(trimStart,duration),value=applied,zoom=zoomByAsset.get(recording.id)||1;
@@ -104,6 +105,10 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
  const fadeHit=svgElement("rect",{x:0,y:0,width:16,height:35,fill:"transparent",role:"slider",tabindex:0,"aria-label":"loop crossfade"});
  for(const n of [fadeShade,fadeMarker,fadeHit])n.style.display=onLoopFade?"":"none";
  svg.append(center,path,shade,endShade,fadeShade,marker,endMarker,fadeMarker,hit,endHit,fadeHit);
+ const visibleWindow=()=>drag?.window??waveformWindow(duration,position(),zoom);
+ const drawFades=articulation&&mountWaveformFades(svg,svgElement,{...articulation},{
+  getWindow:visibleWindow,getCrop:()=>[value,end],xAtTime:waveformXAtTime,timeAtX:waveformTimeAtX
+ });
  const plot=element("div");plot.className="audio-waveform-plot";
  const flag=element("span");flag.append(createUIIcon("trim",14));flag.className="audio-trim-label";flag.setAttribute("aria-hidden","true");
  const endFlag=element("span");endFlag.append(createUIIcon("trim",14));endFlag.className="audio-trim-label";endFlag.style.transform="translateX(-100%) rotate(180deg)";endFlag.setAttribute("aria-hidden","true");endFlag.hidden=!onTrimEnd;
@@ -139,7 +144,8 @@ export function renderAudioWaveform({recording,trimStart=0,trimEnd=0,onTrim,onTr
  wrapper.append(controls,plot,toolbar);
  const show=()=>{
   // Keep the visible source-time window fixed while dragging the trim handle.
-  const w=drag?.window??waveformWindow(duration,position(),zoom);
+  const w=visibleWindow();
+  drawFades?.();
   startLabel.textContent=w.start.toFixed(3)+"s";
   endLabel.textContent=w.end.toFixed(3)+"s";
   time.textContent=(Math.abs(value-applied)<.0005?"start ":"preview start ")+value.toFixed(3)+"s · end "+end.toFixed(3)+"s · keep "+(end-value).toFixed(3)+"s";

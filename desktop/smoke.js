@@ -75,14 +75,25 @@
   navigator.mediaDevices.getUserMedia=()=>{throw Error('Native operation attempted browser microphone capture');};
   HTMLMediaElement.prototype.play=()=>{throw Error('Native operation attempted HTML media playback');};
   const beat=create();beat.bars=1;const inst=beat.instruments[0];inst.timeline=[inst.chunks[0].id];inst.placements=[null];
-  inst.sounds[0].patch=makePatch('touch-keys');inst.chunks[0].notes.push({id:id(),pitch:60,start:0,duration:4,velocity:.8});
+  const textured=makePatch('touch-keys');
+  textured.noise=.3;textured.noiseColor='pink';textured.noiseCutoff=2400;textured.effects.drive=.35;
+  textured.chain={version:1,order:['filter','drive'],bypass:[],drive:{shape:'wavefold',inputGain:4}};
+  inst.sounds[0].patch=textured;inst.chunks[0].notes.push({id:id(),pitch:60,start:0,duration:4,velocity:.8});
   upgradeBeatFeatures(beat);
   const exported=exportProject(beat),reopened=await importProject(new File([exported.blob],exported.name));
   assert(reopened.instruments[0].chunks[0].notes.length===1,'Beat export and reopen');
+  const recalled=reopened.instruments[0].sounds[0].patch;
+  assert(recalled.noiseColor==='pink'&&recalled.noiseCutoff===2400&&recalled.chain.drive.shape==='wavefold'&&recalled.chain.drive.inputGain===4,
+   'Beat export recalls colored noise, cutoff and distortion shape/input');
   const audio=await wav(beat),data=await audio.arrayBuffer();
   assert(new TextDecoder().decode(new Uint8Array(data,0,4))==='RIFF'&&data.byteLength>44,'WAV export');
   const pcm=new DataView(data);let peak=0;for(let i=44;i<data.byteLength;i+=2)peak=Math.max(peak,Math.abs(pcm.getInt16(i,true)));
   assert(peak>10,'native C++ WAV export rendered nonzero PCM without Web Audio');
+  const alternate=structuredClone(reopened),alternatePatch=alternate.instruments[0].sounds[0].patch;
+  alternatePatch.noiseColor='brown';alternatePatch.chain.drive.shape='hard clip';
+  const alternateWav=new DataView(await (await wav(alternate)).arrayBuffer());let timbreDifference=0;
+  for(let i=44;i<data.byteLength&&i<alternateWav.byteLength;i+=2)timbreDifference=Math.max(timbreDifference,Math.abs(pcm.getInt16(i,true)-alternateWav.getInt16(i,true)));
+  assert(timbreDifference>10,'native render responds to new source and distortion controls');
   const session=await play(()=>beat,{loop:()=>true});assert(session.backend==='native-cpp','desktop Play uses the native device host');
   const audioRequest=request=>invoke('native_audio',{request});
   let device;
@@ -130,6 +141,14 @@
    const fade=source.querySelector('[aria-label="loop crossfade"]');assert(!!fade,'portable shared sampler waveform decodes with the native host');
    fade.focus();fade.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true}));
    assert(Math.abs(loopInst.sounds[0].patch.zones[0].loop.crossfade-.011)<1e-9,'portable waveform crossfade keyboard edit retains source-relative loop data');
+   const oneShot={...loopInst.sounds[0].patch,oneShot:true},crop=renderSampleSource(oneShot,loopBeat,
+    (path,value)=>assignSoundEdit(oneShot,path,value),'portable-fade-sound');
+   sourceRoot.append(crop);crop.open=true;
+   for(let i=0;i<100&&!crop.querySelector('[aria-label="fade in"]');i++)await pause(10);
+   const fadeIn=crop.querySelector('[aria-label="fade in"]');
+   assert(!!fadeIn,'portable one-shot crop displays its playback fade');
+   fadeIn.focus();fadeIn.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+   assert(oneShot.attack===.001,'portable waveform fade edits the saved Sound attack');
   }finally{sourceRoot.remove();}
   const loopExport=exportProject(loopBeat),loopReopen=await importProject(new File([loopExport.blob],loopExport.name));
   assert(loopReopen.instruments[0].sounds[0].patch.zones[0].loop.crossfade===.011,'portable project round trip retains sampler loops and key/velocity ranges');

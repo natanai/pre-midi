@@ -8,7 +8,7 @@ import {validateGraphExtensions,allProcessorIds,processorOrders} from './process
 export const DEFAULT_PROCESSING_CHAIN=Object.freeze({version:1,order:Object.freeze(['filter','drive']),bypass:Object.freeze([])});
 export function validateProcessingChain(chain){
  if(chain===undefined)return [];
- if(!chain||typeof chain!=='object'||Array.isArray(chain)||Object.keys(chain).some(k=>!['version','order','bypass','mix','instances','parallel','dry','post'].includes(k))||chain.version!==1||
+ if(!chain||typeof chain!=='object'||Array.isArray(chain)||Object.keys(chain).some(k=>!['version','order','bypass','mix','instances','parallel','dry','post','drive'].includes(k))||chain.version!==1||
   !Array.isArray(chain.order)||chain.order.length>8||new Set(chain.order).size!==chain.order.length||chain.order.some(id=>typeof id!=='string')||
   !Array.isArray(chain.bypass)||new Set(chain.bypass).size!==chain.bypass.length||chain.bypass.some(id=>typeof id!=='string'))return ['Invalid processing chain.'];
  return validateGraphExtensions(chain);

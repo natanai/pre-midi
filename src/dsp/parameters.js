@@ -1,5 +1,7 @@
 // One parameter authority for all sound sources. Serialization paths belong to
 // context adapters; these IDs describe musical meaning, not storage shape.
+import {DRIVE_SHAPES} from "./distortion.js";
+import {NOISE_COLORS,NOISE_MAX_CUTOFF} from "./noise.js";
 const all=["synth","sample","vocal"],recorded=["sample","vocal"];
 const freeze=value=>{
  if(value&&typeof value==="object"&&!Object.isFrozen(value)){
@@ -54,10 +56,14 @@ export const SOUND_PARAMETERS=freeze([
  parameter("filter.sweep","octaves",-5,5,0,.1,"number",{bypass:{mode:"zero"}}),
  parameter("filter.sweepTime","seconds",.01,3,.2,.01,"seconds",{inactiveWhen:[nonzero("filter.sweep","filter sweep is zero")]}),
  parameter("noise","linear_gain",0,1,0,.01,"percent",{contexts:["synth"],scope:"source",bypass:{mode:"zero"},automation:{index:10}}),
+ choice("noiseColor",NOISE_COLORS,"white",{contexts:["synth"],scope:"source",inactiveWhen:[nonzero("noise","noise level is zero")]}),
+ parameter("noiseCutoff","hz",100,NOISE_MAX_CUTOFF,NOISE_MAX_CUTOFF,1,"hz",{contexts:["synth"],scope:"source",ui:{step:1,display:"hz",log:true},inactiveWhen:[nonzero("noise","noise level is zero")]}),
  parameter("noiseDecay","seconds",0,4,0,.01,"seconds",{contexts:["synth"],scope:"source",bypass:{mode:"zero",meaning:"continuous noise"},inactiveWhen:[nonzero("noise","noise level is zero")]}),
  parameter("pan","pan",-1,1,0,.01,"pan",{modulation:{index:5,name:"pan",unit:"pan",limit:2}}),
  parameter("amplitude","linear_gain",0,2,1,.01,"percent",{routeOnly:true,modulation:{index:7,name:"amplitude",unit:"linear_gain",limit:1}}),
  parameter("effects.drive","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
+ choice("chain.drive.shape",DRIVE_SHAPES,"soft clip",{inactiveWhen:[nonzero("effects.drive","distortion amount is zero")]}),
+ parameter("chain.drive.inputGain","db",-24,24,0,.5,"db",{inactiveWhen:[nonzero("effects.drive","distortion amount is zero")]}),
  parameter("stereoWidth","ratio",0,2,1,.01,"percent",{automation:{index:8}}),
  parameter("msBalance","balance",-1,1,0,.01,"number",{automation:{index:9}}),
  parameter("delayTone","hz",20,20000,20000,1,"hz",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
@@ -135,7 +141,7 @@ export function parameterCapability(id,context,read=()=>undefined){
  if(!p)return {state:"unsupported",supported:false,reason:"this source does not implement "+id};
  const value=key=>read(key)??parameterFor(key,context)?.default;
  const bypass=read("chain.bypass")??[];
- const stage=id.startsWith("filter.")||["movement.tone","movement.toneRate"].includes(id)?"filter":id==="effects.drive"?"drive":(id.startsWith("effects.delay")||["delayTone","delayPingPong"].includes(id))?"delay":null;
+ const stage=id.startsWith("filter.")||["movement.tone","movement.toneRate"].includes(id)?"filter":(id==="effects.drive"||id.startsWith("chain.drive."))?"drive":(id.startsWith("effects.delay")||["delayTone","delayPingPong"].includes(id))?"delay":null;
  const order=read("chain.order"),parallel=read("chain.parallel")??[];
  if(stage&&stage!=="delay"&&Array.isArray(order)&&!order.includes(stage)&&!parallel.some(route=>route.order.includes(stage)))return {state:"inactive",supported:true,reason:stage+" is outside the processing chain"};
  if(stage&&parallel.some(route=>route.order.includes(stage)&&route.gain===0))return {state:"inactive",supported:true,reason:"parallel route share is zero"};

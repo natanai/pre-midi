@@ -10,8 +10,8 @@
 namespace premidi {
 constexpr unsigned graphNodeLimit=8,graphRouteLimit=4,graphChannelLimit=6;
 struct GraphNode {
- unsigned kind=0,type=0,stages=1;bool primary=false,bypass=false;
- double mix=1,cutoff=8000,resonance=.7,amount=0;
+ unsigned kind=0,type=0,stages=1,shape=0;bool primary=false,bypass=false;
+ double mix=1,cutoff=8000,resonance=.7,amount=0,inputGain=0;
  std::array<EqBand,8> bands{};
 };
 struct GraphRoute{unsigned count=0;double gain=1;std::array<unsigned,graphNodeLimit> order{};};
@@ -27,7 +27,7 @@ inline bool sameProcessingGraph(const ProcessingGraph& a,const ProcessingGraph& 
  for(unsigned i=0;i<a.serial.count;i++)if(a.serial.order[i]!=b.serial.order[i])return false;
  for(unsigned i=0;i<a.count;i++){
   const auto& x=a.nodes[i];const auto& y=b.nodes[i];
-  if(x.kind!=y.kind||x.type!=y.type||x.stages!=y.stages||x.primary!=y.primary||x.bypass!=y.bypass||x.mix!=y.mix||x.cutoff!=y.cutoff||x.resonance!=y.resonance||x.amount!=y.amount)return false;
+  if(x.kind!=y.kind||x.type!=y.type||x.stages!=y.stages||x.primary!=y.primary||x.bypass!=y.bypass||x.mix!=y.mix||x.cutoff!=y.cutoff||x.resonance!=y.resonance||x.amount!=y.amount||x.shape!=y.shape||x.inputGain!=y.inputGain)return false;
   for(unsigned band=0;band<8;band++)if(x.bands[band].c!=y.bands[band].c)return false;
  }
  for(unsigned r=0;r<a.routeCount;r++){const auto& x=a.routes[r];const auto& y=b.routes[r];if(x.gain!=y.gain||x.count!=y.count)return false;for(unsigned i=0;i<x.count;i++)if(x.order[i]!=y.order[i])return false;}
@@ -38,7 +38,7 @@ struct ProcessingGraphRecipe {
  std::array<std::unique_ptr<DriveRecipe>,graphNodeLimit> drives;
  explicit ProcessingGraphRecipe(const ProcessingGraph& input):graph(input){
   for(unsigned i=0;i<graph.count;i++){
-   const auto& n=graph.nodes[i];if(n.kind==1&&n.amount>0&&!n.bypass&&n.mix>0)drives[i]=std::make_unique<DriveRecipe>(n.amount);
+   const auto& n=graph.nodes[i];if(n.kind==1&&n.amount>0&&!n.bypass&&n.mix>0)drives[i]=std::make_unique<DriveRecipe>(n.amount,n.shape,n.inputGain);
   }
  }
 };

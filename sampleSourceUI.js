@@ -1,3 +1,4 @@
+import {sourceRate,sourceSettings} from './src/dsp/source-processing.js';
 import {renderSampleMapping} from './sampleMappingUI.js';
 import {renderAudioWaveform} from './audioWaveform.js';
 import {decodeRecordedAsset} from './recordedAssetDecode.js';
@@ -33,7 +34,14 @@ export function renderSampleSource(patch,context,onChange,soundId){
      const change=fields=>{const loop={...zone.loop,...fields},error=validateSampleLoop({...zone,loop});if(error){status.textContent=error;void show().then(()=>{if(details.isConnected)status.textContent=error;});return;}onChange(['zones',index,'loop'],loop);};
      slot.append(renderAudioWaveform({...waveform,regionKind:'loop',bounds:{start:region.offset,end},trimStart:zone.loop.start,trimEnd:buffer.duration-zone.loop.end,loopFade:zone.loop.crossfade,onTrim:start=>change({start}),onTrimEnd:trim=>change({end:buffer.duration-trim}),onLoopFade:crossfade=>change({crossfade})}));
     }
-   }else slot.append(renderAudioWaveform({...waveform,trimStart:region.offset,trimEnd:Math.max(0,buffer.duration-end),onTrim:start=>apply(start,end),onTrimEnd:trim=>apply(region.offset,buffer.duration-trim)}));
+   }else{
+    const source=sourceSettings(patch);
+    const articulation=patch.oneShot?{type:'sample',oneShot:patch.audioMode!=='clip',reverse:source.reverse,
+     sourcePerSecond:sourceRate(patch)/source.time,attack:patch.attack,release:patch.release,
+     onChange:(key,value)=>onChange([key],value)}:null;
+    slot.append(renderAudioWaveform({...waveform,trimStart:region.offset,trimEnd:Math.max(0,buffer.duration-end),
+     onTrim:start=>apply(start,end),onTrimEnd:trim=>apply(region.offset,buffer.duration-trim),articulation}));
+   }
   }catch(error){if(token===generation&&details.isConnected)status.textContent=error.message;}
  };
  mode.addEventListener('change',()=>{modes.set(soundId,mode.value);void show();});

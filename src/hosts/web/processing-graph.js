@@ -1,6 +1,6 @@
 import {compileProcessingGraph,processorInstance,processorKind} from '../../dsp/processing-graph.js';
 import {processingChain} from '../../dsp/processing-chain.js';
-import {configureDriveShaper} from '../../../audioEffects.js';
+import {driveStage} from '../../../audioEffects.js';
 import {createEq,cascadeFilter} from './equalizer.js';
 import {connectProcessorMix} from './processor-mix.js';
 
@@ -20,7 +20,7 @@ export function connectProcessingGraph(context,signal,patch,stages,owner){
    for(const f of stage.filters)f.frequency.value=p.cutoff;
    owner.automationTargets?.set("processor."+node.id+".cutoff",stage.filters.map(f=>f.frequency));owner.automationTargets?.set("processor."+node.id+".resonance",filter.Q);
   }else if(instance.kind==='drive'&&p.amount>0){
-   const shaper=add(context.createWaveShaper()),gain=add(context.createGain());configureDriveShaper(shaper,p.amount);gain.gain.value=1/(1+p.amount*1.1);shaper.connect(gain);stage={input:shaper,output:gain};
+   stage=driveStage(context,p.amount,p,owner);
   }else if(instance.kind==='eq')stage=createEq(context,p,owner);
   if(stage)stages.set(node.id,stage);
  }

@@ -1,3 +1,4 @@
+import {NOISE_COLORS,noiseSettings} from "../../dsp/noise.js";
 import {encodePostProcessing} from './post-processing.js';
 import {encodeParameterAutomation} from './automation.js';
 import {encodeProcessing} from './processing.js';
@@ -19,7 +20,7 @@ export function encodeNativePlan(plan,sampleRate,frames){
  const extended=extendedSynthExecution(plan,sampleRate);
  const parts=[],u32=n=>{if(!Number.isInteger(n)||n<0||n>0xffffffff)throw Error("Invalid native integer");const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n,true);parts.push(b);},f64=n=>{if(!Number.isFinite(n))throw Error("Nonfinite native parameter");const b=new Uint8Array(8);new DataView(b.buffer).setFloat64(0,n,true);parts.push(b);};
  const version=extended||plan.parameterAutomation?.length?9:p.effects.drive!==0||plan.movement.depth!==0||plan.movement.tone!==0||plan.movement.tremolo!==0?7:fx.delayMix!==0?6:p.noise!==0?5:(p.filter.sweep??0)!==0?4:plan.version;
- u32(0x344e4d50);u32(sampleRate);u32(frames);u32(version);
+ u32(0x354e4d50);u32(sampleRate);u32(frames);u32(version);
  for(const n of [plan.start,plan.duration,plan.end,plan.graphEnd,p.pan,p.filter.cutoff,p.filter.resonance])f64(n);u32(["lowpass","highpass","bandpass","notch"].indexOf(p.filter.type));
  if(version>=4){f64(plan.filter.startCutoff);f64((p.filter.sweep??0)!==0?plan.filter.sweepEnd:plan.graphEnd);}
  if(version>=5){f64(p.noise);f64(p.noiseDecay??0);}
@@ -35,5 +36,6 @@ export function encodeNativePlan(plan,sampleRate,frames){
  const points=plan.automation?.points??[];u32(points.length);for(const point of points){f64(point.time);f64(Math.fround(point.value));}
  u32(plan.amplitude.events.length);for(const event of plan.amplitude.events){if(!["set","linear"].includes(event.kind))throw Error("Unknown envelope event");u32(event.kind==="set"?0:1);f64(event.time);f64(Math.fround(event.value));}
  encodeProcessing(p,sampleRate,u32,f64);encodeParameterAutomation(plan.parameterAutomation,p,sampleRate,u32,f64);encodePostProcessing(p,u32,f64,plan.postProcessing);
+ const noise=noiseSettings(p);u32(NOISE_COLORS.indexOf(noise.color));f64(noise.cutoff);
  const output=new Uint8Array(parts.reduce((sum,b)=>sum+b.length,0));let offset=0;for(const b of parts){output.set(b,offset);offset+=b.length;}return output;
 }

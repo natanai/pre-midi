@@ -37,7 +37,11 @@ try{
  assert.ok(error<1e-7,'Parallel dry compensation error '+error);
  // Two successive oversampled processors require 384 frames of dry alignment.
  driven.chain=withInstance(driven,'drive');driven.chain.instances[1].parameters.amount=.3;
- const doubleWet=render(driven);driven.chain=withParallelRoute(driven);for(const id of ['drive-1','drive-2'])driven.chain=moveProcessor(driven.chain,id,'route-1');driven.chain=withRouteShare(driven.chain,'dry',.5);
+ Object.assign(driven.chain.instances[1].parameters,{shape:'wavefold',inputGain:4});
+ const doubleWet=render(driven);
+ assert.ok(diff(doubleWet,render(driven,{vocal:true}))<1e-7,'Instance shapers are shared by samples and vocals');
+ const changed=structuredClone(driven);changed.chain.instances[1].parameters.shape='hard clip';
+ assert.ok(diff(doubleWet,render(changed))>.01,'An independent distortion shape must change PCM');driven.chain=withParallelRoute(driven);for(const id of ['drive-1','drive-2'])driven.chain=moveProcessor(driven.chain,id,'route-1');driven.chain=withRouteShare(driven.chain,'dry',.5);
  const doubleMix=render(driven);let doubleError=0;
  for(let i=768;i<rate*.8;i++)doubleError=Math.max(doubleError,Math.abs(doubleMix[2*i]-(plain[2*(i-384)]*.5+doubleWet[2*i]*.5)));
  assert.ok(doubleError<1e-7,'Multi-instance parallel latency error '+doubleError);

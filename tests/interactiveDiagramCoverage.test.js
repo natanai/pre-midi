@@ -1,3 +1,4 @@
+import {readSoundParameter} from "../soundParameterAdapter.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {diagram,diagramPageCount} from "../soundIllustrations.js";
@@ -128,7 +129,7 @@ test("all educational handles use actual existing bounded data and real X/Y dire
     for(const axis of h.axes){
      assert.ok(axis.mode.endsWith("X")||axis.mode.endsWith("Y"));
      assert.ok(axis.min<axis.max&&axis.step>0&&axis.from!==axis.to);
-     const value=axis.path.reduce((object,id)=>object?.[id],patch);
+     const value=axis.path.reduce((object,id)=>object?.[id],patch)??readSoundParameter(patch,key(axis.path));
      assert.ok(typeof value==="number"&&Number.isFinite(value),
       kind+" is not editing a real numeric parameter: "+key(axis.path));
      const updated=structuredClone(patch);

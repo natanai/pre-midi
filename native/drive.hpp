@@ -11,7 +11,9 @@ namespace premidi {
 // Reference and upstream notice: THIRD-PARTY-NOTICES.txt, fidelity-policy.json.
 struct DriveRecipe {
  std::array<float,128> up{},down{};std::array<float,1024> curve{};float compensation;
- explicit DriveRecipe(double amount):compensation(static_cast<float>(1/(1+amount*1.1))){
+ explicit DriveRecipe(double amount,unsigned shape=0,double inputGain=0){
+  const double gain=std::pow(10.,inputGain/20);
+  compensation=static_cast<float>(1/(1+amount*1.1)/std::sqrt(std::max(1.,gain)));
   constexpr double p=3.14159265358979323846;
   for(unsigned i=0;i<128;i++){
    const double x=(i+.5)/128,s=p*(static_cast<double>(i)-63.5);
@@ -19,8 +21,15 @@ struct DriveRecipe {
    const double j=2*i+1,y=j/256,t=.5*p*(j-128);
    down[i]=static_cast<float>(.5*std::sin(t)/t*(.42-.5*std::cos(2*p*y)+.08*std::cos(4*p*y)));
   }
-  const double k=1+std::floor(amount*100+.5)*.65;
-  for(unsigned i=0;i<1024;i++)curve[i]=static_cast<float>(std::tanh(k*(2.*i/1023-1))/std::tanh(k));
+  const double strength=std::floor(amount*100+.5),k=1+strength*.65;
+  for(unsigned i=0;i<1024;i++){
+   const double x=gain*(2.*i/1023-1);
+   if(shape==1)curve[i]=static_cast<float>(std::clamp(x*(1+strength*.11),-1.,1.));
+   else if(shape==2){
+    const double folded=x*(1+strength*.05)+1;
+    curve[i]=static_cast<float>(1-std::abs(folded-4*std::floor(folded/4)-2));
+   }else curve[i]=static_cast<float>(std::tanh(k*x)/std::tanh(k));
+  }
  }
  float shape(float value)const noexcept{
   const float position=std::clamp(.5f*(value+1)*1023,0.f,1023.f);const auto a=static_cast<unsigned>(position),b=std::min(a+1,1023u);
