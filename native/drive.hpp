@@ -68,11 +68,11 @@ class Drive {
  const DriveRecipe* recipe;Upsample2 first,second;Downsample2 third,fourth;
 public:
  explicit Drive(const DriveRecipe* input=nullptr)noexcept:recipe(input){}
- float mixed(float input,double wet)noexcept{
+ float mixed(float input,double wet,bool alignDry=false)noexcept{
   if(!recipe)return input;
   const float delayed=dryHistory[dryCursor];dryHistory[dryCursor]=input;dryCursor=(dryCursor+1)%192;
   const float processed=process(input);
-  return wet==0?input:static_cast<float>((1-wet)*delayed+wet*processed);
+  return wet==0&&!alignDry?input:static_cast<float>((1-wet)*delayed+wet*processed);
  }
  float process(float input)noexcept{
   if(!recipe)return input;

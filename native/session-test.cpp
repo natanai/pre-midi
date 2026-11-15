@@ -48,7 +48,7 @@ int main(int argc,char** argv){
    }
    if(mode=="--export"){
     void* host=premidi_audio_create(1);premidi::require(host!=nullptr,"Native offline host unavailable");
-    const int result=premidi_audio_render(host,bytes.data(),bytes.size(),std::stod(argv[4]),rate,frames,reinterpret_cast<std::uint8_t*>(output.data()),output.size()*4,0,.85);
+    const int result=premidi_audio_render(host,bytes.data(),bytes.size(),std::stod(argv[4]),rate,frames,reinterpret_cast<std::uint8_t*>(output.data()),output.size()*4,0,.85,0,nullptr);
     const std::string error=premidi_audio_error(host);premidi_audio_destroy(host);premidi::require(result==0,error.c_str());
    }else if(std::string(argv[10])=="paged"){
     premidi::require(!loop,"Page-clock PCM probe does not yet qualify Song loops");

@@ -122,9 +122,9 @@ export async function auditionNative(instrument,notes,{duration=.24,bpm=120}={})
  const cycle=Math.min(600,Math.max(.05,...plans.map(plan=>plan.graphEnd)));
  return nativeRequest({action:'play',data:Array.from(encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true,owner});
 }
-export async function renderNative(plans,{rate,frames,cycle,wav=false,gain=.85}){
+export async function renderNative(plans,{rate,frames,cycle,wav=false,gain=.85,bits=16,dither=false,measure=false}){
  const data=Array.from(encodeNativeSession(plans,rate));
- const result=await globalThis.__TAURI__.core.invoke('native_render',{request:{data,rate,frames,cycle,wav,gain}});
+ const result=await globalThis.__TAURI__.core.invoke('native_render',{request:{data,rate,frames,cycle,wav,gain,bits,dither,measure}});
  return result instanceof ArrayBuffer?result:Uint8Array.from(result).buffer;
 }
 export async function playNative(document,events,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0,countIn=0,recording=null,onCountIn=()=>{}}={}){

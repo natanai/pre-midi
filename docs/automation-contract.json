@@ -10,7 +10,7 @@
     "external_assets": "Automation references parameters only. Recording bytes stay in external Assets."
   },
   "targets": {
-    "authority": "src/dsp/parameters.js; automationParametersFor derives modulation targets and declared automation indices from the same bounds and units",
+    "authority": "src/dsp/parameters.js defines shared bounds and units. src/dsp/automation.js adds stable processor-specific lanes.",
     "implemented": [
       "oscillators.0.detune",
       "oscillators.0.level",
@@ -24,10 +24,12 @@
       "msBalance",
       "noise",
       "processor.<stable filter instance id>.cutoff",
-      "processor.<stable filter instance id>.resonance"
+      "processor.<stable filter instance id>.resonance",
+      "processor.<filter, distortion or EQ id>.mix",
+      "processor.<filter, distortion or EQ id>.enabled"
     ],
     "contexts": "Synths expose oscillator/noise targets; samples and vocals expose applicable processing targets. Added filter instances expose independent cutoff/resonance. Width affects stereo content; it does not manufacture side information from a mono source.",
-    "inactive_processors": "Removing an instance from routing retains its settings and lanes for restoration. Unrouted instance lanes compile to no events. Bypass and zero mix retain their normal processing semantics."
+    "inactive_processors": "Removing a processor from routing or bypassing it retains its settings and lanes. Unrouted and explicitly bypassed lanes compile to no events. The enabled lane switches between processed and latency-aligned dry audio while preserving DSP history."
   },
   "points": {
     "authored_limit": 32,
@@ -40,7 +42,8 @@
     ],
     "outside_range": "Hold the first/last value. Clip source-end boundaries hold through release tails.",
     "step_timing": "A step applies on the first sample at or after its boundary, with the same 1e-9-frame rounding tolerance used for native onsets.",
-    "bounds": "Units, source support and value bounds come from the canonical parameter authority."
+    "bounds": "Units, source support and value bounds come from the canonical parameter authority.",
+    "discrete": "Processor enabled accepts values 0 and 1 with step interpolation."
   },
   "precedence": [
     "Sound patch base",
@@ -55,17 +58,18 @@
     "freeform": "Captured lanes retain their source step and limitStep when a passage moves horizontally.",
     "vocal": "Vocal source elapsedSteps and Clip duration bound the curve.",
     "native_streaming": "JS page rebasing and C++ page/cycle activation shift every parameter event. Seek/loop reconstruction retains held voices, filter history and delay returns.",
-    "live_edits": "Use the existing prepared native revision replacement. Gesture recording and explicit manual override/rejoin modes remain unfinished."
+    "live_edits": "Native transport uses prepared revision replacement. A Beat Inspector gesture records musical positions while playing and commits on release. Live override and rejoin remain unfinished."
   },
   "rendering": {
     "browser": "AudioParam lanes plus control signals retain pitch expression and modulation clamp precedence; dynamic stereo imaging uses the same mid/side equations.",
     "native": "Eight fixed lanes with 36 events each and monotonic cursors. Preparation and parsing stay on control. Per-sample evaluation and page/loop shifts allocate no callback memory.",
-    "wire": "Current sample execution packet v22 carries the validated parameter-automation trailer before ordered post processors and the room recipe; synth plans use the same trailer.",
+    "wire": "Sample execution packet v25 and the current synth packet use the same parameter lane trailer. The compiled graph maps processor identities to run-time node indices.",
     "offline": "The same plans drive playback and native/browser WAV rendering."
   },
   "interface": {
     "entry": "One shared automation panel in the Sound Inspector and selected Freeform note editor",
-    "editing": "Parameter selection, independent lanes, bypass/remove, linear/exponential/step curves, numeric points and interactive two-axis illustrations use the project undo path."
+    "editing": "Parameter selection, independent lanes, bypass/remove, linear/exponential/step curves, numeric points and interactive two-axis illustrations use the project undo path.",
+    "gesture_recording": "The Beat Inspector can write an existing continuous lane while the Beat is playing. A single pass writes sixteenth-note steps within the lane budget. The edit preserves points outside the written span and uses project undo."
   },
   "qualification": [
     "tests/parameterAutomation.test.js",
@@ -75,8 +79,8 @@
     "native/control-tests"
   ],
   "remaining": [
-    "Additional effect/source/articulation targets and discrete parameter changes",
-    "Gesture recording and explicit live override/rejoin",
+    "Additional effect and articulation targets",
+    "Song and vocal gesture recording, monitored manual override and rejoin",
     "Track/Song/game automation scopes and overrides",
     "Physical Windows and observed listening/newcomer qualification"
   ]

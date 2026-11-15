@@ -1,6 +1,6 @@
 import {processorBypassed} from "./src/dsp/processing-chain.js";
 import {modulationTargetsFor,modulationSourcesFor,MODULATION_CONTROLS,parameterField} from "./src/dsp/parameters.js";
-import {MOD_TARGETS,MOD_SOURCES,defaultSource,LFO_SHAPES,LFO_DIVISIONS,randomLfoShape,DEFAULT_LFO_STEPS} from "./src/dsp/modulation.js";
+import {MOD_TARGETS,defaultSource,LFO_SHAPES,LFO_DIVISIONS,randomLfoShape,DEFAULT_LFO_STEPS,MAX_LFO_STEPS} from "./src/dsp/modulation.js";
 import {createDial,explainLabel} from "./dial.js";
 const openBySound=new Map();
 export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=>{}){
@@ -32,14 +32,19 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
    const speed=createDial({label:"Movement speed",...MODULATION_CONTROLS.rate},route.source.rate,value=>update(index,{source:{...route.source,rate:value}}),value=>preview(index,{source:{...route.source,rate:value}}));
    speed.dataset.soundPath="modulation.routes."+index+".source.rate";row.append(speed);
   }
+  if(route.source.kind==="lfo"){
+   const phase=createDial({label:"Movement phase",...MODULATION_CONTROLS.phase},route.source.phase??0,
+    value=>update(index,{source:{...route.source,phase:value}}),value=>preview(index,{source:{...route.source,phase:value}}));
+   phase.dataset.soundPath="modulation.routes."+index+".source.phase";row.append(phase);
+  }
   if(route.source.kind==="lfo"&&randomLfoShape(route.source.shape)){
    const seed=createDial({label:"Random seed",help:"choose a repeatable movement sequence",...MODULATION_CONTROLS.seed},route.source.seed??1,
     value=>update(index,{source:{...route.source,seed:value}}),value=>preview(index,{source:{...route.source,seed:value}}));
    seed.dataset.soundPath="modulation.routes."+index+".source.seed";row.append(seed);
   }
   if(route.source.kind==="lfo"&&route.source.shape==="steps"){
-   for(let step=0;step<4;step++){
-    const values=route.source.steps??DEFAULT_LFO_STEPS;
+   const values=route.source.steps??DEFAULT_LFO_STEPS;
+   for(let step=0;step<values.length;step++){
     const replace=value=>values.map((old,i)=>i===step?value:old);
     const dial=createDial({label:"Movement step "+(step+1),help:"the movement level during this part of the repeating pattern",...MODULATION_CONTROLS.step},values[step],
      value=>update(index,{source:{...route.source,steps:replace(value)}}),value=>preview(index,{source:{...route.source,steps:replace(value)}}));
@@ -51,21 +56,30 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
   smoothing.dataset.soundPath="modulation.routes."+index+".smoothing";
   row.append(smoothing);
   const settings=document.createElement("details"),heading=document.createElement("summary");heading.textContent="routing";settings.className="modulation-routing";settings.append(heading);
-  const select=(label,values,current,apply)=>{
+  const select=(label,path,values,current,apply)=>{
    const field=document.createElement("label"),title=document.createElement("span"),input=document.createElement("select");title.textContent=label;explainLabel(title,label);field.className="synth-field";
-    field.dataset.soundPath="modulation.routes."+index+"."+(label==="movement source"?"source.kind":label==="movement target"?"target":label==="movement shape"?"source.shape":label==="movement timing"?"source.sync":label==="macro"?"source.id":"polarity");
+    field.dataset.soundPath="modulation.routes."+index+"."+path;
     input.setAttribute("aria-label",label+" "+(index+1));
    for(const [value,text] of values){const option=document.createElement("option");option.value=value;option.textContent=text;input.append(option);}
    input.value=current;input.addEventListener("change",()=>apply(input.value));field.append(title,input);settings.append(field);
   };
-  select("movement source",sources.map(kind=>[kind,kind==="keytrack"?"key tracking":kind]),route.source.kind,kind=>update(index,{source:kind==="macro"?{kind,id:macros[0].id}:defaultSource(kind)}));
-  if(route.source.kind==="macro")select("macro",macros.map(m=>[m.id,m.name]),route.source.id,id=>update(index,{source:{kind:"macro",id}}));
-  if(route.source.kind==="lfo")select("movement shape",LFO_SHAPES.map(shape=>[shape,shape]),route.source.shape,shape=>update(index,{source:{...route.source,shape}}));
-  if(route.source.kind==="lfo")select("movement timing",[["hz","hz"],...LFO_DIVISIONS.map(beats=>[String(beats),beats===.25?"1/16 note":beats===.5?"1/8 note":beats===1?"1/4 note":beats===2?"1/2 note":beats===4?"1 bar":(beats/4)+" bars"])],String(route.source.sync??"hz"),timing=>{
+  select("movement source","source.kind",sources.map(kind=>[kind,kind==="keytrack"?"key tracking":kind]),route.source.kind,kind=>update(index,{source:kind==="macro"?{kind,id:macros[0].id}:defaultSource(kind)}));
+  if(route.source.kind==="macro")select("macro","source.id",macros.map(m=>[m.id,m.name]),route.source.id,id=>update(index,{source:{kind:"macro",id}}));
+  if(route.source.kind==="lfo")select("movement shape","source.shape",LFO_SHAPES.map(shape=>[shape,shape]),route.source.shape,shape=>update(index,{source:{...route.source,shape}}));
+  if(route.source.kind==="lfo")select("movement timing","source.sync",[["hz","hz"],...LFO_DIVISIONS.map(beats=>[String(beats),beats===.25?"1/16 note":beats===.5?"1/8 note":beats===1?"1/4 note":beats===2?"1/2 note":beats===4?"1 bar":(beats/4)+" bars"])],String(route.source.sync??"hz"),timing=>{
    const {sync,...source}=route.source;update(index,{source:timing==="hz"?source:{...source,sync:Number(timing)}});
   });
-  select("movement target",targets.map(target=>[target.id,target.name]),route.target,id=>{const next=MOD_TARGETS.find(t=>t.id===id);update(index,{target:id,unit:next.unit,depth:Math.max(-next.limit,Math.min(next.limit,route.depth))});});
-  select("movement range",[["unipolar","one way"],["bipolar","both ways"]],route.polarity,polarity=>update(index,{polarity}));
+  if(route.source.kind==="lfo")select("movement clock","source.clock",[["note",patch.type==="vocal"?"restart on clip":"restart on note"],["timeline","follow timeline"]],route.source.clock??"note",
+   clock=>update(index,{source:{...route.source,clock}}));
+  if(route.source.kind==="lfo"&&route.source.shape==="steps"){
+   const values=route.source.steps??DEFAULT_LFO_STEPS;
+   select("steps per cycle","source.steps",Array.from({length:MAX_LFO_STEPS-1},(_,i)=>[String(i+2),String(i+2)]),String(values.length),length=>{
+    const steps=Array.from({length:Number(length)},(_,i)=>values[i]??0);
+    update(index,{source:{...route.source,steps}});
+   });
+  }
+  select("movement target","target",targets.map(target=>[target.id,target.name]),route.target,id=>{const next=MOD_TARGETS.find(t=>t.id===id);update(index,{target:id,unit:next.unit,depth:Math.max(-next.limit,Math.min(next.limit,route.depth))});});
+  select("movement range","polarity",[["unipolar","one way"],["bipolar","both ways"]],route.polarity,polarity=>update(index,{polarity}));
   if(route.source.kind==="envelope")for(const field of ["attack","decay","sustain","release"]){
    const dial=createDial({...parameterField("envelope."+field),label:"Move "+field},
     route.source.envelope[field],value=>update(index,{source:{...route.source,envelope:{...route.source.envelope,[field]:value}}}),

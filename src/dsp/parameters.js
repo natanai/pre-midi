@@ -1,3 +1,4 @@
+import {SCALE_MODES} from '../../scaleGuide.js';
 // One parameter authority for all sound sources. Serialization paths belong to
 // context adapters; these IDs describe musical meaning, not storage shape.
 import {DRIVE_SHAPES} from "./distortion.js";
@@ -64,8 +65,8 @@ export const SOUND_PARAMETERS=freeze([
  parameter("effects.drive","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
  choice("chain.drive.shape",DRIVE_SHAPES,"soft clip",{inactiveWhen:[nonzero("effects.drive","distortion amount is zero")]}),
  parameter("chain.drive.inputGain","db",-24,24,0,.5,"db",{inactiveWhen:[nonzero("effects.drive","distortion amount is zero")]}),
- parameter("stereoWidth","ratio",0,2,1,.01,"percent",{automation:{index:8}}),
- parameter("msBalance","balance",-1,1,0,.01,"number",{automation:{index:9}}),
+ parameter("stereoWidth","ratio",0,2,1,.01,"percent",{modulation:{index:8,name:"stereo width",unit:"ratio",limit:2}}),
+ parameter("msBalance","balance",-1,1,0,.01,"number",{modulation:{index:9,name:"mid / side balance",unit:"balance",limit:2}}),
  parameter("delayTone","hz",20,20000,20000,1,"hz",{inactiveWhen:[nonzero("effects.delayMix","delay mix is zero")]}),
  {id:"delayPingPong",unit:"boolean",default:false,interpolation:"step",contexts:all,scope:"processing",bypass:{mode:"none"}},
  parameter("effects.delayMix","normalized",0,1,0,.01,"percent",{bypass:{mode:"zero"}}),
@@ -156,6 +157,7 @@ export function parameterCapability(id,context,read=()=>undefined){
 // Route envelopes reuse ordinary synth ADSR. Route-only controls live here too.
 export const MODULATION_CONTROLS=freeze({
  rate:{id:"modulation.lfo.rate",unit:"hz",min:.01,max:20,default:.5,step:.01,display:"hz"},
+ phase:{id:"modulation.lfo.phase",unit:"cycles",min:0,max:1,default:0,step:.01,display:"percent"},
  step:{id:"modulation.lfo.step",unit:"number",min:-1,max:1,default:0,step:.01,display:"number"},
  seed:{id:"modulation.lfo.seed",unit:"number",min:1,max:127,default:1,step:1,display:"number"},
  smoothing:{id:"modulation.smoothing",unit:"seconds",min:0,max:.1,default:.005,step:.001,display:"seconds"},
@@ -235,5 +237,9 @@ export const SOURCE_PROCESSING_PARAMETERS=freeze({
  time:parameter('sourceProcessing.time','ratio',.5,2,1,.01,'percent'),
  formant:parameter('sourceProcessing.formant','semitones',-12,12,0,.1,'semitones'),
  preserveFormants:{id:'sourceProcessing.preserveFormants',unit:'boolean',default:true},
- reverse:{id:'sourceProcessing.reverse',unit:'boolean',default:false}
+ reverse:{id:'sourceProcessing.reverse',unit:'boolean',default:false},
+ tuneAmount:parameter('sourceProcessing.tuneAmount','ratio',0,1,0,.01,'percent'),
+ tuneResponse:parameter('sourceProcessing.tuneResponse','seconds',.02,.3,.06,.001,'seconds'),
+ tuneRoot:choice('sourceProcessing.tuneRoot',Array.from({length:12},(_,i)=>i),0),
+ tuneScale:choice('sourceProcessing.tuneScale',SCALE_MODES.map(scale=>scale.id),'chromatic')
 });

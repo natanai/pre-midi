@@ -7,6 +7,16 @@ import {sourceSettings,sourceRecipe,sourceKey,sourceRate,needsSourceProcessing,v
 import {vocalSourceRange} from '../vocalEffects.js';import {setSongTempo,trimVocalClip} from '../songModel.js';import {planNativeSample,planNativeVocal} from '../src/hosts/native/sample-plan.js';
 import {prepareNativePlans} from '../src/hosts/native/session.js';
 const settings={mode:'independent',time:1.5,formant:-2,preserveFormants:true,reverse:true};
+test('tuning recipe follows the saved root/scale and leaves unrelated source settings neutral when off',()=>{
+ const patch={sourceProcessing:{tuneScale:'major',tuneRoot:2,tuneAmount:.8,tuneResponse:.05}};
+ assert.deepEqual(validateSourceProcessing(patch.sourceProcessing),[]);
+ assert.equal(sourceRecipe(patch,0,1).tuneMask,0b101011010110);
+ assert.ok(needsSourceProcessing(sourceRecipe(patch,0,1)));
+ const other={sourceProcessing:{...patch.sourceProcessing,tuneRoot:0}};
+ assert.notEqual(sourceKey('a',sourceRecipe(other,0,1)),sourceKey('a',sourceRecipe(patch,0,1)));
+ assert.equal(needsSourceProcessing(sourceRecipe({sourceProcessing:{tuneScale:'major'}},0,1)),false);
+ for(const bad of [{tuneAmount:1.001},{tuneResponse:0},{tuneRoot:12},{tuneScale:'invalid'}])assert.ok(validateSourceProcessing(bad).length);
+});
 test('source processing validates one portable recipe without rewriting original assets',()=>{
  assert.deepEqual(validateSourceProcessing(settings),[]);for(const bad of [{time:0},{mode:'other'},{formant:13},{reverse:1},{unknown:0}])assert.ok(validateSourceProcessing(bad).length);
  const recipe=sourceRecipe({transpose:12,sourceProcessing:settings},.4,2);assert.equal(recipe.semitones,12);assert.equal(sourceRate({transpose:12,sourceProcessing:settings}),1);assert.equal(sourceRate({transpose:12}),2);assert.equal(needsSourceProcessing(sourceRecipe({},0,2)),false);

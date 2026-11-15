@@ -134,6 +134,13 @@ if (!window.__TAURI_INTERNALS__ && matchMedia("(max-width: 600px), (max-height: 
    <label><input type="radio" name="export-format" value="premidi" checked>.premidi</label>
    <label><input type="radio" name="export-format" value="wav">wav</label>
   </fieldset>
+  <fieldset id="wav-options" class="wav-options" hidden disabled>
+   <legend>audio</legend>
+   <label>sample rate <select id="wav-rate"><option value="44100">44.1 khz</option><option value="48000">48 khz</option><option value="96000">96 khz</option></select></label>
+   <label>bit depth <select id="wav-bits"><option value="16">16-bit pcm</option><option value="24">24-bit pcm</option><option value="32">32-bit float</option></select></label>
+   <label>gain (db) <input id="wav-gain" type="number" min="-36" max="6" step="0.1" value="0"></label>
+   <label class="wav-dither"><input id="wav-dither" type="checkbox" checked> dither</label>
+  </fieldset>
   <div class="export-actions"><button id="export-confirm" type="submit" class="primary">export</button></div>
  </form>
 </dialog>

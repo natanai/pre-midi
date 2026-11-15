@@ -19,6 +19,15 @@ try{
  assert.equal(Number(pan().querySelector('[aria-label="begin step"]').value),1);
  const enabled=pan().querySelector('input[type="checkbox"]');enabled.click();assert.equal(pan().querySelector('input[type="checkbox"]').checked,false);
  [...pan().querySelectorAll('button')].find(button=>button.textContent==='remove lane').click();assert.equal(panel().querySelectorAll('.automation-lane').length,1);document.getElementById('undo').click();assert.equal(panel().querySelectorAll('.automation-lane').length,2);
+ const {renderAutomation}=await import(pathToFileURL(root+'/automationUI.js'));
+ const {makePatch}=await import(pathToFileURL(root+'/synth.js'));
+ const lane={version:1,id:'recording',target:'pan',unit:'pan',interpolation:'linear',points:[{id:'a',step:0,value:0},{id:'b',step:16,value:0}]};
+ const testRoot=document.createElement('main');document.body.append(testRoot);let written;
+ renderAutomation(testRoot,{id:'gesture',sounds:[{patch:makePatch()}],automation:[lane]},
+  {bars:1},next=>{written=next;},{recordStep:()=>6.25});
+ testRoot.querySelector('[aria-label="Write gesture"],[aria-label="write gesture"]').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}));
+ assert.equal(written[0].points.find(point=>point.step===6).value,.01);
+ testRoot.remove();
  const deadline=Date.now()+3000;
  while(document.getElementById('status').dataset.saving==='true'&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));
  assert.notEqual(document.getElementById('status').dataset.saving,'true','queued edit saves settle before closing the host');

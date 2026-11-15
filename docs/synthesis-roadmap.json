@@ -445,19 +445,28 @@
       "id": "SYN-005",
       "phase": "quality",
       "priority": "P1",
-      "status": "planned",
+      "status": "done",
       "title": "Master headroom, monitoring and export fidelity",
       "depends_on": [
         "SYN-003"
       ],
       "deliverables": [
         "audio.js",
-        "tests/render-format"
+        "src/dsp/wav-export.js",
+        "src/hosts/web/export-decode.js",
+        "native/wav-render.hpp",
+        "tests/wavExport.test.js",
+        "tests/wavExport.audio.mjs",
+        "native/control-tests"
       ],
       "acceptance": [
         "Peak/RMS and true-peak measurement report clipping rather than concealing it.",
         "16-/24-bit PCM and 32-bit float output paths are specified, with dithering where appropriate.",
         "Export sample-rate conversion meets a measured fidelity target."
+      ],
+      "progress_note": "Beat and Song WAV exports support 44.1, 48 and 96 kHz with 16-bit PCM, 24-bit PCM or 32-bit float. Integer output offers deterministic TPDF dither and saturates over-range samples. Float retains headroom. The export reports peak, RMS, a four-phase true-peak estimate and the sample overload count after the selected gain. Both hosts pass a 96 kHz PCM downsampling target of 0.05 dB passband error at 4 kHz and more than 65 dB attenuation for a 32 kHz tone at 44.1 and 48 kHz. Browser decoding of other codecs uses a 96 kHz staging rate and remains browser-dependent.",
+      "references": [
+        "https://www.itu.int/rec/R-REC-BS.1770-5-202311-I/en"
       ]
     },
     {
@@ -850,7 +859,7 @@
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ],
-      "progress_note": "Partial implementation: external assets, root/velocity sample zones, rate-based transpose and vocal start/end source trims exist. Sampler sustain loops/crossfades and independent pitch/time processing remain open."
+      "progress_note": "Source crop, key/velocity zones, sustain loops and crossfades are implemented. The shared sample/vocal source path supports independent pitch, time and formants, reverse and monophonic pitch correction. Project ZIPs keep assets external. Physical sound quality across the full range and the observed newcomer workflow remain open."
     },
     {
       "id": "SYN-015",
@@ -1202,8 +1211,7 @@
   ],
   "next_ready_tasks": [
     "SYN-007",
-    "SYN-010",
-    "SYN-005"
+    "SYN-010"
   ],
   "current_development_priorities": [
     {
@@ -2731,7 +2739,7 @@
           "Portable source/target oracle cases plus audible sample/vocal modulation across playback, preview and export."
         ],
         "completion_evidence": [],
-        "progress_note": "M2a adds bounded common resonance and amplitude routes to synth, samples and vocals; native/browser execution, preset filtering and illustration source models share these targets. Effect mix/time and broader stereo destinations remain pending effects-chain ownership under SE-08. Full SE-05 is not complete."
+        "progress_note": "Common destinations include resonance, amplitude, stereo width and mid/side balance. Native/browser stereo PCM with simultaneous automation and modulation passes the vocal fixture. Effect mix and time destinations still need modulation routing. Stereo width acts on existing side information."
       },
       {
         "id": "SE-06",
@@ -2758,8 +2766,12 @@
         "verification": [
           "Source equations/phase fixtures and focused route/macro editing, save/load and undo scenarios."
         ],
-        "completion_evidence": [],
-        "progress_note": "Shared periodic, seeded random and four-step sources plus four named route-based performance macros are implemented. Each macro drives multiple available targets under the common 16-route bound through range, signed depth and smoothing, with reset/save reset and preset/project recall. Followers/sidechains, phase/free-run clock policies and variable-length steps remain open."
+        "completion_evidence": [
+          "tests/randomModulation.test.js: phase, clock and variable-length sequences in the portable project model",
+          "tests/randomModulation.audio.mjs: native control oracle and offline Web Audio after direct seeks with an authored phase",
+          "tests/parameterAutomation.audio.mjs: stereo width and balance with simultaneous automation and modulation"
+        ],
+        "progress_note": "Shared periodic, seeded random and 2\u201316-step sources have phase and a note/Clip restart or authored timeline clock. Timeline phase revisits the same musical position on loop and seek. Four named macros can drive multiple targets with range, signed depth, smoothing and saved reset positions. Envelope followers and selectable audio sidechains remain open."
       },
       {
         "id": "SE-07",
@@ -2792,9 +2804,11 @@
           "tests/parameterAutomation.test.js: validation, current Beat/Song recall, Instrument overrides and Freeform source phase",
           "tests/parameterAutomation.audio.mjs: independent pan/amplitude oracle; linear/exponential/step, oscillator/filter/instance, stereo and modulation PCM checks; seek/block/page continuity",
           "tests/parameterAutomation.dom.mjs: lane edits, undo/redo, focus, interpolation, two-axis points, bypass/remove",
-          "scripts/native-stream-device-check.mjs: automated native streaming seek/loop/edit/count-in/capture at 44.1/48/96 kHz with zero callback allocations"
+          "scripts/native-stream-device-check.mjs: automated native streaming seek/loop/edit/count-in/capture at 44.1/48/96 kHz with zero callback allocations",
+          "tests/parameterAutomation.audio.mjs: wet/dry and stepped enable against independent full-dry and full-wet renders",
+          "tests/parameterAutomation.test.js and tests/parameterAutomation.dom.mjs: bounded Beat gesture recording through the same undoable lane editing path"
         ],
-        "progress_note": "Up to eight independent parameter lanes with 2\u201332 points, linear/exponential/step interpolation, bypass/remove, shared numerical/two-axis editing and source-phase capture are implemented. Targets include oscillator level/detune, filter cutoff/resonance, pan, amplitude, noise, stereo width/mid-side and added filter instances. Sound preset, Instrument override, Beat/Song and Freeform recall share one lane-array contract. Native/browser execution, modulation precedence and streaming page/cycle shifts pass focused software checks. Additional effect/articulation/discrete targets, gesture recording, override/rejoin and wider automation scopes remain open."
+        "progress_note": "Up to eight lanes support 2\u201332 points with linear, exponential and stepped interpolation, shared two-axis editing and captured source timing. Filter, distortion and EQ support wet/dry mix lanes and stepped enable. Distortion stays latency aligned when the lane reaches zero. The Beat Inspector can write a gesture into an existing continuous lane at sixteenth-note positions while playing. A gesture commits as one edit and keeps points outside its written span. Recording on the Song and vocal clocks, monitored override and rejoin, and further effect and articulation targets remain open."
       },
       {
         "id": "SE-08",
@@ -2841,7 +2855,7 @@
       {
         "id": "SE-09",
         "title": "Add parametric EQ and extend filter editing",
-        "status": "in_progress",
+        "status": "implemented_unverified",
         "priority": "P1",
         "depends_on": [
           "SE-08"
@@ -2864,8 +2878,10 @@
         "verification": [
           "Frequency-response and stability fixtures at documented rates; contextual EQ edits on synth/sample/vocal."
         ],
-        "completion_evidence": [],
-        "progress_note": "Four initial bands can now add/remove up to eight independent bands without changing surviving identities. Bell/shelf/pass types, frequency/gain/Q, enable, common chain order/bypass/mix and native/Web coefficients remain shared. The eighth stage is verified in both renderers. Filter slopes remain 12/24/48 db/oct. Parallel routing is implemented under SE-08; measured-spectrum overlay remains open."
+        "completion_evidence": [
+          "tests/soundScope.test.js: measured anti-phase stereo signal retains its actual frequency and level"
+        ],
+        "progress_note": "Four initial bands can expand to eight with stable existing band identities. The main and added EQ panels draw the predicted filter response and a dashed measured output spectrum with separate dBFS labels. Preview PCM power is averaged across stereo channels. Slopes of 12, 24 and 48 dB/octave and serial/parallel routing remain shared. Visual and listening acceptance on physical hardware remain open."
       },
       {
         "id": "SE-10",
@@ -3064,7 +3080,7 @@
       {
         "id": "SE-15",
         "title": "Add independent time, pitch, formants and vocal tuning",
-        "status": "in_progress",
+        "status": "implemented_unverified",
         "priority": "P1",
         "depends_on": [
           "SE-08",
@@ -3095,9 +3111,13 @@
           "tests/sourceProcessing.audio.mjs: native/WASM independent sine frequency/duration oracles, short-source impulse retention, finite PCM and exact reverse",
           "tests/sourcePlayback.audio.mjs: prepared treatment through native/browser sample/vocal/post-effect playback and seek; maximum 7.450580596923828e-9 for playback on the same prepared PCM",
           "tests/sourceProcessing.dom.mjs: shared source mode/stretch/formant/reverse, direct graph editing, undo/focus and combined view",
-          "native/control-tests: source PCM registration without an output device plus existing blocked-worker urgent transport regressions"
+          "native/control-tests: source PCM registration without an output device plus existing blocked-worker urgent transport regressions",
+          "tests/sourceProcessing.audio.mjs: native and WASM correction of detuned test notes, partial correction, reverse, stretch and transpose composition, and confidence gating on tested noise and chord"
         ],
-        "progress_note": "Independent pitch and time, formant preservation/shift and reverse are implemented for sampled Sounds and vocal Clips. Explicit pitch+speed versus independent-pitch mode preserves the current rate behavior. Source treatment is prepared before playback using pinned Signalsmith Stretch 1.3.2 C++/browser WASM; original audio and editable recipes remain in projects. Supported time ratio .5..2, independent effective pitch +/-48 semitones, formants +/-12; mono/stereo spectral processing, with explicit rejection of wider channels. Crop, source elapsed time, note pitch-follow, Clip duration, tempo, live native revisions, previews, real scope and WAV lengths use the same mapping. Numerical frequency/duration, short-source, reverse, reuse/native-browser playback/seek and Inspector/history checks pass. Monophonic scale/key pitch correction, tuning response/amount and physical/listening/CPU-quality acceptance remain open."
+        "progress_note": "Sampled Sounds and vocal Clips have rate-based and independent pitch modes, stretch, formant preservation and shift, reverse and scale/key pitch correction. Original assets remain external and recipes stay editable. Correction analyzes monophonic content at 10 ms intervals, is bounded to three semitones before transpose, and bypasses uncertain frames. Response spans 20\u2013300 ms with a nominal detector range of 65\u20131000 Hz. The prepared Signalsmith output compensates the spectral processor input/output latency before playback and follows the same crop, elapsed time and stretch calculations as the original. Independent pitch spans \u00b148 semitones, stretch .5\u20132 and formant shift \u00b112 semitones, with a 256 MiB transform scratch bound. Matched vocal listening and CPU qualification across the supported range remain open.",
+        "references": [
+          "https://doi.org/10.1121/1.1458024"
+        ]
       },
       {
         "id": "SE-16",
@@ -3964,13 +3984,11 @@
       "SE-06",
       "SE-07",
       "SE-08",
-      "SE-09",
-      "SE-10",
-      "SE-15"
+      "SE-10"
     ],
     "delivery_policy": "Continue the existing canonical parameter/Inspector/native contracts. No placeholder controls, silent Web Audio fallback, speculative legacy readers or completion claims from interface wiring alone.",
     "processing_routing": "Independent filter/distortion/EQ instances and four parallel paths are implemented with within-graph latency alignment; shared buses/sidechains and arrangement-wide latency compensation remain open.",
-    "automation": "Parameter-lane source milestone implemented; see SE-07 and docs/automation-contract.json. General automation remains in progress for remaining targets, gestures, override/rejoin and wider scopes.",
+    "automation": "Tone processor mix and stepped enable plus Beat Inspector gesture writing are implemented. See SE-07 and docs/automation-contract.json for remaining targets, Song gesture clocks and live override/rejoin.",
     "dynamics": "Usable compressor/gate/sample-peak limiter and split-band de-esser milestones implemented. See SE-10 for tested scope and remaining dynamics requirements.",
     "transport_responsiveness": {
       "date": "2026-11-09",
@@ -3994,10 +4012,12 @@
       "package_status": "published"
     },
     "remaining_qualification_task_ids": [
+      "SE-09",
       "SE-11",
       "SE-12",
       "SE-13",
-      "SE-14"
+      "SE-14",
+      "SE-15"
     ],
     "modulation_effects": {
       "status": "all six named processor types implemented; focused software checks pass",
@@ -4008,11 +4028,11 @@
       "package_version": "0.14.1-preview.34"
     },
     "independent_source_processing": {
-      "status": "independent pitch/time, formant preservation/shift and reverse implemented",
+      "status": "Independent pitch/time, formants, reverse and monophonic scale/key correction implemented",
       "reference": "SE-15",
-      "package_requested": "0.14.1-preview.33",
-      "remaining": "Monophonic correction/tuning controls and physical/listening/quality qualification",
-      "package_status": "published",
+      "package_requested": "0.14.1-preview.38",
+      "remaining": "Physical listening and CPU/quality qualification",
+      "package_status": "preview.38 requested",
       "package_version": "0.14.1-preview.34"
     },
     "sampler_source_editing": {

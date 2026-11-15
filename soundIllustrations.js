@@ -1,6 +1,6 @@
 import {DRIVE_SHAPES,driveSettings} from "./src/dsp/distortion.js";
 import {processorBypassed,withProcessorBypass} from "./src/dsp/processing-chain.js";
-import {LFO_SHAPES,randomLfoShape,DEFAULT_LFO_STEPS,resolveModulation} from "./src/dsp/modulation.js";
+import {LFO_SHAPES,LFO_CLOCKS,randomLfoShape,DEFAULT_LFO_STEPS,resolveModulation} from "./src/dsp/modulation.js";
 import {soundAxis,readSoundParameter,soundParameterPath} from "./soundParameterAdapter.js";
 import {modulationTargetsFor,modulationSourcesFor,parameterFor} from "./src/dsp/parameters.js";
 import {captureSoundGraphView} from "./soundControlView.js";
@@ -739,7 +739,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
     if(route.depth===0){
      line(tracePath(modulationTrace({...route,depth:limit*.5},unit).smoothed),true,
       ["modulation.routes."+i],"reference");
-     for(const path of ["smoothing","source.rate","source.root","source.span",
+     for(const path of ["smoothing","source.rate","source.phase","source.root","source.span",
       "source.envelope.attack","source.envelope.decay","source.envelope.sustain","source.envelope.release"])
       dormant("modulation.routes."+i+"."+path,"movement depth is zero; the dashed trace isolates its source and smoothing");
      tag(192,43,"depth off · guide");
@@ -760,7 +760,10 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
       axis([...prefix,"depth"],"linearY",
        {from:108,to:72,step:target?.unit==="cents"?1:.01})
      ],"movement smoothing / depth");
-     tag(254,112,"smooth →");
+     line("M36 105 H151",true,["modulation.routes."+i+".source.phase"]);
+     handle(36+115*(source.phase??0),105,[
+      axis([...prefix,"source","phase"],"linearX",{from:36,to:151,unit:"percent"})
+     ],"movement phase");
     }
     if(source.kind==="lfo"&&randomLfoShape(source.shape)){
      handle(35+282*((source.seed??1)-1)/126,25,[
@@ -769,7 +772,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
     }
     if(source.kind==="lfo"&&source.shape==="steps"){
      const values=source.steps??DEFAULT_LFO_STEPS;
-     for(let step=0;step<4;step++)handle(59+78*step,61-32*values[step],[
+     for(let step=0;step<values.length;step++)handle(24+312*(step+.5)/values.length,61-32*values[step],[
       axis([...prefix,"source","steps",step],"linearY",{from:93,to:29,step:.01})
      ],"movement step "+(step+1));
     }
@@ -797,8 +800,10 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
     action(73,14,[...prefix,"source","kind"],modulationSourcesFor(p.type).filter(kind=>kind!=="macro"||p.modulation?.macros?.length),"movement source");
     action(185,14,[...prefix,"polarity"],["unipolar","bipolar"],"movement range");
     action(286,14,[...prefix,"target"],modulationTargetsFor(p.type).map(item=>item.id),"movement target");
-    tag(22,111,"route "+(i+1)+" · "+(target?.name||route.target));
-    if(source.kind==="lfo")action(286,111,[...prefix,"source","shape"],LFO_SHAPES,"movement shape");
+    if(source.kind==="lfo"){
+     action(220,104,[...prefix,"source","clock"],LFO_CLOCKS,"movement clock");
+     action(305,104,[...prefix,"source","shape"],LFO_SHAPES,"movement shape");
+    }else tag(22,111,"route "+(i+1)+" · "+(target?.name||route.target));
    }
   }
  }

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {makePatch} from "../synth.js";
-import {scopeAmplitudeAt,scopeWindowSeconds,scopeAudioBins,scopeWaveformData} from "../soundScope.js";
+import {scopeAmplitudeAt,scopeWindowSeconds,scopeAudioBins,scopeWaveformData,measuredSoundSpectrum} from "../soundScope.js";
 
 test("sound scope windows include release and live delay repeats",()=>{
  const p=makePatch("init");
@@ -78,4 +78,14 @@ test("manual waveform inspection selects real samples at requested time without 
  assert.deepEqual(early.channels[1].length,later.channels[1].length);
  const end=scopeWaveformData(buffer,60,180,200);
  assert.ok(end.startSeconds<=3 && end.startSeconds>2.8);
+});
+
+test("measured EQ overlay retains the actual frequency and level of an antiphase tone",()=>{
+ const sampleRate=48000,length=8192,hz=sampleRate*80/4096;
+ const channels=[1,-1].map(sign=>Float32Array.from({length},(_,i)=>sign*.25*Math.sin(2*Math.PI*hz*i/sampleRate)));
+ const read=c=>channels[c];
+ const spectrum=measuredSoundSpectrum({sampleRate,length,numberOfChannels:2,getChannelData:read});
+ const peak=spectrum.decibels.indexOf(Math.max(...spectrum.decibels));
+ assert.ok(Math.abs(peak*spectrum.binHz-hz)<spectrum.binHz);
+ assert.ok(Math.abs(spectrum.decibels[peak]-20*Math.log10(.25))<.05);
 });

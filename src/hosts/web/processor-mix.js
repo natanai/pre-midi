@@ -23,11 +23,27 @@ export async function prepareProcessorMix(context,document=null){
  const frames=await latencies.get(rate);context.processorMixLatency=frames;return frames;
 }
 export function connectProcessorMix(context,signal,stage,patch,id,owner){
- const mix=processorMix(patch,id);if(mix===0)return signal;
- signal.connect(stage.input);if(mix===1)return stage.output;
+ const mix=processorMix(patch,id),prefix='processor.'+id+'.';
+ const moving=owner.parameterAutomation?.some(lane=>lane.target===prefix+'mix');
+ const switching=owner.parameterAutomation?.some(lane=>lane.target===prefix+'enabled');
+ if(mix===0&&!moving)return signal;
+ signal.connect(stage.input);
+ if(mix===1&&!moving&&!switching)return stage.output;
  const add=node=>{owner.nodes.push(node);return node;};
  const dry=add(context.createGain()),wet=add(context.createGain()),sum=add(context.createGain());
  dry.gain.value=1-mix;wet.gain.value=mix;
+ if(moving||switching){
+  const control=context.createConstantSource(),negative=add(context.createGain());
+  owner.sources.push(control);control.offset.value=mix;negative.gain.value=-1;
+  let amount=control;
+  if(moving)owner.automationTargets.set(prefix+'mix',control.offset);
+  if(switching){
+   amount=add(context.createGain());amount.gain.value=1;
+   owner.automationTargets.set(prefix+'enabled',amount.gain);control.connect(amount);
+  }
+  wet.gain.value=0;dry.gain.value=1;
+  amount.connect(wet.gain);amount.connect(negative);negative.connect(dry.gain);control.start();
+ }
  if(processorKind(patch,id)==='drive'){
   if(!Number.isInteger(context.processorMixLatency))throw Error('Prepare processor latency before mixing distortion');
   const delay=add(context.createDelay(1));delay.delayTime.value=context.processorMixLatency/context.sampleRate;

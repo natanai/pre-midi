@@ -1,3 +1,4 @@
+import {processingChain} from './processing-chain.js';
 import {driveSettings,validDriveSettings} from './distortion.js';
 import {DYNAMICS_KINDS,defaultDynamics,validateDynamicsParameters} from './dynamics.js';
 import {parameterFor,validParameterValue,dynamicsParameter,MOD_EFFECT_PARAMETERS,POST_PROCESSOR_LIMIT} from './parameters.js';
@@ -93,11 +94,15 @@ export function moveProcessor(chain,id,toRoute,before=null){
 }
 // One numerical recipe for native preparation and Web Audio routing. Primary
 // controls keep their existing identities; added instances own independent data.
-export function compileProcessingGraph(patch,rate,driveFrames=192){
- const chain=patch.chain;if(!chain)return null;
+export const PROCESSOR_AUTOMATION_FIELDS=Object.freeze(['cutoff','resonance','mix','enabled']);
+const mixLane=lane=>!lane.bypass&&/^processor\.[a-zA-Z0-9_-]+\.mix$/.test(lane.target);
+export function compileProcessingGraph(patch,rate,driveFrames=192,lanes=[]){
+ const chain=processingChain(patch);
+ const moving=new Set(lanes.filter(lane=>/^processor\.[a-zA-Z0-9_-]+\.(mix|enabled)$/.test(lane.target)).map(lane=>lane.target.split('.')[1]));
+ const dynamicMix=new Set(lanes.filter(mixLane).map(lane=>lane.target.split('.')[1]));
  const errors=validateGraphExtensions(chain);if(errors.length)throw Error(errors.join(' '));
  const routes=toneProcessorOrders(chain),ids=routes.flat();
- if(!(chain.parallel?.length)&&!ids.some(id=>!PRIMARY_PROCESSORS.includes(id)))return null;
+ if(!(chain.parallel?.length)&&!ids.some(id=>!PRIMARY_PROCESSORS.includes(id)||moving.has(id)))return null;
  const nodes=ids.map(id=>{
   const instance=processorInstance(patch,id),kind=instance?.kind??id;
   const p=instance?.parameters??(kind==='filter'?{...(patch.filter??{type:'lowpass',cutoff:14000,resonance:.7}),stages:patch.filterStages??1}:kind==='eq'?patch.eq??defaultEq():{amount:patch.effects?.drive??patch.drive??0,...driveSettings(patch)});
@@ -105,7 +110,7 @@ export function compileProcessingGraph(patch,rate,driveFrames=192){
   return {id,kind,primary:id==='filter',bypass,mix,
    type:['lowpass','highpass','bandpass','notch'].indexOf(p.type??'lowpass'),cutoff:p.cutoff??8000,resonance:p.resonance??.7,stages:p.stages??1,amount:p.amount??0,shape:p.shape,inputGain:p.inputGain,
    coefficients:Array.from({length:8},(_,i)=>p.bands?.[i]?eqCoefficients(p.bands[i],rate):[1,0,0,0,0]),
-   latency:!bypass&&mix>0&&kind==='drive'&&p.amount>0?driveFrames:0};
+   latency:!bypass&&(mix>0||dynamicMix.has(id))&&kind==='drive'&&p.amount>0?driveFrames:0};
  });
  const indexes=order=>order.map(id=>ids.indexOf(id));
  const branches=(chain.parallel??[]).map(r=>({id:r.id,gain:r.gain,order:indexes(r.order),latency:r.order.reduce((n,id)=>n+nodes[ids.indexOf(id)].latency,0)}));
@@ -117,9 +122,12 @@ export function compileProcessingGraph(patch,rate,driveFrames=192){
  return {nodes,order,branches,dry:chain.dry??0,latency:Math.max(0,...branches.map(b=>b.latency))};
 }
 
-export const hasProcessingGraph=patch=>!!patch?.chain&&((patch.chain.parallel?.length??0)>0||patch.chain.order.some(id=>!PRIMARY_PROCESSORS.includes(id)));
+const processorMovement=lanes=>lanes?.some(lane=>!lane.bypass&&lane.target.startsWith('processor.'));
+export const hasProcessingGraph=patch=>!!patch&&(processorMovement(patch.automation)||(patch.chain?.parallel?.length??0)>0||patch.chain?.order.some(id=>!PRIMARY_PROCESSORS.includes(id)));
+const capturedProcessing=notes=>notes?.some(note=>processorMovement(note.automation?.block));
 export function songUsesProcessingGraph(song){
- return [...(song.beats??[]).flatMap(b=>b.instruments??[]),...(song.tracks??[]).flatMap(t=>t.freeform?.instruments??[])].some(i=>(i.sounds??[{patch:i.patch}]).some(s=>hasProcessingGraph(s.patch)))||
+ return [...(song.beats??[]).flatMap(b=>b.instruments??[]),...(song.tracks??[]).flatMap(t=>t.freeform?.instruments??[])].some(i=>processorMovement(i.automation)||capturedProcessing(i.notes)||i.chunks?.some(chunk=>capturedProcessing(chunk.notes))||
+  (i.sounds??[{patch:i.patch}]).some(s=>hasProcessingGraph(s.patch)))||
   (song.tracks??[]).some(t=>t.kind==='vocal'&&t.clips?.some(c=>hasProcessingGraph(c.effects)));
 }
 

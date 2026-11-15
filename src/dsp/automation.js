@@ -1,4 +1,6 @@
 import {parameterFor,validParameterValue,automationParametersFor} from './parameters.js';
+import {allProcessorIds,processorKind,toneProcessorOrders,PROCESSOR_AUTOMATION_FIELDS} from './processing-graph.js';
+import {processingChain,processorMix,processorBypassed} from './processing-chain.js';
 const parameter=parameterFor('filter.cutoff');
 export const AUTOMATION_VERSION=1;
 export const MAX_AUTOMATION_POINTS=32;
@@ -6,10 +8,29 @@ export const MAX_AUTOMATION_EVENTS=36;
 export const MAX_AUTOMATION_LANES=8;
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
 const keys=(object,allowed)=>object&&typeof object==='object'&&!Array.isArray(object)&&Object.keys(object).every(key=>allowed.includes(key));
-export const automationParameters=(patch,context=patch?.type??'synth')=>[
- ...automationParametersFor(context),
- ...(patch?.chain?.instances??[]).flatMap((instance,index)=>instance.kind==='filter'?['cutoff','resonance'].map((key,field)=>({...parameterFor('filter.'+key,context),id:'processor.'+instance.id+'.'+key,active:[...(patch.chain.order??[]),...(patch.chain.parallel??[]).flatMap(route=>route.order)].includes(instance.id),automationIndex:256+index*2+field})):[])
-];
+const mixField={unit:'ratio',min:0,max:1,interpolation:'linear',ui:{step:.01}};
+const enabledField={unit:'switch',min:0,max:1,interpolation:'step',ui:{step:1},discrete:true};
+export function automationParameters(patch,context=patch?.type??'synth'){
+ const chain=processingChain(patch??{}),routed=toneProcessorOrders(chain).flat();
+ const processors=allProcessorIds(chain).flatMap((id,index)=>{
+  const kind=processorKind(patch??{},id);
+  if(!['filter','eq','drive'].includes(kind))return [];
+  const active=routed.includes(id)&&!processorBypassed(patch??{},id)&&!(id==='filter'&&patch?.filter===null);
+  const fields=kind==='filter'&&id!=='filter'?{
+   cutoff:parameterFor('filter.cutoff',context),resonance:parameterFor('filter.resonance',context)
+  }:{};
+  return Object.entries({...fields,mix:mixField,enabled:enabledField}).map(([key,field])=>({
+   ...field,id:'processor.'+id+'.'+key,active,automationIndex:256+index*PROCESSOR_AUTOMATION_FIELDS.length+PROCESSOR_AUTOMATION_FIELDS.indexOf(key)
+  }));
+ });
+ return [...automationParametersFor(context),...processors];
+}
+export function processorAutomationBase(patch,target){
+ const [,id,field]=target.split('.');
+ if(field==='mix')return processorMix(patch,id);
+ if(field==='enabled')return processorBypassed(patch,id)?0:1;
+ return patch.chain.instances.find(instance=>instance.id===id).parameters[field];
+}
 export const cutoffLane=lanes=>lanes?.find(lane=>lane.target==='filter.cutoff'&&!lane.bypass);
 export function validateAutomation(lanes,patch,bars=1000000){
  if(lanes===undefined)return [];
@@ -17,10 +38,10 @@ export function validateAutomation(lanes,patch,bars=1000000){
  const parameters=automationParameters(patch),ids=new Set(),targets=new Set(),errors=[];
  for(const lane of lanes){
   const p=parameters.find(p=>p.id===lane?.target);
-  if(!p||!keys(lane,['id','version','target','unit','interpolation','points','bypass'])||typeof lane.id!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/.test(lane.id)||ids.has(lane.id)||targets.has(lane.target)||lane.version!==1||lane.unit!==p.unit||!['linear','exponential','step'].includes(lane.interpolation)||(lane.bypass!==undefined&&typeof lane.bypass!=='boolean')||!Array.isArray(lane.points)||lane.points.length<2||lane.points.length>MAX_AUTOMATION_POINTS){errors.push('Invalid parameter automation lane.');continue;}
+  if(!p||!keys(lane,['id','version','target','unit','interpolation','points','bypass'])||typeof lane.id!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/.test(lane.id)||ids.has(lane.id)||targets.has(lane.target)||lane.version!==1||lane.unit!==p.unit||!['linear','exponential','step'].includes(lane.interpolation)||(p.discrete&&lane.interpolation!=='step')||(lane.bypass!==undefined&&typeof lane.bypass!=='boolean')||!Array.isArray(lane.points)||lane.points.length<2||lane.points.length>MAX_AUTOMATION_POINTS){errors.push('Invalid parameter automation lane.');continue;}
   ids.add(lane.id);targets.add(lane.target);let previous=-1;const points=new Set();
   for(const point of lane.points){
-   if(!keys(point,['id','step','value'])||typeof point.id!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/.test(point.id)||points.has(point.id)||!Number.isInteger(point.step)||point.step<=previous||point.step<0||point.step>bars*16||!finite(point.value)||point.value<p.min||point.value>p.max||(lane.interpolation==='exponential'&&point.value<=0))errors.push('Invalid parameter automation point.');
+   if(!keys(point,['id','step','value'])||typeof point.id!=='string'||!/^[a-zA-Z0-9_.:-]{1,128}$/.test(point.id)||points.has(point.id)||!Number.isInteger(point.step)||point.step<=previous||point.step<0||point.step>bars*16||!finite(point.value)||(p.discrete&&!Number.isInteger(point.value))||point.value<p.min||point.value>p.max||(lane.interpolation==='exponential'&&point.value<=0))errors.push('Invalid parameter automation point.');
    points.add(point?.id);previous=point?.step;
   }
  }
@@ -52,6 +73,25 @@ export function insertAutomationPoint(lane,id=globalThis.crypto.randomUUID()){
  for(let i=1;i<lane.points.length;i++){const a=lane.points[i-1],b=lane.points[i];if(b.step-a.step>width){width=b.step-a.step;step=a.step+Math.floor(width/2);}}
  return step===undefined?lane:{...lane,points:[...lane.points,{id,step,value:laneValueAt(lane,step)}].sort((a,b)=>a.step-b.step)};
 }
+// Commit one pass of a Beat gesture. Preserve the original interpolation
+// outside its written steps and keep existing point identities where possible.
+export function recordAutomationGesture(lane,recorded,totalSteps,makeId=()=>globalThis.crypto.randomUUID()){
+ const samples=[...recorded].filter(([step,value])=>Number.isInteger(step)&&step>=0&&step<=totalSteps&&Number.isFinite(value))
+  .sort(([a],[b])=>a-b);
+ if(!samples.length)return lane;
+ const first=samples[0][0],last=samples.at(-1)[0];
+ const original=new Map(lane.points.map(point=>[point.step,point]));
+ const retained=lane.points.filter(point=>point.step<first||point.step>last);
+ for(const step of [first-1,last+1])if(step>=0&&step<=totalSteps&&!original.has(step))
+  retained.push({id:makeId(),step,value:laneValueAt({...lane,bypass:false},step)});
+ const room=MAX_AUTOMATION_POINTS-retained.length;
+ if(room<Math.min(2,samples.length))return lane;
+ const picked=samples.length<=room?samples:Array.from({length:room},(_,i)=>samples[Math.round(i*(samples.length-1)/(room-1))]);
+ const points=[...retained,...picked.map(([step,value])=>({id:original.get(step)?.id??makeId(),step,value}))]
+  .sort((a,b)=>a.step-b.step);
+ return points.length>=2?{...lane,points}:lane;
+}
+
 export function validateCutoffAutomation(block,instrument,bars){
  if(block===undefined)return [];
  const errors=[];

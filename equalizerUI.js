@@ -7,12 +7,16 @@ export function renderEqualizer(patch,onChange,onPreview=()=>{},soundId='sound',
  const root=document.createElement('div');root.className='visual-sound-panel';root.dataset.visualId='eq-'+soundId;root.dataset.visualKind='equalizer';
  const details=document.createElement('details');details.className='synth-group';details.open=openStates.get(soundId)??patch.eq?.bands.some(b=>b.enabled)??false;details.addEventListener('toggle',()=>openStates.set(soundId,details.open));
  const title=document.createElement('summary');title.textContent='equalizer';details.append(title);root.append(details);
- const area=document.createElement('div');area.className='visual-panel-area';const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 360 150');svg.style.width='100%';svg.style.touchAction='none';svg.setAttribute('aria-label','equalizer response and editable bands');svg.dataset.soundLinks='eq';area.append(svg);details.append(area);
+ const area=document.createElement('div');area.className='visual-panel-area';const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 360 150');svg.style.width='100%';svg.style.touchAction='none';svg.setAttribute('aria-label','equalizer response, measured sound output and editable bands');svg.dataset.soundLinks='eq';area.append(svg);details.append(area);
  const make=(tag,attrs)=>{const node=document.createElementNS(NS,tag);for(const [key,value]of Object.entries(attrs))node.setAttribute(key,String(value));return node;};
- svg.append(make('path',{d:'M18 75H342',stroke:'#666','stroke-dasharray':'3 3',fill:'none'}));const curve=make('path',{stroke:'var(--track-accent,#08e4ec)',fill:'none','stroke-width':1.5});svg.append(curve);
+ svg.append(make('path',{d:'M18 75H342',stroke:'#666','stroke-dasharray':'3 3',fill:'none'}));const curve=make('path',{stroke:'var(--track-accent,#08e4ec)',fill:'none','stroke-width':1.5});
+ const measured=make('path',{stroke:'#aaa',fill:'none','stroke-width':1,'stroke-dasharray':'3 2'});svg.append(measured,curve);
+ const spectrumCaption=make('text',{x:199,y:14,fill:'#aaa','font-size':8});spectrumCaption.textContent='dashed · output dbfs';
+ const responseCaption=make('text',{x:24,y:14,fill:'var(--track-accent,#08e4ec)','font-size':8});responseCaption.textContent='eq response · db';svg.append(responseCaption,spectrumCaption);
  for(const [px,py,text]of [[18,147,'20 hz'],[194,147,'1 khz'],[310,147,'20 khz'],[2,24,'+24'],[2,73,'0 db'],[2,126,'−24']]){const label=make('text',{x:px,y:py,fill:'#888','font-size':8});label.textContent=text;svg.append(label);}
+ let eqRate=48000;
  const circles=[],dials=[],read=()=>patch.eq??defaultEq(),x=f=>18+324*Math.log(f/20)/Math.log(1000),y=g=>75-g*2;
- const draw=eq=>{eq??=defaultEq();curve.setAttribute('d',Array.from({length:180},(_,i)=>{const frequency=20*1000**(i/179),db=20*Math.log10(Math.max(1e-12,eqMagnitude(eq,frequency)));return (i?'L':'M')+(18+324*i/179).toFixed(2)+' '+Math.max(5,Math.min(145,y(db))).toFixed(2);}).join(' '));eq.bands.forEach((band,i)=>{if(!circles[i])return;for(const key of ["frequency","gain","q"])dials[i]?.[key]?.setDialDisplayValue(band[key]);circles[i].setAttribute('cx',x(band.frequency));circles[i].setAttribute('cy',['highpass','lowpass'].includes(band.type)?123-96*Math.log(band.q/.1)/Math.log(180):y(band.gain));circles[i].setAttribute('fill',band.enabled&&!processorBypassed(patch,'eq')?'var(--track-accent,#08e4ec)':'#111');circles[i].setAttribute('aria-label','band '+(i+1)+' '+band.frequency+' hz '+band.gain+' db q '+band.q);});};
+ const draw=eq=>{eq??=defaultEq();curve.setAttribute('d',Array.from({length:180},(_,i)=>{const frequency=20*1000**(i/179),db=20*Math.log10(Math.max(1e-12,eqMagnitude(eq,Math.min(frequency,eqRate*.499),eqRate)));return (i?'L':'M')+(18+324*i/179).toFixed(2)+' '+Math.max(5,Math.min(145,y(db))).toFixed(2);}).join(' '));eq.bands.forEach((band,i)=>{if(!circles[i])return;for(const key of ["frequency","gain","q"])dials[i]?.[key]?.setDialDisplayValue(band[key]);circles[i].setAttribute('cx',x(band.frequency));circles[i].setAttribute('cy',['highpass','lowpass'].includes(band.type)?123-96*Math.log(band.q/.1)/Math.log(180):y(band.gain));circles[i].setAttribute('fill',band.enabled&&!processorBypassed(patch,'eq')?'var(--track-accent,#08e4ec)':'#111');circles[i].setAttribute('aria-label','band '+(i+1)+' '+band.frequency+' hz '+band.gain+' db q '+band.q);});};
  const next=(i,changes)=>{const eq=structuredClone(read());eq.bands[i]={...eq.bands[i],...changes};return eq;};
  const commit=(eq,restore=()=>{})=>{openStates.set(soundId,true);onChange([['eq'],['chain']],[eq,withProcessorAdded(patch,'eq')]);restore();};
  let drag=null,previewEq=null;
@@ -33,5 +37,27 @@ export function renderEqualizer(patch,onChange,onPreview=()=>{},soundId='sound',
   }details.append(fields);
  });
  const add=document.createElement('button');add.type='button';add.textContent='+ eq band';add.disabled=read().bands.length>=8;add.addEventListener('click',()=>commit(addEqBand(read())));details.append(add);
- draw(read());root.drawSoundIllustration=nextPatch=>draw(nextPatch.eq);return root;
+ const scaleLabels=[[-96,132],[-48,79],[0,25]].map(([value,py])=>{
+  const label=make('text',{x:357,y:py,fill:'#aaa','font-size':7,'text-anchor':'end'});label.textContent=value;label.style.display='none';svg.append(label);return label;
+ });
+ let displayedEq=read();
+ root.setMeasuredSpectrum=spectrum=>{
+  spectrumCaption.style.display=spectrum?'':'none';
+  for(const label of scaleLabels)label.style.display=spectrum?'':'none';
+  if(!spectrum){measured.removeAttribute('d');return;}
+  const {rate,binHz,decibels}=spectrum;
+  const end=Math.min(decibels.length-1,Math.floor(20000/binHz));
+  const positions=Array.from({length:200},(_,i)=>{
+   const frequency=20*1000**(i/199),upper=20*1000**((i+.5)/199);
+   const first=Math.max(1,Math.round(frequency/binHz)),last=Math.min(end,Math.round(upper/binHz));
+   if(first>end)return null;
+   let level=-96;
+   for(let bin=first;bin<=last;bin++)level=Math.max(level,decibels[bin]);
+   return (i?'L':'M')+x(frequency).toFixed(2)+' '+(25-107*Math.min(0,level)/96).toFixed(2);
+  });
+  measured.setAttribute('d',positions.filter(Boolean).join(' '));
+  if(eqRate!==rate){eqRate=rate;draw(displayedEq);}
+ };
+ spectrumCaption.style.display='none';draw(displayedEq);
+ root.drawSoundIllustration=nextPatch=>{displayedEq=nextPatch.eq;draw(displayedEq);};return root;
 }

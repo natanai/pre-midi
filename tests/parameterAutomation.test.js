@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {create,parse,upgradeBeatFeatures} from '../schema.js';import {createSong} from '../songModel.js';import {parseSong} from '../songIO.js';import {renderEvents} from '../audio.js';import {nativePlans} from '../src/hosts/native/session.js';
-import {automationParameters,validateAutomation,laneValueAt,insertAutomationPoint,planParameterAutomation} from '../src/dsp/automation.js';
+import {recordAutomationGesture,automationParameters,validateAutomation,laneValueAt,insertAutomationPoint,planParameterAutomation} from '../src/dsp/automation.js';
 import {withInstance} from '../src/dsp/processing-graph.js';import {withProcessorRemoved} from '../src/dsp/processing-chain.js';import {unpackBeatClip,moveFreeformPassage} from '../freeformModel.js';
 const lane=(target,unit,values,interpolation='linear')=>({id:target,version:1,target,unit,interpolation,points:values.map(([step,value],i)=>({id:String(i),step,value}))});
 test('parameter authority controls lane targets, source support, units, bounds and interpolation',()=>{
@@ -27,4 +27,25 @@ test('Sound lanes and Instrument overrides survive Beat/Song recall and full Fre
 test('removing an automated processor retains its parameters and lane for non-destructive restoration',()=>{
  const patch=create().instruments[0].sounds[0].patch;patch.chain=withInstance(patch,'filter');const lanes=[lane('processor.filter-1.cutoff','hz',[[0,300],[16,3000]],'exponential')],clock={start:0,end:1,step:0,unit:.125,limitStep:16};
  assert.equal(planParameterAutomation(lanes,patch,clock).length,1);patch.chain=withProcessorRemoved(patch,'filter-1');assert.deepEqual(validateAutomation(lanes,patch,1),[]);assert.equal(planParameterAutomation(lanes,patch,clock).length,0);patch.chain.order.push('filter-1');assert.equal(planParameterAutomation(lanes,patch,clock).length,1);
+});
+
+test('processor enable is stored and executed only as a two-state lane',()=>{
+ const patch=create().instruments[0].sounds[0].patch;
+ const enabled={...lane('processor.filter.enabled','switch',[[0,0],[8,1]]),interpolation:'step'};
+ assert.deepEqual(validateAutomation([enabled],patch),[]);
+ assert.ok(validateAutomation([{...enabled,interpolation:'linear'}],patch).length);
+ assert.ok(validateAutomation([{...enabled,points:[enabled.points[0],{...enabled.points[1],value:.5}]}],patch).length);
+});
+
+test('one gesture keeps earlier and later automation and respects the fixed lane budget',()=>{
+ const original=lane('pan','pan',[[0,-.5],[128,.5]]);
+ let nextId=10;
+ const recorded=new Map(Array.from({length:51},(_,i)=>[16+i,.25]));
+ const written=recordAutomationGesture(original,recorded,128,()=>String(nextId++));
+ assert.equal(written.points.length,32);
+ for(const step of [0,3,15,67,80,128])assert.equal(laneValueAt(written,step),laneValueAt(original,step));
+ for(const step of [16,17,30,66])assert.equal(laneValueAt(written,step),.25);
+ assert.equal(written.points[0].id,original.points[0].id);
+ assert.equal(written.points.at(-1).id,original.points.at(-1).id);
+ assert.deepEqual(validateAutomation([written],create().instruments[0].sounds[0].patch),[]);
 });

@@ -1,3 +1,5 @@
+import {nearestScaleNote,pitchClassMask} from './src/dsp/pitch-correction.js';
+import {SCALE_MODES,SCALE_ROOTS} from './scaleGuide.js';
 import {sourceSettings} from './src/dsp/source-processing.js';
 import {SOURCE_PROCESSING_PARAMETERS,parameterFor} from './src/dsp/parameters.js';
 import {renderParameterModule} from './stereoProcessingUI.js';
@@ -19,5 +21,41 @@ export function renderSourceProcessing(patch,onChange,onPreview,id){
   kind:'source-formant',title:'source formants',fields:[{path:['sourceProcessing','formant'],get:p=>sourceSettings(p).formant,config:{label:'formant shift',min:formant.min,max:formant.max,...formant.ui,help:helpForLabel('source formant')}}],hint:'drag horizontally for formant shift',position:([f])=>[20+320*(f+12)/24,75],values:x=>[Math.round(clamp((x-20)/320*24-12,-12,12)*10)/10],
   draw:(svg,p)=>{const settings=sourceSettings(p),shift=2**((settings.formant+(settings.mode==='independent'&&!settings.preserveFormants?p.transpose:0))/12);for(const muted of [true,false])path(svg,Array.from({length:161},(_,i)=>{const f=100*60**(i/160),gain=[500,1500,2500].reduce((sum,center)=>sum+Math.exp(-(((Math.log2(f/(center*(muted?1:shift))))/.22)**2)),0);return(i?'L':'M')+(20+i*2)+' '+(130-80*gain);}).join(' '),muted);label(svg,20,145,'100 hz');label(svg,300,145,'6 khz');label(svg,20,12,'synthetic vowel envelope');action(svg,190,'preserve formants','preserveFormants',p);},
   extra:details=>{for(const [key,text]of [['preserveFormants','preserve formants'],['reverse','reverse source']]){const field=document.createElement('label'),box=document.createElement('input'),word=document.createElement('span');field.className='synth-field';field.dataset.soundPath='sourceProcessing.'+key;box.type='checkbox';box.checked=sourceSettings(patch)[key];box.setAttribute('aria-label',text);word.textContent=text;explainLabel(word,'source '+key);box.addEventListener('change',()=>onChange(['sourceProcessing',key],box.checked));field.append(word,box);details.append(field);}}
- });formantModule.querySelector('svg').dataset.soundLinks+='|sourceProcessing.preserveFormants';root.append(formantModule);return root;
+ });formantModule.querySelector('svg').dataset.soundLinks+='|sourceProcessing.preserveFormants';root.append(formantModule);
+ const amount=SOURCE_PROCESSING_PARAMETERS.tuneAmount,response=SOURCE_PROCESSING_PARAMETERS.tuneResponse;
+ const tuning=renderParameterModule(base,onChange,onPreview,id,{
+  kind:'source-tuning',title:'pitch correction',
+  fields:[
+   {path:['sourceProcessing','tuneResponse'],get:p=>sourceSettings(p).tuneResponse,config:{min:response.min,max:response.max,...response.ui,label:'response',help:helpForLabel('tuning response'),inactiveReason:base.sourceProcessing.tuneAmount===0?'correction amount is zero':undefined}},
+   {path:['sourceProcessing','tuneAmount'],get:p=>sourceSettings(p).tuneAmount,config:{min:amount.min,max:amount.max,...amount.ui,label:'correction',help:helpForLabel('tuning correction')}}
+  ],
+  hint:'drag horizontally for response and vertically for correction amount',
+  position:([speed,amount])=>[20+320*(speed-.02)/.28,116-90*amount],
+  values:(x,y)=>[Math.round(clamp(.02+(x-20)*.28/320,.02,.3)*1000)/1000,Math.round(clamp((116-y)/90,0,1)*100)/100],
+  draw:(svg,p)=>{
+   const settings=sourceSettings(p),scale=SCALE_MODES.find(mode=>mode.id===settings.tuneScale);
+   const mask=pitchClassMask(settings.tuneRoot,[...scale.steps,...(scale.descendingSteps??[])]);
+   const input=69.35,target=nearestScaleNote(input,mask),shift=clamp((target-input)*settings.tuneAmount,-3,3);
+   const y=value=>68-value*17;
+   path(svg,'M20 '+y(target-input)+' H340',true);
+   path(svg,Array.from({length:161},(_,i)=>(i?'L':'M')+(20+i*2)+' '+y(shift*(1-Math.exp(-i/160*.45/settings.tuneResponse)))).join(' '));
+   label(svg,20,143,'single-note reference');
+   label(svg,200,143,'target '+SCALE_ROOTS[(target+120)%12].split(' / ')[0]);
+  },
+  extra:details=>{
+   for(const [key,title,choices] of [['tuneScale','scale',SCALE_MODES.map(scale=>[scale.id,scale.name])],['tuneRoot','key',SCALE_ROOTS.map((root,index)=>[index,root])]]){
+    const field=document.createElement('label'),word=document.createElement('span'),select=document.createElement('select');
+    field.className='synth-field';field.dataset.soundPath='sourceProcessing.'+key;word.textContent=title;
+    explainLabel(word,'tuning '+title);select.setAttribute('aria-label','pitch correction '+title);
+    for(const [value,name] of choices){const option=document.createElement('option');option.value=value;option.textContent=name;select.append(option);}
+    select.value=base.sourceProcessing[key];
+    if(key==='tuneRoot'&&base.sourceProcessing.tuneScale==='chromatic'){select.disabled=true;select.setAttribute('aria-description','chromatic correction uses all twelve notes');}
+    select.addEventListener('change',()=>onChange(['sourceProcessing',key],key==='tuneRoot'?Number(select.value):select.value));
+    field.append(word,select);details.append(field);
+   }
+  }
+ });
+ tuning.querySelector('summary').setAttribute('aria-description','for a single voice or pitched instrument. chords and mixed tracks are unsupported');
+ tuning.querySelector('svg').dataset.soundLinks+='|sourceProcessing.tuneRoot|sourceProcessing.tuneScale';
+ root.append(tuning);return root;
 }

@@ -7,7 +7,7 @@ import {schedulePitchPlan} from "./expression.js";
 // Native timeline audio for continuous vocal takes.
 import {recordingBytes} from "./recordingAssets.js";
 const cache=new WeakMap();
-export async function decodeSongRecordings(context,song,{isCurrent=()=>true}={}){
+export async function decodeSongRecordings(context,song,{isCurrent=()=>true,decode=bytes=>context.decodeAudioData(bytes)}={}){
  let entries=cache.get(context);
  if(!entries){entries=new Map();cache.set(context,entries);}
  if(!song||song.kind!=="song"||!song.recordings?.length)return entries;
@@ -15,7 +15,7 @@ export async function decodeSongRecordings(context,song,{isCurrent=()=>true}={})
   if(entries.has(recording.id))return;
   const bytes=recordingBytes(recording);
   const raw=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
-  const decoded=await context.decodeAudioData(raw);
+  const decoded=await decode(raw);
   entries.set(recording.id,decoded);
  }));
  for(const track of song.tracks??[])if(track.kind==='vocal')for(const clip of track.clips??[]){const recording=song.recordings.find(r=>r.id===clip.recordingId);if(!isCurrent())throw Error('Source preparation cancelled');if(recording)await prepareVocalSource(context,entries,{recording,clip},{isCurrent});}
@@ -34,7 +34,7 @@ export function recordingEventsAtStep(song,step,{includeOverlapping=false}={}){
     clip.startStep+clip.lengthSteps>step)))
    .map(clip=>({recording:recordings.get(clip.recordingId),clip,track})));
 }
-export function scheduleVocal(context,destination,event,startTime,unit,decoded,{elapsedSteps=0,session=null,sourceRange=null,controlStart=null,fadeIn=false}={}){
+export function scheduleVocal(context,destination,event,startTime,unit,decoded,{elapsedSteps=0,session=null,sourceRange=null,controlStart=null,clockStart=(event.clip.startStep??0)*unit,fadeIn=false}={}){
  const original=decoded.get(event.recording.id);
  if(!original)return;
  const request=vocalSourceRequest(event.recording,event.clip,original.duration),processed=needsSourceProcessing(request.recipe),buffer=preparedSourceBuffer(decoded,event.recording.id,request);
@@ -53,7 +53,7 @@ export function scheduleVocal(context,destination,event,startTime,unit,decoded,{
   for(const e of recordingEnvelope(startTime,duration,gain,fx.attack,fx.release,{elapsed,totalDuration}))
    level.gain[e.kind?"linearRampToValueAtTime":"setValueAtTime"](e.value,e.time);
  }
- const graph=connectRecordedAudio(context,{source,amp:level,gate,pan,out:destination,patch:fx,start:startTime,duration,owner,unit,elapsedSteps});
+ const graph=connectRecordedAudio(context,{source,amp:level,gate,pan,out:destination,patch:fx,start:startTime,duration,owner,unit,elapsedSteps,clockStart});
  const delayTail=graph.tail;
  // start()'s duration is source-buffer seconds, independent of detune. The
  // authored Clip gate controls wall time; pitch motion must not trim content.

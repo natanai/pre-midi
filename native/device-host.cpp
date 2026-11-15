@@ -11,6 +11,7 @@
 #include "vendor/miniaudio/miniaudio.h"
 #include "device-host.h"
 #include "source-processing.hpp"
+#include "wav-render.hpp"
 #include "session.hpp"
 #include "stream-transport.hpp"
 #include "capture.hpp"
@@ -300,7 +301,7 @@ public:
  }
  void processSourceAsset(unsigned asset,const premidi_source_parameters& input,premidi_sample_info& info){
   require(asset>0&&asset<=samples.size()&&samples.size()<512,"Native source asset handle or capacity is invalid");
-  const auto& original=*samples[asset-1];const SourceRecipe recipe{input.start,input.duration,input.time,input.semitones,input.formant,input.preserve,input.reverse};
+  const auto& original=*samples[asset-1];const SourceRecipe recipe{input.start,input.duration,input.time,input.semitones,input.formant,input.preserve,input.reverse,input.tune_amount,input.tune_response,input.tune_mask};
   auto pcm=processSource(original,recipe);require(pcm.size()*sizeof(float)+sampleBytes<=1024ull*1024*1024,"Native source assets exceed 1 GiB");
   auto value=std::make_shared<SampleData>(pcm.data(),pcm.size()/original.channels,original.rate,original.channels,original.rate,602);value->normalization=original.normalization;
   samples.push_back(value);sampleBytes+=value->pcm.size()*sizeof(float);info={static_cast<unsigned>(samples.size()),value->rate,value->channels,value->frames,value->normalization};
@@ -495,21 +496,24 @@ public:
   output.fault=target->fault();output.state=target==streamActive.load()?target->state():stopped;
   output.active=static_cast<std::uint32_t>(target->active());
  }
- void render(const std::uint8_t* data,std::size_t length,double cycle,unsigned rate,std::uint64_t count,std::uint8_t* output,std::size_t bytes,unsigned format,double gain){
-  require(rate>=8000&&rate<=192000&&count>0&&count<=std::uint64_t(rate)*600&&format<=1&&std::isfinite(gain)&&gain>=0&&gain<=2,"Invalid native offline render dimensions");
-  require(output&&bytes==count*2*(format?2:4),"Invalid native offline output buffer");
-  SampleStore available;available.reserve(samples.size());std::uint64_t memory=0;
-  for(const auto& source:samples){
-   if(source->rate==rate)available.push_back(source);
-   else{const auto size=static_cast<std::uint64_t>(std::ceil(static_cast<double>(source->frames)*rate/source->rate))*source->channels*4;require(memory+size<=1024ull*1024*1024,"Native offline assets exceed 1 GiB");available.push_back(std::make_shared<SampleData>(source->pcm.data(),source->frames,source->rate,source->channels,rate,602));memory+=size;}
-  }
-  auto session=std::make_unique<Session>(data,length,rate,cycle,0,available);std::array<float,2*renderBlock> pcm{};
+ void render(const std::uint8_t* data,std::size_t length,double cycle,unsigned rate,std::uint64_t count,std::uint8_t* output,std::size_t bytes,unsigned format,double gain,bool dither,premidi_render_metrics* metrics){
+  require(rate>=8000&&rate<=192000&&count>0&&count<=std::uint64_t(rate)*600&&(format==0||format==16||format==24||format==32)&&std::isfinite(gain)&&gain>=0&&gain<=2,"Invalid native offline render dimensions");
+  const unsigned width=format?format/8:4;
+  require(output&&bytes==count*2*width,"Invalid native offline output buffer");
+  // Adapt only the assets referenced by this plan. Keep the live device's
+  // cache and rate untouched, even when rendering to another rate.
+  auto session=std::make_unique<Session>(data,length,rate,cycle,0,samples,false,true);std::array<float,2*renderBlock> pcm{};
+  RenderMeter meter;PcmQuantizer quantizer;
   for(std::uint64_t at=0;at<count;){const auto n=static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,count-at));unsigned budget=maxOnsets;session->process(pcm.data(),n,false,budget);require(!session->fault.load(),"Native offline rendering exceeded the voice budget");
    for(unsigned i=0;i<2*n;i++){const float value=pcm[i]*static_cast<float>(gain/.85);require(std::isfinite(value),"Native offline rendering produced nonfinite PCM");const auto index=2*at+i;
-    if(format){const float sample=std::clamp(value,-1.f,1.f);const auto integer=static_cast<std::int16_t>(sample*(sample<0?32768.f:32767.f));output[2*index]=static_cast<std::uint8_t>(integer);output[2*index+1]=static_cast<std::uint8_t>(static_cast<std::uint16_t>(integer)>>8);}
-    else std::memcpy(output+4*index,&value,4);
+    if(metrics)meter.push(i%2,value);
+    if(format==16||format==24){
+     const auto integer=quantizer.encode(value,format,dither);
+     for(unsigned byte=0;byte<width;byte++)output[width*index+byte]=static_cast<std::uint8_t>(integer>>(8*byte));
+    }else std::memcpy(output+4*index,&value,4);
    }at+=n;
   }
+  if(metrics)*metrics=meter.finish(count*2);
  }
  void requestTransportStop()noexcept{setTransportIntent(1);capture.stop();}
  void claimTransport(std::uint64_t owner)noexcept{
@@ -592,7 +596,7 @@ int premidi_audio_add_sample(void* host,const float* pcm,uint64_t frames,uint32_
 int premidi_audio_process_source(void* host,uint32_t asset,const premidi_source_parameters* params,premidi_sample_info* info){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{premidi::require(params&&info,"Missing source processing parameters");h.processSourceAsset(asset,*params,*info);});}
 int premidi_audio_add_sample_rate(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info,uint32_t target_rate){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.addSample(pcm,frames,rate,channels,*info,target_rate);});}
 int premidi_audio_update(void* host,const uint8_t* data,size_t length,double cycle,int loop,double ratio){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.update(data,length,cycle,loop!=0,ratio);});}
-int premidi_audio_render(void* host,const uint8_t* data,size_t length,double cycle,uint32_t rate,uint64_t frames,uint8_t* output,size_t output_bytes,uint32_t format,double gain){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.render(data,length,cycle,rate,frames,output,output_bytes,format,gain);});}
+int premidi_audio_render(void* host,const uint8_t* data,size_t length,double cycle,uint32_t rate,uint64_t frames,uint8_t* output,size_t output_bytes,uint32_t format,double gain,int dither,premidi_render_metrics* metrics){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.render(data,length,cycle,rate,frames,output,output_bytes,format,gain,dither!=0,metrics);});}
 int premidi_audio_play_take(void* host,const uint8_t* data,size_t length,double cycle,double seek,int loop,int preview,double bpm,uint32_t bars,int record){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.play(data,length,cycle,seek,loop!=0,preview!=0,bpm,bars,record!=0);});}
 int premidi_audio_capture_prepare(void* host,double seconds,double offset_ms,int sync){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.prepareCapture(seconds,offset_ms,sync!=0);});}
 int premidi_audio_capture_start(void* host,double lead){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.startCapture(lead);});}

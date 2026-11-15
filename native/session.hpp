@@ -177,7 +177,7 @@ public:
  Session* alignSource=nullptr;std::uint64_t alignOldFrame=0;
  std::uint64_t transportOwner=0;
  std::atomic<unsigned> handoff{0};
- Session(const std::uint8_t* data,std::size_t length,unsigned sr,double cycle,double seek,const SampleStore& samples={},bool preparationOnly=false):rate(sr),fadeFrames(std::max(1u,sr/200)),cycleSeconds(cycle){
+ Session(const std::uint8_t* data,std::size_t length,unsigned sr,double cycle,double seek,const SampleStore& samples={},bool preparationOnly=false,bool resampleAssets=false):rate(sr),fadeFrames(std::max(1u,sr/200)),cycleSeconds(cycle){
   require(rate>=8000&&rate<=192000&&std::isfinite(cycle)&&cycle>=.05&&cycle<=600&&std::isfinite(seek)&&seek>=0&&seek<cycle,"Invalid native session timing");
   require(length<=512*1024*1024,"Native PCM bundle exceeds 512 MiB");PacketReader in(data,length);
   const auto magic=in.u32();require(magic==0x31534d50||magic==0x32534d50,"Unknown native session transport");SampleStore available=samples;
@@ -189,11 +189,23 @@ public:
     std::vector<float> pcm(static_cast<std::size_t>(frames)*channels);for(auto& value:pcm)value=in.f32();available.push_back(std::make_shared<SampleData>(pcm.data(),frames,sourceRate,channels,rate));
    }
   }
-  const auto count=in.u32();require(count<=4096,"Native preview supports at most 4096 note onsets per cycle");notes.reserve(count);
+  const auto count=in.u32();require(count<=4096,"Native preview supports at most 4096 note onsets per cycle");notes.reserve(count);std::uint64_t resampledBytes=0;
   for(unsigned n=0;n<count;n++){
    const auto size=in.u32();require(size<=32768,"Native voice packet too large");PreparedNote note;note.plan=readPlan(in.take(size),size,rate);
    require(note.plan.start<cycle*2,"Native strum offset exceeds one complete cycle");
-   if(note.plan.kind){require(note.plan.asset<=available.size()&&available[note.plan.asset-1]!=nullptr,"Native sample asset handle is missing");const auto& sample=available[note.plan.asset-1];require(sample->rate==rate&&note.plan.sampleOffset*rate<sample->frames,"Native sample asset rate/offset mismatch");require(!note.plan.sampleLoop||(std::llround(note.plan.loopEnd*rate)<=static_cast<std::int64_t>(sample->frames)&&std::llround(note.plan.loopEnd*rate)-std::llround(note.plan.loopStart*rate)>=2&&2*std::llround(note.plan.loopFade*rate)<=std::llround(note.plan.loopEnd*rate)-std::llround(note.plan.loopStart*rate)),"Native sample loop exceeds its asset");ownedSamples.push_back(sample);note.plan.sample=sample.get();channelWidth=std::max(channelWidth,sample->channels==4?2u:sample->channels==6?4u:0u);}
+   if(note.plan.kind){
+    require(note.plan.asset<=available.size()&&available[note.plan.asset-1]!=nullptr,"Native sample asset handle is missing");
+    auto& sample=available[note.plan.asset-1];
+    if(resampleAssets&&sample->rate!=rate){
+     const auto frames=static_cast<std::uint64_t>(std::ceil(static_cast<double>(sample->frames)*rate/sample->rate));
+     resampledBytes+=frames*sample->channels*sizeof(float);
+     require(resampledBytes<=1024ull*1024*1024,"Native offline assets exceed 1 GiB");
+     sample=std::make_shared<SampleData>(sample->pcm.data(),sample->frames,sample->rate,sample->channels,rate,602);
+    }
+    require(sample->rate==rate&&note.plan.sampleOffset*rate<sample->frames,"Native sample asset rate/offset mismatch");
+    require(!note.plan.sampleLoop||(std::llround(note.plan.loopEnd*rate)<=static_cast<std::int64_t>(sample->frames)&&std::llround(note.plan.loopEnd*rate)-std::llround(note.plan.loopStart*rate)>=2&&2*std::llround(note.plan.loopFade*rate)<=std::llround(note.plan.loopEnd*rate)-std::llround(note.plan.loopStart*rate)),"Native sample loop exceeds its asset");
+    ownedSamples.push_back(sample);note.plan.sample=sample.get();channelWidth=std::max(channelWidth,sample->channels==4?2u:sample->channels==6?4u:0u);
+   }
    for(unsigned i=0;i<2&&!note.plan.kind;i++)if(note.plan.oscillators[i].wave||note.plan.version>=2){
     const auto& o=note.plan.oscillators[i];Bank* found=nullptr;for(auto& b:banks)if(b.shape==o.wave&&b.harmonics==o.harmonics){found=&b;break;}
     if(!found){require(banks.size()<32,"Native preview supports at most 32 unique oscillator banks");banks.push_back({o.wave,o.harmonics,std::make_unique<WaveBank>(o.wave,o.harmonics,rate)});found=&banks.back();}

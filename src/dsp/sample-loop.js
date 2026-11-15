@@ -1,3 +1,4 @@
+import {needsSourceProcessing} from './source-processing.js';
 import {validParameterValue} from './parameters.js';
 // Loop endpoints are absolute source seconds; crossfade overlaps the loop's
 // tail with its head. Playback resumes after the overlapped head, so the
@@ -14,7 +15,7 @@ export function sampleLoopRegion(zone,request,oneShot=false,sourceLimit=Infinity
  if(!zone.loop||oneShot)return null;
  const p=request.recipe,r=request.region,l=zone.loop;
  if(l.end>r.offset+r.sourceLength+1e-9)throw Error('Sample loop ends beyond its recording');
- if(p.time===1&&p.semitones===0&&p.formant===0&&!p.reverse)return {...l};
+ if(!needsSourceProcessing(p))return {...l};
  const a=l.start-r.offset,b=l.end-r.offset;
  const start=Math.max(0,(p.reverse?r.sourceLength-b:a)*p.time),end=Math.min(sourceLimit,(p.reverse?r.sourceLength-a:b)*p.time);
  return {start,end,crossfade:Math.min(l.crossfade*p.time,(end-start)/2)};

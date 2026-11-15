@@ -32,9 +32,39 @@ try{
  const routed=make([lane('amplitude','linear_gain',[[0,.2],[16,1.8]]),lane('filter.resonance','filter_resonance',[[0,.1],[16,15]]),lane('oscillators.0.level','linear_gain',[[0,.1],[16,.8]])],modulated);
  const mixedError=difference(native(routed),await web(routed));assert.ok(mixedError<1e-4,"Automation/modulation precedence "+mixedError);
  let parity=0;for(let i=0;i<cases.length;i++){const p=make(cases[i],i===cases.length-1?filtered:patch),a=native(p),b=await web(p),error=difference(a,b);assert.ok(error<1e-4,'Native/browser parameter automation '+i+' error '+error);parity=Math.max(parity,error);}
+ const mixPatch=structuredClone(patch);
+ mixPatch.filter={...patch.filter,cutoff:150};
+ mixPatch.chain={version:1,order:['filter'],bypass:[],mix:{filter:0}};
+ const mixLane=lane('processor.filter.mix','ratio',[[0,0],[6,1],[16,.6]]);
+ const switchLane=lane('processor.filter.enabled','switch',[[0,1],[4,0],[8,1],[16,1]],'step');
+ const dryPlan=make([lane('amplitude','linear_gain',[[0,1],[16,1]])],mixPatch);
+ const wetPlan=make([lane('amplitude','linear_gain',[[0,1],[16,1]])],{...mixPatch,chain:{...mixPatch.chain,mix:{filter:1}}});
+ const blendPlan=make([mixLane,switchLane],mixPatch);
+ const blendError=(dry,wet,processed)=>{
+  let error=0;
+  for(let i=0;i<frames;i++){
+   const step=(i/rate-blendPlan.start)/.05;
+   const mix=laneValueAt(mixLane,step)*laneValueAt(switchLane,step+1e-9);
+   for(let ch=0;ch<2;ch++){
+    const at=2*i+ch,expected=dry[at]*(1-mix)+wet[at]*mix;
+    error=Math.max(error,Math.abs(expected-processed[at]));
+   }
+  }
+  return error;
+ };
+ const blended=native(blendPlan),blendNative=blendError(native(dryPlan),native(wetPlan),blended);
+ assert.ok(blendNative<1e-6,'Native wet/dry blend and stepped enable '+blendNative);
+ const blendWeb=blendError(await web(dryPlan),await web(wetPlan),await web(blendPlan));
+ assert.ok(blendWeb<1e-5,'Web wet/dry blend and stepped enable '+blendWeb);
+ assert.equal(difference(blended.slice(rate*.36*2),native(blendPlan,{seek:.36,block:17})),0);
  const stereo=[lane('stereoWidth','ratio',[[0,0],[8,2],[16,.5]]),lane('msBalance','balance',[[0,-1],[8,1],[16,-.5]])];
  const c=new OfflineAudioContext(2,frames,rate),buffer=c.createBuffer(2,frames,rate),pcm=new Float32Array(frames*2);for(let i=0;i<frames;i++){buffer.getChannelData(0)[i]=pcm[2*i]=.2*Math.sin(2*Math.PI*220*i/rate);buffer.getChannelData(1)[i]=pcm[2*i+1]=.3*Math.cos(2*Math.PI*440*i/rate);}
- const event={recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.7,lengthSteps:8,effects:{attack:0,release:0,automation:stereo}}},vocal=planNativeVocal(event,0,.0625,new Map([['voice',{id:1,duration:1}]])),out=c.createGain();out.gain.value=.85;out.connect(c.destination);scheduleVocal(c,out,event,0,.0625,new Map([['voice',buffer]]));const rendered=await c.startRendering(),comparison=new Float32Array(frames*2);for(let i=0;i<frames;i++){comparison[2*i]=rendered.getChannelData(0)[i];comparison[2*i+1]=rendered.getChannelData(1)[i];}
- const stereoError=difference(native(vocal,{asset:{rate,channels:2,frames,pcm}}),comparison);assert.ok(stereoError<1e-6,'Stereo image automation '+stereoError);
- console.log('PASS parameter automation: independent pan/amplitude oracle, linear/exponential/step lanes, oscillator/filter/instance targets, seeks, blocks, page rebasing and native/browser PCM',JSON.stringify({oracle,parity,mixedError,stereoError,cases:cases.length}));
+ const event={recording:{id:'voice',durationSeconds:1,trimSeconds:0},clip:{gain:.7,lengthSteps:8,effects:{attack:0,release:0,automation:stereo,modulation:{version:1,routes:[
+  {id:'width',target:'stereoWidth',unit:'ratio',depth:.6,polarity:'bipolar',smoothing:0,source:{kind:'lfo',shape:'steps',rate:5,phase:.3,steps:[1,.2,-1,.4,-.3]}},
+  {id:'balance',target:'msBalance',unit:'balance',depth:.4,polarity:'unipolar',smoothing:0,source:{kind:'lfo',shape:'ramp',rate:2,phase:.25}}
+ ]}}}},vocal=planNativeVocal(event,0,.0625,new Map([['voice',{id:1,duration:1}]])),out=c.createGain();out.gain.value=.85;out.connect(c.destination);scheduleVocal(c,out,event,0,.0625,new Map([['voice',buffer]]));const rendered=await c.startRendering(),comparison=new Float32Array(frames*2);for(let i=0;i<frames;i++){comparison[2*i]=rendered.getChannelData(0)[i];comparison[2*i+1]=rendered.getChannelData(1)[i];}
+ const nativeVocal=native(vocal,{asset:{rate,channels:2,frames,pcm}}),errors=Array.from(nativeVocal,(value,i)=>Math.abs(value-comparison[i]));
+ const stereoError=Math.max(...errors),peakFrame=errors.indexOf(stereoError);
+ assert.ok(stereoError<1e-6,'Stereo image automation '+JSON.stringify({stereoError,peakFrame,seconds:peakFrame/(rate*2),native:nativeVocal[peakFrame],web:comparison[peakFrame],ramp:vocal.modulation.routes[1].source}));
+ console.log('PASS parameter automation: independent pan/amplitude oracle, linear/exponential/step lanes, oscillator/filter/instance targets, seeks, blocks, page rebasing and native/browser PCM',JSON.stringify({oracle,parity,mixedError,stereoError,blendNative,blendWeb,cases:cases.length}));
 }finally{await rm(folder,{recursive:true,force:true});}

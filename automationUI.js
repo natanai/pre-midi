@@ -1,10 +1,10 @@
-import {MAX_AUTOMATION_POINTS,MAX_AUTOMATION_LANES,automationParameters,validateAutomation,insertAutomationPoint} from './src/dsp/automation.js';
+import {MAX_AUTOMATION_POINTS,MAX_AUTOMATION_LANES,automationParameters,processorAutomationBase,validateAutomation,insertAutomationPoint,recordAutomationGesture} from './src/dsp/automation.js';
 import {readSoundParameter} from './soundParameterAdapter.js';
 import {illustrateSoundPanel} from './soundIllustrations.js';
 import {assignSoundEdit} from './soundEditPath.js';
-import {explainLabel} from './dial.js';
+import {createDial,explainLabel} from './dial.js';
 const opened=new Set();
-export function renderAutomation(root,instrument,beat,onChange){
+export function renderAutomation(root,instrument,beat,onChange,{recordStep=null,recordMessage=()=>{}}={}){
  const patch=instrument.sounds?.[0]?.patch;if(!patch)return;
  const lanes=instrument.automation??[],parameters=automationParameters(patch);
  const panel=document.createElement('details');panel.className='parameter-automation synth-group';panel.open=opened.has(instrument.id);panel.dataset.automationOwner=instrument.id;
@@ -23,7 +23,31 @@ export function renderAutomation(root,instrument,beat,onChange){
   const change=next=>commit(lanes.map(old=>old.id===lane.id?next:old));
   const controls=document.createElement('div');controls.className='synth-fields';details.append(controls);
   const enabled=document.createElement('input');enabled.type='checkbox';enabled.checked=!lane.bypass;enabled.setAttribute('aria-label','enable '+heading.textContent+' automation');enabled.addEventListener('change',()=>change({...lane,bypass:!enabled.checked}));const enabledLabel=document.createElement('label');enabledLabel.append(enabled,'enabled');controls.append(enabledLabel);
-  const mode=document.createElement('select');mode.setAttribute('aria-label',heading.textContent+' interpolation');for(const value of ['linear','exponential','step']){const option=document.createElement('option');option.value=value;option.textContent=value;option.disabled=value==='exponential'&&lane.points.some(point=>point.value<=0);mode.append(option);}mode.value=lane.interpolation;mode.addEventListener('change',()=>change({...lane,interpolation:mode.value}));controls.append(mode);
+  const mode=document.createElement('select');mode.setAttribute('aria-label',heading.textContent+' interpolation');for(const value of ['linear','exponential','step']){const option=document.createElement('option');option.value=value;option.textContent=value;option.disabled=p.discrete?value!=='step':value==='exponential'&&lane.points.some(point=>point.value<=0);mode.append(option);}mode.value=lane.interpolation;mode.addEventListener('change',()=>change({...lane,interpolation:mode.value}));controls.append(mode);
+  if(recordStep&&!p.discrete){
+   const samples=new Map(),end=beat.bars*16;
+   let lastStep=null;
+   const sample=value=>{
+    const position=recordStep();if(position===null)return false;
+    const step=Math.max(0,Math.min(end,Math.floor(position)));
+    if(step<(lastStep??step))samples.clear();
+    lastStep=step;samples.set(step,value);
+    return true;
+   };
+   const reset=()=>{samples.clear();lastStep=null;};
+   const min=lane.interpolation==='exponential'?Math.max(p.min,p.ui.step):p.min;
+   const record=createDial({label:'write gesture',min,max:p.max,step:p.ui.step,display:p.ui.display,log:p.ui.log},lane.points[0].value,
+    value=>{
+     if(!sample(value)){reset();recordMessage('play the beat to write automation',true);return;}
+     const next=recordAutomationGesture(lane,samples,end);reset();
+     if(next===lane){recordMessage('this automation lane has reached its point limit',true);return;}
+     change(next);
+    },sample);
+   const slider=record.querySelector('[role="slider"]');
+   slider.addEventListener('pointerdown',reset);
+   slider.addEventListener('pointercancel',reset);
+   controls.append(record);
+  }
   const pictureDetails=document.createElement('details');pictureDetails.className='synth-group';pictureDetails.open=true;const title=document.createElement('summary');title.textContent='curve';pictureDetails.append(title);
   const visual=illustrateSoundPanel(pictureDetails,'automation',{...lane,type:'automation',sourceType:patch.type,bars:beat.bars,parameter:p},(path,value)=>{const next=structuredClone(lane);assignSoundEdit(next,path,value);change(next);},()=>{},instrument.id+':'+lane.id);details.append(visual.element);
   for(const [index,point]of lane.points.entries()){
@@ -37,9 +61,9 @@ export function renderAutomation(root,instrument,beat,onChange){
   const add=document.createElement('button');add.type='button';add.textContent='+ point';add.disabled=lane.points.length>=MAX_AUTOMATION_POINTS||!lane.points.some((p,i)=>i&&p.step-lane.points[i-1].step>1);add.addEventListener('click',()=>change(insertAutomationPoint(lane)));details.append(add);
   const remove=document.createElement('button');remove.type='button';remove.textContent='remove lane';remove.addEventListener('click',()=>commit(lanes.filter(old=>old.id!==lane.id)));details.append(remove);
  }
- const select=document.createElement('select');select.setAttribute('aria-label','automation target');for(const p of parameters.filter(p=>!lanes.some(lane=>lane.target===p.id))){const option=document.createElement('option');option.value=p.id;option.textContent=p.id.replaceAll('.',' ');select.append(option);}panel.append(select);
+ const select=document.createElement('select');select.setAttribute('aria-label','automation target');for(const p of parameters.filter(p=>p.active!==false&&!lanes.some(lane=>lane.target===p.id))){const option=document.createElement('option');option.value=p.id;option.textContent=p.id.replaceAll('.',' ');select.append(option);}panel.append(select);
  const add=document.createElement('button');add.type='button';add.textContent='+ automation';add.disabled=lanes.length>=MAX_AUTOMATION_LANES||!select.options.length;add.addEventListener('click',()=>{
-  const p=parameters.find(p=>p.id===select.value),value=p.id.startsWith('processor.')?(()=>{const [,id,key]=p.id.split('.');return patch.chain.instances.find(i=>i.id===id).parameters[key];})():readSoundParameter(patch,p.id);
+  const p=parameters.find(p=>p.id===select.value),value=p.id.startsWith('processor.')?processorAutomationBase(patch,p.id):readSoundParameter(patch,p.id);
   commit([...lanes,{id:crypto.randomUUID(),version:1,target:p.id,unit:p.unit,interpolation:p.interpolation,points:[{id:crypto.randomUUID(),step:0,value},{id:crypto.randomUUID(),step:Math.min(16,beat.bars*16),value}]}]);
  });panel.append(add);
 }

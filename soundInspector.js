@@ -121,7 +121,7 @@ export function renderSoundInspectorCore({
  volumeRoot,gainRoot,primaryRoots,
  accent="#86c6a7",sampleNames="",onReplaceSample=()=>{},stageLayout=null,
  onPatchChange,onLevelChange,onStageChange,
- onAutomation=null,scopeRenderer=null,stageOpen=null,includeStage=true
+ onAutomation=null,automationRecording,scopeRenderer=null,stageOpen=null,includeStage=true
 }){
  if(!instrument||!sound||!context||!modulesRoot||!scopeRoot||
   !volumeRoot||!gainRoot||primaryRoots?.length!==3||
@@ -139,7 +139,10 @@ export function renderSoundInspectorCore({
  const updateScope=scopeRenderer?
   scopeRenderer(patch,level):
   createSignalDisplay(scopeRoot,patch,context,accent,level,
-   sound.referencePitch,instrument.automation??patch.automation??null,sound.id);
+   sound.referencePitch,instrument.automation??patch.automation??null,sound.id,spectrum=>{
+    for(const panel of modulesRoot.querySelectorAll('.visual-sound-panel[data-visual-kind="equalizer"]'))
+     panel.setMeasuredSpectrum?.(spectrum);
+   });
  let stagePanel=null;
  const redraw=(next,volume=instrument.volume,gain=sound.gain)=>{
   updateScope(next,vocal&&next!==patch?next.gain:volume*gain);
@@ -192,11 +195,11 @@ export function renderSoundInspectorCore({
  else{
   renderPatchEditor(modulesRoot,patch,onPatchChange,preview,sound.id,{deferView:true,bpm:context.bpm??120});
   if(onAutomation)onAutomation(modulesRoot,instrument,context);
-  else renderAutomation(modulesRoot,{...instrument,id:sound.id,sounds:[sound],automation:patch.automation},context,block=>onPatchChange(["automation"],block));
+  else renderAutomation(modulesRoot,{...instrument,id:sound.id,sounds:[sound],automation:patch.automation},context,block=>onPatchChange(["automation"],block),automationRecording);
  }
  if(patch.type==='sample')modulesRoot.append(renderSampleSource(patch,context,onPatchChange,sound.id));
  if(recorded)renderAutomation(modulesRoot,{id:sound.id,layout:"pitched",sounds:[sound],automation:patch.automation},
-  {bars:context.bars??Math.max(1,Math.ceil((context.vocal?.clip.lengthSteps??16)/16))},block=>onPatchChange(["automation"],block??undefined));
+  {bars:context.bars??Math.max(1,Math.ceil((context.vocal?.clip.lengthSteps??16)/16))},block=>onPatchChange(["automation"],block??undefined),automationRecording);
  modulesRoot.append(renderEqualizer(patch,onPatchChange,preview,sound.id),renderStereoImage(patch,onPatchChange,preview,sound.id),renderDelayStereo(patch,onPatchChange,preview,sound.id));
  modulesRoot.prepend(renderPerformanceMacros(patch,onPatchChange,preview),renderProcessingChain(patch,onPatchChange,sound.id,preview));
  const paths=["filter.cutoff",recorded?"attack":"envelope.attack",

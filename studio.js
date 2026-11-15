@@ -1,3 +1,4 @@
+import {wavLevelSummary} from './src/dsp/wav-export.js';
 import {processingFromPatch,applyProcessingToPatch} from "./recordedAudio.js";
 import {renderAutomation} from "./automationUI.js";
 import {upgradeBeatFeatures,resizeBeatBars,MAX_BEAT_BARS,SUSTAIN_BEAT_VERSION,CAPTURED_AUTOMATION_BEAT_VERSION} from "./schema.js";
@@ -5,7 +6,7 @@ import {upgradeSongFeatures} from "./songModel.js";
 import {MAX_SOUNDS,referencedSampleIds,selectionOperation,canConvertToRack,convertToRack} from "./soundModel.js";
 import {instrumentDeleteLabel,soundDeleteLabel,deleteInstrumentFromBeat,deleteSoundFromBeat,canMoveRackSoundToPianoRoll,moveRackSoundToPianoRoll,moveRackSoundRow} from "./entityActions.js";
 import { create, makeInstrument, makeSound, makeChunk, id, clone, parse, validate, filename } from "./schema.js";
-import { play, audition, auditionChord, auditionHeld, auditionVocal, wav, primeSamples, nativeEnabled, cancelNativeTransport, cancelWebTransport } from "./audio.js";
+import { play, audition, auditionChord, auditionHeld, auditionVocal, exportWav, primeSamples, nativeEnabled, cancelNativeTransport, cancelWebTransport } from "./audio.js";
 import { installKeyboardPiano } from "./keyboardPiano.js";
 import { applyNoteCommand } from "./studioCommands.js";
 import { SCALE_MODES,normalizeScaleGuide,scaleGuideForBeat,isPitchInScaleAtStep,scaleDirectionAtStep } from "./scaleGuide.js";
@@ -1267,8 +1268,12 @@ function renderSound() {
  $("sound-section").setAttribute("aria-label",
   "sound editor for "+inst.name+(inst.layout==="rack"?" / "+entry.name:""));
 
+ const automationRecording={
+  recordStep:()=>playback&&!playback.paused&&pianoProgress?pianoProgress.bar*16+pianoProgress.step:null,
+  recordMessage:message
+ };
  renderSoundInspectorCore({
-  instrument:inst,sound:entry,context:beat,
+  instrument:inst,sound:entry,context:beat,automationRecording,
   modulesRoot:$("synth-editor"),scopeRoot:$("sound-visualizer"),
   volumeRoot:$("instrument-volume-dial"),gainRoot:$("sound-volume-dial"),
   primaryRoots:primaryKeys.map(key=>$(key)),
@@ -1298,7 +1303,7 @@ function renderSound() {
      if(block)target.automation=block;else delete target.automation;
     });
     if(changed&&playback)message("automation updated");
-   })
+   },automationRecording)
  });
  $("remove-instrument").disabled=false;
  $("remove-instrument").textContent=instrumentDeleteLabel(inst);
@@ -1529,10 +1534,18 @@ $("file").addEventListener("change",async event=>{
 const exportDialog=$("export-dialog"),exportForm=$("export-form");
 const exportScope=value=>exportForm.querySelector('input[name="export-scope"][value="'+value+'"]');
 const exportFormat=value=>exportForm.querySelector('input[name="export-format"][value="'+value+'"]');
+const wavOptions=$("wav-options"),wavBits=$("wav-bits"),wavDither=$("wav-dither");
+const showWavOptions=()=>{
+ const active=exportFormat("wav").checked;
+ wavOptions.hidden=wavOptions.disabled=!active;
+ wavDither.disabled=wavBits.value==="32";
+};
+exportForm.addEventListener("change",showWavOptions);
 $("export").addEventListener("click",()=>{
  exportScope("song").disabled=!song;
  exportScope(song&&songExpanded?"song":"beat").checked=true;
  exportFormat("premidi").checked=true;
+ showWavOptions();
  $("export-confirm").disabled=false;
  exportDialog.showModal();
 });
@@ -1548,10 +1561,11 @@ exportForm.addEventListener("submit",async event=>{
  try{
   if(format==="wav"){
    message("Rendering "+scope+" WAV...");
-   const output=await wav(source);
-   const saved=download(output,filename(source,".wav"));
+   const bits=Number(wavBits.value),options={rate:Number($("wav-rate").value),bits,gainDb:$("wav-gain").valueAsNumber,dither:wavDither.checked};
+   const {blob,metrics}=await exportWav(source,options);
+   const saved=download(blob,filename(source,".wav"));
    if(saved?.then && !await saved){message("export cancelled");return;}
-   message("Exported "+scope+" WAV");
+   message("Exported "+scope+" WAV · "+wavLevelSummary(metrics,bits),metrics.truePeak>1);
   }else{
    const output=scope==="song"?exportSongProject(source):exportProject(source);
    const saved=download(output.blob,output.name);

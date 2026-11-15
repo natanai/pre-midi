@@ -10,7 +10,7 @@ export const SYNTH_VOICE_CONTRACT_VERSION=1;
 export const noteFrequency=pitch=>440*2**((pitch-69)/12);
 // Called after patch validation at the document/preview boundary. Plain musical
 // values are copied so an edit cannot mutate a previously scheduled voice.
-export function planSynthVoice(instrument,event,start,duration,{automation,timeline,unit=timeline?.unit??.125}={}){
+export function planSynthVoice(instrument,event,start,duration,{automation,timeline,unit=timeline?.unit??.125,clockStart=timeline?.songTime??start}={}){
  const patch=JSON.parse(JSON.stringify(instrument.patch));
  if(automation===undefined&&patch.automation){automation=patch.automation;timeline??={step:0,unit,limitStep:duration/unit};}
  const automationErrors=validateAutomation(automation,patch);if(automationErrors.length)throw Error(automationErrors.join(" "));
@@ -31,7 +31,7 @@ export function planSynthVoice(instrument,event,start,duration,{automation,timel
  const amplitude=planAmplitudeEnvelope({start,off,peak,envelope:patch.envelope});
  const filter={...patch.filter,...planFilterSweep(patch.filter,start,duration)};
  const result={contract:"pre-midi-synth-voice",version:SYNTH_VOICE_CONTRACT_VERSION,
-  patch,presetId:patch.presetId,start,duration,off,end,postProcessing:compilePostProcessing(patch,unit),graphEnd:end+.15+postTailSeconds(patch,unit),
+  patch,presetId:patch.presetId,start,clockStart,duration,off,end,postProcessing:compilePostProcessing(patch,unit),graphEnd:end+.15+postTailSeconds(patch,unit),
   audibleEnd:end+.15+postTailSeconds(patch,unit)+effectTailSeconds(effectiveDelayEffects(patch,patch.effects)),peak,amplitude,filter,movement:motion,
   oscillators:patch.oscillators.map(slot=>({...slot,frequency:Math.min(18000,noteFrequency(event.pitch)*2**slot.octave),
    pitch:planPitch(note,motion,start,duration,slot.detune)})),

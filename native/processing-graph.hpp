@@ -10,7 +10,7 @@
 namespace premidi {
 constexpr unsigned graphNodeLimit=8,graphRouteLimit=4,graphChannelLimit=6;
 struct GraphNode {
- unsigned kind=0,type=0,stages=1,shape=0;bool primary=false,bypass=false;
+ unsigned kind=0,type=0,stages=1,shape=0;bool primary=false,bypass=false,dynamicMix=false;
  double mix=1,cutoff=8000,resonance=.7,amount=0,inputGain=0;
  std::array<EqBand,8> bands{};
 };
@@ -27,7 +27,7 @@ inline bool sameProcessingGraph(const ProcessingGraph& a,const ProcessingGraph& 
  for(unsigned i=0;i<a.serial.count;i++)if(a.serial.order[i]!=b.serial.order[i])return false;
  for(unsigned i=0;i<a.count;i++){
   const auto& x=a.nodes[i];const auto& y=b.nodes[i];
-  if(x.kind!=y.kind||x.type!=y.type||x.stages!=y.stages||x.primary!=y.primary||x.bypass!=y.bypass||x.mix!=y.mix||x.cutoff!=y.cutoff||x.resonance!=y.resonance||x.amount!=y.amount||x.shape!=y.shape||x.inputGain!=y.inputGain)return false;
+  if(x.kind!=y.kind||x.type!=y.type||x.stages!=y.stages||x.primary!=y.primary||x.bypass!=y.bypass||x.mix!=y.mix||x.dynamicMix!=y.dynamicMix||x.cutoff!=y.cutoff||x.resonance!=y.resonance||x.amount!=y.amount||x.shape!=y.shape||x.inputGain!=y.inputGain)return false;
   for(unsigned band=0;band<8;band++)if(x.bands[band].c!=y.bands[band].c)return false;
  }
  for(unsigned r=0;r<a.routeCount;r++){const auto& x=a.routes[r];const auto& y=b.routes[r];if(x.gain!=y.gain||x.count!=y.count)return false;for(unsigned i=0;i<x.count;i++)if(x.order[i]!=y.order[i])return false;}
@@ -38,7 +38,7 @@ struct ProcessingGraphRecipe {
  std::array<std::unique_ptr<DriveRecipe>,graphNodeLimit> drives;
  explicit ProcessingGraphRecipe(const ProcessingGraph& input):graph(input){
   for(unsigned i=0;i<graph.count;i++){
-   const auto& n=graph.nodes[i];if(n.kind==1&&n.amount>0&&!n.bypass&&n.mix>0)drives[i]=std::make_unique<DriveRecipe>(n.amount,n.shape,n.inputGain);
+   const auto& n=graph.nodes[i];if(n.kind==1&&n.amount>0&&!n.bypass&&(n.mix>0||n.dynamicMix))drives[i]=std::make_unique<DriveRecipe>(n.amount,n.shape,n.inputGain);
   }
  }
 };
@@ -62,22 +62,23 @@ class ProcessingGraphState {
  std::array<Channel,graphChannelLimit> channels;
  unsigned rate=48000,maxLatency=0;std::array<unsigned,graphRouteLimit> latency{};
  float stage(float input,unsigned index,Channel& channel,const ProcessingGraph& graph,double cutoff,double resonance,const AutomatedValues* automation=nullptr)noexcept{
-  const auto& n=graph.nodes[index];if(n.bypass||n.mix==0)return input;
+  const auto& n=graph.nodes[index];if(n.bypass||(n.mix==0&&!n.dynamicMix))return input;
+  const double mix=automation?automation->processor(index,2,n.mix)*automation->processor(index,3,1.):n.mix;
   auto& state=channel.stages[index];float value=input;
   if(n.kind==0){
    const double f=n.primary?cutoff:automation?automation->processor(index,0,n.cutoff):n.cutoff,q=n.primary?resonance:automation?automation->processor(index,1,n.resonance):n.resonance;
    if(f!=state.cutoff||q!=state.resonance){state.filter.configure(n.type,f,q,rate);state.cutoff=f;state.resonance=q;}
    value=state.filter.process(input);
-  }else if(n.kind==1)return state.drive.mixed(input,n.mix);
+  }else if(n.kind==1)return state.drive.mixed(input,mix,true);
   else value=state.eq.process(input,n.bands);
-  return static_cast<float>((1-n.mix)*input+n.mix*value);
+  return static_cast<float>((1-mix)*input+mix*value);
  }
  float serial(float value,const GraphRoute& route,Channel& channel,const ProcessingGraph& graph,double cutoff,double resonance,const AutomatedValues* automation=nullptr)noexcept{
   for(unsigned i=0;i<route.count;i++)value=stage(value,route.order[i],channel,graph,cutoff,resonance,automation);
   return value;
  }
  static unsigned pathLatency(const ProcessingGraph& graph,const GraphRoute& route)noexcept{
-  unsigned frames=0;for(unsigned i=0;i<route.count;i++){const auto& n=graph.nodes[route.order[i]];if(n.kind==1&&!n.bypass&&n.mix>0&&n.amount>0)frames+=192;}return frames;
+  unsigned frames=0;for(unsigned i=0;i<route.count;i++){const auto& n=graph.nodes[route.order[i]];if(n.kind==1&&!n.bypass&&(n.mix>0||n.dynamicMix)&&n.amount>0)frames+=192;}return frames;
  }
 public:
  ProcessingGraphState()noexcept{}

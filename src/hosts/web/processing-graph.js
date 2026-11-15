@@ -8,11 +8,11 @@ import {connectProcessorMix} from './processor-mix.js';
 // parallel routing use this same owner and stage builder for every source.
 export function connectProcessingGraph(context,signal,patch,stages,owner){
  const add=node=>{owner.nodes.push(node);return node;};
- const graph=compileProcessingGraph(patch,context.sampleRate,context.processorMixLatency??0);
- if(graph?.branches.length&&graph.nodes.some(n=>n.kind==='drive'&&!n.bypass&&n.mix>0&&n.amount>0)&&!Number.isInteger(context.processorMixLatency))throw Error('Prepare distortion latency before parallel processing');
+ const graph=compileProcessingGraph(patch,context.sampleRate,context.processorMixLatency??0,owner.parameterAutomation);
+ if(graph?.branches.length&&graph.nodes.some(n=>n.kind==='drive'&&!n.bypass&&n.latency>0&&n.amount>0)&&!Number.isInteger(context.processorMixLatency))throw Error('Prepare distortion latency before parallel processing');
  if(!graph){for(const id of processingChain(patch).order){const stage=stages.get(id);if(stage)signal=connectProcessorMix(context,signal,stage,patch,id,owner);}return signal;}
  for(const node of graph.nodes){
-  const instance=processorInstance(patch,node.id);if(!instance||node.bypass||node.mix===0)continue;
+  const instance=processorInstance(patch,node.id);if(!instance||node.bypass||node.mix===0&&!owner.parameterAutomation?.some(lane=>lane.target==='processor.'+node.id+'.mix'))continue;
   const p=instance.parameters;let stage;
   if(instance.kind==='filter'){
    const filter=add(context.createBiquadFilter());filter.type=p.type;filter.frequency.value=p.cutoff;filter.Q.value=p.resonance;

@@ -193,7 +193,7 @@ public:
     if(plan.sample->channels==4){sample=.5f*(sample+additional[0]);other=.5f*(other+additional[1]);}
     else{const float factor=static_cast<float>(std::sqrt(.5));sample+=factor*(additional[0]+additional[2]);other+=factor*(additional[0]+additional[3]);}
    }
-   const double width=automated.value(8,plan.stereoWidth),balance=automated.value(9,plan.msBalance);
+   const double width=std::clamp(automated.value(8,plan.stereoWidth)+offsets[8],0.,2.),balance=std::clamp(automated.value(9,plan.msBalance)+offsets[9],-1.,1.);
    if(width!=1||balance!=0){
     const double midGain=balance>0?1-balance:1,sideGain=width*(balance<0?1+balance:1);
     if(stereo){const double mid=(sample+other)*.5*midGain,side=(sample-other)*.5*sideGain;sample=static_cast<float>(mid+side);other=static_cast<float>(mid-side);}else sample=static_cast<float>(sample*midGain);

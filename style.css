@@ -1211,6 +1211,12 @@ footer a {color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .export-options label:has(input:checked){border-color:var(--bright);color:var(--bright)}
 .export-options label:has(input:disabled){opacity:.35;cursor:default}
 .export-options input{margin:0;accent-color:var(--signal-cyan)}
+.wav-options{border:0;padding:0;margin:0;display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 14px}
+.wav-options[hidden]{display:none}
+.wav-options legend{color:var(--muted);font-size:11px;margin-bottom:8px}
+.wav-options label{display:grid;gap:5px;font-size:11px}
+.wav-options input[type="number"]{width:6em}
+.wav-options .wav-dither{display:flex;align-items:center;min-height:27px}
 .export-actions{display:flex;justify-content:flex-end}
 .export-actions button{min-height:36px}
 

@@ -332,3 +332,9 @@ Sampled Sounds now mount the existing vocal waveform editor in the canonical Ins
 ### Sampler sustain and zone ranges (2026-11-10)
 
 The source editor adds sustain-loop endpoints/overlap and key/velocity regions to the common sample/vocal waveform foundation. Native/browser note gates, release, reverse/stretch, preview, scope and export lengths share the loop contract. Source gaps render silence. The current packet is v23, without an older reader. Frame/overlap bounds, an independent tap oracle, stereo/pitch/source-transform PCM, seek/block continuity, shared editor behavior and zero-allocation 48 kHz streaming pass focused checks. Preview.36 publishes the milestone after matching Windows native sampler editing, loop/gap PCM, project recall, transport and portable lifecycle checks, plus 15 Rust tests. Downloaded ZIP integrity and source license contents were verified. Physical acceptance and remaining broader work stay open in docs/synthesis-roadmap.json.
+
+### Source tuning, WAV export and processor automation (2026-11-15)
+
+The shared Sound Inspector adds scale/key correction for single-note samples and vocals. Amount and response are editable alongside the source crop, stretch, pitch and formants. The EQ plots now show a measured preview spectrum alongside the predicted response. Beat and Song WAV exports offer 44.1, 48 and 96 kHz at 16- or 24-bit PCM or 32-bit float, optional integer dither and post-gain level and clipping reports.
+
+Movement routes add stereo width, mid/side balance, phase, note/Clip restart or timeline clock and 2–16 step patterns. Tone processors accept mix and stepped enable lanes. The Beat Inspector writes gestures into an existing continuous lane on the Beat clock. The remaining shared Track buses, sidechains, broader automation and physical qualification are tracked in [the synthesis roadmap](synthesis-roadmap.json).

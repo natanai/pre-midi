@@ -30,14 +30,17 @@ test('random sequences survive patch, processing-preset and Beat round trips wit
 });
 
 
-test('four-step modulation preserves precise levels, source time and editable default arrays',async()=>{
+test('step modulation preserves precise levels, source time and editable default arrays',async()=>{
  const {assignSoundEdit}=await import('../soundEditPath.js');
  const {readSoundParameter}=await import('../soundParameterAdapter.js');
- const r={...route('steps'),source:{kind:'lfo',shape:'steps',rate:2,steps:[.8,-.2,-.6,.1]}};
+ const r={...route('steps'),source:{kind:'lfo',shape:'steps',rate:2,steps:[.8,-.2,-.6,.1,.4],phase:.2,clock:'timeline'}};
  assert.deepEqual(validateModulation({version:1,routes:[r]}),[]);
- for(const steps of [[0],[0,0,0,2],{0:0},[0,0,0,NaN]])assert.ok(validateModulation({version:1,routes:[{...r,source:{...r.source,steps}}]}).length);
- for(const [elapsed,value] of [[0,.8],[.125,-.2],[.25,-.6],[.375,.1],[.5,.8],[10.375,.1]])
-  assert.equal(sourceValueAt(r.source,{elapsed}).value,value);
+ for(const steps of [[0],[0,0,0,2],{0:0},[0,0,0,NaN],Array(17).fill(0)])assert.ok(validateModulation({version:1,routes:[{...r,source:{...r.source,steps}}]}).length);
+ for(const [elapsed,value] of [[0,-.6],[.1,.1],[.2,.4],[.3,.8],[.4,-.2],[10.3,.8]])
+  assert.equal(sourceValueAt(r.source,{elapsed,clockStart:.1}).value,value);
+ assert.equal(sourceValueAt({...r.source,clock:'note'},{elapsed:0,clockStart:.1}).value,-.2);
+ assert.deepEqual(diagram({...makePatch(),modulation:{version:1,routes:[r]}},'modulation',1).handles
+  .filter(h=>h.axes.some(a=>a.path.includes('steps'))).map(h=>h.axes[0].path.at(-1)),[0,1,2,3,4]);
  const beat=create(),patch=makePatch();patch.version=2;patch.modulation={version:1,routes:[r]};beat.instruments[0].sounds[0].patch=patch;upgradeBeatFeatures(beat);
  assert.deepEqual(parse(JSON.stringify(beat)),beat);
  assert.deepEqual(processingFromPatch(patch).modulation,patch.modulation);

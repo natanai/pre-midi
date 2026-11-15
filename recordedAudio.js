@@ -33,7 +33,7 @@ export function validateRecordedModulation(block,{vocal=false}={}){
  if(errors.length)return errors;
  const context=vocal?'vocal':'sample',targets=modulationTargetsFor(context).map(t=>t.id),sources=modulationSourcesFor(context);
  for(const route of block.routes){
-  if(!targets.includes(route.target))errors.push('Recording routes target brightness, resonance, amplitude or pan; oscillator routes require a synthesizer.');
+  if(!targets.includes(route.target))errors.push('The selected movement target requires a synthesizer.');
   if(!sources.includes(route.source.kind))errors.push('Timeline recordings use time-based movement sources.');
  }
  return errors;
@@ -44,10 +44,11 @@ export function recordingEnvelope(start,duration,gain,attack,release,{elapsed=0,
   {kind:0,time:Math.max(rise,totalDuration-fade),value:gain},{kind:1,time:totalDuration,value:0}];
  return elapsed>0?windowEnvelope(events,elapsed,start):events.map(event=>({...event,time:event.time+start}));
 }
-export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,start,duration,owner,expression={pitch:60,velocity:1},unit=.125,elapsedSteps=0,timeline}){
+export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,start,duration,owner,expression={pitch:60,velocity:1},unit=.125,elapsedSteps=0,timeline,clockStart=timeline?.songTime??0}){
  const elapsed=Math.max(0,elapsedSteps)*unit;
  const fx=effectiveDelayEffects(patch,recordedEffects(patch),unit),motion=fx.movement,add=node=>{owner.nodes.push(node);return node;};
  let signal=source,filter=null,filterStage=null;const stages=new Map(),automationTargets=new Map();owner.automationTargets=automationTargets;
+ const modulation=resolveModulation(fx.modulation,unit),targets=new Map([['pan',pan.pan]]);
  const parameterAutomation=planParameterAutomation(fx.automation,{...patch,type:patch.type??"vocal"},{start,end:start+duration,step:elapsedSteps,unit,limitStep:elapsedSteps+duration/unit,...timeline,start,end:start+duration});
  if(fx.filter&&!processorBypassed(patch,"filter")){
   filter=add(context.createBiquadFilter());filter.type=fx.filter.type;filterStage=cascadeFilter(context,filter,patch,owner);
@@ -67,17 +68,18 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
   stages.set("drive",driveStage(context,fx.drive,driveSettings(patch),owner));
  }
  const eqStage=!processorBypassed(patch,"eq")&&createEq(context,patch.eq,owner);if(eqStage)stages.set("eq",eqStage);
+ owner.parameterAutomation=parameterAutomation;
  signal=connectProcessingGraph(context,signal,patch,stages,owner);
  signal.connect(amp);
  const pulse=add(context.createGain());pulse.gain.setValueAtTime(1,start);
  scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});
  const movementGain=add(context.createGain());movementGain.gain.value=1;automationTargets.set("amplitude",movementGain.gain);automationTargets.set("pan",pan.pan);
- amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(context,movementGain,patch,owner,source.buffer?.numberOfChannels??1,{start,end:start+duration,lanes:parameterAutomation,targets:automationTargets}).connect(pan);pan.pan.value=fx.pan;
+ amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(context,movementGain,patch,owner,source.buffer?.numberOfChannels??1,{start,end:start+duration,lanes:parameterAutomation,targets:automationTargets,modulation,routes:targets}).connect(pan);pan.pan.value=fx.pan;
  const postTail=postTailSeconds(patch,unit);
  connectPostProcessing(context,pan,patch,owner,start,start+duration+(patch.type==='sample'?.01:0)+postTail,{unit,elapsed}).connect(gate);
- const targets=new Map([['pan',pan.pan],['amplitude',movementGain.gain]]);if(filter){targets.set('filter.cutoff',cutoffDestination(context,filterStage.filters,start,start+duration,owner));targets.set('filter.resonance',filter.Q);}
+ targets.set('amplitude',movementGain.gain);if(filter){targets.set('filter.cutoff',cutoffDestination(context,filterStage.filters,start,start+duration,owner));targets.set('filter.resonance',filter.Q);}
  scheduleParameterAutomation(context,parameterAutomation,automationTargets,owner);
- attachModulation(context,{parameterAutomation,modulation:resolveModulation(fx.modulation,unit),start,off:start+duration,graphEnd:start+duration,expression,elapsed,resonance:fx.filter?.resonance},targets,owner);
+ attachModulation(context,{parameterAutomation,modulation,start,clockStart,off:start+duration,graphEnd:start+duration,expression,elapsed,patch:fx,resonance:fx.filter?.resonance},targets,owner);
  const dry=add(context.createGain());dry.gain.value=(1-fx.delayMix*.4)*(1-fx.reverb.mix);gate.connect(dry);dry.connect(out);
  return {fx,postTail,tail:effectTailSeconds(fx),connectDelay(session,voice){
   if(!(fx.delayMix>0||fx.reverb.mix>0)||!voice.admitted&&session)return;

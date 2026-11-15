@@ -138,7 +138,7 @@ export function usedSampleIds(beat){
  }
  return used;
 }
-export async function decodeSamples(context,beat,cache,only=usedSampleIds(beat),{isCurrent=()=>true}={}){
+export async function decodeSamples(context,beat,cache,only=usedSampleIds(beat),{isCurrent=()=>true,decode=bytes=>context.decodeAudioData(bytes)}={}){
  const waiting=[];
  for(const asset of beat.samples||[]) {
   if(only && !only.has(asset.id))continue;
@@ -150,7 +150,7 @@ export async function decodeSamples(context,beat,cache,only=usedSampleIds(beat),
   const task=(async()=>{
    const bytes=getAsset(asset.id);
    if(!bytes)throw Error("Missing "+asset.path+". Open the .zip package containing the audio.");
-   const buffer=await context.decodeAudioData(bytes.buffer.slice(0));
+   const buffer=await decode(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
    cache.set(asset.id,buffer);
    return buffer;
   })();

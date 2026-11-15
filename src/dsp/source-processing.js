@@ -1,3 +1,5 @@
+import {SCALE_MODES} from '../../scaleGuide.js';
+import {pitchClassMask} from './pitch-correction.js';
 import {SOURCE_PROCESSING_PARAMETERS} from './parameters.js';
 import {sampleSourceRegion} from '../../sampleSlice.js';
 const DEFAULT_SOURCE_SETTINGS=Object.freeze(Object.fromEntries(Object.entries(SOURCE_PROCESSING_PARAMETERS).map(([k,p])=>[k,p.default])));
@@ -12,10 +14,13 @@ export function sourceRecipe(patch,start,duration,pitch=patch?.transpose??0){
  const errors=validateSourceProcessing(patch?.sourceProcessing);if(errors.length)throw Error(errors.join(' '));
  const p=sourceSettings(patch),semitones=p.mode==='independent'?pitch:0;
  if(!Number.isFinite(start)||start<0||!Number.isFinite(duration)||duration<=0||!Number.isFinite(semitones)||Math.abs(semitones)>48)throw Error('Independent source pitch supports up to four octaves; source region must be finite.');
- return {start,duration,time:p.time,semitones,formant:p.formant,preserve:p.preserveFormants,reverse:p.reverse};
+ const scale=SCALE_MODES.find(scale=>scale.id===p.tuneScale);
+ const tuning=p.tuneAmount===0?{}:{tuneAmount:p.tuneAmount,tuneResponse:p.tuneResponse,
+  tuneMask:pitchClassMask(p.tuneRoot,[...scale.steps,...(scale.descendingSteps??[])])};
+ return {...tuning,start,duration,time:p.time,semitones,formant:p.formant,preserve:p.preserveFormants,reverse:p.reverse};
 }
-export const needsSourceProcessing=recipe=>recipe.time!==1||recipe.semitones!==0||recipe.formant!==0||recipe.reverse;
-export const sourceKey=(id,p)=>'source:'+JSON.stringify([id,p.start,p.duration,p.time,p.semitones,p.formant,p.preserve,p.reverse]);
+export const needsSourceProcessing=recipe=>recipe.time!==1||recipe.semitones!==0||recipe.formant!==0||recipe.reverse||!!recipe.tuneAmount;
+export const sourceKey=(id,p)=>'source:'+JSON.stringify([id,p.start,p.duration,p.time,p.semitones,p.formant,p.preserve,p.reverse,p.tuneAmount??0,p.tuneResponse??0,p.tuneMask??0]);
 export function sampleSourceRequest(patch,note,zone,duration){
  const region=sampleSourceRegion(zone,duration,1),pitch=patch.transpose+(patch.followPitch?note.pitch-zone.root:0),recipe=sourceRecipe(patch,region.offset,region.sourceLength,pitch);
  return {recipe,key:sourceKey(zone.assetId,recipe),rate:sourceRate(patch,pitch),region};

@@ -34,9 +34,19 @@ export function randomLfoValue(seed,index){
  return x/4294967295*2-1;
 }
 export const DEFAULT_LFO_STEPS=Object.freeze([1,0,-1,0]);
+export const MAX_LFO_STEPS=16;
+export const LFO_CLOCKS=Object.freeze(['note','timeline']);
+// Timeline phase follows authored Beat/Song position. Repeated loops revisit
+// the same position instead of depending on device time or prior playback.
+export const lfoCyclesAt=(source,elapsed,clockStart=0,unit=.125)=>
+ (Math.max(0,elapsed)+(source.clock==='timeline'?clockStart:0))*modulationRate(source,unit)+(source.phase??0);
 export function modulationWave(shape,cycles,seed=1,steps=DEFAULT_LFO_STEPS){
- const phase=((cycles%1)+1)%1;
- if(shape==="steps")return steps[Math.floor(phase*4)];
+ const phase=cycles-Math.floor(cycles);
+ if(shape==="steps"){
+  const offset=cycles*steps.length;
+  const index=Math.floor(offset+4*Number.EPSILON*Math.max(1,Math.abs(offset)))%steps.length;
+  return steps[(index+steps.length)%steps.length];
+ }
  if(randomLfoShape(shape)){
   const index=Math.floor(cycles),a=randomLfoValue(seed,index);
   return shape==="sample-hold"?a:a+(randomLfoValue(seed,index+1)-a)*phase;
@@ -67,12 +77,14 @@ export function validateModulation(modulation){
   if(!target||route.unit!==target.unit||!finite(route.depth,-(target?.limit??0),target?.limit??0)||
    !["unipolar","bipolar"].includes(route.polarity)||!finite(route.smoothing,MODULATION_CONTROLS.smoothing.min,MODULATION_CONTROLS.smoothing.max))errors.push("Invalid modulation target, depth, range or units.");
   if(!source||!MOD_SOURCES.includes(source.kind)){errors.push("Invalid modulation source.");continue;}
-  const keys={macro:["kind","id","value"],lfo:["kind","rate","shape","sync","seed","steps"],velocity:["kind"],keytrack:["kind","root","span"],envelope:["kind","envelope"]}[source.kind];
+  const keys={macro:["kind","id","value"],lfo:["kind","rate","shape","sync","seed","steps","phase","clock"],velocity:["kind"],keytrack:["kind","root","span"],envelope:["kind","envelope"]}[source.kind];
   if(Object.keys(source).some(key=>!keys.includes(key)))errors.push("Unknown modulation source field.");
   if(source.kind==="macro"&&(!macroIds.has(source.id)||(source.value!==undefined&&!finite(source.value,0,1))))errors.push("Missing or invalid performance macro source.");
   if(source.kind==="lfo"&&(!finite(source.rate,MODULATION_CONTROLS.rate.min,MODULATION_CONTROLS.rate.max)||!LFO_SHAPES.includes(source.shape)))errors.push("Invalid modulation LFO.");
-  if(source.steps!==undefined&&(source.kind!=="lfo"||!Array.isArray(source.steps)||source.steps.length!==4||source.steps.some(value=>!finite(value,-1,1))))errors.push("Invalid movement steps.");
+  if(source.steps!==undefined&&(source.kind!=="lfo"||!Array.isArray(source.steps)||(source.steps.length<2||source.steps.length>MAX_LFO_STEPS)||source.steps.some(value=>!finite(value,-1,1))))errors.push("Invalid movement steps.");
   if(source.seed!==undefined&&(source.kind!=="lfo"||!Number.isInteger(source.seed)||!finite(source.seed,1,127)))errors.push("Invalid random movement seed.");
+  if(source.phase!==undefined&&(source.kind!=="lfo"||!finite(source.phase,0,1)))errors.push("Invalid movement phase.");
+  if(source.clock!==undefined&&(source.kind!=="lfo"||!LFO_CLOCKS.includes(source.clock)))errors.push("Invalid movement clock.");
   if(source.kind==="lfo"&&source.sync!==undefined&&!LFO_DIVISIONS.includes(source.sync))errors.push("Invalid modulation tempo division.");
   if(source.kind==="keytrack"&&(!finite(source.root,MODULATION_CONTROLS.root.min,MODULATION_CONTROLS.root.max)||!finite(source.span,MODULATION_CONTROLS.span.min,MODULATION_CONTROLS.span.max)))errors.push("Invalid key tracking.");
   if(source.kind==="envelope"){
@@ -88,9 +100,9 @@ export function defaultSource(kind){
  if(kind==="keytrack")return {kind,root:MODULATION_CONTROLS.root.default,span:MODULATION_CONTROLS.span.default};
  return {kind:"velocity"};
 }
-export function sourceValueAt(source,{elapsed,gate,velocity,pitch,unit=.125}){
+export function sourceValueAt(source,{elapsed,gate,velocity,pitch,unit=.125,clockStart=0}){
  let value,signed=false;
- if(source.kind==="lfo"){value=modulationWave(source.shape,modulationRate(source,unit)*Math.max(0,elapsed),source.seed??1,source.steps??DEFAULT_LFO_STEPS);signed=true;}
+ if(source.kind==="lfo"){value=modulationWave(source.shape,lfoCyclesAt(source,elapsed,clockStart,unit),source.seed??1,source.steps??DEFAULT_LFO_STEPS);signed=true;}
  else if(source.kind==="macro")value=source.value??0;
  else if(source.kind==="velocity")value=velocity;
  else if(source.kind==="keytrack"){value=Math.max(-1,Math.min(1,(pitch-source.root)/source.span));signed=true;}

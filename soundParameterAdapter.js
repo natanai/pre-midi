@@ -48,8 +48,8 @@ export function soundAxis(patch,path,mode,geometry={}){
 }
 
 export function readSoundParameter(patch,id){
- const step=/^modulation\.routes\.(\d+)\.source\.steps\.([0-3])$/.exec(id);
- if(step)return patch.modulation?.routes[Number(step[1])]?.source.steps?.[Number(step[2])]??DEFAULT_LFO_STEPS[Number(step[2])];
+ const step=/^modulation\.routes\.(\d+)\.source\.steps\.(\d+)$/.exec(id);
+ if(step)return patch.modulation?.routes[Number(step[1])]?.source.steps?.[Number(step[2])]??DEFAULT_LFO_STEPS[Number(step[2])]??0;
  if(id==="filter")return patch.filter??null;
  id=soundParameterId(id,patch.type);
  const path=soundParameterPath(id,patch.type),value=path.reduce((owner,key)=>owner?.[key],patch);

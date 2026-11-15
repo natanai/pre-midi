@@ -1,3 +1,5 @@
+import {createExportAssetDecoder} from './src/hosts/web/export-decode.js';
+import {encodeRenderedWav,wavExportOptions} from './src/dsp/wav-export.js';
 import {sampleLoopRegion,sampleLife} from './src/dsp/sample-loop.js';
 import {createPreparedDocument} from './src/hosts/web/prepared-document.js';
 import {sampleSourceRequest} from './src/dsp/source-processing.js';
@@ -55,7 +57,7 @@ export function checkAudioTimelineLength(document,{limitSeconds=600}={}){
 // when the middle passage was unpacked. Use one timeline for both audio hosts.
 export function noteTimeline(event,step,unit,cycle){
  const sourceStep=event.beatStep??step;
- return {step:sourceStep,unit,limitStep:event.clip?
+ return {step:sourceStep,unit,songTime:step*unit+eventOffset(event.instrument,event.note,event.chunk.notes),limitStep:event.clip?
   Math.min(event.beat.bars*16,
    sourceStep+event.clip.startStep+event.clip.lengthSteps+
    (event.clip.automationTailSteps??0)-step):cycle};
@@ -95,7 +97,7 @@ export function scheduleNote(ctx,destination,instrument,event,start,duration,bea
  if(instrument.patch.type==="sample"){
   return scheduleSample(ctx,destination,instrument,event,start,duration,beat,bufferCache(ctx),session,{unit:effectiveTimeline?.unit??60/(beat?.bpm??120)/4,automation,timeline:effectiveTimeline});
  }
- return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline:effectiveTimeline,unit:effectiveTimeline?.unit??60/(beat?.bpm??120)/4}),session);
+ return scheduleSynthPlan(ctx,destination,planSynthVoice(instrument,event,start,duration,{automation,timeline:effectiveTimeline,unit:effectiveTimeline?.unit??60/(beat?.bpm??120)/4,clockStart:effectiveTimeline?.songTime??0}),session);
 }
 export function scheduleSynthPlan(ctx,destination,plan,session=null){
  if(plan.contract!=="pre-midi-synth-voice"||![1,2,3].includes(plan.version))throw Error("Unsupported synth voice plan");
@@ -163,6 +165,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  if(patch.effects.drive>0&&!processorBypassed(patch,"drive")){
   stages.set("drive",driveStage(ctx,patch.effects.drive,driveSettings(patch),owner));
  }
+ owner.parameterAutomation=plan.parameterAutomation;
  signal=connectProcessingGraph(ctx,signal,patch,stages,owner);
  const amp=add(ctx.createGain());
  applyAmplitudePlan(amp.gain,plan.amplitude);
@@ -175,7 +178,7 @@ const pulse=add(ctx.createGain());
   motion.tremoloRate,motion.tremolo*.45,owner,{precise:extendedSynthExecution(plan,ctx.sampleRate)});
  const gate=add(ctx.createGain());
  const movementGain=add(ctx.createGain());movementGain.gain.value=1;destinations.set("amplitude",movementGain.gain);automationTargets.set("amplitude",movementGain.gain);
- amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(ctx,movementGain,patch,owner,1,{start,end:plan.graphEnd,lanes:plan.parameterAutomation,targets:automationTargets}).connect(pan);
+ amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(ctx,movementGain,patch,owner,1,{start,end:plan.graphEnd,lanes:plan.parameterAutomation,targets:automationTargets,modulation:plan.modulation,routes:destinations}).connect(pan);
  connectPostProcessing(ctx,pan,patch,owner,start,plan.graphEnd,{recipes:plan.postProcessing}).connect(gate);
  const fx=effectiveDelayEffects(patch,patch.effects),mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
@@ -241,7 +244,7 @@ export async function auditionVocal(event,bpm=120){
  context||=new AudioContext();await prepareProcessorMix(context);if(context.state!=="running")await context.resume();
  const song={kind:"song",recordings:[event.recording]};
  const decoded=await decodeSongRecordings(context,song);await prepareVocalSource(context,decoded,event);
- return scheduleVocal(context,context.destination,event,context.currentTime+.01,unit,decoded,{session:previews()});
+ return scheduleVocal(context,context.destination,event,context.currentTime+.01,unit,decoded,{session:previews(),clockStart:0});
 }
 export async function auditionHeld(instrument,pitch,beat=null){
  let patch=instrument.patch,volume=instrument.volume;
@@ -417,23 +420,6 @@ export async function play(beat,{loop=false,onPosition=()=>{},onProgress=()=>{},
  const schedule=()=>{if(typeof getRevision==='function'&&getRevision()!==latestMark&&!refreshing)void refresh().catch(error=>{if(!stopped){stop();globalThis.dispatchEvent?.(new CustomEvent('premidi-native-error',{detail:String(error.message??error)}));}});tick();};
  timer=setInterval(schedule,25);schedule();return {backend:"web-audio",stop,refresh,get diagnostics(){return session.diagnostics;}};
 }
-function pcmWav(buffer) {
- const ch=Math.min(2,buffer.numberOfChannels),size=buffer.length*ch*2;
- const result=new ArrayBuffer(44+size),v=new DataView(result);
- const data=Array.from({length:ch},(_,c)=>buffer.getChannelData(c));
- const label=(offset,s)=>{for(let i=0;i<s.length;i++)v.setUint8(offset+i,s.charCodeAt(i));};
- label(0,"RIFF");v.setUint32(4,36+size,true);label(8,"WAVE");label(12,"fmt ");
- v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,ch,true);
- v.setUint32(24,buffer.sampleRate,true);v.setUint32(28,buffer.sampleRate*ch*2,true);
- v.setUint16(32,ch*2,true);v.setUint16(34,16,true);
- label(36,"data");v.setUint32(40,size,true);
- let pos=44;
- for(let i=0;i<buffer.length;i++)for(let c=0;c<ch;c++) {
-  const n=Math.max(-1,Math.min(1,data[c][i]));
-  v.setInt16(pos,n<0?n*32768:n*32767,true);pos+=2;
- }
- return new Blob([result],{type:"audio/wav"});
-}
 // The converter renders the same voice as transport, audition, and WAV export.
 // No approximate JavaScript synthesizer is used to judge a candidate patch.
 export async function renderSynthBuffer(patch,pitch,duration,{sampleRate=22050,seconds=duration+patch.envelope.release+.012}={}){
@@ -514,28 +500,38 @@ export function renderEndSeconds(document,events,decoded){
  }
  return end;
 }
-export async function wav(document){
+export async function wav(document,options){
+ return (await renderWav(document,options,false)).blob;
+}
+export function exportWav(document,options){
+ return renderWav(document,options,true);
+}
+async function renderWav(document,options,measure){
+ const {rate,bits,dither,gain}=wavExportOptions(options);
  checkAudioTimelineLength(document);
  if(nativeEnabled()){
-  const events=renderEvents(document,{maxEvents:4096}),info=await nativeRequest({action:'status'}),rate=44100;
+  const events=renderEvents(document,{maxEvents:4096}),info=await nativeRequest({action:'status'});
   const assets=await prepareNativeAssets(nativeRequiredAssets(events),{...info,sampleRate:rate}),seconds=renderEndSeconds(document,events,assets);
   if(seconds>600)throw Error("WAV including effect tails exceeds the current 10-minute render limit.");
   const plans=await prepareNativePlans(events,assets,secondsPerStep(document),()=>true),cycle=(document.kind==='song'?songDurationSteps(document):document.bars*16)*secondsPerStep(document);
-  const bytes=await renderNative(plans,{rate,frames:Math.ceil(seconds*rate),cycle,wav:true});return new Blob([bytes],{type:'audio/wav'});
+  const bytes=await renderNative(plans,{rate,frames:Math.ceil(seconds*rate),cycle,wav:true,bits,dither,gain,measure});
+  const view=new DataView(bytes),metrics=measure?{peak:view.getFloat64(0,true),rms:view.getFloat64(8,true),truePeak:view.getFloat64(16,true),clipped:Number(view.getBigUint64(24,true))}:null;
+  return {blob:new Blob([new Uint8Array(bytes,measure?32:0)],{type:'audio/wav'}),metrics};
  }
  const beats=musicSampleContexts(document);
- const decoder=new OfflineAudioContext(2,1,44100),decoded=new Map();
- for(const beat of beats)await decodeSamples(decoder,beat,decoded);
+ const decoder=new OfflineAudioContext(2,1,rate),decoded=new Map(),decode=createExportAssetDecoder(decoder);
+ for(const beat of beats)await decodeSamples(decoder,beat,decoded,undefined,{decode});
  const events=renderEvents(document),seconds=renderEndSeconds(document,events,decoded);
  if(seconds>600)throw Error("WAV including effect tails exceeds the current 10-minute render limit.");
- const ctx=new OfflineAudioContext(2,Math.ceil(seconds*44100),44100);await prepareProcessorMix(ctx,document);
+ const ctx=new OfflineAudioContext(2,Math.ceil(seconds*rate),rate);await prepareProcessorMix(ctx,document);
  sampleCaches.set(ctx,decoded);
- const vocals=await decodeSongRecordings(ctx,document),out=ctx.createGain();
- out.gain.value=.85;out.connect(ctx.destination);
+ const vocals=await decodeSongRecordings(ctx,document,{decode}),out=ctx.createGain();
+ out.gain.value=gain;out.connect(ctx.destination);
  const session=new VoiceSession(ctx,out,{chronological:true});
  for(const event of events){
   if(event.kind==="vocal")scheduleVocal(ctx,out,event.event,event.at,secondsPerStep(document),vocals,{session});
   else scheduleNote(ctx,out,event.instrument,event.note,event.at,event.duration,event.beat,session,event.timeline);
  }
- return pcmWav(await ctx.startRendering());
+ const rendered=await ctx.startRendering();
+ return encodeRenderedWav([rendered.getChannelData(0),rendered.getChannelData(1)],rate,{bits,dither,measure});
 }

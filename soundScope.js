@@ -1,3 +1,4 @@
+import {powerSpectrum} from './soundAnalysis.js';
 import {sampleLoopRegion,sampleLife} from './src/dsp/sample-loop.js';
 import {createAnalysisQueue} from './src/hosts/analysis-queue.js';
 import {sampleSourceRequest} from './src/dsp/source-processing.js';
@@ -146,7 +147,7 @@ async function vocalScope(patch,context,level,isCurrent){
  await prepareProcessorMix(offline,patch);
  const buffer=await offline.decodeAudioData(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
  const decoded=new Map([[event.recording.id,buffer]]);await prepareVocalSource(offline,decoded,event);
- scheduleVocal(offline,offline.destination,event,0,unit,decoded);
+ scheduleVocal(offline,offline.destination,event,0,unit,decoded,{clockStart:0});
  return {buffer:await offline.startRendering(),seconds,clipped:seconds<life};
 }
 async function webAudio(patch,beat,level,pitch,automation){
@@ -202,8 +203,17 @@ export async function renderScopeAudio(patch,beat,level=1,pitch=60,automation=nu
  if(patch.type==="vocal")return vocalScope(patch,beat,level,isCurrent);
  return nativeEnabled()?nativeAudio(patch,beat,level,pitch,automation,isCurrent):webAudio(patch,beat,level,pitch,automation);
 }
+export function measuredSoundSpectrum(buffer,startSeconds=0){
+ const size=8192,count=Math.min(2,buffer.numberOfChannels),rate=buffer.sampleRate;
+ const start=Math.max(0,Math.min(Math.round(startSeconds*rate),buffer.length-size));
+ const channels=Array.from({length:count},(_,channel)=>powerSpectrum(buffer.getChannelData(channel),start,size));
+ return {rate,binHz:rate/size,decibels:Float32Array.from(channels[0],(_,bin)=>{
+  const power=channels.reduce((sum,channel)=>sum+channel[bin],0)/count;
+  return Math.max(-96,10*Math.log10(Math.max(1e-12,power)*16));
+ })};
+}
 export function disposeSignalDisplay(root){mounted.get(root)?.dispose();}
-export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,referencePitch=60,automation=null,soundId=null){
+export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,referencePitch=60,automation=null,soundId=null,onSpectrum=null){
  const previous=mounted.get(root);
  const previousState=previous?.soundId===soundId?previous.snapshot?.():null;
  previous?.dispose();
@@ -317,6 +327,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
     latestBuffer=buffer;latestSeconds=seconds;
     paintWave();
     const wave=scopeWaveformData(buffer,referencePitch,620,seekSeconds);
+    if(onSpectrum)onSpectrum(measuredSoundSpectrum(buffer,wave.startSeconds));
     const [l,r]=scopeAudioBins(buffer);
     left.setAttribute("d",envelopePath(l,0));right.setAttribute("d",envelopePath(r,1));
     pitches[0].setAttribute("d",pitchPath(nextPatch,seconds,referencePitch,0));
@@ -333,7 +344,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
     wrapper.removeAttribute("title");
    }).catch(error=>{
     if(disposed||token!==revision)return;
-    latestBuffer=null;latestSeconds=0;reference.removeAttribute("d");marker.removeAttribute("d");
+    latestBuffer=null;latestSeconds=0;onSpectrum?.(null);reference.removeAttribute("d");marker.removeAttribute("d");
     waveLeft.removeAttribute("d");waveRight.removeAttribute("d");
     left.removeAttribute("d");right.removeAttribute("d");waveLabel.textContent="";
     pitches.forEach(line=>line.removeAttribute("d"));gate.removeAttribute("d");end.textContent="";
