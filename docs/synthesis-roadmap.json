@@ -2,7 +2,7 @@
   "schema_version": 1,
   "program_id": "pre-midi-professional-synthesis",
   "title": "Professional native-first synthesis and DSP",
-  "updated_on": "2026-11-10",
+  "updated_on": "2026-11-15",
   "status": "active",
   "scope": "Synthesizer sound generation, DSP fidelity, quality qualification and cross-host rendering; complements docs/song-rollout.md instead of replacing its Song-specific stages.",
   "mission": "Deliver professionally viable editable instruments that sound correct in native desktop/mobile production and natively in pre-programmed, while retaining a compatible web studio wherever technically feasible.",
@@ -1376,22 +1376,22 @@
     "candidates": [
       {
         "panel": "distortion",
-        "next_controls": [
+        "scope": "Shared browser/native/game-host transfer functions, level compensation and oversampling; store only compact parameters in .premidi.",
+        "implemented_controls": [
+          "dry / wet mix",
           "input gain (dB)",
           "soft clip / hard clip / wavefold"
         ],
-        "scope": "Shared browser/native/game-host transfer functions, level compensation and oversampling; store only compact parameters in .premidi.",
-        "implemented_controls": [
-          "dry / wet mix"
-        ]
+        "status": "implemented; cross-host PCM qualification and physical listening remain open"
       },
       {
         "panel": "noise",
-        "next_controls": [
+        "scope": "Procedural noise with repeatable reference illustrations; retain existing source level and decay.",
+        "implemented_controls": [
           "white / pink / brown color",
-          "source bandwidth"
+          "source cutoff"
         ],
-        "scope": "Procedural noise with repeatable reference illustrations; retain existing source level and decay."
+        "status": "implemented; physical listening remains open"
       },
       {
         "panel": "stereo",
@@ -1436,7 +1436,7 @@
     "schema_version": 1,
     "program_id": "pre-midi-sound-editing-feature-complete",
     "title": "Roadmap to feature-complete sound editing",
-    "updated_on": "2026-11-10",
+    "updated_on": "2026-11-15",
     "status": "in_progress",
     "audit_commit": "bf28bf53de08f5eb514f8e4f778df711edc7aa8c",
     "audit_scope": "Baseline source audit at audit_commit; subsequent changes and verification limits are recorded in implementation_updates.",
@@ -2991,7 +2991,7 @@
       {
         "id": "SE-13",
         "title": "Finish scoped distortion, noise and stereo controls",
-        "status": "in_progress",
+        "status": "implemented_unverified",
         "priority": "P1",
         "depends_on": [
           "SE-08"
@@ -3016,13 +3016,18 @@
         "verification": [
           "Transfer/spectrum and stereo correlation/mono fixtures; direct controls match interactive illustrations."
         ],
-        "completion_evidence": [],
-        "progress_note": "Shared stereo width (0..2) and mid/side balance (-1..1) implemented before pan after source downmix, with graph and ordinary controls. M=(L+R)/2, S=(L-R)/2; positive balance attenuates M, negative attenuates S, width scales S. Neutral is transparent; width preserves mono, side-only intentionally silences mono. Per-channel bound <=2 times bounded input peak at width=2; no automatic limiter. Mono sum cancels S. Shaper alternatives, noise colors and matched listening/headroom qualification remain open."
+        "completion_evidence": [
+          "Native distortion test used a 48 kHz, 5 kHz bin-coherent tone at 0.55 drive and +4 dB input. Power in eight folded odd-harmonic bins fell by 16.03 dB (soft), 28.13 dB (hard) and 30.82 dB (wavefold) with native 4x filtering compared with the same unfiltered transfer.",
+          "Deterministic white/pink/brown source and pink at 2.5 kHz cutoff matched native and node-web-audio-api at 44.1/48/96 kHz across the two-second repeat boundary. Maximum sample difference 1.50e-8.",
+          "Independent native distortion instances match between sample and vocal renders. Parallel compensation, distinct alternate-shape PCM and seek/block fixtures passed.",
+          "Windows portable smoke exercised shape, input trim and colored-noise project recall, distinct WAV PCM and paused/live transport with the new patch."
+        ],
+        "progress_note": "White, pink and brown noise, source cutoff, three distortion shapes and input trim are implemented in the existing shared Sound controls. The original white sequence and default soft transfer remain in use. Compensation and existing wet/dry stay per processor. Native 4x folded-harmonic measurements are recorded above. Stereo width/mid-side remains after source downmix and before pan, preserving the mono sum when balance is centered. Cross-host PCM qualification for the new nonlinear shapes, physical listening and headroom review remain open."
       },
       {
         "id": "SE-14",
         "title": "Unify waveform and sample-source editing",
-        "status": "in_progress",
+        "status": "implemented_unverified",
         "priority": "P1",
         "depends_on": [
           "SE-03"
@@ -3051,12 +3056,10 @@
           "native/sample-loop-test.cpp: independent overlap, period, wrap and fractional tap oracle",
           "tests/sampleLoop.audio.mjs: native/browser PCM through stereo, transpose, glide/vibrato, stretch/reverse, fractional half-loop overlap, release, seek and block continuity",
           "tests/sampleLoop.dom.mjs and tests/sampleMapping.dom.mjs: shared waveform/range keyboard/numeric edits, focus, invalid ranges, reset and fixed drag zoom",
-          "PREMIDI_STREAM_SAMPLE_LOOP=1 PREMIDI_STREAM_RATES=48000 node scripts/native-stream-device-check.mjs: source loops in streaming revisions with zero callback allocations"
+          "PREMIDI_STREAM_SAMPLE_LOOP=1 PREMIDI_STREAM_RATES=48000 node scripts/native-stream-device-check.mjs: source loops in streaming revisions with zero callback allocations",
+          "Preview.37 exercises crop, reverse/stretch fade conversion, Windows WebView keyboard fade edits and native sample playback without browser fallback."
         ],
-        "progress_note": "Shared sample/vocal waveform crops, zoom and keyboard/numerical source editing are implemented. Sampler zones now have sustain-loop start/end and crossfade handles, loop-aware note/release lifetimes, source-relative reverse/stretch mapping and explicit key/velocity range editing with direct two-axis region handles. Authored gaps are silent in both hosts; source identity, crop, loops, root/velocity selection and current project recall are preserved. Original bytes remain external and unchanged. Native packet v23 and the browser prepared-buffer path agree on crossfaded interpolation, including fractional boundaries. Waveform start/end/fade sliders are individually accessible within a named group, and zoom stays fixed during handle drags. Decode revisions avoid repeated or stale source inspection. Waveform-overlay articulation-fade handles and physical/observed listening acceptance remain open; existing attack/release controls and illustrations stay available in the same Inspector.",
-        "remaining_implementation": [
-          "Waveform-overlay articulation fade handles, retaining existing note/Clip trigger and source-time semantics"
-        ]
+        "progress_note": "The shared waveform editor provides source crops, zoom, keyboard/numerical edits, loop start/end and crossfade. Vocal and one-shot sampled audio now have editable fade overlays mapped from original source seconds to playback seconds, including trim, reverse and stretch. Gated sample release follows the note-off and is edited in the Sound envelope. Key/velocity mapping gaps are silent in both hosts. Original audio remains external. Physical and observed editing/listening qualification remain open."
       },
       {
         "id": "SE-15",
@@ -3927,11 +3930,11 @@
     "capability_audit_note": "Current/gap text reconciled against d87799e. Original E/REF IDs describe the initial comparison; current implementation paths are listed per capability. Status partial can mean unfinished feature scope or unverified observation; do not interpret every gap as missing code."
   },
   "repository_checkpoint": {
-    "audited_on": "2026-11-10",
-    "source_commit": "1d77501e0cde518949c4f60b172fb4b8ce957283",
-    "preview_version": "0.14.1-preview.36",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.36",
-    "method": "Reconciled the canonical backlog with current source at 1d77501e0cde518949c4f60b172fb4b8ce957283, focused source/data/DSP/shared-editor checks and observed Pages source edits. Final Windows workflow and artifact evidence are recorded in latest_delivery. Automated WebView/null-device results do not establish physical audio or listening acceptance.",
+    "audited_on": "2026-11-15",
+    "source_commit": "1f666d2aee0645dbdde926c9a6ed2330a81186f8",
+    "preview_version": "0.14.1-preview.37",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.37",
+    "method": "Source and focused checks reconciled against the preview.37 tag. Automated WebView and null-device results cover software behavior. Physical audio-device and listening acceptance remain open.",
     "architecture": {
       "shell": "Tauri / Rust",
       "interface": "HTML/CSS/JavaScript in WebView2 on Windows",
@@ -3941,8 +3944,8 @@
       "Physical Windows audio/microphone/device recovery and dense or long-session acceptance for the implemented opt-in streaming lifecycle",
       "Broader modulation destinations and follower/sidechain/free-run sources; effect/discrete automation, gesture recording, override/rejoin and wider scopes",
       "Shared Track buses, selectable sidechains, arrangement-wide latency compensation and measured processor telemetry",
-      "Waveform articulation overlays, monophonic pitch correction, additional shapers and noise colors",
-      "Observed editor, newcomer and listening qualification; separately deferred mobile/game completion"
+      "Monophonic pitch correction, wider synthesis and MIDI capabilities and master/export fidelity",
+      "Observed accessibility, newcomer and listening qualification; phone and pre-programmed implementation and acceptance"
     ],
     "completion_percentage": null,
     "scope_note": "Native desktop implementation exists. Native mobile, game-host parity and cross-platform distributions are separate tasks. No current cross-repository game-reader audit was performed. Automatic signed installation is deferred while the user uses manual portable ZIP updates."
@@ -3963,8 +3966,6 @@
       "SE-08",
       "SE-09",
       "SE-10",
-      "SE-13",
-      "SE-14",
       "SE-15"
     ],
     "delivery_policy": "Continue the existing canonical parameter/Inspector/native contracts. No placeholder controls, silent Web Audio fallback, speculative legacy readers or completion claims from interface wiring alone.",
@@ -3994,7 +3995,9 @@
     },
     "remaining_qualification_task_ids": [
       "SE-11",
-      "SE-12"
+      "SE-12",
+      "SE-13",
+      "SE-14"
     ],
     "modulation_effects": {
       "status": "all six named processor types implemented; focused software checks pass",
@@ -4013,22 +4016,22 @@
       "package_version": "0.14.1-preview.34"
     },
     "sampler_source_editing": {
-      "status": "source crop, sustain/crossfade and key/velocity range milestone implemented",
-      "package_requested": "0.14.1-preview.36",
+      "status": "Source crop, sustain/crossfade, key/velocity ranges and one-shot/vocal articulation editing implemented",
+      "package_requested": "0.14.1-preview.37",
       "package_status": "published",
-      "remaining": "Waveform articulation overlays and observed physical/editor/listening qualification",
-      "package_version": "0.14.1-preview.36"
+      "remaining": "Physical/observed editor and listening qualification",
+      "package_version": "0.14.1-preview.37"
     }
   },
   "latest_delivery": {
-    "version": "0.14.1-preview.36",
-    "source_commit": "1d77501e0cde518949c4f60b172fb4b8ce957283",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.36",
-    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.36/pre-midi-0.14.1-preview.36-windows-x86_64-portable.zip",
-    "bytes": 17218722,
-    "sha256": "45c0c14ba8f8e364ab9fec722bbfb693cfa1769629c3c6ba14e77cec25750d64",
-    "build_run": "https://github.com/natanai/pre-midi/actions/runs/42925527954",
-    "status": "Published; exact tag source, 107 routine cases, Windows compilation, 15 Rust tests including urgent transport under a full preparation queue, native sampler waveform editing, loop/gap playback/export, pause/resume/stop and project recall, plus portable launch/upgrade/isolation/relocation/copy/recovery passed. Downloaded ZIP checksum, CRC, version, portable folders and source license contents verified (Windows CRLF normalized).",
-    "remaining": "Broader roadmap implementation and physical Windows audio/microphone/listening acceptance remain open. Optional full audio qualification was not requested."
+    "version": "0.14.1-preview.37",
+    "source_commit": "1f666d2aee0645dbdde926c9a6ed2330a81186f8",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.37",
+    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.37/pre-midi-0.14.1-preview.37-windows-x86_64-portable.zip",
+    "bytes": 17228246,
+    "sha256": "e5167843aec669b33d18ad18d489b0e482382ada715487e3a8ac458417c46b67",
+    "build_run": "https://github.com/natanai/pre-midi/actions/runs/43756683248",
+    "status": "Published. Windows compilation, 15 Rust tests, portable lifecycle and packaged WebView/native transport were exercised. ZIP CRC, executable, version and manifest SHA-256 were verified. The routine JavaScript suite passed. The broader optional suite reports 12 failures, all present on the prior main revision.",
+    "remaining": "The roadmap remains active. Wider automation/routing, source tuning, master/export work, phone/game parity and physical Windows/listening acceptance remain open."
   }
 }
