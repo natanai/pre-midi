@@ -66,7 +66,7 @@ function note(id,pitch,start,duration,velocity){
 }
 export async function measureGameFootprint(){
  const cases=[];
- const empty=create();cases.push(inspect("init-beat-v7",empty));
+ const empty=create();cases.push(inspect("init-beat",empty));
  const phrase=create(),first=phrase.instruments[0],chunk=first.chunks[0];
  first.timeline[0]=chunk.id;chunk.notes=[
   note("fixture-note-1",60,0,4,.8),
@@ -74,14 +74,20 @@ export async function measureGameFootprint(){
   note("fixture-note-3",67,8,4,.65),
   note("fixture-note-4",72,12,4,.75)
  ];
- cases.push(inspect("one-phrase-beat-v7",phrase));
+ cases.push(inspect("one-phrase-beat",phrase));
  const mod=create();mod.instruments[0].sounds[0].patch=makePatch("touch-keys");
- upgradeBeatFeatures(mod);cases.push(inspect("modulated-beat-v9",mod));
- const automated=create();automated.instruments[0].automation={
-  version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
+ upgradeBeatFeatures(mod);cases.push(inspect("modulated-beat",mod));
+ const automated=create(),instrument=automated.instruments[0];
+ instrument.timeline[0]=instrument.chunks[0].id;
+ instrument.chunks[0].notes=[note("automated-note",60,0,16,.8)];
+ instrument.automation=[{
+  id:"cutoff",version:1,target:"filter.cutoff",unit:"hz",interpolation:"exponential",
   points:[{id:"begin",step:0,value:400},{id:"end",step:32,value:6400}]
- };
- upgradeBeatFeatures(automated);cases.push(inspect("automated-beat-v11",automated));
+ },{
+  id:"filter-mix",version:1,target:"processor.filter.mix",unit:"ratio",interpolation:"linear",
+  points:[{id:"dry",step:0,value:0},{id:"wet",step:16,value:1}]
+ }];
+ upgradeBeatFeatures(automated);cases.push(inspect("automated-beat",automated));
 
  const examples=new Map();
  for(const entry of EXAMPLES){
@@ -89,21 +95,21 @@ export async function measureGameFootprint(){
   examples.set(entry.id,score);
   cases.push(inspect("studio-example/"+entry.id,score));
  }
- cases.push(inspect("single-beat-song-v8",createSong(phrase)));
- cases.push(inspect("modulated-song-v10",createSong(mod)));
- cases.push(inspect("automated-song-v12",createSong(automated)));
+ cases.push(inspect("single-beat-song",createSong(phrase)));
+ cases.push(inspect("modulated-song",createSong(mod)));
+ cases.push(inspect("automated-song",createSong(automated)));
  const layered=createSong(examples.get("floating-signals"));
  const second=addBeat(layered,examples.get("broken-circuit"));
  const lane=addSongTrack(layered,"beat");
  addBeatClip(layered,lane.id,second.id,16,256);
  addBeatClip(layered,lane.id,second.id,288,128);
- cases.push(inspect("layered-reused-beat-song-v8",layered));
+ cases.push(inspect("layered-reused-beat-song",layered));
  const vocal=createSong(phrase);
  addVocalTake(vocal,{
   id:"footprint-vocal",name:"Example take",mime:"audio/wav",
   path:"assets/footprint-vocal.wav",durationSeconds:12,trimSeconds:.125
  });
- cases.push(inspect("external-vocal-song-v14",vocal));
+ cases.push(inspect("external-vocal-song",vocal));
  return {
   schema_version:1,
   measurement:"UTF-8 bytes of JSON.stringify(instruction-only .premidi export documents); gzip level 9 is informative only",

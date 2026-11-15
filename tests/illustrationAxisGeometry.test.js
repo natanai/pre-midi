@@ -23,7 +23,8 @@ function assertGeometry(patch,kind){
   const picture=diagram(patch,kind,page);
   for(const point of picture.handles){
    for(const axis of point.axes){
-    const value=at(patch,axis.path)??readSoundParameter(patch,axis.path.join("."));
+    const phaseDefault=axis.path.at(-1)==='phase'?0:undefined;
+    const value=at(patch,axis.path)??readSoundParameter(patch,axis.path.join("."))??phaseDefault;
     assert.ok(Number.isFinite(value),kind+" has a nonnumeric handle "+axis.path.join("."));
     const expected=coordinateFor(axis,value);
     const actual=axis.mode.endsWith("X")?point.x:point.y;

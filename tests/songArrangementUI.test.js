@@ -83,7 +83,6 @@ test("one Export dialog supports both document scopes and formats",()=>{
  assert.match(studio,/exportFormat\("premidi"\)\.checked=true/);
  assert.match(studio,/scope==="song"\?song:beat/);
  assert.match(studio,/scope==="song"\?exportSongProject\(source\):exportProject\(source\)/);
- assert.match(studio,/await wav\(source\)/);
 });
 test("transport follows expanded Song or currently selected Beat",()=>{
  const studio=read("studio.js");

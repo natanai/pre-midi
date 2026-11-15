@@ -1143,7 +1143,13 @@
       "acceptance": [
         "The game engine loads versioned native patch and Song definitions.",
         "Game state modulates documented parameters without a second music script language.",
-        "Matched reference renders prove interpretation parity and preserve legacy files."
+        "Matched reference renders prove interpretation parity for current studio projects."
+      ],
+      "progress_note": "The pre-programmed author workspace at 15b17142092be22b8cf0e37dfe699d33f4f29171 imports its v2 reader. Current pre-midi Beat and Song fixtures use versions 7 and 8 or later. The current fixture validates compact instruction-only exports with separate assets. The game player still needs the current reader, matching DSP and explicit gameplay controls.",
+      "references": [
+        "https://github.com/natanai/pre-programmed/blob/15b17142092be22b8cf0e37dfe699d33f4f29171/src/features/media/author/premidiWorkspaces.tsx",
+        "https://github.com/natanai/pre-programmed/blob/15b17142092be22b8cf0e37dfe699d33f4f29171/src/features/media/vendor/premidi-schema.js",
+        "tests/gameFootprint.test.js"
       ]
     },
     {
@@ -4032,8 +4038,8 @@
       "reference": "SE-15",
       "package_requested": "0.14.1-preview.38",
       "remaining": "Physical listening and CPU/quality qualification",
-      "package_status": "preview.38 requested",
-      "package_version": "0.14.1-preview.34"
+      "package_status": "published",
+      "package_version": "0.14.1-preview.38"
     },
     "sampler_source_editing": {
       "status": "Source crop, sustain/crossfade, key/velocity ranges and one-shot/vocal articulation editing implemented",
@@ -4044,14 +4050,14 @@
     }
   },
   "latest_delivery": {
-    "version": "0.14.1-preview.37",
-    "source_commit": "1f666d2aee0645dbdde926c9a6ed2330a81186f8",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.37",
-    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.37/pre-midi-0.14.1-preview.37-windows-x86_64-portable.zip",
-    "bytes": 17228246,
-    "sha256": "e5167843aec669b33d18ad18d489b0e482382ada715487e3a8ac458417c46b67",
-    "build_run": "https://github.com/natanai/pre-midi/actions/runs/43756683248",
-    "status": "Published. Windows compilation, 15 Rust tests, portable lifecycle and packaged WebView/native transport were exercised. ZIP CRC, executable, version and manifest SHA-256 were verified. The routine JavaScript suite passed. The broader optional suite reports 12 failures, all present on the prior main revision.",
-    "remaining": "The roadmap remains active. Wider automation/routing, source tuning, master/export work, phone/game parity and physical Windows/listening acceptance remain open."
+    "version": "0.14.1-preview.38",
+    "source_commit": "a9d3515e2903c3110b3717dfc416d08036d3f8e7",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.38",
+    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.38/pre-midi-0.14.1-preview.38-windows-x86_64-portable.zip",
+    "bytes": 17241626,
+    "sha256": "e4f9c32fc1c758a4d4f48c077c0b312a7499d4fd2401912b2082d53de789046a",
+    "build_run": "https://github.com/natanai/pre-midi/actions/runs/43765342880",
+    "status": "Published. Windows compilation, 16 Rust tests, portable upgrade and recovery, and packaged WebView/native transport checks passed. ZIP CRC, version, x64 executable and manifest SHA-256 were verified. Routine JavaScript and focused source tuning, EQ, export, modulation, automation and stream checks passed. The optional JavaScript suite has 11 failures reproduced on the preceding main revision.",
+    "remaining": "The roadmap remains active for wider effect and gesture automation, Track routing, sidechains, mobile and game integration, and physical Windows and listening acceptance."
   }
 }

@@ -16,7 +16,9 @@ test("every numerical Sound task has a directly editable teaching trace, not jus
    if(page===null){missing.push(name+" "+path);continue;}
    const a=structuredClone(patch),b=structuredClone(patch);
    assignSoundEdit(a,axis.path,axis.hardMin??axis.min);
-   assignSoundEdit(b,axis.path,axis.hardMax??axis.max);
+   const maximum=axis.hardMax??axis.max;
+   // Phase wraps at one cycle. A half-cycle is an independent audible change.
+   assignSoundEdit(b,axis.path,axis.path.at(-1)==='phase'?maximum/2:maximum);
    if(illustrationSignal(diagram(a,kind,page),path)===
     illustrationSignal(diagram(b,kind,page),path))unresponsive.push(name+" / "+kind+" / "+path+" (view "+page+")");
    checked++;
