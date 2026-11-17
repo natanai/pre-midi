@@ -4,59 +4,57 @@
   "executionPlanVersion": 2,
   "modulationBlockVersion": 1,
   "projectFormats": {
-    "legacyBeat": 7,
-    "legacySong": 8,
-    "modulatedBeat": 9,
-    "modulatedSong": 10,
-    "policy": "Unmodified legacy projects keep their version. Modulation requires explicit v9/v10 containers so older readers reject unsupported semantics. Remove no recording assets and embed no audio."
+    "authority": "schema.js and songModel.js feature declarations",
+    "policy": "One current project model with explicit feature tags. Current examples, presets and .premidi round trips retain routes and stable processor identities. Do not add hypothetical legacy migrations or embed recording audio."
   },
   "presetStorage": {
+    "authority": "userSoundLibrary.js",
     "current": "premidi-user-sounds-v2",
-    "migration": "Read prior v1 presets if v2 is absent, then save the complete current collection under v2; never write modulation into the old reader's v1 preset store"
+    "scope": "Current reusable Sound, Rack and processing-only presets preserve the same route model. Assets remain external."
   },
   "routes": {
     "max": 16,
     "order": "Stable route ID order for summation",
     "sources": [
-      "sine LFO",
+      "LFO sine/triangle/ramp/square/sample-hold/smooth-random/2\u201316 steps",
       "independent ADSR envelope",
-      "note velocity",
-      "key tracking"
+      "note velocity and key tracking for triggered Sounds",
+      "up to four named performance macros"
     ],
     "range": "Each route explicitly selects unipolar or bipolar normalization",
     "depth": "Signed depth in the destination's declared unit",
-    "targets": "Existing SYNTH_PARAMETERS identifiers; static UI ranges remain distinct from bounded modulation offsets",
+    "targets": "src/dsp/parameters.js defines source-context targets; src/dsp/processor-automation.js derives every continuous post-effect control and mix from canonical fields. Stable processor IDs resolve to bounded native slots only during preparation.",
     "combination": {
       "oscillatorDetune": "Legacy pitch/bend/glide/vibrato base plus summed offset, bounded to +/-2400 cents before addition",
       "oscillatorLevel": "clamp(base gain + summed offset,0,1)",
       "filterCutoff": "Base frequency including legacy tone/sweep multiplied by 2^(summed octave offset bounded to +/-8); host applies its Nyquist limit",
-      "pan": "clamp(base pan + summed offset,-1,1)"
+      "pan": "clamp(base pan + summed offset,-1,1)",
+      "postEffects": "clamp(automated base + summed smoothed movement, canonical field minimum, maximum); stepped enable multiplies the resulting wet contribution"
     },
-    "normalization": "New patch-v2 source normalization reserves potential oscillator level from level routes; legacy patches retain their original normalization"
+    "normalization": "Source normalization reserves potential oscillator level from level routes. Post-effect movement changes the selected field after source processing and pan."
   },
   "timing": {
-    "lfo": "Per-note sine phase reset at canonical note onset; rate in Hz",
-    "envelope": "Independent linear ADSR, same explicit note-off and legacy 2ms minimum attack/release floor contract",
+    "lfo": "Hz or tempo division, authored phase and note/Clip restart or timeline clock. Timeline clocks revisit the same musical position during seek/loop. New post-effect sine routes use the direct authored cycle equation on both hosts.",
+    "envelope": "Independent linear ADSR with a 2 ms minimum attack, explicit note/Clip off and linear release toward 1e-6",
     "keyTracking": "clamp((MIDI pitch-root)/span,-1,1), root and span explicit",
     "smoothing": "Per-route first-order recurrence y[n]=alpha*x[n]+(1-alpha)*y[n-1], alpha=1-exp(-1/(sampleRate*seconds)); reset to zero at note-on",
-    "web": "Actual audio-rate oscillator/constant/envelope control signals and IIR smoothing; no JavaScript per-sample arrays or timer-based parameter updates",
+    "web": "Primary controls use audio-rate AudioParam/control signals. Post-effect movement uses prepared fixed-state worklet routes, with no per-frame storage allocation or UI timers.",
     "oracle": "Graph control traces compared to portable mathematics at three rates: 0.02 cents pitch, 0.04 cents filter detune, 5e-6 gain/pan",
     "phase": "Phase zero at the authored note-on, including the fractional interval before the first output sample in v2. Native timing does not depend on a host render quantum.",
     "browserOnset": "Pitch-controlled v2 carriers silently pre-roll on a preceding boundary with an equal/opposite Fourier phase rotation. Recipe normalization stays fixed; source gains are muted until the authored note-on. See docs/native-onset-investigation.json."
   },
   "automationAlignment": {
-    "basePrecedence": "Future SYN-010 automation updates the base value of these same parameter IDs before modulation is combined",
-    "implemented": "Initial filter.cutoff timeline slice in docs/automation-contract.json; patch base -> timeline automation -> per-note modulation -> bounded result",
-    "notImplemented": [
-      "recording automation",
-      "mid-note plan replacement",
-      "additional targets and Song/game override recording"
+    "basePrecedence": "Sound base -> matching timeline/captured source lane -> movement -> canonical parameter/device bounds",
+    "implemented": "Shared continuous post-effect controls, source amplitude/stereo/filter/oscillator targets and the authored lanes in docs/automation-contract.json",
+    "remaining": [
+      "Further source/EQ/send targets and wider Track/game scopes",
+      "Monitored manual override/rejoin and follower/sidechain inputs"
     ]
   },
   "native": {
-    "profile": "Native C++ execution-plan v1/v2, all four canonical sources and six target IDs with up to 16 routes; unsupported noise/drive/delay/filter-sweep/legacy LFO paths reject explicitly",
-    "future": "Evaluate these same bounded source/range/depth/smoothing/combination semantics in a native callback without parsing JSON or allocating per block",
-    "qualification": "native/fidelity-policy.json, benchmarks/native-parity-reference.json and benchmarks/onset-reference.json"
+    "profile": "Current C++ prepared voice transport and sample packet v27; sixteen routes, fixed per-voice state, strict kind/field/depth checks and no callback parsing/allocation",
+    "processing": "Every post effect retains detector/delay history through mix/enable edits; dynamic rate integrates phase; carrier filters and tail reservation include authored movement bounds",
+    "qualification": "Focused native/worklet PCM, seek continuity, independent macro reference and 48 kHz null-device streaming pass. Hardware performance and listening remain unqualified."
   },
   "usability": {
     "basicControls": "Cutoff, attack, release and volume remain unchanged and directly reachable",
@@ -75,19 +73,21 @@
     "tests/modulation.test.js",
     "tests/audio-quality/modulation-fixtures.js",
     "tests/audio-quality/modulation-oracle.js",
-    "32/64-voice, 16-route capture in tests/audio-quality/voice-suite.js"
+    "32/64-voice, 16-route capture in tests/audio-quality/voice-suite.js",
+    "tests/postModulation.test.js",
+    "tests/postModulation.audio.mjs",
+    "tests/postModulation.dom.mjs",
+    "scripts/native-stream-device-check.mjs"
   ],
   "limitations": [
-    "Full native DSP support is pending",
-    "Device performance with maximum route counts is unqualified",
-    "Musical polish and newcomer comprehension need human observation",
-    "Worker startup for 32/64 voices with 16 routes took about 3/6 seconds. Stress capture suspends the audio clock during preparation; it does not qualify interactive scheduling."
+    "Delay/reverb sends, envelope follower and selectable audio sidechains remain unfinished",
+    "Reference-hardware performance at maximum route and voice counts remains unqualified",
+    "Musical polish, physical Windows audio/microphone and newcomer comprehension require observed review",
+    "Previous stress capture paused the audio clock during preparation and does not establish interactive startup performance"
   ],
   "gameCompatibility": {
     "status": "pending SYN-020",
-    "policy": "Preserve patch v1/v2, Beat v7/v9, Song v8/v10. Never silently downgrade modulation for old game readers or require bounced WAV as the native music format.",
-    "formats": [
-      "patch v1/v2; Beat v7/v9/v11; Song v8/v10/v12; voice plans v1/v2/v3"
-    ]
-  }
+    "policy": "Target the current pre-programmed reader contract. No silent downgrade, hypothetical old readers or required WAV conversion. No current cross-repository implementation audit was performed."
+  },
+  "updated_on": "2026-11-17"
 }

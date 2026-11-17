@@ -1,4 +1,4 @@
-import {postAutomationMask,POST_AUTOMATION_FIELDS} from './processor-automation.js';
+import {postAutomationMask,postModulationMask,postModulationTargets,POST_AUTOMATION_FIELDS} from './processor-automation.js';
 import {POST_PROCESSOR_LIMIT} from './parameters.js';
 import {DYNAMICS_KINDS,compileDynamics} from './dynamics.js';
 import {MOD_EFFECT_KINDS,modEffectRecipe,modEffectTail,delayEffect,frequencyEffect} from './modulation-effects.js';
@@ -11,12 +11,15 @@ export function compilePostProcessing(patch,unit=.125,lanes=patch.automation??[]
  return order.flatMap(id=>{
   const node=instances.find(p=>p.id===id),mix=chain.mix?.[id]??1;
   if(!node||!POST_PROCESSOR_KINDS.includes(node.kind)||!Number.isFinite(mix)||mix<0||mix>1)throw Error('Invalid post-level processor');
-  const automationMask=postAutomationMask(lanes,id);
+  const automationMask=postAutomationMask(lanes,id)|postModulationMask(patch,id);
   if(bypass.includes(id)||(mix===0&&!automationMask))return [];
   const recipe={...(dynamics.get(id)??{id,...modEffectRecipe(node.kind,node.parameters,mix,unit)}),automationMask};
   if(frequencyEffect(node.kind)&&(automationMask&(1<<POST_AUTOMATION_FIELDS.indexOf('frequency')))){
    const frequencies=[node.parameters.frequency,...lanes.filter(lane=>!lane.bypass&&lane.target==='processor.'+id+'.frequency').flatMap(lane=>lane.points.map(point=>point.value))];
-   recipe.frequencyLow=Math.min(...frequencies);recipe.frequencyHigh=Math.max(...frequencies);
+   const definition=postModulationTargets(patch).find(t=>t.id==='processor.'+id+'.frequency');
+   const range=(patch.modulation?.routes??[]).filter(route=>route.target===definition?.id).reduce((n,route)=>n+Math.abs(route.depth),0);
+   recipe.frequencyLow=Math.max(definition?.parameter.min??-2000,Math.min(...frequencies)-range);
+   recipe.frequencyHigh=Math.min(definition?.parameter.max??2000,Math.max(...frequencies)+range);
   }
   return [recipe];
  });
@@ -30,6 +33,13 @@ export function postTailSeconds(patch,unit=.125,lanes=patch.automation??[]){
    if(field==='frequency')p.frequency=Math.min(p.frequency,...values);
    else if(['mix','depth','delay'].includes(field))p[field]=Math.max(p[field],...values);
    else if(field==='feedback')p.feedback=Math.max(Math.abs(p.feedback),...values.map(Math.abs));
+  }
+  for(const route of patch.modulation?.routes??[])if(route.target.startsWith('processor.'+p.id+'.')){
+   const field=route.target.split('.')[2],definition=postModulationTargets(patch).find(t=>t.id===route.target);
+   if(!definition?.active)continue;
+   if(field==='frequency')p[field]=Math.max(definition.parameter.min,p[field]-Math.abs(route.depth));
+   else if(['mix','depth','delay'].includes(field))p[field]=Math.min(definition.parameter.max,p[field]+Math.abs(route.depth));
+   else if(field==='feedback')p[field]=Math.min(.8,Math.abs(p[field])+Math.abs(route.depth));
   }
   return seconds+modEffectTail(p);
  },0);

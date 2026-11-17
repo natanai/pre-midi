@@ -1,10 +1,10 @@
 import {processorBypassed} from "./src/dsp/processing-chain.js";
-import {modulationTargetsFor,modulationSourcesFor,MODULATION_CONTROLS,parameterField} from "./src/dsp/parameters.js";
-import {MOD_TARGETS,defaultSource,LFO_SHAPES,LFO_DIVISIONS,randomLfoShape,DEFAULT_LFO_STEPS,MAX_LFO_STEPS} from "./src/dsp/modulation.js";
+import {modulationSourcesFor,MODULATION_CONTROLS,parameterField} from "./src/dsp/parameters.js";
+import {modulationTargets,defaultSource,LFO_SHAPES,LFO_DIVISIONS,randomLfoShape,DEFAULT_LFO_STEPS,MAX_LFO_STEPS} from "./src/dsp/modulation.js";
 import {createDial,explainLabel} from "./dial.js";
 const openBySound=new Map();
 export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=>{}){
- const targets=modulationTargetsFor(patch.type);
+ const targets=modulationTargets(patch);
  const macros=patch.modulation?.macros??[];
  const sources=modulationSourcesFor(patch.type).filter(kind=>kind!=="macro"||macros.length);
  const key=soundId??patch;
@@ -20,12 +20,13 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
  for(const [index,route] of routes.entries()){
   const row=document.createElement("div");row.className="synth-fields modulation-route";
    row.dataset.soundPath="modulation.routes."+index;
-  const target=MOD_TARGETS.find(item=>item.id===route.target);
-  const inactive=route.target.startsWith("filter.")&&(patch.filter==null||patch.audioFilterBypassed===true||processorBypassed(patch,"filter"))?"the filter is off":undefined;
+  const target=targets.find(item=>item.id===route.target);
+  const inactive=target.active===false?'processor is bypassed, outside its chain or follows tempo':route.target.startsWith("filter.")&&(patch.filter==null||patch.audioFilterBypassed===true||processorBypassed(patch,"filter"))?"the filter is off":undefined;
   const name=document.createElement("span");name.textContent=route.source.kind==="macro"?(macros.find(m=>m.id===route.source.id)?.name??"macro")+" → "+target.name:route.source.kind==="velocity"?"touch → "+target.name:route.source.kind==="keytrack"?"keys → "+target.name:target.name+" over time";
   row.append(name);
-  if(inactive){name.textContent+=" · filter off";name.title=inactive;}
-  const depth=createDial({label:"Movement amount",help:"how far this movement changes the sound",min:-target.limit,max:target.limit,step:target.unit==="cents"?1:.01,display:target.unit==="cents"?"cents":target.unit==="octaves"?"octaves":target.unit==="linear_gain"?"percent":"number"},route.depth,value=>update(index,{depth:value}),value=>preview(index,{depth:value}));
+  if(inactive)name.title=inactive;
+  const instance=route.target.startsWith('processor.');
+  const depth=createDial({label:"Movement amount",help:"how far this movement changes the sound",min:-target.limit,max:target.limit,step:instance?target.parameter.ui?.step??.01:target.unit==="cents"?1:.01,display:instance?target.parameter.ui?.display??'percent':target.unit==="cents"?"cents":target.unit==="octaves"?"octaves":target.unit==="linear_gain"?"percent":"number"},route.depth,value=>update(index,{depth:value}),value=>preview(index,{depth:value}));
   depth.querySelector('[role="slider"]').setAttribute("aria-label","Movement amount "+(index+1));
   depth.dataset.soundPath="modulation.routes."+index+".depth";row.append(depth);
   if(route.source.kind==="lfo"&&!route.source.sync){
@@ -78,7 +79,7 @@ export function renderModulationEditor(patch,onChange,soundId=null,onPreview=()=
     update(index,{source:{...route.source,steps}});
    });
   }
-  select("movement target","target",targets.map(target=>[target.id,target.name]),route.target,id=>{const next=MOD_TARGETS.find(t=>t.id===id);update(index,{target:id,unit:next.unit,depth:Math.max(-next.limit,Math.min(next.limit,route.depth))});});
+  select("movement target","target",targets.map(target=>[target.id,target.name]),route.target,id=>{const next=targets.find(t=>t.id===id);update(index,{target:id,unit:next.unit,depth:Math.max(-next.limit,Math.min(next.limit,route.depth))});});
   select("movement range","polarity",[["unipolar","one way"],["bipolar","both ways"]],route.polarity,polarity=>update(index,{polarity}));
   if(route.source.kind==="envelope")for(const field of ["attack","decay","sustain","release"]){
    const dial=createDial({...parameterField("envelope."+field),label:"Move "+field},

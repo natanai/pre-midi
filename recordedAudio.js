@@ -7,7 +7,7 @@ import {connectStereoImage} from './src/hosts/web/stereo.js';
 import {createEq,cascadeFilter,cutoffDestination} from './src/hosts/web/equalizer.js';
 import {connectProcessorMix} from './src/hosts/web/processor-mix.js';
 import {processingChain,processorBypassed,effectiveDelayEffects} from "./src/dsp/processing-chain.js";
-import {parameterFor,parameterDefaults,clampParameterValue,modulationTargetsFor,modulationSourcesFor} from "./src/dsp/parameters.js";
+import {parameterFor,parameterDefaults,clampParameterValue,modulationSourcesFor} from "./src/dsp/parameters.js";
 import {windowEnvelope} from "./src/dsp/envelope-window.js";
 import {planFilterSweep,filterSweepRatioAt} from "./src/dsp/filter-sweep.js";
 import {validateAutomation,planCutoffAutomation,cutoffLane,planParameterAutomation,automationParameters} from "./src/dsp/automation.js";
@@ -16,7 +16,7 @@ import {driveSettings} from './src/dsp/distortion.js';
 import {driveStage,sampleTone} from './audioEffects.js';
 import {movement,scheduleMovementLfo} from './expression.js';
 import {attachModulation} from './src/hosts/web/modulation.js';
-import {validateModulation,resolveModulation} from './src/dsp/modulation.js';
+import {validateModulation,resolveModulation,modulationTargets} from './src/dsp/modulation.js';
 import {effectTailSeconds} from './src/dsp/effect-tail.js';
 export const RECORDING_DEFAULTS=Object.freeze({
  ...Object.fromEntries(["pan","transpose"].map(id=>[id,parameterFor(id,"vocal").default])),
@@ -27,11 +27,11 @@ export function recordedEffects(patch){
  return {...RECORDING_DEFAULTS,...patch,movement:movement(patch),filter:patch.filter?sampleTone(patch).filter:null,
   bend:patch.bend??parameterDefaults('bend')};
 }
-export function validateRecordedModulation(block,{vocal=false}={}){
+export function validateRecordedModulation(block,{vocal=false,patch}={}){
  if(block===undefined)return [];
- const errors=validateModulation(block);
+ const errors=validateModulation(block,patch?{...patch,type:vocal?'vocal':'sample'}:undefined);
  if(errors.length)return errors;
- const context=vocal?'vocal':'sample',targets=modulationTargetsFor(context).map(t=>t.id),sources=modulationSourcesFor(context);
+ const context=vocal?'vocal':'sample',targets=modulationTargets({...patch,type:context}).map(t=>t.id),sources=modulationSourcesFor(context);
  for(const route of block.routes){
   if(!targets.includes(route.target))errors.push('The selected movement target requires a synthesizer.');
   if(!sources.includes(route.source.kind))errors.push('Timeline recordings use time-based movement sources.');
@@ -48,7 +48,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  const elapsed=Math.max(0,elapsedSteps)*unit;
  const fx=effectiveDelayEffects(patch,recordedEffects(patch),unit),motion=fx.movement,add=node=>{owner.nodes.push(node);return node;};
  let signal=source,filter=null,filterStage=null;const stages=new Map(),automationTargets=new Map();owner.automationTargets=automationTargets;
- const modulation=resolveModulation(fx.modulation,unit),targets=new Map([['pan',pan.pan]]);
+ const modulation=resolveModulation(fx.modulation,unit,{...fx,type:patch.type??'vocal'}),targets=new Map([['pan',pan.pan]]);
  const parameterAutomation=planParameterAutomation(fx.automation,{...patch,type:patch.type??"vocal"},{start,end:start+duration,step:elapsedSteps,unit,limitStep:elapsedSteps+duration/unit,...timeline,start,end:start+duration});
  if(fx.filter&&!processorBypassed(patch,"filter")){
   filter=add(context.createBiquadFilter());filter.type=fx.filter.type;filterStage=cascadeFilter(context,filter,patch,owner);
@@ -76,7 +76,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  const movementGain=add(context.createGain());movementGain.gain.value=1;automationTargets.set("amplitude",movementGain.gain);automationTargets.set("pan",pan.pan);
  amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(context,movementGain,patch,owner,source.buffer?.numberOfChannels??1,{start,end:start+duration,lanes:parameterAutomation,targets:automationTargets,modulation,routes:targets}).connect(pan);pan.pan.value=fx.pan;
  const postTail=postTailSeconds(patch,unit,parameterAutomation);
- connectPostProcessing(context,pan,patch,owner,start,start+duration+(patch.type==='sample'?.01:0)+postTail,{unit,elapsed}).connect(gate);
+ connectPostProcessing(context,pan,patch,owner,start,start+duration+(patch.type==='sample'?.01:0)+postTail,{unit,elapsed,off:start+duration,clockStart,expression}).connect(gate);
  targets.set('amplitude',movementGain.gain);if(filter){targets.set('filter.cutoff',cutoffDestination(context,filterStage.filters,start,start+duration,owner));targets.set('filter.resonance',filter.Q);}
  scheduleParameterAutomation(context,parameterAutomation,automationTargets,owner);
  attachModulation(context,{parameterAutomation,modulation,start,clockStart,off:start+duration,graphEnd:start+duration,expression,elapsed,patch:fx,resonance:fx.filter?.resonance},targets,owner);
@@ -95,7 +95,7 @@ export function processingFromPatch(patch){
  result.chain=structuredClone(processingChain(patch));
  if(result.filter===null&&!result.chain.bypass.includes('filter'))result.chain.bypass.push('filter');
  if(result.automation){const allowed=automationParameters({...result,type:'vocal'}).map(p=>p.id);result.automation=result.automation.filter(lane=>allowed.includes(lane.target));if(!result.automation.length)delete result.automation;}
- if(result.modulation)result.modulation.routes=result.modulation.routes.filter(route=>modulationTargetsFor('vocal').some(target=>target.id===route.target)&&modulationSourcesFor('vocal').includes(route.source.kind));
+ if(result.modulation)result.modulation.routes=result.modulation.routes.filter(route=>modulationTargets({...result,type:'vocal'}).some(target=>target.id===route.target)&&modulationSourcesFor('vocal').includes(route.source.kind));
  if(result.filter)result.filter={...sampleTone({filter:result.filter}).filter};
  result.attack=clampParameterValue('envelope.attack',result.attack,'vocal');result.release=clampParameterValue('envelope.release',result.release,'vocal');
  return result;

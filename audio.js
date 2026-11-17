@@ -104,7 +104,7 @@ export function scheduleSynthPlan(ctx,destination,plan,session=null){
  if(plan.version===1&&plan.modulation!==undefined)throw Error("Modulation requires synth voice contract v2");
  if(plan.version!==3&&(plan.automation!==undefined||plan.parameterAutomation?.length))throw Error("Automation requires synth voice contract v3");
  if(plan.automation){const errors=validateAutomationPlan(plan.automation);if(errors.length)throw Error(errors.join(" "));}
- if(plan.version>=2){const errors=validateModulation(plan.modulation);if(errors.length)throw Error(errors.join(" "));
+ if(plan.version>=2){const errors=validateModulation(plan.modulation,plan.patch);if(errors.length)throw Error(errors.join(" "));
   if(plan.modulation.routes.some(route=>route.smoothing>0)&&typeof ctx.createIIRFilter!=="function")throw Error("This host does not support smoothed modulation");}
  const {patch,off,end,start,duration}=plan,motion=plan.movement;
  const sources=[],nodes=[],automationTargets=new Map(),owner={sources,nodes,automationTargets},destinations=new Map();
@@ -179,7 +179,7 @@ const pulse=add(ctx.createGain());
  const gate=add(ctx.createGain());
  const movementGain=add(ctx.createGain());movementGain.gain.value=1;destinations.set("amplitude",movementGain.gain);automationTargets.set("amplitude",movementGain.gain);
  amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(ctx,movementGain,patch,owner,1,{start,end:plan.graphEnd,lanes:plan.parameterAutomation,targets:automationTargets,modulation:plan.modulation,routes:destinations}).connect(pan);
- connectPostProcessing(ctx,pan,patch,owner,start,plan.graphEnd,{recipes:plan.postProcessing}).connect(gate);
+ connectPostProcessing(ctx,pan,patch,owner,start,plan.graphEnd,{recipes:plan.postProcessing,off:plan.off,clockStart:plan.clockStart,expression:plan.expression}).connect(gate);
  const fx=effectiveDelayEffects(patch,patch.effects),mixAmount=fx.delayMix;
  const dry=add(ctx.createGain());
  dry.gain.value=(1-mixAmount*.4)*(1-fx.reverb.mix);

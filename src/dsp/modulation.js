@@ -1,5 +1,6 @@
 import {MODULATION_CONTROLS,MODULATION_SOURCE_CONTEXTS,modulationTargetsFor,validateParameterBlock,parameterFor} from "./parameters.js";
 import {envelopeLevelAt} from "./amplitude-envelope.js";
+import {postModulationTargets} from './processor-automation.js';
 export const MODULATION_VERSION=1;
 export const MOD_SOURCES=Object.keys(MODULATION_SOURCE_CONTEXTS);
 export const LFO_SHAPES=Object.freeze(["sine","triangle","ramp","square","sample-hold","smooth-random","steps"]);
@@ -7,11 +8,11 @@ export const LFO_DIVISIONS=Object.freeze([.25,.5,1,2,4,8,16]);
 export const modulationRate=(source,unit=.125)=>source.sync?1/(source.sync*4*unit):source.rate;
 // Resolve musical divisions at the host boundary. Authored free-Hz values and
 // divisions stay untouched; DSP consumes one portable effective Hz value.
-export function resolveModulation(block,unit=.125){
+export function resolveModulation(block,unit=.125,patch,{includeInactive=false}={}){
  if(!block)return block;
- const errors=validateModulation(block);if(errors.length)throw Error(errors.join(" "));
+ const errors=validateModulation(block,patch);if(errors.length)throw Error(errors.join(" "));
  if(!Number.isFinite(unit)||unit<=0)throw Error("Invalid modulation tempo");
- return {...block,routes:block.routes.map(route=>{
+ return {...block,routes:block.routes.filter(route=>includeInactive||!route.target.startsWith('processor.')||postModulationTargets(patch).find(t=>t.id===route.target)?.active).map(route=>{
   if(route.source.kind==="macro")return {...route,source:{...route.source,value:block.macros.find(m=>m.id===route.source.id).value}};
   if(route.source.kind!=="lfo"||!route.source.sync)return route;
   const {sync,...source}=route.source;
@@ -57,10 +58,11 @@ export function modulationWave(shape,cycles,seed=1,steps=DEFAULT_LFO_STEPS){
  return Math.sin(2*Math.PI*cycles);
 }
 export const MOD_TARGETS=modulationTargetsFor("synth");
+export const modulationTargets=patch=>[...modulationTargetsFor(patch?.type??'synth'),...postModulationTargets(patch)];
 const finite=(n,min,max)=>typeof n==="number"&&Number.isFinite(n)&&n>=min&&n<=max;
-export function validateModulation(modulation){
+export function validateModulation(modulation,patch){
  if(modulation?.version!==MODULATION_VERSION||!Array.isArray(modulation.routes)||modulation.routes.length>16)return ["Unsupported modulation definition."];
- const errors=[],ids=new Set();
+ const errors=[],ids=new Set(),targets=patch?modulationTargets(patch):MOD_TARGETS;
  const macros=modulation.macros??[];
  if(!Array.isArray(macros)||macros.length>4)return ["Invalid performance macros."];
  const macroIds=new Set();
@@ -70,7 +72,7 @@ export function validateModulation(modulation){
  }
  if(Object.keys(modulation).some(key=>!["version","routes","macros"].includes(key)))errors.push("Unknown modulation field.");
  for(const route of modulation.routes){
-  const target=MOD_TARGETS.find(target=>target.id===route?.target),source=route?.source;
+  const target=targets.find(target=>target.id===route?.target),source=route?.source;
   if(typeof route?.id!=="string"||!route.id||route.id.length>80||ids.has(route.id))errors.push("Invalid modulation route identity.");
   ids.add(route?.id);
   if(route&&Object.keys(route).some(key=>!["id","source","target","unit","depth","polarity","smoothing"].includes(key)))errors.push("Unknown modulation route field.");
@@ -137,8 +139,9 @@ export function modulationStateBefore(route,note,sampleRate){
 // Same recurrence is executed by a Web Audio IIR control filter. Future native
 // renderers evaluate one bounded route state per sample; no authored script.
 export const smoothingAlpha=(seconds,sampleRate)=>seconds>0?1-Math.exp(-1/(seconds*sampleRate)):1;
-export function combineParameter(target,base,offset){
- const p=parameterFor(target),limit=p?.modulation?.limit;
+export function combineParameter(target,base,offset,patch){
+ const instance=postModulationTargets(patch).find(t=>t.id===target);
+ const p=instance?.parameter??parameterFor(target),limit=instance?.limit??p?.modulation?.limit;
  if(limit===undefined)throw Error("Unsupported modulation target: "+target);
  const bounded=Math.max(-limit,Math.min(limit,offset));
  if(target==="filter.cutoff")return base*2**bounded;

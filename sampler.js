@@ -87,7 +87,7 @@ export function sampleForNote(patch,pitch,velocity=.8){
 export function validateSamplerPatch(patch){
  if(!patch||patch.type!=="sample")return ["Invalid sampler instrument."];
  const errors=[];
- errors.push(...validateRecordedModulation(patch.modulation),...validateRecordingAutomation(patch.automation,{...patch,type:"sample"}));
+ errors.push(...validateRecordedModulation(patch.modulation,{patch}),...validateRecordingAutomation(patch.automation,{...patch,type:"sample"}));
  if(patch.audioMode!==undefined&&patch.audioMode!=="clip")errors.push("Invalid recorded envelope mode.");
  for(const key of ["delayMix","delayTime","delayFeedback"])
   if(patch[key]!==undefined&&!validParameterValue("effects."+key,patch[key],"sample"))errors.push("Invalid sample delay.");

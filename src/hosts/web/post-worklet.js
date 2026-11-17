@@ -1,14 +1,16 @@
 import {PostAutomationCursor} from '../../dsp/processor-automation.js';
+import {PostModulationCursor} from '../../dsp/post-modulation.js';
 import {DynamicsKernel} from '../../dsp/dynamics-kernel.js';
 import {ModEffectKernel,MOD_EFFECT_KINDS} from '../../dsp/modulation-effects.js';
 class SoundPostProcessing extends AudioWorkletProcessor {
- constructor({processorOptions:{recipes,start,end,elapsed=0,automation=[],measure=false}}){
+ constructor({processorOptions:{recipes,start,end,elapsed=0,automation=[],modulation,off=end,clockStart=0,expression,measure=false}}){
   super();
   this.onset=start;
   this.elapsed=elapsed;
   this.kernels=recipes.map(recipe=>MOD_EFFECT_KINDS.includes(recipe.kind)?
    new ModEffectKernel(recipe,sampleRate):new DynamicsKernel(recipe,sampleRate));
   this.automation=recipes.map(recipe=>new PostAutomationCursor(automation,recipe.id));
+  this.modulation=recipes.map(recipe=>new PostModulationCursor(modulation,recipe,{start,end,off,elapsed,clockStart,expression},sampleRate));
   this.baseMix=recipes.map(recipe=>recipe.mix);
   this.levels=measure?new Float64Array(recipes.length):null;
   this.measurement=measure?{type:'post_levels',levels:this.levels}:null;
@@ -31,8 +33,10 @@ class SoundPostProcessing extends AudioWorkletProcessor {
     for(let n=0;n<this.kernels.length;n++){
      const kernel=this.kernels[n];
      if(kernel.p.automationMask){
+      this.modulation[n].reset(kernel.p);
       kernel.p.mix=this.baseMix[n];
       const enabled=this.automation[n].apply(kernel.p,time,sampleRate);
+      this.modulation[n].apply(kernel.p,time);
       kernel.p.mix*=enabled;
       kernel.updateParameters?.();
      }

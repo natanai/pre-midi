@@ -6,6 +6,8 @@
 #include <limits>
 #include "waves.hpp"
 namespace premidi {
+constexpr unsigned modulationPostBase=10,modulationPostFields=19,modulationTargetLimit=modulationPostBase+4*modulationPostFields;
+using ModulationOffsets=std::array<float,modulationTargetLimit>;
 struct Route {
 // root is key center for kind 3, sequence seed for kinds 7/8.
  unsigned target=0,kind=0,bipolar=0;double depth=0,smoothing=0,rate=.5,root=60,span=24;
@@ -33,8 +35,8 @@ public:
   else for(unsigned i=0;i<count;i++)alpha[i]=routes[i].smoothing>0?1-std::exp(-1/(sr*routes[i].smoothing)):1;
  }
  std::array<double,16> preparedAlpha()const noexcept{return alpha;}
- std::array<float,10> next(double time) noexcept {
-  std::array<float,10> sums{};if(time<start||time>=end)return sums;
+ ModulationOffsets next(double time) noexcept {
+  ModulationOffsets sums{};if(time<start||time>=end)return sums;
   if(!started){
    for(unsigned i=0;i<count;i++)if(routes[i].kind==0){
     const float rate=static_cast<float>(routes[i].rate);
@@ -45,7 +47,9 @@ public:
   }
   for(unsigned i=0;i<count;i++){
    const auto& route=routes[i];float value;
-   if(route.kind==0){
+   if(route.kind==0&&route.target>=modulationPostBase){
+    value=static_cast<float>(std::sin(2*3.14159265358979323846*((time-start)*route.rate+route.initialCycles)));
+   }else if(route.kind==0){
     if(lfoBank){value=lfoBank->lfo(phase[i],static_cast<float>(route.rate));phase[i]=lfoBank->advance(phase[i],static_cast<float>(route.rate));}
     else{
     value=static_cast<float>(std::sin(phase[i]));

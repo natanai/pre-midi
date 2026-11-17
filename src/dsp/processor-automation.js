@@ -21,6 +21,28 @@ export function postAutomationMask(lanes,id){
   mask|(1<<POST_AUTOMATION_FIELDS.indexOf(lane.target.split('.')[2])):mask,0);
 }
 
+// Movement shares the same continuous controls, units and bounds as authored
+// lanes. Saved identities resolve to prepared slots only at the host boundary.
+export const POST_MODULATION_BASE=10;
+export function postModulationTargets(patch){
+ const chain=patch?.chain;
+ return (Array.isArray(chain?.instances)?chain.instances:[]).flatMap(node=>{
+  if(!node||typeof node.id!=='string')return [];
+  const fields=postAutomationFields(node.kind);if(!fields)return [];
+  return Object.entries(fields).filter(([key])=>key!=='enabled').map(([key,field])=>({
+   id:'processor.'+node.id+'.'+key,name:node.id+' '+key,unit:field.unit,
+   limit:field.max-field.min,parameter:field,
+   active:Array.isArray(chain.post)&&chain.post.includes(node.id)&&Array.isArray(chain.bypass)&&!chain.bypass.includes(node.id)&&!(key==='rate'&&node.parameters?.sync)
+  }));
+ });
+}
+export function postModulationMask(patch,id){
+ const targets=postModulationTargets(patch);
+ return (patch?.modulation?.routes??[]).reduce((mask,route)=>
+  postAutomationTarget(route.target,id)&&targets.find(t=>t.id===route.target)?.active?
+   mask|(1<<POST_AUTOMATION_FIELDS.indexOf(route.target.split('.')[2])):mask,0);
+}
+
 // Prepared per-voice lane cursors. The worklet advances in audio-frame order
 // without constructing objects or arrays in its process callback.
 export class PostAutomationCursor {

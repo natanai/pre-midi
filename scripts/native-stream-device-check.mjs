@@ -40,6 +40,11 @@ try{
   patch.chain=withInstance(patch,"deesser");Object.assign(patch.chain.instances[1].parameters,{frequency:1000,threshold:-40});
   patch.chain=withInstance(patch,'chorus');Object.assign(patch.chain.instances[2].parameters,{rate:3.7,phase:.27,feedback:-.5});
   patch.chain=withInstance(patch,'frequencyshift');Object.assign(patch.chain.instances[3].parameters,{frequency:100,phase:.23});
+  patch.version=2;patch.modulation={version:1,routes:[
+   {id:'compressor-movement',target:'processor.compressor-1.threshold',unit:'db',depth:6,polarity:'bipolar',smoothing:.005,source:{kind:'lfo',shape:'sine',rate:1.37,phase:.27,clock:'timeline'}},
+   {id:'chorus-movement',target:'processor.chorus-1.feedback',unit:'linear_gain',depth:.2,polarity:'bipolar',smoothing:.005,source:{kind:'lfo',shape:'steps',steps:[-.3,.8,-.4],rate:3,phase:.1,clock:'timeline'}},
+   {id:'carrier-movement',target:'processor.frequencyshift-1.frequency',unit:'hz',depth:50,polarity:'bipolar',smoothing:.005,source:{kind:'envelope',envelope:{attack:.01,decay:.02,sustain:.7,release:.1}}}
+  ]};
   if(graph){patch.chain=withInstance(patch,'filter');patch.chain.instances.find(instance=>instance.kind==='filter').parameters.cutoff=3200;patch.chain=withParallelRoute(patch);patch.chain=moveProcessor(patch.chain,'filter-1','route-1');patch.chain=withRouteShare(patch.chain,'dry',.4);}
   const tone=(pitch,start,duration)=>planSynthVoice({patch,volume:.12},
    {pitch,velocity:.8},start*scale,duration*scale,{automation:[

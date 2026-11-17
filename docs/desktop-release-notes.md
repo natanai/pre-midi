@@ -1,16 +1,16 @@
-# pre-midi 0.14.1-preview.39 Windows portable
+# pre-midi 0.14.1-preview.40 Windows portable
 
-## Changes since preview.38
+## Changes since preview.39
 
-- Automate all continuous controls on the ten dynamics and modulation-effect types, including wet/dry mix and stepped enable. Effects retain their audio history while switching.
-- Write automation gestures for vocal Clips and selected Freeform notes. The editor maps playback to the original source curve. Release the control to apply the gesture as one undoable edit.
-- Dynamics panels show the peak gain reduction measured from the Sound preview, including wet/dry mixing. Makeup gain is excluded from this attenuation measurement.
-- Automated modulation-effect rates retain phase through seek, and exports include the tails required by changing delay and feedback.
+- Use movement routes and performance macros on every continuous control and wet/dry mix in the ten dynamics and modulation-effect types. Synths, samples and vocals share the same editor.
+- Combine effect automation and movement with explicit units, signed depth, smoothing and final parameter bounds.
+- Keep dormant routes while bypassing, removing or restoring a processor. Tempo-synced effects keep their division.
+- Reserve effect tails and carrier filtering for the whole movement range.
 
 ## Install and test
 
-Extract the whole ZIP to a writable folder and open pre-midi.exe. For a manual update, close the app and replace the application files. Keep your data/, projects/ and exports/ folders.
+Extract the whole ZIP to a writable folder and open pre-midi.exe. For a manual update, close the app and replace application files. Keep your data/, projects/ and exports/ folders.
 
-Try a compressor threshold curve and a chorus delay curve, then play, pause, seek and resume. Try switching an effect off and back on with an enabled lane. Write a gesture during a vocal Clip and undo it. The dynamics measurement describes the rendered Sound preview.
+Add a compressor or chorus, then choose its threshold, mix, delay or feedback in movement routes. Combine movement with an automation lane. Try play, pause, seek and stop, then bypass and restore the processor.
 
-This is a manual Windows 11 x64 portable preview. Shared Track buses, external sidechains, further automation destinations, monitored live override/rejoin and physical audio testing remain open.
+Includes preview.39 effect automation, vocal/Freeform gesture writing and measured preview gain reduction. Shared Track buses, external sidechains, send modulation, further automation destinations, monitored live override/rejoin and physical audio testing remain open. The optional broad suite last had eleven pre-existing failures on preview.39.

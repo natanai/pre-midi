@@ -81,7 +81,7 @@ int main(int argc,char** argv){
   _setmode(_fileno(stdin),_O_BINARY);_setmode(_fileno(stdout),_O_BINARY);
 #endif
   const std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(std::cin)),{});
-  premidi::PacketReader header(bytes.data(),bytes.size());require(header.u32()==0x374e4d50,"Unsupported prepared transport version");
+  premidi::PacketReader header(bytes.data(),bytes.size());require(header.u32()==0x384e4d50,"Unsupported prepared transport version");
   const auto rate=header.u32(),frames=header.u32();require(rate>=8000&&rate<=192000&&frames>0&&frames<=rate*12,"Invalid render size");
   const auto plan=premidi::readPlan(bytes.data(),bytes.size(),rate);
   std::array<std::unique_ptr<premidi::WaveBank>,2> ownedBanks;std::array<const premidi::WaveBank*,2> banks{};

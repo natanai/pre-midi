@@ -37,7 +37,7 @@ export function planSynthVoice(instrument,event,start,duration,{automation,timel
    pitch:planPitch(note,motion,start,duration,slot.detune)})),
   routing:["oscillators_and_noise","filter","drive","amplitude","tremolo","pan","post_processing","dry_and_effect_sends"],
   expression:note};
- if(patch.version===2){result.version=2;result.modulation=resolveModulation(patch.modulation,unit);}
+ if(patch.version===2){result.version=2;result.modulation=resolveModulation(patch.modulation,unit,patch);}
  if(automation?.length){if(!timeline)throw Error("Automation requires a timeline position");result.version=3;result.modulation??={version:1,routes:[]};result.parameterAutomation=planParameterAutomation(automation,patch,{...timeline,start,end:result.graphEnd});}
  return result;
 }

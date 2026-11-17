@@ -2,6 +2,7 @@
 #include "dynamics.hpp"
 #include "modulation-effects.hpp"
 #include "automation.hpp"
+#include "modulation.hpp"
 #include <memory>
 namespace premidi {
 using PostMeter=std::array<double,postLimit>;
@@ -56,9 +57,13 @@ public:
  double gainReductionDb(const PostRecipe& p)const noexcept{
   return p.kind<4?dynamics.gainReductionDb(p.automationMask?currentDynamics.mix:p.dynamics.mix):0;
  }
- void process(float* frame,double age,const PostRecipe& p,const AutomatedValues* values=nullptr,unsigned slot=0)noexcept{
+ void process(float* frame,double age,const PostRecipe& p,const AutomatedValues* values=nullptr,unsigned slot=0,const ModulationOffsets* offsets=nullptr)noexcept{
   if(!values||!p.automationMask){if(p.kind<4)dynamics.process(frame,2,p.dynamics);else motion.process(frame,age);return;}
-  const auto value=[&](unsigned field,double base){return values->post(slot,field,base);};
+  const auto value=[&](unsigned field,double base){
+   const double automated=values->post(slot,field,base),offset=offsets?(*offsets)[modulationPostBase+slot*modulationPostFields+field]:0;
+   if(!offset)return automated;
+   double low=0,high=0;return postFieldBounds(p.kind,field,low,high)?std::clamp(automated+offset,low,high):automated;
+  };
   if(p.kind<4){
    const auto previous=currentDynamics;auto& d=currentDynamics;const auto& base=p.dynamics;
    d.mix=value(0,base.mix)*value(1,1);d.threshold=value(2,base.threshold);d.ratio=value(3,base.ratio);d.knee=value(4,base.knee);

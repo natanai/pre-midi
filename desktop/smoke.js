@@ -108,6 +108,9 @@
   const {withInstance}=await load('src/dsp/processing-graph.js');
   const automatedPost=makePatch('sine-keys');automatedPost.chain=withInstance(automatedPost,'compressor');
   automatedPost.chain.instances[0].parameters.threshold=-48;
+  automatedPost.version=2;automatedPost.modulation={version:1,routes:[
+   {id:'threshold-movement',target:'processor.compressor-1.threshold',unit:'db',depth:6,polarity:'bipolar',smoothing:.005,source:{kind:'lfo',shape:'sine',rate:1.37,phase:.27}}
+  ]};
   automatedPost.automation=[
    {id:'compressor-threshold',version:1,target:'processor.compressor-1.threshold',unit:'db',interpolation:'linear',points:[{id:'a',step:0,value:-48},{id:'b',step:16,value:-24}]},
    {id:'compressor-mix',version:1,target:'processor.compressor-1.mix',unit:'ratio',interpolation:'linear',points:[{id:'a',step:0,value:0},{id:'b',step:4,value:1}]}
@@ -125,7 +128,7 @@
   const {renderEvents:renderPostEvents}=await load('audio.js');
   const postPreview=await renderNativePostAnalysis(nativePlans(renderPostEvents(beat)),{rate:44100,frames:44100,cycle:2,gain:1});
   assert(postPreview.pcm.length===88200&&postPreview.pcm.some(value=>Math.abs(value)>.0001),
-   'packaged native post automation renders preview audio');
+   'packaged native post movement and automation render preview audio');
   assert(postPreview.postLevels[0]?.id==='compressor-1'&&postPreview.postLevels[0].reduction>0,
    'packaged native preview returns measured compressor reduction');
 

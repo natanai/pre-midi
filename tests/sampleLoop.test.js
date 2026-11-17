@@ -11,7 +11,7 @@ test('sustain loop extends a held note and preserves a finite key-off release; o
  assert.equal(sampleLife({...patch,oneShot:true},3,12,null),3);assert.equal(sampleLoopRegion(zone,request,true),null);
  const plan=planNativeSample({patch,volume:1},note,1,12,new Map([['voice',{id:1,duration:10,normalization:1}]]));
  assert.equal(plan.duration,12.2);assert.equal(plan.off,13);assert.deepEqual(plan.loop,zone.loop);
- const wire=new DataView(encodeNativeSample(plan,48000).buffer);assert.equal(wire.getUint32(12,true),26);assert.equal(wire.getUint32(wire.byteLength-28,true),1);
+ const wire=new DataView(encodeNativeSample(plan,48000).buffer);assert.equal(wire.getUint32(12,true),27);assert.equal(wire.getUint32(wire.byteLength-28,true),1);
 });
 test('loop clocks follow crop, time stretch and reverse without changing musical release timing',()=>{
  const changed={...patch,sourceProcessing:{mode:'independent',time:1.5,reverse:true},transpose:7};

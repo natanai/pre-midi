@@ -2745,8 +2745,13 @@
         "verification": [
           "Portable source/target oracle cases plus audible sample/vocal modulation across playback, preview and export."
         ],
-        "completion_evidence": [],
-        "progress_note": "Common destinations include resonance, amplitude, stereo width and mid/side balance. Native/browser stereo PCM with simultaneous automation and modulation passes the vocal fixture. Effect mix and time destinations still need modulation routing. Stereo width acts on existing side information."
+        "completion_evidence": [
+          "tests/postModulation.test.js: every continuous post target, strict units/depth/identity, current project round trip and inactive route retention",
+          "tests/postModulation.audio.mjs: every continuous post target with simultaneous automation, native/worklet PCM, exact native seeks and independent macro/mix bounds reference",
+          "tests/postModulation.dom.mjs: shared target/units editing, undo/redo and bypass retention",
+          "scripts/native-stream-device-check.mjs: three simultaneous post movement routes plus lanes, seek/loop/revision/count-in/capture and zero callback allocations at 48 kHz"
+        ],
+        "progress_note": "Common destinations include resonance, amplitude, stereo width and mid/side balance. The same movement matrix now targets every continuous parameter and wet/dry mix on all ten post-level dynamics and modulation-effect types for synths, samples and vocal Clips. Targets use stable processor IDs, canonical units, explicit signed depth, smoothing and automation-before-modulation bounds. Zero-mix activation, bypass/tempo inactivity, conservative tails and carrier guards preserve state. Effect/send controls outside the post chain, including delay/reverb bus parameters, remain open. Stereo width acts on existing side information."
       },
       {
         "id": "SE-06",
@@ -2778,7 +2783,7 @@
           "tests/randomModulation.audio.mjs: native control oracle and offline Web Audio after direct seeks with an authored phase",
           "tests/parameterAutomation.audio.mjs: stereo width and balance with simultaneous automation and modulation"
         ],
-        "progress_note": "Shared periodic, seeded random and 2\u201316-step sources have phase and a note/Clip restart or authored timeline clock. Timeline phase revisits the same musical position on loop and seek. Four named macros can drive multiple targets with range, signed depth, smoothing and saved reset positions. Envelope followers and selectable audio sidechains remain open."
+        "progress_note": "Shared periodic, seeded random and 2\u201316-step sources have phase and a note/Clip restart or authored timeline clock. Timeline phase revisits the same musical position on loop and seek. Four named macros can drive multiple targets with range, signed depth, smoothing and saved reset positions. Envelope followers and selectable audio sidechains remain open. Macros and all existing source kinds can now drive applicable post-effect controls through the same routes. Envelope followers and external audio sidechains remain unimplemented."
       },
       {
         "id": "SE-07",
@@ -3885,6 +3890,27 @@
         ],
         "summary": "All continuous post effect controls plus mix and stepped enable use shared lanes. Beat, vocal and captured Freeform note gesture clocks use the existing history path. The native/browser Sound preview measures peak dynamics attenuation with wet/dry and makeup semantics.",
         "verification": "Native/worklet PCM for each parameter, native seek identity, shared model/project tests, Clip gesture DOM integration, a mathematical compressor meter oracle, compiled Rust control tests and dynamic 48 kHz null-device streaming with zero callback allocations. Windows compilation, 16 Rust tests and packaged post automation, measured preview and transport tests passed. Downloaded ZIP integrity and release manifest were verified."
+      },
+      {
+        "id": "POST-EFFECT-MOVEMENT",
+        "date": "2026-11-17",
+        "status": "implemented; preview.40 packaging requested",
+        "task_ids": [
+          "SE-05",
+          "SE-06"
+        ],
+        "summary": "Extend the existing sixteen-route movement matrix to every continuous control and mix on all ten post-level processors. Stable IDs, bounds and units are shared across synth, sample and vocal hosts. Automation updates the base before movement and final bounds. Dormant routes retain authored values and source phases.",
+        "verification": {
+          "routine": "116 routine cases passed",
+          "audio": "All continuous post targets with automation match native/worklet PCM within 2.384185791015625e-7; native seeks preserve output exactly. Independent fully-wet macro reference matches native exactly.",
+          "editor": "Shared target selection, fine delay units, undo/redo and bypass retention pass DOM integration.",
+          "streaming": "48 kHz null-device seek/loop/revision/count-in/capture checks with lanes and sine/step/envelope post routes pass; zero callback allocations; revision maximum error 3.72529e-9."
+        },
+        "remaining": [
+          "Delay/reverb send targets, envelope followers and external sidechains",
+          "Shared Track buses and arrangement-wide latency compensation",
+          "Wider source/EQ/send automation, monitored override/rejoin and physical/listening acceptance"
+        ]
       }
     ],
     "vocal_parity_milestone": {
@@ -4067,7 +4093,8 @@
       "remaining": "Physical/observed editor and listening qualification",
       "package_version": "0.14.1-preview.37"
     },
-    "latest_automation_package": "0.14.1-preview.39"
+    "latest_automation_package": "0.14.1-preview.39",
+    "modulation": "All ten post-level processor types expose their continuous controls and mix to the shared movement matrix, including macros, smoothing, note/Clip/timeline clocks and simultaneous automation. Delay/reverb sends, follower/sidechain sources and physical acceptance remain open."
   },
   "latest_delivery": {
     "version": "0.14.1-preview.39",

@@ -104,7 +104,7 @@ export function validatePatch(patch) {
  if(patch?.type==="sample")return validateSamplerPatch(patch);
  const errors=[];
  if(patch?.version!==undefined&&![1,2].includes(patch.version))errors.push("Unsupported synth patch version.");
- if(patch?.version===2)errors.push(...validateModulation(patch.modulation));
+ if(patch?.version===2)errors.push(...validateModulation(patch.modulation,patch));
  else if(patch?.modulation!==undefined)errors.push("Modulation requires synth patch version 2.");
  if(patch?.type!=="synth")errors.push("Unknown instrument source.");
  if(!object(patch))return ["Missing instrument sound definition."];

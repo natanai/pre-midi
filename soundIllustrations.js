@@ -2,7 +2,7 @@ import {DRIVE_SHAPES,driveSettings} from "./src/dsp/distortion.js";
 import {processorBypassed,withProcessorBypass} from "./src/dsp/processing-chain.js";
 import {LFO_SHAPES,LFO_CLOCKS,randomLfoShape,DEFAULT_LFO_STEPS,resolveModulation} from "./src/dsp/modulation.js";
 import {soundAxis,readSoundParameter,soundParameterPath} from "./soundParameterAdapter.js";
-import {modulationTargetsFor,modulationSourcesFor,parameterFor} from "./src/dsp/parameters.js";
+import {modulationSourcesFor,parameterFor} from "./src/dsp/parameters.js";
 import {captureSoundGraphView} from "./soundControlView.js";
 // Reusable illustrations for the existing sound controls. These are teaching
 // diagrams, not an alternate audio engine or a second source of patch state.
@@ -16,7 +16,7 @@ import {modeledModulationTrace} from "./modulationIllustrationResponse.js";
 import {modeledVibrato,modeledPitch,MOVEMENT_ILLUSTRATION_SECONDS} from "./movementIllustrationResponse.js";
 import {modeledSampleEnvelope,modeledRecordingLevels,SAMPLE_REFERENCE_VIEW} from "./sampleIllustrationResponse.js";
 import {envelopeLevelAt,planAmplitudeEnvelope} from "./src/dsp/amplitude-envelope.js";
-import {MOD_TARGETS,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
+import {modulationTargets,MOD_SOURCES,defaultSource} from "./src/dsp/modulation.js";
 import {assignSoundEdit} from "./soundEditPath.js";
 import {cutoffAt,laneValueAt} from "./src/dsp/automation.js";
 import {WAVES,FILTERS} from "./synth.js";
@@ -689,7 +689,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
    tag(23,y-8,String(index+1));
   }
  }else if(type==="modulation"){
-  const routes=p.modulation?resolveModulation(p.modulation,unit).routes:[];
+  const routes=p.modulation?resolveModulation(p.modulation,unit,p,{includeInactive:true}).routes:[];
   const routePages=Math.max(1,Math.ceil(routes.length/4));
   if(page<routePages){
    tag(17,13,"source");tag(161,13,"smoothed");tag(338,13,"target");
@@ -698,7 +698,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
    const start=Math.max(0,page)*4,shown=routes.slice(start,start+4),centers=[30,51,73,95];
    shown.forEach((route,j)=>{
     const i=start+j,center=centers[j];
-    const target=MOD_TARGETS.find(t=>t.id===route.target),limit=target?.limit||1;
+    const target=modulationTargets(p).find(t=>t.id===route.target),limit=target?.limit||1;
     line("M67 "+center+" H290",true);
     const trace=modulationTrace(route,unit);
     const visualScale=route.unit==="cents"?20:route.unit==="octaves"?.6:.2;
@@ -726,9 +726,10 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
     tag(294,center+3,target?.name.replace("oscillator ","osc ")||"target");
    });
   }else{
-   const i=page-routePages,route=routes[i],target=MOD_TARGETS.find(item=>item.id===route.target);
+   const i=page-routePages,route=routes[i],target=modulationTargets(p).find(item=>item.id===route.target);
    if(route){
     const limit=target?.limit??1,depth=clamp(route.depth/limit,-1,1);
+    const depthStep=route.target.startsWith('processor.')?target?.parameter.ui?.step??.01:target?.unit==='cents'?1:.01;
     const prefix=["modulation","routes",i],source=route.source;
     line("M24 61 H336",true);
     const trace=modulationTrace(route,unit);
@@ -750,7 +751,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
     handle(35+282*clamp(source.kind==="lfo"&&!source.sync?(source.rate-.01)/19.99:
      (route.smoothing??0)/.1),61-35*depth,[
      ...primary,axis([...prefix,"depth"],"linearY",
-      {from:96,to:26,step:target?.unit==="cents"?1:.01})
+      {from:96,to:26,step:depthStep})
     ],source.kind==="lfo"&&!source.sync?"route speed / depth":"route smoothing / depth");
     if(source.kind==="lfo"){
      // Smoothing is independent of the oscillator speed and movement depth.
@@ -758,7 +759,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
      handle(35+282*clamp((route.smoothing??0)/.1),90-18*depth,[
       axis([...prefix,"smoothing"],"linearX",{from:35,to:317,unit:"s"}),
       axis([...prefix,"depth"],"linearY",
-       {from:108,to:72,step:target?.unit==="cents"?1:.01})
+       {from:108,to:72,step:depthStep})
      ],"movement smoothing / depth");
      line("M36 105 H151",true,["modulation.routes."+i+".source.phase"]);
      handle(36+115*(source.phase??0),105,[
@@ -799,7 +800,7 @@ export const diagram=(patch,type,page=0,unit=soundIllustrationUnit(patch))=>{
     }
     action(73,14,[...prefix,"source","kind"],modulationSourcesFor(p.type).filter(kind=>kind!=="macro"||p.modulation?.macros?.length),"movement source");
     action(185,14,[...prefix,"polarity"],["unipolar","bipolar"],"movement range");
-    action(286,14,[...prefix,"target"],modulationTargetsFor(p.type).map(item=>item.id),"movement target");
+    action(286,14,[...prefix,"target"],modulationTargets(p).map(item=>item.id),"movement target");
     if(source.kind==="lfo"){
      action(220,104,[...prefix,"source","clock"],LFO_CLOCKS,"movement clock");
      action(305,104,[...prefix,"source","shape"],LFO_SHAPES,"movement shape");
@@ -1004,7 +1005,7 @@ function createSoundPanel(details,kind,patch,onChange,onPreview,index,options){
     }else if(entry.path[0]==="modulation"&&entry.path[1]==="routes"){
      const i=entry.path[2],route=latestPatch.modulation.routes[i];
      if(entry.path.at(-1)==="target"){
-      const selected=MOD_TARGETS.find(target=>target.id===next);
+      const selected=modulationTargets(latestPatch).find(target=>target.id===next);
       onChange(["modulation","routes",i],{...route,target:next,unit:selected.unit,
        depth:clamp(route.depth,-selected.limit,selected.limit)});
      }else if(entry.path.at(-1)==="kind")

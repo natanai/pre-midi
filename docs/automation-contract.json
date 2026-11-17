@@ -67,9 +67,9 @@
   "rendering": {
     "browser": "AudioParam lanes plus control signals retain pitch expression and modulation clamp precedence; dynamic stereo imaging uses the same mid/side equations.",
     "native": "Eight fixed lanes with 36 events each and monotonic cursors. Preparation and parsing stay on control. Per-sample evaluation and page/loop shifts allocate no callback memory.",
-    "wire": "Sample execution packet v26 and the current synth packet carry one parameter-lane trailer. Processor IDs resolve to compiled tone and post node slots during preparation. The current reader rejects older prepared packets.",
+    "wire": "Sample execution packet v27 and the current synth packet carry one parameter-lane trailer. Processor IDs resolve to compiled tone and post node slots during preparation. The current reader rejects older prepared packets.",
     "offline": "The same plans drive playback and native/browser WAV rendering.",
-    "tails": "Source lifetimes include conservative delay/modulation tails derived from lane extrema, including a zero starting mix. Frequency translation prepares a fixed antialiasing guard for the entire authored carrier range.",
+    "tails": "Source lifetimes include conservative delay/modulation tails derived from lane extrema, including a zero starting mix. Frequency translation prepares a fixed antialiasing guard for the entire authored carrier range. Post-effect movement ranges are included in the same conservative reservation.",
     "gain_reduction": "Single-Sound preview renders return peak applied dynamics attenuation after wet/dry mixing and before makeup gain. Native and browser worklet results match an analytical linked-channel compressor fixture. This measurement belongs to the preview."
   },
   "interface": {

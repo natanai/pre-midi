@@ -206,7 +206,7 @@ public:
     else{const double angle=renderedPan*pi/2;interleavedStereo[2*i]=static_cast<float>(sample*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other+sample*std::sin(angle));}
    }else{interleavedStereo[2*i]=static_cast<float>(sample*left);interleavedStereo[2*i+1]=static_cast<float>(sample*right);}
    if(frame>=firstFrame&&frame<lastGraphFrame)for(unsigned n=0;n<plan.postCount;n++){
-    postState[n].process(interleavedStereo+2*i,std::max(0.,clock-plan.start),plan.post[n],&automated,n);
+    postState[n].process(interleavedStereo+2*i,std::max(0.,clock-plan.start),plan.post[n],&automated,n,&offsets);
     if(postMeter)(*postMeter)[n]=std::max((*postMeter)[n],postState[n].gainReductionDb(plan.post[n]));
    }
   }

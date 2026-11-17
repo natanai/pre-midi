@@ -1,6 +1,6 @@
 import {SOURCE_PROCESSING_PARAMETERS} from './src/dsp/parameters.js';
 import {processorParameter} from './src/dsp/processing-graph.js';
-import {DEFAULT_LFO_STEPS} from "./src/dsp/modulation.js";
+import {DEFAULT_LFO_STEPS,modulationTargets} from "./src/dsp/modulation.js";
 import {parameterFor,parameterField,parameterCapability,MODULATION_CONTROLS} from "./src/dsp/parameters.js";
 // Context storage is outside the DSP authority. Temporary vocal display patches
 // and sampled Sounds retain their current shapes without changing source data.
@@ -33,8 +33,8 @@ export function soundParameter(patch,path){
   const key=path.includes("steps")?"step":path.at(-1);
   if(path.includes("envelope"))return parameterFor("envelope."+key);
   if(key==="depth"){
-   const route=patch.modulation?.routes[path[2]],target=parameterFor(route?.target,patch.type)?.modulation;
-   return target?{min:-target.limit,max:target.limit,unit:target.unit,ui:{step:target.unit==="cents"?1:.01}}:null;
+   const route=patch.modulation?.routes[path[2]],target=modulationTargets(patch).find(t=>t.id===route?.target);
+   return target?{min:-target.limit,max:target.limit,unit:target.unit,ui:{step:route.target.startsWith('processor.')?target.parameter.ui?.step??.01:target.unit==="cents"?1:.01}}:null;
   }
   const control=MODULATION_CONTROLS[key];
   return control?{...control,ui:{step:control.step,display:control.display}}:null;

@@ -9,13 +9,14 @@ import {scheduleAmplitudeEnvelope} from "../../../envelope.js";
 export function attachModulation(context,plan,destinations,owner,{precise=false}={}){
  const definition=plan.modulation;if(!definition)return;
  const elapsed=plan.elapsed??0,clockStart=plan.clockStart??0;
- const errors=validateModulation(definition);if(errors.length)throw Error(errors.join(" "));
+ const errors=validateModulation(definition,plan.patch);if(errors.length)throw Error(errors.join(" "));
  const add=node=>{owner.nodes.push(node);return node;};
  const source=node=>{owner.sources.push(node);node.start(plan.start);node.stop(plan.graphEnd);return node;};
  const constant=value=>{const node=context.createConstantSource();node.offset.value=value;return source(node);};
  const targetInputs=new Map();
  const automatedBase=(target,base,offset,sum)=>{const lane=plan.parameterAutomation?.find(lane=>lane.target===target);if(lane){const control=constant(0);applyParameterLane(control.offset,lane);control.connect(sum);if(offset)constant(-offset).connect(sum);}else constant(base-offset).connect(sum);};
  for(const route of [...definition.routes].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
+  if(route.target.startsWith('processor.'))continue;
   let input,normal;
   if(route.source.kind==="lfo"){
    const cycles=lfoCyclesAt(route.source,elapsed,clockStart);

@@ -1,4 +1,5 @@
 import {compilePostProcessing} from '../../dsp/post-processing.js';
+import {resolveModulation} from '../../dsp/modulation.js';
 const prepared=new WeakMap();
 export function preparePostProcessing(context,moduleURL=null){
  if(!context.audioWorklet)return Promise.resolve(false);
@@ -8,10 +9,11 @@ export function preparePostProcessing(context,moduleURL=null){
  }
  return prepared.get(context);
 }
-export function connectPostProcessing(context,signal,patch,owner,start,end,{unit=.125,elapsed=0,automation=owner.parameterAutomation??[],recipes=compilePostProcessing(patch,unit,automation)}={}){
+export function connectPostProcessing(context,signal,patch,owner,start,end,{unit=.125,elapsed=0,clockStart=0,off=end,expression,automation=owner.parameterAutomation??[],recipes=compilePostProcessing(patch,unit,automation)}={}){
  if(!recipes.length)return signal;
  if(!prepared.has(context)||typeof globalThis.AudioWorkletNode!=='function')throw Error('This audio host cannot run Sound processors; use native audio or a browser with AudioWorklet support.');
- const node=new AudioWorkletNode(context,'premidi-post-processing',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2],channelCount:2,channelCountMode:'explicit',processorOptions:{recipes,start,end,elapsed,automation,measure:!!context.soundPreviewMeasurements}});
+ const modulation=resolveModulation(patch.modulation,unit,patch);
+ const node=new AudioWorkletNode(context,'premidi-post-processing',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2],channelCount:2,channelCountMode:'explicit',processorOptions:{recipes,start,end,elapsed,automation,modulation,off,clockStart,expression,measure:!!context.soundPreviewMeasurements}});
  if(context.soundPreviewMeasurements){
   context.soundPreviewMeasurements.push(new Promise(resolve=>{
    node.port.onmessage=({data})=>{
