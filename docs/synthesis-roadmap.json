@@ -2945,7 +2945,7 @@
       {
         "id": "SE-11",
         "title": "Upgrade delay and add shared reverb",
-        "status": "in_progress",
+        "status": "implemented_unverified",
         "priority": "P1",
         "depends_on": [
           "SE-08"
@@ -2975,7 +2975,7 @@
           "48 kHz null-device streaming with reverb, compressor/de-esser and parallel processing: seek/loop/edit/count-in/capture, zero callback allocations",
           "Compiled Rust production-control tests, including full-queue pause/stop/rapid toggles/stale owners and validated room recipe FFI"
         ],
-        "progress_note": "Tempo-sync delay, tone and ping-pong are retained. Shared algorithmic reverb now runs in parallel with echo after post-level dynamics, with pre-delay, nominal RT60 decay, damping, room size, wet/dry and stereo width. One canonical reverb block is validated, edited through three interactive/numerical modules, recalled and transferred between synth/sample/vocal sources. Complete wet recipes share control-owned buses; native streaming registers them before pages, loops retain continuous state and seeks reconstruct ended-source room tails. The common finite tail policy covers preview, Song playback, cached browser vocal seeks and WAV export. Native callbacks allocate/destroy nothing. Source implementation is complete; matched listening and physical Windows seek/loop/device acceptance remain open for preview.31.",
+        "progress_note": "Tempo-sync delay, tone and ping-pong are retained. Shared algorithmic reverb now runs in parallel with echo after post-level dynamics, with pre-delay, nominal RT60 decay, damping, room size, wet/dry and stereo width. One canonical reverb block is validated, edited through three interactive/numerical modules, recalled and transferred between synth/sample/vocal sources. Complete wet recipes share control-owned buses; native streaming registers them before pages, loops retain continuous state and seeks reconstruct ended-source room tails. The common finite tail policy covers preview, Song playback, cached browser vocal seeks and WAV export. Native callbacks allocate/destroy nothing. Source implementation is complete; matched listening and physical Windows seek/loop/device acceptance remain open for the current Windows preview.",
         "implementation_complete": true,
         "qualification_complete": false
       },
@@ -3894,7 +3894,7 @@
       {
         "id": "POST-EFFECT-MOVEMENT",
         "date": "2026-11-17",
-        "status": "implemented; preview.41 packaging requested",
+        "status": "published in Windows preview.41",
         "task_ids": [
           "SE-05",
           "SE-06"
@@ -3906,13 +3906,25 @@
           "editor": "Shared target selection, fine delay units, undo/redo and bypass retention pass DOM integration.",
           "streaming": "48 kHz null-device seek/loop/revision/count-in/capture checks with lanes and sine/step/envelope post routes pass; zero callback allocations; revision maximum error 3.72529e-9.",
           "full_javascript": "685 cases passed after correcting outdated catalog count/rack assumptions, test-clock DSP preparation and invalid source/target fixtures; four superseded source-string editor snapshots retired. No runtime behavior was changed by that cleanup.",
-          "windows_build_note": "Preview.40 compiled but was withheld after the Rust codec fixture sent sample packet v26. The fixture is corrected to the current v27 for preview.41."
+          "windows_build_note": "Preview.40 compiled but was withheld after the Rust codec fixture sent sample packet v26. The fixture is corrected to the current v27 for preview.41.",
+          "native_control": "9 compiled production-control tests passed after correcting the current codec packet fixture, including codec playback, preview analysis and urgent full-queue Pause/Stop.",
+          "windows": "Windows compilation, 16 Rust tests, packaged movement/automation and gain-reduction analysis, Pause/Stop/seek and portable upgrade/isolation/relocation/copy/recovery passed. Release source, manifest and ZIP integrity verified."
         },
         "remaining": [
           "Delay/reverb send targets, envelope followers and external sidechains",
           "Shared Track buses and arrangement-wide latency compensation",
           "Wider source/EQ/send automation, monitored override/rejoin and physical/listening acceptance"
-        ]
+        ],
+        "windows_preview": {
+          "version": "0.14.1-preview.41",
+          "status": "published",
+          "source_commit": "3aa143f73e7dd2b228628e04305c3926763e54f1",
+          "build_run": "https://github.com/natanai/pre-midi/actions/runs/44171167854",
+          "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.41/pre-midi-0.14.1-preview.41-windows-x86_64-portable.zip",
+          "bytes": 17255772,
+          "sha256": "56a03f818bd9381716752caf90cbd9323e8c443464d11d20cf23ffb76f2e12a2",
+          "optional_full_audio_qualification": false
+        }
       }
     ],
     "vocal_parity_milestone": {
@@ -4003,11 +4015,11 @@
     "capability_audit_note": "Current/gap text reconciled against d87799e. Original E/REF IDs describe the initial comparison; current implementation paths are listed per capability. Status partial can mean unfinished feature scope or unverified observation; do not interpret every gap as missing code."
   },
   "repository_checkpoint": {
-    "audited_on": "2026-11-15",
-    "source_commit": "1f666d2aee0645dbdde926c9a6ed2330a81186f8",
-    "preview_version": "0.14.1-preview.37",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.37",
-    "method": "Source and focused checks reconciled against the preview.37 tag. Automated WebView and null-device results cover software behavior. Physical audio-device and listening acceptance remain open.",
+    "audited_on": "2026-11-17",
+    "source_commit": "3aa143f73e7dd2b228628e04305c3926763e54f1",
+    "preview_version": "0.14.1-preview.41",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.41",
+    "method": "Scoped desktop Sound source and focused checks reconciled against the preview.41 source. The current full JavaScript suite passes 685 cases. Automated WebView and null-device results cover software behavior. Physical audio-device and listening acceptance remain open; longer-term synthesis, native mobile and game tasks retain their own status.",
     "architecture": {
       "shell": "Tauri / Rust",
       "interface": "HTML/CSS/JavaScript in WebView2 on Windows",
@@ -4015,10 +4027,11 @@
     },
     "remaining_focus": [
       "Physical Windows audio/microphone/device recovery and dense or long-session acceptance for the implemented opt-in streaming lifecycle",
-      "Broader modulation destinations and follower/sidechain/free-run sources; effect/discrete automation, gesture recording, override/rejoin and wider scopes",
-      "Shared Track buses, selectable sidechains, arrangement-wide latency compensation and measured processor telemetry",
-      "Monophonic pitch correction, wider synthesis and MIDI capabilities and master/export fidelity",
-      "Observed accessibility, newcomer and listening qualification; phone and pre-programmed implementation and acceptance"
+      "Delay/reverb send destinations, envelope followers and external sidechain inputs in the modulation matrix",
+      "Shared Track buses, selectable sidechains, arrangement-wide latency compensation and live processor telemetry",
+      "Further source/articulation, EQ-band/send automation, monitored manual override/rejoin and wider Track/game scopes",
+      "Wider wavetable/phase, granular/spectral synthesis, MIDI/MPE and cross-host work under the existing synthesis task IDs",
+      "Observed accessibility, newcomer and listening qualification; separately deferred phone/native-mobile and pre-programmed implementation and acceptance"
     ],
     "completion_percentage": null,
     "scope_note": "Native desktop implementation exists. Native mobile, game-host parity and cross-platform distributions are separate tasks. No current cross-repository game-reader audit was performed. Automatic signed installation is deferred while the user uses manual portable ZIP updates."
@@ -4077,7 +4090,7 @@
       "reference": "SE-12",
       "package_requested": "0.14.1-preview.33",
       "package_status": "published",
-      "remaining": "Physical/listening/CPU qualification, broader effect automation/free-run clocks and arrangement-wide latency compensation",
+      "remaining": "Physical listening and CPU/quality qualification, wider send/follower/sidechain control and arrangement-wide latency compensation",
       "package_version": "0.14.1-preview.34"
     },
     "independent_source_processing": {
@@ -4095,18 +4108,19 @@
       "remaining": "Physical/observed editor and listening qualification",
       "package_version": "0.14.1-preview.37"
     },
-    "latest_automation_package": "0.14.1-preview.39",
-    "modulation": "All ten post-level processor types expose their continuous controls and mix to the shared movement matrix, including macros, smoothing, note/Clip/timeline clocks and simultaneous automation. Delay/reverb sends, follower/sidechain sources and physical acceptance remain open."
+    "latest_automation_package": "0.14.1-preview.41",
+    "modulation": "All ten post-level processor types expose their continuous controls and mix to the shared movement matrix, including macros, smoothing, note/Clip/timeline clocks and simultaneous automation. Delay/reverb sends, follower/sidechain sources and physical acceptance remain open.",
+    "latest_modulation_package": "0.14.1-preview.41"
   },
   "latest_delivery": {
-    "version": "0.14.1-preview.39",
-    "source_commit": "cfd20115d4b92a36a5dd991c2a7782f545d91f4c",
-    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.39",
-    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.39/pre-midi-0.14.1-preview.39-windows-x86_64-portable.zip",
-    "bytes": 17251860,
-    "sha256": "da0ec2e661b161ac37d742063445552e859a5d02facdba45320cb5c695ddfd6a",
-    "build_run": "https://github.com/natanai/pre-midi/actions/runs/44164733878",
-    "status": "Published. Windows compilation, 16 Rust tests, packaged native post automation and preview gain-reduction measurements, Pause/Stop/seek and portable upgrade/isolation/recovery checks passed. ZIP CRC, executable, version and manifest SHA-256 were verified. The routine JavaScript suite and focused parameter-by-parameter native/browser, seek, gesture and meter checks pass. The optional suite has 676 passes and 11 failures also present on preview.38.",
-    "remaining": "The roadmap remains active for Track buses, external sidechains, further source/EQ/send automation and modulation, monitored manual override/rejoin, wider platform/game work and physical Windows/listening qualification."
+    "version": "0.14.1-preview.41",
+    "source_commit": "3aa143f73e7dd2b228628e04305c3926763e54f1",
+    "release": "https://github.com/natanai/pre-midi/releases/tag/v0.14.1-preview.41",
+    "download": "https://github.com/natanai/pre-midi/releases/download/v0.14.1-preview.41/pre-midi-0.14.1-preview.41-windows-x86_64-portable.zip",
+    "bytes": 17255772,
+    "sha256": "56a03f818bd9381716752caf90cbd9323e8c443464d11d20cf23ffb76f2e12a2",
+    "build_run": "https://github.com/natanai/pre-midi/actions/runs/44171167854",
+    "status": "Published. Windows compilation, 16 Rust tests, packaged native movement/automation and preview gain reduction, Pause/Stop/seek and portable upgrade/isolation/relocation/copy/recovery checks passed. Release/tag source, published asset digest, manifest/checksums, ZIP CRC, x64 executable and folder-local empty data directories were verified. The full current JavaScript suite passes 685 cases. All continuous post movement fields combined with automation match native/worklet PCM within 2.384185791015625e-7 and native seeks retain exact output. Shared editor undo, 9 local native control tests and zero-allocation 48 kHz streaming checks pass.",
+    "remaining": "The roadmap remains active for Track buses, external sidechains, send/follower modulation, further source/EQ/send automation, monitored override/rejoin, larger synthesis/MIDI/game work and physical Windows/listening qualification."
   }
 }
