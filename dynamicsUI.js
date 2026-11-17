@@ -2,7 +2,7 @@ import {DYNAMICS_PARAMETERS} from './src/dsp/parameters.js';
 import {compressionDb} from './src/dsp/dynamics.js';
 import {DynamicsKernel,deesserBand} from './src/dsp/dynamics-kernel.js';
 import {renderParameterModule} from './stereoProcessingUI.js';
-import {helpForLabel} from './dial.js';
+import {explainLabel,helpForLabel} from './dial.js';
 const ns='http://www.w3.org/2000/svg',clamp=v=>Math.max(0,Math.min(1,v));
 const line=(root,d,muted=false)=>{const path=document.createElementNS(ns,'path');path.setAttribute('d',d);path.setAttribute('stroke',muted?'#666':'var(--track-accent,#08e4ec)');path.setAttribute('fill','none');root.append(path);};
 const label=(root,x,y,text)=>{const n=document.createElementNS(ns,'text');n.setAttribute('x',String(x));n.setAttribute('y',String(y));n.setAttribute('fill','#888');n.setAttribute('font-size','8');n.textContent=text;root.append(n);};
@@ -10,6 +10,13 @@ const fraction=(v,p)=>p.unit==='seconds'?Math.log((v+.001)/(p.min+.001))/Math.lo
 const value=(t,p)=>{const v=p.unit==='seconds'?(p.min+.001)*((p.max+.001)/(p.min+.001))**clamp(t)-.001:p.ui.log?p.min*(p.max/p.min)**clamp(t):p.min+clamp(t)*(p.max-p.min);return Math.max(p.min,Math.min(p.max,Math.round(v/p.ui.step)*p.ui.step));};
 export function renderDynamicsInstance(patch,instance,onChange,onPreview,soundId,title,inactiveReason){
  const root=document.createElement('div');root.className='dynamics-instance';const index=patch.chain.instances.findIndex(n=>n.id===instance.id),prefix=['chain','instances',index,'parameters'];
+ root.dataset.processorId=instance.id;
+ const measured=document.createElement('output');measured.className='measured-reduction';measured.hidden=true;
+ const word=document.createElement('span'),number=document.createElement('span');word.textContent='preview peak reduction';explainLabel(word,'preview peak reduction');measured.append(word,' ',number);root.append(measured);
+ root.setMeasuredReduction=value=>{
+  measured.hidden=!Number.isFinite(value);
+  number.textContent=Number.isFinite(value)?value.toFixed(1)+' db':'';
+ };
  const get=p=>p.chain.instances.find(n=>n.id===instance.id)?.parameters??instance.parameters;
  const groups=instance.kind==='compressor'?[['threshold','ratio'],['knee','makeup'],['attack','release']]:instance.kind==='gate'?[['threshold','range'],['attack','release'],['hold']]:instance.kind==='deesser'?[['frequency','bandwidth'],['threshold','amount'],['attack','release']]:[['release','threshold']];
  for(const [group,keys]of groups.entries()){

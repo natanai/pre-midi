@@ -1,3 +1,4 @@
+import {automationRecordingStep} from './src/dsp/automation.js';
 import {sourceRate,sourceSettings} from "./src/dsp/source-processing.js";
 import {setIconButton} from "./uiIcons.js";
 import {mountEditorWorkspace,syncEditorInspector} from "./editorWorkspace.js";
@@ -31,7 +32,7 @@ export function syncVocalInspector(root,{open=true,wide=true}={}){
  if(root.vocalWorkspaceEditor&&!root.hidden)syncEditorInspector(root.vocalWorkspaceEditor,{open,wide});
 }
 export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onBack,onUseInBeat,onUndo,onRedo,onSave,onBrowse,
- onSelect,onRecord,onMove,onRename,song=null,bpm=120,inspectorOpen=true,wide=true,onInspectorOpen=()=>{},canUndo=true,canRedo=true}){
+ onSelect,onRecord,onMove,onRename,automationRecording,song=null,bpm=120,inspectorOpen=true,wide=true,onInspectorOpen=()=>{},canUndo=true,canRedo=true}){
  root.classList.remove("sound-section");
  root.hidden=!selection;
  if(!selection){root.replaceChildren();root.vocalWorkspaceEditor=null;return;}
@@ -104,6 +105,10 @@ export function renderVocalEditor(root,selection,{onApply,onTrim,onDuplicate,onB
   modulesRoot:get("synth-editor"),scopeRoot:get("sound-visualizer"),
   volumeRoot:get("instrument-volume-dial"),gainRoot:get("sound-volume-dial"),
   primaryRoots:["primary-brightness-dial","primary-attack-dial","primary-release-dial"].map(get),
+  automationRecording:automationRecording?{
+   recordStep:()=>automationRecordingStep(automationRecording.recordStep(),{start:clip.startStep,length:clip.lengthSteps}),
+   recordMessage:automationRecording.recordMessage
+  }:undefined,
   onPatchChange:apply,onLevelChange:(key,value)=>apply(["gain"],value),
   onStageChange:()=>{},includeStage:false});
 }

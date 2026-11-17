@@ -11,6 +11,7 @@ inline unsigned postDelayFrames(unsigned rate)noexcept{return static_cast<unsign
 struct ModEffectRecipe {
  unsigned kind=0; // chorus, flanger, phaser, auto-pan
  double rate=.5,depth=.004,phase=0,stereo=.25,feedback=.1,delay=.018,frequency=1000,mix=.5;
+ bool dynamicFrequency=false;double frequencyLow=0,frequencyHigh=0;
  bool frequencyEffect()const noexcept{return kind==4||kind==5;}
  bool usesDelay()const noexcept{return kind<2;}
  void validate()const{
@@ -23,7 +24,7 @@ struct ModEffectRecipe {
    !bounded(depth,0,kind==0?.012:kind==1?.005:kind==2?4:1)||!bounded(delay,kind==0?.005:kind==1?.0002:.0002,kind==0?.04:.01)||!bounded(frequency,50,8000))throw std::invalid_argument("Invalid modulation effect recipe");
   if(kind==3&&(feedback!=0||stereo!=0))throw std::invalid_argument("Invalid auto-pan stereo or feedback");
  }
- bool operator==(const ModEffectRecipe& p)const noexcept{return kind==p.kind&&rate==p.rate&&depth==p.depth&&phase==p.phase&&stereo==p.stereo&&feedback==p.feedback&&delay==p.delay&&frequency==p.frequency&&mix==p.mix;}
+ bool operator==(const ModEffectRecipe& p)const noexcept{return kind==p.kind&&rate==p.rate&&depth==p.depth&&phase==p.phase&&stereo==p.stereo&&feedback==p.feedback&&delay==p.delay&&frequency==p.frequency&&mix==p.mix&&dynamicFrequency==p.dynamicFrequency&&frequencyLow==p.frequencyLow&&frequencyHigh==p.frequencyHigh;}
 };
 struct ModEffectPrepared {
  ModEffectRecipe recipe;
@@ -32,7 +33,8 @@ struct ModEffectPrepared {
   p.validate();if(rate<8000||rate>192000)throw std::invalid_argument("Invalid modulation effect sample rate");
   constexpr double pi=3.14159265358979323846;
   if(p.frequencyEffect()){
-   const double guard=rate*.03,low=p.kind==5?std::max(0.,-p.frequency):0,high=rate/2.-std::max(p.kind==4?std::abs(p.frequency):p.frequency,0.)-guard;
+   const double minimum=p.dynamicFrequency?p.frequencyLow:p.frequency,maximum=p.dynamicFrequency?p.frequencyHigh:p.frequency;
+   const double guard=rate*.03,low=p.kind==5?std::max(0.,-minimum):0,high=rate/2.-std::max(p.kind==4?std::max(std::abs(minimum),std::abs(maximum)):maximum,0.)-guard;
    for(unsigned n=0;n<frequencyTaps;n++){const int k=int(n)-int(frequencyDelay);const double window=.42-.5*std::cos(2*pi*n/(frequencyTaps-1))+.08*std::cos(4*pi*n/(frequencyTaps-1)),a=2*pi*low/rate,b=2*pi*high/rate;
     real[n]=(k?(std::sin(b*k)-std::sin(a*k))/(pi*k):2*(high-low)/rate)*window;
     if(p.kind==5&&k)imag[n]=(std::cos(a*k)-std::cos(b*k))/(pi*k)*window;
@@ -52,20 +54,36 @@ struct ModEffectPrepared {
 class ModEffectState {
  const ModEffectPrepared* prepared=nullptr;float* ring=nullptr;
  std::array<double,12> states{};std::array<double,2> prior{};
- unsigned capacity=0,cursor=0,age=0,historyCursor=0,historyAge=0;float* history=nullptr;
+ unsigned capacity=0,cursor=0,age=0,historyCursor=0,historyAge=0,sampleRate=48000;float* history=nullptr;
+ double cycles=0,lastTime=0,previousRate=0;bool started=false;
 public:
- void reset(const ModEffectPrepared* p,unsigned rate,float* storage)noexcept{prepared=p;ring=p&&p->recipe.usesDelay()?storage:nullptr;capacity=postDelayFrames(rate);cursor=age=historyCursor=historyAge=0;states={};prior={};history=p&&p->recipe.frequencyEffect()?storage:nullptr;}
- void process(float* frame,double seconds)noexcept{
+ void reset(const ModEffectPrepared* p,unsigned rate,float* storage)noexcept{prepared=p;ring=p&&p->recipe.usesDelay()?storage:nullptr;sampleRate=rate;capacity=postDelayFrames(rate);cursor=age=historyCursor=historyAge=0;cycles=lastTime=previousRate=0;started=false;states={};prior={};history=p&&p->recipe.frequencyEffect()?storage:nullptr;}
+ void process(float* frame,double seconds,const ModEffectRecipe* runtime=nullptr,unsigned automationMask=0)noexcept{
   if(!prepared)return;
-  const auto& p=prepared->recipe;const auto& table=prepared->table;
-  const double cycles=seconds*p.rate,position=(cycles-std::floor(cycles))*motionTableSize;const auto index=static_cast<unsigned>(position),next=(index+1)%motionTableSize;const double t=position-index;
+  const auto& p=runtime?*runtime:prepared->recipe;const auto& table=prepared->table;
+  const double effectiveRate=p.frequencyEffect()?p.frequency:p.rate;
+  const bool variableRate=(automationMask&((1u<<13)|(p.frequencyEffect()?(1u<<10):0)))!=0;
+  if(variableRate){
+   cycles=started?cycles+(seconds-lastTime)*previousRate:seconds*effectiveRate;
+   lastTime=seconds;previousRate=effectiveRate;started=true;
+  }else cycles=seconds*effectiveRate;
+  const bool analytic=(automationMask&((1u<<10)|(1u<<14)|(1u<<15)|(1u<<16)|(1u<<18)))!=0;
+  const double position=(cycles-std::floor(cycles))*motionTableSize;const auto index=static_cast<unsigned>(position),next=(index+1)%motionTableSize;const double t=position-index;
   for(unsigned ch=0;ch<2;ch++){
-   const auto at=index*4+ch*2,other=next*4+ch*2;const double a=table[at]+(table[other]-table[at])*t,input=frame[ch];double wet=0;
+   const auto at=index*4+ch*2,other=next*4+ch*2;double a=table[at]+(table[other]-table[at])*t,b=table[at+1]+(table[other+1]-table[at+1])*t;
+   const double input=frame[ch];double wet=0;
+   if(analytic){
+    const double angle=2*3.14159265358979323846*(cycles+p.phase+(ch?p.stereo:0)),wave=std::sin(angle);
+    if(p.frequencyEffect()){a=std::cos(angle);b=wave;}
+    else if(p.usesDelay())a=std::clamp((p.delay+p.depth*wave)*sampleRate,1.,modDelaySeconds*sampleRate);
+    else if(p.kind==2){const double f=std::clamp(p.frequency*std::pow(2.,p.depth*wave),20.,sampleRate*.45),g=std::tan(3.14159265358979323846*f/sampleRate);a=(g-1)/(g+1);b=std::sqrt(std::max(0.,1-a*a));}
+    else{const double pan=p.depth*std::sin(2*3.14159265358979323846*(cycles+p.phase)),panned=(pan+1)*3.14159265358979323846/4;a=p.depth==0?1:std::sqrt(2.)*(ch?std::sin(panned):std::cos(panned));}
+   }
    if(p.frequencyEffect()){
     if(!history){frame[ch]=0;continue;}
     history[historyCursor*2+ch]=static_cast<float>(input);double re=0,im=0;
     for(unsigned n=0;n<frequencyTaps;n++){const double v=n>historyAge?0:history[((historyCursor+frequencyTaps-n)%frequencyTaps)*2+ch];re+=v*prepared->real[n];im+=v*prepared->imag[n];}
-    const double dry=historyAge<frequencyDelay?0:history[((historyCursor+frequencyTaps-frequencyDelay)%frequencyTaps)*2+ch],b=table[at+1]+(table[other+1]-table[at+1])*t;
+    const double dry=historyAge<frequencyDelay?0:history[((historyCursor+frequencyTaps-frequencyDelay)%frequencyTaps)*2+ch];
     wet=p.kind==4?re*a:re*a-im*b;frame[ch]=static_cast<float>((1-p.mix)*dry+p.mix*wet);continue;
    }
    if(p.usesDelay()){
@@ -74,7 +92,7 @@ public:
     const double v=age>=whole?ring[recent*2+ch]:0,w=age>=whole+1?ring[older*2+ch]:0;
     wet=v+(w-v)*fraction;ring[cursor*2+ch]=static_cast<float>(input*(1-std::abs(p.feedback))+p.feedback*wet);
    }else if(p.kind==2){
-    const double b=table[at+1]+(table[other+1]-table[at+1])*t;wet=input*(1-std::abs(p.feedback))+p.feedback*prior[ch];
+    wet=input*(1-std::abs(p.feedback))+p.feedback*prior[ch];
     for(unsigned n=0;n<6;n++){const auto offset=ch*6+n;const double z=states[offset],y=a*wet+b*z;states[offset]=b*wet-a*z;if(std::abs(states[offset])<1e-30)states[offset]=0;wet=y;}prior[ch]=std::abs(wet)<1e-30?0:wet;
    }else wet=input*a;
    frame[ch]=static_cast<float>((1-p.mix)*input+p.mix*wet);

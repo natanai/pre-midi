@@ -29,6 +29,7 @@ class Session {
   for(auto& s:retiring)s.processing=processingStates.get()+i++;
  }
  std::unique_ptr<float[]> postDelayState;
+ PostMeter* postMeter=nullptr;
  std::vector<std::unique_ptr<PreparedPostProcessing>> postRecipes;
  void preparePostDelay(){
   if(postDelayState)return;
@@ -140,7 +141,7 @@ class Session {
   for(unsigned i=0;i<p.automationCount;i++)p.automation[i].time+=shift;
   for(unsigned i=0;i<p.parameterAutomation.count;i++)for(unsigned j=0;j<p.parameterAutomation.lanes[i].count;j++)p.parameterAutomation.lanes[i].points[j].time+=shift;
   free->banks=note.banks;free->start=at;free->off=frameAt(p.off);free->end=frameAt(p.graphEnd);free->order=++serial;
-  free->voice.emplace(p,rate,free->banks,at,&note.prepared,nullptr,nullptr,free->channels,free->processing,nullptr,nullptr,free->postDelay);admitted++;
+  free->voice.emplace(p,rate,free->banks,at,&note.prepared,nullptr,nullptr,free->channels,free->processing,nullptr,nullptr,free->postDelay,postMeter);admitted++;
   if(free->delay>=0)tailEnd=std::max(tailEnd,frameAt(p.graphEnd+buses[free->delay].tail));
  }
  void mix(float* output,unsigned frames)noexcept{
@@ -177,6 +178,7 @@ public:
  Session* alignSource=nullptr;std::uint64_t alignOldFrame=0;
  std::uint64_t transportOwner=0;
  std::atomic<unsigned> handoff{0};
+ void measurePost(PostMeter& meter){require(notes.size()<=1,"Post analysis requires one preview voice");meter.fill(0);postMeter=&meter;for(auto& slot:voices)if(slot.voice)slot.voice->measurePost(meter);for(auto& slot:retiring)if(slot.voice)slot.voice->measurePost(meter);}
  Session(const std::uint8_t* data,std::size_t length,unsigned sr,double cycle,double seek,const SampleStore& samples={},bool preparationOnly=false,bool resampleAssets=false):rate(sr),fadeFrames(std::max(1u,sr/200)),cycleSeconds(cycle){
   require(rate>=8000&&rate<=192000&&std::isfinite(cycle)&&cycle>=.05&&cycle<=600&&std::isfinite(seek)&&seek>=0&&seek<cycle,"Invalid native session timing");
   require(length<=512*1024*1024,"Native PCM bundle exceeds 512 MiB");PacketReader in(data,length);

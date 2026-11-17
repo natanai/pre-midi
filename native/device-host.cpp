@@ -496,13 +496,14 @@ public:
   output.fault=target->fault();output.state=target==streamActive.load()?target->state():stopped;
   output.active=static_cast<std::uint32_t>(target->active());
  }
- void render(const std::uint8_t* data,std::size_t length,double cycle,unsigned rate,std::uint64_t count,std::uint8_t* output,std::size_t bytes,unsigned format,double gain,bool dither,premidi_render_metrics* metrics){
+ void render(const std::uint8_t* data,std::size_t length,double cycle,unsigned rate,std::uint64_t count,std::uint8_t* output,std::size_t bytes,unsigned format,double gain,bool dither,premidi_render_metrics* metrics,double* postReduction){
   require(rate>=8000&&rate<=192000&&count>0&&count<=std::uint64_t(rate)*600&&(format==0||format==16||format==24||format==32)&&std::isfinite(gain)&&gain>=0&&gain<=2,"Invalid native offline render dimensions");
   const unsigned width=format?format/8:4;
   require(output&&bytes==count*2*width,"Invalid native offline output buffer");
   // Adapt only the assets referenced by this plan. Keep the live device's
   // cache and rate untouched, even when rendering to another rate.
   auto session=std::make_unique<Session>(data,length,rate,cycle,0,samples,false,true);std::array<float,2*renderBlock> pcm{};
+  PostMeter postMeter{};if(postReduction)session->measurePost(postMeter);
   RenderMeter meter;PcmQuantizer quantizer;
   for(std::uint64_t at=0;at<count;){const auto n=static_cast<unsigned>(std::min<std::uint64_t>(renderBlock,count-at));unsigned budget=maxOnsets;session->process(pcm.data(),n,false,budget);require(!session->fault.load(),"Native offline rendering exceeded the voice budget");
    for(unsigned i=0;i<2*n;i++){const float value=pcm[i]*static_cast<float>(gain/.85);require(std::isfinite(value),"Native offline rendering produced nonfinite PCM");const auto index=2*at+i;
@@ -514,6 +515,7 @@ public:
    }at+=n;
   }
   if(metrics)*metrics=meter.finish(count*2);
+  if(postReduction)std::copy(postMeter.begin(),postMeter.end(),postReduction);
  }
  void requestTransportStop()noexcept{setTransportIntent(1);capture.stop();}
  void claimTransport(std::uint64_t owner)noexcept{
@@ -596,7 +598,7 @@ int premidi_audio_add_sample(void* host,const float* pcm,uint64_t frames,uint32_
 int premidi_audio_process_source(void* host,uint32_t asset,const premidi_source_parameters* params,premidi_sample_info* info){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{premidi::require(params&&info,"Missing source processing parameters");h.processSourceAsset(asset,*params,*info);});}
 int premidi_audio_add_sample_rate(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info,uint32_t target_rate){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.addSample(pcm,frames,rate,channels,*info,target_rate);});}
 int premidi_audio_update(void* host,const uint8_t* data,size_t length,double cycle,int loop,double ratio){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.update(data,length,cycle,loop!=0,ratio);});}
-int premidi_audio_render(void* host,const uint8_t* data,size_t length,double cycle,uint32_t rate,uint64_t frames,uint8_t* output,size_t output_bytes,uint32_t format,double gain,int dither,premidi_render_metrics* metrics){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.render(data,length,cycle,rate,frames,output,output_bytes,format,gain,dither!=0,metrics);});}
+int premidi_audio_render(void* host,const uint8_t* data,size_t length,double cycle,uint32_t rate,uint64_t frames,uint8_t* output,size_t output_bytes,uint32_t format,double gain,int dither,premidi_render_metrics* metrics,double* postReduction){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.render(data,length,cycle,rate,frames,output,output_bytes,format,gain,dither!=0,metrics,postReduction);});}
 int premidi_audio_play_take(void* host,const uint8_t* data,size_t length,double cycle,double seek,int loop,int preview,double bpm,uint32_t bars,int record){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.play(data,length,cycle,seek,loop!=0,preview!=0,bpm,bars,record!=0);});}
 int premidi_audio_capture_prepare(void* host,double seconds,double offset_ms,int sync){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.prepareCapture(seconds,offset_ms,sync!=0);});}
 int premidi_audio_capture_start(void* host,double lead){auto& h=*static_cast<premidi::DeviceHost*>(host);return h.checked([&]{h.startCapture(lead);});}

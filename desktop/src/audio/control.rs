@@ -56,7 +56,7 @@ unsafe extern "C" {
  fn premidi_audio_preview_control(host:*mut c_void,command:u32)->i32;
  fn premidi_audio_resample(input:*const f32,frames:u64,rate:u32,channels:u32,target_rate:u32,output:*mut f32,output_frames:u64,output_channels:u32)->i32;
  fn premidi_audio_update(host:*mut c_void,data:*const u8,length:usize,cycle:f64,looping:i32,tempo_ratio:f64)->i32;
- fn premidi_audio_render(host:*mut c_void,data:*const u8,length:usize,cycle:f64,rate:u32,frames:u64,output:*mut u8,output_bytes:usize,format:u32,gain:f64,dither:i32,metrics:*mut RenderMetrics)->i32;
+ fn premidi_audio_render(host:*mut c_void,data:*const u8,length:usize,cycle:f64,rate:u32,frames:u64,output:*mut u8,output_bytes:usize,format:u32,gain:f64,dither:i32,metrics:*mut RenderMetrics,post_reduction:*mut f64)->i32;
  fn premidi_audio_request_transport_stop(host:*mut c_void);
  fn premidi_audio_claim_transport(host:*mut c_void,owner:u64);
  fn premidi_audio_request_transport_state(host:*mut c_void,command:u32);
@@ -245,23 +245,26 @@ pub struct RenderRequest{
  #[serde(default="default_wav_bits")]bits:u32,
  #[serde(default)]dither:bool,
  #[serde(default)]measure:bool,
+ #[serde(default)]post_measure:bool,
 }
 fn default_wav_bits()->u32{16}
 fn render(state:&mut ControlState,request:RenderRequest)->Result<Vec<u8>,String>{
- let RenderRequest{data,cycle,rate,frames,wav,gain,bits,dither,measure}=request;
- if data.len()>16*1024*1024||!(8000..=192000).contains(&rate)||frames==0||frames>rate as u64*600||!gain.is_finite()||!(0.0..=2.0).contains(&gain)||(wav&&![16,24,32].contains(&bits))||(!wav&&(measure||dither)){return Err("Invalid native offline render dimensions".into());}
+ let RenderRequest{data,cycle,rate,frames,wav,gain,bits,dither,measure,post_measure}=request;
+ if data.len()>16*1024*1024||!(8000..=192000).contains(&rate)||frames==0||frames>rate as u64*600||!gain.is_finite()||!(0.0..=2.0).contains(&gain)||(wav&&![16,24,32].contains(&bits))||(wav&&post_measure)||(!wav&&(measure||dither)){return Err("Invalid native offline render dimensions".into());}
  if state.host.is_none(){state.generation+=1;state.host=Some(Host::new()?);}
  let host=state.host.as_ref().unwrap();
- let prefix=if measure{32}else{0};
+ let prefix=if measure||post_measure{32}else{0};
  let header=if !wav{0}else if bits==32{58}else{44};
  let size=(frames*2*if wav{bits as u64/8}else{4}) as usize;
  let mut bytes=vec![0u8;prefix+header+size];
+ let mut post_reduction=[0f64;4];let post_ptr=if post_measure{post_reduction.as_mut_ptr()}else{std::ptr::null_mut()};
  let mut metrics=RenderMetrics::default();let metrics_ptr:*mut RenderMetrics=if measure{&mut metrics}else{std::ptr::null_mut()};
- host.check(unsafe{premidi_audio_render(host.0,data.as_ptr(),data.len(),cycle,rate,frames,bytes[prefix+header..].as_mut_ptr(),size,if wav{bits}else{0},gain,i32::from(dither),metrics_ptr)})?;
+ host.check(unsafe{premidi_audio_render(host.0,data.as_ptr(),data.len(),cycle,rate,frames,bytes[prefix+header..].as_mut_ptr(),size,if wav{bits}else{0},gain,i32::from(dither),metrics_ptr,post_ptr)})?;
  if measure{
   bytes[0..8].copy_from_slice(&metrics.peak.to_le_bytes());bytes[8..16].copy_from_slice(&metrics.rms.to_le_bytes());
   bytes[16..24].copy_from_slice(&metrics.true_peak.to_le_bytes());bytes[24..32].copy_from_slice(&metrics.clipped.to_le_bytes());
  }
+ if post_measure{for (i,value) in post_reduction.iter().enumerate(){bytes[i*8..(i+1)*8].copy_from_slice(&value.to_le_bytes());}}
  if wav{wav_header(&mut bytes[prefix..],rate,2,bits as u16,frames as u32);}
  Ok(bytes)
 }
@@ -461,7 +464,7 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
  }
  #[test]fn worker_queue_cancels_and_reopens_without_a_device(){
   let worker=Audio::default();assert_eq!(worker.call(Request::Begin).unwrap()["owner"],1);
-  assert!(worker.render(RenderRequest{data:vec![],cycle:1.0,rate:0,frames:0,wav:true,gain:0.85,bits:16,dither:false,measure:false}).is_err());
+  assert!(worker.render(RenderRequest{data:vec![],cycle:1.0,rate:0,frames:0,wav:true,gain:0.85,bits:16,dither:false,measure:false,post_measure:false}).is_err());
   worker.close();assert!(worker.call(Request::Begin).is_err());worker.reopen();assert_eq!(worker.call(Request::Begin).unwrap()["owner"],2);worker.close();
  }
  #[test]fn urgent_transport_intent_bypasses_a_full_preparation_queue(){
@@ -514,7 +517,7 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    let audio=premidi_decoder::decode(bytes.to_vec(),"").unwrap();let mut info=SampleInfo::default();
    host.check(unsafe{premidi_audio_add_sample(host.0,audio.samples.as_ptr(),(audio.samples.len()/audio.channels as usize) as u64,audio.rate,audio.channels,&mut info)}).unwrap();drop(audio);
    let mut packet=vec![];let u32b=|out:&mut Vec<u8>,v:u32|out.extend(v.to_le_bytes());let f64b=|out:&mut Vec<u8>,v:f64|out.extend(v.to_le_bytes());
-   for v in [0x38564d50,48000,1,25,1,info.id]{u32b(&mut packet,v);}
+   for v in [0x38564d50,48000,1,26,1,info.id]{u32b(&mut packet,v);}
    for v in [0.,0.1,0.11,0.11,0.1,0.,1.,0.,info.frames as f64/info.rate as f64,14000.,0.7,0.,5.,0.,0.,0.,5.,0.,0.24,0.26,0.,2.,14000.,0.1]{f64b(&mut packet,v);}
    for v in [0,1,0,2]{u32b(&mut packet,v);}
    u32b(&mut packet,0);f64b(&mut packet,0.);f64b(&mut packet,0.1);u32b(&mut packet,0);f64b(&mut packet,0.11);f64b(&mut packet,0.);
@@ -528,12 +531,12 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    std::thread::sleep(std::time::Duration::from_millis(30));let mut status=Status::default();host.check(unsafe{premidi_audio_status_get(host.0,&mut status)}).unwrap();assert!(status.callbacks>0&&status.peak_million>0);assert_eq!(status.fault,0);
   }
   let mut state=ControlState{host:Some(host),..Default::default()};
-  let wav=render(&mut state,RenderRequest{data:last_session.clone(),cycle:0.5,rate:48000,frames:12000,wav:true,gain:0.85,bits:16,dither:false,measure:false}).unwrap();
+  let wav=render(&mut state,RenderRequest{data:last_session.clone(),cycle:0.5,rate:48000,frames:12000,wav:true,gain:0.85,bits:16,dither:false,measure:false,post_measure:false}).unwrap();
   assert_eq!(&wav[0..4],b"RIFF");assert_eq!(&wav[8..12],b"WAVE");assert_eq!(wav.len(),48044);assert!(wav[44..].iter().any(|v|*v!=0));
   assert_eq!(u32::from_le_bytes(wav[24..28].try_into().unwrap()),48000);
   for (bits,offset,tag) in [(24,44,1),(32,58,3)]{
    last_session[16..20].copy_from_slice(&96000u32.to_le_bytes());
-   let export=render(&mut state,RenderRequest{data:last_session.clone(),cycle:0.5,rate:96000,frames:24000,wav:true,gain:0.85,bits,dither:bits==24,measure:true}).unwrap();
+   let export=render(&mut state,RenderRequest{data:last_session.clone(),cycle:0.5,rate:96000,frames:24000,wav:true,gain:0.85,bits,dither:bits==24,measure:true,post_measure:false}).unwrap();
    let level=|at:usize|f64::from_le_bytes(export[at..at+8].try_into().unwrap());
    let wav=&export[32..];assert_eq!(&wav[..4],b"RIFF");
    assert_eq!(u32::from_le_bytes(wav[24..28].try_into().unwrap()),96000);
@@ -542,8 +545,11 @@ fn handle(state:&mut ControlState,request:Request)->Result<Value,String>{
    assert_eq!(wav.len(),offset+(24000*2*bits as usize/8));assert!(wav[offset..].iter().any(|v|*v!=0));
    assert!(level(0)>0.0&&level(8)>0.0&&level(8)<=level(0)&&level(16)>=level(0));
   }
+  let preview=render(&mut state,RenderRequest{data:last_session.clone(),cycle:0.5,rate:96000,frames:24000,wav:false,gain:1.0,bits:16,dither:false,measure:false,post_measure:true}).unwrap();
+  assert_eq!(preview.len(),32+24000*8);assert!(preview[..32].iter().all(|v|*v==0));
+  assert!(preview[32..].iter().any(|v|*v!=0));
   last_session[16..20].copy_from_slice(&44100u32.to_le_bytes());
-  let pcm=render(&mut state,RenderRequest{data:last_session,cycle:0.5,rate:44100,frames:11025,wav:false,gain:0.85,bits:16,dither:false,measure:false}).unwrap();
+  let pcm=render(&mut state,RenderRequest{data:last_session,cycle:0.5,rate:44100,frames:11025,wav:false,gain:0.85,bits:16,dither:false,measure:false,post_measure:false}).unwrap();
   assert_eq!(pcm.len(),88200);assert!(pcm.iter().any(|v|*v!=0));
  }
  #[test]fn streamed_revisions_preserve_ownership_pause_and_synchronized_capture(){

@@ -1,3 +1,4 @@
+import {POST_AUTOMATION_BASE,POST_AUTOMATION_FIELDS,postAutomationFields} from './processor-automation.js';
 import {parameterFor,validParameterValue,automationParametersFor} from './parameters.js';
 import {allProcessorIds,processorKind,toneProcessorOrders,PROCESSOR_AUTOMATION_FIELDS} from './processing-graph.js';
 import {processingChain,processorMix,processorBypassed} from './processing-chain.js';
@@ -11,9 +12,16 @@ const keys=(object,allowed)=>object&&typeof object==='object'&&!Array.isArray(ob
 const mixField={unit:'ratio',min:0,max:1,interpolation:'linear',ui:{step:.01}};
 const enabledField={unit:'switch',min:0,max:1,interpolation:'step',ui:{step:1},discrete:true};
 export function automationParameters(patch,context=patch?.type??'synth'){
- const chain=processingChain(patch??{}),routed=toneProcessorOrders(chain).flat();
+ const chain=processingChain(patch??{}),routed=toneProcessorOrders(chain).flat(),post=chain.post??[];
  const processors=allProcessorIds(chain).flatMap((id,index)=>{
   const kind=processorKind(patch??{},id);
+  const postFields=postAutomationFields(kind);
+  if(postFields){
+   const instance=chain.instances.find(instance=>instance.id===id);
+   return Object.entries(postFields).map(([key,field])=>({...field,id:'processor.'+id+'.'+key,
+    active:post.includes(id)&&!processorBypassed(patch,id)&&!(key==='rate'&&instance.parameters.sync),
+    automationIndex:POST_AUTOMATION_BASE+index*POST_AUTOMATION_FIELDS.length+POST_AUTOMATION_FIELDS.indexOf(key)}));
+  }
   if(!['filter','eq','drive'].includes(kind))return [];
   const active=routed.includes(id)&&!processorBypassed(patch??{},id)&&!(id==='filter'&&patch?.filter===null);
   const fields=kind==='filter'&&id!=='filter'?{
@@ -73,6 +81,14 @@ export function insertAutomationPoint(lane,id=globalThis.crypto.randomUUID()){
  for(let i=1;i<lane.points.length;i++){const a=lane.points[i-1],b=lane.points[i];if(b.step-a.step>width){width=b.step-a.step;step=a.step+Math.floor(width/2);}}
  return step===undefined?lane:{...lane,points:[...lane.points,{id,step,value:laneValueAt(lane,step)}].sort((a,b)=>a.step-b.step)};
 }
+// Map a played Song position to the lane's authored source range. Captured
+// Freeform notes retain the source step they had before unpacking or moving.
+export function automationRecordingStep(position,{start=0,length,sourceStep=0,limitStep=Infinity}){
+ if(!Number.isFinite(position)||position<start||position>=start+length)return null;
+ const step=sourceStep+position-start;
+ return step<limitStep?step:null;
+}
+
 // Commit one pass of a Beat gesture. Preserve the original interpolation
 // outside its written steps and keep existing point identities where possible.
 export function recordAutomationGesture(lane,recorded,totalSteps,makeId=()=>globalThis.crypto.randomUUID()){

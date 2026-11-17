@@ -31,8 +31,8 @@ export function planSynthVoice(instrument,event,start,duration,{automation,timel
  const amplitude=planAmplitudeEnvelope({start,off,peak,envelope:patch.envelope});
  const filter={...patch.filter,...planFilterSweep(patch.filter,start,duration)};
  const result={contract:"pre-midi-synth-voice",version:SYNTH_VOICE_CONTRACT_VERSION,
-  patch,presetId:patch.presetId,start,clockStart,duration,off,end,postProcessing:compilePostProcessing(patch,unit),graphEnd:end+.15+postTailSeconds(patch,unit),
-  audibleEnd:end+.15+postTailSeconds(patch,unit)+effectTailSeconds(effectiveDelayEffects(patch,patch.effects)),peak,amplitude,filter,movement:motion,
+  patch,presetId:patch.presetId,start,clockStart,duration,off,end,postProcessing:compilePostProcessing(patch,unit,automation),graphEnd:end+.15+postTailSeconds(patch,unit,automation),
+  audibleEnd:end+.15+postTailSeconds(patch,unit,automation)+effectTailSeconds(effectiveDelayEffects(patch,patch.effects)),peak,amplitude,filter,movement:motion,
   oscillators:patch.oscillators.map(slot=>({...slot,frequency:Math.min(18000,noteFrequency(event.pitch)*2**slot.octave),
    pitch:planPitch(note,motion,start,duration,slot.detune)})),
   routing:["oscillators_and_noise","filter","drive","amplitude","tremolo","pan","post_processing","dry_and_effect_sends"],

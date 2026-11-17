@@ -26,10 +26,11 @@ int main(int argc,char** argv){try{
   std::vector<float> pcm(static_cast<std::size_t>(frames)*channels);for(auto& value:pcm)value=in.f32();premidi::SampleData sample(pcm.data(),frames,sourceRate,channels,rate);
   write32(sample.rate);write32(sample.channels);write32(static_cast<std::uint32_t>(sample.frames));writeFloat(sample.normalization);for(auto value:sample.pcm)writeFloat(value);return 0;
  }
- premidi::require(argc==8,"session-render: rate cycle seek loop frames block state");
+ premidi::require(argc==8||argc==9,"session-render: rate cycle seek loop frames block state [post]");
  const auto rate=static_cast<unsigned>(std::stoul(argv[1])),frames=static_cast<unsigned>(std::stoul(argv[5])),block=static_cast<unsigned>(std::stoul(argv[6]));
  premidi::require(rate>=8000&&rate<=192000&&frames>0&&frames<=rate*600&&block>0&&block<=8192,"Invalid native session render size");
  auto sessionOwner=std::make_unique<premidi::Session>(bytes.data(),bytes.size(),rate,std::stod(argv[2]),std::stod(argv[3]));auto& session=*sessionOwner;const bool loop=std::stoi(argv[4])!=0;
+ premidi::PostMeter postMeter{};if(argc==9){premidi::require(std::string(argv[8])=="post","Invalid native analysis mode");session.measurePost(postMeter);}
  std::vector<float> pcm(static_cast<std::size_t>(frames)*2);for(unsigned at=0;at<frames;){const auto count=std::min(block,frames-at);unsigned budget=premidi::maxOnsets;audioScope=true;session.process(pcm.data()+2*at,count,loop,budget);audioScope=false;at+=count;}
- premidi::require(!allocations&&!session.fault.load(),"Native render allocated or exceeded callback bounds");for(float value:pcm){premidi::require(std::isfinite(value),"Nonfinite native session PCM");writeFloat(value);}return 0;
+ premidi::require(!allocations&&!session.fault.load(),"Native render allocated or exceeded callback bounds");if(argc==9)for(double v:postMeter){std::uint64_t bits;std::memcpy(&bits,&v,8);write32(static_cast<std::uint32_t>(bits));write32(static_cast<std::uint32_t>(bits>>32));}for(float value:pcm){premidi::require(std::isfinite(value),"Nonfinite native session PCM");writeFloat(value);}return 0;
 }catch(const std::exception& error){audioScope=false;std::cerr<<error.what()<<'\n';return 1;}}

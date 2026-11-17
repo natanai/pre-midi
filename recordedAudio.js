@@ -75,7 +75,7 @@ export function connectRecordedAudio(context,{source,amp,gate,pan,out,patch,star
  scheduleMovementLfo(context,pulse.gain,start,duration,motion.tremoloRate,motion.tremolo*.45,owner,{elapsed});
  const movementGain=add(context.createGain());movementGain.gain.value=1;automationTargets.set("amplitude",movementGain.gain);automationTargets.set("pan",pan.pan);
  amp.connect(pulse);pulse.connect(movementGain);connectStereoImage(context,movementGain,patch,owner,source.buffer?.numberOfChannels??1,{start,end:start+duration,lanes:parameterAutomation,targets:automationTargets,modulation,routes:targets}).connect(pan);pan.pan.value=fx.pan;
- const postTail=postTailSeconds(patch,unit);
+ const postTail=postTailSeconds(patch,unit,parameterAutomation);
  connectPostProcessing(context,pan,patch,owner,start,start+duration+(patch.type==='sample'?.01:0)+postTail,{unit,elapsed}).connect(gate);
  targets.set('amplitude',movementGain.gain);if(filter){targets.set('filter.cutoff',cutoffDestination(context,filterStage.filters,start,start+duration,owner));targets.set('filter.resonance',filter.Q);}
  scheduleParameterAutomation(context,parameterAutomation,automationTargets,owner);

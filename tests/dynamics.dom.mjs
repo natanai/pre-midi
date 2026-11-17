@@ -39,6 +39,12 @@ try{
  document.getElementById('undo').click();assert.equal(Number(room('preDelay').getAttribute('aria-valuenow')),.02);
  button('reverb-toggle').click();assert.equal(Number(room('mix').getAttribute('aria-valuenow')),.01);button('reverb-toggle').click();
  [...document.querySelectorAll('.sound-panel-view button')].find(button=>button.textContent==='combined').click();room('width').focus();assert.ok([...document.querySelectorAll('.sound-combined-figure:not([hidden])')].some(el=>el.dataset.visualId.includes('reverb-mix-width')));
+ const metered=document.querySelector('.dynamics-instance[data-processor-id="compressor-1"]');
+ metered.setMeasuredReduction(4.48455);
+ assert.match(metered.querySelector('output').textContent,/4.5 db/);
+ assert.equal(metered.querySelector('output').hidden,false);
+ metered.setMeasuredReduction(undefined);
+ assert.equal(metered.querySelector('output').hidden,true);
  const deadline=Date.now()+3000;
  while(document.getElementById('status').dataset.saving==='true'&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));
  assert.notEqual(document.getElementById('status').dataset.saving,'true','queued edit saves settle before closing the host');

@@ -142,6 +142,10 @@ export function renderSoundInspectorCore({
    sound.referencePitch,instrument.automation??patch.automation??null,sound.id,spectrum=>{
     for(const panel of modulesRoot.querySelectorAll('.visual-sound-panel[data-visual-kind="equalizer"]'))
      panel.setMeasuredSpectrum?.(spectrum);
+    for(const panel of modulesRoot.querySelectorAll('.dynamics-instance')){
+     const measurement=spectrum?.postLevels?.find(value=>value.id===panel.dataset.processorId);
+     panel.setMeasuredReduction?.(measurement?.reduction);
+    }
    });
  let stagePanel=null;
  const redraw=(next,volume=instrument.volume,gain=sound.gain)=>{

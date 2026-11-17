@@ -1758,3 +1758,6 @@ html.song-horizontal-drag,html.song-horizontal-drag *{cursor:ew-resize!important
 .processing-chain fieldset{min-width:0;margin:.5rem 0;padding:.4rem;border:1px solid var(--line,#333)}
 .processing-chain input[type=range]{width:5.5rem;max-width:100%}
 .processing-chain output{font-size:.75rem;font-variant-numeric:tabular-nums}
+
+.measured-reduction {display:block;color:var(--muted);font-size:11px;margin:8px 0}
+.measured-reduction[hidden] {display:none}

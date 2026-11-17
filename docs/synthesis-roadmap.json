@@ -2,7 +2,7 @@
   "schema_version": 1,
   "program_id": "pre-midi-professional-synthesis",
   "title": "Professional native-first synthesis and DSP",
-  "updated_on": "2026-11-15",
+  "updated_on": "2026-11-17",
   "status": "active",
   "scope": "Synthesizer sound generation, DSP fidelity, quality qualification and cross-host rendering; complements docs/song-rollout.md instead of replacing its Song-specific stages.",
   "mission": "Deliver professionally viable editable instruments that sound correct in native desktop/mobile production and natively in pre-programmed, while retaining a compatible web studio wherever technically feasible.",
@@ -761,7 +761,8 @@
           "ci": "https://github.com/natanai/pre-midi/actions/runs/40526259783",
           "raw_reports": "benchmarks/automation-reference.json"
         }
-      }
+      },
+      "progress_note": "The shared lane system now covers all continuous parameters of ten post processor kinds, mix and stepped enable. Beat, vocal Clip and captured Freeform note gesture writing persists through current project export and the common undo path. Monitored override/rejoin, more articulation and EQ/send targets and game control precedence remain open."
     },
     {
       "id": "SYN-011",
@@ -884,7 +885,7 @@
         "Pass the shared newcomer workflow gate without adding a mandatory skill-level mode",
         "Keep advanced controls contextual in the same Sound inspector and preserve saved variations"
       ],
-      "progress_note": "Partial implementation: shared filter/EQ/drive serial order, add/remove, bypass/mix, up to eight parametric EQ bands, tempo delay, feedback tone and ping-pong, stereo width/mid-side and presets/reuse exist in browser/native paths. Independent filter/distortion/EQ instances and bounded parallel routes with branch latency alignment now exist. Usable dynamics, algorithmic reverb and classic chorus/flanger/phaser/auto-pan now exist; ring/frequency shifting, broader production qualification, sidechains and shared buses remain open."
+      "progress_note": "Shared filter, EQ and distortion instances support serial and four parallel routes with branch latency alignment. Four post stages can host compressor, gate, limiter, de-esser, chorus, flanger, phaser, auto-pan, ring modulation or frequency shift. Every post control has shared automation, and Sound previews report measured dynamics reduction. Algorithmic reverb and delay sends retain their shared lifetime policy. Track buses, external sidechains, arrangement-wide latency compensation and physical qualification remain open."
     },
     {
       "id": "SYN-016",
@@ -1450,7 +1451,7 @@
     "schema_version": 1,
     "program_id": "pre-midi-sound-editing-feature-complete",
     "title": "Roadmap to feature-complete sound editing",
-    "updated_on": "2026-11-15",
+    "updated_on": "2026-11-17",
     "status": "in_progress",
     "audit_commit": "bf28bf53de08f5eb514f8e4f778df711edc7aa8c",
     "audit_scope": "Baseline source audit at audit_commit; subsequent changes and verification limits are recorded in implementation_updates.",
@@ -2812,9 +2813,12 @@
           "tests/parameterAutomation.dom.mjs: lane edits, undo/redo, focus, interpolation, two-axis points, bypass/remove",
           "scripts/native-stream-device-check.mjs: automated native streaming seek/loop/edit/count-in/capture at 44.1/48/96 kHz with zero callback allocations",
           "tests/parameterAutomation.audio.mjs: wet/dry and stepped enable against independent full-dry and full-wet renders",
-          "tests/parameterAutomation.test.js and tests/parameterAutomation.dom.mjs: bounded Beat gesture recording through the same undoable lane editing path"
+          "tests/parameterAutomation.test.js and tests/parameterAutomation.dom.mjs: bounded Beat gesture recording through the same undoable lane editing path",
+          "tests/postAutomation.test.js: every post field validates and round-trips, bypass and zero-mix activation, and moved source clock mapping",
+          "tests/postAutomation.audio.mjs: native/worklet PCM and exact native seek continuation for every continuous post field, mix and enable",
+          "tests/parameterAutomation.dom.mjs: vocal Clip gesture recording uses the played source position and rejects other positions"
         ],
-        "progress_note": "Up to eight lanes support 2\u201332 points with linear, exponential and stepped interpolation, shared two-axis editing and captured source timing. Filter, distortion and EQ support wet/dry mix lanes and stepped enable. Distortion stays latency aligned when the lane reaches zero. The Beat Inspector can write a gesture into an existing continuous lane at sixteenth-note positions while playing. A gesture commits as one edit and keeps points outside its written span. Recording on the Song and vocal clocks, monitored override and rejoin, and further effect and articulation targets remain open."
+        "progress_note": "Eight bounded lanes support shared point/graph editing, continuous interpolation and stepped enable. All ten post-level dynamics and modulation-effect types now expose their continuous controls, mix and enable through stable IDs. Detector and effect histories survive wet/dry and enable changes. Automated effect rates integrate phase, carrier filtering covers the authored range, and tail reservation includes lane extrema. Gesture writing is available on Beat, vocal Clip and captured Freeform note clocks. Gestures commit on release as one history edit and preserve unwritten intervals. Source/articulation, EQ-band and shared-send targets, monitored override/rejoin and wider Track/game scopes remain open."
       },
       {
         "id": "SE-08",
@@ -2927,9 +2931,11 @@
           "tests/dynamics.audio.mjs: native/worklet PCM, independent prepared-gain oracle, synth/sample/vocal, overlapping voice isolation, order, seeks/loops/page clocks and malformed binary rejection",
           "tests/dynamics.dom.mjs: common Inspector direct graphs/dials, undo/redo, bypass/removal/order and combined view",
           "PREMIDI_STREAM_RATES=48000 node scripts/native-stream-device-check.mjs: actual null-device streaming revisions with compressor, seek/loop/count-in/capture and zero callback allocations",
-          "tests/dynamics.test.js and tests/dynamics.audio.mjs: de-esser center tone within 0.02 db of the 12 db reduction limit, bass within 0.02 db, native/worklet PCM including synthesized high notes and malformed band rejection"
+          "tests/dynamics.test.js and tests/dynamics.audio.mjs: de-esser center tone within 0.02 db of the 12 db reduction limit, bass within 0.02 db, native/worklet PCM including synthesized high notes and malformed band rejection",
+          "tests/postMeter.audio.mjs: native and browser peak reduction match a linked-channel DC compressor calculation at 0, 50 and 100 percent wet, with 6 dB makeup excluded",
+          "tests/dynamics.dom.mjs: the shared measured preview output displays and clears independently from the editable reference figures"
         ],
-        "progress_note": "Usable dynamics: compressor, gate, split-band de-esser and sample-peak limiter run after articulation, level, stereo imaging and pan, before dry/echo sends. Up to four independently editable instances occupy chain.post under the existing eight-processor total. Each note or vocal Clip owns its stereo-linked detector. De-essing uses a constant-0-db-peak bandpass to detect and reduce only the selected band, with authored maximum reduction, frequency, octave bandwidth, threshold and attack/release. The common Inspector supplies ordinary controls, interactive band/transfer/gain-response modules, both panel views, history, bypass, mix, order and preset/project reuse. Native/worklet PCM, selected-tone versus bass measurements, extrema, seek/loop/page clocks, live edits and capture pass focused checks. No lookahead or added block latency; the limiter protects individual rendered note/Clip sample peaks, not the final sum or intersample true peaks. External sidechain selection/routing, shared Track/Sound buses, measured gain-reduction telemetry, dynamics parameter automation and physical/listening qualification remain open."
+        "progress_note": "Compressor, gate, split-band de-esser and sample-peak limiter run after source level and pan. All dynamics controls support the shared automation lanes. Single-Sound previews return measured peak applied gain reduction after wet/dry mixing with makeup excluded. The same Inspector shows this measurement for synths, samples and vocals and clears it during a new preview. Native/worklet analytical checks pass at dry, half-wet and fully wet settings. Per-note/Clip detector ownership, bounded tails and no-lookahead behavior remain. External sidechains, Track/Sound buses, live transport telemetry and physical listening qualification remain open."
       },
       {
         "id": "SE-11",
@@ -3008,7 +3014,7 @@
           "tests/modulationEffects.audio.mjs: ring/frequency-shift native/worklet PCM, fractional onset, block and seek; max observed difference 2.9802322387695312e-8",
           "scripts/native-stream-device-check.mjs at 48 kHz: frequency shift, chorus, dynamics, reverb/echo and optional parallel tone graph; zero callback allocations"
         ],
-        "progress_note": "All six named processor types now have source implementations: chorus, flanger, phaser, auto-pan, ring modulation and frequency shifting. The same post-level instance lifecycle, precise controls, direct reference illustrations and native/browser recipes apply to synth/sample/vocal sources. Ring/frequency shifting use a prepared 129-tap windowed FIR with channel-phase offsets, a 64-frame matched dry/wet delay and explicit frequency-boundary filtering. Sideband, mirror rejection, Nyquist-wrap/DC-crossing, PCM/block/seek and callback-allocation checks pass. Arrangement-wide latency compensation, broader effect automation/free-run policy and physical/listening qualification remain separate unfinished work; this is not whole-roadmap completion."
+        "progress_note": "All six named processor types now have source implementations: chorus, flanger, phaser, auto-pan, ring modulation and frequency shifting. The same post-level instance lifecycle, precise controls, direct reference illustrations and native/browser recipes apply to synth/sample/vocal sources. Ring/frequency shifting use a prepared 129-tap windowed FIR with channel-phase offsets, a 64-frame matched dry/wet delay and explicit frequency-boundary filtering. Sideband, mirror rejection, Nyquist-wrap/DC-crossing, PCM/block/seek and callback-allocation checks pass. Arrangement-wide latency compensation, broader effect automation/free-run policy and physical/listening qualification remain separate unfinished work; this is not whole-roadmap completion. Continuous instance parameters, mix and stepped enable now have native/browser automation. Automated rate integrates carrier/LFO phase and seek reconstructs its history."
       },
       {
         "id": "SE-13",
@@ -3866,6 +3872,19 @@
         ],
         "summary": "Shared waveform sustain/overlap and key/velocity region editing, native/browser looping, finite release, source mapping and a revision-aware waveform decode cache. Retain waveform articulation overlays, wider automation/routing/tuning/noise and physical qualification as open work.",
         "verification": "107 routine cases; independent native tap oracle; 44.1 kHz native/browser maximum PCM difference 1.714e-7 with pitch movement; seek/block identity; focused DOM checks; 48 kHz native stream with zero callback allocations. Matching Windows preview.36 build passed native sampler waveform decode/keyboard, finite sustain/release, gap silence, pause/resume/stop, project recall and portable lifecycle checks; 15 Rust tests passed. Live Pages loop/range keyboard edits were observed; final separate waveform handles also passed the focused shared DOM check."
+      },
+      {
+        "id": "POST-EFFECT-AUTOMATION-AND-PREVIEW-METER",
+        "date": "2026-11-17",
+        "status": "implemented; preview.39 requested",
+        "task_ids": [
+          "SE-07",
+          "SE-10",
+          "SE-12",
+          "SE-16"
+        ],
+        "summary": "All continuous post effect controls plus mix and stepped enable use shared lanes. Beat, vocal and captured Freeform note gesture clocks use the existing history path. The native/browser Sound preview measures peak dynamics attenuation with wet/dry and makeup semantics.",
+        "verification": "Native/worklet PCM for each parameter, native seek identity, shared model/project tests, Clip gesture DOM integration, a mathematical compressor meter oracle, compiled Rust control tests and dynamic 48 kHz null-device streaming with zero callback allocations."
       }
     ],
     "vocal_parity_milestone": {
@@ -3994,8 +4013,8 @@
     ],
     "delivery_policy": "Continue the existing canonical parameter/Inspector/native contracts. No placeholder controls, silent Web Audio fallback, speculative legacy readers or completion claims from interface wiring alone.",
     "processing_routing": "Independent filter/distortion/EQ instances and four parallel paths are implemented with within-graph latency alignment; shared buses/sidechains and arrangement-wide latency compensation remain open.",
-    "automation": "Tone processor mix and stepped enable plus Beat Inspector gesture writing are implemented. See SE-07 and docs/automation-contract.json for remaining targets, Song gesture clocks and live override/rejoin.",
-    "dynamics": "Usable compressor/gate/sample-peak limiter and split-band de-esser milestones implemented. See SE-10 for tested scope and remaining dynamics requirements.",
+    "automation": "Continuous dynamics and modulation-effect instance controls, mix and stepped enable are implemented. Beat, vocal Clip and captured Freeform note gesture writing commits on release. Further source/EQ/send destinations, monitored override/rejoin and wider scopes remain open.",
+    "dynamics": "Dynamics automation and measured Sound-preview gain reduction are implemented. External sidechains, shared buses, live transport telemetry and physical/listening acceptance remain open under SE-10.",
     "transport_responsiveness": {
       "date": "2026-11-09",
       "status": "implemented; software qualification",

@@ -28,6 +28,22 @@ try{
  testRoot.querySelector('[aria-label="Write gesture"],[aria-label="write gesture"]').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}));
  assert.equal(written[0].points.find(point=>point.step===6).value,.01);
  testRoot.remove();
+ const {renderVocalEditor}=await import(pathToFileURL(root+'/vocalEditor.js'));
+ const clip={id:'vocal-gesture',startStep:32,lengthSteps:16,gain:1,effects:{automation:[lane]}};
+ const recording={id:'gesture-take',name:'Voice',durationSeconds:2,trimSeconds:0};
+ const vocalRoot=document.createElement('section');document.querySelector('main').append(vocalRoot);
+ let songStep=38.25,vocalChange;
+ renderVocalEditor(vocalRoot,{clip,recording,track:{id:'voice-track'}},{
+  onApply:(id,value)=>{assert.equal(id,clip.id);vocalChange=value;},onTrim:()=>{},onDuplicate:()=>{},onBack:()=>{},onUseInBeat:()=>{},
+  automationRecording:{recordStep:()=>songStep},bpm:120
+ });
+ const gesture=vocalRoot.querySelector('[aria-label="write gesture"]');assert.ok(gesture);
+ gesture.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}));
+ assert.equal(vocalChange.automation[0].points.find(point=>point.step===6).value,.01);
+ vocalChange=null;songStep=10;
+ gesture.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}));
+ assert.equal(vocalChange,null,'A position outside the selected Clip wrote automation');
+ vocalRoot.remove();
  const deadline=Date.now()+3000;
  while(document.getElementById('status').dataset.saving==='true'&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,5));
  assert.notEqual(document.getElementById('status').dataset.saving,'true','queued edit saves settle before closing the host');

@@ -26,10 +26,13 @@
       "processor.<stable filter instance id>.cutoff",
       "processor.<stable filter instance id>.resonance",
       "processor.<filter, distortion or EQ id>.mix",
-      "processor.<filter, distortion or EQ id>.enabled"
+      "processor.<filter, distortion or EQ id>.enabled",
+      "processor.<dynamics or modulation effect id>.<continuous parameter>",
+      "processor.<dynamics or modulation effect id>.mix",
+      "processor.<dynamics or modulation effect id>.enabled"
     ],
-    "contexts": "Synths expose oscillator/noise targets; samples and vocals expose applicable processing targets. Added filter instances expose independent cutoff/resonance. Width affects stereo content; it does not manufacture side information from a mono source.",
-    "inactive_processors": "Removing a processor from routing or bypassing it retains its settings and lanes. Unrouted and explicitly bypassed lanes compile to no events. The enabled lane switches between processed and latency-aligned dry audio while preserving DSP history."
+    "contexts": "Synths, sampled Sounds and vocal Clips expose their applicable processing targets. All ten post processor kinds expose continuous parameters plus mix and stepped enable through stable instance IDs. Tempo-synced effects retain the authored division and temporarily deactivate their free-rate lane.",
+    "inactive_processors": "Unrouted or explicitly bypassed processors retain their settings and lanes and compile no events. A mix lane can activate a zero-mix processor. Stepped enable switches the wet contribution while continuing detector and effect history."
   },
   "points": {
     "authored_limit": 32,
@@ -58,29 +61,35 @@
     "freeform": "Captured lanes retain their source step and limitStep when a passage moves horizontally.",
     "vocal": "Vocal source elapsedSteps and Clip duration bound the curve.",
     "native_streaming": "JS page rebasing and C++ page/cycle activation shift every parameter event. Seek/loop reconstruction retains held voices, filter history and delay returns.",
-    "live_edits": "Native transport uses prepared revision replacement. A Beat Inspector gesture records musical positions while playing and commits on release. Live override and rejoin remain unfinished."
+    "live_edits": "Edits commit through prepared native revisions. A gesture is staged while the control moves and applied on release as one undoable lane edit. Monitored manual override and rejoin remain unfinished.",
+    "modulation_effect_rate": "Automated effect rates integrate phase sample by sample. Seeking reconstructs that phase and the effect state. Phase and stereo phase lanes retain their explicit cycle units."
   },
   "rendering": {
     "browser": "AudioParam lanes plus control signals retain pitch expression and modulation clamp precedence; dynamic stereo imaging uses the same mid/side equations.",
     "native": "Eight fixed lanes with 36 events each and monotonic cursors. Preparation and parsing stay on control. Per-sample evaluation and page/loop shifts allocate no callback memory.",
-    "wire": "Sample execution packet v25 and the current synth packet use the same parameter lane trailer. The compiled graph maps processor identities to run-time node indices.",
-    "offline": "The same plans drive playback and native/browser WAV rendering."
+    "wire": "Sample execution packet v26 and the current synth packet carry one parameter-lane trailer. Processor IDs resolve to compiled tone and post node slots during preparation. The current reader rejects older prepared packets.",
+    "offline": "The same plans drive playback and native/browser WAV rendering.",
+    "tails": "Source lifetimes include conservative delay/modulation tails derived from lane extrema, including a zero starting mix. Frequency translation prepares a fixed antialiasing guard for the entire authored carrier range.",
+    "gain_reduction": "Single-Sound preview renders return peak applied dynamics attenuation after wet/dry mixing and before makeup gain. Native and browser worklet results match an analytical linked-channel compressor fixture. This measurement belongs to the preview."
   },
   "interface": {
     "entry": "One shared automation panel in the Sound Inspector and selected Freeform note editor",
     "editing": "Parameter selection, independent lanes, bypass/remove, linear/exponential/step curves, numeric points and interactive two-axis illustrations use the project undo path.",
-    "gesture_recording": "The Beat Inspector can write an existing continuous lane while the Beat is playing. A single pass writes sixteenth-note steps within the lane budget. The edit preserves points outside the written span and uses project undo."
+    "gesture_recording": "The Beat Inspector, vocal Clip Inspector and selected Freeform note editor write continuous lanes at sixteenth-note steps during playback. Freeform captured step and limitStep map the Song position into original source time. Playback outside the passage and paused playback cannot write. A single pass fits the existing 32-point budget, retains points outside the written interval and commits through project undo on release."
   },
   "qualification": [
     "tests/parameterAutomation.test.js",
     "tests/parameterAutomation.audio.mjs",
     "tests/parameterAutomation.dom.mjs",
     "scripts/native-stream-device-check.mjs",
-    "native/control-tests"
+    "native/control-tests",
+    "tests/postAutomation.test.js",
+    "tests/postAutomation.audio.mjs",
+    "tests/postMeter.audio.mjs"
   ],
   "remaining": [
-    "Additional effect and articulation targets",
-    "Song and vocal gesture recording, monitored manual override and rejoin",
+    "Further source/articulation, EQ band and shared send targets",
+    "Monitored manual override and rejoin",
     "Track/Song/game automation scopes and overrides",
     "Physical Windows and observed listening/newcomer qualification"
   ]

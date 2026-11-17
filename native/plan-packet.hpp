@@ -68,7 +68,8 @@ inline void readParameterAutomation(PacketReader& in,Plan& p){
   auto& lane=a.lanes[n];lane.target=in.u32();lane.mode=in.u32();lane.count=in.u32();
   const bool custom=lane.target>=automationProcessorBase&&lane.target<automationProcessorBase+p.processing.count*automationProcessorFields;
   const unsigned field=custom?(lane.target-automationProcessorBase)%automationProcessorFields:0;
-  require((lane.target<automationTargetLimit||custom)&&lane.mode<3&&lane.count>=2&&lane.count<=automationPointLimit,"Invalid parameter automation lane");
+  const bool post=lane.target>=postAutomationBase&&lane.target<postAutomationBase+postLimit*postAutomationFields;
+  require((lane.target<automationTargetLimit||custom||post)&&lane.mode<3&&lane.count>=2&&lane.count<=automationPointLimit,"Invalid parameter automation lane");
   if(custom){
    auto& node=p.processing.nodes[(lane.target-automationProcessorBase)/automationProcessorFields];
    if(field<2)require(node.kind==0&&!node.primary,"Cutoff/resonance automation instance must be an added filter");
@@ -78,7 +79,7 @@ inline void readParameterAutomation(PacketReader& in,Plan& p){
   if(p.kind)require(lane.target>=4&&lane.target!=10,"Recording automation targets a synth source");
   for(unsigned prior=0;prior<n;prior++)require(a.lanes[prior].target!=lane.target,"Duplicate parameter automation target");
   constexpr std::array<double,4> fieldMinimum{50,.1,0,0},fieldMaximum{14000,16,1,1};
-  const double low=custom?fieldMinimum[field]:minimum[lane.target],high=custom?fieldMaximum[field]:maximum[lane.target];double previous=-1;
+  const double low=post?-2000:custom?fieldMinimum[field]:minimum[lane.target],high=post?14000:custom?fieldMaximum[field]:maximum[lane.target];double previous=-1;
   for(unsigned i=0;i<lane.count;i++){auto& point=lane.points[i];point.time=in.f64();point.value=in.f64();require(point.time>previous&&point.time>=p.start&&point.time<=p.graphEnd&&point.value>=low&&point.value<=high&&(lane.mode!=1||point.value>0)&&(!custom||field!=3||point.value==0||point.value==1),"Invalid parameter automation point");previous=point.time;}
  }
 }
@@ -97,18 +98,34 @@ inline void readPostProcessing(PacketReader& in,Plan& p,unsigned rate){
  p.postCount=in.u32();require(p.postCount<=postLimit,"Too many post-level processors");
  for(unsigned i=0;i<p.postCount;i++){
   auto& node=p.post[i];const auto mode=in.u32();require(mode<=9,"Invalid post processor kind");node.kind=mode;
-  if(mode>=4){auto& m=node.motion;m.kind=mode-4;m.rate=in.f64();m.depth=in.f64();m.phase=in.f64();m.stereo=in.f64();m.feedback=in.f64();m.delay=in.f64();m.frequency=in.f64();m.mix=in.f64();m.validate();continue;}
+  if(mode>=4){auto& m=node.motion;m.kind=mode-4;m.rate=in.f64();m.depth=in.f64();m.phase=in.f64();m.stereo=in.f64();m.feedback=in.f64();m.delay=in.f64();m.frequency=in.f64();m.mix=in.f64();m.frequencyLow=m.frequencyHigh=m.frequency;
+   if(mode>=8){m.frequencyLow=in.f64();m.frequencyHigh=in.f64();require(m.frequencyLow>=(mode==8?0:-2000)&&m.frequencyHigh<=2000&&m.frequencyLow<=m.frequency&&m.frequencyHigh>=m.frequency,"Invalid carrier range");}
+   m.validate();continue;}
   auto& d=node.dynamics;d.mode=static_cast<DynamicsRecipe::Mode>(mode);
   d.threshold=in.f64();d.ratio=in.f64();d.knee=in.f64();d.attack=in.f64();d.release=in.f64();d.makeup=in.f64();d.range=in.f64();d.hold=in.f64();d.mix=in.f64();
   if(d.mode==DynamicsRecipe::deesser){d.frequency=in.f64();d.bandwidth=in.f64();d.amount=in.f64();}
   d=d.prepared(rate);
+ }
+ for(unsigned i=0;i<p.parameterAutomation.count;i++){
+  const auto& lane=p.parameterAutomation.lanes[i];if(lane.target<postAutomationBase)continue;
+  const auto slot=(lane.target-postAutomationBase)/postAutomationFields,field=(lane.target-postAutomationBase)%postAutomationFields;
+  require(slot<p.postCount,"Automation post processor is not routed");
+  auto& node=p.post[slot];double low=0,high=0;
+  require(postFieldBounds(node.kind,field,low,high),"Unsupported post processor automation field");
+  if(field==1)require(lane.mode==2,"Processor enable automation must step");
+  node.automationMask|=1u<<field;
+  for(unsigned n=0;n<lane.count;n++){
+   const double v=lane.points[n].value;
+   require(v>=low&&v<=high&&(field!=1||v==0||v==1),"Invalid post processor automation value");
+   if(field==10&&node.kind>=8){require(v>=node.motion.frequencyLow&&v<=node.motion.frequencyHigh,"Carrier automation exceeds prepared range");node.motion.dynamicFrequency=true;}
+  }
  }
  p.reverb.mix=in.f64();p.reverb.preDelay=in.f64();p.reverb.decay=in.f64();p.reverb.damping=in.f64();p.reverb.size=in.f64();p.reverb.width=in.f64();p.reverb.validate();
 }
 inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
  PacketReader in(data,size);const auto magic=in.u32();
  if(magic==0x38564d50){
-  require(in.u32()==rate&&in.u32()==1,"Invalid native sample execution header");const auto version=in.u32();require(version==25,"Unknown native sample execution version");Plan p;p.version=version;p.kind=in.u32();p.asset=in.u32();
+  require(in.u32()==rate&&in.u32()==1,"Invalid native sample execution header");const auto version=in.u32();require(version==26,"Unknown native sample execution version");Plan p;p.version=version;p.kind=in.u32();p.asset=in.u32();
   p.start=in.f64();p.duration=in.f64();p.sourceEnd=in.f64();p.graphEnd=in.f64();p.off=in.f64();p.pan=in.f64();p.playbackRate=in.f64();p.sampleOffset=in.f64();p.sampleLimit=in.f64();p.cutoff=in.f64();p.q=in.f64();p.drive=in.f64();p.vibratoRate=in.f64();p.vibratoDepth=in.f64();p.vibratoDelay=in.f64();p.tremolo=in.f64();p.tremoloRate=in.f64();p.delayMix=in.f64();p.delayTime=in.f64();p.delayFeedback=in.f64();require(p.delayMix>=0&&p.delayMix<=1&&p.delayTime>=.04999999&&p.delayTime<=2&&p.delayFeedback>=0&&p.delayFeedback<=.80000002,"Invalid native sample delay");p.tone=in.f64();p.toneRate=in.f64();p.sweepStart=in.f64();p.sweepEnd=in.f64();require(p.sweepStart>=50&&p.sweepStart<=14000&&p.sweepEnd>p.start&&p.sweepEnd<=p.graphEnd,"Invalid recording filter sweep");require(p.tone>=0&&p.tone<=1&&p.toneRate>=.1&&p.toneRate<=20,"Invalid sample tone motion");p.filterType=in.u32();const auto bypass=in.u32();p.bypassFilter=bypass!=0;
   require((p.kind==1||p.kind==2)&&p.asset>0&&p.start>=0&&p.start<=601&&p.duration>0&&p.duration<=601&&p.sourceEnd>p.start&&p.graphEnd>=p.sourceEnd&&p.graphEnd-p.start<=625&&p.off>=p.start&&p.off<=p.sourceEnd&&std::abs(p.pan)<=1&&p.playbackRate>0&&p.playbackRate<=65536&&p.sampleOffset>=0&&p.sampleOffset<p.sampleLimit&&p.sampleLimit<=602&&p.cutoff>=50&&p.cutoff<=14000&&p.q>=.1&&p.q<=16&&p.drive>=0&&p.drive<=1&&p.filterType<4&&bypass<=1&&p.vibratoRate>=.1&&p.vibratoRate<=20&&p.vibratoDepth>=0&&p.vibratoDepth<=100&&p.vibratoDelay>=0&&p.vibratoDelay<=3&&p.tremolo>=0&&p.tremolo<=1&&p.tremoloRate>=.1&&p.tremoloRate<=20,"Invalid native sample voice bounds");
   auto& osc=p.oscillators[0];osc.count=in.u32();require(osc.count<=600,"Native sample pitch curve exceeds 600 points");for(unsigned i=0;i<osc.count;i++){osc.curve[i]=in.f64();require(std::abs(osc.curve[i])<=2500,"Invalid native sample pitch curve");}
@@ -124,7 +141,7 @@ inline Plan readPlan(const std::uint8_t* data,std::size_t size,unsigned rate){
   require(looping<=1&&(!looping?(p.loopStart==0&&p.loopEnd==0&&p.loopFade==0):(p.kind==1&&p.loopStart>=p.sampleOffset-.500001/rate&&p.loopEnd<=p.sampleLimit+.500001/rate&&p.loopEnd-p.loopStart>=.005&&p.loopFade>=0&&p.loopFade*2<=p.loopEnd-p.loopStart+1e-9)),"Invalid native sustain loop");
   require(in.done(),"Trailing native sample packet");return p;
  }
- require(magic==0x364e4d50,"Unknown prepared voice transport");
+ require(magic==0x374e4d50,"Unknown prepared voice transport");
  require(in.u32()==rate,"Voice/device sample rate mismatch");const auto frames=in.u32();require(frames>0&&frames<=rate*12,"Invalid prepared frame bound");
  Plan p;p.version=in.u32();require(((p.version>=1&&p.version<=7)||p.version==9),"Unknown synth voice version");
  p.start=in.f64();p.duration=in.f64();p.sourceEnd=in.f64();p.graphEnd=in.f64();p.pan=in.f64();p.cutoff=in.f64();p.q=in.f64();p.filterType=in.u32();if(p.version>=4){p.sweepStart=in.f64();p.sweepEnd=in.f64();if(p.version>=5){p.noise=in.f64();p.noiseDecay=in.f64();}}

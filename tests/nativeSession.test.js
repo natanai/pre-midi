@@ -16,7 +16,7 @@ test('native transport consumes the shared canonical timing, sound gain and modu
  assert.deepEqual(plans[0],planSynthVoice({patch:doc.instruments[0].sounds[0].patch,volume:.4*.7},event.note,event.at,event.duration,{timeline:event.timeline}));
  const bytes=encodeNativeSession(plans,48000),view=new DataView(bytes.buffer);
  assert.equal(view.getUint32(0,true),0x31534d50);assert.equal(view.getUint32(4,true),1);
- assert.equal(view.getUint32(12,true),0x364e4d50);
+ assert.equal(view.getUint32(12,true),0x374e4d50);
 });
 test('native synth features preserve every authored patch',()=>{
  for(const {id} of PRESETS){

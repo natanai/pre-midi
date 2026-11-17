@@ -105,7 +105,14 @@
   for(let attempt=0;attempt<100;attempt++){paused=await audioRequest({action:'status'});if(paused.state===2)break;await pause(10);}
   await pause(40);const still=await audioRequest({action:'status'});
   assert(paused.state===2&&still.positionSeconds===paused.positionSeconds,'native pause preserves the audio position');
-  inst.sounds[0].patch=makePatch('sine-keys');await session.refresh();
+  const {withInstance}=await load('src/dsp/processing-graph.js');
+  const automatedPost=makePatch('sine-keys');automatedPost.chain=withInstance(automatedPost,'compressor');
+  automatedPost.chain.instances[0].parameters.threshold=-48;
+  automatedPost.automation=[
+   {id:'compressor-threshold',version:1,target:'processor.compressor-1.threshold',unit:'db',interpolation:'linear',points:[{id:'a',step:0,value:-48},{id:'b',step:16,value:-24}]},
+   {id:'compressor-mix',version:1,target:'processor.compressor-1.mix',unit:'ratio',interpolation:'linear',points:[{id:'a',step:0,value:0},{id:'b',step:4,value:1}]}
+  ];
+  inst.sounds[0].patch=automatedPost;upgradeBeatFeatures(beat);await session.refresh();
   assert((await audioRequest({action:'status'})).state===2,'native paused edit retains the transport state');
   await session.resume();await session.seek(2);await pause(30);
   assert((await audioRequest({action:'status'})).state===1,'native resume and seek return to playback');
@@ -114,6 +121,14 @@
   const {audition}=await load('audio.js');await audition(inst,64,beat,{duration:.1});
   assert((await audioRequest({action:'status'})).state===1,'Hear sound does not stop native transport');
   await session.stop();assert((await audioRequest({action:'status'})).state===0,'native stop completes');
+  const {nativePlans,renderNativePostAnalysis}=await load('src/hosts/native/session.js');
+  const {renderEvents:renderPostEvents}=await load('audio.js');
+  const postPreview=await renderNativePostAnalysis(nativePlans(renderPostEvents(beat)),{rate:44100,frames:44100,cycle:2,gain:1});
+  assert(postPreview.pcm.length===88200&&postPreview.pcm.some(value=>Math.abs(value)>.0001),
+   'packaged native post automation renders preview audio');
+  assert(postPreview.postLevels[0]?.id==='compressor-1'&&postPreview.postLevels[0].reduction>0,
+   'packaged native preview returns measured compressor reduction');
+
   const {prepareSongTake}=await load('songRecorder.js'),take=await prepareSongTake();
   const recordedSession=await play(()=>beat,{recording:take.captureOwner,countIn:1,onStart:metadata=>take.begin(metadata)});
   for(let i=0;i<300;i++){if((await audioRequest({action:'status'})).capture.phase===3)break;await pause(20);}

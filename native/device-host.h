@@ -53,7 +53,7 @@ int premidi_audio_process_source(void* host,uint32_t asset,const premidi_source_
 int premidi_audio_add_sample_rate(void* host,const float* pcm,uint64_t frames,uint32_t rate,uint32_t channels,premidi_sample_info* info,uint32_t target_rate);
 int premidi_audio_update(void* host,const uint8_t* data,size_t length,double cycle,int loop,double tempo_ratio);
 typedef struct premidi_render_metrics {double peak,rms,true_peak;uint64_t clipped;} premidi_render_metrics;
-int premidi_audio_render(void* host,const uint8_t* data,size_t length,double cycle,uint32_t rate,uint64_t frames,uint8_t* output,size_t output_bytes,uint32_t format,double gain,int dither,premidi_render_metrics* metrics);
+int premidi_audio_render(void* host,const uint8_t* data,size_t length,double cycle,uint32_t rate,uint64_t frames,uint8_t* output,size_t output_bytes,uint32_t format,double gain,int dither,premidi_render_metrics* metrics,double* post_reduction);
 int premidi_audio_play_take(void* host,const uint8_t* data,size_t length,double cycle,double seek,int loop,int preview,double bpm,uint32_t count_bars,int record);
 int premidi_audio_capture_prepare(void* host,double seconds,double offset_ms,int synchronized);
 int premidi_audio_capture_start(void* host,double lead_seconds);

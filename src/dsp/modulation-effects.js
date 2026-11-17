@@ -48,7 +48,8 @@ export function motionTable(p,rate){
 }
 export function frequencyCoefficients(p,rate){
  const real=new Float64Array(FREQUENCY_TAPS),imag=new Float64Array(FREQUENCY_TAPS),guard=rate*.03;
- const low=p.kind==='frequencyshift'?Math.max(0,-p.frequency):0,high=rate/2-Math.max(p.kind==='ringmod'?Math.abs(p.frequency):p.frequency,0)-guard;
+ const minimum=p.frequencyLow??p.frequency,maximum=p.frequencyHigh??p.frequency;
+ const low=p.kind==='frequencyshift'?Math.max(0,-minimum):0,high=rate/2-Math.max(p.kind==='ringmod'?Math.max(Math.abs(minimum),Math.abs(maximum)):maximum,0)-guard;
  for(let n=0;n<FREQUENCY_TAPS;n++){
   const k=n-FREQUENCY_DELAY,window=.42-.5*Math.cos(2*Math.PI*n/(FREQUENCY_TAPS-1))+.08*Math.cos(4*Math.PI*n/(FREQUENCY_TAPS-1)),a=2*Math.PI*low/rate,b=2*Math.PI*high/rate;
   real[n]=(k?(Math.sin(b*k)-Math.sin(a*k))/(Math.PI*k):2*(high-low)/rate)*window;
@@ -58,18 +59,38 @@ export function frequencyCoefficients(p,rate){
 }
 export class ModEffectKernel{
  constructor(p,rate){
-  this.p=p;this.table=motionTable(p,rate);this.frequency=frequencyEffect(p.kind)?frequencyCoefficients(p,rate):null;this.history=this.frequency?new Float32Array(FREQUENCY_TAPS*2):null;this.historyCursor=0;this.capacity=Math.ceil(MOD_DELAY_SECONDS*rate)+2;
+  this.p={...p};this.sampleRate=rate;this.cycles=0;this.lastTime=0;this.previousRate=0;this.started=false;this.table=motionTable(p,rate);this.frequency=frequencyEffect(p.kind)?frequencyCoefficients(p,rate):null;this.history=this.frequency?new Float32Array(FREQUENCY_TAPS*2):null;this.historyCursor=0;this.capacity=Math.ceil(MOD_DELAY_SECONDS*rate)+2;
   this.ring=delayEffect(p.kind)?new Float32Array(this.capacity*2):null;
   this.states=new Float64Array(12);this.prior=new Float64Array(2);this.cursor=0;this.age=0;
  }
  process(frame,seconds){
-  const p=this.p,position=(((seconds*p.rate)%1)+1)%1*MOTION_TABLE_SIZE,index=Math.floor(position),next=(index+1)%MOTION_TABLE_SIZE,t=position-index;
+  const p=this.p,mask=p.automationMask??0,effectiveRate=frequencyEffect(p.kind)?p.frequency:p.rate;
+  const variableRate=!!(mask&((1<<13)|(frequencyEffect(p.kind)?1<<10:0)));
+  if(variableRate){
+   this.cycles=this.started?this.cycles+(seconds-this.lastTime)*this.previousRate:seconds*effectiveRate;
+   this.started=true;this.lastTime=seconds;this.previousRate=effectiveRate;
+  }else this.cycles=seconds*effectiveRate;
+  const cycles=this.cycles,position=(cycles-Math.floor(cycles))*MOTION_TABLE_SIZE,index=Math.floor(position),next=(index+1)%MOTION_TABLE_SIZE,t=position-index;
+  const analytic=!!(mask&((1<<10)|(1<<14)|(1<<15)|(1<<16)|(1<<18)));
   for(let ch=0;ch<2;ch++){
-   const offset=index*4+ch*2,other=next*4+ch*2,a=this.table[offset]+(this.table[other]-this.table[offset])*t,input=frame[ch];let wet;
+   const offset=index*4+ch*2,other=next*4+ch*2,input=frame[ch];
+   let a=this.table[offset]+(this.table[other]-this.table[offset])*t,b=this.table[offset+1]+(this.table[other+1]-this.table[offset+1])*t,wet;
+   if(analytic){
+    const angle=2*Math.PI*(cycles+p.phase+(ch?p.stereo:0)),wave=Math.sin(angle);
+    if(frequencyEffect(p.kind)){a=Math.cos(angle);b=wave;}
+    else if(delayEffect(p.kind))a=Math.max(1,Math.min(MOD_DELAY_SECONDS*this.sampleRate,(p.delay+p.depth*wave)*this.sampleRate));
+    else if(p.kind==='phaser'){
+     const f=Math.max(20,Math.min(this.sampleRate*.45,p.frequency*2**(p.depth*wave))),g=Math.tan(Math.PI*f/this.sampleRate);
+     a=(g-1)/(g+1);b=Math.sqrt(Math.max(0,1-a*a));
+    }else{
+     const pan=p.depth*Math.sin(2*Math.PI*(cycles+p.phase));
+     a=p.depth===0?1:Math.SQRT2*(ch?Math.sin((pan+1)*Math.PI/4):Math.cos((pan+1)*Math.PI/4));
+    }
+   }
    if(this.history){
     this.history[this.historyCursor*2+ch]=input;let re=0,im=0;
     for(let n=0;n<FREQUENCY_TAPS;n++){const v=this.history[((this.historyCursor+FREQUENCY_TAPS-n)%FREQUENCY_TAPS)*2+ch];re+=v*this.frequency.real[n];im+=v*this.frequency.imag[n];}
-    const dry=this.history[((this.historyCursor+FREQUENCY_TAPS-FREQUENCY_DELAY)%FREQUENCY_TAPS)*2+ch],b=this.table[offset+1]+(this.table[other+1]-this.table[offset+1])*t;
+    const dry=this.history[((this.historyCursor+FREQUENCY_TAPS-FREQUENCY_DELAY)%FREQUENCY_TAPS)*2+ch];
     wet=p.kind==='ringmod'?re*a:re*a-im*b;frame[ch]=Math.fround((1-p.mix)*dry+p.mix*wet);continue;
    }
    if(this.ring){
@@ -77,7 +98,7 @@ export class ModEffectKernel{
     const v=this.age>=whole?this.ring[recent*2+ch]:0,w=this.age>=whole+1?this.ring[older*2+ch]:0;
     wet=v+(w-v)*fraction;this.ring[this.cursor*2+ch]=input*(1-Math.abs(p.feedback))+p.feedback*wet;
    }else if(p.kind==='phaser'){
-    const b=this.table[offset+1]+(this.table[other+1]-this.table[offset+1])*t;wet=input*(1-Math.abs(p.feedback))+p.feedback*this.prior[ch];
+    wet=input*(1-Math.abs(p.feedback))+p.feedback*this.prior[ch];
     // Normalized lattice sections are passive even while coefficients move.
     for(let n=0;n<6;n++){const at=ch*6+n,z=this.states[at],y=a*wet+b*z;this.states[at]=b*wet-a*z;if(Math.abs(this.states[at])<1e-30)this.states[at]=0;wet=y;}
     this.prior[ch]=Math.abs(wet)<1e-30?0:wet;

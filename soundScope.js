@@ -1,3 +1,4 @@
+import {collectPostMeasurements} from './src/hosts/web/post-processing.js';
 import {powerSpectrum} from './soundAnalysis.js';
 import {sampleLoopRegion,sampleLife} from './src/dsp/sample-loop.js';
 import {createAnalysisQueue} from './src/hosts/analysis-queue.js';
@@ -17,7 +18,7 @@ import {planSynthVoice} from "./src/dsp/synth-voice.js";
 import {scheduleSynthPlan} from "./audio.js";
 import {scheduleSample,sampleForNote,prepareSampleSource} from "./sampler.js";
 import {getAsset} from "./assetRegistry.js";
-import {nativeEnabled,nativeRequest,prepareNativePlans,nativeRequiredAssets,prepareNativeAssets,renderNative} from "./src/hosts/native/session.js";
+import {nativeEnabled,nativeRequest,prepareNativePlans,nativeRequiredAssets,prepareNativeAssets,renderNativePostAnalysis} from "./src/hosts/native/session.js";
 
 const NS="http://www.w3.org/2000/svg",RATE=44100,HOLD=1.25,MAX_WINDOW=12,COUNT=300,TIME_WIDTH=720;
 const renderLatest=createAnalysisQueue();
@@ -137,18 +138,20 @@ async function vocalScope(patch,context,level,isCurrent){
  if(nativeEnabled()){
   const onset={kind:"vocal",event,at:0};const status=await nativeRequest({action:"status"});
   const rate=status.sampleRate||RATE,assets=await prepareNativeAssets(nativeRequiredAssets([onset]),{...status,sampleRate:rate},{isCurrent});
-  const frames=Math.ceil(seconds*rate),pcm=new Float32Array(await renderNative(await prepareNativePlans([onset],assets,unit,isCurrent),{rate,frames,cycle:seconds,gain:1}));
+  const frames=Math.ceil(seconds*rate),{pcm,postLevels}=await renderNativePostAnalysis(await prepareNativePlans([onset],assets,unit,isCurrent),{rate,frames,cycle:seconds,gain:1});
   const channels=[new Float32Array(frames),new Float32Array(frames)];
   for(let n=0;n<frames;n++){channels[0][n]=pcm[2*n];channels[1][n]=pcm[2*n+1];}
-  return {buffer:{length:frames,sampleRate:rate,numberOfChannels:2,getChannelData:c=>channels[c]},seconds,clipped:seconds<life};
+  return {buffer:{length:frames,sampleRate:rate,numberOfChannels:2,getChannelData:c=>channels[c]},seconds,clipped:seconds<life,postLevels};
  }
  const offline=new OfflineAudioContext(2,Math.ceil(seconds*RATE),RATE),bytes=getAsset(event.recording.id);
  if(!bytes)throw Error("Recording audio is missing");
+ offline.soundPreviewMeasurements=[];
  await prepareProcessorMix(offline,patch);
  const buffer=await offline.decodeAudioData(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength));
  const decoded=new Map([[event.recording.id,buffer]]);await prepareVocalSource(offline,decoded,event);
  scheduleVocal(offline,offline.destination,event,0,unit,decoded,{clockStart:0});
- return {buffer:await offline.startRendering(),seconds,clipped:seconds<life};
+ const rendered=await offline.startRendering();
+ return {buffer:rendered,seconds,clipped:seconds<life,postLevels:await collectPostMeasurements(offline)};
 }
 async function webAudio(patch,beat,level,pitch,automation){
  let buffer=null,zone=null;
@@ -164,6 +167,7 @@ async function webAudio(patch,beat,level,pitch,automation){
  const request=buffer?sampleSourceRequest(patch,{pitch,velocity:1},zone,buffer.duration):null,original=request?request.region.sourceLength*request.recipe.time/request.rate:0;
  const life=buffer?sampleLife(patch,original,HOLD,sampleLoopRegion(zone,request,patch.oneShot)):0;
  const seconds=scopeWindowSeconds(patch,life),context=new OfflineAudioContext(2,Math.ceil(seconds*RATE),RATE);
+ context.soundPreviewMeasurements=[];
  await prepareProcessorMix(context,patch);
  const voice={patch,volume:level},note={pitch,velocity:1};
  if(buffer){const decoded=new Map([[zone.assetId,buffer]]);await prepareSampleSource(context,decoded,patch,note);scheduleSample(context,context.destination,voice,note,0,HOLD,beat,decoded);}
@@ -172,7 +176,7 @@ async function webAudio(patch,beat,level,pitch,automation){
    limitStep:(beat?.bars??8)*16}}:{unit:60/(beat?.bpm??120)/4}));
  const output=await context.startRendering();
  const full=patch.type==="sample"?life+postTailSeconds(patch)+effectTailSeconds(patch)+.08:HOLD+patch.envelope.release+postTailSeconds(patch)+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
- return {buffer:output,seconds,clipped:full>MAX_WINDOW};
+ return {buffer:output,seconds,clipped:full>MAX_WINDOW,postLevels:await collectPostMeasurements(context)};
 }
 async function nativeAudio(patch,beat,level,pitch,automation,isCurrent){
  const event={kind:"note",instrument:{patch,volume:level,...(automation?{automation}:{})},
@@ -189,14 +193,14 @@ async function nativeAudio(patch,beat,level,pitch,automation,isCurrent){
  const request=stored?sampleSourceRequest(patch,{pitch,velocity:1},zone,stored.duration):null,original=request?request.region.sourceLength*request.recipe.time/request.rate:0;
  const life=zone?sampleLife(patch,original,HOLD,sampleLoopRegion(zone,request,patch.oneShot)):0;
  const seconds=scopeWindowSeconds(patch,life),frames=Math.ceil(seconds*rate);
- const pcm=new Float32Array(await renderNative(await prepareNativePlans([event],assets,60/(beat?.bpm??120)/4,isCurrent),
-  {rate,frames,cycle:seconds,gain:1}));
+ const {pcm,postLevels}=await renderNativePostAnalysis(await prepareNativePlans([event],assets,60/(beat?.bpm??120)/4,isCurrent),
+  {rate,frames,cycle:seconds,gain:1});
  if(pcm.length<frames*2)throw Error("Incomplete native waveform");
  const channels=[new Float32Array(frames),new Float32Array(frames)];
  for(let i=0;i<frames;i++){channels[0][i]=pcm[2*i];channels[1][i]=pcm[2*i+1];}
  const full=zone?life+postTailSeconds(patch)+effectTailSeconds(patch)+.08:HOLD+patch.envelope.release+postTailSeconds(patch)+effectTailSeconds(effectiveDelayEffects(patch,patch.effects))+.08;
  return {buffer:{length:frames,sampleRate:rate,numberOfChannels:2,getChannelData:c=>channels[c]},
-  seconds,clipped:full>MAX_WINDOW};
+  seconds,clipped:full>MAX_WINDOW,postLevels};
 }
 export async function renderScopeAudio(patch,beat,level=1,pitch=60,automation=null,isCurrent=()=>true){
  // Native mode must not silently render a Web Audio substitute.
@@ -318,7 +322,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
  });
  function update(nextPatch,level=currentLevel){
   currentLevel=level;const token=++revision;
-  clearTimeout(timer);
+  clearTimeout(timer);onSpectrum?.(null);
   timer=setTimeout(()=>{
    const current=()=>!disposed&&token===revision;
    void renderLatest(current,()=>renderScopeAudio(nextPatch,beat,currentLevel,referencePitch,automation,current)).then(result=>{
@@ -327,7 +331,7 @@ export function createSignalDisplay(root,patch,beat,accent,initialLevel=1,refere
     latestBuffer=buffer;latestSeconds=seconds;
     paintWave();
     const wave=scopeWaveformData(buffer,referencePitch,620,seekSeconds);
-    if(onSpectrum)onSpectrum(measuredSoundSpectrum(buffer,wave.startSeconds));
+    if(onSpectrum)onSpectrum({...measuredSoundSpectrum(buffer,wave.startSeconds),postLevels:result.postLevels});
     const [l,r]=scopeAudioBins(buffer);
     left.setAttribute("d",envelopePath(l,0));right.setAttribute("d",envelopePath(r,1));
     pitches[0].setAttribute("d",pitchPath(nextPatch,seconds,referencePitch,0));

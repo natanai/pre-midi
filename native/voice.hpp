@@ -39,7 +39,7 @@ struct VoicePreparation {ToneFilter filter;NoiseState noise;std::array<double,16
 // Prepared on the control thread. process() only touches fixed-size state and a
 // caller-owned output span: no heap allocation, locks, file/device I/O or UI.
 class Voice {
- Plan plan;std::array<PostState,postLimit> postState{};const PreparedPostProcessing* postRecipe=nullptr;AutomatedValues automated;ProcessingGraphState* processingState=nullptr;const ProcessingGraphRecipe* processingRecipe=nullptr;double rate;std::uint64_t frame=0;std::array<double,2> phases{};
+ Plan plan;PostMeter* postMeter=nullptr;std::array<PostState,postLimit> postState{};const PreparedPostProcessing* postRecipe=nullptr;AutomatedValues automated;ProcessingGraphState* processingState=nullptr;const ProcessingGraphRecipe* processingRecipe=nullptr;double rate;std::uint64_t frame=0;std::array<double,2> phases{};
  std::uint64_t firstFrame=0,lastSourceFrame=0,lastGraphFrame=0;
  std::array<double,3> legacyPhases{};bool legacyStarted=false;
  NoiseState noise;
@@ -89,7 +89,7 @@ public:
 #ifdef PREMIDI_PROBE
  struct Probe {float wave0=0,cents0=0,frequency0=0;};Probe probe{};
 #endif
- Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr},std::uint64_t initialFrame=0,const VoicePreparation* prepared=nullptr,const DriveRecipe* driveRecipe=nullptr,const SineLfoTable* lfo=nullptr,SampleChannelState* additional=nullptr,ProcessingGraphState* graphState=nullptr,const ProcessingGraphRecipe* graphRecipe=nullptr,const PreparedPostProcessing* postPrepared=nullptr,float* postDelay=nullptr) noexcept:plan(input),postRecipe(prepared?prepared->post:postPrepared),processingState(graphState),processingRecipe(prepared?prepared->processing:graphRecipe),rate(sampleRate),frame(initialFrame),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity,prepared?&prepared->alpha:nullptr,prepared?prepared->lfoBank:lfo),drive(prepared?prepared->drive:driveRecipe),driveRight(prepared?prepared->drive:driveRecipe),recipe(prepared?prepared->drive:driveRecipe),lfoBank(prepared?prepared->lfoBank:lfo),banks(waveBanks),extraChannels(additional){
+ Voice(const Plan& input,double sampleRate,std::array<const WaveBank*,2> waveBanks={nullptr,nullptr},std::uint64_t initialFrame=0,const VoicePreparation* prepared=nullptr,const DriveRecipe* driveRecipe=nullptr,const SineLfoTable* lfo=nullptr,SampleChannelState* additional=nullptr,ProcessingGraphState* graphState=nullptr,const ProcessingGraphRecipe* graphRecipe=nullptr,const PreparedPostProcessing* postPrepared=nullptr,float* postDelay=nullptr,PostMeter* meter=nullptr) noexcept:plan(input),postMeter(meter),postRecipe(prepared?prepared->post:postPrepared),processingState(graphState),processingRecipe(prepared?prepared->processing:graphRecipe),rate(sampleRate),frame(initialFrame),modulation(input.routes,input.routeCount,sampleRate,input.start,input.off,input.graphEnd,input.pitch,input.velocity,prepared?&prepared->alpha:nullptr,prepared?prepared->lfoBank:lfo),drive(prepared?prepared->drive:driveRecipe),driveRight(prepared?prepared->drive:driveRecipe),recipe(prepared?prepared->drive:driveRecipe),lfoBank(prepared?prepared->lfoBank:lfo),banks(waveBanks),extraChannels(additional){
   if(plan.sampleLoop&&plan.sample)loop=SampleLoop(plan.loopStart,plan.loopEnd,plan.loopFade,plan.sample->rate);
   for(unsigned n=0;n<plan.postCount;n++)postState[n].reset(plan.post[n],postRecipe?postRecipe->motion[n].get():nullptr,static_cast<unsigned>(sampleRate),postDelay?postDelay+n*postDelayFrames(static_cast<unsigned>(sampleRate))*2:nullptr);
   if(processingState&&processingRecipe)processingState->reset(plan.processing,*processingRecipe,static_cast<unsigned>(sampleRate));
@@ -107,6 +107,7 @@ public:
  }
  void relocateChannels(SampleChannelState* additional)noexcept{extraChannels=additional;}
  VoicePreparation preparation()const noexcept{return {filter,noise,modulation.preparedAlpha(),initialFrequency,left,right,movingCutoff,recipe,lfoBank,processingRecipe,postRecipe};}
+ void measurePost(PostMeter& meter)noexcept{postMeter=&meter;}
  void process(float* interleavedStereo,std::size_t frames) noexcept {
   for(std::size_t i=0;i<frames;i++,frame++){
 #ifdef PREMIDI_PROBE
@@ -204,7 +205,10 @@ public:
     if(renderedPan<=0){const double angle=(renderedPan+1)*pi/2;interleavedStereo[2*i]=static_cast<float>(sample+other*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other*std::sin(angle));}
     else{const double angle=renderedPan*pi/2;interleavedStereo[2*i]=static_cast<float>(sample*std::cos(angle));interleavedStereo[2*i+1]=static_cast<float>(other+sample*std::sin(angle));}
    }else{interleavedStereo[2*i]=static_cast<float>(sample*left);interleavedStereo[2*i+1]=static_cast<float>(sample*right);}
-   if(frame>=firstFrame&&frame<lastGraphFrame)for(unsigned n=0;n<plan.postCount;n++)postState[n].process(interleavedStereo+2*i,std::max(0.,clock-plan.start),plan.post[n]);
+   if(frame>=firstFrame&&frame<lastGraphFrame)for(unsigned n=0;n<plan.postCount;n++){
+    postState[n].process(interleavedStereo+2*i,std::max(0.,clock-plan.start),plan.post[n],&automated,n);
+    if(postMeter)(*postMeter)[n]=std::max((*postMeter)[n],postState[n].gainReductionDb(plan.post[n]));
+   }
   }
  }
 };

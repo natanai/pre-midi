@@ -122,10 +122,18 @@ export async function auditionNative(instrument,notes,{duration=.24,bpm=120}={})
  const cycle=Math.min(600,Math.max(.05,...plans.map(plan=>plan.graphEnd)));
  return nativeRequest({action:'play',data:Array.from(encodeNativeSession(plans,status.sampleRate)),cycle,seek:0,looping:false,preview:true,owner});
 }
-export async function renderNative(plans,{rate,frames,cycle,wav=false,gain=.85,bits=16,dither=false,measure=false}){
+export async function renderNative(plans,{rate,frames,cycle,wav=false,gain=.85,bits=16,dither=false,measure=false,postMeasure=false}){
  const data=Array.from(encodeNativeSession(plans,rate));
- const result=await globalThis.__TAURI__.core.invoke('native_render',{request:{data,rate,frames,cycle,wav,gain,bits,dither,measure}});
+ const result=await globalThis.__TAURI__.core.invoke('native_render',{request:{data,rate,frames,cycle,wav,gain,bits,dither,measure,postMeasure}});
  return result instanceof ArrayBuffer?result:Uint8Array.from(result).buffer;
+}
+export async function renderNativePostAnalysis(plans,options){
+ const bytes=await renderNative(plans,{...options,postMeasure:true});
+ if(bytes.byteLength!==32+options.frames*8)throw Error('Incomplete native post analysis');
+ const data=new DataView(bytes);
+ return {pcm:new Float32Array(bytes,32),postLevels:(plans[0]?.postProcessing??[]).map((recipe,index)=>({
+  id:recipe.id,kind:recipe.kind,reduction:data.getFloat64(index*8,true)
+ }))};
 }
 export async function playNative(document,events,{loop=false,onPosition=()=>{},onProgress=()=>{},onStop=()=>{},onStart=()=>{},startStep=0,countIn=0,recording=null,onCountIn=()=>{}}={}){
  const epoch=++transportEpoch;

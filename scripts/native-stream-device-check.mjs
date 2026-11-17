@@ -42,7 +42,15 @@ try{
   patch.chain=withInstance(patch,'frequencyshift');Object.assign(patch.chain.instances[3].parameters,{frequency:100,phase:.23});
   if(graph){patch.chain=withInstance(patch,'filter');patch.chain.instances.find(instance=>instance.kind==='filter').parameters.cutoff=3200;patch.chain=withParallelRoute(patch);patch.chain=moveProcessor(patch.chain,'filter-1','route-1');patch.chain=withRouteShare(patch.chain,'dry',.4);}
   const tone=(pitch,start,duration)=>planSynthVoice({patch,volume:.12},
-   {pitch,velocity:.8},start*scale,duration*scale,{automation:[{id:"pan",version:1,target:"pan",unit:"pan",interpolation:"linear",points:[{id:"a",step:0,value:-.4},{id:"b",step:4,value:.6}]}],timeline:{step:0,unit:.125*scale,limitStep:4}});
+   {pitch,velocity:.8},start*scale,duration*scale,{automation:[
+    {id:"pan",version:1,target:"pan",unit:"pan",interpolation:"linear",points:[{id:"a",step:0,value:-.4},{id:"b",step:4,value:.6}]},
+    ...[
+     ["processor.compressor-1.threshold","db",-36,-12],
+     ["processor.chorus-1.delay","seconds",.006,.035],
+     ["processor.chorus-1.mix","ratio",0,1],
+     ["processor.frequencyshift-1.frequency","hz",-120,200]
+    ].map(([target,unit,low,high],index)=>({id:"post"+index,version:1,target,unit,interpolation:"linear",points:[{id:"a",step:0,value:low},{id:"b",step:4,value:high}]}))
+   ],timeline:{step:0,unit:.125*scale,limitStep:4}});
   const duration=Math.round(rate*.14),pcm=new Float32Array(duration*2);
   for(let i=0;i<duration;i++){
    pcm[2*i]=.22*Math.sin(2*Math.PI*345*i/rate);

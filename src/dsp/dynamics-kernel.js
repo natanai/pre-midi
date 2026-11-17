@@ -2,15 +2,26 @@
 // one note/Clip's stereo-linked detector, never another Sound's state.
 // RBJ constant-0-dB-peak bandpass, octave bandwidth with BLT correction:
 // https://www.w3.org/TR/audio-eq-cookbook/#formulae
-export function deesserBand(p,rate){
+export function deesserBand(p,rate,output=new Float64Array(5)){
  const w=2*Math.PI*Math.min(p.frequency,rate*.45)/rate,s=Math.sin(w),
   alpha=s*Math.sinh(Math.LN2/2*p.bandwidth*w/s),a0=1+alpha;
- return [alpha/a0,0,-alpha/a0,-2*Math.cos(w)/a0,(1-alpha)/a0];
+ output[0]=alpha/a0;output[1]=0;output[2]=-alpha/a0;output[3]=-2*Math.cos(w)/a0;output[4]=(1-alpha)/a0;return output;
 }
 export class DynamicsKernel {
  constructor(p,rate){
-  this.p=p;this.attack=p.attack===0?0:Math.exp(-1/(p.attack*rate));this.release=Math.exp(-1/(p.release*rate));this.makeup=10**(p.makeup/20);this.ceiling=10**(p.threshold/20);this.holdFrames=Math.ceil(p.hold*rate);this.reduction=p.kind==='gate'?-p.range:0;this.held=0;
+  this.p={...p};this.rate=rate;this.attack=p.attack===0?0:Math.exp(-1/(p.attack*rate));this.release=Math.exp(-1/(p.release*rate));this.makeup=10**(p.makeup/20);this.ceiling=10**(p.threshold/20);this.holdFrames=Math.ceil(p.hold*rate);this.reduction=p.kind==='gate'?-p.range:0;this.held=0;
   this.band=p.kind==='deesser'?deesserBand(p,rate):null;this.history=new Float64Array(8);
+ }
+ updateParameters(){
+  const p=this.p,rate=this.rate;
+  if(this.previousAttack!==p.attack){this.attack=p.attack===0?0:Math.exp(-1/(p.attack*rate));this.previousAttack=p.attack;}
+  if(this.previousRelease!==p.release){this.release=Math.exp(-1/(p.release*rate));this.previousRelease=p.release;}
+  if(this.previousMakeup!==p.makeup){this.makeup=10**(p.makeup/20);this.previousMakeup=p.makeup;}
+  if(this.previousThreshold!==p.threshold){this.ceiling=10**(p.threshold/20);this.previousThreshold=p.threshold;}
+  if(this.previousHold!==p.hold){this.holdFrames=Math.ceil(p.hold*rate);this.previousHold=p.hold;}
+  if(this.band&&(this.previousFrequency!==p.frequency||this.previousBandwidth!==p.bandwidth)){
+   deesserBand(p,rate,this.band);this.previousFrequency=p.frequency;this.previousBandwidth=p.bandwidth;
+  }
  }
  filtered(input,channel){
   const h=this.history,i=channel*4,c=this.band,
@@ -25,8 +36,12 @@ export class DynamicsKernel {
   frame[0]=Math.fround(selective?left+a*(gain-1):left*gain);
   frame[1]=Math.fround(selective?right+b*(gain-1):right*gain);
  }
+ gainReductionDb(){
+  const mix=this.p.mix;
+  return Math.max(0,-20*Math.log10(Math.max(1e-12,1-mix+mix*10**(this.reduction/20))));
+ }
  gain(peak){
-  const p=this.p;if(p.mix===0)return 1;
+  const p=this.p;
   const level=20*Math.log10(Math.max(1e-12,peak));let desired=0;
   if(p.kind==='compressor'){
    const x=level-p.threshold,slope=1/p.ratio-1;

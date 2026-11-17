@@ -27,6 +27,17 @@ struct DynamicsRecipe {
   }
   return p;
  }
+ void update(const DynamicsRecipe& previous,unsigned rate)noexcept{
+  if(attack!=previous.attack)attackCoefficient=attack==0?0:std::exp(-1/(attack*rate));
+  if(release!=previous.release)releaseCoefficient=std::exp(-1/(release*rate));
+  if(makeup!=previous.makeup)makeupGain=std::pow(10.,makeup/20);
+  if(threshold!=previous.threshold)ceiling=std::pow(10.,threshold/20);
+  if(hold!=previous.hold)holdFrames=static_cast<unsigned>(std::ceil(hold*rate));
+  if(mode==deesser&&(frequency!=previous.frequency||bandwidth!=previous.bandwidth)){
+   const double w=2*3.14159265358979323846*std::min(frequency,rate*.45)/rate,s=std::sin(w),alpha=s*std::sinh(std::log(2.)/2*bandwidth*w/s),a0=1+alpha;
+   band={alpha/a0,0,-alpha/a0,-2*std::cos(w)/a0,(1-alpha)/a0};
+  }
+ }
  double compression(double level)const noexcept{
   const double x=level-threshold,slope=1/ratio-1;
   if(knee==0)return x>0?slope*x:0;
@@ -46,12 +57,15 @@ class Dynamics {
  }
 public:
  void reset(const DynamicsRecipe& p)noexcept{reduction=p.mode==DynamicsRecipe::gate?-p.range:0;held=0;history={};}
+ double gainReductionDb(double mix)const noexcept{
+  return std::max(0.,-20*std::log10(std::max(1e-12,1-mix+mix*std::pow(10.,reduction/20))));
+ }
  // Supply all channels together; one maximum-absolute detector and gain keep
  // stereo images linked. De-essing is applied to the selected band only.
  // All production voices have already been downmixed to stereo at this point.
  // No allocation, lookahead, or hidden block latency.
  void process(float* frame,std::size_t channels,const DynamicsRecipe& p)noexcept{
-  if(!channels||p.mix==0)return;
+  if(!channels)return;
   const bool selective=p.mode==DynamicsRecipe::deesser;
   std::array<float,2> selected{};
   if(selective){channels=std::min(channels,selected.size());for(std::size_t i=0;i<channels;i++)selected[i]=filtered(frame[i],i,p);}

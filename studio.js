@@ -1309,6 +1309,10 @@ function renderSound() {
  $("remove-instrument").textContent=instrumentDeleteLabel(inst);
 }
 // Song clips use the existing lower Beat editing space, not a second window.
+const songAutomationRecording={
+ recordStep:()=>playback&&!playback.paused&&songExpanded?songUI?.getPlaybackStep()??null:null,
+ recordMessage:message
+};
 function renderVocalWorkspace(){
  const selected=songExpanded? songUI?.getSelectedVocal():null;
  const active=!!selected?.recording,root=$("vocal-editor");
@@ -1385,7 +1389,7 @@ function renderVocalWorkspace(){
    }catch(error){message("Could not use vocal in Beat: "+error.message,true);}
   },
   onBack:()=>songUI.select(null),
-  onUndo:undo,onRedo:redo,bpm:song.bpm,song,
+  onUndo:undo,onRedo:redo,bpm:song.bpm,song,automationRecording:songAutomationRecording,
   onRename:(clipId,value)=>{if(target(clipId))modifySong(()=>renameVocalRecording(song,clipId,value));},
   onSelect:clipId=>songUI.select(clipId),onRecord:()=>$("song-record").click(),
   onMove:(clipId,step)=>{const entry=target(clipId);if(entry)modifySong(()=>{entry.clip.startStep=step;});},
@@ -2297,7 +2301,7 @@ document.addEventListener("keydown", event => {
  }
 });
 songUI=installSongUI({
- root:$("song-panel"),getSong:()=>songExpanded?song:null,
+ root:$("song-panel"),getSong:()=>songExpanded?song:null,getRecordingStep:songAutomationRecording.recordStep,
  getSelectedBeatId:()=>selectedBeatId,
  onSelectBeat:selectBeat,onChange:modifySong,onSelectionChange:renderVocalWorkspace,
  onError:error=>message(error,true),

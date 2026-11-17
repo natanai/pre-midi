@@ -1,3 +1,4 @@
+import {automationRecordingStep} from './src/dsp/automation.js';
 import {renderAutomation} from './automationUI.js';
 // Attached freeform Song lane and Song-position piano roll.
 // Every mutation passes through the studio's existing Song undo/history boundary.
@@ -47,7 +48,7 @@ const field=(label,control)=>{
 };
 export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActiveChange=()=>{},
  onBeatCreated=()=>{},onBrowseSound=()=>{},onSaveSound=()=>{},
- getSongStep=()=>null,seekSongStep=()=>{},onSelectSourceBeat=()=>{},
+ getSongStep=()=>null,getRecordingStep=()=>null,seekSongStep=()=>{},onSelectSourceBeat=()=>{},
  getScaleGuide=()=>normalizeScaleGuide(),setScaleGuide=()=>{},
  getShowPianoKeys=()=>true,setShowPianoKeys=()=>{},
  onUndo=()=>{},onRedo=()=>{},getHistoryState=()=>({}),
@@ -289,7 +290,12 @@ export function installFreeformUI({root,getSong,onChange,onError=()=>{},onActive
      const current=currentNote();if(!current)return;
      if(!lanes){delete current.automation;return;}
      current.automation=captured?{...captured,block:lanes}:{version:1,step:0,limitStep:Math.min(1024,current.duration),block:lanes};layer().version=2;
-    }));
+    }),{
+     recordStep:()=>currentNote()?.id===note.id?automationRecordingStep(getRecordingStep(),{
+      start:note.start,length:note.duration,sourceStep:captured?.step??0,limitStep:captured?.limitStep??Math.min(1024,note.duration)
+     }):null,
+     recordMessage:onError
+    });
   }
   const overlaps=overlappingFreeformNotes(instrument(),note);
   if(overlaps.length){

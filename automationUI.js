@@ -28,7 +28,7 @@ export function renderAutomation(root,instrument,beat,onChange,{recordStep=null,
    const samples=new Map(),end=beat.bars*16;
    let lastStep=null;
    const sample=value=>{
-    const position=recordStep();if(position===null)return false;
+    const position=recordStep();if(!Number.isFinite(position)||position<0||position>end)return false;
     const step=Math.max(0,Math.min(end,Math.floor(position)));
     if(step<(lastStep??step))samples.clear();
     lastStep=step;samples.set(step,value);
@@ -38,7 +38,7 @@ export function renderAutomation(root,instrument,beat,onChange,{recordStep=null,
    const min=lane.interpolation==='exponential'?Math.max(p.min,p.ui.step):p.min;
    const record=createDial({label:'write gesture',min,max:p.max,step:p.ui.step,display:p.ui.display,log:p.ui.log},lane.points[0].value,
     value=>{
-     if(!sample(value)){reset();recordMessage('play the beat to write automation',true);return;}
+     if(!sample(value)){reset();recordMessage('play this passage to write automation',true);return;}
      const next=recordAutomationGesture(lane,samples,end);reset();
      if(next===lane){recordMessage('this automation lane has reached its point limit',true);return;}
      change(next);

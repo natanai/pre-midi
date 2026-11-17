@@ -1,3 +1,4 @@
+import {postAutomationMask} from './processor-automation.js';
 import {DYNAMICS_FIELDS,DYNAMICS_PARAMETERS,POST_PROCESSOR_LIMIT} from './parameters.js';
 export const DYNAMICS_KINDS=Object.freeze(Object.keys(DYNAMICS_FIELDS));
 export function defaultDynamics(kind){
@@ -13,7 +14,7 @@ export function validateDynamicsParameters(kind,p){
  return !!fields&&!!p&&typeof p==='object'&&!Array.isArray(p)&&Object.keys(p).length===fields.length&&Object.keys(p).every(key=>fields.includes(key))&&fields.every(key=>{const def=DYNAMICS_PARAMETERS[key];return Number.isFinite(p[key])&&p[key]>=def.min&&p[key]<=def.max;});
 }
 // Runtime recipes include inactive-kind defaults, never new persisted fields.
-export function compileDynamics(patch){
+export function compileDynamics(patch,lanes=patch.automation??[]){
  const chain=patch.chain;if(!chain)return [];
  const order=chain.post??[],instances=chain.instances??[],bypass=chain.bypass??[];
  if(!Array.isArray(order)||order.length>POST_PROCESSOR_LIMIT||new Set(order).size!==order.length||!Array.isArray(instances)||!Array.isArray(bypass))throw Error('Invalid post-level dynamics order');
@@ -22,7 +23,7 @@ export function compileDynamics(patch){
   const node=instances.find(instance=>instance?.id===id),mix=chain.mix?.[id]??1;
   if(node&&!DYNAMICS_KINDS.includes(node.kind))continue;
   if(!node||!validateDynamicsParameters(node.kind,node.parameters)||!Number.isFinite(mix)||mix<0||mix>1)throw Error('Invalid dynamics processor');
-  if(bypass.includes(id)||mix===0)continue;
+  if(bypass.includes(id)||(mix===0&&!postAutomationMask(lanes,id)))continue;
   nodes.push({id,kind:node.kind,...Object.fromEntries(Object.entries(DYNAMICS_PARAMETERS).map(([key,p])=>[key,p.default])),...node.parameters,mix});
  }
  return nodes;
