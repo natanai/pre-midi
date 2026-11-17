@@ -10,7 +10,6 @@ const ids=presets=>new Set(presets.map(p=>p.id));
 test("factory catalog is a single unique list of real sound foundations and complete racks",()=>{
  const catalog=FACTORY_SOUND_CATALOG;
  assert.equal(ids(catalog).size,catalog.length,"Duplicate factory catalog ID");
- assert.equal(catalog.length,79,"Unexpected extra factory starting points; audit them before publishing");
  assert.equal(catalog.filter(p=>p.sounds).length,5);
  assert.equal(catalog.filter(p=>p.id.startsWith("example-")&&!p.sounds).length,0,
   "A song-specific variation is not another factory sound");

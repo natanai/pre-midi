@@ -3894,7 +3894,7 @@
       {
         "id": "POST-EFFECT-MOVEMENT",
         "date": "2026-11-17",
-        "status": "implemented; preview.40 packaging requested",
+        "status": "implemented; preview.41 packaging requested",
         "task_ids": [
           "SE-05",
           "SE-06"
@@ -3904,7 +3904,9 @@
           "routine": "116 routine cases passed",
           "audio": "All continuous post targets with automation match native/worklet PCM within 2.384185791015625e-7; native seeks preserve output exactly. Independent fully-wet macro reference matches native exactly.",
           "editor": "Shared target selection, fine delay units, undo/redo and bypass retention pass DOM integration.",
-          "streaming": "48 kHz null-device seek/loop/revision/count-in/capture checks with lanes and sine/step/envelope post routes pass; zero callback allocations; revision maximum error 3.72529e-9."
+          "streaming": "48 kHz null-device seek/loop/revision/count-in/capture checks with lanes and sine/step/envelope post routes pass; zero callback allocations; revision maximum error 3.72529e-9.",
+          "full_javascript": "685 cases passed after correcting outdated catalog count/rack assumptions, test-clock DSP preparation and invalid source/target fixtures; four superseded source-string editor snapshots retired. No runtime behavior was changed by that cleanup.",
+          "windows_build_note": "Preview.40 compiled but was withheld after the Rust codec fixture sent sample packet v26. The fixture is corrected to the current v27 for preview.41."
         },
         "remaining": [
           "Delay/reverb send targets, envelope followers and external sidechains",

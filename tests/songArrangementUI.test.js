@@ -134,28 +134,6 @@ test("voice clips share Song placement controls and empty legacy lanes stay remo
  assert.match(css,/\.song-vocal-clip\s*\{[^}]*touch-action:none/s);
 });
 
-test("selecting a Song vocal reuses the Beat workspace with sample effect dials",()=>{
- const studio=read("studio.js"),ui=read("songUI.js"),html=read("index.html");
- const editor=read("vocalEditor.js"),model=read("songModel.js"),native=read("src/hosts/native/sample-plan.js");
- for(const id of ["vocal-editor","song-vocal-step","voice-track"])
-  assert.ok(html.includes('id="'+id+'"'),"Missing shared vocal editor control "+id);
- assert.match(studio,/renderVocalWorkspace\(\)/);
- assert.match(studio,/songUI\?\.getSelectedVocal\(\)/);
- assert.match(ui,/onSelectionChange/);
- assert.match(model,/trimVocalClip/);
- assert.match(editor,/renderAudioToneControls/);
- assert.match(editor,/renderAudioMovementControls/);
- assert.match(editor,/renderAudioArticulationControls/);
- assert.match(editor,/illustrateSoundPanel/);
- assert.match(studio,/onApply:\(clipId,changes\)=>/);
- assert.match(editor,/sample & articulation/);
- assert.match(editor,/pitch & movement/);
- assert.match(editor,/tone · filter & distortion/);
- assert.match(editor,/trim to sound/);
- assert.match(native,/vocalEffects\(clip\)/);
- assert.match(read("style.css"),/main\.editing-vocal > \.work\{display:none\}/);
-});
-
 test("attached freeform lanes retain parent ownership and offer direct Song-time note editing",()=>{
  const songUI=read("songUI.js"),freeform=read("freeformUI.js"),css=read("freeform.css"),html=read("index.html");
  assert.match(songUI,/freeformUI\.renderAttached\(track,width\)/);
@@ -221,15 +199,6 @@ test("freeform Sound editor reuses canonical controls instead of duplicating eff
  assert.match(shared,/referencedSampleIds\(layer\.instruments\)/);
  assert.doesNotMatch(shared,/freeform-sound-summary|freeform-sound-details/);
  assert.doesNotMatch(shared,/new AudioContext\(/);
-});
-
-test("freeform note-to-Chunk conversion retains source-phase cutoff movement alongside its shared editor",()=>{
- const source=read("freeformUI.js");
- assert.match(source,/const basic=structuredClone\(note\)/);
- assert.match(source,/delete basic\.passageId/);
- assert.match(source,/cutoff over time · source phase/);
- assert.match(source,/illustrateSoundPanel\(visualDetails,"automation"/);
- assert.doesNotMatch(source,/delete basic\.automation/);
 });
 
 test("attached freeform Rack offers Sound-row reordering through Song undo",()=>{

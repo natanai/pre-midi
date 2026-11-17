@@ -345,7 +345,7 @@ All continuous controls of compressor, gate, limiter, de-esser, chorus, flanger,
 
 Vocal Clips and selected Freeform notes can write gestures at the played source position. Captured Freeform curves retain their original step after moving. Gestures commit on release through the existing undo path. Sound previews show measured peak applied dynamics reduction after wet/dry mixing with makeup excluded. Native/worklet audio and a mathematical meter oracle pass focused checks. Track buses, external sidechains, further automation destinations, monitored override/rejoin and physical qualification remain tracked in [the synthesis roadmap](synthesis-roadmap.json).
 
-### Post-effect movement and preview.40 (2026-11-17)
+### Post-effect movement and preview.41 (2026-11-17)
 
 The existing movement routes and macros now target every continuous parameter and wet/dry mix on the ten post-level dynamics and modulation-effect types. Synths, sampled Sounds and vocal Clips share stable instance IDs, units, bounds, smoothing and the same Inspector/interactive route illustration. Automation supplies the base before movement. Bypassed or unrouted processors retain dormant routes; tempo-owned rates retain their authored division. Zero-mix processors can become audible through movement. Tail and carrier-filter preparation includes the bounded movement range.
 

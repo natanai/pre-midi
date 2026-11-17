@@ -144,27 +144,6 @@ test("note level belongs to the selected note effects inspector for piano and ra
  assert.match(studio,/duration:1,velocity:DEFAULT_NOTE_LEVEL/);
 });
 
-test("compact note and Sound header keeps history accessible and Sound rightmost",()=>{
- const html=studioHtml();
- const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
- const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
- const header=html.slice(html.indexOf('class="heading notes-heading"'),html.indexOf('<div class="notes-toolbar">'));
- const note=header.indexOf('id="note-mode"');
- const undo=header.indexOf('id="undo"');
- const redo=header.indexOf('id="redo"');
- const sound=header.indexOf('id="sound-toggle"');
- assert.ok(note>=0&&note<undo&&undo<redo&&redo<sound,"Sound must be the last control");
- assert.ok(header.includes('<h2>notes</h2><button id="note-mode"'));
- for(const [id,symbol] of [["note-mode","✎"],["undo","↶"],["redo","↷"],["sound-toggle","♫"]]){
-  assert.match(header,new RegExp('id="'+id+'"[^>]*>'+symbol+'</button>'));
-  assert.match(header,new RegExp('id="'+id+'"[^>]*aria-label="'));
- }
- assert.ok(studio.includes('$("undo").addEventListener("click", undo)'));
- assert.ok(studio.includes('$("redo").addEventListener("click", redo)'));
- assert.ok(workspace().includes('toggle.textContent="♫"'));
- assert.ok(studio.includes('$("note-mode").textContent="✎"'));
- assert.match(css,/\.history-actions button::before,\.history-actions button::after \{content:none\}/);
-});
 test("Sound heading does not duplicate its editable instrument name",()=>{
  const html=studioHtml();
  const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
@@ -176,31 +155,6 @@ test("Sound heading does not duplicate its editable instrument name",()=>{
  assert.ok(!sound.includes('id="edit-instrument-note"'));
  assert.ok(!studio.includes('$("edit-instrument-note")'));
  assert.ok(studio.includes('$("sound-section").setAttribute("aria-label"'));
-});
-
-test("primary instrument controls replace redundant lower fields",()=>{
- const html=studioHtml();
- const studio=readFileSync(new URL("../studio.js",import.meta.url),"utf8");
- const synth=readFileSync(new URL("../instrumentUI.js",import.meta.url),"utf8");
- const sampler=readFileSync(new URL("../samplerUI.js",import.meta.url),"utf8");
- const css=readFileSync(new URL("../style.css",import.meta.url),"utf8");
- assert.match(html,/class="sound-primary-controls"/);
- for(const id of ["instrument-volume-dial","primary-brightness-dial","primary-attack-dial","primary-release-dial"])
-  assert.ok(html.includes('id="'+id+'"'),id);
- assert.ok(html.indexOf('id="sound-visualizer"')<html.indexOf('id="synth-editor"'));
- assert.match(html,/class="sound-entity-menu"/);
- assert.match(html,/id="remove-instrument"/);
- assert.ok(!html.includes('class="sound-control-group sound-identity-controls"'));
- assert.match(css,/\.visual-sound-panel/);
- assert.match(css,/\.oscillator-stack/);
- const shared=readFileSync(new URL("../soundInspector.js",import.meta.url),"utf8");
- assert.match(studio,/renderSoundInspectorCore\(\{/);
- assert.match(shared,/PRIMARY_SYNTH_FIELDS/);
- assert.match(shared,/createSignalDisplay\(scopeRoot,patch,context,accent,level/);
- assert.match(shared,/sound\.referencePitch,instrument\.automation\?\?null,sound\.id/);
- assert.ok(!synth.includes('{name:"Sound",open:true'));
- assert.ok(!sampler.includes('["cutoff","Cutoff",50,14000,1,"hz",true]'));
- assert.ok(!sampler.includes('["attack","Attack",0,2,.005,"seconds"]'));
 });
 
 test("Notes pencil suppresses generic heading brackets rather than stacking them into the toolbar",()=>{

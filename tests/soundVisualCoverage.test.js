@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {makePatch} from "../synth.js";
 import {diagram,diagramPageForControl,illustrationSignal} from "../soundIllustrations.js";
-import {defaultSource} from "../src/dsp/modulation.js";
+import {defaultSource,modulationTargets} from "../src/dsp/modulation.js";
 
 const copy=value=>structuredClone(value);
 const set=(patch,path,value)=>{
@@ -130,7 +130,14 @@ test("every mapped sound control visibly changes its corresponding illustration"
  for(const item of cases){
   await t.test(item.create().type+" "+item.path,()=>{
    const before=item.create(),after=copy(before),path=item.path.split(".").map(p=>/^\\d+$/.test(p)?Number(p):p);
-   set(after,path,item.value);
+   if(item.path.endsWith('.source.kind'))after.modulation.routes[0].source=defaultSource(item.value);
+   else{
+    set(after,path,item.value);
+    if(item.path.endsWith('.target')){
+     const route=after.modulation.routes[0],target=modulationTargets(after).find(target=>target.id===route.target);
+     route.unit=target.unit;route.depth=Math.max(-target.limit,Math.min(target.limit,route.depth));
+    }
+   }
    // Harmonics have their own editable detail view. The mixed oscillator
    // signal alone does not qualify an unreachable partial editing task.
    const kind=item.path.includes(".harmonics.")?"harmonics"+path[1]:item.kind;

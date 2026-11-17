@@ -30,10 +30,12 @@ test("audio-clock progress is continuous between sixteenth-note boundaries", asy
  // A silent score allows us to check the transport without a browser or real audio.
  score.instruments[0].timeline.fill(null);
  const OriginalAudioContext=globalThis.AudioContext;
+ const OriginalOfflineAudioContext=globalThis.OfflineAudioContext;
  const OriginalSetInterval=globalThis.setInterval;
  const OriginalClearInterval=globalThis.clearInterval;
  let context, tick, cleared=false;
  globalThis.AudioContext=class {
+  sampleRate=48000;
   currentTime=0;
   state="running";
   constructor(){context=this;}
@@ -43,9 +45,17 @@ test("audio-clock progress is continuous between sixteenth-note boundaries", asy
    cancelScheduledValues(){},setValueAtTime(){},linearRampToValueAtTime(){}
   },connect(){},disconnect(){}};}
  };
+ // The test clock is independent of the one-time offline DSP latency probe.
+ globalThis.OfflineAudioContext=class {
+  destination={};
+  createBuffer(){return {getChannelData:()=>new Float32Array(1024)};}
+  createBufferSource(){return {connect(){},start(){}};}
+  createWaveShaper(){return {connect(){}};}
+  async startRendering(){const data=new Float32Array(1024);data[0]=1;return {getChannelData:()=>data};}
+ };
  globalThis.setInterval=fn=>{tick=fn;return 42;};
  globalThis.clearInterval=()=>{cleared=true;};
- t.after(()=>{globalThis.AudioContext=OriginalAudioContext;globalThis.setInterval=OriginalSetInterval;globalThis.clearInterval=OriginalClearInterval;});
+ t.after(()=>{globalThis.AudioContext=OriginalAudioContext;globalThis.OfflineAudioContext=OriginalOfflineAudioContext;globalThis.setInterval=OriginalSetInterval;globalThis.clearInterval=OriginalClearInterval;});
  const positions=[],progress=[];
  const session=await play(score,{
   loop:true,

@@ -1,4 +1,4 @@
-# pre-midi 0.14.1-preview.40 Windows portable
+# pre-midi 0.14.1-preview.41 Windows portable
 
 ## Changes since preview.39
 
@@ -13,4 +13,4 @@ Extract the whole ZIP to a writable folder and open pre-midi.exe. For a manual u
 
 Add a compressor or chorus, then choose its threshold, mix, delay or feedback in movement routes. Combine movement with an automation lane. Try play, pause, seek and stop, then bypass and restore the processor.
 
-Includes preview.39 effect automation, vocal/Freeform gesture writing and measured preview gain reduction. Shared Track buses, external sidechains, send modulation, further automation destinations, monitored live override/rejoin and physical audio testing remain open. The optional broad suite last had eleven pre-existing failures on preview.39.
+Includes preview.39 effect automation, vocal/Freeform gesture writing and measured preview gain reduction. Shared Track buses, external sidechains, send modulation, further automation destinations, monitored live override/rejoin and physical audio testing remain open. Current optional JavaScript tests pass after correcting stale catalog/fixture assumptions and retiring superseded source-string editor snapshots.

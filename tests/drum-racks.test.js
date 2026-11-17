@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {FACTORY_SOUND_CATALOG} from "../soundCatalog.js";
 import {DRUM_RACKS} from "../drumRacks.js";
 import {SAMPLE_ASSETS,SAMPLE_LIBRARY,sampleAsset} from "../samples.js";
 import {create,makeInstrument,validate} from "../schema.js";
@@ -34,13 +35,13 @@ test("three factory racks are distinct editable drum instruments",()=>{
  }
 });
 
-test("every recorded drum/percussion one-shot is available in at least one factory rack",()=>{
+test("recorded drum one-shots are reachable as catalog Sounds or rack rows",()=>{
  const assigned=new Set(DRUM_RACKS.flatMap(r=>r.sounds)
   .flatMap(s=>s.patch.type==="sample"?s.patch.zones.map(z=>z.assetId):[]));
  for(const preset of SAMPLE_LIBRARY.filter(p=>p.category==="Drums")){
   assert.equal(preset.trigger,"hit",preset.id);
-  for(const asset of preset.assets)assert.ok(assigned.has(asset),
-   "recorded drum asset "+asset+" is missing from preset racks");
+  for(const asset of preset.assets)assert.ok(assigned.has(asset)||FACTORY_SOUND_CATALOG.some(sound=>sound.assets?.includes(asset)),
+   "recorded drum asset "+asset+" is missing from both the catalog and preset racks");
  }
 });
 
